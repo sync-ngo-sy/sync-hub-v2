@@ -1,0 +1,26 @@
+{
+  "name": "sync-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "gen:api-client": "pnpm --filter @sync/api-client gen",
+    "gen:db-types": "pnpm --filter @sync/db-types gen"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "turbo": "^2.10.0",
+    "typescript": "~6.0.3"
+  }
+}

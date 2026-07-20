@@ -1,0 +1,52 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+# Virtual workspace root (no [project] table): it only orchestrates the member
+# packages under packages/*. The deployable app is `sync-api`.
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.2",
+    "httpx>=0.28",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages/*/src"]
+
+[tool.ruff.lint]
+# A strict, modern rule set. See https://docs.astral.sh/ruff/rules/
+select = [
+    "E", "W",      # pycodestyle
+    "F",           # pyflakes
+    "I",           # isort
+    "N",           # pep8-naming
+    "UP",          # pyupgrade
+    "B",           # flake8-bugbear
+    "A",           # flake8-builtins
+    "C4",          # flake8-comprehensions
+    "SIM",         # flake8-simplify
+    "TCH",         # flake8-type-checking
+    "PTH",         # flake8-use-pathlib
+    "RUF",         # ruff-specific
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false

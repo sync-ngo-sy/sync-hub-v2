@@ -1,0 +1,38 @@
+{
+  // Python: point the editor at the uv workspace's single shared virtualenv,
+  // so imports like `sync_core` resolve without activating anything.
+  "python.defaultInterpreterPath": "${workspaceFolder}/services/api/.venv/bin/python",
+  "python.analysis.autoImportCompletions": true,
+  "python.terminal.activateEnvironment": false,
+
+  // Ruff owns Python lint + format.
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+
+  // Biome owns JS/TS/JSON lint + format.
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
+
+  // Keep noise out of search / file watching.
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/dist": true,
+    "**/.turbo": true,
+    "**/uv.lock": true,
+    "**/pnpm-lock.yaml": true
+  },
+  "files.watcherExclude": {
+    "**/.venv/**": true,
+    "**/node_modules/**": true
+  }
+}

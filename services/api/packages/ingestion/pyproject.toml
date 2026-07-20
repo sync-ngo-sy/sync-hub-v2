@@ -1,0 +1,23 @@
+[project]
+name = "sync-ingestion"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "super", email = "moofk2002@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "sync-core",
+    "sync-parsers",
+    "sync-rag",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.24,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+sync-core = { workspace = true }
+sync-parsers = { workspace = true }
+sync-rag = { workspace = true }
