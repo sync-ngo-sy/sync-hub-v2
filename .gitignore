@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+
+# Coverage / logs
+coverage/
+*.log
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Note: generated types (api-client schema, db-types) are committed on purpose
+# so the repo type-checks without a running backend. Regenerate with `pnpm gen:*`.

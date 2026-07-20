@@ -1,0 +1,13 @@
+{
+  "name": "@sync/api",
+  "version": "0.0.0",
+  "private": true,
+  "//": "Thin shim so Turbo can orchestrate the Python backend. Scripts shell out to `uv`, which owns the workspace .venv. Turbo never touches Python directly.",
+  "scripts": {
+    "dev": "uv run uvicorn sync_api.main:app --reload --port 8000",
+    "lint": "uv run ruff check",
+    "format": "uv run ruff format",
+    "typecheck": "uv run mypy packages",
+    "test": "uv run pytest"
+  }
+}
