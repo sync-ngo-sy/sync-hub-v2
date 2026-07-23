@@ -2,12 +2,12 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
-This is a **multi-context** monorepo: each workspace package (`apps/*`, `packages/*`, `services/*`) is its own context with its own `CONTEXT.md`, tied together by a root `CONTEXT-MAP.md`.
+This is a **multi-context** monorepo. Each workspace package (`apps/*`, `packages/*`, `services/*`) is its own context, as is `supabase/` — the database schema, auth, and migrations config. Each context has its own `CONTEXT.md`, tied together by a root `CONTEXT-MAP.md`.
 
 ## Before exploring, read these
 
-- **`CONTEXT-MAP.md`** at the repo root — it points at one `CONTEXT.md` per context (workspace package). Read each one relevant to the topic.
-- The relevant per-package **`CONTEXT.md`** — e.g. `apps/candidate-portal/CONTEXT.md`, `services/api/CONTEXT.md`, `packages/ui/CONTEXT.md`.
+- **`CONTEXT-MAP.md`** at the repo root — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
+- The relevant per-context **`CONTEXT.md`** — e.g. `apps/candidate-portal/CONTEXT.md`, `services/api/CONTEXT.md`, `packages/ui/CONTEXT.md`, `supabase/CONTEXT.md`.
 - **`docs/adr/`** at the repo root — system-wide architectural decisions. Read ADRs that touch the area you're about to work in.
 - Context-scoped ADRs at **`<package>/docs/adr/`** (e.g. `services/api/docs/adr/`) for decisions local to one package.
 
@@ -17,7 +17,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 Multi-context monorepo (presence of `CONTEXT-MAP.md` at the root):
 
-```
+```text
 /
 ├── CONTEXT-MAP.md                       ← index of every context
 ├── docs/adr/                            ← system-wide decisions
@@ -32,10 +32,14 @@ Multi-context monorepo (presence of `CONTEXT-MAP.md` at the root):
 │   ├── api-client/CONTEXT.md
 │   ├── db-types/CONTEXT.md
 │   └── ui/CONTEXT.md
-└── services/
-    └── api/
-        ├── CONTEXT.md
-        └── docs/adr/
+├── services/
+│   └── api/
+│       ├── CONTEXT.md
+│       └── docs/adr/
+└── supabase/                            ← database schema, auth, migrations
+    ├── CONTEXT.md
+    ├── config.toml
+    └── docs/adr/
 ```
 
 ## Use the glossary's vocabulary
