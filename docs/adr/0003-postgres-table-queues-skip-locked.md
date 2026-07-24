@@ -24,6 +24,14 @@ Python worker) claim rows with `SELECT ... FOR UPDATE SKIP LOCKED` and retry via
 
 - The worker owns polling/backoff/visibility, modeled by `available_at` / `attempts` /
   `started_at`.
+
+## Amendment (2026-07-24): poll + in-worker sweep, no LISTEN/NOTIFY or pg_cron yet
+
+The MVP worker polls each queue (~1s, idle backoff) and runs the stuck-job sweep as a
+periodic in-worker task, instead of LISTEN/NOTIFY wake-ups and a pg_cron sweep. At current
+load, ≤1s pickup latency is indistinguishable from NOTIFY and avoids a dedicated listener
+connection, reconnect handling, and pg_cron configuration. LISTEN/NOTIFY remains the
+documented optimization path if pickup latency ever matters.
 - `communications` doubles as the delivery-audit record, not just a transient message.
 - This choice is coherent with the trigger-based enqueue (ADR 0002): both depend on the
   enqueue being in-transaction with the data change.

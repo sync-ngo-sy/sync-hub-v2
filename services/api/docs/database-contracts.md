@@ -58,7 +58,8 @@ insert application_profile_snapshots(...)
 insert application_experiences/_educations/_skills/_projects/_languages(...)   -- the reviewed data
 insert application_answers(application_id, job_id, question_id, answer_*)
 insert application_status_history(application_id, change_source='candidate', new_status='new')
--- then run screening (below), or enqueue it
+-- then run screening (below) synchronously, inside this same transaction —
+-- an application is never observable without its verdict
 ```
 The reviewed data may come from the candidate's live `candidate_*` tables **or** a reviewed
 alternate-CV form; the snapshot is source-agnostic and immutable afterward. Optionally, if the
@@ -139,12 +140,22 @@ join candidate_search_profiles s on s.candidate_id = ch.candidate_id
 order by ch.embedding <=> :query_embedding
 limit :k;
 ```
+Optional filters AND onto the join: structured predicates on the view (location,
+preferred language) and, when the recruiter supplies explicit keywords,
+`candidates.search_vector @@ websearch_to_tsquery(:keywords)`. Semantics come from the
+vector ranking; FTS is a hard filter only — there is no rank fusion.
+
 Never project email or phone. Never expose another tenant's notes/tags/applications/comms.
 
 ## Storage
 
-CV files live in the private `cvs` bucket. The backend issues signed upload/download URLs and
-stores the returned object path in `cvs.storage_path`. No client touches Storage directly.
+CV files live in the private `cvs` bucket. Uploads go **through the API** (multipart,
+≤10 MB): the backend streams the file to Storage with the service role, computes the
+SHA-256 `file_hash` while streaming, rejects active duplicates for the candidate (409,
+per the partial-unique index), and inserts the `cvs` row — so object, row, and the
+trigger-enqueued parse job succeed or fail together and the hash is never
+client-supplied. Downloads are short-lived signed URLs issued by the API. No client
+touches Storage directly.
 
 ## Invariant ownership summary
 
