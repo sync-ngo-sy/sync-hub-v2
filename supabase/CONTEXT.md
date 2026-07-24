@@ -70,6 +70,26 @@ submission, screening verdict writes, sending communications, the global-search
 projection. Clients never perform these directly.
 _Avoid_: Admin action, Privileged call.
 
+### Communications
+
+**Communication**:
+An outbound message (email for now) to a Candidate, recorded once and auditable forever.
+Candidate-facing email is deliberately scarce: an application confirmation, and a rejection
+decided by a human Recruiter. A Screening verdict never messages anyone by itself.
+_Avoid_: Email (the channel), Notification.
+
+**Notification**:
+An in-app message to one Profile, carrying a typed payload and a read/unread state — how
+Candidates learn about status changes and CV parse failures. Never delivered externally;
+distinct from a Communication.
+_Avoid_: Alert, Push, Message.
+
+**Message template**:
+A Tenant's reusable, named subject/body with placeholders, rendered into a concrete
+Communication when a Recruiter messages an applicant. Saving a reusable draft *is*
+creating a Message template.
+_Avoid_: Draft, Canned response.
+
 ### Jobs & screening
 
 **Job**:
@@ -77,6 +97,13 @@ A Tenant's open role that Candidates apply to. Carries the deterministic screeni
 criteria — required skills, skill-years, required languages, minimum total experience, and
 yes/no knockout questions — which lock once the Job has its first Application.
 _Avoid_: Posting, Vacancy, Listing.
+
+**Canonical skill**:
+A platform-global entry in the skill taxonomy (one spelling, one id). Everything Screening
+compares — a Candidate's skills, a Job's requirements — is expressed in Canonical skills.
+CV parsing maps free-text skills onto Canonical skills in-model; what cannot be mapped is
+surfaced to the Candidate at review and never influences Screening.
+_Avoid_: Skill string, Keyword.
 
 **CV**:
 A candidate document, parsed once by AI into immutable `parsed_cv_data`. The Candidate
