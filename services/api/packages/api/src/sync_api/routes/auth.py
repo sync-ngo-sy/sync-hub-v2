@@ -226,7 +226,7 @@ async def log_out(request: Request, auth: AuthServiceDep, cookies: SessionCookie
     responses={401: openapi_problem("There is no valid session.")},
 )
 async def get_current_profile(profile: CurrentProfileDep) -> ProfileView:
-    """Who the session cookie belongs to, after verifying its token against GoTrue's JWKS."""
+    """Who the session cookie belongs to, once Supabase has verified its token."""
     return ProfileView.of(profile)
 
 

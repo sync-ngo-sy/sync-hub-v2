@@ -227,15 +227,22 @@ class GoTrue:
         return self._client(self._service_role_key)
 
     def _client(self, key: str) -> AsyncGoTrueClient:
-        return AsyncGoTrueClient(
-            url=self._url,
-            headers={"apikey": key, "Authorization": f"Bearer {key}"},
-            http_client=self._http,
-            # Nothing survives the call: no stored session to leak into the next request,
-            # and no background timer refreshing a session nobody is holding.
-            auto_refresh_token=False,
-            persist_session=False,
-        )
+        return sdk_client(self._http, url=self._url, key=key)
+
+
+def sdk_client(http: AsyncClient, *, url: str, key: str) -> AsyncGoTrueClient:
+    """One SDK client, speaking as whoever holds `key`.
+
+    Nothing about a call survives it: no stored session to leak into the next request, and
+    no background timer refreshing a session nobody is holding.
+    """
+    return AsyncGoTrueClient(
+        url=url,
+        headers={"apikey": key, "Authorization": f"Bearer {key}"},
+        http_client=http,
+        auto_refresh_token=False,
+        persist_session=False,
+    )
 
 
 class refusals:  # noqa: N801 — reads as a statement at the call site, not as a type
