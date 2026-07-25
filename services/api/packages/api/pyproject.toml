@@ -8,6 +8,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    # Request-id generation, validation, header echo and the contextvar every log line
+    # reads it from. Only the access log below it is ours.
+    "asgi-correlation-id>=5.0",
     "fastapi>=0.139.2",
     "httpx>=0.28",
     # Access tokens are verified locally against the JWKS GoTrue publishes: `PyJWKClient`

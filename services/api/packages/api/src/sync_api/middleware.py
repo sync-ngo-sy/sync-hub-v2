@@ -1,17 +1,19 @@
-"""Per-request context: an id that reaches the client, the logs, and the error responses.
+"""How a request ended, recorded once, under the id the client was handed.
 
-Written as raw ASGI rather than `BaseHTTPMiddleware` so the id lands in `scope["state"]`
-before anything else runs — Starlette's outermost error handler builds its response
-outside this middleware and reads the id from there.
+The id is `asgi-correlation-id`'s job — reading it off the request, generating one when it
+is absent, echoing it back, holding it in a contextvar. What is left here is the half no
+library supplies: one line per request saying what it was, how it ended, how long it took.
+
+Raw ASGI rather than `BaseHTTPMiddleware` so it reads the status without buffering the
+body, and so an exception passes through untouched on its way to the error handler.
 """
 
 from __future__ import annotations
 
 from time import perf_counter
-from typing import TYPE_CHECKING
-from uuid import uuid4
+from typing import TYPE_CHECKING, Final
 
-from starlette.datastructures import Headers, MutableHeaders
+from asgi_correlation_id import correlation_id
 
 from sync_core import bind_request_context, clear_request_context, get_logger
 
@@ -21,14 +23,24 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 #: The one spelling of the header, for both directions. Starlette matches case-insensitively.
-REQUEST_ID_HEADER = "X-Request-Id"
+REQUEST_ID_HEADER: Final = "X-Request-Id"
 
 #: Status reported for a request that died before sending a response line.
-UNSENT_STATUS = 500
+UNSENT_STATUS: Final = 500
 
 
-class RequestContextMiddleware:
-    """Bind a request id for the life of the request, and log how the request ended."""
+def request_id() -> str | None:
+    """The id bound for this request, readable from any handler.
+
+    A contextvar reaches further than `scope["state"]` did: Starlette's outermost error
+    handler builds its response outside every middleware, and still has to name the id the
+    client was handed.
+    """
+    return correlation_id.get()
+
+
+class AccessLogMiddleware:
+    """Log how the request ended, with the request id on the line."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -38,26 +50,22 @@ class RequestContextMiddleware:
             await self.app(scope, receive, send)
             return
 
-        request_id = Headers(scope=scope).get(REQUEST_ID_HEADER) or str(uuid4())
-        scope.setdefault("state", {})["request_id"] = request_id
-
         # Cleared on the way in as well as out, so a task reused for the next request on a
         # keep-alive connection can never inherit the last one's context.
         clear_request_context()
-        bind_request_context(request_id=request_id)
+        bind_request_context(request_id=request_id())
 
         status_code = UNSENT_STATUS
         started = perf_counter()
 
-        async def send_with_request_id(message: Message) -> None:
+        async def note_status(message: Message) -> None:
             nonlocal status_code
             if message["type"] == "http.response.start":
                 status_code = message["status"]
-                MutableHeaders(scope=message)[REQUEST_ID_HEADER] = request_id
             await send(message)
 
         try:
-            await self.app(scope, receive, send_with_request_id)
+            await self.app(scope, receive, note_status)
         except Exception:
             # The traceback belongs to the error handler, which sees the exception itself.
             # This line only records that the request ended badly, and how long it took.
