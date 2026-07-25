@@ -7,12 +7,13 @@ from sync_core.logging import (
     configure_logging,
     get_logger,
 )
-from sync_core.settings import Environment, LogFormat, Settings, get_settings
+from sync_core.settings import Environment, LogFormat, SameSite, Settings, get_settings
 
 __all__ = [
     "Database",
     "Environment",
     "LogFormat",
+    "SameSite",
     "Settings",
     "bind_request_context",
     "clear_request_context",

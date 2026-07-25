@@ -9,11 +9,14 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from sync_api.auth import Authentication
+from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import RequestContextMiddleware
-from sync_api.routes import health
+from sync_api.rate_limit import build_auth_rate_limiter
+from sync_api.routes import auth, health
 from sync_core import Database, Settings, configure_logging, get_logger, get_settings
 
 if TYPE_CHECKING:
@@ -23,8 +26,12 @@ logger = get_logger(__name__)
 
 API_PREFIX = "/v1"
 
-DESCRIPTION = """\
+DESCRIPTION = f"""\
 The Sync recruitment platform's backend. Every error is an RFC 9457 problem+json document.
+
+Sessions are httpOnly cookies the API sets on sign-in; send requests with credentials and
+never read a token. Every request that changes data must carry a `{CSRF_HEADER}` header —
+any value — which together with `SameSite` is what stops another origin forging one.
 """
 
 
@@ -35,11 +42,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         database = Database(resolved)
+        authentication = Authentication.build(
+            resolved, refresh_cookie_path=f"{API_PREFIX}{auth.ROUTER_PREFIX}"
+        )
         app.state.database = database
+        app.state.authentication = authentication
+        app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield
         finally:
+            await authentication.aclose()
             await database.dispose()
             logger.info("api.stopped")
 
@@ -49,11 +62,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         description=DESCRIPTION,
         lifespan=lifespan,
         responses=PROBLEM_RESPONSES,
+        # Application-wide so no future route can forget it, and a dependency rather than
+        # middleware so it runs after routing — a POST to a GET-only path stays a 405.
+        dependencies=[Depends(enforce_csrf_header)],
     )
 
     app.add_middleware(RequestContextMiddleware)
     install_problem_handlers(app)
     app.include_router(health.router, prefix=API_PREFIX)
+    app.include_router(auth.router, prefix=API_PREFIX)
 
     describe_with_fastapis_defaults = app.openapi
 

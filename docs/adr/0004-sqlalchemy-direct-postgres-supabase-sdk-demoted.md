@@ -7,6 +7,15 @@ connecting straight to Postgres with the service role. `supabase-py` remains a d
 solely as an HTTP client for GoTrue (admin user creation, invites, password grant) and
 Storage (uploads, signed download URLs) — it never reads or writes application tables.
 
+**Amended when ADR-0005's auth proxy was built**: the GoTrue half is a small httpx client of
+our own (`sync_api.auth.gotrue`), not `supabase-py`. Its auth client models a browser
+holding *one* session — signing in caches that session inside the client and arms a
+background refresh timer — which is wrong for a server signing in on behalf of thousands of
+people, where every call must be stateless and take its tokens as arguments. The admin API
+alone would have been usable, but it lacks the password grant, refresh, verify and recover
+endpoints the proxy needs, and splitting GoTrue across two clients costs more than the
+~200 lines this saves. `supabase-py` stays for Storage.
+
 The forcing fact: ADR-0001 makes multi-row single-transaction writes (application
 submission, PII scrub, chunk swaps) and `SELECT … FOR UPDATE SKIP LOCKED` queue claims the
 backend's job — and supabase-py speaks PostgREST, which has no client-side transactions at

@@ -9,6 +9,12 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.139.2",
+    # GoTrue is reached over plain HTTP (see `sync_api.auth.gotrue`), and its access tokens
+    # are verified locally against the JWKS it publishes — hence the asymmetric algorithms
+    # PyJWT only has with `cryptography` installed.
+    "httpx>=0.28",
+    "pyjwt[crypto]>=2.10",
+    "email-validator>=2.2",
     "sync-core",
     "sync-ingestion",
     "sync-parsers",

@@ -1,0 +1,274 @@
+"""Signing up, signing in, and everything in between.
+
+The whole surface a candidate's browser needs, and nothing a Supabase URL is required for
+(ADR-0005). Bodies in, cookies out: no route ever returns a token, because no SPA is meant
+to hold one.
+
+Every mutating route here is rate limited. `GET /me` and `POST /logout` are not — the SPA
+calls the first on every page it renders, and throttling the second would be a way to keep
+someone signed in.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated, Final
+
+from fastapi import APIRouter, Depends, Request, Response, status
+from pydantic import BaseModel, EmailStr, Field
+
+from sync_api.auth import ActingProfile, SignedIn
+from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
+from sync_api.errors import describes_problem
+from sync_api.rate_limit import enforce_auth_rate_limit
+from sync_core.models import AccountType
+
+#: Mounted under the API prefix. The refresh cookie is scoped to the result, so this is the
+#: one place that decides how far that token travels.
+ROUTER_PREFIX: Final = "/auth"
+
+#: GoTrue enforces a minimum too, from `[auth] minimum_password_length`. This is the
+#: promise the API makes on its own, so a laxly configured project cannot weaken it.
+MINIMUM_PASSWORD_LENGTH: Final = 8
+
+#: bcrypt, which GoTrue hashes with, silently ignores everything past 72 bytes. Rejecting
+#: longer passwords beats accepting one and quietly not honouring most of it.
+MAXIMUM_PASSWORD_LENGTH: Final = 72
+
+RateLimited = Depends(enforce_auth_rate_limit)
+
+router = APIRouter(prefix=ROUTER_PREFIX, tags=["auth"])
+
+Password = Annotated[
+    str,
+    Field(
+        min_length=MINIMUM_PASSWORD_LENGTH,
+        max_length=MAXIMUM_PASSWORD_LENGTH,
+        description=f"At least {MINIMUM_PASSWORD_LENGTH} characters.",
+        examples=["correct-horse-battery"],
+    ),
+]
+
+#: The opaque token from a confirmation or password-reset link, which the SPA reads out of
+#: its own URL and posts here rather than redeeming against GoTrue itself.
+EmailToken = Annotated[
+    str,
+    Field(min_length=1, max_length=512, description="The `token_hash` from the emailed link."),
+]
+
+
+class ProfileView(BaseModel):
+    """The acting Profile, as every auth route reports it."""
+
+    id: str = Field(description="Shared with the Supabase Auth user and the Candidate row.")
+    email: EmailStr
+    full_name: str
+    account_type: AccountType
+    avatar_url: str | None
+    phone: str | None
+
+    @classmethod
+    def of(cls, profile: ActingProfile) -> ProfileView:
+        return cls(
+            id=str(profile.id),
+            email=profile.email,
+            full_name=profile.full_name,
+            account_type=profile.account_type,
+            avatar_url=profile.avatar_url,
+            phone=profile.phone,
+        )
+
+
+class SignUpRequest(BaseModel):
+    email: EmailStr
+    password: Password
+    full_name: str = Field(min_length=1, max_length=200)
+
+
+class LogInRequest(BaseModel):
+    email: EmailStr
+    password: Password
+
+
+class ConfirmEmailRequest(BaseModel):
+    token_hash: EmailToken
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class ConfirmPasswordResetRequest(BaseModel):
+    token_hash: EmailToken
+    password: Password
+
+
+@router.post(
+    "/signup",
+    operation_id="signUp",
+    summary="Create a candidate account",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[RateLimited],
+    responses={
+        409: describes_problem("An account already exists for this email address."),
+        400: describes_problem("The identity provider rejected the password."),
+        502: describes_problem("The identity provider is not answering."),
+    },
+)
+async def sign_up(body: SignUpRequest, auth: AuthServiceDep) -> ProfileView:
+    """Provision the identity, the Profile and the Candidate, and send a confirmation email.
+
+    No session comes back: the candidate has to confirm the address before they can sign in.
+    Anything that fails part-way leaves the address free to sign up again.
+    """
+    profile = await auth.register_candidate(
+        email=body.email, password=body.password, full_name=body.full_name
+    )
+    return ProfileView.of(profile)
+
+
+@router.post(
+    "/confirm-email",
+    operation_id="confirmEmail",
+    summary="Confirm an email address",
+    dependencies=[RateLimited],
+    responses={
+        400: describes_problem("The link is invalid, spent, or expired."),
+        502: describes_problem("The identity provider is not answering."),
+    },
+)
+async def confirm_email(
+    body: ConfirmEmailRequest,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+    response: Response,
+) -> ProfileView:
+    """Redeem the `token_hash` from the confirmation email, and sign the candidate in.
+
+    Signing them in is not a shortcut: redeeming the token proves they read mail sent to
+    that address, which is the same thing a password proves about the account.
+    """
+    return _signed_in(await auth.confirm_email(body.token_hash), cookies, response)
+
+
+@router.post(
+    "/login",
+    operation_id="logIn",
+    summary="Start a session",
+    dependencies=[RateLimited],
+    responses={
+        401: describes_problem("The email and password do not match an account."),
+        403: describes_problem("The email address has not been confirmed yet."),
+        502: describes_problem("The identity provider is not answering."),
+    },
+)
+async def log_in(
+    body: LogInRequest,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+    response: Response,
+) -> ProfileView:
+    return _signed_in(
+        await auth.log_in(email=body.email, password=body.password), cookies, response
+    )
+
+
+@router.post(
+    "/refresh",
+    operation_id="refreshSession",
+    summary="Rotate the session",
+    dependencies=[RateLimited],
+    responses={
+        401: describes_problem("The session is over — sign in again."),
+        502: describes_problem("The identity provider is not answering."),
+    },
+)
+async def refresh_session(
+    request: Request,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+    response: Response,
+) -> ProfileView:
+    """Exchange the refresh cookie for a new session, and replace both cookies with it."""
+    signed_in = await auth.refresh(cookies.read_refresh_token(request))
+    return _signed_in(signed_in, cookies, response)
+
+
+@router.post(
+    "/logout",
+    operation_id="logOut",
+    summary="End the session",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+async def log_out(request: Request, auth: AuthServiceDep, cookies: SessionCookiesDep) -> Response:
+    """Revoke every session the caller has, then clear their cookies.
+
+    Succeeds whatever state the caller is in — a logout that could fail would be a way to
+    leave someone signed in.
+    """
+    await auth.log_out(cookies.read_access_token(request))
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookies.clear(response)
+    return response
+
+
+@router.get(
+    "/me",
+    operation_id="getCurrentProfile",
+    summary="The signed-in Profile",
+    responses={401: describes_problem("There is no valid session.")},
+)
+async def get_current_profile(profile: CurrentProfileDep) -> ProfileView:
+    """Who the session cookie belongs to, after verifying its token against GoTrue's JWKS."""
+    return ProfileView.of(profile)
+
+
+@router.post(
+    "/password-reset",
+    operation_id="requestPasswordReset",
+    summary="Ask for a password-reset email",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_class=Response,
+    dependencies=[RateLimited],
+    responses={502: describes_problem("The identity provider is not answering.")},
+)
+async def request_password_reset(body: PasswordResetRequest, auth: AuthServiceDep) -> Response:
+    """Send the reset email, if the address has an account.
+
+    Accepted either way, and with the same latency-free answer either way: a caller must not
+    be able to learn from this endpoint whether an address is registered.
+    """
+    await auth.request_password_reset(body.email)
+    return Response(status_code=status.HTTP_202_ACCEPTED)
+
+
+@router.post(
+    "/password-reset/confirm",
+    operation_id="confirmPasswordReset",
+    summary="Set a new password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    dependencies=[RateLimited],
+    responses={
+        400: describes_problem("The link is spent or expired, or the password was refused."),
+        502: describes_problem("The identity provider is not answering."),
+    },
+)
+async def confirm_password_reset(
+    body: ConfirmPasswordResetRequest, auth: AuthServiceDep, cookies: SessionCookiesDep
+) -> Response:
+    """Redeem the `token_hash` from the reset email and set the new password.
+
+    Ends every session the account had, this caller's included, so the new password is the
+    only way back in.
+    """
+    await auth.reset_password(token_hash=body.token_hash, password=body.password)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookies.clear(response)
+    return response
+
+
+def _signed_in(signed_in: SignedIn, cookies: SessionCookiesDep, response: Response) -> ProfileView:
+    """Put the new session on the response and answer with who it belongs to."""
+    cookies.issue(response, signed_in.session)
+    return ProfileView.of(signed_in.profile)

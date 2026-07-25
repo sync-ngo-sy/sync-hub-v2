@@ -19,7 +19,20 @@ BLANK_PROBLEM_TYPE = "about:blank"
 
 #: URNs, so problem types stay stable identifiers without owning a URL that has to resolve.
 PROBLEM_TYPE_PREFIX = "urn:sync:problem:"
+
+# Every problem type the API can answer with, in one place: a client switching on `type` is
+# switching on this list, so it is as much a contract as the route table.
 VALIDATION_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}validation-error"
+CSRF_HEADER_REQUIRED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}csrf-header-required"
+RATE_LIMITED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}rate-limited"
+NOT_AUTHENTICATED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}not-authenticated"
+INVALID_CREDENTIALS_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}invalid-credentials"
+EMAIL_NOT_CONFIRMED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}email-not-confirmed"
+EMAIL_ALREADY_REGISTERED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}email-already-registered"
+INVALID_EMAIL_TOKEN_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}invalid-email-token"
+WEAK_PASSWORD_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}weak-password"
+PASSWORD_UNCHANGED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}password-unchanged"
+IDENTITY_UNAVAILABLE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}identity-provider-unavailable"
 
 
 class ProblemDetail(BaseModel):

@@ -155,6 +155,20 @@ def use_problem_media_type(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
+def describes_problem(description: str) -> dict[str, Any]:
+    """One entry for a route's `responses`, so a failure it can answer with is in the schema.
+
+    The `content` key is what `use_problem_media_type` keys off; without it FastAPI would
+    file the body under `application/json` and the generated client would expect the wrong
+    media type.
+    """
+    return {
+        "model": ProblemDetail,
+        "description": description,
+        "content": {PROBLEM_JSON_MEDIA_TYPE: {}},
+    }
+
+
 #: Advertised on every route, so the generated client knows errors are problem+json.
 PROBLEM_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {
