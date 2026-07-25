@@ -1,3 +1,5 @@
-from fastapi import FastAPI
+"""ASGI entrypoint: `uvicorn sync_api.main:app`."""
 
-app = FastAPI(title="Sync API")
+from sync_api.app import create_app
+
+app = create_app()

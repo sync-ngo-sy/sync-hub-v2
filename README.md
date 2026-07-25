@@ -35,6 +35,7 @@ This tells VS Code "always use this Python" automatically, so imports resolve an
 # install everything
 pnpm install
 uv sync --directory services/api
+cp services/api/.env.example services/api/.env   # then fill in from `supabase status`
 
 # run everything (both frontends + the API)
 pnpm dev
@@ -45,9 +46,29 @@ pnpm lint
 
 # run just the backend
 uv run --directory services/api uvicorn sync_api.main:app --reload
+
+# run the backend's tests (needs `supabase start` first — see below)
+pnpm --filter @sync/api test
 ```
 
 `pnpm dev`, `pnpm lint`, and `pnpm typecheck` are Turborepo commands — Turbo runs the same command across every app/package in one shot (and caches results, so repeat runs are fast). The Python backend is included too, through a small `package.json` shim that just calls `uv` under the hood.
+
+## Testing the backend
+
+The API's tests run against the **real** local Supabase stack — the actual Postgres with the actual migrations, triggers and constraints, plus GoTrue and Storage. Nothing is mocked, so start the stack first:
+
+```bash
+supabase start
+pnpm --filter @sync/api test
+```
+
+Each session begins with a `supabase db reset`, and each test starts from an empty database with the reference data (languages, the Canonical skill taxonomy) reseeded. That reset costs ~40 s; while iterating on a single test you can skip it:
+
+```bash
+SYNC_TEST_SKIP_DB_RESET=1 uv run --directory services/api pytest tests/test_health.py
+```
+
+The suite reads the stack's URL and keys from `supabase status`, so it works regardless of what `services/api/.env` says.
 
 ## The shared packages
 
@@ -71,6 +92,12 @@ pnpm gen:api-client                                                   # terminal
 # db-types: needs Supabase running locally
 supabase start
 pnpm gen:db-types
+
+# SQLAlchemy models: same idea, for the Python side (ADR-0004)
+supabase db reset
+pnpm --filter @sync/api gen:models
 ```
 
 Run these after backend/DB changes, then commit the updated generated files like any other code change.
+
+`sync_core.models` is generated the same way `@sync/db-types` is — from the migrated schema, never hand-edited. Its relationships are all `viewonly`: navigate through them, but write by assigning foreign key columns, because the schema's composite tenant keys give most rows two paths to their tenant.

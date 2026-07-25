@@ -63,6 +63,11 @@ jobs:
           working-directory: services/api
           enable-cache: true
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
       - name: Install dependencies
         run: uv sync --locked
 
@@ -73,16 +78,19 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Typecheck (mypy)
-        run: uv run mypy packages
+        run: uv run mypy packages scripts tests
+
+      # The suite drives the app against the real stack — the real Postgres with the real
+      # migrations and triggers, plus GoTrue and Storage. Only services no test touches are
+      # excluded, to keep startup short.
+      - name: Start Supabase
+        working-directory: .
+        run: supabase start -x studio,imgproxy,edge-runtime,realtime,vector,analytics,meta
 
       - name: Test (pytest)
-        run: |
-          set +e
-          uv run pytest
-          status=$?
-          set -e
-          if [ "$status" -eq 5 ]; then
-            echo "::notice::No tests collected yet in services/api — treating as a pass."
-            exit 0
-          fi
-          exit "$status"
+        run: uv run pytest
+
+      - name: Stop Supabase
+        if: always()
+        working-directory: .
+        run: supabase stop --no-backup
