@@ -17,7 +17,7 @@ from sync_api.routes import health
 from sync_core import Database, Settings, configure_logging, get_logger, get_settings
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(level=resolved.log_level, log_format=resolved.log_format)
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         database = Database(resolved)
         app.state.database = database
         logger.info("api.started", environment=resolved.environment.value)

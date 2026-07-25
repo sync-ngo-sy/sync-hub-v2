@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from sync_core.settings import Settings
 
@@ -39,7 +39,7 @@ class Database:
         )
 
     @asynccontextmanager
-    async def session(self) -> AsyncIterator[AsyncSession]:
+    async def session(self) -> AsyncGenerator[AsyncSession]:
         """A session that is closed on exit. Committing is the caller's decision.
 
         The multi-row all-or-nothing writes ADR-0001 puts on the backend use

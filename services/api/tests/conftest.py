@@ -12,7 +12,7 @@ tests need writes to be committed and visible from another connection.
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -126,7 +126,7 @@ async def app(settings: Settings, _migrated_database: None) -> AsyncIterator[Fas
 
 
 @asynccontextmanager
-async def asgi_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+async def asgi_client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """An HTTP client speaking to `app` in-process.
 
     `raise_app_exceptions=False` because Starlette re-raises after its handler runs; without
