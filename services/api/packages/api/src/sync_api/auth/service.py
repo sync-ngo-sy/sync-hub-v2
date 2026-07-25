@@ -21,10 +21,9 @@ from uuid import UUID
 from sqlalchemy import select
 
 from sync_api.auth.gotrue import (
-    RECOVERY_TOKEN_TYPE,
-    SIGNUP_TOKEN_TYPE,
     EmailAlreadyRegisteredError,
     EmailNotConfirmedError,
+    EmailTokenType,
     GoTrueUnavailableError,
     GoTrueUser,
     InvalidCredentialsError,
@@ -112,8 +111,6 @@ class AuthService:
             ) from exc
         except WeakPasswordError as exc:
             raise _weak_password() from exc
-        except GoTrueUnavailableError as exc:
-            raise _identity_provider_problem(exc) from exc
 
         try:
             await self._provision_candidate(user, full_name=full_name)
@@ -134,7 +131,7 @@ class AuthService:
 
     async def confirm_email(self, token_hash: str) -> SignedIn:
         """Redeem the token from the confirmation email, which also signs the candidate in."""
-        session = await self._redeem(token_hash, SIGNUP_TOKEN_TYPE)
+        session = await self._redeem(token_hash, EmailTokenType.SIGNUP)
         profile = await self._load_profile(session.user.id)
         logger.info("auth.email_confirmed", profile_id=str(profile.id))
         return SignedIn(profile=profile, session=session)
@@ -154,8 +151,6 @@ class AuthService:
                 type=EMAIL_NOT_CONFIRMED_PROBLEM_TYPE,
                 detail="Confirm your email address before signing in.",
             ) from exc
-        except GoTrueUnavailableError as exc:
-            raise _identity_provider_problem(exc) from exc
 
         profile = await self._load_profile(session.user.id)
         return SignedIn(profile=profile, session=session)
@@ -168,8 +163,6 @@ class AuthService:
             session = await self._gotrue.refresh_session(refresh_token)
         except InvalidRefreshTokenError as exc:
             raise _unauthenticated("the refresh token is spent or revoked") from exc
-        except GoTrueUnavailableError as exc:
-            raise _identity_provider_problem(exc) from exc
 
         profile = await self._load_profile(session.user.id)
         return SignedIn(profile=profile, session=session)
@@ -195,10 +188,7 @@ class AuthService:
         Says nothing about whether it does — the route answers the same way regardless, so
         this endpoint cannot be used to test which addresses are registered.
         """
-        try:
-            await self._gotrue.send_password_reset_email(email)
-        except GoTrueUnavailableError as exc:
-            raise _identity_provider_problem(exc) from exc
+        await self._gotrue.send_password_reset_email(email)
 
     async def reset_password(self, *, token_hash: str, password: str) -> None:
         """Redeem the recovery token and set the new password.
@@ -208,7 +198,7 @@ class AuthService:
         already signed in somewhere — is signed out, and the new password is the only way
         back in.
         """
-        session = await self._redeem(token_hash, RECOVERY_TOKEN_TYPE)
+        session = await self._redeem(token_hash, EmailTokenType.RECOVERY)
         try:
             await self._gotrue.set_password(access_token=session.access_token, password=password)
         except WeakPasswordError as exc:
@@ -219,8 +209,6 @@ class AuthService:
                 type=PASSWORD_UNCHANGED_PROBLEM_TYPE,
                 detail="Choose a password you have not used on this account before.",
             ) from exc
-        except GoTrueUnavailableError as exc:
-            raise _identity_provider_problem(exc) from exc
         await self.log_out(session.access_token)
         logger.info("auth.password_reset", profile_id=str(session.user.id))
 
@@ -257,7 +245,7 @@ class AuthService:
             # this line is what tells an operator an identity was stranded after all.
             logger.exception("auth.signup_rollback_failed", profile_id=str(user_id))
 
-    async def _redeem(self, token_hash: str, token_type: str) -> GoTrueSession:
+    async def _redeem(self, token_hash: str, token_type: EmailTokenType) -> GoTrueSession:
         try:
             return await self._gotrue.redeem_email_token(
                 token_hash=token_hash, token_type=token_type
@@ -268,8 +256,6 @@ class AuthService:
                 type=INVALID_EMAIL_TOKEN_PROBLEM_TYPE,
                 detail="That link is invalid or has expired. Ask for a new one.",
             ) from exc
-        except GoTrueUnavailableError as exc:
-            raise _identity_provider_problem(exc) from exc
 
     async def _load_profile(self, profile_id: UUID) -> ActingProfile:
         """The acting Profile, or a 401 — a live identity with no usable Profile is nobody.
@@ -312,8 +298,13 @@ def _weak_password() -> Problem:
     )
 
 
-def _identity_provider_problem(exc: Exception) -> Problem:
-    """GoTrue failed in a way no client can fix. The cause is already in the logs."""
+def identity_provider_problem(exc: Exception) -> Problem:
+    """GoTrue failed in a way no client can fix. The cause is already in the logs.
+
+    Registered once, on the application, rather than caught in each flow: the answer is the
+    same wherever it happens, and a per-method `except` clause is a line every future flow
+    has to remember. The flows still catch the *specific* refusals, which differ.
+    """
     logger.error("auth.identity_provider_failed", error=type(exc).__name__)
     return Problem(
         status=502,

@@ -6,7 +6,7 @@ from httpx import AsyncClient
 
 from sync_api.csrf import CSRF_HEADER
 from sync_core import Settings
-from tests.support.candidates import an_account, sign_in, sign_up
+from tests.support.candidates import a_signup, sign_in, sign_up
 from tests.support.harness import spa_onto
 
 #: Small enough that a test can reach it deliberately.
@@ -39,20 +39,20 @@ async def test_the_csrf_guard_does_not_swallow_a_wrong_method(client: AsyncClien
 
 
 async def test_the_csrf_header_lets_a_mutating_request_through(browser: AsyncClient) -> None:
-    response = await sign_in(browser, an_account())
+    response = await sign_in(browser, a_signup())
 
     assert response.headers.get("content-type", "").startswith("application/problem+json")
     assert response.status_code == 401, "rejected on credentials, not on CSRF"
 
 
 async def test_repeated_sign_in_attempts_are_rate_limited(settings: Settings) -> None:
-    account = an_account()
+    signup = a_signup()
 
     async with spa_onto(settings, auth_rate_limit_max_requests=A_TIGHT_LIMIT) as spa:
         for _ in range(A_TIGHT_LIMIT):
-            assert (await sign_in(spa, account)).status_code == 401
+            assert (await sign_in(spa, signup)).status_code == 401
 
-        response = await sign_in(spa, account)
+        response = await sign_in(spa, signup)
 
     assert response.status_code == 429
     assert response.json()["type"] == "urn:sync:problem:rate-limited"
@@ -61,13 +61,22 @@ async def test_repeated_sign_in_attempts_are_rate_limited(settings: Settings) ->
 
 async def test_the_rate_limit_is_counted_per_endpoint(settings: Settings) -> None:
     """Spending the sign-in allowance must not lock a caller out of signing up."""
-    account = an_account()
+    signup = a_signup()
 
     async with spa_onto(settings, auth_rate_limit_max_requests=A_TIGHT_LIMIT) as spa:
         for _ in range(A_TIGHT_LIMIT + 1):
-            await sign_in(spa, account)
+            await sign_in(spa, signup)
 
-        assert (await sign_up(spa, account)).status_code == 201
+        assert (await sign_up(spa, signup)).status_code == 201
+
+
+async def test_logging_out_is_rate_limited_too(settings: Settings) -> None:
+    """It guards no secret, but it spends a GoTrue call on any cookie the caller invents."""
+    async with spa_onto(settings, auth_rate_limit_max_requests=A_TIGHT_LIMIT) as spa:
+        for _ in range(A_TIGHT_LIMIT):
+            assert (await spa.post("/v1/auth/logout")).status_code == 204
+
+        assert (await spa.post("/v1/auth/logout")).status_code == 429
 
 
 async def test_reading_the_current_profile_is_not_rate_limited(settings: Settings) -> None:

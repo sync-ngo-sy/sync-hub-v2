@@ -204,10 +204,13 @@ sms_sent = 30
 anonymous_users = 30
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
 token_refresh = 150
-# GoTrue rate-limits per *client IP*, and every request reaches it from the one backend process
-# (ADR-0005) — so locally these count the whole machine, and the test suite alone signs in far
-# more than 30 times in five minutes. Deployments keep the defaults; the limit that actually
-# protects users is the API's own per-caller limiter on `/v1/auth/*`.
+# Raised for the local stack only — this file configures `supabase start`, not a deployment,
+# where these stay at Supabase's defaults. GoTrue rate-limits per *client IP*, and every request
+# reaches it from the one backend process (ADR-0005), so here they count the whole machine and
+# the test suite alone signs in far more than 30 times in five minutes. Note what that means
+# locally: GoTrue's brute-force protection is off, and the only limiter in play is the API's own
+# on `/v1/auth/*`. Nothing should be concluded from local behaviour about how hard a deployment
+# is to grind.
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
 sign_in_sign_ups = 100000
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.

@@ -4,21 +4,22 @@ The whole surface a candidate's browser needs, and nothing a Supabase URL is req
 (ADR-0005). Bodies in, cookies out: no route ever returns a token, because no SPA is meant
 to hold one.
 
-Every mutating route here is rate limited. `GET /me` and `POST /logout` are not — the SPA
-calls the first on every page it renders, and throttling the second would be a way to keep
-someone signed in.
+Every mutating route here is rate limited, logout included: it takes no credential worth
+guessing, but it does spend a GoTrue call on any cookie at all, and an unmetered endpoint
+that makes the API call something else is an amplifier. Only `GET /me` is exempt — the SPA
+calls it on every page it renders, so a limit there would be a limit on using the app.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Final
+from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 
 from sync_api.auth import ActingProfile, SignedIn
 from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
-from sync_api.errors import describes_problem
+from sync_api.errors import openapi_problem
 from sync_api.rate_limit import enforce_auth_rate_limit
 from sync_core.models import AccountType
 
@@ -35,6 +36,11 @@ MINIMUM_PASSWORD_LENGTH: Final = 8
 MAXIMUM_PASSWORD_LENGTH: Final = 72
 
 RateLimited = Depends(enforce_auth_rate_limit)
+
+#: Any route that reaches GoTrue can answer with this, and none of them can do better.
+IDENTITY_PROVIDER_UNAVAILABLE: Final[dict[int | str, dict[str, Any]]] = {
+    502: openapi_problem("The identity provider is not answering.")
+}
 
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["auth"])
 
@@ -109,9 +115,9 @@ class ConfirmPasswordResetRequest(BaseModel):
     status_code=status.HTTP_201_CREATED,
     dependencies=[RateLimited],
     responses={
-        409: describes_problem("An account already exists for this email address."),
-        400: describes_problem("The identity provider rejected the password."),
-        502: describes_problem("The identity provider is not answering."),
+        409: openapi_problem("An account already exists for this email address."),
+        400: openapi_problem("The identity provider rejected the password."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
 async def sign_up(body: SignUpRequest, auth: AuthServiceDep) -> ProfileView:
@@ -132,8 +138,8 @@ async def sign_up(body: SignUpRequest, auth: AuthServiceDep) -> ProfileView:
     summary="Confirm an email address",
     dependencies=[RateLimited],
     responses={
-        400: describes_problem("The link is invalid, spent, or expired."),
-        502: describes_problem("The identity provider is not answering."),
+        400: openapi_problem("The link is invalid, spent, or expired."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
 async def confirm_email(
@@ -156,9 +162,9 @@ async def confirm_email(
     summary="Start a session",
     dependencies=[RateLimited],
     responses={
-        401: describes_problem("The email and password do not match an account."),
-        403: describes_problem("The email address has not been confirmed yet."),
-        502: describes_problem("The identity provider is not answering."),
+        401: openapi_problem("The email and password do not match an account."),
+        403: openapi_problem("The email address has not been confirmed yet."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
 async def log_in(
@@ -178,8 +184,8 @@ async def log_in(
     summary="Rotate the session",
     dependencies=[RateLimited],
     responses={
-        401: describes_problem("The session is over — sign in again."),
-        502: describes_problem("The identity provider is not answering."),
+        401: openapi_problem("The session is over — sign in again."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
 async def refresh_session(
@@ -199,6 +205,7 @@ async def refresh_session(
     summary="End the session",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
+    dependencies=[RateLimited],
 )
 async def log_out(request: Request, auth: AuthServiceDep, cookies: SessionCookiesDep) -> Response:
     """Revoke every session the caller has, then clear their cookies.
@@ -216,7 +223,7 @@ async def log_out(request: Request, auth: AuthServiceDep, cookies: SessionCookie
     "/me",
     operation_id="getCurrentProfile",
     summary="The signed-in Profile",
-    responses={401: describes_problem("There is no valid session.")},
+    responses={401: openapi_problem("There is no valid session.")},
 )
 async def get_current_profile(profile: CurrentProfileDep) -> ProfileView:
     """Who the session cookie belongs to, after verifying its token against GoTrue's JWKS."""
@@ -230,7 +237,7 @@ async def get_current_profile(profile: CurrentProfileDep) -> ProfileView:
     status_code=status.HTTP_202_ACCEPTED,
     response_class=Response,
     dependencies=[RateLimited],
-    responses={502: describes_problem("The identity provider is not answering.")},
+    responses=IDENTITY_PROVIDER_UNAVAILABLE,
 )
 async def request_password_reset(body: PasswordResetRequest, auth: AuthServiceDep) -> Response:
     """Send the reset email, if the address has an account.
@@ -250,8 +257,8 @@ async def request_password_reset(body: PasswordResetRequest, auth: AuthServiceDe
     response_class=Response,
     dependencies=[RateLimited],
     responses={
-        400: describes_problem("The link is spent or expired, or the password was refused."),
-        502: describes_problem("The identity provider is not answering."),
+        400: openapi_problem("The link is spent or expired, or the password was refused."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
 async def confirm_password_reset(

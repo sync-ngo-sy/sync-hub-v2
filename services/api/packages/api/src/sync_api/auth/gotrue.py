@@ -19,6 +19,7 @@ subclasses, so the flow layer above never pattern-matches on HTTP status codes.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
@@ -31,9 +32,13 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: GoTrue names the confirmation and recovery one-time tokens by the flow that issued them.
-SIGNUP_TOKEN_TYPE: Final = "signup"
-RECOVERY_TOKEN_TYPE: Final = "recovery"
+
+class EmailTokenType(StrEnum):
+    """Which flow issued a one-time email token. GoTrue names them, and checks the name."""
+
+    SIGNUP = "signup"
+    RECOVERY = "recovery"
+
 
 #: Revoke every session the user has, not just the one presenting the token. A logout that
 #: left the other devices signed in would not be the logout anyone means.
@@ -151,7 +156,10 @@ class GoTrue:
     async def send_confirmation_email(self, email: str) -> None:
         """Send the signup confirmation carrying the token `confirm_email` redeems."""
         await self._call(
-            "POST", "/resend", json={"type": SIGNUP_TOKEN_TYPE, "email": email}, key=self._anon_key
+            "POST",
+            "/resend",
+            json={"type": EmailTokenType.SIGNUP.value, "email": email},
+            key=self._anon_key,
         )
 
     async def send_password_reset_email(self, email: str) -> None:
@@ -188,7 +196,9 @@ class GoTrue:
         )
         return _session_from(payload)
 
-    async def redeem_email_token(self, *, token_hash: str, token_type: str) -> GoTrueSession:
+    async def redeem_email_token(
+        self, *, token_hash: str, token_type: EmailTokenType
+    ) -> GoTrueSession:
         """Spend a one-time email token, which both confirms the address and signs the user in.
 
         The token is single-use: a second attempt raises `InvalidEmailTokenError`.
@@ -196,7 +206,7 @@ class GoTrue:
         payload = await self._call(
             "POST",
             "/verify",
-            json={"type": token_type, "token_hash": token_hash},
+            json={"type": token_type.value, "token_hash": token_hash},
             key=self._anon_key,
             refusals={
                 "otp_expired": InvalidEmailTokenError,

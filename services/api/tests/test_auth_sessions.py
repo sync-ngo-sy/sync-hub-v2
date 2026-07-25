@@ -16,24 +16,28 @@ from sqlalchemy import text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
+from sync_core import Settings
 from sync_core.models import Profile
 from tests.support import stack
 from tests.support.candidates import (
     a_confirmed_candidate,
-    an_account,
+    a_signup,
     confirm_email,
     sign_in,
     sign_up,
 )
-from tests.support.harness import cookie_attributes, present_only
+from tests.support.harness import cookie_attributes, present_only, spa_onto
 from tests.support.mailbox import Mailbox
+
+#: Nothing listens here, so every call to GoTrue fails the way an outage does.
+UNREACHABLE_GOTRUE = "http://127.0.0.1:1"
 
 
 async def test_signing_in_before_confirming_is_refused(browser: AsyncClient) -> None:
-    account = an_account()
-    await sign_up(browser, account)
+    signup = a_signup()
+    await sign_up(browser, signup)
 
-    response = await sign_in(browser, account)
+    response = await sign_in(browser, signup)
 
     assert response.status_code == 403
     assert response.json()["type"] == "urn:sync:problem:email-not-confirmed"
@@ -43,32 +47,32 @@ async def test_signing_in_before_confirming_is_refused(browser: AsyncClient) -> 
 async def test_confirming_the_address_signs_the_candidate_in(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    account = an_account()
-    await sign_up(browser, account)
+    signup = a_signup()
+    await sign_up(browser, signup)
 
-    response = await confirm_email(browser, mailbox, account)
+    response = await confirm_email(browser, mailbox, signup)
 
     assert response.status_code == 200, response.text
-    assert response.json()["email"] == account.email
+    assert response.json()["email"] == signup.email
 
     confirmed_at = await db_session.scalar(
         text("select email_confirmed_at from auth.users where email = :email").bindparams(
-            email=account.email
+            email=signup.email
         )
     )
     assert confirmed_at is not None
 
     me = await browser.get("/v1/auth/me")
     assert me.status_code == 200
-    assert me.json()["email"] == account.email
+    assert me.json()["email"] == signup.email
 
 
 async def test_a_confirmation_link_works_only_once(browser: AsyncClient, mailbox: Mailbox) -> None:
-    account = an_account()
-    await sign_up(browser, account)
-    await confirm_email(browser, mailbox, account)
+    signup = a_signup()
+    await sign_up(browser, signup)
+    await confirm_email(browser, mailbox, signup)
 
-    response = await confirm_email(browser, mailbox, account)
+    response = await confirm_email(browser, mailbox, signup)
 
     assert response.status_code == 400
     assert response.json()["type"] == "urn:sync:problem:invalid-email-token"
@@ -77,12 +81,12 @@ async def test_a_confirmation_link_works_only_once(browser: AsyncClient, mailbox
 async def test_signing_in_after_confirming_sets_the_session_cookies(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    account = await a_confirmed_candidate(browser, mailbox)
+    signup = await a_confirmed_candidate(browser, mailbox)
 
-    response = await sign_in(browser, account)
+    response = await sign_in(browser, signup)
 
     assert response.status_code == 200, response.text
-    assert (await browser.get("/v1/auth/me")).json()["email"] == account.email
+    assert (await browser.get("/v1/auth/me")).json()["email"] == signup.email
 
     access = cookie_attributes(response, ACCESS_TOKEN_COOKIE)
     assert access["httponly"] and access["secure"]
@@ -96,9 +100,9 @@ async def test_signing_in_after_confirming_sets_the_session_cookies(
 
 
 async def test_the_wrong_password_is_refused(browser: AsyncClient, mailbox: Mailbox) -> None:
-    account = await a_confirmed_candidate(browser, mailbox)
+    signup = await a_confirmed_candidate(browser, mailbox)
 
-    response = await sign_in(browser, account, password="not-the-right-one")
+    response = await sign_in(browser, signup, password="not-the-right-one")
 
     assert response.status_code == 401
     assert response.json()["type"] == "urn:sync:problem:invalid-credentials"
@@ -106,10 +110,23 @@ async def test_the_wrong_password_is_refused(browser: AsyncClient, mailbox: Mail
 
 async def test_an_unknown_address_is_refused_the_same_way(browser: AsyncClient) -> None:
     """Same problem type as a wrong password: signing in must not reveal who has an account."""
-    response = await sign_in(browser, an_account())
+    response = await sign_in(browser, a_signup())
 
     assert response.status_code == 401
     assert response.json()["type"] == "urn:sync:problem:invalid-credentials"
+
+
+async def test_an_identity_provider_that_is_down_is_a_502_not_a_500(settings: Settings) -> None:
+    """GoTrue being unreachable is not our bug, and the client should be able to tell.
+
+    Nothing catches this per flow — one handler on the application answers for all of them,
+    so this covers every route that reaches GoTrue, not only login.
+    """
+    async with spa_onto(settings, supabase_url=UNREACHABLE_GOTRUE) as spa:
+        response = await sign_in(spa, a_signup())
+
+    assert response.status_code == 502
+    assert response.json()["type"] == "urn:sync:problem:identity-provider-unavailable"
 
 
 async def test_a_protected_route_needs_a_session(browser: AsyncClient) -> None:
@@ -138,8 +155,8 @@ async def test_a_protected_route_refuses_a_token_signed_with_the_shared_secret(
     HMAC key, which anybody can do. Only asymmetric algorithms are accepted, so neither
     works, and every claim in the forgery below is otherwise perfectly in order.
     """
-    account = await a_confirmed_candidate(browser, mailbox)
-    genuine = (await sign_in(browser, account)).cookies[ACCESS_TOKEN_COOKIE]
+    signup = await a_confirmed_candidate(browser, mailbox)
+    genuine = (await sign_in(browser, signup)).cookies[ACCESS_TOKEN_COOKIE]
     claims = jwt.decode(genuine, options={"verify_signature": False})
 
     forged = jwt.encode(
@@ -156,9 +173,9 @@ async def test_a_protected_route_refuses_a_token_signed_with_the_shared_secret(
 async def test_a_soft_deleted_profile_cannot_act(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """Deleting an account has to end its sessions even while its access token is still valid."""
-    account = await a_confirmed_candidate(browser, mailbox)
-    await sign_in(browser, account)
+    """Deleting a Profile has to end its sessions even while its access token is still valid."""
+    signup = await a_confirmed_candidate(browser, mailbox)
+    await sign_in(browser, signup)
 
     await db_session.execute(update(Profile).values(deleted_at=dt.datetime.now(tz=dt.UTC)))
     await db_session.commit()
@@ -167,14 +184,22 @@ async def test_a_soft_deleted_profile_cannot_act(
 
 
 async def test_refreshing_rotates_the_session(browser: AsyncClient, mailbox: Mailbox) -> None:
-    account = await a_confirmed_candidate(browser, mailbox)
-    await sign_in(browser, account)
+    """A new refresh token replaces the old one, and the session carries on.
+
+    What is *not* asserted is that the old token dies on the spot, because it does not:
+    `refresh_token_reuse_interval` in `supabase/config.toml` deliberately keeps it working
+    for a few seconds, so two tabs refreshing at once do not sign each other out. The
+    property that matters — a refresh token that stops working for good — is what
+    `test_logging_out_revokes_the_session_at_the_identity_provider` covers.
+    """
+    signup = await a_confirmed_candidate(browser, mailbox)
+    await sign_in(browser, signup)
     before = browser.cookies[REFRESH_TOKEN_COOKIE]
 
     response = await browser.post("/v1/auth/refresh")
 
     assert response.status_code == 200, response.text
-    assert response.json()["email"] == account.email
+    assert response.json()["email"] == signup.email
     assert browser.cookies[REFRESH_TOKEN_COOKIE] != before
     assert (await browser.get("/v1/auth/me")).status_code == 200
 
@@ -202,10 +227,10 @@ async def test_logging_out_revokes_the_session_at_the_identity_provider(
     The access token stays valid until it expires — a stateless JWT cannot be recalled, and
     ADR-0005 chose local verification over a revocation check on every request. What logout
     guarantees is that the session cannot be *extended*: no refresh, so at most one token
-    lifetime after logging out, the account is unreachable.
+    lifetime after logging out, the signup is unreachable.
     """
-    account = await a_confirmed_candidate(browser, mailbox)
-    await sign_in(browser, account)
+    signup = await a_confirmed_candidate(browser, mailbox)
+    await sign_in(browser, signup)
     refresh_token = browser.cookies[REFRESH_TOKEN_COOKIE]
 
     assert (await browser.post("/v1/auth/logout")).status_code == 204
@@ -215,8 +240,8 @@ async def test_logging_out_revokes_the_session_at_the_identity_provider(
 
 
 async def test_logging_out_clears_the_cookies(browser: AsyncClient, mailbox: Mailbox) -> None:
-    account = await a_confirmed_candidate(browser, mailbox)
-    await sign_in(browser, account)
+    signup = await a_confirmed_candidate(browser, mailbox)
+    await sign_in(browser, signup)
 
     response = await browser.post("/v1/auth/logout")
 
