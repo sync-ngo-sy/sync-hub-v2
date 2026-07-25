@@ -11,10 +11,10 @@ import json
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 
 class PublishedKeys:
@@ -46,11 +46,13 @@ class _JwksServer(ThreadingHTTPServer):
 
 
 class _Handler(BaseHTTPRequestHandler):
-    server: _JwksServer
-
     def do_GET(self) -> None:
-        keys = self.server.keys
-        if self.path != self.server.path:
+        # `socketserver` types `self.server` as the generic `BaseServer`; narrowed here
+        # rather than by redeclaring the attribute, which pyright treats as an unsound
+        # override of a mutable base attribute.
+        server = cast("_JwksServer", self.server)
+        keys = server.keys
+        if self.path != server.path:
             self.send_error(404)
             return
 
@@ -71,7 +73,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 @contextmanager
-def serving_jwks(path: str) -> Iterator[PublishedKeys]:
+def serving_jwks(path: str) -> Generator[PublishedKeys]:
     """Run a JWKS endpoint on a free port for the life of the block."""
     keys = PublishedKeys()
     server = _JwksServer(path, keys)
