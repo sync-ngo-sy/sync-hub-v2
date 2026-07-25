@@ -14,8 +14,6 @@ dev = [
     "sqlacodegen>=3.0",
     "asgi-lifespan>=2.1",
     "psycopg[binary]>=3.2",
-    # A real HTTP server for the JWKS tests, so nothing has to fake PyJWKClient's fetching.
-    "pytest-httpserver>=1.1",
 ]
 
 [tool.ruff]

@@ -29,9 +29,10 @@ from sync_api.auth.tokens import (
     InvalidAccessTokenError,
     JwtVerifier,
 )
+from tests.support.jwks_server import PublishedKeys, serving_jwks
 
 if TYPE_CHECKING:
-    from pytest_httpserver import HTTPServer
+    from collections.abc import Iterator
 
 #: Long enough that nothing in a test run reaches it, so a second fetch means a cache miss.
 A_LONG_CACHE: Final = 600.0
@@ -63,119 +64,107 @@ class SigningKey:
 
 
 @pytest.fixture
-def issuer(httpserver: HTTPServer) -> str:
-    """Where the tests' pretend GoTrue answers. Its JWKS path is what the verifier reads."""
-    return httpserver.url_for("").rstrip("/")
+def gotrue() -> Iterator[PublishedKeys]:
+    """A stand-in for GoTrue's JWKS endpoint, on its own port."""
+    with serving_jwks(JWKS_PATH) as keys:
+        yield keys
 
 
-def publish(httpserver: HTTPServer, *keys: SigningKey) -> None:
-    """(Re)point the JWKS endpoint at these keys, replacing whatever it served before."""
-    httpserver.clear()
-    httpserver.expect_request(JWKS_PATH).respond_with_json({"keys": [k.as_jwk() for k in keys]})
+def publish(gotrue: PublishedKeys, *keys: SigningKey) -> None:
+    gotrue.publish(*(key.as_jwk() for key in keys))
 
 
-def jwks_reads(httpserver: HTTPServer) -> int:
-    return len(httpserver.log)
+def verifier_for(gotrue: PublishedKeys, cache_seconds: float = A_LONG_CACHE) -> JwtVerifier:
+    return JwtVerifier(issuer=gotrue.url, cache_seconds=cache_seconds)
 
 
-def verifier_for(issuer: str, cache_seconds: float = A_LONG_CACHE) -> JwtVerifier:
-    return JwtVerifier(issuer=issuer, cache_seconds=cache_seconds)
-
-
-async def test_a_genuine_token_verifies(httpserver: HTTPServer, issuer: str) -> None:
+async def test_a_genuine_token_verifies(gotrue: PublishedKeys) -> None:
     key = SigningKey("current")
-    publish(httpserver, key)
+    publish(gotrue, key)
     subject = uuid4()
 
-    claims = await verifier_for(issuer).verify(key.sign(issuer, sub=str(subject)))
+    claims = await verifier_for(gotrue).verify(key.sign(gotrue.url, sub=str(subject)))
 
     assert claims.subject == subject
     assert claims.email == "amina@example.com"
 
 
-async def test_the_keys_are_read_once_and_reused(httpserver: HTTPServer, issuer: str) -> None:
+async def test_the_keys_are_read_once_and_reused(gotrue: PublishedKeys) -> None:
     """The point of local verification: the second request costs no network hop."""
     key = SigningKey("current")
-    publish(httpserver, key)
-    verifier = verifier_for(issuer)
+    publish(gotrue, key)
+    verifier = verifier_for(gotrue)
 
-    await verifier.verify(key.sign(issuer))
-    await verifier.verify(key.sign(issuer))
+    await verifier.verify(key.sign(gotrue.url))
+    await verifier.verify(key.sign(gotrue.url))
 
-    assert jwks_reads(httpserver) == 1
+    assert gotrue.reads == 1
 
 
-async def test_a_rotated_key_is_picked_up_without_a_restart(
-    httpserver: HTTPServer, issuer: str
-) -> None:
+async def test_a_rotated_key_is_picked_up_without_a_restart(gotrue: PublishedKeys) -> None:
     """An unknown `kid` is the signal that the cache is behind, and forces a re-read."""
     old, new = SigningKey("old"), SigningKey("new")
-    publish(httpserver, old)
-    verifier = verifier_for(issuer)
-    await verifier.verify(old.sign(issuer))
+    publish(gotrue, old)
+    verifier = verifier_for(gotrue)
+    await verifier.verify(old.sign(gotrue.url))
 
-    publish(httpserver, new)
+    publish(gotrue, new)
 
-    assert await verifier.verify(new.sign(issuer))
+    assert await verifier.verify(new.sign(gotrue.url))
 
 
-async def test_a_token_from_an_unpublished_key_is_refused(
-    httpserver: HTTPServer, issuer: str
-) -> None:
-    publish(httpserver, SigningKey("current"))
+async def test_a_token_from_an_unpublished_key_is_refused(gotrue: PublishedKeys) -> None:
+    publish(gotrue, SigningKey("current"))
     forger = SigningKey("current")  # same id, different key: a plausible-looking forgery
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify(forger.sign(issuer))
+        await verifier_for(gotrue).verify(forger.sign(gotrue.url))
 
 
-async def test_an_expired_token_is_refused(httpserver: HTTPServer, issuer: str) -> None:
+async def test_an_expired_token_is_refused(gotrue: PublishedKeys) -> None:
     key = SigningKey("current")
-    publish(httpserver, key)
+    publish(gotrue, key)
     expired = dt.datetime.now(tz=dt.UTC) - dt.timedelta(minutes=1)
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify(key.sign(issuer, exp=expired))
+        await verifier_for(gotrue).verify(key.sign(gotrue.url, exp=expired))
 
 
-async def test_a_token_from_another_issuer_is_refused(httpserver: HTTPServer, issuer: str) -> None:
+async def test_a_token_from_another_issuer_is_refused(gotrue: PublishedKeys) -> None:
     """A Supabase access token from a *different* project is a genuine token — for them."""
     key = SigningKey("current")
-    publish(httpserver, key)
+    publish(gotrue, key)
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify(key.sign("https://elsewhere/auth/v1"))
+        await verifier_for(gotrue).verify(key.sign("https://elsewhere/auth/v1"))
 
 
-async def test_a_token_for_another_audience_is_refused(httpserver: HTTPServer, issuer: str) -> None:
+async def test_a_token_for_another_audience_is_refused(gotrue: PublishedKeys) -> None:
     key = SigningKey("current")
-    publish(httpserver, key)
+    publish(gotrue, key)
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify(key.sign(issuer, aud="anon"))
+        await verifier_for(gotrue).verify(key.sign(gotrue.url, aud="anon"))
 
 
-async def test_a_token_with_no_subject_is_refused(httpserver: HTTPServer, issuer: str) -> None:
+async def test_a_token_with_no_subject_is_refused(gotrue: PublishedKeys) -> None:
     key = SigningKey("current")
-    publish(httpserver, key)
+    publish(gotrue, key)
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify(key.sign(issuer, sub=None))
+        await verifier_for(gotrue).verify(key.sign(gotrue.url, sub=None))
 
 
-async def test_a_token_that_is_not_a_token_is_refused(httpserver: HTTPServer, issuer: str) -> None:
-    publish(httpserver, SigningKey("current"))
+async def test_a_token_that_is_not_a_token_is_refused(gotrue: PublishedKeys) -> None:
+    publish(gotrue, SigningKey("current"))
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify("nonsense")
+        await verifier_for(gotrue).verify("nonsense")
 
 
-async def test_unreachable_keys_refuse_rather_than_admit(
-    httpserver: HTTPServer, issuer: str
-) -> None:
+async def test_unreachable_keys_refuse_rather_than_admit(gotrue: PublishedKeys) -> None:
     """A JWKS endpoint that is down must not become a way past the check."""
-    httpserver.clear()
-    httpserver.expect_request(JWKS_PATH).respond_with_data("", status=503)
+    gotrue.fail_with(503)
 
     with pytest.raises(InvalidAccessTokenError):
-        await verifier_for(issuer).verify(SigningKey("current").sign(issuer))
+        await verifier_for(gotrue).verify(SigningKey("current").sign(gotrue.url))
