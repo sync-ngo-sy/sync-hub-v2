@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web (lint, typecheck, build, test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # services/api (Python) is checked in the `api` job instead, so these
+      # are scoped to the JS/TS workspaces to avoid needing uv here too.
+      - name: Lint
+        run: pnpm exec turbo run lint --filter='./apps/*' --filter='./packages/*'
+
+      - name: Typecheck
+        run: pnpm exec turbo run typecheck --filter='./apps/*' --filter='./packages/*'
+
+      - name: Build
+        run: pnpm exec turbo run build --filter='./apps/*' --filter='./packages/*'
+
+      - name: Test
+        run: pnpm exec turbo run test --filter='./apps/*' --filter='./packages/*'
+
+  api:
+    name: API (ruff, mypy, pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          working-directory: services/api
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint (ruff check)
+        run: uv run ruff check
+
+      - name: Format check (ruff format)
+        run: uv run ruff format --check .
+
+      - name: Typecheck (mypy)
+        run: uv run mypy packages
+
+      - name: Test (pytest)
+        run: |
+          set +e
+          uv run pytest
+          status=$?
+          set -e
+          if [ "$status" -eq 5 ]; then
+            echo "::notice::No tests collected yet in services/api — treating as a pass."
+            exit 0
+          fi
+          exit "$status"
