@@ -7,21 +7,15 @@ request into a preflighted cross-origin call — which the API declines, because
 no CORS policy whatsoever and a browser treats silence as refusal. So the header is only
 ever present on a request one of our own pages made.
 
-That last part is load-bearing, and it is load-bearing on an *absence*: the day CORS is
-configured — the SPAs are same-origin through a proxy today, so nothing needs it yet —
-whatever origins that allowlist names inherit the right to forge these requests, and this
-lock is worth exactly as much as the allowlist is short.
+That last part is load-bearing on an *absence*: the day CORS is configured, whatever
+origins that allowlist names inherit the right to forge these requests too.
 
-Installed as an application-wide dependency rather than middleware, which is what keeps a
-`POST` to a `GET`-only path answering 405 instead of 403: dependencies run after routing.
-Every route the API ever grows is covered, with nothing for a future ticket to remember.
+Installed as a dependency rather than middleware, so a `POST` to a `GET`-only path still
+answers 405 instead of 403 — dependencies run after routing.
 
-ADR-0007 says reach for a library first, so: `starlette-csrf` and `fastapi-csrf-protect`
-both exist, and both implement *double-submit cookie* — a different, heavier defence with a
-second cookie the SPA has to read and echo. What #4 asked for is SameSite plus a header
-whose mere presence is the signal, which is the whole of the check below. Taking either
-library would mean changing the defence and giving both SPAs a token to manage, not deleting
-this file.
+`starlette-csrf` and `fastapi-csrf-protect` exist but both implement double-submit-cookie, a
+heavier defence needing a second cookie the SPA reads and echoes. This is simpler and is
+the whole of what's needed here.
 """
 
 from __future__ import annotations

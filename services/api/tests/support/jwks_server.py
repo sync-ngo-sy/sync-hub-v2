@@ -2,8 +2,7 @@
 
 `PyJWKClient` fetches with `urllib`, so there is no transport to stub — the verifier has to
 be pointed at something that actually answers. `http.server` from the standard library is
-that something. A pytest plugin would do it too, but none of them is established enough to
-add for one test module (ADR-0007), and the whole thing is thirty lines.
+that something; no pytest plugin is established enough to add for one thirty-line module.
 """
 
 from __future__ import annotations

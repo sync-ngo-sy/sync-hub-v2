@@ -1,24 +1,8 @@
 """Blunting credential stuffing on the auth endpoints.
 
-The counting is `limits` — the library `slowapi` and `flask-limiter` are both built on —
-with its in-memory storage and a moving-window strategy. Moving rather than fixed: a fixed
-window lets a caller spend the whole allowance at the end of one window and the whole of
-the next allowance immediately after, so the real worst case is twice the number the
-setting appears to promise.
-
-`slowapi` itself would be the FastAPI-shaped choice, but it wants a decorator on each route
-and answers with its own JSON error; we already have a dependency and one problem+json
-convention, so this uses the primitive underneath it instead.
-
-In-memory means per-replica. That is a real limit and a deliberate one: a shared counter
-needs Redis, which the walking skeleton does not have, and an attacker forced to spread an
-attack across every replica has already lost most of the throughput they wanted.
-
-What this does *not* do is limit attempts per account. GoTrue's own limits count per client
-address as well, so a botnet grinding one candidate's password from many addresses is
-throttled by neither. Fixing that means a per-identity counter, which brings its own hazard
-— an attacker can then lock a victim out by exhausting it — and a decision this ticket does
-not make. Recorded here so the gap is a known one.
+Two limits worth knowing about: the counter is in-memory, so this throttles per replica,
+not globally — scale out and the real ceiling multiplies. And it counts per address, not
+per account, so a botnet spreading attempts across many addresses isn't slowed by this.
 """
 
 from __future__ import annotations

@@ -1,16 +1,8 @@
 """RFC 9457 problem details — the single shape every API error takes.
 
-Clients parse one thing whether a route 404s, a body fails validation, or something
-blows up. Domain errors added by later tickets raise `Problem` with their own `type` URN
-rather than inventing a second error shape.
-
-ADR-0007 says reach for a library, and this is the one place in the service where the
-search came up empty, so: the candidates were `fastapi-problem` (35 GitHub stars) and
-`fastapi-rfc9457` (v0.2.1, ~1k downloads a month). Both fit technically. Neither is
-established enough to hand the error contract of every endpoint to — a dependency this
-central has to be one that will still be maintained in three years, and the ~250 lines here
-plus `errors.py` are the cheaper risk. Recheck when something in this space grows up; the
-wire format is the RFC's, so a swap would not move the contract.
+Clients parse one thing whether a route 404s, a body fails validation, or something blows
+up. Domain errors added by later tickets raise `Problem` with their own `type` URN rather
+than inventing a second error shape.
 """
 
 from __future__ import annotations
