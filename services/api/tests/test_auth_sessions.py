@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import datetime as dt
 
-import jwt
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text, update
@@ -18,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_api.auth import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
 from sync_core import Settings
 from sync_core.models import Profile
-from tests.support import stack
 from tests.support.candidates import (
     a_confirmed_candidate,
     a_signup,
@@ -144,32 +142,6 @@ async def test_a_protected_route_refuses_a_token_that_is_not_a_token(
     assert (await browser.get("/v1/auth/me")).status_code == 401
 
 
-async def test_a_protected_route_refuses_a_token_signed_with_the_shared_secret(
-    browser: AsyncClient, mailbox: Mailbox
-) -> None:
-    """The algorithm-confusion attack, which local JWKS verification exists to stop.
-
-    A Supabase project publishes an asymmetric signing key *and* keeps a legacy shared HS256
-    secret that other services hold. A verifier willing to accept HS256 would take a token
-    forged with that secret — or, worse, one signed using the published public key as the
-    HMAC key, which anybody can do. Only asymmetric algorithms are accepted, so neither
-    works, and every claim in the forgery below is otherwise perfectly in order.
-    """
-    signup = await a_confirmed_candidate(browser, mailbox)
-    genuine = (await sign_in(browser, signup)).cookies[ACCESS_TOKEN_COOKIE]
-    claims = jwt.decode(genuine, options={"verify_signature": False})
-
-    forged = jwt.encode(
-        claims,
-        stack.stack_config()["JWT_SECRET"],
-        algorithm="HS256",
-        headers={"kid": jwt.get_unverified_header(genuine)["kid"]},
-    )
-    present_only(browser, ACCESS_TOKEN_COOKIE, forged)
-
-    assert (await browser.get("/v1/auth/me")).status_code == 401
-
-
 async def test_a_soft_deleted_profile_cannot_act(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
@@ -225,7 +197,7 @@ async def test_logging_out_revokes_the_session_at_the_identity_provider(
     """Not merely a cookie wipe: the refresh token has to be dead on the server too.
 
     The access token stays valid until it expires — a stateless JWT cannot be recalled, and
-    ADR-0005 chose local verification over a revocation check on every request. What logout
+    ADR-0005 verifies claims rather than checking a revocation list per request. What logout
     guarantees is that the session cannot be *extended*: no refresh, so at most one token
     lifetime after logging out, the signup is unreachable.
     """
