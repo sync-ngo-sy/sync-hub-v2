@@ -200,7 +200,7 @@ class AuthService:
         """
         session = await self._redeem(token_hash, EmailTokenType.RECOVERY)
         try:
-            await self._gotrue.set_password(access_token=session.access_token, password=password)
+            await self._gotrue.set_password(user_id=session.user.id, password=password)
         except WeakPasswordError as exc:
             raise _weak_password() from exc
         except PasswordUnchangedError as exc:

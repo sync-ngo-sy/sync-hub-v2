@@ -7,14 +7,20 @@ connecting straight to Postgres with the service role. `supabase-py` remains a d
 solely as an HTTP client for GoTrue (admin user creation, invites, password grant) and
 Storage (uploads, signed download URLs) — it never reads or writes application tables.
 
-**Amended when ADR-0005's auth proxy was built**: the GoTrue half is a small httpx client of
-our own (`sync_api.auth.gotrue`), not `supabase-py`. Its auth client models a browser
-holding *one* session — signing in caches that session inside the client and arms a
-background refresh timer — which is wrong for a server signing in on behalf of thousands of
-people, where every call must be stateless and take its tokens as arguments. The admin API
-alone would have been usable, but it lacks the password grant, refresh, verify and recover
-endpoints the proxy needs, and splitting GoTrue across two clients costs more than the
-~200 lines this saves. `supabase-py` stays for Storage.
+**Amended when ADR-0005's auth proxy was built.** Two notes on the GoTrue half:
+
+- `supabase-py` *is* the GoTrue client (`sync_api.auth.gotrue`), but a client is constructed
+  per call rather than once per process. `AsyncGoTrueClient` models a browser holding one
+  session — signing in stores it on the instance — so a shared instance would end up holding
+  whoever signed in last, and any call reading that stored session instead of an explicit
+  argument would act as them. Per-call construction is an allocation over the process's own
+  `AsyncClient`, not a connection.
+- Access-token verification does **not** use `client.auth.get_claims()`; it uses PyJWT's
+  `PyJWKClient` (`sync_api.auth.tokens`). `get_claims` treats HS256 as a special case and
+  validates it by calling GoTrue over the network, and a Supabase project keeps a legacy
+  shared HS256 secret that GoTrue still honours — probed against this repo's own stack, a
+  token forged with that secret and no `kid` is **accepted**. It also checks neither `iss`
+  nor `aud`, and its network fallback is the per-request hop ADR-0005 chose JWKS to avoid.
 
 The forcing fact: ADR-0001 makes multi-row single-transaction writes (application
 submission, PII scrub, chunk swaps) and `SELECT … FOR UPDATE SKIP LOCKED` queue claims the

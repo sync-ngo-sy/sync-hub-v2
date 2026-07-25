@@ -1,98 +1,89 @@
 """Blunting credential stuffing on the auth endpoints.
 
-A sliding window per (endpoint, caller), held in this process. Deliberately not shared
-across replicas: a limiter in Redis is a dependency the walking skeleton does not have, and
-an attacker who has to spread an attack across every replica to keep it up has already lost
-most of the throughput the attack needed.
+The counting is `limits` — the library `slowapi` and `flask-limiter` are both built on —
+with its in-memory storage and a moving-window strategy. Moving rather than fixed: a fixed
+window lets a caller spend the whole allowance at the end of one window and the whole of
+the next allowance immediately after, so the real worst case is twice the number the
+setting appears to promise.
+
+`slowapi` itself would be the FastAPI-shaped choice, but it wants a decorator on each route
+and answers with its own JSON error; we already have a dependency and one problem+json
+convention, so this uses the primitive underneath it instead.
+
+In-memory means per-replica. That is a real limit and a deliberate one: a shared counter
+needs Redis, which the walking skeleton does not have, and an attacker forced to spread an
+attack across every replica has already lost most of the throughput they wanted.
 
 What this does *not* do is limit attempts per account. GoTrue's own limits count per client
 address as well, so a botnet grinding one candidate's password from many addresses is
 throttled by neither. Fixing that means a per-identity counter, which brings its own hazard
 — an attacker can then lock a victim out by exhausting it — and a decision this ticket does
 not make. Recorded here so the gap is a known one.
-
-Sliding rather than fixed-window: a fixed window lets a caller spend the whole allowance at
-the end of one window and the whole of the next allowance immediately after, so the real
-worst case is twice the number the setting appears to promise.
 """
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
 from math import ceil
-from time import monotonic
-from typing import TYPE_CHECKING, Annotated, Final, cast
+from time import time
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends, Request
+from limits import RateLimitItemPerSecond
+from limits.aio.storage import MemoryStorage
+from limits.aio.strategies import MovingWindowRateLimiter
 
 from sync_api.problems import RATE_LIMITED_PROBLEM_TYPE, Problem
 
 if TYPE_CHECKING:
     from sync_core import Settings
 
-#: Keys that have not been seen for a full window hold nothing but expired timestamps, and
-#: are dropped once the table is this big — so an attacker rotating addresses grows memory
-#: for one window, not forever.
-MAX_TRACKED_KEYS: Final = 10_000
+#: What a caller is told to wait when the window is somehow already clear. `limits` reports
+#: the reset time of the window it just refused, so this is a floor, not the usual answer.
+MINIMUM_RETRY_AFTER_SECONDS = 1
 
 
-class RateLimiter:
-    """Counts recent attempts per key and says when there have been too many."""
+class AuthRateLimiter:
+    """How many attempts one caller gets at one auth endpoint, and how long until more."""
 
     def __init__(self, *, max_requests: int, window_seconds: float) -> None:
-        self._max_requests = max_requests
-        self._window = window_seconds
-        self._attempts: defaultdict[str, deque[float]] = defaultdict(deque)
+        self._limit = RateLimitItemPerSecond(max_requests, int(window_seconds))
+        self._window = MovingWindowRateLimiter(MemoryStorage())
 
-    def consume(self, key: str) -> float | None:
-        """Record an attempt. Returns the seconds to wait if the key is over its limit."""
-        now = monotonic()
-        if len(self._attempts) >= MAX_TRACKED_KEYS:
-            self._sweep(now)
-
-        recent = self._attempts[key]
-        while recent and now - recent[0] >= self._window:
-            recent.popleft()
-
-        if len(recent) >= self._max_requests:
-            return self._window - (now - recent[0])
-
-        recent.append(now)
-        return None
-
-    def _sweep(self, now: float) -> None:
-        for key, recent in list(self._attempts.items()):
-            if not recent or now - recent[-1] >= self._window:
-                del self._attempts[key]
+    async def consume(self, endpoint: str, caller: str) -> float | None:
+        """Record an attempt. Returns the seconds to wait if the caller is over their limit."""
+        if await self._window.hit(self._limit, endpoint, caller):
+            return None
+        stats = await self._window.get_window_stats(self._limit, endpoint, caller)
+        return stats.reset_time - time()
 
 
-def build_auth_rate_limiter(settings: Settings) -> RateLimiter:
-    return RateLimiter(
+def build_auth_rate_limiter(settings: Settings) -> AuthRateLimiter:
+    return AuthRateLimiter(
         max_requests=settings.auth_rate_limit_max_requests,
         window_seconds=settings.auth_rate_limit_window_seconds,
     )
 
 
-def get_auth_rate_limiter(request: Request) -> RateLimiter:
-    return cast("RateLimiter", request.app.state.auth_rate_limiter)
+def get_auth_rate_limiter(request: Request) -> AuthRateLimiter:
+    return cast("AuthRateLimiter", request.app.state.auth_rate_limiter)
 
 
 async def enforce_auth_rate_limit(
-    request: Request, limiter: Annotated[RateLimiter, Depends(get_auth_rate_limiter)]
+    request: Request, limiter: Annotated[AuthRateLimiter, Depends(get_auth_rate_limiter)]
 ) -> None:
     """Limit one auth endpoint for one caller. Attach to the routes worth protecting.
 
     Per endpoint, not per caller overall: signing in, refreshing and asking for a password
     reset are different enough that spending one should not use up the others.
     """
-    retry_after = limiter.consume(f"{request.scope['path']}|{caller_of(request)}")
+    retry_after = await limiter.consume(request.scope["path"], caller_of(request))
     if retry_after is None:
         return
     raise Problem(
         status=429,
         type=RATE_LIMITED_PROBLEM_TYPE,
         detail="Too many attempts. Wait a moment and try again.",
-        headers={"Retry-After": str(max(1, ceil(retry_after)))},
+        headers={"Retry-After": str(max(MINIMUM_RETRY_AFTER_SECONDS, ceil(retry_after)))},
     )
 
 

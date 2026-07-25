@@ -15,6 +15,13 @@ lock is worth exactly as much as the allowlist is short.
 Installed as an application-wide dependency rather than middleware, which is what keeps a
 `POST` to a `GET`-only path answering 405 instead of 403: dependencies run after routing.
 Every route the API ever grows is covered, with nothing for a future ticket to remember.
+
+ADR-0007 says reach for a library first, so: `starlette-csrf` and `fastapi-csrf-protect`
+both exist, and both implement *double-submit cookie* — a different, heavier defence with a
+second cookie the SPA has to read and echo. What #4 asked for is SameSite plus a header
+whose mere presence is the signal, which is the whole of the check below. Taking either
+library would mean changing the defence and giving both SPAs a token to manage, not deleting
+this file.
 """
 
 from __future__ import annotations

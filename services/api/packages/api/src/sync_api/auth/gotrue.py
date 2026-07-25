@@ -1,34 +1,36 @@
-"""The API's side of the conversation with GoTrue.
+"""The API's side of the conversation with GoTrue, over `supabase-py`.
 
-ADR-0005 makes this backend the only thing that ever talks to Supabase Auth: the SPAs hold
-a cookie, not a token, and never learn a Supabase URL. So this module is not a general
-Supabase client — it is the exact set of calls that proxying costs us, each one stateless
-and each one taking every token it needs as an argument.
+ADR-0005 makes this backend the only thing that ever talks to Supabase Auth, so the calls
+below are the exact set that proxying costs us. ADR-0004 already names `supabase-py` as the
+GoTrue client, and this is it — no hand-rolled HTTP, no hand-parsed error bodies.
 
-That statelessness is why `supabase-py`'s auth client is not used here even though
-ADR-0004 keeps it around for Storage: it is built for a browser holding *one* session, so
-signing in caches that session in the client and arms a background refresh timer. A server
-signing in on behalf of thousands of people needs the opposite — a function call that
-returns tokens and remembers nothing. Its admin API has no such state, but splitting the
-GoTrue surface across two clients costs more than this module does.
+What this module adds is the one thing the SDK cannot: statelessness. `AsyncGoTrueClient`
+models a browser holding *one* session — signing in stores it on the client — so a single
+long-lived instance shared by every request would end up holding the last person to sign
+in, and any later call reading that stored session instead of an explicit argument would
+act as them. A client is therefore built per call. It is a plain object over the process's
+own `AsyncClient`, so this costs an allocation, not a connection.
 
-Failures arrive as GoTrue's own `error_code` strings and leave as `GoTrueError`
-subclasses, so the flow layer above never pattern-matches on HTTP status codes.
+Failures arrive as `AuthApiError.code` — GoTrue's own `error_code` string — and leave as
+`GoTrueError` subclasses, so the flow layer above never pattern-matches on HTTP status.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final, Literal
 from uuid import UUID
 
-from httpx import HTTPError, Response
+from httpx import HTTPError
+from supabase_auth._async.gotrue_client import AsyncGoTrueClient
+from supabase_auth.errors import AuthError, AuthRetryableError
 
 from sync_core import get_logger
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from supabase_auth.types import Session, User
 
 logger = get_logger(__name__)
 
@@ -114,13 +116,15 @@ Refusals = dict[str, type[GoTrueError]]
 class GoTrue:
     """Every GoTrue call the auth flows make, and nothing else.
 
-    One `AsyncClient` for the process. The two Supabase keys are the caller identity:
-    the service-role key for the admin endpoints, the anon key for the ones a browser
-    would otherwise call itself.
+    The two Supabase keys are the caller identity: the service-role key for the admin
+    endpoints, the anon key for the ones a browser would otherwise call itself.
     """
 
-    def __init__(self, http: AsyncClient, *, service_role_key: str, anon_key: str) -> None:
+    def __init__(
+        self, http: AsyncClient, *, url: str, service_role_key: str, anon_key: str
+    ) -> None:
         self._http = http
+        self._url = url
         self._service_role_key = service_role_key
         self._anon_key = anon_key
 
@@ -130,71 +134,56 @@ class GoTrue:
         Deliberately unconfirmed: ADR-0005 wants `auth.users` emails to be proven ones,
         because the communications sender resolves recipients from that table.
         """
-        payload = await self._call(
-            "POST",
-            "/admin/users",
-            json={"email": email, "password": password, "email_confirm": False},
-            key=self._service_role_key,
-            authorization=self._service_role_key,
-            refusals={
+        with refusals(
+            {
                 "email_exists": EmailAlreadyRegisteredError,
                 "user_already_exists": EmailAlreadyRegisteredError,
                 "weak_password": WeakPasswordError,
-            },
-        )
-        return _user_from(payload)
+            }
+        ):
+            answered = await self._as_admin().admin.create_user(
+                {"email": email, "password": password, "email_confirm": False}
+            )
+        return _user_from(answered.user)
 
     async def delete_user(self, user_id: UUID) -> None:
         """Erase an identity. `profiles` cascades from `auth.users`, so this undoes signup."""
-        await self._call(
-            "DELETE",
-            f"/admin/users/{user_id}",
-            key=self._service_role_key,
-            authorization=self._service_role_key,
-        )
+        with refusals({}):
+            await self._as_admin().admin.delete_user(str(user_id))
 
     async def send_confirmation_email(self, email: str) -> None:
         """Send the signup confirmation carrying the token `confirm_email` redeems."""
-        await self._call(
-            "POST",
-            "/resend",
-            json={"type": EmailTokenType.SIGNUP.value, "email": email},
-            key=self._anon_key,
-        )
+        with refusals({}):
+            await self._as_caller().resend({"type": "signup", "email": email})
 
     async def send_password_reset_email(self, email: str) -> None:
         """Send the recovery email. Succeeds for unknown addresses too, by GoTrue's design."""
-        await self._call("POST", "/recover", json={"email": email}, key=self._anon_key)
+        with refusals({}):
+            await self._as_caller().reset_password_for_email(email)
 
     async def sign_in_with_password(self, *, email: str, password: str) -> GoTrueSession:
-        payload = await self._call(
-            "POST",
-            "/token",
-            params={"grant_type": "password"},
-            json={"email": email, "password": password},
-            key=self._anon_key,
-            refusals={
+        with refusals(
+            {
                 "invalid_credentials": InvalidCredentialsError,
                 "email_not_confirmed": EmailNotConfirmedError,
-            },
-        )
-        return _session_from(payload)
+            }
+        ):
+            answered = await self._as_caller().sign_in_with_password(
+                {"email": email, "password": password}
+            )
+        return _session_from(answered.session)
 
     async def refresh_session(self, refresh_token: str) -> GoTrueSession:
         """Trade a refresh token for a new session. GoTrue rotates the refresh token itself."""
-        payload = await self._call(
-            "POST",
-            "/token",
-            params={"grant_type": "refresh_token"},
-            json={"refresh_token": refresh_token},
-            key=self._anon_key,
-            refusals={
+        with refusals(
+            {
                 "refresh_token_not_found": InvalidRefreshTokenError,
                 "refresh_token_already_used": InvalidRefreshTokenError,
                 "validation_failed": InvalidRefreshTokenError,
-            },
-        )
-        return _session_from(payload)
+            }
+        ):
+            answered = await self._as_caller().refresh_session(refresh_token)
+        return _session_from(answered.session)
 
     async def redeem_email_token(
         self, *, token_hash: str, token_type: EmailTokenType
@@ -203,115 +192,110 @@ class GoTrue:
 
         The token is single-use: a second attempt raises `InvalidEmailTokenError`.
         """
-        payload = await self._call(
-            "POST",
-            "/verify",
-            json={"type": token_type.value, "token_hash": token_hash},
-            key=self._anon_key,
-            refusals={
-                "otp_expired": InvalidEmailTokenError,
-                "validation_failed": InvalidEmailTokenError,
-            },
-        )
-        return _session_from(payload)
+        with refusals(
+            {"otp_expired": InvalidEmailTokenError, "validation_failed": InvalidEmailTokenError}
+        ):
+            answered = await self._as_caller().verify_otp(
+                {"token_hash": token_hash, "type": token_type.value}
+            )
+        return _session_from(answered.session)
 
-    async def set_password(self, *, access_token: str, password: str) -> None:
-        await self._call(
-            "PUT",
-            "/user",
-            json={"password": password},
-            key=self._anon_key,
-            authorization=access_token,
-            refusals={"weak_password": WeakPasswordError, "same_password": PasswordUnchangedError},
-        )
+    async def set_password(self, *, user_id: UUID, password: str) -> None:
+        """Set the password of an identity the caller has already proven they control.
+
+        Admin-side rather than through that identity's own session, because the only caller
+        is the password reset, where the proof is the emailed token it has just redeemed.
+        """
+        with refusals(
+            {"weak_password": WeakPasswordError, "same_password": PasswordUnchangedError}
+        ):
+            await self._as_admin().admin.update_user_by_id(str(user_id), {"password": password})
 
     async def revoke_sessions(self, access_token: str) -> None:
         """End every session of the user holding this access token."""
-        await self._call(
-            "POST",
-            "/logout",
-            params={"scope": GLOBAL_SCOPE},
-            key=self._anon_key,
-            authorization=access_token,
-            refusals={
-                "session_not_found": SessionAlreadyEndedError,
-                "bad_jwt": SessionAlreadyEndedError,
-            },
+        with refusals(
+            {"session_not_found": SessionAlreadyEndedError, "bad_jwt": SessionAlreadyEndedError}
+        ):
+            await self._as_admin().admin.sign_out(access_token, GLOBAL_SCOPE)
+
+    def _as_caller(self) -> AsyncGoTrueClient:
+        """A client speaking as an anonymous browser would."""
+        return self._client(self._anon_key)
+
+    def _as_admin(self) -> AsyncGoTrueClient:
+        """A client speaking with the service role, for the `/admin` endpoints."""
+        return self._client(self._service_role_key)
+
+    def _client(self, key: str) -> AsyncGoTrueClient:
+        return AsyncGoTrueClient(
+            url=self._url,
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            http_client=self._http,
+            # Nothing survives the call: no stored session to leak into the next request,
+            # and no background timer refreshing a session nobody is holding.
+            auto_refresh_token=False,
+            persist_session=False,
         )
 
-    async def _call(
-        self,
-        method: str,
-        path: str,
-        *,
-        key: str,
-        authorization: str | None = None,
-        json: dict[str, Any] | None = None,
-        params: dict[str, str] | None = None,
-        refusals: Refusals | None = None,
-    ) -> dict[str, Any]:
-        headers = {"apikey": key}
-        if authorization is not None:
-            headers["Authorization"] = f"Bearer {authorization}"
-        try:
-            response = await self._http.request(
-                method, path, json=json, params=params, headers=headers
-            )
-        except HTTPError as exc:
-            # Neither the URL nor the message is logged: one can carry a token in its path,
-            # the other the host. The call itself is enough to find the code.
-            logger.warning("gotrue.unreachable", method=method, path=path, error=type(exc).__name__)
-            raise GoTrueUnavailableError(f"GoTrue did not answer {method} {path}") from exc
 
-        if response.is_success:
-            return _body_of(response)
-        raise _refusal(response, method=method, path=path, refusals=refusals or {})
+class refusals:  # noqa: N801 — reads as a statement at the call site, not as a type
+    """Translate whatever a block raises into the error that block means.
+
+    A context manager rather than one table for the whole module, so each mapping sits at
+    the call it describes and a reader can check it against the endpoint being called.
+
+    `HTTPError` is caught alongside `AuthError` because the SDK only wraps the failures
+    GoTrue *answered* with (`HTTPStatusError`); a connection it never made escapes raw, and
+    a GoTrue that is down has to reach the flow layer as an outage rather than a 500.
+    """
+
+    def __init__(self, known: Refusals) -> None:
+        self._known = known
+
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(
+        self, kind: object, exc: BaseException | None, traceback: object
+    ) -> Literal[False]:
+        if isinstance(exc, HTTPError):
+            logger.warning("gotrue.unreachable", error=type(exc).__name__)
+            raise GoTrueUnavailableError("GoTrue did not answer") from exc
+        if isinstance(exc, AuthError):
+            raise _translate(exc, self._known) from exc
+        return False
 
 
-def _refusal(response: Response, *, method: str, path: str, refusals: Refusals) -> GoTrueError:
-    body = _body_of(response)
-    code = body.get("error_code") or body.get("code")
-    known = refusals.get(code) if isinstance(code, str) else None
-    if known is not None:
-        return known(str(body.get("msg") or body.get("message") or code))
+def _translate(exc: AuthError, known: Refusals) -> GoTrueError:
+    code = getattr(exc, "code", None)
+    mapped = known.get(code) if isinstance(code, str) else None
+    if mapped is not None:
+        return mapped(str(exc))
 
     # Unmapped: our bug or their outage, either way not something a caller can act on. The
     # detail goes to the logs rather than to the client.
     logger.error(
-        "gotrue.unexpected_response",
-        method=method,
-        path=path,
-        status_code=response.status_code,
+        "gotrue.unexpected_refusal",
+        error=type(exc).__name__,
         error_code=code,
+        status=getattr(exc, "status", None),
+        retryable=isinstance(exc, AuthRetryableError),
     )
-    return GoTrueUnavailableError(f"GoTrue answered {response.status_code} to {method} {path}")
+    return GoTrueUnavailableError(f"GoTrue refused with {code or type(exc).__name__}")
 
 
-def _body_of(response: Response) -> dict[str, Any]:
-    """GoTrue answers some calls with an empty body and some with `{}`; both mean "nothing"."""
-    if not response.content:
-        return {}
-    try:
-        body = response.json()
-    except ValueError:
-        return {}
-    return body if isinstance(body, dict) else {}
+def _user_from(user: User | None) -> GoTrueUser:
+    if user is None or not user.email:
+        raise GoTrueUnavailableError("GoTrue described a user we cannot read")
+    return GoTrueUser(id=UUID(str(user.id)), email=user.email)
 
 
-def _user_from(payload: dict[str, Any]) -> GoTrueUser:
-    try:
-        return GoTrueUser(id=UUID(str(payload["id"])), email=str(payload["email"]))
-    except (KeyError, ValueError) as exc:
-        raise GoTrueUnavailableError("GoTrue described a user we cannot read") from exc
-
-
-def _session_from(payload: dict[str, Any]) -> GoTrueSession:
-    try:
-        return GoTrueSession(
-            access_token=str(payload["access_token"]),
-            refresh_token=str(payload["refresh_token"]),
-            expires_in=int(payload["expires_in"]),
-            user=_user_from(payload["user"]),
-        )
-    except (KeyError, TypeError, ValueError) as exc:
-        raise GoTrueUnavailableError("GoTrue described a session we cannot read") from exc
+def _session_from(session: Session | None) -> GoTrueSession:
+    if session is None:
+        raise GoTrueUnavailableError("GoTrue described a session we cannot read")
+    return GoTrueSession(
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        expires_in=session.expires_in,
+        user=_user_from(session.user),
+    )

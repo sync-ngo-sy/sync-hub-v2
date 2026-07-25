@@ -35,15 +35,15 @@ class Authentication:
 
     @classmethod
     def build(cls, settings: Settings, *, refresh_cookie_path: str) -> Authentication:
-        http = AsyncClient(base_url=settings.gotrue_url, timeout=GOTRUE_TIMEOUT_SECONDS)
+        http = AsyncClient(timeout=GOTRUE_TIMEOUT_SECONDS)
         return cls(
             gotrue=GoTrue(
                 http,
+                url=settings.gotrue_url,
                 service_role_key=settings.supabase_service_role_key.get_secret_value(),
                 anon_key=settings.supabase_anon_key.get_secret_value(),
             ),
             verifier=JwtVerifier(
-                http,
                 issuer=settings.gotrue_url,
                 cache_seconds=settings.auth_jwks_cache_seconds,
             ),
