@@ -5,9 +5,11 @@ Status: accepted
 All auth traffic flows through the Python API — `/v1/auth/signup`, `/login`, `/refresh`,
 `/logout`, confirmation and password reset. The backend calls GoTrue (admin create-user at
 signup, password grant at login) and sets the Supabase access/refresh tokens as httpOnly
-cookies. Per-request verification is local JWKS JWT validation (no network hop). The SPAs
-ship no Supabase client and no Supabase URL — extending ADR-0002's backend-only stance
-from data to identity.
+cookies. Per-request verification is delegated to the Supabase SDK's `get_claims()`, which
+verifies an asymmetric token locally against a JWKS it caches and may call GoTrue for a
+legacy symmetric one — so most requests cost no network hop, but not every possible token
+is verified locally. The SPAs ship no Supabase client and no Supabase URL — extending
+ADR-0002's backend-only stance from data to identity.
 
 Why: signup is not just a GoTrue call here — the backend must atomically provision
 `profiles` + `candidates`/`recruiters` (and for recruiter signup, the `tenants` row), and
@@ -22,6 +24,10 @@ teammates join by invite-as-provisioning: GoTrue invite email + immediate
 
 ## Consequences
 
+- Verification semantics are the provider's, including its treatment of the project's
+  legacy shared HS256 secret. The MVP accepts that rather than maintaining a JWKS client
+  and an algorithm policy of its own; the API uses one configured Supabase project, whose
+  JWKS is project-specific.
 - Social OAuth later requires a browser↔GoTrue redirect flow that partially bypasses the
   proxy — accepted; email/password + confirmation + reset is the MVP scope.
 - Email confirmation is required before candidate login, keeping `auth.users` emails

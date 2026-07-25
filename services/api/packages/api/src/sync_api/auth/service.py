@@ -213,7 +213,7 @@ class AuthService:
         logger.info("auth.password_reset", profile_id=str(session.user.id))
 
     async def acting_profile(self, access_token: str | None) -> ActingProfile:
-        """Verify the access token locally and load the Profile it names."""
+        """Verify the access token and load the Profile it names."""
         if access_token is None:
             raise _unauthenticated("no access token cookie")
         try:

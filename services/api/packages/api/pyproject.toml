@@ -13,9 +13,6 @@ dependencies = [
     "asgi-correlation-id>=5.0",
     "fastapi>=0.139.2",
     "httpx>=0.28",
-    # Access tokens are verified locally against the JWKS GoTrue publishes: `PyJWKClient`
-    # does the fetching, caching and key rotation, `cryptography` the asymmetric algorithms.
-    "pyjwt[crypto]>=2.10",
     # The counting behind the auth rate limit — the primitive `slowapi` is built on.
     "limits>=5.8",
     # What pydantic's `EmailStr` validates with.

@@ -78,9 +78,6 @@ class Settings(BaseSettings):
     #: Left unset the cookies are host-only, which is what a same-origin deployment wants.
     #: Set it only to share a session across subdomains.
     auth_cookie_domain: str | None = None
-    #: How long a fetched JWKS document is trusted before it is re-read. A signing key that
-    #: rotates mid-window is still picked up: an unknown `kid` forces an immediate refetch.
-    auth_jwks_cache_seconds: int = Field(default=600, ge=0)
     #: Requests per window, per client address, per auth endpoint.
     auth_rate_limit_max_requests: int = Field(default=20, ge=1)
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)

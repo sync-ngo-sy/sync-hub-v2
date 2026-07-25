@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from httpx import AsyncClient
 
 from sync_api.auth.cookies import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, SessionCookies
-from sync_api.auth.gotrue import GoTrue
+from sync_api.auth.gotrue import GoTrue, sdk_client
 from sync_api.auth.service import ActingProfile, AuthService, SignedIn
 from sync_api.auth.tokens import JwtVerifier
 
@@ -36,17 +36,17 @@ class Authentication:
     @classmethod
     def build(cls, settings: Settings, *, refresh_cookie_path: str) -> Authentication:
         http = AsyncClient(timeout=GOTRUE_TIMEOUT_SECONDS)
+        anon_key = settings.supabase_anon_key.get_secret_value()
         return cls(
             gotrue=GoTrue(
                 http,
                 url=settings.gotrue_url,
                 service_role_key=settings.supabase_service_role_key.get_secret_value(),
-                anon_key=settings.supabase_anon_key.get_secret_value(),
+                anon_key=anon_key,
             ),
-            verifier=JwtVerifier(
-                issuer=settings.gotrue_url,
-                cache_seconds=settings.auth_jwks_cache_seconds,
-            ),
+            # The one SDK client kept past a single call: it caches the JWKS it fetched, and
+            # a fresh client per request would re-read the document every time.
+            verifier=JwtVerifier(sdk_client(http, url=settings.gotrue_url, key=anon_key)),
             cookies=SessionCookies(settings, refresh_path=refresh_cookie_path),
             http=http,
         )
