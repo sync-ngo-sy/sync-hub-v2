@@ -1,0 +1,15 @@
+<!--
+  Password reset. Same shape as `confirmation.html`: the link lands on the SPA, which posts
+  the `token_hash` to `POST /v1/auth/password-reset/confirm` together with the new password.
+-->
+<h2>Reset your password</h2>
+
+<p>Follow this link to choose a new password for your Sync account.</p>
+
+<p>
+  <a href="{{ .SiteURL }}/auth/reset-password?token_hash={{ .TokenHash }}&type=recovery">
+    Choose a new password
+  </a>
+</p>
+
+<p>If you did not ask for a password reset, ignore this message — nothing has changed.</p>

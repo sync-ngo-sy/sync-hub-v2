@@ -1,8 +1,10 @@
 """Turning every way a request can fail into one problem+json response.
 
-Three handlers cover the whole surface: `Problem` for errors a route raises deliberately,
-`HTTPException` for everything Starlette raises on our behalf (unknown route, wrong
-method, dependency failures), and `Exception` for the ones nobody saw coming.
+Four handlers cover the whole surface: `Problem` for errors a route raises deliberately,
+`GoTrueUnavailableError` for an identity provider that is down (one 502, so no flow has to
+remember to translate it), `HTTPException` for everything Starlette raises on our behalf
+(unknown route, wrong method, dependency failures), and `Exception` for the ones nobody
+saw coming.
 """
 
 from __future__ import annotations
@@ -14,6 +16,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+from sync_api.auth.gotrue import GoTrueUnavailableError
+from sync_api.auth.service import identity_provider_problem
 from sync_api.middleware import REQUEST_ID_HEADER, request_id
 from sync_api.problems import (
     PROBLEM_JSON_MEDIA_TYPE,
@@ -126,8 +130,14 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
     )
 
 
+async def handle_identity_provider_error(request: Request, exc: Exception) -> JSONResponse:
+    """GoTrue was unreachable or answered something we cannot act on — one 502 for all of it."""
+    return await handle_problem(request, identity_provider_problem(exc))
+
+
 def install_problem_handlers(app: FastAPI) -> None:
     app.add_exception_handler(Problem, handle_problem)
+    app.add_exception_handler(GoTrueUnavailableError, handle_identity_provider_error)
     app.add_exception_handler(HTTPException, handle_http_exception)
     app.add_exception_handler(RequestValidationError, handle_validation_error)
     app.add_exception_handler(Exception, handle_unexpected_error)
@@ -157,16 +167,22 @@ def use_problem_media_type(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
+def openapi_problem(description: str, model: type[ProblemDetail] = ProblemDetail) -> dict[str, Any]:
+    """One entry for a route's `responses`, so a failure it can answer with is in the schema.
+
+    The `content` key is what `use_problem_media_type` keys off; without it FastAPI would
+    file the body under `application/json` and the generated client would expect the wrong
+    media type.
+    """
+    return {
+        "model": model,
+        "description": description,
+        "content": {PROBLEM_JSON_MEDIA_TYPE: {}},
+    }
+
+
 #: Advertised on every route, so the generated client knows errors are problem+json.
 PROBLEM_RESPONSES: dict[int | str, dict[str, Any]] = {
-    422: {
-        "model": ValidationProblemDetail,
-        "description": "The request did not match the expected shape.",
-        "content": {PROBLEM_JSON_MEDIA_TYPE: {}},
-    },
-    500: {
-        "model": ProblemDetail,
-        "description": "Something went wrong on the server.",
-        "content": {PROBLEM_JSON_MEDIA_TYPE: {}},
-    },
+    422: openapi_problem("The request did not match the expected shape.", ValidationProblemDetail),
+    500: openapi_problem("Something went wrong on the server."),
 }

@@ -45,4 +45,15 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         operation["operationId"] for path_item in paths.values() for operation in path_item.values()
     ]
 
-    assert sorted(operation_ids) == ["getHealth", "getReadiness"]
+    assert sorted(operation_ids) == [
+        "confirmEmail",
+        "confirmPasswordReset",
+        "getCurrentProfile",
+        "getHealth",
+        "getReadiness",
+        "logIn",
+        "logOut",
+        "refreshSession",
+        "requestPasswordReset",
+        "signUp",
+    ]
