@@ -38,6 +38,14 @@ class LogLevel(StrEnum):
     CRITICAL = "CRITICAL"
 
 
+class SameSite(StrEnum):
+    """A cookie's cross-site policy — the first half of the CSRF defence in ADR-0005."""
+
+    LAX = "lax"
+    STRICT = "strict"
+    NONE = "none"
+
+
 class Settings(BaseSettings):
     """The whole process configuration. Read it through `get_settings()`."""
 
@@ -63,8 +71,27 @@ class Settings(BaseSettings):
     supabase_service_role_key: SecretStr
     supabase_anon_key: SecretStr
 
+    # Auth (ADR-0005). Sessions live in httpOnly cookies the SPAs cannot read; `secure` is
+    # only ever turned off for plain-HTTP local development.
+    auth_cookie_secure: bool = True
+    auth_cookie_same_site: SameSite = SameSite.LAX
+    #: Left unset the cookies are host-only, which is what a same-origin deployment wants.
+    #: Set it only to share a session across subdomains.
+    auth_cookie_domain: str | None = None
+    #: How long a fetched JWKS document is trusted before it is re-read. A signing key that
+    #: rotates mid-window is still picked up: an unknown `kid` forces an immediate refetch.
+    auth_jwks_cache_seconds: int = Field(default=600, ge=0)
+    #: Requests per window, per client address, per auth endpoint.
+    auth_rate_limit_max_requests: int = Field(default=20, ge=1)
+    auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON
+
+    @property
+    def gotrue_url(self) -> str:
+        """Where GoTrue answers. Also the `iss` of every access token it signs."""
+        return f"{str(self.supabase_url).rstrip('/')}/auth/v1"
 
 
 @lru_cache(maxsize=1)

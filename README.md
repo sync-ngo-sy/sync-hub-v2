@@ -70,6 +70,23 @@ SYNC_TEST_SKIP_DB_RESET=1 uv run --directory services/api pytest tests/test_heal
 
 The suite reads the stack's URL and keys from `supabase status`, so it works regardless of what `services/api/.env` says.
 
+## Calling the API from a frontend
+
+Auth is fully proxied by the backend (ADR-0005) — the apps ship no Supabase client and
+never see a token. Two things follow for anything calling the API from the browser:
+
+- **Send cookies.** The session lives in httpOnly cookies the API sets on sign-in, so
+  requests need `credentials: 'include'` (or `withCredentials`). Nothing readable from
+  JavaScript identifies the user; ask `GET /v1/auth/me` instead.
+- **Send `X-Sync-Request` on anything that changes data.** Any value. A cross-site form
+  cannot add a header, which is what — together with `SameSite` — stops another origin
+  forging a request with your session attached. Requests without it are refused with 403.
+
+The confirmation and password-reset emails link into the candidate portal
+(`/auth/confirm` and `/auth/reset-password`, from `supabase/templates/`), carrying a
+`token_hash` in the query string. Those pages post the token to `POST /v1/auth/confirm-email`
+and `POST /v1/auth/password-reset/confirm` — the browser never talks to Supabase.
+
 ## The shared packages
 
 These live in `packages/` and exist so the two apps don't duplicate code:

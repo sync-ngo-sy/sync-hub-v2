@@ -27,7 +27,10 @@ fixed at creation (candidate XOR recruiter, enforced by composite FK).
 
 - **Candidate signup**: in one tx → `insert profiles(id=auth.uid(), account_type='candidate',
   full_name, …)` then `insert candidates(id=auth.uid())`. The candidate insert enqueues an
-  (empty) re-embed job automatically.
+  (empty) re-embed job automatically. No transaction spans GoTrue and Postgres, so the
+  identity is created first and **deleted again** if the tx (or the confirmation email)
+  fails — `profiles.id → auth.users(id) ON DELETE CASCADE` makes that one call undo
+  everything, leaving the address free to sign up again.
 - **Recruiter invite**: `insert profiles(id, account_type='recruiter', …)` then
   `insert recruiters(id, tenant_id, role)`.
 - Do **not** rely on an `auth.users` trigger; the flow decides the role, so the backend writes

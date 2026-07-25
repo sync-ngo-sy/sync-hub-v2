@@ -12,22 +12,23 @@ tests need writes to be committed and visible from another connection.
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncGenerator, AsyncIterator, Iterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
 import asyncpg
 import pytest
 from asgi_lifespan import LifespanManager
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from sync_api.app import create_app
 from sync_core import Database, Settings, get_settings
 from tests.support import stack
+from tests.support.harness import SPA_HEADERS, asgi_client
+from tests.support.mailbox import Mailbox, mailbox_at
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
 SKIP_RESET_ENV_VAR = "SYNC_TEST_SKIP_DB_RESET"
@@ -50,6 +51,10 @@ def _stack_environment() -> Iterator[None]:
             "SYNC_SUPABASE_URL": config["API_URL"],
             "SYNC_SUPABASE_SERVICE_ROLE_KEY": config["SERVICE_ROLE_KEY"],
             "SYNC_SUPABASE_ANON_KEY": config["ANON_KEY"],
+            # The suite signs in far more often than any real caller, from one address. The
+            # limiter itself is tested in `test_auth_protections.py`, against an app built
+            # with a limit small enough to reach on purpose.
+            "SYNC_AUTH_RATE_LIMIT_MAX_REQUESTS": "100000",
         }
     )
     get_settings.cache_clear()
@@ -125,22 +130,28 @@ async def app(settings: Settings, _migrated_database: None) -> AsyncIterator[Fas
         yield application
 
 
-@asynccontextmanager
-async def asgi_client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    """An HTTP client speaking to `app` in-process.
-
-    `raise_app_exceptions=False` because Starlette re-raises after its handler runs; without
-    it, a test could never observe the 500 problem+json an unhandled error produces.
-    """
-    transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
-        yield http_client
-
-
 @pytest.fixture(scope="session")
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     async with asgi_client(app) as http_client:
         yield http_client
+
+
+@pytest.fixture
+async def browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """One SPA's worth of client: its own cookie jar, and the CSRF header it always sends.
+
+    Function-scoped, unlike `client`, because a session is state — a test inheriting the
+    previous one's cookies would be testing the jar rather than the API.
+    """
+    async with asgi_client(app, headers=SPA_HEADERS) as http_client:
+        yield http_client
+
+
+@pytest.fixture(scope="session")
+async def mailbox(_stack_environment: None) -> AsyncIterator[Mailbox]:
+    """Where every email GoTrue sends actually lands."""
+    async for inbox in mailbox_at(stack.stack_config()["MAILPIT_URL"]):
+        yield inbox
 
 
 @pytest.fixture(scope="session")
