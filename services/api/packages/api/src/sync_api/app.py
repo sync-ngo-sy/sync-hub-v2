@@ -9,10 +9,11 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
-from sync_api.middleware import RequestContextMiddleware
+from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
 from sync_api.routes import health
 from sync_core import Database, Settings, configure_logging, get_logger, get_settings
 
@@ -51,7 +52,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         responses=PROBLEM_RESPONSES,
     )
 
-    app.add_middleware(RequestContextMiddleware)
+    # Added innermost first: Starlette treats the last one added as the outermost, and the
+    # access log has to run inside the id it reports.
+    app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(
+        CorrelationIdMiddleware,
+        header_name=REQUEST_ID_HEADER,
+        # A caller's own id is echoed as sent. The library defaults to replacing anything
+        # that is not a UUID4, which would break correlation with any upstream tracing that
+        # numbers its requests differently.
+        validator=None,
+    )
     install_problem_handlers(app)
     app.include_router(health.router, prefix=API_PREFIX)
 
