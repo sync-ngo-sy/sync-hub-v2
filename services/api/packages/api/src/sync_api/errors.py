@@ -14,7 +14,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from sync_api.middleware import REQUEST_ID_HEADER
+from sync_api.middleware import REQUEST_ID_HEADER, request_id
 from sync_api.problems import (
     PROBLEM_JSON_MEDIA_TYPE,
     VALIDATION_PROBLEM_TYPE,
@@ -39,20 +39,13 @@ INTERNAL_ERROR_DETAIL = "The server could not complete the request."
 def problem_response(
     request: Request, problem: ProblemDetail, headers: dict[str, str]
 ) -> JSONResponse:
-    request_id = request_id_of(request)
-    problem.request_id = request_id
+    problem.request_id = request_id()
     return JSONResponse(
         status_code=problem.status,
         content=problem.model_dump(mode="json"),
         media_type=PROBLEM_JSON_MEDIA_TYPE,
-        headers={**headers, REQUEST_ID_HEADER: request_id} if request_id else headers,
+        headers=headers,
     )
-
-
-def request_id_of(request: Request) -> str | None:
-    """The id the request-context middleware minted, readable from any handler."""
-    request_id = request.scope.get("state", {}).get("request_id")
-    return request_id if isinstance(request_id, str) else None
 
 
 def field_errors(raw_errors: Sequence[Any]) -> list[InvalidField]:
@@ -108,7 +101,13 @@ async def handle_validation_error(request: Request, exc: Exception) -> JSONRespo
 
 
 async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    """The last resort. Says nothing about `exc` — the logs hold the detail."""
+    """The last resort. Says nothing about `exc` — the logs hold the detail.
+
+    The only handler that has to put the request id on the wire itself: Starlette wires
+    `Exception` to `ServerErrorMiddleware`, which sits *outside* every middleware we add, so
+    this response never passes the correlation middleware that echoes the header for
+    everything else.
+    """
     logger.exception(
         "request.unhandled_error",
         path=request.url.path,
@@ -121,7 +120,10 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
         detail=INTERNAL_ERROR_DETAIL,
         instance=request.url.path,
     )
-    return problem_response(request, detail, {})
+    correlation = request_id()
+    return problem_response(
+        request, detail, {REQUEST_ID_HEADER: correlation} if correlation else {}
+    )
 
 
 def install_problem_handlers(app: FastAPI) -> None:
