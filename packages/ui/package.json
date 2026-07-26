@@ -11,6 +11,7 @@
   },
   "scripts": {
     "lint": "biome check .",
+    "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
     "ui:add": "pnpm dlx shadcn@latest add"
   },
