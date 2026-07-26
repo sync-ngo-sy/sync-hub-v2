@@ -51,6 +51,16 @@ class Mailbox:
     async def count_for(self, email: str) -> int:
         return len(await self._messages_for(email))
 
+    async def newest_body(self, email: str) -> str:
+        """The whole of the newest message to `email`.
+
+        For the properties a `token_hash` cannot show: which page the link lands on, most of
+        all. GoTrue substitutes `site_url` for any `redirect_to` it does not recognise, and
+        the token in a misdirected email is every bit as valid — so the only way to catch
+        that is to read the address out of the message a person would have clicked.
+        """
+        return await self._newest_body(email)
+
     async def _newest_body(self, email: str) -> str:
         deadline = asyncio.get_running_loop().time() + DELIVERY_TIMEOUT_SECONDS
         while True:

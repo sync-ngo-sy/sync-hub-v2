@@ -87,6 +87,12 @@ The confirmation and password-reset emails link into the candidate portal
 `token_hash` in the query string. Those pages post the token to `POST /v1/auth/confirm-email`
 and `POST /v1/auth/password-reset/confirm` — the browser never talks to Supabase.
 
+Teammate invites work the same way but land in the **recruiter** portal, at
+`/auth/accept-invite`, which posts the token plus a chosen password to
+`POST /v1/auth/accept-invite`. That URL comes from `SYNC_RECRUITER_PORTAL_URL`, and it has
+to be listed in `additional_redirect_urls` in `supabase/config.toml` — GoTrue silently
+falls back to `site_url` (the candidate portal) for any redirect it does not recognise.
+
 ## The shared packages
 
 These live in `packages/` and exist so the two apps don't duplicate code:

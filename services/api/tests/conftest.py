@@ -33,6 +33,9 @@ if TYPE_CHECKING:
 
 SKIP_RESET_ENV_VAR = "SYNC_TEST_SKIP_DB_RESET"
 
+#: Where the recruiter portal answers under `supabase start`, per `supabase/config.toml`.
+RECRUITER_PORTAL_URL = "http://127.0.0.1:5174"
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _stack_environment() -> Iterator[None]:
@@ -55,6 +58,11 @@ def _stack_environment() -> Iterator[None]:
             # limiter itself is tested in `test_auth_protections.py`, against an app built
             # with a limit small enough to reach on purpose.
             "SYNC_AUTH_RATE_LIMIT_MAX_REQUESTS": "100000",
+            # Not stack-derived — `supabase status` knows nothing about the SPAs — but fixed
+            # for every environment the local stack runs in, because it has to match
+            # `additional_redirect_urls` in `supabase/config.toml`. Set here rather than left
+            # to a developer's `.env`, which CI does not have.
+            "SYNC_RECRUITER_PORTAL_URL": RECRUITER_PORTAL_URL,
         }
     )
     get_settings.cache_clear()
@@ -142,6 +150,17 @@ async def browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
     Function-scoped, unlike `client`, because a session is state — a test inheriting the
     previous one's cookies would be testing the jar rather than the API.
+    """
+    async with asgi_client(app, headers=SPA_HEADERS) as http_client:
+        yield http_client
+
+
+@pytest.fixture
+async def other_browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """A second SPA with its own cookie jar, for the tests where two people act.
+
+    An admin inviting a teammate and that teammate accepting are two sessions; accepting in
+    the admin's own jar would replace the admin with the invitee half way through the test.
     """
     async with asgi_client(app, headers=SPA_HEADERS) as http_client:
         yield http_client
