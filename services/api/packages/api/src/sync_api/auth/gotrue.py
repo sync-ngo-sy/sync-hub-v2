@@ -40,6 +40,7 @@ class EmailTokenType(StrEnum):
 
     SIGNUP = "signup"
     RECOVERY = "recovery"
+    INVITE = "invite"
 
 
 #: Revoke every session the user has, not just the one presenting the token. A logout that
@@ -143,6 +144,25 @@ class GoTrue:
         ):
             answered = await self._as_admin().admin.create_user(
                 {"email": email, "password": password, "email_confirm": False}
+            )
+        return _user_from(answered.user)
+
+    async def invite_user(self, *, email: str, redirect_to: str) -> GoTrueUser:
+        """Provision an identity and send it the invite email, in one GoTrue call.
+
+        Fails the same way `create_user` does when the address is already registered —
+        `auth.users.email` is unique regardless of which flow created the row, which is what
+        makes a Candidate address invited as a teammate (or vice versa) a clean refusal
+        rather than something the API has to check for itself.
+        """
+        with refusals(
+            {
+                "email_exists": EmailAlreadyRegisteredError,
+                "user_already_exists": EmailAlreadyRegisteredError,
+            }
+        ):
+            answered = await self._as_admin().admin.invite_user_by_email(
+                email, {"redirect_to": redirect_to}
             )
         return _user_from(answered.user)
 

@@ -253,11 +253,6 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
-
 # The stock templates link straight to `/auth/v1/verify`, which would hand the browser a Supabase
 # URL and redeem the token outside the API — exactly what ADR-0005 rules out. Ours carry the
 # `token_hash` to a page in the SPA, which posts it to the API.
@@ -268,6 +263,13 @@ content_path = "./supabase/templates/confirmation.html"
 [auth.email.template.recovery]
 subject = "Reset your Sync password"
 content_path = "./supabase/templates/recovery.html"
+
+# The invite carries a `redirect_to` (the recruiter portal, not `site_url`'s candidate
+# portal) that must be pre-approved below; the template links to `.RedirectTo` rather than
+# `.SiteURL` for the same ADR-0005 reason as the two templates above.
+[auth.email.template.invite]
+subject = "You are invited to join a Sync Tenant"
+content_path = "./supabase/templates/invite.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

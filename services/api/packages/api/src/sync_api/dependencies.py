@@ -8,7 +8,8 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
-from sync_core import Database
+from sync_api.tenants import ActingRecruiter, TenantService
+from sync_core import Database, Settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -27,6 +28,13 @@ async def get_session(
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def get_app_settings(request: Request) -> Settings:
+    return cast("Settings", request.app.state.settings)
+
+
+SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 
 
 def get_authentication(request: Request) -> Authentication:
@@ -66,3 +74,36 @@ async def get_current_profile(
 
 
 CurrentProfileDep = Annotated[ActingProfile, Depends(get_current_profile)]
+
+
+def get_tenant_service(
+    session: SessionDep,
+    authentication: Annotated[Authentication, Depends(get_authentication)],
+    settings: SettingsDep,
+) -> TenantService:
+    return TenantService(
+        session,
+        authentication.gotrue,
+        # `AnyHttpUrl` normalizes in a trailing slash pydantic adds and GoTrue's redirect
+        # allow-list, an exact string match, does not — the same reason `Settings.gotrue_url`
+        # strips it.
+        recruiter_portal_url=str(settings.recruiter_portal_url).rstrip("/"),
+    )
+
+
+TenantServiceDep = Annotated[TenantService, Depends(get_tenant_service)]
+
+
+async def get_acting_recruiter(
+    profile: CurrentProfileDep, tenants: TenantServiceDep
+) -> ActingRecruiter:
+    """The Recruiter behind the session cookie, or a 403.
+
+    Depend on this from any tenant-scoped route (invite, role/activation management, and
+    whatever future tickets add) — it is where the kill-switch and per-Recruiter
+    deactivation both get enforced.
+    """
+    return await tenants.load_acting_recruiter(profile)
+
+
+ActingRecruiterDep = Annotated[ActingRecruiter, Depends(get_acting_recruiter)]

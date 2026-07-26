@@ -46,14 +46,19 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
     ]
 
     assert sorted(operation_ids) == [
+        "acceptInvite",
         "confirmEmail",
         "confirmPasswordReset",
         "getCurrentProfile",
         "getHealth",
         "getReadiness",
+        "inviteRecruiter",
+        "listRecruiters",
         "logIn",
         "logOut",
         "refreshSession",
         "requestPasswordReset",
         "signUp",
+        "signUpTenant",
+        "updateRecruiter",
     ]

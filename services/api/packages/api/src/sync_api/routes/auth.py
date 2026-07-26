@@ -54,11 +54,25 @@ Password = Annotated[
     ),
 ]
 
-#: The opaque token from a confirmation or password-reset link, which the SPA reads out of
-#: its own URL and posts here rather than redeeming against GoTrue itself.
+#: The opaque token from a confirmation, invite, or password-reset link, which the SPA reads
+#: out of its own URL and posts here rather than redeeming against GoTrue itself.
 EmailToken = Annotated[
     str,
     Field(min_length=1, max_length=512, description="The `token_hash` from the emailed link."),
+]
+
+#: A URL-safe, human-chosen identifier for a Tenant. Explicit rather than derived from the
+#: name, so "duplicate slug" is a predictable, testable refusal rather than a hidden
+#: collision between two similarly-named companies.
+TenantSlug = Annotated[
+    str,
+    Field(
+        min_length=2,
+        max_length=63,
+        pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$",
+        description="Lowercase, hyphen-separated, unique across all Tenants.",
+        examples=["acme-recruiting"],
+    ),
 ]
 
 
@@ -88,6 +102,19 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: Password
     full_name: str = Field(min_length=1, max_length=200)
+
+
+class TenantSignUpRequest(BaseModel):
+    tenant_name: str = Field(min_length=1, max_length=200)
+    tenant_slug: TenantSlug
+    email: EmailStr
+    password: Password
+    full_name: str = Field(min_length=1, max_length=200)
+
+
+class AcceptInviteRequest(BaseModel):
+    token_hash: EmailToken
+    password: Password
 
 
 class LogInRequest(BaseModel):
@@ -133,6 +160,34 @@ async def sign_up(body: SignUpRequest, auth: AuthServiceDep) -> ProfileView:
 
 
 @router.post(
+    "/signup/tenant",
+    operation_id="signUpTenant",
+    summary="Self-serve Tenant signup: creates the Tenant and its admin Recruiter",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[RateLimited],
+    responses={
+        409: openapi_problem("The email or the tenant slug is already taken."),
+        400: openapi_problem("The identity provider rejected the password."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def sign_up_tenant(body: TenantSignUpRequest, auth: AuthServiceDep) -> ProfileView:
+    """Provision the Tenant, the Profile and the admin Recruiter, and send a confirmation email.
+
+    Same shape as `POST /signup`: no session comes back, and the admin has to confirm their
+    address — through the same `/confirm-email` — before they can sign in.
+    """
+    profile = await auth.register_recruiter_tenant(
+        tenant_name=body.tenant_name,
+        tenant_slug=body.tenant_slug,
+        email=body.email,
+        password=body.password,
+        full_name=body.full_name,
+    )
+    return ProfileView.of(profile)
+
+
+@router.post(
     "/confirm-email",
     operation_id="confirmEmail",
     summary="Confirm an email address",
@@ -154,6 +209,35 @@ async def confirm_email(
     that address, which is the same thing a password proves about the account.
     """
     return _signed_in(await auth.confirm_email(body.token_hash), cookies, response)
+
+
+@router.post(
+    "/accept-invite",
+    operation_id="acceptInvite",
+    summary="Redeem a teammate invite and set a password",
+    dependencies=[RateLimited],
+    responses={
+        400: openapi_problem("The link is invalid or expired, or the password was refused."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def accept_invite(
+    body: AcceptInviteRequest,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+    response: Response,
+) -> ProfileView:
+    """Redeem the `token_hash` from the invite email and set the password that gets them in.
+
+    The Profile and Recruiter already exist — invite-as-provisioning wrote them when the
+    invite was sent — so this is the invitee's only action: prove they read the mail, and
+    choose a password. They land signed in, in their Tenant.
+    """
+    return _signed_in(
+        await auth.accept_invite(token_hash=body.token_hash, password=body.password),
+        cookies,
+        response,
+    )
 
 
 @router.post(

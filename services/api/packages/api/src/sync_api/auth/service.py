@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Final
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from sync_api.auth.gotrue import (
     EmailAlreadyRegisteredError,
@@ -42,11 +43,12 @@ from sync_api.problems import (
     INVALID_EMAIL_TOKEN_PROBLEM_TYPE,
     NOT_AUTHENTICATED_PROBLEM_TYPE,
     PASSWORD_UNCHANGED_PROBLEM_TYPE,
+    TENANT_SLUG_ALREADY_REGISTERED_PROBLEM_TYPE,
     WEAK_PASSWORD_PROBLEM_TYPE,
     Problem,
 )
 from sync_core import get_logger
-from sync_core.models import AccountType, Candidate, Profile, User
+from sync_core.models import AccountType, Candidate, Profile, Recruiter, RecruiterRole, Tenant, User
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,7 +118,7 @@ class AuthService:
             await self._provision_candidate(user, full_name=full_name)
             await self._gotrue.send_confirmation_email(email)
         except BaseException:
-            await self._undo_identity(user.id)
+            await undo_identity(self._gotrue, user.id)
             raise
 
         logger.info("auth.candidate_registered", profile_id=str(user.id))
@@ -129,11 +131,73 @@ class AuthService:
             phone=None,
         )
 
+    async def register_recruiter_tenant(
+        self, *, tenant_name: str, tenant_slug: str, email: str, password: str, full_name: str
+    ) -> ActingProfile:
+        """Self-serve tenant onboarding: one signup creates the Tenant and its admin Recruiter.
+
+        Same shape as `register_candidate` — the identity is created first and deleted again
+        if anything downstream fails, including a slug already taken by another Tenant, so a
+        rejected signup leaves neither a stranded identity nor a half-created Tenant.
+        """
+        try:
+            user = await self._gotrue.create_user(email=email, password=password)
+        except EmailAlreadyRegisteredError as exc:
+            raise Problem(
+                status=409,
+                type=EMAIL_ALREADY_REGISTERED_PROBLEM_TYPE,
+                detail="An account already exists for this email address.",
+            ) from exc
+        except WeakPasswordError as exc:
+            raise _weak_password() from exc
+
+        try:
+            await self._provision_tenant_admin(
+                user, tenant_name=tenant_name, tenant_slug=tenant_slug, full_name=full_name
+            )
+            await self._gotrue.send_confirmation_email(email)
+        except BaseException:
+            await undo_identity(self._gotrue, user.id)
+            raise
+
+        logger.info("auth.tenant_registered", profile_id=str(user.id), tenant_slug=tenant_slug)
+        return ActingProfile(
+            id=user.id,
+            email=user.email,
+            full_name=full_name,
+            account_type=AccountType.RECRUITER,
+            avatar_url=None,
+            phone=None,
+        )
+
     async def confirm_email(self, token_hash: str) -> SignedIn:
         """Redeem the token from the confirmation email, which also signs the candidate in."""
         session = await self._redeem(token_hash, EmailTokenType.SIGNUP)
         profile = await self._load_profile(session.user.id)
         logger.info("auth.email_confirmed", profile_id=str(profile.id))
+        return SignedIn(profile=profile, session=session)
+
+    async def accept_invite(self, *, token_hash: str, password: str) -> SignedIn:
+        """Redeem a teammate invite and set the password that gets them back in.
+
+        The Profile and Recruiter rows already exist — invite-as-provisioning wrote them
+        when the invite was sent — so redeeming only has to prove the invitee reads mail sent
+        to that address and let them choose a password, same as `confirm_email` proves it for
+        a candidate signup.
+        """
+        session = await self._redeem(token_hash, EmailTokenType.INVITE)
+        try:
+            await self._gotrue.set_password(user_id=session.user.id, password=password)
+        except WeakPasswordError as exc:
+            raise _weak_password() from exc
+        except PasswordUnchangedError as exc:
+            raise Problem(
+                status=400,
+                type=PASSWORD_UNCHANGED_PROBLEM_TYPE,
+                detail="Choose a password you have not used on this account before.",
+            ) from exc
+        profile = await self._load_profile(session.user.id)
+        logger.info("auth.invite_accepted", profile_id=str(profile.id))
         return SignedIn(profile=profile, session=session)
 
     async def log_in(self, *, email: str, password: str) -> SignedIn:
@@ -236,14 +300,35 @@ class AuthService:
             await self._db.flush()
             self._db.add(Candidate(id=user.id))
 
-    async def _undo_identity(self, user_id: UUID) -> None:
-        """Delete the identity a failed signup created, cascading away anything it wrote."""
+    async def _provision_tenant_admin(
+        self, user: GoTrueUser, *, tenant_name: str, tenant_slug: str, full_name: str
+    ) -> None:
+        """Write the Tenant, the Profile and the admin Recruiter in one transaction.
+
+        A duplicate slug surfaces here as `IntegrityError` — `tenants.slug` is the only thing
+        in this write the caller does not fully control, so it is the only one translated
+        into a clean `Problem` rather than left to become a 500.
+        """
         try:
-            await self._gotrue.delete_user(user_id)
-        except Exception:
-            # Reported, not raised: the caller is already failing for a better reason, and
-            # this line is what tells an operator an identity was stranded after all.
-            logger.exception("auth.signup_rollback_failed", profile_id=str(user_id))
+            async with self._db.begin():
+                tenant = Tenant(name=tenant_name, slug=tenant_slug)
+                self._db.add(tenant)
+                await self._db.flush()
+                self._db.add(
+                    Profile(id=user.id, account_type=AccountType.RECRUITER, full_name=full_name)
+                )
+                await self._db.flush()
+                self._db.add(
+                    Recruiter(id=user.id, tenant_id=tenant.id, role=RecruiterRole.ADMIN)
+                )
+        except IntegrityError as exc:
+            if _violates(exc, "tenants_slug_key"):
+                raise Problem(
+                    status=409,
+                    type=TENANT_SLUG_ALREADY_REGISTERED_PROBLEM_TYPE,
+                    detail="That tenant slug is already taken.",
+                ) from exc
+            raise
 
     async def _redeem(self, token_hash: str, token_type: EmailTokenType) -> GoTrueSession:
         try:
@@ -283,6 +368,32 @@ class AuthService:
             avatar_url=profile.avatar_url,
             phone=profile.phone,
         )
+
+
+async def undo_identity(gotrue: GoTrue, user_id: UUID) -> None:
+    """Delete the identity a failed provisioning flow created, cascading away what it wrote.
+
+    Shared by every flow that creates the GoTrue identity before writing to Postgres —
+    candidate signup, tenant signup, teammate invite — since each has the same thing to undo
+    when that write fails.
+    """
+    try:
+        await gotrue.delete_user(user_id)
+    except Exception:
+        # Reported, not raised: the caller is already failing for a better reason, and this
+        # line is what tells an operator an identity was stranded after all.
+        logger.exception("auth.signup_rollback_failed", profile_id=str(user_id))
+
+
+def _violates(exc: IntegrityError, constraint_name: str) -> bool:
+    """Whether `exc` is a violation of the named Postgres constraint.
+
+    `exc.orig` is the DBAPI's own exception class (asyncpg wrapped by SQLAlchemy's dialect),
+    which carries only `sqlstate`; the asyncpg error that actually names the constraint is
+    one level further down, chained on as `__cause__` by the dialect's own `raise ... from`.
+    """
+    cause = getattr(exc.orig, "__cause__", None)
+    return getattr(cause, "constraint_name", None) == constraint_name
 
 
 def _unauthenticated(reason: object) -> Problem:

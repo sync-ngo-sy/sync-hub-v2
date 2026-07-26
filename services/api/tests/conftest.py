@@ -137,6 +137,17 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
+async def second_browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """A second, independent SPA client — its own cookie jar, for tests with two actors.
+
+    E.g. a Tenant admin inviting a teammate: `browser` stays the admin throughout, and this
+    is who accepts the invite and acts as the teammate afterwards.
+    """
+    async with asgi_client(app, headers=SPA_HEADERS) as http_client:
+        yield http_client
+
+
+@pytest.fixture
 async def browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """One SPA's worth of client: its own cookie jar, and the CSRF header it always sends.
 

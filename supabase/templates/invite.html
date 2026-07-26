@@ -1,0 +1,18 @@
+<!--
+  Teammate invite. Same shape as `confirmation.html`, but the link points at the recruiter
+  portal (`.RedirectTo`, passed by the API on every invite) rather than `.SiteURL` — the
+  candidate portal at `site_url` is the wrong SPA for a Recruiter to land in. The SPA takes
+  the `token_hash` from this URL and posts it, with a chosen password, to
+  `POST /v1/auth/accept-invite`.
+-->
+<h2>You have been invited to Sync</h2>
+
+<p>Set a password to join your team's Tenant.</p>
+
+<p>
+  <a href="{{ .RedirectTo }}/auth/accept-invite?token_hash={{ .TokenHash }}&type=invite">
+    Accept the invite
+  </a>
+</p>
+
+<p>If you did not expect this invitation, ignore this message.</p>

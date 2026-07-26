@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     supabase_service_role_key: SecretStr
     supabase_anon_key: SecretStr
 
+    # Where the recruiter portal SPA runs. A teammate invite email links here rather than
+    # to `supabase_url`'s `site_url` (the candidate portal), so GoTrue needs it as the
+    # invite's `redirect_to` — which must also be in `additional_redirect_urls`.
+    recruiter_portal_url: AnyHttpUrl
+
     # Auth (ADR-0005). Sessions live in httpOnly cookies the SPAs cannot read; `secure` is
     # only ever turned off for plain-HTTP local development.
     auth_cookie_secure: bool = True
