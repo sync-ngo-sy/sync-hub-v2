@@ -8,6 +8,8 @@ If a well-known library already does it, add the library.
 
 If the only library that does it is somebody's weekend project, do not add it.
 
+Example: Instead of implementing retry logic from scratch, reach for Tenacity. This is just an example, so you must decide when there is a similar case.
+
 ## Agent skills
 
 ### Issue tracker
