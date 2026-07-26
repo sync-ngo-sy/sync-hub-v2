@@ -10,6 +10,7 @@
   "scripts": {
     "gen": "openapi-typescript http://localhost:8000/openapi.json -o ./src/schema.gen.ts",
     "lint": "biome check .",
+    "format": "biome format --write .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
