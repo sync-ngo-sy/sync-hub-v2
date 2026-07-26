@@ -68,9 +68,7 @@ async def test_a_non_admin_recruiter_cannot_change_roles_or_deactivate(
 ) -> None:
     admin = await a_confirmed_tenant_admin(browser, mailbox)
     await log_in_recruiter(browser, admin.email, password=admin.password)
-    recruiter_id, _ = await an_accepted_teammate(
-        browser, second_browser, mailbox, role="recruiter"
-    )
+    recruiter_id, _ = await an_accepted_teammate(browser, second_browser, mailbox, role="recruiter")
 
     response = await second_browser.patch(
         f"/v1/tenants/recruiters/{recruiter_id}", json={"is_active": False}
@@ -85,9 +83,7 @@ async def test_an_admin_can_change_a_teammates_role_and_deactivate_them(
 ) -> None:
     admin = await a_confirmed_tenant_admin(browser, mailbox)
     await log_in_recruiter(browser, admin.email, password=admin.password)
-    recruiter_id, _ = await an_accepted_teammate(
-        browser, second_browser, mailbox, role="recruiter"
-    )
+    recruiter_id, _ = await an_accepted_teammate(browser, second_browser, mailbox, role="recruiter")
 
     response = await browser.patch(
         f"/v1/tenants/recruiters/{recruiter_id}", json={"role": "admin", "is_active": False}

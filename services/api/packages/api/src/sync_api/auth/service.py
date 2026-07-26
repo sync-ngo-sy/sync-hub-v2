@@ -318,9 +318,7 @@ class AuthService:
                     Profile(id=user.id, account_type=AccountType.RECRUITER, full_name=full_name)
                 )
                 await self._db.flush()
-                self._db.add(
-                    Recruiter(id=user.id, tenant_id=tenant.id, role=RecruiterRole.ADMIN)
-                )
+                self._db.add(Recruiter(id=user.id, tenant_id=tenant.id, role=RecruiterRole.ADMIN))
         except IntegrityError as exc:
             if _violates(exc, "tenants_slug_key"):
                 raise Problem(

@@ -109,9 +109,7 @@ async def test_tenant_signup_refuses_a_duplicate_slug(
     assert await db_session.scalar(select(func.count()).select_from(Tenant)) == 1
 
     identities = await db_session.scalar(
-        text("select count(*) from auth.users where email = :email").bindparams(
-            email=second.email
-        )
+        text("select count(*) from auth.users where email = :email").bindparams(email=second.email)
     )
     assert identities == 0
 
