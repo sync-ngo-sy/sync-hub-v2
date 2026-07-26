@@ -55,6 +55,12 @@ def _stack_environment() -> Iterator[None]:
             # limiter itself is tested in `test_auth_protections.py`, against an app built
             # with a limit small enough to reach on purpose.
             "SYNC_AUTH_RATE_LIMIT_MAX_REQUESTS": "100000",
+            # Not stack-derived like the values above — `supabase status` knows nothing about
+            # the recruiter portal. Fixed rather than configurable per environment because it
+            # has to match `additional_redirect_urls` in `supabase/config.toml`, which is
+            # itself a fixed value for the local stack every environment (dev and CI alike)
+            # runs against.
+            "SYNC_RECRUITER_PORTAL_URL": "http://127.0.0.1:5174",
         }
     )
     get_settings.cache_clear()
