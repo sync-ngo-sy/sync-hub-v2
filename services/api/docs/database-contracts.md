@@ -160,7 +160,7 @@ the row, and whatever waits on it, stuck for good.
   been deleted meanwhile there is nothing to fail and nobody to tell, and the consumer says so
   in the log rather than writing a notification whose recipient it cannot name.
 
-### Re-embedding (`candidate_embedding_jobs` → `sync_rag`)
+### Re-embedding (`candidate_embedding_jobs` → `sync_rag`/`sync_worker`)
 Coalesced, one row per candidate. Claim a dirty row, capture its `revision`, then:
 ```
 1. read the candidate's CURRENT candidate_* profile
@@ -174,6 +174,19 @@ Coalesced, one row per candidate. Claim a dirty row, capture its `revision`, the
 ```
 If the profile changed while embedding (`revision` advanced), `dirty` stays true → reprocess.
 Never patch chunks in place. Search only ever sees a fully-embedded profile.
+
+This queue is shaped unlike the others, so `sync_worker.embedding` drives it rather than the
+generic engine: there is no status column and no `available_at`. `claimed_at` is the claim
+(NULL = nobody holds it, and the sweep releases one held past the stuck threshold), and
+`updated_at` is the earliest time to try again — the enqueue trigger sets it to `now()`, a
+failure sets it to `now() + backoff(attempts)`. There is also no dead state: a job that keeps
+failing keeps its `dirty` (which is simply true — the chunks *are* out of date) and is retried
+on an interval that stops doubling at about an hour. A success resets `attempts` to zero.
+
+Chunking is per section, from the live tables: one `identity` chunk, one per `experience` and
+per `project`, and one each for `education`, `skills` and `languages`. `chunk_type` records
+which, and `chunk_text` is what a recruiter is shown as the evidence for a hit. An empty
+section produces no chunk, so a profile with nothing in it produces nothing to find.
 
 ### Communications (`communications` → sender)
 - Also the delivery-audit record. Claim `status='queued'`; resolve the recipient's verified
@@ -222,21 +235,28 @@ Communication: never delivered externally, never queued, and never sent by a wor
 
 ## Global candidate search
 
-Discoverability is the `candidate_search_profiles` view (searchable + not deleted + `ready`
-current CV + has chunks). Vector search:
+`GET /v1/search/candidates`, recruiter-only. Discoverability is the `candidate_search_profiles`
+view (searchable + not deleted + `ready` current CV + has chunks). Vector search:
 ```sql
-select s.*, ch.chunk_text, (ch.embedding <=> :query_embedding) as distance
+select distinct on (ch.candidate_id)
+       s.*, ch.chunk_type, ch.chunk_text, (ch.embedding <=> :query_embedding) as distance
 from candidate_profile_chunks ch
 join candidate_search_profiles s on s.candidate_id = ch.candidate_id
-order by ch.embedding <=> :query_embedding
-limit :k;
+order by ch.candidate_id, distance          -- then order the result by distance, limit :k
 ```
-Optional filters AND onto the join: structured predicates on the view (location,
-preferred language) and, when the recruiter supplies explicit keywords,
-`candidates.search_vector @@ websearch_to_tsquery(:keywords)`. Semantics come from the
-vector ranking; FTS is a hard filter only — there is no rank fusion.
+`distinct on` is what keeps a candidate to one place in the ranking, holding the chunk of
+theirs that matched best; that chunk is returned as the evidence for the hit.
 
-Never project email or phone. Never expose another tenant's notes/tags/applications/comms.
+Optional filters AND onto the join: structured predicates on the view (location matched
+inside, preferred language exactly) and, when the recruiter supplies explicit keywords,
+`candidates.search_vector @@ websearch_to_tsquery('english', :keywords)`. Semantics come from
+the vector ranking; FTS is a hard filter only — there is no rank fusion.
+
+Every column of a result comes from the view, which has neither email nor phone. Never expose
+another tenant's notes/tags/applications/comms.
+
+Embedding the query needs the same provider the worker embeds chunks with. Where no key is
+configured the API still starts and this one endpoint answers 503.
 
 ## Storage
 

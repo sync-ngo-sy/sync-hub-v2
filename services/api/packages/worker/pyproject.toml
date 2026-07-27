@@ -11,6 +11,7 @@ dependencies = [
     "sync-core",
     "sync-ingestion",
     "sync-parsers",
+    "sync-rag",
 ]
 
 [project.scripts]
@@ -25,3 +26,4 @@ build-backend = "uv_build"
 sync-core = { workspace = true }
 sync-ingestion = { workspace = true }
 sync-parsers = { workspace = true }
+sync-rag = { workspace = true }

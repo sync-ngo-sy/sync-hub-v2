@@ -52,10 +52,7 @@ export interface paths {
         put?: never;
         /**
          * Create a candidate account
-         * @description Provision the identity, the Profile and the Candidate, and send a confirmation email.
-         *
-         *     No session comes back: the candidate has to confirm the address before they can sign in.
-         *     Anything that fails part-way leaves the address free to sign up again.
+         * @description Create the identity, Profile and Candidate, and email a confirmation link. No session yet.
          */
         post: operations["signUp"];
         delete?: never;
@@ -76,9 +73,6 @@ export interface paths {
         /**
          * Confirm an email address
          * @description Redeem the `token_hash` from the confirmation email, and sign the candidate in.
-         *
-         *     Signing them in is not a shortcut: redeeming the token proves they read mail sent to
-         *     that address, which is the same thing a password proves about the account.
          */
         post: operations["confirmEmail"];
         delete?: never;
@@ -99,9 +93,6 @@ export interface paths {
         /**
          * Accept a teammate invitation
          * @description Redeem the `token_hash` from an invite email, choose a password, and sign in.
-         *
-         *     The Recruiter and their Tenant membership already exist — inviting is what created them
-         *     — so this adds the one thing missing and drops the invitee straight into their team.
          */
         post: operations["acceptInvite"];
         delete?: never;
@@ -158,10 +149,7 @@ export interface paths {
         put?: never;
         /**
          * End the session
-         * @description Revoke every session the caller has, then clear their cookies.
-         *
-         *     Succeeds whatever state the caller is in — a logout that could fail would be a way to
-         *     leave someone signed in.
+         * @description Revoke every session the caller has, then clear their cookies. Never fails.
          */
         post: operations["logOut"];
         delete?: never;
@@ -201,10 +189,7 @@ export interface paths {
         put?: never;
         /**
          * Ask for a password-reset email
-         * @description Send the reset email, if the address has an account.
-         *
-         *     Accepted either way, and with the same latency-free answer either way: a caller must not
-         *     be able to learn from this endpoint whether an address is registered.
+         * @description Send the reset email, if the address has an account. Accepted either way.
          */
         post: operations["requestPasswordReset"];
         delete?: never;
@@ -224,10 +209,7 @@ export interface paths {
         put?: never;
         /**
          * Set a new password
-         * @description Redeem the `token_hash` from the reset email and set the new password.
-         *
-         *     Ends every session the account had, this caller's included, so the new password is the
-         *     only way back in.
+         * @description Redeem the `token_hash` from the reset email, set the new password, and end every session.
          */
         post: operations["confirmPasswordReset"];
         delete?: never;
@@ -247,10 +229,7 @@ export interface paths {
         put?: never;
         /**
          * Create a tenant and its founding admin
-         * @description Self-serve onto the platform: one call creates the Tenant and the admin who runs it.
-         *
-         *     No session comes back, exactly as for a candidate: the founder confirms their address
-         *     first. Anything that fails part-way leaves neither a Tenant nor a usable address behind.
+         * @description Create the Tenant and the admin who runs it. No session yet: the founder confirms first.
          */
         post: operations["signUpTenant"];
         delete?: never;
@@ -288,18 +267,13 @@ export interface paths {
         };
         /**
          * The tenant's recruiters
-         * @description Everyone on the roster, deactivated colleagues included — an admin has to see someone
-         *     to reactivate them. Any recruiter may read it; only an admin may change it.
+         * @description Everyone on the roster, deactivated colleagues included. Any recruiter may read it.
          */
         get: operations["listTenantMembers"];
         put?: never;
         /**
          * Invite a teammate
-         * @description Mail an invitation and add the invitee to the roster in the same breath.
-         *
-         *     They are a member from this moment — 201 is not a promise, it is the row — but they
-         *     cannot sign in until they follow the link and choose a password. An address that already
-         *     belongs to anyone, Candidate or Recruiter, is refused: one address, one account.
+         * @description Mail an invitation and add the invitee to the roster, pending their password.
          */
         post: operations["inviteTenantMember"];
         delete?: never;
@@ -323,10 +297,7 @@ export interface paths {
         head?: never;
         /**
          * Change a teammate's role or access
-         * @description Promote, demote, deactivate or reinstate a colleague.
-         *
-         *     Deactivating is how a departure is handled: the row and everything attached to it stays,
-         *     and the person is refused at the door on their very next request.
+         * @description Promote, demote, deactivate or reinstate a colleague. Deactivating keeps the row.
          */
         patch: operations["changeTenantMember"];
         trace?: never;
@@ -340,17 +311,12 @@ export interface paths {
         };
         /**
          * The caller's whole professional profile
-         * @description Everything the profile form renders, in one payload — and a valid body to `PUT` back.
-         *
-         *     Every section is present even when empty: the form is the same form either way.
+         * @description Everything the profile form renders, and a valid body to `PUT` back.
          */
         get: operations["getMyProfile"];
         /**
          * Replace the caller's whole professional profile
-         * @description Save the profile whole, and answer with what was stored.
-         *
-         *     A replacement, not a patch: a section the body leaves out is a section the candidate
-         *     has emptied. The save is one transaction, so it either all happened or none of it did.
+         * @description Replace the profile whole — an omitted section is an emptied one — and answer with it.
          */
         put: operations["replaceMyProfile"];
         post?: never;
@@ -371,14 +337,7 @@ export interface paths {
         put?: never;
         /**
          * Upload a CV
-         * @description Store the file and start reading it.
-         *
-         *     Answers as soon as the CV exists, not when it has been parsed — the reading happens in
-         *     the worker and takes about ten seconds. The response comes back `uploaded`; poll the
-         *     CV until it is `ready` or `failed`.
-         *
-         *     The same file twice is a 409 rather than a second CV, and the 409 carries the id of the
-         *     CV already holding it.
+         * @description Store the file and start parsing it. Poll the CV until `ready` or `failed`.
          */
         post: operations["uploadMyCv"];
         delete?: never;
@@ -396,11 +355,7 @@ export interface paths {
         };
         /**
          * A CV and how far its parse has got
-         * @description What to poll while a CV is being read.
-         *
-         *     `parsing_status` is the authoritative state: `uploaded` and `processing` mean keep
-         *     waiting, `ready` means `parsed_cv` is filled in, and `failed` means it never will be
-         *     and `parsing_error` says why.
+         * @description What to poll while a CV is parsed. `parsing_status` is the authoritative state.
          */
         get: operations["getMyCv"];
         put?: never;
@@ -420,10 +375,7 @@ export interface paths {
         };
         /**
          * A short-lived link to the original file
-         * @description Where to fetch the file the candidate uploaded.
-         *
-         *     A fresh link each time, good for a few minutes. Ask for one when the candidate clicks;
-         *     storing one is storing a key to the document.
+         * @description A short-lived link to the uploaded file. Ask for a fresh one per click; never store it.
          */
         get: operations["getMyCvDownloadLink"];
         put?: never;
@@ -443,11 +395,7 @@ export interface paths {
         };
         /**
          * The caller's notifications, newest first
-         * @description One page of what the platform has told this Profile.
-         *
-         *     Each item's `payload` says what happened, and its `type` says which shape the payload
-         *     takes — switch on that one field. Page by sending `next_cursor` back as `cursor`, and
-         *     stop when it comes back null.
+         * @description One page, newest first. Switch on each `payload.type`; page with `next_cursor`.
          */
         get: operations["listMyNotifications"];
         put?: never;
@@ -489,12 +437,32 @@ export interface paths {
         put?: never;
         /**
          * Mark one notification read
-         * @description Say the caller has seen this one, and answer with it as it now stands.
-         *
-         *     Safe to send again: a notification that is already read keeps the time it was first
-         *     read, so re-rendering a list does not turn `read_at` into "last seen".
+         * @description Mark one read and answer with it. Idempotent: `read_at` keeps the first time it was read.
          */
         post: operations["markMyNotificationAsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/search/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find Searchable Candidates across tenants
+         * @description Candidates ranked by what `q` means, each with the profile fragment that matched.
+         *
+         *     Every filter is a hard one — a candidate that fails any of them is not a result, and
+         *     `keywords` never changes the order. Results never carry an email or a phone number.
+         */
+        get: operations["searchCandidates"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -533,10 +501,16 @@ export interface components {
             file: string;
         };
         /**
+         * CandidateMatches
+         * @description Searchable Candidates, closest match first.
+         */
+        CandidateMatches: {
+            /** Items */
+            items: components["schemas"]["MatchedCandidate"][];
+        };
+        /**
          * CandidateProfile
-         * @description Everything a Candidate says about themselves professionally.
-         *
-         *     One model for both directions: a `GET` body is a valid `PUT` body, unchanged.
+         * @description Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body.
          */
         CandidateProfile: {
             /**
@@ -594,6 +568,11 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /**
+         * ChunkType
+         * @enum {string}
+         */
+        ChunkType: "identity" | "experience" | "education" | "skills" | "languages" | "project";
         /** ConfirmEmailRequest */
         ConfirmEmailRequest: {
             /**
@@ -676,13 +655,7 @@ export interface components {
         };
         /**
          * CvParseFailed
-         * @description The platform gave up on reading a CV.
-         *
-         *     Frozen, because a payload is a record of something that already happened.
-         *
-         *     The reason is deliberately not here. It lives on the CV itself (`parsing_error`), where it
-         *     is one field of the document this points at, and it is written for a developer reading a
-         *     row rather than for a candidate reading a bell.
+         * @description The platform gave up on reading a CV. The reason is on the CV, as `parsing_error`.
          */
         CvParseFailed: {
             /**
@@ -709,11 +682,7 @@ export interface components {
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
         /**
          * DuplicateCvProblemDetail
-         * @description A refused upload that can name the CV the candidate already has.
-         *
-         *     A typed member rather than a bare extension: the id is the useful half of this refusal
-         *     — it is what lets the SPA go straight to that CV — and a client cannot rely on
-         *     something the OpenAPI document only mentions in prose.
+         * @description A refused upload that names the CV the candidate already has.
          */
         DuplicateCvProblemDetail: {
             /**
@@ -823,6 +792,36 @@ export interface components {
             password: string;
         };
         /**
+         * MatchedCandidate
+         * @description One Searchable Candidate, with the profile fragment that matched.
+         */
+        MatchedCandidate: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Full Name */
+            full_name?: string | null;
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /** Headline */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Preferred Language Code */
+            preferred_language_code?: string | null;
+            /** @description Which part of the profile the fragment came from. */
+            matched_section?: components["schemas"]["ChunkType"] | null;
+            /**
+             * Matched Text
+             * @description The profile fragment that matched. Show it as the evidence for the hit.
+             */
+            matched_text: string;
+        };
+        /**
          * MemberView
          * @description One Recruiter on the roster.
          */
@@ -896,11 +895,7 @@ export interface components {
         };
         /**
          * ParsedCv
-         * @description Everything read out of one CV.
-         *
-         *     Every field is present in the model's answer — the strict-schema subset has no optional
-         *     properties, only nullable ones — so "the CV does not say" is `null` or an empty list
-         *     throughout, never an absent key.
+         * @description Everything read out of one CV. "Not stated" is null or an empty list, never an absent key.
          */
         ParsedCv: {
             /**
@@ -1051,11 +1046,7 @@ export interface components {
         };
         /**
          * ParsedSkill
-         * @description One Canonical skill the CV evidences.
-         *
-         *     `name` must be a Canonical skill spelled exactly as the prompt listed it. The backend
-         *     checks that rather than trusting it (ADR-0006): a name that is not in the taxonomy is
-         *     moved to `unmapped_skills`, where it is reviewed and never reaches Screening.
+         * @description One Canonical skill the CV evidences, named exactly as the prompt listed it.
          */
         ParsedSkill: {
             /**
@@ -1196,10 +1187,7 @@ export interface components {
         };
         /**
          * ProfileSkill
-         * @description One Canonical skill, and how long the candidate has been doing it.
-         *
-         *     Named rather than identified: a Canonical skill *is* its one spelling, and the CV parse
-         *     speaks in those names — so the review flow can post back what it read.
+         * @description One Canonical skill, by its exact name, and how long the candidate has been doing it.
          */
         ProfileSkill: {
             /**
@@ -2815,6 +2803,82 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    searchCandidates: {
+        parameters: {
+            query: {
+                /** @description What you are looking for, in your own words. */
+                q: string;
+                /** @description Matched inside the candidate's location. */
+                location?: string | null;
+                /** @description A candidate's preferred language code. */
+                language?: string | null;
+                /** @description Words that must appear in the profile. Supports `"quoted phrases"`, `or` and `-excluded`. */
+                keywords?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateMatches"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter of an active tenant. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Global search is not configured on this deployment. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
