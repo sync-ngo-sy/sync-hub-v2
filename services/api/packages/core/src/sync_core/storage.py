@@ -11,6 +11,7 @@ the same arrangement `sync_api.auth.Authentication` makes for GoTrue.
 
 from __future__ import annotations
 
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final, Literal
 
 from httpx import AsyncClient, HTTPError
@@ -21,6 +22,7 @@ from sync_core.logging import get_logger
 
 if TYPE_CHECKING:
     from io import BufferedReader
+    from uuid import UUID
 
     from storage3._async.file_api import AsyncBucketProxy
 
@@ -46,9 +48,30 @@ CV_MEDIA_TYPE_BY_EXTENSION: Final[dict[str, str]] = {
     extension: media_type for media_type, extension in CV_MEDIA_TYPES.items()
 }
 
-#: For a stored path whose extension says nothing — which the API cannot produce, so this
-#: is a floor under a row written by something else rather than a case that happens.
+#: For a stored path whose extension says nothing — which `cv_object_path` cannot produce,
+#: so this is a floor under a row written by something else rather than a case that happens.
 DEFAULT_CV_MEDIA_TYPE: Final = "application/pdf"
+
+
+def cv_object_path(candidate_id: UUID, cv_id: UUID, media_type: str) -> str:
+    """Where one candidate's CV file lives in the bucket.
+
+    Built from ids and the media type the API accepted, never from anything the candidate
+    typed: the object's name is ours, and the display name is a label on the row.
+
+    Here, next to `cv_media_type_of`, because the two are one scheme seen from both ends —
+    the API composes a path and the worker reads the format back out of it, and a change to
+    either that forgot the other would hand the model a DOCX labelled as a PDF.
+    """
+    return f"{candidate_id}/{cv_id}{CV_MEDIA_TYPES[media_type]}"
+
+
+def cv_media_type_of(storage_path: str) -> str:
+    """What the file at this path is, according to the path this module built."""
+    return CV_MEDIA_TYPE_BY_EXTENSION.get(
+        PurePosixPath(storage_path).suffix.lower(), DEFAULT_CV_MEDIA_TYPE
+    )
+
 
 #: Long enough for a 10 MB upload over a slow link, short enough that a stalled Storage
 #: cannot pin a request worker indefinitely.
@@ -70,13 +93,12 @@ class ObjectNotFoundError(StorageError):
 class Storage:
     """Everything the platform does to the `cvs` bucket, and nothing else."""
 
-    def __init__(self, client: AsyncStorageClient, http: AsyncClient, *, bucket: str) -> None:
+    def __init__(self, client: AsyncStorageClient, http: AsyncClient) -> None:
         self._client = client
         self._http = http
-        self._bucket_name = bucket
 
     @classmethod
-    def build(cls, settings: Settings, *, bucket: str = CV_BUCKET) -> Storage:
+    def build(cls, settings: Settings) -> Storage:
         http = AsyncClient(timeout=STORAGE_TIMEOUT_SECONDS)
         key = settings.supabase_service_role_key.get_secret_value()
         return cls(
@@ -88,7 +110,6 @@ class Storage:
                 http_client=http,
             ),
             http,
-            bucket=bucket,
         )
 
     async def upload(self, path: str, content: BufferedReader, *, media_type: str) -> None:
@@ -126,7 +147,7 @@ class Storage:
 
     @property
     def _bucket(self) -> AsyncBucketProxy:
-        return self._client.from_(self._bucket_name)
+        return self._client.from_(CV_BUCKET)
 
     async def aclose(self) -> None:
         await self._http.aclose()

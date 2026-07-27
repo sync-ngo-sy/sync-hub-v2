@@ -9,6 +9,7 @@ from sync_core.logging import (
 )
 from sync_core.settings import Environment, LogFormat, SameSite, Settings, get_settings
 from sync_core.storage import CV_BUCKET, ObjectNotFoundError, Storage, StorageError
+from sync_core.transactions import transaction
 
 __all__ = [
     "CV_BUCKET",
@@ -25,4 +26,5 @@ __all__ = [
     "configure_logging",
     "get_logger",
     "get_settings",
+    "transaction",
 ]

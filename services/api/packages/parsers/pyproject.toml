@@ -8,6 +8,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    # The Files API and the Responses API's structured outputs, both of which ADR-0006
+    # depends on. Confined to this package: the port is what everything else imports.
     "openai>=2.48.0",
     "sync-core",
 ]

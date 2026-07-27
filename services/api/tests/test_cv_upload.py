@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from typing import Final
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_core import Storage
+from sync_api.dependencies import get_storage
+from sync_core import Settings, Storage
 from sync_core.models import CvParsingStatus, IngestionStatus
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import (
@@ -30,6 +33,9 @@ from tests.support.cvs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import an_admin
+
+#: A port nothing is listening on, so every Storage call fails to connect.
+UNREACHABLE: Final = "http://127.0.0.1:1"
 
 
 async def test_uploading_a_cv_returns_it_waiting_to_be_read(
@@ -283,3 +289,42 @@ async def test_a_recruiter_has_no_cvs(
 
     assert response.status_code == 403, response.text
     assert response.json()["type"].endswith("candidate-only")
+
+
+# When Storage will not cooperate ------------------------------------------------
+
+
+async def test_a_cv_whose_file_has_gone_says_so_rather_than_crashing(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, storage: Storage
+) -> None:
+    """The row promises a file that is not there — our problem, and a 502 not a 500."""
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    await storage.remove((await cv_row(db_session, cv["id"])).storage_path)
+
+    response = await browser.get(f"{CVS}/{cv['id']}/download")
+
+    assert response.status_code == 502, response.text
+    assert response.json()["type"].endswith("cv-file-unavailable")
+
+
+async def test_an_upload_during_a_storage_outage_is_a_bad_gateway(
+    browser: AsyncClient, mailbox: Mailbox, app: FastAPI, settings: Settings
+) -> None:
+    """A file store that cannot be reached is not the caller's fault, and not a 500.
+
+    Overriding the dependency rather than breaking the stack: what is under test is that
+    `StorageError` reaches a handler at all — every route that touches Storage can raise
+    it, and before there was one, an outage came out as an unhandled 500.
+    """
+    await a_signed_in_candidate(browser, mailbox)
+    unreachable = Storage.build(settings.model_copy(update={"supabase_url": UNREACHABLE}))
+    app.dependency_overrides[get_storage] = lambda: unreachable
+    try:
+        response = await upload_cv(browser)
+    finally:
+        app.dependency_overrides.clear()
+        await unreachable.aclose()
+
+    assert response.status_code == 502, response.text
+    assert response.json()["type"].endswith("storage-unavailable")

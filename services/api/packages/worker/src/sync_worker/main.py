@@ -15,11 +15,11 @@ from sync_worker.worker import run_worker
 
 
 def main() -> None:
-    """Run until interrupted.
+    """Run until signalled to stop.
 
-    `KeyboardInterrupt` is what `asyncio.run` raises on SIGINT, and Docker's SIGTERM
-    reaches Python the same way; both mean the same thing here, and both are an ordinary
-    exit rather than a traceback.
+    `run_worker` installs handlers for `SIGINT` and `SIGTERM` and shuts down by cancelling
+    itself. The suppression here only covers a Ctrl-C in the moment before those handlers
+    are installed, which is still an ordinary exit rather than a traceback.
     """
     with suppress(KeyboardInterrupt):
         asyncio.run(run_worker(get_settings()))

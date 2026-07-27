@@ -17,12 +17,19 @@ limits are `sync_core.profile`'s, which is where the profile payload gets them t
 Nothing here is a refusal. A hallucinated year costs its own field and nothing else: the
 CV is still parsed, the candidate still reviews it, and the one value the model invented
 is simply not there.
+
+An unmapped skill is the one discard the candidate is shown — that list is in the payload
+and issue #7 asks for it. The others (a language the platform has no code for, an entry
+missing the field its table requires, anything past `MAX_ENTRIES`) have nowhere to be
+shown, so they are counted into one log line instead. Silently dropping part of somebody's
+CV with no trace anywhere is how a parse quality problem stays invisible for a year.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sync_core import get_logger
 from sync_core.profile import (
     EARLIEST_YEAR,
     LATEST_YEAR,
@@ -45,6 +52,8 @@ from sync_parsers import (
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
 
+logger = get_logger(__name__)
+
 
 def reviewable(
     parsed: ParsedCv, *, taxonomy: Mapping[str, str], languages: Mapping[str, str]
@@ -57,7 +66,7 @@ def reviewable(
     shift key, not an unmapped one.
     """
     skills, demoted = _skills(parsed.skills, taxonomy)
-    return ParsedCv(
+    reviewed = ParsedCv(
         full_name=_line(parsed.full_name),
         email=_line(parsed.email),
         phone=_line(parsed.phone),
@@ -70,8 +79,30 @@ def reviewable(
         skills=skills,
         languages=_languages(parsed.languages, languages),
         projects=_projects(parsed.projects),
-        unmapped_skills=_unmapped(list(parsed.unmapped_skills) + demoted),
+        unmapped_skills=_unmapped([*parsed.unmapped_skills, *demoted]),
     )
+    _report_discards(parsed, reviewed)
+    return reviewed
+
+
+def _report_discards(parsed: ParsedCv, reviewed: ParsedCv) -> None:
+    """Say what did not survive, when anything did not.
+
+    Counts rather than contents: this runs on every CV and the values themselves are the
+    candidate's personal data, which has no business in a log line.
+    """
+    lost = {
+        section: before - after
+        for section, before, after in (
+            ("experiences", len(parsed.experiences), len(reviewed.experiences)),
+            ("educations", len(parsed.educations), len(reviewed.educations)),
+            ("projects", len(parsed.projects), len(reviewed.projects)),
+            ("languages", len(parsed.languages), len(reviewed.languages)),
+        )
+        if before > after
+    }
+    if lost:
+        logger.info("cv_review.entries_discarded", **lost)
 
 
 def _skills(
@@ -178,7 +209,9 @@ def _projects(projects: Sequence[ParsedProject]) -> list[ParsedProject]:
     return kept[:MAX_ENTRIES]
 
 
-def _period(entry: ParsedExperience | ParsedProject) -> tuple[int | None, ...]:
+def _period(
+    entry: ParsedExperience | ParsedProject,
+) -> tuple[int | None, int | None, int | None, int | None]:
     """A dated range with each part inside its own range, and an end that follows its start.
 
     An end before its start would break the `*_ordered` CHECK. Which of the two the model

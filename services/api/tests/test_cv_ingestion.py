@@ -11,6 +11,8 @@ where the two are supposed to move together.
 
 from __future__ import annotations
 
+import asyncio
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -18,10 +20,11 @@ from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_core import Database, Storage
+from sync_core import Database, Settings, Storage
 from sync_core.models import Candidate, CvParsingStatus, IngestionJob, IngestionStatus
 from sync_parsers import ParsedSkill, UnreadableCvError
 from sync_worker import RetryPolicy
+from sync_worker.worker import Worker
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import CVS, an_uploaded_cv, cv_row, ingestion_job, some_bytes
 from tests.support.extractors import FakeExtractor, a_parse
@@ -428,3 +431,48 @@ async def _abandon_the_claim(
         )
     )
     await session.commit()
+
+
+# The worker process ------------------------------------------------------------
+
+
+async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
+) -> None:
+    """The whole process, not one cycle: assembly, the poll loop, and the shutdown.
+
+    Everything else here drives `run_once` directly, which never touches the loop that
+    calls it in production. This is the test that would notice a consumer wired to the
+    wrong queue, a poll loop that stops after its first job, or a cancellation that hangs
+    instead of unwinding — none of which a single cycle can show.
+    """
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    worker = Worker(
+        settings.model_copy(
+            update={"worker_poll_interval_seconds": 0.05, "worker_idle_backoff_max_seconds": 0.05}
+        ),
+        FakeExtractor(),
+    )
+
+    running = asyncio.create_task(worker.run())
+    try:
+        await _until_ready(db_session, cv["id"])
+    finally:
+        running.cancel()
+        with suppress(asyncio.CancelledError):
+            await running
+
+    assert running.done()
+    assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
+
+
+async def _until_ready(session: AsyncSession, cv_id: str, *, within: float = 10.0) -> None:
+    """Wait for the worker to get to this CV, or say what state it gave up in."""
+    deadline = asyncio.get_running_loop().time() + within
+    while asyncio.get_running_loop().time() < deadline:
+        status = (await cv_row(session, cv_id)).parsing_status
+        if status is CvParsingStatus.READY:
+            return
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"cv {cv_id} was still {status} after {within}s")

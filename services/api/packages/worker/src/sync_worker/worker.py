@@ -13,6 +13,8 @@ backoff, the sweep and the shutdown are already here.
 from __future__ import annotations
 
 import asyncio
+import signal
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 from sync_core import Database, Storage, configure_logging, get_logger
@@ -120,5 +122,19 @@ def _openai_extractor(settings: Settings) -> CvExtractor:
 
 
 async def run_worker(settings: Settings) -> None:
+    """Run a worker until the process is signalled to stop.
+
+    The signal handlers are the whole point of this function. `SIGTERM` — which is what
+    every container runtime sends first, and the only shutdown that happens in production —
+    terminates the process outright by default: no `finally`, no closed connections, and
+    every in-flight job left `processing` for the sweep to find. Cancelling the run instead
+    unwinds it properly, and `SIGINT` is wired to the same path so a developer's Ctrl-C
+    exercises the shutdown that will actually be used.
+    """
     configure_logging(level=settings.log_level, log_format=settings.log_format)
-    await Worker(settings).run()
+    running = asyncio.ensure_future(Worker(settings).run())
+    loop = asyncio.get_running_loop()
+    for signalled in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(signalled, running.cancel)
+    with suppress(asyncio.CancelledError):
+        await running

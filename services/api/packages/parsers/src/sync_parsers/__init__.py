@@ -1,8 +1,8 @@
 """The `ParsedCv` schema and the port CV extraction happens behind (ADR-0006)."""
 
 from sync_parsers.extractor import (
-    CvDocument,
     CvExtractor,
+    CvFile,
     ExtractionError,
     ExtractorUnavailableError,
     UnreadableCvError,
@@ -20,8 +20,8 @@ from sync_parsers.schema import (
 
 __all__ = [
     "PARSED_CV_SCHEMA_VERSION",
-    "CvDocument",
     "CvExtractor",
+    "CvFile",
     "ExtractionError",
     "ExtractorUnavailableError",
     "ParsedCv",

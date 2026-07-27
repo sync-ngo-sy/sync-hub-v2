@@ -30,10 +30,15 @@ CVS: Final = "/v1/candidates/me/cvs"
 PDF: Final = "application/pdf"
 DOCX: Final = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-#: A real, readable CV, for the `ai_live` tests that send one to an actual model. The main
+#: Real, readable CVs, for the `ai_live` tests that send one to an actual model. The main
 #: suite parses with the fake extractor and never looks at a byte of what it uploaded.
+#:
+#: One per format the API accepts and sends onward as `input_file` — a DOCX travels to the
+#: provider as a zip of XML and is the one of the two most likely to come back unreadable,
+#: so covering only the PDF would cover the easy half.
 FIXTURES: Final = Path(__file__).resolve().parents[1] / "fixtures" / "cvs"
-A_REAL_CV: Final = FIXTURES / "amina-haddad.pdf"
+A_REAL_PDF_CV: Final = FIXTURES / "amina-haddad.pdf"
+A_REAL_DOCX_CV: Final = FIXTURES / "bashir-nassar.docx"
 
 
 def some_bytes(marker: str = "") -> bytes:

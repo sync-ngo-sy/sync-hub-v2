@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class CvDocument:
+class CvFile:
     """One CV file, as it was uploaded.
 
     The bytes themselves, because ADR-0006 sends the document to the model rather than text
@@ -52,7 +52,7 @@ class ExtractionError(Exception):
 
 
 class UnreadableCvError(ExtractionError):
-    """The model would not, or could not, read this document.
+    """The model would not, or could not, read this CV file.
 
     Permanent: the same file through the same model gets the same answer, so the worker
     stops here rather than spending its remaining attempts confirming it.
@@ -67,6 +67,6 @@ class ExtractorUnavailableError(ExtractionError):
 
 
 class CvExtractor(Protocol):
-    """Turn a CV document into structured data, or raise `ExtractionError`."""
+    """Turn a CV file into structured data, or raise `ExtractionError`."""
 
-    async def extract(self, document: CvDocument, vocabulary: Vocabulary) -> ParsedCv: ...
+    async def extract(self, file: CvFile, vocabulary: Vocabulary) -> ParsedCv: ...

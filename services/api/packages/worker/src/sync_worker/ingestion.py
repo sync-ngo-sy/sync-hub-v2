@@ -51,7 +51,7 @@ class CvIngestionConsumer:
     async def perform(self, job: ClaimedJob) -> ParsedCv:
         """Mark the CV `processing`, then read it.
 
-        `CvUnparseableError` becomes `PermanentFailureError` — a document the model cannot
+        `CvUnparseableError` becomes `PermanentFailureError` — a CV file the model cannot
         read, or a file that is no longer in Storage, gets the same answer next time, and
         each attempt at one costs a model call. Everything else falls through and is
         retried on the queue's backoff.

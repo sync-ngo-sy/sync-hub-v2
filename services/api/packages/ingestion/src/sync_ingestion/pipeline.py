@@ -25,13 +25,13 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select, update
 
-from sync_core import ObjectNotFoundError, StorageError, get_logger
+from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
 from sync_core.models import Candidate, Cv, CvParsingStatus, Language, SkillTaxonomy
-from sync_core.storage import CV_MEDIA_TYPE_BY_EXTENSION, DEFAULT_CV_MEDIA_TYPE
+from sync_core.storage import cv_media_type_of
 from sync_ingestion.review import reviewable
 from sync_parsers import (
     PARSED_CV_SCHEMA_VERSION,
-    CvDocument,
+    CvFile,
     ExtractionError,
     UnreadableCvError,
     Vocabulary,
@@ -66,13 +66,12 @@ class CvIngestion:
 
     async def begin(self, cv_id: UUID) -> None:
         """Say out loud that this CV is being worked on."""
-        async with self._database.session() as session:
+        async with self._database.session() as session, transaction(session):
             await session.execute(
                 update(Cv)
                 .where(Cv.id == cv_id)
                 .values(parsing_status=CvParsingStatus.PROCESSING, parsing_error=None)
             )
-            await session.commit()
 
     async def parse(self, cv_id: UUID) -> ParsedCv:
         """Read the CV: fetch the file, send it to the model, and check what comes back.
@@ -87,13 +86,13 @@ class CvIngestion:
                 # this is a claim that raced a deletion. Nothing to parse, ever.
                 raise CvUnparseableError(f"cv {cv_id} no longer exists")
             storage_path = cv.storage_path
-            filename, media_type = _document(cv.display_name, storage_path)
+            filename, media_type = _describe(cv.display_name, storage_path)
             vocabulary, taxonomy, languages = await _vocabulary(session)
 
         content = await self._fetch(filename, cv_id, storage_path=storage_path)
         try:
             parsed = await self._extractor.extract(
-                CvDocument(filename=filename, media_type=media_type, content=content),
+                CvFile(filename=filename, media_type=media_type, content=content),
                 vocabulary,
             )
         except UnreadableCvError as refused:
@@ -163,7 +162,7 @@ class CvIngestion:
             raise IngestionUnavailableError("Storage could not be read") from unavailable
 
 
-def _document(display_name: str, storage_path: str) -> tuple[str, str]:
+def _describe(display_name: str, storage_path: str) -> tuple[str, str]:
     """What to call the file and what to say it is, for the model.
 
     The extension comes from `storage_path` rather than from `display_name`, because the
@@ -171,8 +170,8 @@ def _document(display_name: str, storage_path: str) -> tuple[str, str]:
     name is whatever the candidate's file happened to be called. The provider reads the
     extension, so a `.docx` a candidate named "resume" has to reach it as `resume.docx`.
     """
+    media_type = cv_media_type_of(storage_path)
     extension = PurePosixPath(storage_path).suffix.lower()
-    media_type = CV_MEDIA_TYPE_BY_EXTENSION.get(extension, DEFAULT_CV_MEDIA_TYPE)
     stem = PurePosixPath(display_name).name or "cv"
     filename = stem if stem.lower().endswith(extension) else f"{stem}{extension}"
     return filename, media_type

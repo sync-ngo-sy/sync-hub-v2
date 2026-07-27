@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from sqlalchemy import func, or_, select, update
 
-from sync_core import get_logger
+from sync_core import get_logger, transaction
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -49,12 +49,18 @@ logger = get_logger(__name__)
 #: a row; not so much that a stack trace's worth of text lands in every retried job.
 MAX_ERROR_LENGTH = 500
 
+#: Stuck jobs rescued per sweep. Bounded because the sweep holds every row it touches
+#: locked until it commits: after a long outage the backlog could be thousands, and one
+#: unbounded transaction over all of them is a much worse problem than a slow recovery.
+#: The sweep runs on a timer, so a backlog simply drains over several passes.
+SWEEP_BATCH = 100
+
 
 class PermanentFailureError(Exception):
     """Raise from `perform` for work that will fail the same way every time.
 
     The job dies now rather than after exhausting its attempts. A consumer decides this,
-    not the engine: only the consumer knows that an unreadable document is settled while a
+    not the engine: only the consumer knows that an unreadable CV is settled while a
     provider timeout is not.
     """
 
@@ -180,10 +186,12 @@ class QueueEngine[ResultT]:
         immediately. One that does not is finished off here — otherwise a job whose worker
         died on its last attempt would sit in `processing` for good, and so would the CV
         waiting on it.
+
+        At most `SWEEP_BATCH` per pass, oldest claim first.
         """
         table = self.queue.table
         swept = 0
-        async with self._database.session() as session:
+        async with self._database.session() as session, transaction(session):
             # Whole rows, not just the two columns this decides on: a job it buries goes to
             # `give_up`, and a consumer needs the same row there as after a live failure —
             # `cv_id`, for one, is how the ingestion consumer knows which CV to fail.
@@ -193,6 +201,8 @@ class QueueEngine[ResultT]:
                     table.c.status == self.queue.processing,
                     table.c.started_at < self._policy.stuck_before,
                 )
+                .order_by(table.c.started_at)
+                .limit(SWEEP_BATCH)
                 .with_for_update(skip_locked=True)
             )
             for row in stuck.mappings().all():
@@ -204,7 +214,6 @@ class QueueEngine[ResultT]:
                 else:
                     await session.execute(self._requeue(job.id, job.attempts, reason))
                 swept += 1
-            await session.commit()
 
         if swept:
             logger.warning("worker.jobs_swept", queue=self.queue.name, count=swept)
@@ -229,7 +238,7 @@ class QueueEngine[ResultT]:
             .with_for_update(skip_locked=True)
             .scalar_subquery()
         )
-        async with self._database.session() as session:
+        async with self._database.session() as session, transaction(session):
             claimed = await session.execute(
                 update(table)
                 .where(table.c.id == oldest_available)
@@ -242,7 +251,6 @@ class QueueEngine[ResultT]:
                 .returning(*table.c)
             )
             row = claimed.mappings().one_or_none()
-            await session.commit()
 
         if row is None:
             return None
@@ -250,7 +258,7 @@ class QueueEngine[ResultT]:
 
     async def _completed(self, job: ClaimedJob, result: ResultT) -> None:
         table = self.queue.table
-        async with self._database.session() as session:
+        async with self._database.session() as session, transaction(session):
             await self._consumer.record(session, job, result)
             await session.execute(
                 update(table)
@@ -261,7 +269,6 @@ class QueueEngine[ResultT]:
                     error_message=None,
                 )
             )
-            await session.commit()
 
     async def _failed(self, job: ClaimedJob, error: Exception, log: BoundLogger) -> None:
         """Retry it, or bury it — and either way say why in the row.
@@ -272,13 +279,12 @@ class QueueEngine[ResultT]:
         reason = _reason(error)
         permanent = isinstance(error, PermanentFailureError)
         settled = permanent or self._policy.is_exhausted(job.attempts)
-        async with self._database.session() as session:
+        async with self._database.session() as session, transaction(session):
             if settled:
                 await self._consumer.give_up(session, job, reason)
                 await session.execute(self._dead(job.id, reason))
             else:
                 await session.execute(self._requeue(job.id, job.attempts, reason))
-            await session.commit()
 
         log.warning(
             "worker.job_failed",

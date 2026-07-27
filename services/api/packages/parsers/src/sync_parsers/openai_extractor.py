@@ -1,6 +1,6 @@
 """The `CvExtractor` that actually reads CVs (ADR-0006).
 
-The document is uploaded to the Files API and referenced by id, and the Responses API is
+The CV file is uploaded to the Files API and referenced by id, and the Responses API is
 asked for a `ParsedCv` through structured outputs — so the answer is schema-valid before it
 reaches us, and there is no JSON to hand-parse or hand-repair.
 
@@ -23,7 +23,7 @@ from sync_parsers.schema import ParsedCv
 if TYPE_CHECKING:
     from openai.types.responses import ParsedResponse
 
-    from sync_parsers.extractor import CvDocument, Vocabulary
+    from sync_parsers.extractor import CvFile, Vocabulary
 
 logger = get_logger(__name__)
 
@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 #: model is meant to read as input, and it is what `input_file` accepts.
 FILE_PURPOSE: Final[Literal["user_data"]] = "user_data"
 
-#: Statuses that mean "this document, through this model, will not parse". Anything else —
+#: Statuses that mean "this file, through this model, will not parse". Anything else —
 #: a timeout, a 429, a 5xx — is the provider having a moment and is worth another attempt.
 PERMANENT_STATUSES: Final = frozenset({400, 413, 415, 422})
 
@@ -55,18 +55,18 @@ class OpenAiCvExtractor:
             AsyncOpenAI(api_key=api_key, timeout=timeout_seconds, max_retries=2), model=model
         )
 
-    async def extract(self, document: CvDocument, vocabulary: Vocabulary) -> ParsedCv:
-        file_id = await self._upload(document)
+    async def extract(self, file: CvFile, vocabulary: Vocabulary) -> ParsedCv:
+        file_id = await self._upload(file)
         try:
             response = await self._parse(file_id, vocabulary)
         finally:
             await self._delete(file_id)
         return _parsed_from(response)
 
-    async def _upload(self, document: CvDocument) -> str:
+    async def _upload(self, file: CvFile) -> str:
         with _provider_failures("upload"):
             uploaded = await self._client.files.create(
-                file=(document.filename, document.content, document.media_type),
+                file=(file.filename, file.content, file.media_type),
                 purpose=FILE_PURPOSE,
             )
         return uploaded.id

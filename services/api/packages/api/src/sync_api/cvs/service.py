@@ -29,10 +29,10 @@ from sync_api.problems import (
     DUPLICATE_CV_PROBLEM_TYPE,
     Problem,
 )
-from sync_api.transactions import transaction
-from sync_core import ObjectNotFoundError, StorageError, get_logger
+from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
 from sync_core.models import Candidate
 from sync_core.models import Cv as CvRow
+from sync_core.storage import cv_object_path
 from sync_parsers import ParsedCv
 
 if TYPE_CHECKING:
@@ -63,7 +63,7 @@ class CvService:
             await self._refuse_duplicate(candidate_id, file.sha256)
 
             cv_id = uuid4()
-            storage_path = f"{candidate_id}/{cv_id}{file.extension}"
+            storage_path = cv_object_path(candidate_id, cv_id, file.media_type)
             await self._storage.upload(storage_path, file.reader, media_type=file.media_type)
             try:
                 row = await self._insert(
@@ -112,15 +112,24 @@ class CvService:
         return CvDownloadLink(url=url, expires_in_seconds=expires_in)
 
     async def _refuse_duplicate(self, candidate_id: UUID, file_hash: str) -> None:
-        existing = await self._db.scalar(
+        existing = await self._active_cv_with(candidate_id, file_hash)
+        if existing is not None:
+            raise _duplicate(existing)
+
+    async def _active_cv_with(self, candidate_id: UUID, file_hash: str) -> UUID | None:
+        """The CV this candidate already has of this exact file, if any.
+
+        Exactly the condition `cvs_candidate_file_hash_active_uidx` indexes — asked here
+        before an upload to save one, and again afterwards when the index refuses one.
+        """
+        existing: UUID | None = await self._db.scalar(
             select(CvRow.id).where(
                 CvRow.candidate_id == candidate_id,
                 CvRow.file_hash == file_hash,
                 CvRow.deleted_at.is_(None),
             )
         )
-        if existing is not None:
-            raise _duplicate(existing)
+        return existing
 
     async def _insert(
         self,
@@ -154,13 +163,7 @@ class CvService:
         simultaneous uploads of the same file became the CV, and the answer a client needs
         is that one's id.
         """
-        winner = await self._db.scalar(
-            select(CvRow.id).where(
-                CvRow.candidate_id == candidate_id,
-                CvRow.file_hash == file_hash,
-                CvRow.deleted_at.is_(None),
-            )
-        )
+        winner = await self._active_cv_with(candidate_id, file_hash)
         if winner is None:  # pragma: no cover — some other constraint, which is our bug
             return Problem(status=500, detail="The CV could not be saved.")
         return _duplicate(winner)

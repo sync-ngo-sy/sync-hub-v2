@@ -16,6 +16,7 @@ from fastapi import APIRouter, File, UploadFile
 from sync_api.cvs import Cv, CvDownloadLink
 from sync_api.dependencies import ActingCandidateDep, CvServiceDep
 from sync_api.errors import openapi_problem
+from sync_api.problems import DuplicateCvProblemDetail
 from sync_api.routes.candidates import CANDIDATE_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/candidates/me/cvs"
@@ -37,11 +38,12 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["cvs"])
     responses={
         **CANDIDATE_ACCESS_REFUSED,
         409: openapi_problem(
-            "This exact file is already one of the caller's CVs. The existing CV's id is "
-            "in the `cv_id` member.",
+            "This exact file is already one of the caller's CVs; `cv_id` is the one it is.",
+            DuplicateCvProblemDetail,
         ),
         413: openapi_problem("The file is larger than the platform accepts."),
         415: openapi_problem("The file is not a PDF, DOC or DOCX."),
+        502: openapi_problem("The file store could not be reached."),
     },
 )
 async def upload_my_cv(

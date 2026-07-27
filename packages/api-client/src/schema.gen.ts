@@ -613,6 +613,56 @@ export interface components {
          */
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
         /**
+         * DuplicateCvProblemDetail
+         * @description A refused upload that can name the CV the candidate already has.
+         *
+         *     A typed member rather than a bare extension: the id is the useful half of this refusal
+         *     — it is what lets the SPA go straight to that CV — and a client cannot rely on
+         *     something the OpenAPI document only mentions in prose.
+         */
+        DuplicateCvProblemDetail: {
+            /**
+             * Type
+             * @description Stable identifier for what went wrong.
+             * @default about:blank
+             * @example about:blank
+             */
+            type: string;
+            /**
+             * Title
+             * @description Short, human-readable summary of the problem type.
+             */
+            title: string;
+            /**
+             * Status
+             * @description The HTTP status code, repeated for out-of-band handling.
+             */
+            status: number;
+            /**
+             * Detail
+             * @description Explanation specific to this occurrence.
+             */
+            detail?: string | null;
+            /**
+             * Instance
+             * @description Path of the request that produced the problem.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates this response with the server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Cv Id
+             * Format: uuid
+             * @description The CV already holding this exact file.
+             */
+            cv_id: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * Health
          * @description The process is up and serving.
          */
@@ -2272,13 +2322,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description This exact file is already one of the caller's CVs. The existing CV's id is in the `cv_id` member. */
+            /** @description This exact file is already one of the caller's CVs; `cv_id` is the one it is. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["DuplicateCvProblemDetail"];
                 };
             };
             /** @description The file is larger than the platform accepts. */
@@ -2310,6 +2360,15 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file store could not be reached. */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

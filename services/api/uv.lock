@@ -1568,6 +1568,7 @@ name = "sync-api"
 version = "0.1.0"
 source = { editable = "packages/api" }
 dependencies = [
+    { name = "anyio" },
     { name = "asgi-correlation-id" },
     { name = "email-validator" },
     { name = "fastapi" },
@@ -1583,6 +1584,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = ">=4.14.2" },
     { name = "asgi-correlation-id", specifier = ">=5.0" },
     { name = "email-validator", specifier = ">=2.2" },
     { name = "fastapi", specifier = ">=0.139.2" },

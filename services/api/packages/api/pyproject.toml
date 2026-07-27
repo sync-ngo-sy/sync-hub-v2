@@ -22,7 +22,12 @@ dependencies = [
     "sync-parsers",
     "sync-rag",
     "uvicorn[standard]>=0.51.0",
+    # What FastAPI parses a multipart body with — without it an `UploadFile` route is a
+    # startup error. The CV upload is the only one.
     "python-multipart>=0.0.32",
+    # Starlette's own concurrency library, named explicitly because the CV upload reaches
+    # for `to_thread` directly rather than getting it by accident.
+    "anyio>=4.14.2",
 ]
 
 [build-system]

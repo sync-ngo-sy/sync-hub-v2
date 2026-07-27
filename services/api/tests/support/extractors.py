@@ -21,7 +21,7 @@ from sync_parsers import (
 )
 
 if TYPE_CHECKING:
-    from sync_parsers import CvDocument, Vocabulary
+    from sync_parsers import CvFile, Vocabulary
 
 
 def a_parse(**changes: object) -> ParsedCv:
@@ -103,13 +103,13 @@ class FakeExtractor:
 
     def __init__(self, *answers: ParsedCv | Exception) -> None:
         self._answers = list(answers) or [AMINA]
-        self.calls: list[tuple[CvDocument, Vocabulary]] = []
+        self.calls: list[tuple[CvFile, Vocabulary]] = []
 
     @property
     def call_count(self) -> int:
         return len(self.calls)
 
-    async def extract(self, document: CvDocument, vocabulary: Vocabulary) -> ParsedCv:
+    async def extract(self, document: CvFile, vocabulary: Vocabulary) -> ParsedCv:
         self.calls.append((document, vocabulary))
         answer = self._answers[min(len(self.calls) - 1, len(self._answers) - 1)]
         if isinstance(answer, Exception):

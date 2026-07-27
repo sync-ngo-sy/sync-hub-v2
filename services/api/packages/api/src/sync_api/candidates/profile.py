@@ -36,8 +36,7 @@ from sync_api.problems import (
     InvalidField,
     Problem,
 )
-from sync_api.transactions import transaction
-from sync_core import get_logger
+from sync_core import get_logger, transaction
 from sync_core.models import (
     Base,
     Candidate,

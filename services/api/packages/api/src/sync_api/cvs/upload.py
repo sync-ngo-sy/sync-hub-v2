@@ -9,6 +9,14 @@ inventing a new one.
 The file lands on disk rather than in memory, and is handed on as an open reader, so a
 10 MB upload costs a temporary file rather than 10 MB of the process — and Storage streams
 from that reader rather than being handed a buffer.
+
+**The temporary file is not the redundant copy it looks like.** Starlette has already
+spooled the body into an `UploadFile`, so the obvious move is to hash that in place and
+pass it straight on. It does not work: `storage3.upload` accepts only
+`BufferedReader | bytes | FileIO | str | Path`, and an `UploadFile`'s `SpooledTemporaryFile`
+is none of them — it falls into the branch that calls `open()` on its argument and raises.
+Writing our own file is what produces a real `BufferedReader` for the SDK to stream from.
+The alternative is `await upload.read()` and 10 MB per concurrent upload resident.
 """
 
 from __future__ import annotations
@@ -47,7 +55,6 @@ class ReceivedFile:
     reader: BufferedReader
     display_name: str
     media_type: str
-    extension: str
     sha256: str
     size: int
 
@@ -68,7 +75,6 @@ async def received(upload: UploadFile, *, max_bytes: int) -> AsyncIterator[Recei
                 reader=reader,
                 display_name=_display_name(upload),
                 media_type=media_type,
-                extension=CV_MEDIA_TYPES[media_type],
                 sha256=digest,
                 size=size,
             )
