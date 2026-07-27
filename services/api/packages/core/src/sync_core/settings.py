@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     #: Requests per window, per client address, per auth endpoint.
     auth_rate_limit_max_requests: int = Field(default=20, ge=1)
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    #: Where a teammate invite lands. Unlike the confirmation and recovery emails — which go
+    #: to `site_url`, the candidate portal — an invite is for a Recruiter, so the API has to
+    #: name the other SPA itself. Must be one of GoTrue's `additional_redirect_urls`.
+    recruiter_portal_url: AnyHttpUrl
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON

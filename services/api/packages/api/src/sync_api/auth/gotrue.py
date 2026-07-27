@@ -40,6 +40,7 @@ class EmailTokenType(StrEnum):
 
     SIGNUP = "signup"
     RECOVERY = "recovery"
+    INVITE = "invite"
 
 
 #: Revoke every session the user has, not just the one presenting the token. A logout that
@@ -155,6 +156,28 @@ class GoTrue:
         """Send the signup confirmation carrying the token `confirm_email` redeems."""
         with refusals({}):
             await self._as_caller().resend({"type": "signup", "email": email})
+
+    async def invite_user(self, *, email: str, redirect_to: str) -> GoTrueUser:
+        """Create a passwordless identity and mail it an invitation.
+
+        Both halves at once, unlike `create_user`: GoTrue's invite endpoint is what mints a
+        token of type `invite`, and there is no way to send one for a user that already
+        exists — which is exactly why an address belonging to a Candidate is refused here
+        rather than by a check of our own.
+
+        `redirect_to` is where the emailed link points; GoTrue ignores any value not in its
+        `additional_redirect_urls` and silently substitutes `site_url`.
+        """
+        with refusals(
+            {
+                "email_exists": EmailAlreadyRegisteredError,
+                "user_already_exists": EmailAlreadyRegisteredError,
+            }
+        ):
+            answered = await self._as_admin().admin.invite_user_by_email(
+                email, {"redirect_to": redirect_to}
+            )
+        return _user_from(answered.user)
 
     async def send_password_reset_email(self, email: str) -> None:
         """Send the recovery email. Succeeds for unknown addresses too, by GoTrue's design."""

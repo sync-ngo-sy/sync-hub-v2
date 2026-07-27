@@ -1,0 +1,236 @@
+"""Getting a hiring company onto the platform, and running its roster once it is there.
+
+One route here is public — signup, which is how a Tenant comes to exist at all, and is
+rate limited like every other endpoint that mints an identity. Every other route asks for
+an `ActingRecruiter` and is therefore behind both kill-switches; the three that change the
+roster ask for an admin on top.
+
+`/me` rather than `/{tenant_id}` throughout: a Recruiter belongs to exactly one Tenant, so
+the path can never name a different one — there is no cross-tenant request to authorize,
+and no tenant id for a client to try substituting.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated, Any, Final
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel, EmailStr, Field
+
+from sync_api.dependencies import (
+    ActingRecruiterDep,
+    TenantAdminDep,
+    TenantServiceDep,
+)
+from sync_api.errors import openapi_problem
+from sync_api.rate_limit import enforce_auth_rate_limit
+from sync_api.routes.auth import IDENTITY_PROVIDER_UNAVAILABLE, Password
+from sync_api.tenants import Member, NewTenant, TenantSummary
+from sync_core.models import RecruiterRole
+
+ROUTER_PREFIX: Final = "/tenants"
+
+#: Lowercase, digits and single hyphens. A slug ends up in URLs and in email copy, so it is
+#: constrained here rather than left to whatever a signup form happens to send.
+SLUG_PATTERN: Final = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+
+#: What any tenant-scoped route can answer with, and why a client should tell them apart:
+#: two of them the caller's own admins can fix, the third only Sync can.
+TENANT_ACCESS_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
+    401: openapi_problem("There is no valid session."),
+    403: openapi_problem(
+        "The caller is not a recruiter, has been deactivated, or their tenant is suspended."
+    ),
+}
+
+router = APIRouter(prefix=ROUTER_PREFIX, tags=["tenants"])
+
+Slug = Annotated[
+    str,
+    Field(
+        min_length=2,
+        max_length=63,
+        pattern=SLUG_PATTERN,
+        description="Lowercase letters, digits and single hyphens.",
+        examples=["acme-recruiting"],
+    ),
+]
+
+FullName = Annotated[str, Field(min_length=1, max_length=200)]
+
+
+class TenantView(BaseModel):
+    """A Tenant as its own recruiters see it."""
+
+    id: str
+    name: str
+    slug: str
+
+    @classmethod
+    def of(cls, tenant: TenantSummary) -> TenantView:
+        return cls(id=str(tenant.id), name=tenant.name, slug=tenant.slug)
+
+
+class MemberView(BaseModel):
+    """One Recruiter on the roster."""
+
+    id: str = Field(description="Shared with the Supabase Auth user and the Profile.")
+    full_name: str
+    email: EmailStr
+    role: RecruiterRole
+    is_active: bool = Field(description="False once an admin has revoked their access.")
+
+    @classmethod
+    def of(cls, member: Member) -> MemberView:
+        return cls(
+            id=str(member.id),
+            full_name=member.full_name,
+            email=member.email,
+            role=member.role,
+            is_active=member.is_active,
+        )
+
+
+class NewTenantView(BaseModel):
+    """What self-serve signup produced."""
+
+    tenant: TenantView
+    admin: MemberView
+
+    @classmethod
+    def of(cls, created: NewTenant) -> NewTenantView:
+        return cls(tenant=TenantView.of(created.tenant), admin=MemberView.of(created.admin))
+
+
+class SignUpTenantRequest(BaseModel):
+    tenant_name: FullName = Field(description="The hiring company's display name.")
+    slug: Slug
+    email: EmailStr = Field(description="The founding admin's address.")
+    password: Password
+    full_name: FullName = Field(description="The founding admin's name.")
+
+
+class InviteMemberRequest(BaseModel):
+    email: EmailStr
+    full_name: FullName
+    role: RecruiterRole = RecruiterRole.RECRUITER
+
+
+class ChangeMemberRequest(BaseModel):
+    """Both fields optional: an admin changing a role should not have to restate access."""
+
+    role: RecruiterRole | None = None
+    is_active: bool | None = None
+
+
+@router.post(
+    "",
+    operation_id="signUpTenant",
+    summary="Create a tenant and its founding admin",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(enforce_auth_rate_limit)],
+    responses={
+        409: openapi_problem("The slug or the email address is already taken."),
+        400: openapi_problem("The identity provider rejected the password."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def sign_up_tenant(body: SignUpTenantRequest, tenants: TenantServiceDep) -> NewTenantView:
+    """Self-serve onto the platform: one call creates the Tenant and the admin who runs it.
+
+    No session comes back, exactly as for a candidate: the founder confirms their address
+    first. Anything that fails part-way leaves neither a Tenant nor a usable address behind.
+    """
+    return NewTenantView.of(
+        await tenants.sign_up(
+            tenant_name=body.tenant_name,
+            slug=body.slug,
+            email=body.email,
+            password=body.password,
+            full_name=body.full_name,
+        )
+    )
+
+
+@router.get(
+    "/me",
+    operation_id="getMyTenant",
+    summary="The tenant the caller recruits for",
+    responses=TENANT_ACCESS_REFUSED,
+)
+async def get_my_tenant(recruiter: ActingRecruiterDep) -> TenantView:
+    """Answers only while both kill-switches are off, which makes it the SPA's liveness check."""
+    return TenantView.of(recruiter.tenant)
+
+
+@router.get(
+    "/me/members",
+    operation_id="listTenantMembers",
+    summary="The tenant's recruiters",
+    responses=TENANT_ACCESS_REFUSED,
+)
+async def list_tenant_members(
+    recruiter: ActingRecruiterDep, tenants: TenantServiceDep
+) -> list[MemberView]:
+    """Everyone on the roster, deactivated colleagues included — an admin has to see someone
+    to reactivate them. Any recruiter may read it; only an admin may change it."""
+    members = await tenants.members(recruiter.tenant.id)
+    return [MemberView.of(member) for member in members]
+
+
+@router.post(
+    "/me/members",
+    operation_id="inviteTenantMember",
+    summary="Invite a teammate",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(enforce_auth_rate_limit)],
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        409: openapi_problem("That email address already has a Sync account."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def invite_tenant_member(
+    body: InviteMemberRequest, admin: TenantAdminDep, tenants: TenantServiceDep
+) -> MemberView:
+    """Mail an invitation and add the invitee to the roster in the same breath.
+
+    They are a member from this moment — 201 is not a promise, it is the row — but they
+    cannot sign in until they follow the link and choose a password. An address that already
+    belongs to anyone, Candidate or Recruiter, is refused: one address, one account.
+    """
+    member = await tenants.invite(
+        tenant_id=admin.tenant.id, email=body.email, full_name=body.full_name, role=body.role
+    )
+    return MemberView.of(member)
+
+
+@router.patch(
+    "/me/members/{recruiter_id}",
+    operation_id="changeTenantMember",
+    summary="Change a teammate's role or access",
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        404: openapi_problem("No such member of this tenant."),
+        409: openapi_problem("The change would leave the tenant with no active admin."),
+    },
+)
+async def change_tenant_member(
+    recruiter_id: UUID,
+    body: ChangeMemberRequest,
+    admin: TenantAdminDep,
+    tenants: TenantServiceDep,
+) -> MemberView:
+    """Promote, demote, deactivate or reinstate a colleague.
+
+    Deactivating is how a departure is handled: the row and everything attached to it stays,
+    and the person is refused at the door on their very next request.
+    """
+    member = await tenants.change_member(
+        tenant_id=admin.tenant.id,
+        recruiter_id=recruiter_id,
+        role=body.role,
+        is_active=body.is_active,
+    )
+    return MemberView.of(member)

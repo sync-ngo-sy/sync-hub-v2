@@ -108,6 +108,11 @@ class ConfirmPasswordResetRequest(BaseModel):
     password: Password
 
 
+class AcceptInviteRequest(BaseModel):
+    token_hash: EmailToken
+    password: Password
+
+
 @router.post(
     "/signup",
     operation_id="signUp",
@@ -154,6 +159,34 @@ async def confirm_email(
     that address, which is the same thing a password proves about the account.
     """
     return _signed_in(await auth.confirm_email(body.token_hash), cookies, response)
+
+
+@router.post(
+    "/accept-invite",
+    operation_id="acceptInvite",
+    summary="Accept a teammate invitation",
+    dependencies=[RateLimited],
+    responses={
+        400: openapi_problem("The link is spent or expired, or the password was refused."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def accept_invite(
+    body: AcceptInviteRequest,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+    response: Response,
+) -> ProfileView:
+    """Redeem the `token_hash` from an invite email, choose a password, and sign in.
+
+    The Recruiter and their Tenant membership already exist — inviting is what created them
+    — so this adds the one thing missing and drops the invitee straight into their team.
+    """
+    return _signed_in(
+        await auth.accept_invite(token_hash=body.token_hash, password=body.password),
+        cookies,
+        response,
+    )
 
 
 @router.post(
