@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     openai_embedding_model: str = "text-embedding-3-small"
     openai_timeout_seconds: float = Field(default=120.0, gt=0)
 
+    resend_api_key: SecretStr | None = None
+    #: Resend's sandbox sender, which needs no verified domain. Every deployment that sends
+    #: to a real address overrides it with one of its own.
+    email_from: str = "Sync <onboarding@resend.dev>"
+    email_timeout_seconds: int = Field(default=30, gt=0)
+
     worker_poll_interval_seconds: float = Field(default=1.0, gt=0)
     worker_idle_backoff_max_seconds: float = Field(default=15.0, gt=0)
     worker_max_attempts: int = Field(default=3, ge=1)
@@ -82,6 +88,7 @@ class Settings(BaseSettings):
     worker_sweep_interval_seconds: float = Field(default=60.0, gt=0)
     worker_ingestion_concurrency: int = Field(default=4, ge=1)
     worker_embedding_concurrency: int = Field(default=2, ge=1)
+    worker_communications_concurrency: int = Field(default=2, ge=1)
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON

@@ -1188,9 +1188,11 @@ export type Database = {
         Row: {
           application_id: string | null;
           attempts: number;
+          available_at: string | null;
           candidate_id: string;
           channel: Database['public']['Enums']['communication_channel'];
           communication_type: Database['public']['Enums']['communication_type'];
+          completed_at: string | null;
           created_at: string;
           error_message: string | null;
           id: string;
@@ -1201,6 +1203,7 @@ export type Database = {
           provider_message_id: string | null;
           recipient: string;
           sent_at: string | null;
+          started_at: string | null;
           status: Database['public']['Enums']['communication_status'];
           subject: string | null;
           template_key: string | null;
@@ -1209,9 +1212,11 @@ export type Database = {
         Insert: {
           application_id?: string | null;
           attempts?: number;
+          available_at?: string | null;
           candidate_id: string;
           channel: Database['public']['Enums']['communication_channel'];
           communication_type: Database['public']['Enums']['communication_type'];
+          completed_at?: string | null;
           created_at?: string;
           error_message?: string | null;
           id?: string;
@@ -1222,6 +1227,7 @@ export type Database = {
           provider_message_id?: string | null;
           recipient: string;
           sent_at?: string | null;
+          started_at?: string | null;
           status?: Database['public']['Enums']['communication_status'];
           subject?: string | null;
           template_key?: string | null;
@@ -1230,9 +1236,11 @@ export type Database = {
         Update: {
           application_id?: string | null;
           attempts?: number;
+          available_at?: string | null;
           candidate_id?: string;
           channel?: Database['public']['Enums']['communication_channel'];
           communication_type?: Database['public']['Enums']['communication_type'];
+          completed_at?: string | null;
           created_at?: string;
           error_message?: string | null;
           id?: string;
@@ -1243,6 +1251,7 @@ export type Database = {
           provider_message_id?: string | null;
           recipient?: string;
           sent_at?: string | null;
+          started_at?: string | null;
           status?: Database['public']['Enums']['communication_status'];
           subject?: string | null;
           template_key?: string | null;
