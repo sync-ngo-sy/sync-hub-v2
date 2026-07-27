@@ -2,7 +2,9 @@
 
 Guidance for AI coding agents working in this repository.
 
-## Reach for an established dependency — and only an established one
+## Agent skills
+
+### Reach for an established dependency — and only an established one
 
 If a well-known library already does it, add the library.
 
@@ -10,7 +12,7 @@ If the only library that does it is somebody's weekend project, do not add it.
 
 Example: Instead of implementing retry logic from scratch, reach for Tenacity. This is just an example, so you must decide when there is a similar case.
 
-## Agent skills
+you are allowed to add dependencies.
 
 ### Issue tracker
 
