@@ -1660,11 +1660,15 @@ name = "sync-rag"
 version = "0.1.0"
 source = { editable = "packages/rag" }
 dependencies = [
+    { name = "openai" },
     { name = "sync-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "sync-core", editable = "packages/core" }]
+requires-dist = [
+    { name = "openai", specifier = ">=2.48.0" },
+    { name = "sync-core", editable = "packages/core" },
+]
 
 [[package]]
 name = "sync-worker"
@@ -1674,6 +1678,7 @@ dependencies = [
     { name = "sync-core" },
     { name = "sync-ingestion" },
     { name = "sync-parsers" },
+    { name = "sync-rag" },
 ]
 
 [package.metadata]
@@ -1681,6 +1686,7 @@ requires-dist = [
     { name = "sync-core", editable = "packages/core" },
     { name = "sync-ingestion", editable = "packages/ingestion" },
     { name = "sync-parsers", editable = "packages/parsers" },
+    { name = "sync-rag", editable = "packages/rag" },
 ]
 
 [[package]]

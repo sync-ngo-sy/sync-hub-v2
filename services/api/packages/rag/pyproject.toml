@@ -8,6 +8,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    # The Embeddings API. Confined to this package, behind the `Embedder` port everything
+    # else imports — the same arrangement `sync-parsers` has for extraction.
+    "openai>=2.48.0",
     "sync-core",
 ]
 

@@ -90,6 +90,10 @@ class QueueEngine[ResultT]:
     def queue(self) -> Queue:
         return self._consumer.queue
 
+    @property
+    def name(self) -> str:
+        return self.queue.name
+
     async def run_once(self) -> bool:
         job = await self._claim()
         if job is None:
@@ -179,7 +183,7 @@ class QueueEngine[ResultT]:
             )
 
     async def _failed(self, job: ClaimedJob, error: Exception, log: BoundLogger) -> None:
-        reason = _reason(error)
+        reason = failure_reason(error)
         permanent = isinstance(error, PermanentFailureError)
         settled = permanent or self._policy.is_exhausted(job.attempts)
         async with self._database.session() as session, transaction(session):
@@ -219,6 +223,6 @@ class QueueEngine[ResultT]:
         )
 
 
-def _reason(error: Exception) -> str:
+def failure_reason(error: Exception) -> str:
     described = f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
     return described[:MAX_ERROR_LENGTH]

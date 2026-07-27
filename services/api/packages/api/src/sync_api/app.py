@@ -11,11 +11,14 @@ from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
 from sync_api.rate_limit import build_auth_rate_limiter
-from sync_api.routes import auth, candidates, cvs, health, notifications, tenants
+from sync_api.routes import auth, candidates, cvs, health, notifications, search, tenants
 from sync_core import Database, Settings, Storage, configure_logging, get_logger, get_settings
+from sync_rag.openai_embedder import OpenAiEmbedder
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+
+    from sync_rag import Embedder
 
 logger = get_logger(__name__)
 
@@ -30,7 +33,7 @@ any value — which together with `SameSite` is what stops another origin forgin
 """
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, embedder: Embedder | None = None) -> FastAPI:
     resolved = settings or get_settings()
     configure_logging(level=resolved.log_level, log_format=resolved.log_format)
 
@@ -45,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.database = database
         app.state.authentication = authentication
         app.state.storage = storage
+        app.state.embedder = embedder or _openai_embedder(resolved)
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
@@ -81,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(candidates.router, prefix=API_PREFIX)
     app.include_router(cvs.router, prefix=API_PREFIX)
     app.include_router(notifications.router, prefix=API_PREFIX)
+    app.include_router(search.router, prefix=API_PREFIX)
 
     describe_with_fastapis_defaults = app.openapi
 
@@ -90,3 +95,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.openapi = openapi  # type: ignore[method-assign]
 
     return app
+
+
+def _openai_embedder(settings: Settings) -> Embedder | None:
+    if settings.openai_api_key is None:
+        return None
+    return OpenAiEmbedder.build(
+        api_key=settings.openai_api_key.get_secret_value(),
+        model=settings.openai_embedding_model,
+        timeout_seconds=settings.openai_timeout_seconds,
+    )

@@ -67,6 +67,7 @@ class Settings(BaseSettings):
 
     openai_api_key: SecretStr | None = None
     openai_cv_model: str = "gpt-4o-mini"
+    openai_embedding_model: str = "text-embedding-3-small"
     openai_timeout_seconds: float = Field(default=120.0, gt=0)
 
     worker_poll_interval_seconds: float = Field(default=1.0, gt=0)
@@ -76,6 +77,7 @@ class Settings(BaseSettings):
     worker_stuck_job_seconds: float = Field(default=600.0, gt=0)
     worker_sweep_interval_seconds: float = Field(default=60.0, gt=0)
     worker_ingestion_concurrency: int = Field(default=4, ge=1)
+    worker_embedding_concurrency: int = Field(default=2, ge=1)
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON
