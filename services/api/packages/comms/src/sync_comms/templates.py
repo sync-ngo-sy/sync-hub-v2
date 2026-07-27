@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 from jinja2 import Environment, StrictUndefined
 
 from sync_comms.email import UnsendableEmailError
-from sync_core.communications import ApplicationConfirmation
+from sync_core.communications import ApplicationConfirmation, ApplicationRejection
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -74,8 +74,32 @@ Your reference is {{ application_id }}.
 """,
 )
 
+APPLICATION_REJECTION: Final = _template(
+    subject="Your application for {{ job_title }}",
+    html="""
+<p>Hi {{ candidate_name }},</p>
+<p>
+  {{ tenant_name }} has decided not to take your application for
+  <strong>{{ job_title }}</strong> any further. Thank you for the time you gave it.
+</p>
+<p>Your other applications are unaffected, and you are welcome to apply for future roles.</p>
+<p>— Sync</p>
+""",
+    text="""
+Hi {{ candidate_name }},
+
+{{ tenant_name }} has decided not to take your application for {{ job_title }} any further.
+Thank you for the time you gave it.
+
+Your other applications are unaffected, and you are welcome to apply for future roles.
+
+— Sync
+""",
+)
+
 TEMPLATES: Final[Mapping[str, EmailTemplate]] = {
     ApplicationConfirmation.template_key: APPLICATION_CONFIRMATION,
+    ApplicationRejection.template_key: APPLICATION_REJECTION,
 }
 
 

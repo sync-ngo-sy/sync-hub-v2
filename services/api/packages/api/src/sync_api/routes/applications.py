@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from typing import Annotated, Any, Final
+from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from sync_api.applications import Application, ApplicationPage, NewApplication
+from sync_api.applications import (
+    Application,
+    ApplicationPage,
+    MovedApplication,
+    NewApplication,
+)
 from sync_api.dependencies import ActingCandidateDep, ApplicationServiceDep, VisitorDep
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -52,6 +58,28 @@ async def submit_application(
     Application is attributed to it.
     """
     return await applications.submit(candidate, visitor, body)
+
+
+@router.post(
+    "/{application_id}/withdraw",
+    operation_id="withdrawMyApplication",
+    summary="Withdraw from a Job, for good",
+    responses={
+        **CANDIDATE_ACCESS_REFUSED,
+        404: openapi_problem("No Application of the caller's has that id."),
+        409: openapi_problem(
+            "The Application has already been decided or withdrawn. Withdrawal is final: it "
+            "cannot be undone, and the Job cannot be applied to again."
+        ),
+    },
+)
+async def withdraw_my_application(
+    application_id: UUID,
+    candidate: ActingCandidateDep,
+    applications: ApplicationServiceDep,
+) -> MovedApplication:
+    """Leave the process. This is irreversible, and re-applying to that Job is impossible."""
+    return await applications.withdraw(candidate, application_id)
 
 
 @router.get(

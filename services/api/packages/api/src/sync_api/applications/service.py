@@ -7,13 +7,16 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from sync_api.applications.access import my_application
 from sync_api.applications.answers import answer_rows, refuse_unusable_answers
 from sync_api.applications.criteria import screening_criteria_of
 from sync_api.applications.payload import (
     Application,
     ApplicationPage,
     AppliedJob,
+    MovedApplication,
 )
+from sync_api.applications.pipeline import move_application
 from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
 from sync_api.candidates import languages_named, replace_live_profile, skills_named
@@ -148,6 +151,30 @@ class ApplicationService:
         )
         await self._db.refresh(application)
         return _as_payload(application, job, tenant)
+
+    async def withdraw(self, candidate: ActingCandidate, application_id: UUID) -> MovedApplication:
+        """Leave the process, for good: the Job stays taken, so re-applying is not a thing."""
+        async with transaction(self._db):
+            applied = await my_application(self._db, candidate.id, application_id)
+            moved = await move_application(
+                self._db,
+                applied,
+                to=ApplicationStatus.WITHDRAWN,
+                source=StatusChangeSource.CANDIDATE,
+                by=candidate.id,
+            )
+
+        logger.info(
+            "applications.withdrawn",
+            application_id=str(application_id),
+            previous_status=moved.previous_status.value,
+        )
+        return MovedApplication(
+            id=application_id,
+            status=moved.status,
+            previous_status=moved.previous_status,
+            changed_at=moved.changed_at,
+        )
 
     async def page(
         self,

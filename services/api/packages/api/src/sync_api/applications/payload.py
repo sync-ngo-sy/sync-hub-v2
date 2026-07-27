@@ -5,10 +5,22 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-from sync_api.candidates import CandidateProfile
+from sync_api.candidates import (
+    CandidateProfile,
+    ProfileEducation,
+    ProfileExperience,
+    ProfileLanguage,
+    ProfileProject,
+    ProfileSkill,
+)
 from sync_api.jobs import PublicTenant
-from sync_api.text import OptionalParagraph
-from sync_core.models import ApplicationStatus
+from sync_api.text import OptionalLine, OptionalParagraph
+from sync_core.models import (
+    ApplicationQuestionType,
+    ApplicationStatus,
+    QualificationStatus,
+    StatusChangeSource,
+)
 from sync_core.profile import MAX_ENTRIES
 
 
@@ -94,3 +106,122 @@ class ApplicationPage(BaseModel):
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
     )
+
+
+class ApplicantSummary(BaseModel):
+    """One applicant, as the Job's triage list shows them."""
+
+    id: UUID = Field(description="The Application. Read it for everything below the surface.")
+    candidate_name: str = Field(description="The Snapshot's name: who they applied as.")
+    headline: OptionalLine = None
+    location: OptionalLine = None
+    status: ApplicationStatus
+    qualification_status: QualificationStatus = Field(description="The Screening verdict.")
+    applied_at: datetime
+    updated_at: datetime
+
+
+class ApplicantPage(BaseModel):
+    """One page of a Job's applicants, newest first."""
+
+    items: list[ApplicantSummary]
+    next_cursor: str | None = Field(
+        default=None, description="Send back as `cursor` for the following page."
+    )
+
+
+class ApplicationSnapshot(BaseModel):
+    """The reviewed data as it was frozen when the Application was sent, and never since."""
+
+    full_name: str
+    phone: OptionalLine = None
+    headline: OptionalLine = None
+    summary: OptionalParagraph = None
+    location: OptionalLine = None
+
+    experiences: list[ProfileExperience] = Field(default_factory=list)
+    educations: list[ProfileEducation] = Field(default_factory=list)
+    skills: list[ProfileSkill] = Field(default_factory=list)
+    languages: list[ProfileLanguage] = Field(default_factory=list)
+    projects: list[ProfileProject] = Field(default_factory=list)
+
+
+class AnsweredQuestion(BaseModel):
+    """One of the Job's questions, and what this applicant answered."""
+
+    question_id: UUID
+    question_text: str
+    question_type: ApplicationQuestionType
+    answer_boolean: bool | None = None
+    answer_text: str | None = None
+
+
+class ScreeningVerdict(BaseModel):
+    """What Screening decided, and why. A status change never touches it."""
+
+    status: QualificationStatus
+    reason: str | None = Field(
+        default=None, description="Which criteria decided it. Null until Screening has run."
+    )
+
+
+class StatusChange(BaseModel):
+    """One move in the Application's life, and who made it."""
+
+    status: ApplicationStatus
+    previous_status: ApplicationStatus | None = Field(
+        default=None, description="Null on the first entry: the submission itself."
+    )
+    source: StatusChangeSource
+    changed_at: datetime
+
+
+class ApplicationCv(BaseModel):
+    """The CV this Application was sent with, and where to read the original."""
+
+    id: UUID
+    display_name: str = Field(description="The name of the file the candidate uploaded.")
+    download_url: str = Field(
+        description="A signed URL to the original file. Anyone holding it can read it, so it "
+        "is short-lived — read the Application again rather than storing it."
+    )
+    expires_in_seconds: int = Field(description="How long `download_url` stays good for.")
+
+
+class ReviewedJob(BaseModel):
+    """The Job an Application is being read against."""
+
+    id: UUID
+    title: str
+
+
+class ApplicationReview(BaseModel):
+    """One Application, whole: everything reviewing it takes, and no other tool."""
+
+    id: UUID
+    job: ReviewedJob
+    status: ApplicationStatus
+    screening: ScreeningVerdict
+    snapshot: ApplicationSnapshot
+    answers: list[AnsweredQuestion]
+    history: list[StatusChange] = Field(description="Every move it has made, oldest first.")
+    cv: ApplicationCv
+    applied_at: datetime
+    updated_at: datetime
+
+
+class ApplicationStatusChange(BaseModel):
+    """Where to take the Application next."""
+
+    status: ApplicationStatus = Field(
+        description="Any state that is not `withdrawn`, which is the candidate's own move."
+    )
+
+
+class MovedApplication(BaseModel):
+    """Where an Application stands after a move, and where it came from."""
+
+    id: UUID
+    status: ApplicationStatus
+    previous_status: ApplicationStatus
+    changed_at: datetime

@@ -539,6 +539,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/jobs/{job_id}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who applied to the Job, newest first
+         * @description The triage list: who applied, where they stand, and how Screening judged them.
+         */
+        get: operations["listJobApplicants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/jobs/{job_id}/links": {
         parameters: {
             query?: never;
@@ -581,6 +601,36 @@ export interface paths {
          * @description Turning a link off stops it resolving; the views it already brought stay counted.
          */
         patch: operations["changeTrackedJobLink"];
+        trace?: never;
+    };
+    "/v1/tenants/me/applications/{application_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Application, whole
+         * @description The Snapshot, the answers, the Screening verdict, the history, and a link to the CV.
+         *
+         *     `snapshot` is what the candidate reviewed when they applied, not what their profile says
+         *     today. `cv.download_url` is short-lived: read this again rather than storing it.
+         */
+        get: operations["getApplication"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Move an Application through the pipeline
+         * @description Move it anywhere the pipeline allows, backwards included, and tell the candidate.
+         *
+         *     Every move notifies them in-app; a rejection also queues the one email a human decision
+         *     earns. The Screening verdict is untouched, whatever the Application's status becomes.
+         */
+        patch: operations["changeApplicationStatus"];
         trace?: never;
     };
     "/v1/jobs": {
@@ -676,6 +726,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/applications/{application_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw from a Job, for good
+         * @description Leave the process. This is irreversible, and re-applying to that Job is impossible.
+         */
+        post: operations["withdrawMyApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -699,6 +769,71 @@ export interface components {
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
+        /**
+         * AnsweredQuestion
+         * @description One of the Job's questions, and what this applicant answered.
+         */
+        AnsweredQuestion: {
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /** Question Text */
+            question_text: string;
+            question_type: components["schemas"]["ApplicationQuestionType"];
+            /** Answer Boolean */
+            answer_boolean?: boolean | null;
+            /** Answer Text */
+            answer_text?: string | null;
+        };
+        /**
+         * ApplicantPage
+         * @description One page of a Job's applicants, newest first.
+         */
+        ApplicantPage: {
+            /** Items */
+            items: components["schemas"]["ApplicantSummary"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * ApplicantSummary
+         * @description One applicant, as the Job's triage list shows them.
+         */
+        ApplicantSummary: {
+            /**
+             * Id
+             * Format: uuid
+             * @description The Application. Read it for everything below the surface.
+             */
+            id: string;
+            /**
+             * Candidate Name
+             * @description The Snapshot's name: who they applied as.
+             */
+            candidate_name: string;
+            /** Headline */
+            headline?: string | null;
+            /** Location */
+            location?: string | null;
+            status: components["schemas"]["ApplicationStatus"];
+            /** @description The Screening verdict. */
+            qualification_status: components["schemas"]["QualificationStatus"];
+            /**
+             * Applied At
+             * Format: date-time
+             */
+            applied_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * Application
          * @description One of the caller's own Applications.
@@ -776,6 +911,32 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * ApplicationCv
+         * @description The CV this Application was sent with, and where to read the original.
+         */
+        ApplicationCv: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Display Name
+             * @description The name of the file the candidate uploaded.
+             */
+            display_name: string;
+            /**
+             * Download Url
+             * @description A signed URL to the original file. Anyone holding it can read it, so it is short-lived — read the Application again rather than storing it.
+             */
+            download_url: string;
+            /**
+             * Expires In Seconds
+             * @description How long `download_url` stays good for.
+             */
+            expires_in_seconds: number;
+        };
+        /**
          * ApplicationPage
          * @description One page of the caller's Applications, newest first.
          */
@@ -794,10 +955,101 @@ export interface components {
          */
         ApplicationQuestionType: "yes_no" | "short_text";
         /**
+         * ApplicationReview
+         * @description One Application, whole: everything reviewing it takes, and no other tool.
+         */
+        ApplicationReview: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            job: components["schemas"]["ReviewedJob"];
+            status: components["schemas"]["ApplicationStatus"];
+            screening: components["schemas"]["ScreeningVerdict"];
+            snapshot: components["schemas"]["ApplicationSnapshot"];
+            /** Answers */
+            answers: components["schemas"]["AnsweredQuestion"][];
+            /**
+             * History
+             * @description Every move it has made, oldest first.
+             */
+            history: components["schemas"]["StatusChange"][];
+            cv: components["schemas"]["ApplicationCv"];
+            /**
+             * Applied At
+             * Format: date-time
+             */
+            applied_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ApplicationSnapshot
+         * @description The reviewed data as it was frozen when the Application was sent, and never since.
+         */
+        ApplicationSnapshot: {
+            /** Full Name */
+            full_name: string;
+            /** Phone */
+            phone?: string | null;
+            /** Headline */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Experiences */
+            experiences?: components["schemas"]["ProfileExperience"][];
+            /** Educations */
+            educations?: components["schemas"]["ProfileEducation"][];
+            /** Skills */
+            skills?: components["schemas"]["ProfileSkill"][];
+            /** Languages */
+            languages?: components["schemas"]["ProfileLanguage"][];
+            /** Projects */
+            projects?: components["schemas"]["ProfileProject"][];
+        };
+        /**
          * ApplicationStatus
          * @enum {string}
          */
         ApplicationStatus: "new" | "reviewing" | "shortlisted" | "interview" | "offer" | "hired" | "rejected" | "withdrawn";
+        /**
+         * ApplicationStatusChange
+         * @description Where to take the Application next.
+         */
+        ApplicationStatusChange: {
+            /** @description Any state that is not `withdrawn`, which is the candidate's own move. */
+            status: components["schemas"]["ApplicationStatus"];
+        };
+        /**
+         * ApplicationStatusChanged
+         * @description An Application has moved. Every move produces one of these, whoever caused it.
+         */
+        ApplicationStatusChanged: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "application_status_changed";
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** @description Where the Application stands now. */
+            status: components["schemas"]["ApplicationStatus"];
+            /** @description Where it stood until this move. */
+            previous_status: components["schemas"]["ApplicationStatus"];
+        };
         /**
          * AppliedJob
          * @description The Job an Application went to, as the candidate's own list names it.
@@ -1397,6 +1649,24 @@ export interface components {
             is_active: boolean;
         };
         /**
+         * MovedApplication
+         * @description Where an Application stands after a move, and where it came from.
+         */
+        MovedApplication: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["ApplicationStatus"];
+            previous_status: components["schemas"]["ApplicationStatus"];
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+        };
+        /**
          * NewApplication
          * @description One submission: the Job, the CV behind it, the reviewed data, and the answers.
          */
@@ -1492,7 +1762,7 @@ export interface components {
              * Payload
              * @description What happened. `type` says which shape the rest of this object takes.
              */
-            payload: components["schemas"]["CvParseFailed"];
+            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["ApplicationStatusChanged"];
             /**
              * Read At
              * @description When the caller read this. Null while it is still unread.
@@ -1950,6 +2220,11 @@ export interface components {
             slug: string;
         };
         /**
+         * QualificationStatus
+         * @enum {string}
+         */
+        QualificationStatus: "pending" | "qualified" | "disqualified" | "review_required";
+        /**
          * Readiness
          * @description The process is up and its dependencies answer.
          */
@@ -1972,6 +2247,31 @@ export interface components {
          * @enum {string}
          */
         RecruiterRole: "admin" | "recruiter";
+        /**
+         * ReviewedJob
+         * @description The Job an Application is being read against.
+         */
+        ReviewedJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ScreeningVerdict
+         * @description What Screening decided, and why. A status change never touches it.
+         */
+        ScreeningVerdict: {
+            status: components["schemas"]["QualificationStatus"];
+            /**
+             * Reason
+             * @description Which criteria decided it. Null until Screening has run.
+             */
+            reason?: string | null;
+        };
         /** SignUpRequest */
         SignUpRequest: {
             /**
@@ -2024,6 +2324,26 @@ export interface components {
          * @enum {string}
          */
         SkillImportance: "required" | "preferred" | "optional";
+        /**
+         * StatusChange
+         * @description One move in the Application's life, and who made it.
+         */
+        StatusChange: {
+            status: components["schemas"]["ApplicationStatus"];
+            /** @description Null on the first entry: the submission itself. */
+            previous_status?: components["schemas"]["ApplicationStatus"] | null;
+            source: components["schemas"]["StatusChangeSource"];
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+        };
+        /**
+         * StatusChangeSource
+         * @enum {string}
+         */
+        StatusChangeSource: "recruiter" | "candidate" | "system";
         /**
          * SubmittedAnswer
          * @description One answer to one of the Job's questions, in the kind the question asked for.
@@ -4035,6 +4355,82 @@ export interface operations {
             };
         };
     };
+    listJobApplicants: {
+        parameters: {
+            query?: {
+                /** @description Only Applications in this pipeline state. */
+                status?: components["schemas"]["ApplicationStatus"] | null;
+                /** @description Only Applications the Screening verdict decided this way. */
+                qualification_status?: components["schemas"]["QualificationStatus"] | null;
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicantPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listTrackedJobLinks: {
         parameters: {
             query?: never;
@@ -4235,6 +4631,162 @@ export interface operations {
                 };
             };
             /** @description This Job already has a link by that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getApplication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationReview"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no application with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The stored CV file could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    changeApplicationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovedApplication"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no application with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The Application cannot move there from where it is: `hired` and `withdrawn` are final, a `rejected` one can only be taken back to `reviewing`, and only the candidate withdraws. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4557,6 +5109,82 @@ export interface operations {
                 };
             };
             /** @description The answers do not match the questions the Job asks, or the reviewed data names a skill or a language the platform does not know. All of them name the offending entries. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    withdrawMyApplication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovedApplication"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No Application of the caller's has that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
             422: {
                 headers: {
                     [name: string]: unknown;
