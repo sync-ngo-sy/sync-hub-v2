@@ -52,6 +52,8 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "confirmPasswordReset",
         "getCurrentProfile",
         "getHealth",
+        "getMyCv",
+        "getMyCvDownloadLink",
         "getMyProfile",
         "getMyTenant",
         "getReadiness",
@@ -64,4 +66,5 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "requestPasswordReset",
         "signUp",
         "signUpTenant",
+        "uploadMyCv",
     ]

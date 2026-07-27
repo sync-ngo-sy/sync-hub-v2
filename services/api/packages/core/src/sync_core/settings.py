@@ -86,6 +86,36 @@ class Settings(BaseSettings):
     #: name the other SPA itself. Must be one of GoTrue's `additional_redirect_urls`.
     recruiter_portal_url: AnyHttpUrl
 
+    # CVs. The 10 MB ceiling is the `cvs` bucket's own `file_size_limit`, restated so the API
+    # can refuse an oversized upload before streaming it rather than after.
+    cv_max_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
+    #: How long a CV download link stays good for. Short: it is a bearer URL for a private
+    #: document, and the SPA asks for a fresh one each time it needs one.
+    cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
+
+    # CV extraction (ADR-0006). Unset outside the worker — the API never calls the model, and
+    # the test suite runs the whole pipeline against the fake extractor.
+    openai_api_key: SecretStr | None = None
+    #: Revisited after parse-quality evals; a config value precisely so that is a deploy.
+    openai_cv_model: str = "gpt-4o-mini"
+    openai_timeout_seconds: float = Field(default=120.0, gt=0)
+
+    # The worker (ADR-0003 as amended): poll, in-process sweep, no LISTEN/NOTIFY, no pg_cron.
+    worker_poll_interval_seconds: float = Field(default=1.0, gt=0)
+    #: Longest an idle consumer waits between polls. It backs off to here when a queue is
+    #: empty, so an idle deployment is not a wasted query per second per queue.
+    worker_idle_backoff_max_seconds: float = Field(default=15.0, gt=0)
+    #: Attempts before a job is left `failed` for good. The CV behind it fails with it.
+    worker_max_attempts: int = Field(default=3, ge=1)
+    #: Retry delay is this doubled per attempt already made.
+    worker_retry_backoff_seconds: float = Field(default=10.0, gt=0)
+    #: A `processing` job whose worker died is requeued once it has been claimed this long.
+    #: Longer than any real parse, or the sweep would requeue work still being done.
+    worker_stuck_job_seconds: float = Field(default=600.0, gt=0)
+    worker_sweep_interval_seconds: float = Field(default=60.0, gt=0)
+    #: How many CVs one worker process parses at once.
+    worker_ingestion_concurrency: int = Field(default=4, ge=1)
+
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON
 
@@ -93,6 +123,11 @@ class Settings(BaseSettings):
     def gotrue_url(self) -> str:
         """Where GoTrue answers. Also the `iss` of every access token it signs."""
         return f"{str(self.supabase_url).rstrip('/')}/auth/v1"
+
+    @property
+    def storage_url(self) -> str:
+        """Where Storage answers."""
+        return f"{str(self.supabase_url).rstrip('/')}/storage/v1"
 
 
 @lru_cache(maxsize=1)

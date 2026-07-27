@@ -47,6 +47,9 @@ pnpm lint
 # run just the backend
 uv run --directory services/api uvicorn sync_api.main:app --reload
 
+# run the queue worker (the second deployable unit — parses uploaded CVs)
+uv run --directory services/api sync-worker
+
 # run the backend's tests (needs `supabase start` first — see below)
 pnpm --filter @sync/api test
 ```
@@ -69,6 +72,44 @@ SYNC_TEST_SKIP_DB_RESET=1 uv run --directory services/api pytest tests/test_heal
 ```
 
 The suite reads the stack's URL and keys from `supabase status`, so it works regardless of what `services/api/.env` says.
+
+## The queue worker
+
+The backend is two deployable units: the FastAPI app, and one worker process that drains the
+platform's Postgres table queues (ADR-0003). Right now it has one consumer — CV parsing —
+and later tickets add re-embedding and outbound communications to the same process.
+
+```bash
+uv run --directory services/api sync-worker
+```
+
+Uploading a CV is the API's job and needs nothing extra; *parsing* it is the worker's, and
+that needs an OpenAI key:
+
+```bash
+# services/api/.env
+SYNC_OPENAI_API_KEY=sk-...
+```
+
+Without it the worker refuses to start, deliberately — a worker that started happily and
+then failed every CV it claimed would be a much quieter kind of broken. The API does not
+read the key, and the test suite parses with a fake extractor, so leaving it unset is fine
+until you actually want a CV read.
+
+A CV's `parsing_status` is the authoritative state: `uploaded` → `processing` →
+`ready`/`failed`. The SPA polls `GET /v1/candidates/me/cvs/{id}` until it leaves
+`processing`, and `failed` is only ever written once the job has genuinely run out of
+attempts.
+
+### Tests that call a real model
+
+The suite parses with a deterministic fake, so a bare `pytest` costs nothing and hits no
+provider. The handful of tests that exercise the real OpenAI adapter are marked `ai_live`
+and excluded by default:
+
+```bash
+SYNC_OPENAI_API_KEY=sk-... uv run --directory services/api pytest -m ai_live
+```
 
 ## Calling the API from a frontend
 
