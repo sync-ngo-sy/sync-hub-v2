@@ -1,3 +1,4 @@
+from sync_worker.communications import COMMUNICATIONS_QUEUE, CommunicationsConsumer
 from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import (
     ClaimedJob,
@@ -12,8 +13,10 @@ from sync_worker.runner import Drainable, consume, sweep
 from sync_worker.worker import Worker, run_worker
 
 __all__ = [
+    "COMMUNICATIONS_QUEUE",
     "INGESTION_QUEUE",
     "ClaimedJob",
+    "CommunicationsConsumer",
     "Consumer",
     "CvIngestionConsumer",
     "Drainable",

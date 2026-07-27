@@ -1923,6 +1923,11 @@ class Communication(Base):
         Index("communications_application_idx", "application_id"),
         Index("communications_candidate_idx", "candidate_id"),
         Index(
+            "communications_claim_idx",
+            "available_at",
+            postgresql_where="(status = ANY (ARRAY['queued'::communication_status, 'processing'::communication_status]))",
+        ),
+        Index(
             "communications_provider_msg_uidx",
             "provider",
             "provider_message_id",
@@ -1981,6 +1986,9 @@ class Communication(Base):
     provider_message_id: Mapped[str | None] = mapped_column(Text)
     template_key: Mapped[str | None] = mapped_column(Text)
     sent_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     application_candidate: Mapped[Optional["Application"]] = relationship(
         "Application", foreign_keys=[application_id, candidate_id], viewonly=True

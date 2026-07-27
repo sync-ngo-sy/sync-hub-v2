@@ -20,21 +20,6 @@ OUTFILE = SERVICE_ROOT / "packages" / "core" / "src" / "sync_core" / "models.py"
 # back_populates, which read-only relationships have nothing to keep in sync.
 GENERATOR_OPTIONS = "nojoined,use_inflect,nobidi"
 
-BANNER = '''"""SQLAlchemy models generated from the database schema — DO NOT EDIT BY HAND.
-
-Regenerate with `uv run python scripts/generate_models.py` after every migration
-(ADR-0004). The database, not this file, is the source of truth.
-
-Every relationship is `viewonly` — navigate and eager-load through them, but write by
-assigning foreign key columns. The schema isolates tenants with composite foreign keys, so
-most tenant-scoped tables reach their tenant through two overlapping paths (directly, and
-via the recruiter who owns the row); a writable relationship would leave SQLAlchemy
-guessing which one owns `tenant_id`. Explicit column writes are what ADR-0001 asks for
-anyway: the backend composes its own transactions.
-"""
-
-'''
-
 RELATIONSHIP_CALL = re.compile(r"= relationship\((.*)\)$", re.MULTILINE)
 
 # sqlacodegen targets older Pythons than this project: bare `dict` for jsonb fails mypy
@@ -80,7 +65,7 @@ def main() -> int:
             "no longer puts each call on one line, so the rewrite needs revisiting."
         )
 
-    OUTFILE.write_text(BANNER + source)
+    OUTFILE.write_text(source)
 
     subprocess.run(["ruff", "check", "--fix", str(OUTFILE)], check=True, cwd=SERVICE_ROOT)
     subprocess.run(["ruff", "format", str(OUTFILE)], check=True, cwd=SERVICE_ROOT)

@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "sync-comms",
     "sync-core",
     "sync-ingestion",
     "sync-parsers",
@@ -23,6 +24,7 @@ requires = ["uv_build>=0.11.24,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
+sync-comms = { workspace = true }
 sync-core = { workspace = true }
 sync-ingestion = { workspace = true }
 sync-parsers = { workspace = true }

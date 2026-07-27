@@ -65,9 +65,12 @@ markers = [
     # Hits the real OpenAI API: needs a key, costs money, and is not deterministic. Run it
     # deliberately with `-m ai_live`; everything else parses with the fake extractor.
     "ai_live: exercises a real AI provider, excluded from the default run",
+    # Hands a message to the real Resend API: needs a key, and sends. Run it deliberately
+    # with `-m email_live`; everything else delivers through the capturing fake.
+    "email_live: exercises the real email provider, excluded from the default run",
 ]
-# `-m "not ai_live"` here rather than in CI, so a bare `pytest` never spends money.
-addopts = "-ra --strict-markers --strict-config -m 'not ai_live'"
+# Excluded here rather than in CI, so a bare `pytest` never spends money and never sends.
+addopts = "-ra --strict-markers --strict-config -m 'not ai_live and not email_live'"
 
 [tool.mypy]
 python_version = "3.12"

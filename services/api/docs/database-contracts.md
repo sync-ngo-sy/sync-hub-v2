@@ -262,10 +262,21 @@ per `project`, and one each for `education`, `skills` and `languages`. `chunk_ty
 which, and `chunk_text` is what a recruiter is shown as the evidence for a hit. An empty
 section produces no chunk, so a profile with nothing in it produces nothing to find.
 
-### Communications (`communications` → sender)
-- Also the delivery-audit record. Claim `status='queued'`; resolve the recipient's verified
-  email from `auth.users` (never from a snapshot); send via provider using `idempotency_key`;
-  set `status`, `provider`, `provider_message_id`, `sent_at`, or retry via `attempts`.
+### Communications (`communications` → `sync_comms`/`sync_worker`)
+- The queue row *is* the delivery-audit record, so it carries both: `communication_status`
+  spells the generic engine's four states (`queued`/`processing`/`sent`/`failed`) and
+  migration 13 added the three timestamps the claim, the backoff and the sweep need.
+  `completed_at` is when the queue let go of the row either way; `sent_at` only ever means a
+  provider accepted the message.
+- Claim `status='queued'`; resolve the recipient's verified email from `auth.users` — never
+  from a Snapshot and never from the row's own `recipient`, which is only what the address
+  was when the message was queued. No confirmed email is a permanent failure, not a retry.
+- Render `template_key` (a backend-owned template, versioned, written at enqueue time) and
+  send through the `EmailSender` port, passing `idempotency_key` to the provider. That key is
+  what stops a re-claimed row — one whose worker died after the provider took the message —
+  from reaching the candidate twice.
+- `record` writes `recipient`, `subject`, `provider`, `provider_message_id` and `sent_at` in
+  the same transaction that marks the row `sent`, so evidence and status cannot disagree.
 - A recruiter-initiated row requires `application_id` and a same-tenant recruiter (DB CHECK +
   composite FKs enforce the shape; the backend sets them).
 
