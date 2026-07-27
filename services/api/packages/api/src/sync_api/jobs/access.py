@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import select
+
+from sync_api.problems import JOB_NOT_FOUND_PROBLEM_TYPE, Problem
+from sync_core.models import Job
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def own_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> Job:
+    """The tenant's own Job. Another tenant's Job and a nonexistent one are the same 404."""
+    job = await session.scalar(select(Job).where(Job.id == job_id, Job.tenant_id == tenant_id))
+    if job is None:
+        raise Problem(
+            status=404,
+            type=JOB_NOT_FOUND_PROBLEM_TYPE,
+            detail="No job of this tenant has that id.",
+        )
+    return job

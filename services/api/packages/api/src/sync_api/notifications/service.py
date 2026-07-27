@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import func, literal, select, tuple_, update
+from sqlalchemy import func, select, update
 
 from sync_api.notifications.payload import Notification, NotificationPage, UnreadNotificationCount
-from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor
+from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import NOTIFICATION_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core import transaction
 from sync_core.models import Notification as NotificationRow
@@ -23,27 +23,21 @@ class NotificationService:
     async def page(
         self, profile_id: UUID, *, cursor: str | None = None, limit: int = DEFAULT_PAGE_SIZE
     ) -> NotificationPage:
-        query = (
-            select(NotificationRow)
-            .where(NotificationRow.recipient_profile_id == profile_id)
-            .order_by(NotificationRow.created_at.desc(), NotificationRow.id.desc())
-            .limit(limit + 1)
-        )
-        if cursor is not None:
-            after = Cursor.decode(cursor)
-            query = query.where(
-                tuple_(NotificationRow.created_at, NotificationRow.id)
-                < tuple_(literal(after.created_at), literal(after.id))
+        found = list(
+            await self._db.scalars(
+                newest_first(
+                    select(NotificationRow).where(
+                        NotificationRow.recipient_profile_id == profile_id
+                    ),
+                    created_at=NotificationRow.created_at,
+                    id_=NotificationRow.id,
+                    cursor=cursor,
+                    limit=limit,
+                )
             )
-
-        found = list(await self._db.scalars(query))
-        rows, more = found[:limit], len(found) > limit
-        return NotificationPage(
-            items=[_as_payload(row) for row in rows],
-            next_cursor=Cursor(created_at=rows[-1].created_at, id=rows[-1].id).encode()
-            if more
-            else None,
         )
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
+        return NotificationPage(items=[_as_payload(row) for row in rows], next_cursor=next_cursor)
 
     async def unread_count(self, profile_id: UUID) -> UnreadNotificationCount:
         unread = await self._db.scalar(
@@ -75,6 +69,10 @@ class NotificationService:
                     detail="No notification of yours has that id.",
                 )
         return _as_payload(notification)
+
+
+def _cursor(row: NotificationRow) -> Cursor:
+    return Cursor(created_at=row.created_at, id=row.id)
 
 
 def _as_payload(row: NotificationRow) -> Notification:

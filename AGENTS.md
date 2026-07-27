@@ -14,6 +14,12 @@ Example: Instead of implementing retry logic from scratch, reach for Tenacity. T
 
 you are allowed to add dependencies.
 
+### Don't over comment
+
+Only reach for a comment when it's impossible to infer or understand without code; docstrings for routing functions are an exception because they become the description in the OpenAPI schema, but they should be very minimal.
+
+Don't edit the readme.md file unless explicitly told to.
+
 ### Issue tracker
 
 Issues live in the repo's GitHub Issues (`sync-ngo-sy/sync-hub-v2`), operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.

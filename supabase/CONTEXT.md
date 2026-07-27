@@ -98,6 +98,18 @@ criteria — required skills, skill-years, required languages, minimum total exp
 yes/no knockout questions — which lock once the Job has its first Application.
 _Avoid_: Posting, Vacancy, Listing.
 
+**Tracked link**:
+A named, unguessable link to one published Job, so a Tenant can tell which channel brought a
+view and, later, an Application. Turning one off or letting it expire makes it unresolvable
+without touching the traffic it already brought.
+_Avoid_: Campaign, UTM, Short link.
+
+**Job view event**:
+One anonymous reading of a Job, attributed to the Tracked link that brought it when there was
+one. It records a session the platform issued and a salted hash — never an address, an agent
+string, or a person.
+_Avoid_: Impression, Hit, Visit.
+
 **Canonical skill**:
 A platform-global entry in the skill taxonomy (one spelling, one id). Everything Screening
 compares — a Candidate's skills, a Job's requirements — is expressed in Canonical skills.
