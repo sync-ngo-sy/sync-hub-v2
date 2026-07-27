@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
+from sync_api.notifications import NotificationService
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
 from sync_core import Database, Settings, Storage
 
@@ -100,6 +101,13 @@ def get_candidate_profile_service(session: SessionDep) -> CandidateProfileServic
 CandidateProfileServiceDep = Annotated[
     CandidateProfileService, Depends(get_candidate_profile_service)
 ]
+
+
+def get_notification_service(session: SessionDep) -> NotificationService:
+    return NotificationService(session)
+
+
+NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
 
 
 def get_storage(request: Request) -> Storage:

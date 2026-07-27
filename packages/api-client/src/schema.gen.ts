@@ -434,6 +434,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's notifications, newest first
+         * @description One page of what the platform has told this Profile.
+         *
+         *     Each item's `payload` says what happened, and its `type` says which shape the payload
+         *     takes — switch on that one field. Page by sending `next_cursor` back as `cursor`, and
+         *     stop when it comes back null.
+         */
+        get: operations["listMyNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How many notifications the caller has not read
+         * @description The number on the bell. Cheap enough to poll; it counts rather than reads the list.
+         */
+        get: operations["getMyUnreadNotificationCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark one notification read
+         * @description Say the caller has seen this one, and answer with it as it now stands.
+         *
+         *     Safe to send again: a notification that is already read keeps the time it was first
+         *     read, so re-rendering a list does not turn `read_at` into "last seen".
+         */
+        post: operations["markMyNotificationAsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -457,6 +524,37 @@ export interface components {
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
+        /**
+         * ApplicationStatus
+         * @enum {string}
+         */
+        ApplicationStatus: "new" | "reviewing" | "shortlisted" | "interview" | "offer" | "hired" | "rejected" | "withdrawn";
+        /**
+         * ApplicationStatusChanged
+         * @description An Application moved to another status — by a Recruiter, or by the Candidate withdrawing.
+         */
+        ApplicationStatusChanged: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "application_status_changed";
+            /**
+             * Application Id
+             * Format: uuid
+             * @description The Application that moved.
+             */
+            application_id: string;
+            /**
+             * Job Title
+             * @description The Job it was submitted to, as it was titled.
+             */
+            job_title: string;
+            /** @description Where the Application was. */
+            previous_status: components["schemas"]["ApplicationStatus"];
+            /** @description Where it is now. */
+            new_status: components["schemas"]["ApplicationStatus"];
+        };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -606,6 +704,32 @@ export interface components {
              * @description How long the URL stays good for. Ask again rather than storing it.
              */
             expires_in_seconds: number;
+        };
+        /**
+         * CvParseFailed
+         * @description The platform gave up on reading a CV.
+         *
+         *     The reason is deliberately not here. It lives on the CV itself (`parsing_error`), where
+         *     it is one field of the document this points at, and it is written for a developer
+         *     reading a row rather than for a candidate reading a bell.
+         */
+        CvParseFailed: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "cv_parse_failed";
+            /**
+             * Cv Id
+             * Format: uuid
+             * @description The CV that could not be read. Fetch it for the details.
+             */
+            cv_id: string;
+            /**
+             * Display Name
+             * @description The name of the file the candidate uploaded, so the message can name it.
+             */
+            display_name: string;
         };
         /**
          * CvParsingStatus
@@ -758,6 +882,46 @@ export interface components {
         NewTenantView: {
             tenant: components["schemas"]["TenantView"];
             admin: components["schemas"]["MemberView"];
+        };
+        /**
+         * Notification
+         * @description One thing the caller has been told.
+         */
+        Notification: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Payload
+             * @description What happened. `type` says which shape the rest of this object takes.
+             */
+            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["ApplicationStatusChanged"];
+            /**
+             * Read At
+             * @description When the caller read this. Null while it is still unread.
+             */
+            read_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the platform recorded it.
+             */
+            created_at: string;
+        };
+        /**
+         * NotificationPage
+         * @description One page of the caller's notifications, newest first.
+         */
+        NotificationPage: {
+            /** Items */
+            items: components["schemas"]["Notification"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page. Null on the last page — which is the only thing that means there is no more to fetch.
+             */
+            next_cursor?: string | null;
         };
         /**
          * ParsedCv
@@ -1183,6 +1347,17 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * UnreadNotificationCount
+         * @description What the bell icon renders when nobody has opened the list.
+         */
+        UnreadNotificationCount: {
+            /**
+             * Unread
+             * @description How many of the caller's notifications are still unread.
+             */
+            unread: number;
         };
         /**
          * ValidationProblemDetail
@@ -2512,6 +2687,163 @@ export interface operations {
             };
             /** @description The stored file could not be reached. */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listMyNotifications: {
+        parameters: {
+            query?: {
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMyUnreadNotificationCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadNotificationCount"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    markMyNotificationAsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller has no notification with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
