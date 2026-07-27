@@ -1,3 +1,4 @@
+from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import (
     ClaimedJob,
     Consumer,
@@ -7,7 +8,7 @@ from sync_worker.engine import (
     RetryPolicy,
 )
 from sync_worker.ingestion import INGESTION_QUEUE, CvIngestionConsumer
-from sync_worker.runner import consume, sweep
+from sync_worker.runner import Drainable, consume, sweep
 from sync_worker.worker import Worker, run_worker
 
 __all__ = [
@@ -15,9 +16,12 @@ __all__ = [
     "ClaimedJob",
     "Consumer",
     "CvIngestionConsumer",
+    "Drainable",
     "PermanentFailureError",
     "Queue",
     "QueueEngine",
+    "ReembedEngine",
+    "ReembedPolicy",
     "RetryPolicy",
     "Worker",
     "consume",

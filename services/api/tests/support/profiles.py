@@ -13,6 +13,7 @@ from sync_core.models import (
     CandidateEmbeddingJob,
     CandidateExperience,
     CandidateLanguage,
+    CandidateProfileChunk,
     CandidateProject,
     CandidateSkill,
     Cv,
@@ -53,6 +54,9 @@ class EmbeddingJob:
     dirty: bool
     revision: int
     claimed_at: datetime | None
+    attempts: int
+    error_message: str | None
+    updated_at: datetime
 
 
 async def embedding_jobs(session: AsyncSession, candidate_id: UUID) -> list[EmbeddingJob]:
@@ -61,9 +65,26 @@ async def embedding_jobs(session: AsyncSession, candidate_id: UUID) -> list[Embe
         select(CandidateEmbeddingJob).where(CandidateEmbeddingJob.candidate_id == candidate_id)
     )
     return [
-        EmbeddingJob(dirty=row.dirty, revision=row.revision, claimed_at=row.claimed_at)
+        EmbeddingJob(
+            dirty=row.dirty,
+            revision=row.revision,
+            claimed_at=row.claimed_at,
+            attempts=row.attempts,
+            error_message=row.error_message,
+            updated_at=row.updated_at,
+        )
         for row in rows
     ]
+
+
+async def profile_chunks(session: AsyncSession, candidate_id: UUID) -> list[CandidateProfileChunk]:
+    session.expire_all()
+    rows = await session.scalars(
+        select(CandidateProfileChunk)
+        .where(CandidateProfileChunk.candidate_id == candidate_id)
+        .order_by(CandidateProfileChunk.chunk_index)
+    )
+    return list(rows)
 
 
 async def give_a_current_cv(

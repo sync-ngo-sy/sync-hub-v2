@@ -16,6 +16,7 @@ from sync_worker import RetryPolicy
 from sync_worker.worker import Worker
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import CVS, an_uploaded_cv, cv_row, ingestion_job, some_bytes
+from tests.support.embedders import FakeEmbedder
 from tests.support.extractors import FakeExtractor, a_parse
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import my_id
@@ -392,6 +393,7 @@ async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
             update={"worker_poll_interval_seconds": 0.05, "worker_idle_backoff_max_seconds": 0.05}
         ),
         FakeExtractor(),
+        FakeEmbedder(),
     )
 
     running = asyncio.create_task(worker.run())

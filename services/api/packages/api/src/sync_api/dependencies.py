@@ -9,8 +9,11 @@ from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCoo
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
 from sync_api.notifications import NotificationService
+from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
+from sync_api.search import CandidateSearchService
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
 from sync_core import Database, Settings, Storage
+from sync_rag import Embedder
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -133,3 +136,23 @@ def get_tenant_admin(recruiter: ActingRecruiterDep) -> ActingRecruiter:
 
 
 TenantAdminDep = Annotated[ActingRecruiter, Depends(get_tenant_admin)]
+
+
+def get_embedder(request: Request) -> Embedder:
+    embedder = cast("Embedder | None", request.app.state.embedder)
+    if embedder is None:
+        raise Problem(
+            status=503,
+            type=SEARCH_UNAVAILABLE_PROBLEM_TYPE,
+            detail="Global search is not configured on this deployment.",
+        )
+    return embedder
+
+
+def get_candidate_search_service(
+    session: SessionDep, embedder: Annotated[Embedder, Depends(get_embedder)]
+) -> CandidateSearchService:
+    return CandidateSearchService(session, embedder)
+
+
+CandidateSearchServiceDep = Annotated[CandidateSearchService, Depends(get_candidate_search_service)]
