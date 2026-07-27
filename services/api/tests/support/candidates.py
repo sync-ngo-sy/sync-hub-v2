@@ -69,10 +69,22 @@ async def a_confirmed_candidate(
     browser: AsyncClient, mailbox: Mailbox, label: str = "candidate"
 ) -> Signup:
     """Sign up, confirm, and come back later with an empty cookie jar."""
+    signup = await a_signed_in_candidate(browser, mailbox, label)
+    browser.cookies.clear()
+    return signup
+
+
+async def a_signed_in_candidate(
+    browser: AsyncClient, mailbox: Mailbox, label: str = "candidate"
+) -> Signup:
+    """Sign up and confirm, leaving `browser` holding the session confirmation handed back.
+
+    Confirming *is* signing in (ADR-0005), so a test that wants a candidate who can act
+    needs no login call of its own.
+    """
     signup = a_signup(label)
     signed_up = await sign_up(browser, signup)
     assert signed_up.status_code == 201, signed_up.text
     confirmed = await confirm_email(browser, mailbox, signup)
     assert confirmed.status_code == 200, confirmed.text
-    browser.cookies.clear()
     return signup

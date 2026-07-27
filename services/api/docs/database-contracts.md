@@ -36,6 +36,27 @@ fixed at creation (candidate XOR recruiter, enforced by composite FK).
 - Do **not** rely on an `auth.users` trigger; the flow decides the role, so the backend writes
   both rows.
 
+## Candidate profile replacement
+
+`PUT /v1/candidates/me/profile` replaces the live profile whole, in one transaction, service
+role. The candidate row is updated and every `candidate_*` child row is deleted and
+re-inserted — never matched up and patched — so no reader ever sees a half-saved profile and
+`sort_order` is simply the position each entry had in the request.
+
+Backend-enforced preconditions (all checked **before** anything is written, so a refusal
+cannot leave a section emptied):
+1. Every skill names an existing `skill_taxonomy.canonical_name`, exactly; every language
+   code (including `candidates.preferred_language_code`) exists in `languages`. Both refuse
+   with problem+json naming the offending entries rather than letting the FK do it.
+2. `is_searchable` only goes true when `candidates.current_cv_id` is set (the
+   `candidates_searchable_needs_cv` CHECK, answered as a 409 instead of a write failure).
+3. The date, month, year and one-entry-per-skill rules the `candidate_*` CHECKs enforce are
+   restated in the request model, so a bad shape is a located 422 and never reaches Postgres.
+
+The re-embed queue looks after itself: every one of those writes fires
+`enqueue_candidate_reembed`, which upserts the candidate's single `candidate_embedding_jobs`
+row, so any number of successive saves leaves exactly one dirty job with a bumped `revision`.
+
 ## Application submission (the core transaction)
 
 Single DB transaction, service role. The DB guarantees structure; the backend must validate

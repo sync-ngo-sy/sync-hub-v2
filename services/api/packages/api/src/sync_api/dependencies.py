@@ -8,6 +8,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
+from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
 from sync_core import Database, Settings
 
@@ -77,6 +78,27 @@ async def get_current_profile(
 
 
 CurrentProfileDep = Annotated[ActingProfile, Depends(get_current_profile)]
+
+
+async def get_acting_candidate(profile: CurrentProfileDep, session: SessionDep) -> ActingCandidate:
+    """The caller as a Candidate, or a 403.
+
+    Depend on this from every route that touches a candidate's own data: it establishes
+    whose data that is, so no route ever takes a candidate id from the client.
+    """
+    return await acting_candidate(session, profile)
+
+
+ActingCandidateDep = Annotated[ActingCandidate, Depends(get_acting_candidate)]
+
+
+def get_candidate_profile_service(session: SessionDep) -> CandidateProfileService:
+    return CandidateProfileService(session)
+
+
+CandidateProfileServiceDep = Annotated[
+    CandidateProfileService, Depends(get_candidate_profile_service)
+]
 
 
 def get_tenant_service(

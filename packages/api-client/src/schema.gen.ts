@@ -331,6 +331,35 @@ export interface paths {
         patch: operations["changeTenantMember"];
         trace?: never;
     };
+    "/v1/candidates/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's whole professional profile
+         * @description Everything the profile form renders, in one payload — and a valid body to `PUT` back.
+         *
+         *     Every section is present even when empty: the form is the same form either way.
+         */
+        get: operations["getMyProfile"];
+        /**
+         * Replace the caller's whole professional profile
+         * @description Save the profile whole, and answer with what was stored.
+         *
+         *     A replacement, not a patch: a section the body leaves out is a section the candidate
+         *     has emptied. The save is one transaction, so it either all happened or none of it did.
+         */
+        put: operations["replaceMyProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -354,6 +383,59 @@ export interface components {
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
+        /**
+         * CandidateProfile
+         * @description Everything a Candidate says about themselves professionally.
+         *
+         *     One model for both directions: a `GET` body is a valid `PUT` body, unchanged.
+         */
+        CandidateProfile: {
+            /**
+             * Headline
+             * @example Backend engineer, 8 years
+             */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /**
+             * Location
+             * @example Damascus, Syria
+             */
+            location?: string | null;
+            /** Preferred Language Code */
+            preferred_language_code?: string | null;
+            /**
+             * Is Searchable
+             * @description Opt in to cross-tenant Global search. Requires a current CV.
+             * @default false
+             */
+            is_searchable: boolean;
+            /**
+             * Experiences
+             * @description Jobs, in the candidate's own order.
+             */
+            experiences?: components["schemas"]["ProfileExperience"][];
+            /**
+             * Educations
+             * @description Qualifications, in the candidate's own order.
+             */
+            educations?: components["schemas"]["ProfileEducation"][];
+            /**
+             * Skills
+             * @description Canonical skills, in the candidate's own order.
+             */
+            skills?: components["schemas"]["ProfileSkill"][];
+            /**
+             * Languages
+             * @description Languages spoken, in the candidate's own order.
+             */
+            languages?: components["schemas"]["ProfileLanguage"][];
+            /**
+             * Projects
+             * @description Projects, in the candidate's own order.
+             */
+            projects?: components["schemas"]["ProfileProject"][];
+        };
         /**
          * ChangeMemberRequest
          * @description Both fields optional: an admin changing a role should not have to restate access.
@@ -431,6 +513,11 @@ export interface components {
             /** @default recruiter */
             role: components["schemas"]["RecruiterRole"];
         };
+        /**
+         * LanguageProficiency
+         * @enum {string}
+         */
+        LanguageProficiency: "beginner" | "intermediate" | "advanced" | "fluent" | "native";
         /** LogInRequest */
         LogInRequest: {
             /**
@@ -524,6 +611,103 @@ export interface components {
             request_id?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * ProfileEducation
+         * @description One qualification.
+         */
+        ProfileEducation: {
+            /** Institution */
+            institution: string;
+            /** Degree */
+            degree?: string | null;
+            /** Field Of Study */
+            field_of_study?: string | null;
+            /** Graduation Year */
+            graduation_year?: number | null;
+            /** Description */
+            description?: string | null;
+        };
+        /**
+         * ProfileExperience
+         * @description One job.
+         */
+        ProfileExperience: {
+            /** Start Year */
+            start_year?: number | null;
+            /** Start Month */
+            start_month?: number | null;
+            /** End Year */
+            end_year?: number | null;
+            /** End Month */
+            end_month?: number | null;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name?: string | null;
+            /**
+             * Is Current
+             * @description A job with no end, still going.
+             * @default false
+             */
+            is_current: boolean;
+            /** Description */
+            description?: string | null;
+        };
+        /**
+         * ProfileLanguage
+         * @description One language the candidate speaks, and how well.
+         */
+        ProfileLanguage: {
+            /**
+             * Code
+             * @description A code from the platform's `languages` table.
+             * @example en
+             */
+            code: string;
+            proficiency: components["schemas"]["LanguageProficiency"];
+        };
+        /**
+         * ProfileProject
+         * @description One thing the candidate built.
+         */
+        ProfileProject: {
+            /** Start Year */
+            start_year?: number | null;
+            /** Start Month */
+            start_month?: number | null;
+            /** End Year */
+            end_year?: number | null;
+            /** End Month */
+            end_month?: number | null;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Project Url */
+            project_url?: string | null;
+            /** Repository Url */
+            repository_url?: string | null;
+        };
+        /**
+         * ProfileSkill
+         * @description One Canonical skill, and how long the candidate has been doing it.
+         *
+         *     Named rather than identified: a Canonical skill *is* its one spelling, and the CV parse
+         *     speaks in those names — so the review flow can post back what it read.
+         */
+        ProfileSkill: {
+            /**
+             * Name
+             * @description The Canonical skill's exact name.
+             * @example Python
+             */
+            name: string;
+            /**
+             * Years Experience
+             * @description Stored to one decimal place. Null means unstated.
+             */
+            years_experience?: number | null;
         };
         /**
          * ProfileView
@@ -1584,6 +1768,131 @@ export interface operations {
                 };
             };
             /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateProfile"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replaceMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateProfile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateProfile"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Opting in to Global search needs a current CV. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description A skill is not a Canonical skill, or a language code is not one the platform knows. Both name the offending entries. */
             422: {
                 headers: {
                     [name: string]: unknown;
