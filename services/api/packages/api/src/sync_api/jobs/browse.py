@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import ColumnElement, Select, func, literal_column, or_, select
+from sqlalchemy import ColumnElement, func, literal_column, select
 
+from sync_api.jobs.access import open_job, public_jobs
 from sync_api.jobs.criteria import (
     languages_of,
     minimum_experience_of,
@@ -13,13 +14,9 @@ from sync_api.jobs.criteria import (
 )
 from sync_api.jobs.payload import PublicJob, PublicJobPage, PublicJobSummary, PublicTenant
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
-from sync_api.problems import (
-    JOB_NOT_FOUND_PROBLEM_TYPE,
-    TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE,
-    Problem,
-)
+from sync_api.problems import TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core import get_logger, transaction
-from sync_core.models import Job, JobStatus, JobViewEvent, Tenant, TrackedJobLink
+from sync_core.models import Job, JobViewEvent, Tenant, TrackedJobLink
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -49,7 +46,7 @@ class JobBrowseService:
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> PublicJobPage:
-        query = _public_jobs()
+        query = public_jobs()
         if keywords:
             query = query.where(
                 Job.search_vector.op("@@")(func.websearch_to_tsquery(ENGLISH, keywords))
@@ -74,14 +71,7 @@ class JobBrowseService:
         )
 
     async def job(self, job_id: UUID, visitor: Visitor) -> PublicJob:
-        found = (await self._db.execute(_public_jobs().where(Job.id == job_id))).tuples().first()
-        if found is None:
-            raise Problem(
-                status=404,
-                type=JOB_NOT_FOUND_PROBLEM_TYPE,
-                detail="No published job has that id.",
-            )
-        job, tenant = found
+        job, tenant = await open_job(self._db, job_id)
         await self._record_view(job.id, visitor, tracked_link_id=None)
         return await self._detail(job, tenant)
 
@@ -91,7 +81,7 @@ class JobBrowseService:
         if link is None or not _usable(link):
             raise _dead_link()
         found = (
-            (await self._db.execute(_public_jobs().where(Job.id == link.job_id))).tuples().first()
+            (await self._db.execute(public_jobs().where(Job.id == link.job_id))).tuples().first()
         )
         if found is None:
             raise _dead_link()
@@ -126,19 +116,6 @@ class JobBrowseService:
             languages=await languages_of(self._db, job.id),
             questions=await public_questions_of(self._db, job.id),
         )
-
-
-def _public_jobs() -> Select[tuple[Job, Tenant]]:
-    """Published, unexpired, and belonging to a tenant the platform has not suspended."""
-    return (
-        select(Job, Tenant)
-        .join(Tenant, Tenant.id == Job.tenant_id)
-        .where(
-            Job.status == JobStatus.PUBLISHED,
-            Tenant.is_active.is_(True),
-            or_(Job.expires_at.is_(None), Job.expires_at > func.now()),
-        )
-    )
 
 
 def _dead_link() -> Problem:

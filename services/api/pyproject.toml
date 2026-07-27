@@ -51,6 +51,7 @@ select = [
 # model, so a field's type has to be importable at run time.
 "packages/parsers/src/sync_parsers/schema.py" = ["TC001", "TC002", "TC003"]
 "packages/core/src/sync_core/notifications.py" = ["TC001", "TC002", "TC003"]
+"packages/core/src/sync_core/communications.py" = ["TC001", "TC002", "TC003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

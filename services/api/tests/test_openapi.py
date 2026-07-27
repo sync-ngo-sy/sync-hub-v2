@@ -79,6 +79,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "getReadiness",
         "inviteTenantMember",
         "listJobs",
+        "listMyApplications",
         "listMyNotifications",
         "listTenantMembers",
         "listTrackedJobLinks",
@@ -92,5 +93,6 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "searchCandidates",
         "signUp",
         "signUpTenant",
+        "submitApplication",
         "uploadMyCv",
     ]

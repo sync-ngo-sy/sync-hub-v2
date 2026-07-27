@@ -7,7 +7,12 @@ from sync_api.candidates.payload import (
     ProfileProject,
     ProfileSkill,
 )
-from sync_api.candidates.profile import CandidateProfileService
+from sync_api.candidates.profile import (
+    CandidateProfileService,
+    languages_named,
+    replace_live_profile,
+    skills_named,
+)
 
 __all__ = [
     "ActingCandidate",
@@ -19,4 +24,7 @@ __all__ = [
     "ProfileProject",
     "ProfileSkill",
     "acting_candidate",
+    "languages_named",
+    "replace_live_profile",
+    "skills_named",
 ]

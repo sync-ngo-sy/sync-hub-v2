@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, update
 
@@ -93,11 +93,13 @@ async def give_a_current_cv(
     *,
     parsing_status: CvParsingStatus = CvParsingStatus.READY,
 ) -> UUID:
+    cv_id = uuid4()
     cv = Cv(
+        id=cv_id,
         candidate_id=candidate_id,
         display_name="cv.pdf",
-        storage_path=f"{candidate_id}/cv.pdf",
-        file_hash=f"hash-{candidate_id}",
+        storage_path=f"{candidate_id}/{cv_id}.pdf",
+        file_hash=f"hash-{cv_id}",  # unique: one candidate may be given several CVs
         parsing_status=parsing_status,
     )
     session.add(cv)
@@ -125,3 +127,10 @@ EMPTY_PROFILE: dict[str, Any] = {
     "languages": [],
     "projects": [],
 }
+
+
+async def my_profile(browser: AsyncClient) -> dict[str, Any]:
+    response = await browser.get("/v1/candidates/me/profile")
+    assert response.status_code == 200, response.text
+    profile: dict[str, Any] = response.json()
+    return profile
