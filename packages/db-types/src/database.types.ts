@@ -1648,6 +1648,51 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          application_id: string | null
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string | null
+          recipient_profile_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          application_id?: string | null
+          created_at?: string
+          id?: string
+          payload: Json
+          read_at?: string | null
+          recipient_profile_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          application_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_profile_id?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_application_id_recipient_profile_id_fkey"
+            columns: ["application_id", "recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id", "candidate_id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -1985,6 +2030,7 @@ export type Database = {
         | "advanced"
         | "fluent"
         | "native"
+      notification_type: "cv_parse_failed"
       qualification_status:
         | "pending"
         | "qualified"
@@ -2156,6 +2202,7 @@ export const Constants = {
         "fluent",
         "native",
       ],
+      notification_type: ["cv_parse_failed"],
       qualification_status: [
         "pending",
         "qualified",
