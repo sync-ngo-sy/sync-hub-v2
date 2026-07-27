@@ -87,19 +87,25 @@ async def embedding_jobs(session: AsyncSession, candidate_id: UUID) -> list[Embe
     ]
 
 
-async def give_a_current_cv(session: AsyncSession, candidate_id: UUID) -> UUID:
-    """Put a ready CV on the candidate, without the pipeline that will one day do it.
+async def give_a_current_cv(
+    session: AsyncSession,
+    candidate_id: UUID,
+    *,
+    parsing_status: CvParsingStatus = CvParsingStatus.READY,
+) -> UUID:
+    """Put a current CV on the candidate, without the pipeline that will one day do it.
 
     Written straight into Postgres because uploading and parsing a CV is a later ticket
     (#7) and none of it exists yet. What is under test here is the Searchable flag, whose
-    `candidates_searchable_needs_cv` CHECK is the only reason a CV has to be present at all.
+    rule spans two rows: the CHECK sees `current_cv_id`, and the backend owns the rest of
+    it — hence `parsing_status`, which is the half only these tests can arrange.
     """
     cv = Cv(
         candidate_id=candidate_id,
         display_name="cv.pdf",
         storage_path=f"{candidate_id}/cv.pdf",
         file_hash=f"hash-{candidate_id}",
-        parsing_status=CvParsingStatus.READY,
+        parsing_status=parsing_status,
     )
     session.add(cv)
     await session.flush()

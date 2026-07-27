@@ -6,14 +6,16 @@ given, and a save can never leave headline and experiences describing different 
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.candidates.profile import MAX_ENTRIES
-from tests.support.candidates import a_signed_in_candidate
+from sync_api.candidates.payload import MAX_ENTRIES
+from sync_core.models import CvParsingStatus
+from tests.support.candidates import a_signed_in_candidate, sign_in
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
     EMPTY_PROFILE,
@@ -88,6 +90,19 @@ A_FULL_PROFILE: dict[str, Any] = {
         }
     ],
 }
+
+#: Two complete, incompatible saves, for the tests about which one wins. Every optional
+#: field of every entry is spelled out, so either one compares equal to what a GET returns.
+ONE_SAVE: dict[str, Any] = a_profile(
+    headline="First",
+    skills=[{"name": "Python", "years_experience": 8.0}],
+    languages=[{"code": "en", "proficiency": "fluent"}],
+)
+THE_OTHER_SAVE: dict[str, Any] = a_profile(
+    headline="Second",
+    skills=[{"name": "Go", "years_experience": 1.0}],
+    languages=[{"code": "ar", "proficiency": "native"}],
+)
 
 #: Enough of a profile to touch every child table, for the tests that care about what a
 #: save does rather than about what it stores.
@@ -240,10 +255,11 @@ async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appe
 async def test_a_refused_save_leaves_the_previous_profile_exactly_as_it_was(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """No partially-updated profile is ever observable — not even a half-emptied one.
+    """Nothing a save can be refused for is discovered after it has started writing.
 
-    The refusal is the interesting case: the request that fails is the one whose sections
-    would have been deleted first if the save wrote as it went.
+    Every check that can refuse — the Canonical skills, the language codes, the Searchable
+    opt-in — reads rows the request does not own, and all of them run before the first
+    delete. So a refusal is not a rollback: there was nothing to roll back.
     """
     await a_signed_in_candidate(browser, mailbox)
     candidate_id = await my_id(browser)
@@ -280,6 +296,27 @@ async def test_the_searchable_flag_goes_on_and_off_again(
     assert (await browser.get(PROFILE)).json()["is_searchable"] is False
 
 
+async def test_two_saves_at_once_leave_one_of_them_whole(
+    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """Last-write-wins, not both-writes-merge.
+
+    Two tabs, one candidate, Save in each. Both saves delete every section and write their
+    own, so a save that did not take its turn would delete only what the other had already
+    committed and leave the two sets of skills side by side — a profile neither tab sent.
+    """
+    signup = await a_signed_in_candidate(browser, mailbox)
+    second_tab = await sign_in(other_browser, signup)
+    assert second_tab.status_code == 200, second_tab.text
+
+    saves = await asyncio.gather(
+        browser.put(PROFILE, json=ONE_SAVE), other_browser.put(PROFILE, json=THE_OTHER_SAVE)
+    )
+
+    assert [save.status_code for save in saves] == [200, 200], [save.text for save in saves]
+    assert (await browser.get(PROFILE)).json() in (ONE_SAVE, THE_OTHER_SAVE)
+
+
 async def test_opting_in_without_a_cv_is_refused(browser: AsyncClient, mailbox: Mailbox) -> None:
     """Global search serves profiles built from a parsed CV, so opting in without one would
     put a candidate in a search index that has nothing of theirs to match on."""
@@ -292,6 +329,26 @@ async def test_opting_in_without_a_cv_is_refused(browser: AsyncClient, mailbox: 
     assert refused.status_code == 409
     assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
     assert (await browser.get(PROFILE)).json() == EMPTY_PROFILE
+
+
+async def test_opting_in_before_the_cv_is_parsed_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The half of the rule the CHECK cannot see (migration 02): the CV has to be `ready`.
+
+    A candidate whose upload is still being parsed has no Profile chunks yet, so Global
+    search could not match them on anything — the eligibility view would skip them and the
+    opt-in would look silently broken.
+    """
+    await a_signed_in_candidate(browser, mailbox)
+    await give_a_current_cv(
+        db_session, await my_id(browser), parsing_status=CvParsingStatus.UPLOADED
+    )
+
+    refused = await browser.put(PROFILE, json=a_profile(is_searchable=True))
+
+    assert refused.status_code == 409
+    assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
 
 
 async def test_a_recruiter_is_refused_at_the_candidate_routes(

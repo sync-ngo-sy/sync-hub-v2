@@ -1,26 +1,34 @@
-"""A Candidate's professional profile: the whole of it, read and written as one value.
+"""Reading and replacing a Candidate's professional profile.
 
-Two things follow from "one value" and are worth reading closely.
-
-**The payload is symmetric.** What `GET` returns is exactly what `PUT` accepts, one model
-serving both directions, so the SPA can hand back the document it was given with the parts
-the candidate edited changed and nothing else. That is also why no child row carries an id:
-a save replaces them, so an id would promise a stability that does not exist. Order is the
-array's order — position in the list *is* `sort_order`, in and out.
+The payload this works in is `sync_api.candidates.payload`; what happens here is the trip
+between it and the `candidate_*` tables.
 
 **The save is a replacement, not a merge.** Every section is written from the request, and
 a section left out of it is emptied, because a profile that merged would need a second
 vocabulary for "delete this experience" while the candidate's screen already has one: the
-form they submit.
+form they submit. It is also one transaction, so nothing ever reads a profile whose
+headline and experiences describe different people.
+
+**Everything that can refuse the save refuses it before the first write.** The skills, the
+language codes and the Searchable opt-in are all checked against rows this request does not
+own, and a check that ran between the deletes and the inserts would answer a client with a
+profile it had already half emptied.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Final
+from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, BeforeValidator, Field, StringConstraints, model_validator
 from sqlalchemy import delete, select
 
+from sync_api.candidates.payload import (
+    CandidateProfile,
+    ProfileEducation,
+    ProfileExperience,
+    ProfileLanguage,
+    ProfileProject,
+    ProfileSkill,
+)
 from sync_api.problems import (
     SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
     UNKNOWN_CANONICAL_SKILL_PROBLEM_TYPE,
@@ -38,165 +46,19 @@ from sync_core.models import (
     CandidateLanguage,
     CandidateProject,
     CandidateSkill,
+    Cv,
+    CvParsingStatus,
     Language,
-    LanguageProficiency,
     SkillTaxonomy,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)
-
-#: How many entries one section may carry. Not a schema limit — the schema has none — but
-#: the profile is embedded whole for Global search, and a section nobody could have typed
-#: is a way to make that work unboundedly expensive.
-MAX_ENTRIES: Final = 50
-
-#: `candidate_skills.years_experience` is `numeric(4,1)`: anything larger overflows the
-#: column, and a second decimal place is rounded away on the way in.
-MAX_YEARS_EXPERIENCE: Final = 999.9
-
-
-def _blank_as_unset(value: object) -> object:
-    """An empty input on a form means "not set", not "set to nothing"."""
-    return None if isinstance(value, str) and not value.strip() else value
-
-
-Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
-Paragraph = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
-Link = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
-
-OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
-OptionalParagraph = Annotated[Paragraph | None, BeforeValidator(_blank_as_unset)]
-OptionalLink = Annotated[Link | None, BeforeValidator(_blank_as_unset)]
-
-#: The ranges the `candidate_*` CHECK constraints enforce, restated where a client can be
-#: told which field was wrong instead of being handed Postgres's refusal as a 500.
-Year = Annotated[int, Field(ge=1900, le=2100)]
-Month = Annotated[int, Field(ge=1, le=12)]
-
-LanguageCode = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
-    Field(description="A code from the platform's `languages` table.", examples=["en"]),
-]
-
-YearsOfExperience = Annotated[float, Field(ge=0, le=MAX_YEARS_EXPERIENCE)]
-
-
-def _section(description: str) -> Any:
-    """One repeated section of the profile, in the candidate's own order."""
-    return Field(default_factory=list, max_length=MAX_ENTRIES, description=description)
-
-
-class DatedRange(BaseModel):
-    """Something that ran from roughly one month to roughly another, or still runs.
-
-    Every part is optional because a CV is: "2019 to present" and "March 2019" are both things
-    people write, and a profile that refused them would be refusing its own source material.
-    """
-
-    start_year: Year | None = None
-    start_month: Month | None = None
-    end_year: Year | None = None
-    end_month: Month | None = None
-
-    @model_validator(mode="after")
-    def _ends_after_it_starts(self) -> DatedRange:
-        """The `*_ordered` CHECK, restated. Only comparable when both years are known."""
-        if self.start_year is None or self.end_year is None:
-            return self
-        if (self.end_year, self.end_month or 12) < (self.start_year, self.start_month or 1):
-            raise ValueError("the end of a period cannot come before its start")
-        return self
-
-
-class ProfileExperience(DatedRange):
-    """One job."""
-
-    job_title: Line
-    company_name: OptionalLine = None
-    is_current: bool = Field(default=False, description="A job with no end, still going.")
-    description: OptionalParagraph = None
-
-    @model_validator(mode="after")
-    def _current_work_has_not_ended(self) -> ProfileExperience:
-        """The `cexp_current_has_no_end` CHECK, restated."""
-        if self.is_current and (self.end_year is not None or self.end_month is not None):
-            raise ValueError("a current job cannot have an end date")
-        return self
-
-
-class ProfileEducation(BaseModel):
-    """One qualification."""
-
-    institution: Line
-    degree: OptionalLine = None
-    field_of_study: OptionalLine = None
-    graduation_year: Year | None = None
-    description: OptionalParagraph = None
-
-
-class ProfileSkill(BaseModel):
-    """One Canonical skill, and how long the candidate has been doing it.
-
-    Named rather than identified: a Canonical skill *is* its one spelling, and the CV parse
-    speaks in those names — so the review flow can post back what it read.
-    """
-
-    name: Line = Field(description="The Canonical skill's exact name.", examples=["Python"])
-    years_experience: YearsOfExperience | None = Field(
-        default=None, description="Stored to one decimal place. Null means unstated."
-    )
-
-
-class ProfileLanguage(BaseModel):
-    """One language the candidate speaks, and how well."""
-
-    code: LanguageCode
-    proficiency: LanguageProficiency
-
-
-class ProfileProject(DatedRange):
-    """One thing the candidate built."""
-
-    name: Line
-    description: OptionalParagraph = None
-    project_url: OptionalLink = None
-    repository_url: OptionalLink = None
-
-
-class CandidateProfile(BaseModel):
-    """Everything a Candidate says about themselves professionally.
-
-    One model for both directions: a `GET` body is a valid `PUT` body, unchanged.
-    """
-
-    headline: OptionalLine = Field(default=None, examples=["Backend engineer, 8 years"])
-    summary: OptionalParagraph = None
-    location: OptionalLine = Field(default=None, examples=["Damascus, Syria"])
-    preferred_language_code: LanguageCode | None = None
-    is_searchable: bool = Field(
-        default=False,
-        description="Opt in to cross-tenant Global search. Requires a current CV.",
-    )
-
-    experiences: list[ProfileExperience] = _section("Jobs, in the candidate's own order.")
-    educations: list[ProfileEducation] = _section("Qualifications, in the candidate's own order.")
-    skills: list[ProfileSkill] = _section("Canonical skills, in the candidate's own order.")
-    languages: list[ProfileLanguage] = _section("Languages spoken, in the candidate's own order.")
-    projects: list[ProfileProject] = _section("Projects, in the candidate's own order.")
-
-    @model_validator(mode="after")
-    def _one_entry_per_skill_and_language(self) -> CandidateProfile:
-        """Both are keyed by what they name, so a repeat is a form bug, not a second entry."""
-        _refuse_repeats(self.skills, lambda skill: skill.name, "skill")
-        _refuse_repeats(self.languages, lambda language: language.code, "language")
-        return self
 
 
 class CandidateProfileService:
@@ -230,6 +92,12 @@ class CandidateProfileService:
         for. The cost is one delete and one insert per section; the benefit is that a save
         cannot half-happen, and no reader ever sees a profile mid-edit.
 
+        The candidate row is locked for the duration, which is what makes two saves at once
+        last-write-wins rather than a merge of both. Without it each transaction deletes
+        only the rows the other had already committed, and the two sets of inserts land
+        together — leaving a profile that is neither save, or a duplicate-key failure on
+        `candidate_skills` for whichever one lost.
+
         The re-embed job coalesces itself: every one of those writes fires the enqueue
         trigger, which upserts the candidate's single job row (supabase ADR-0002), so a
         save leaves exactly one — however many sections it touched, and however many saves
@@ -238,17 +106,16 @@ class CandidateProfileService:
         skills = await self._canonical_skill_ids(profile.skills)
         await self._refuse_unknown_languages(profile)
 
-        candidate = await self._candidate(candidate_id)
-        if profile.is_searchable and candidate.current_cv_id is None:
-            # The `candidates_searchable_needs_cv` CHECK, refused here so it reads as an
-            # answer rather than as Postgres declining to write the row.
-            raise Problem(
-                status=409,
-                type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
-                detail="Upload a CV before making your profile searchable.",
-            )
-
         async with transaction(self._db):
+            candidate = await self._candidate(candidate_id, lock=True)
+            if profile.is_searchable and not await self._has_a_ready_cv(candidate):
+                raise Problem(
+                    status=409,
+                    type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
+                    detail="Upload a CV and wait for it to be processed before making your "
+                    "profile searchable.",
+                )
+
             candidate.headline = profile.headline
             candidate.summary = profile.summary
             candidate.location = profile.location
@@ -264,7 +131,7 @@ class CandidateProfileService:
                 await self._db.execute(section)
             self._db.add_all(_rows_for(candidate_id, profile, skills))
 
-        logger.info("candidates.profile_replaced", profile_id=str(candidate_id))
+        logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
         return await self.profile(candidate_id)
 
     async def _canonical_skill_ids(self, skills: Sequence[ProfileSkill]) -> dict[str, UUID]:
@@ -275,10 +142,9 @@ class CandidateProfileService:
         """
         if not skills:
             return {}
-        names = [skill.name for skill in skills]
         rows = await self._db.execute(
             select(SkillTaxonomy.canonical_name, SkillTaxonomy.id).where(
-                SkillTaxonomy.canonical_name.in_(names)
+                SkillTaxonomy.canonical_name.in_([skill.name for skill in skills])
             )
         )
         # `.all()` first: a `Result` has `keys()`, so `dict()` would read it as a mapping
@@ -334,9 +200,30 @@ class CandidateProfileService:
             detail="Every language has to be one of the platform's language codes.",
         )
 
-    async def _candidate(self, candidate_id: UUID) -> Candidate:
-        """The Candidate row, which the access gate has already put in the identity map."""
-        candidate = await self._db.get(Candidate, candidate_id)
+    async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
+        """Whether the candidate has a current CV that has actually been parsed.
+
+        The `candidates_searchable_needs_cv` CHECK can only see `current_cv_id`; migration
+        02 leaves the rest of the condition here, because "and that CV is `ready`" is a
+        second row and a constraint cannot reach it. Global search serves profiles built
+        from a parsed CV, so opting in without one would list a candidate the search index
+        has nothing of.
+        """
+        if candidate.current_cv_id is None:
+            return False
+        # Its own candidate's CV by construction: `candidates(id, current_cv_id)` is a
+        # composite foreign key into `cvs(candidate_id, id)`.
+        cv = await self._db.get(Cv, candidate.current_cv_id)
+        return (
+            cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
+        )
+
+    async def _candidate(self, candidate_id: UUID, *, lock: bool = False) -> Candidate:
+        """The Candidate row, which the access gate has already put in the identity map.
+
+        `lock` re-reads it `FOR UPDATE`, which is how a save takes its turn.
+        """
+        candidate = await self._db.get(Candidate, candidate_id, with_for_update=lock)
         if candidate is None:  # pragma: no cover — `acting_candidate` refused this already
             raise LookupError(f"no candidate row for {candidate_id}")
         return candidate
@@ -423,7 +310,11 @@ class CandidateProfileService:
 
 
 def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, UUID]) -> list[Base]:
-    """The profile as rows, each section numbered by where the candidate put it."""
+    """The profile as rows, each section numbered by where the candidate put it.
+
+    Here rather than on `CandidateProfile` deliberately: the payload is the contract with
+    the SPA, and it stays free of the tables that happen to store it.
+    """
     rows: list[Base] = [
         CandidateExperience(
             candidate_id=candidate_id,
@@ -491,7 +382,9 @@ def _refuse_unknown(unknown: Sequence[InvalidField], *, problem_type: str, detai
     """Refuse a reference to data the platform does not have, located field by field.
 
     The same body a failed schema validation produces, so a client parses one error shape
-    however an input was rejected; the `type` is what tells them which rule it broke.
+    however an input was rejected; the `type` is what tells them which rule it broke. Dumped
+    to dicts because a `Problem`'s extensions are serialized as they are given, and a
+    `ProblemDetail` holding models would reach the JSON encoder still holding models.
     """
     if not unknown:
         return
@@ -501,10 +394,3 @@ def _refuse_unknown(unknown: Sequence[InvalidField], *, problem_type: str, detai
         detail=detail,
         errors=[field.model_dump() for field in unknown],
     )
-
-
-def _refuse_repeats(entries: Sequence[Any], name_of: Callable[[Any], str], singular: str) -> None:
-    names = [name_of(entry) for entry in entries]
-    repeated = sorted({name for name in names if names.count(name) > 1})
-    if repeated:
-        raise ValueError(f"one entry per {singular}; repeated: {', '.join(repeated)}")

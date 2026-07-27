@@ -406,7 +406,7 @@ export interface components {
             preferred_language_code?: string | null;
             /**
              * Is Searchable
-             * @description Opt in to cross-tenant Global search. Requires a current CV.
+             * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
              * @default false
              */
             is_searchable: boolean;
