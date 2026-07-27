@@ -102,13 +102,21 @@ a Job the public cannot see resolves to the same 404 as a token that was never i
 Single DB transaction, service role. The DB guarantees structure; the backend must validate
 everything below **before** committing.
 
-Backend-enforced preconditions (not expressible as constraints):
-1. `cv_id` belongs to `auth.uid()`, `deleted_at IS NULL`, and `parsing_status = 'ready'`.
-2. Every `is_required` question of the job is answered, and each answer's type matches
+Backend-enforced preconditions (not expressible as constraints), all answered **before** the
+transaction opens, so a refusal never leaves half an Application:
+1. The Job is one the public may read — `public_jobs()`, the same predicate browse uses. A Job
+   nobody can read is a Job nobody can apply to, and both answer the same 404.
+2. `cv_id` belongs to the acting candidate and `deleted_at IS NULL` (404), and
+   `parsing_status = 'ready'` (409 — a CV still being read is not a refusal of the CV).
+3. Every `is_required` question of the job is answered, and each answer's type matches
    (`yes_no` → `answer_boolean`, `short_text` → `answer_text`). *(The single-answer-kind CHECK
-   and the answer→question FK are DB-enforced; "all required answered" is not.)*
-3. Screening criteria are already locked if this is not the job's first application (the DB
-   also enforces this via trigger).
+   and the answer→question FK are DB-enforced; "all required answered" is not.)* One 422 names
+   every offending entry — unanswered, mistyped, or asked by some other Job.
+4. Every skill of the reviewed data is a Canonical skill and every language code is known —
+   `sync_api.vocabulary`, as the profile `PUT` uses it, located at `body.profile.…`.
+5. The candidate has not applied to this Job already: 409 carrying `application_id`. Withdrawal
+   permanence falls out of the same rule — a withdrawn Application still holds its job, because
+   `UNIQUE(candidate_id, job_id)` does not care what state it is in.
 
 DB-enforced on write (rely on these — a backend bug cannot bypass them):
 - `applications.(tenant_id, job_id)` → `jobs` (tenant match); `(candidate_id, cv_id)` → `cvs`
@@ -124,11 +132,30 @@ insert application_answers(application_id, job_id, question_id, answer_*)
 insert application_status_history(application_id, change_source='candidate', new_status='new')
 -- then run screening (below) synchronously, inside this same transaction —
 -- an application is never observable without its verdict
+insert communications(...)                      -- the confirmation, status='queued'
+-- and, if asked for, the live-profile replacement
 ```
 The reviewed data may come from the candidate's live `candidate_*` tables **or** a reviewed
-alternate-CV form; the snapshot is source-agnostic and immutable afterward. Optionally, if the
-candidate chose "also update my global profile", upsert their `candidate_*` rows in the same
-tx (that fires re-embed enqueue).
+alternate-CV form; the snapshot is source-agnostic and immutable afterward. `full_name` and
+`phone` are not part of it: they are the candidate's identity, read off `profiles` rather than
+retyped per application. Optionally, if the candidate chose "also update my global profile",
+their `candidate_*` rows are replaced in the same tx by the same
+`candidates.replace_live_profile` the profile `PUT` calls — which is why the re-embed trigger
+coalesces the whole submission into the candidate's single dirty job, and why a refusal it
+raises (opting in to Global search without a ready CV) rolls the Application back with it.
+
+The confirmation Communication is written here rather than by a producer of its own, for the
+reason a Notification is: a candidate is never told about an Application the transaction then
+rolled back. `recipient` is the verified address as it stood; the sender resolves it again
+from `auth.users` before it delivers. `idempotency_key` is
+`application-confirmation:{application_id}`, so the row is one per Application by construction.
+
+`tracked_link_id` is attribution, and it comes from the **landing context, not the request**:
+the newest `job_view_events` row for this Job with this browser's `sync_visitor` session and a
+`tracked_link_id` on it. A Candidate who arrived through a campaign link keeps carrying it
+through signup and into the submission; one who found the Job themselves carries nothing. The
+applicant cannot name a link, so attribution says which channel actually did the work. A link
+turned off between the view and the submission still gets the credit: it brought them.
 
 ## Screening (deterministic, no score)
 
@@ -139,8 +166,17 @@ Reads **only** the immutable `application_*` snapshot for the application — ne
 - total experience < `jobs.minimum_total_experience_years` → `disqualified`; cannot be computed
   → `review_required`.
 - required language absent / below `minimum_proficiency` → `disqualified`.
-- a `yes_no` knockout answer ≠ `accepted_boolean_answer` → `disqualified`.
+- a `yes_no` knockout answer ≠ `accepted_boolean_answer` → `disqualified`; a knockout question
+  left unanswered → `review_required` (only reachable where the Recruiter made a knockout
+  question optional: a bar nobody has been shown to clear, not one they failed).
 - `preferred`/`optional` skills never disqualify.
+
+Total experience is the *merged* span of the dated Snapshot experiences — two jobs at once is
+one year a year, not two — with a `is_current` job running to today. Undated work only matters
+where it could have carried the applicant over the bar: measured work that already clears the
+minimum is `qualified` regardless, and only a shortfall with something undated in it is
+`review_required` rather than `disqualified`. A rule that fails outright outranks one that
+merely cannot be answered, so any `disqualified` finding decides the verdict.
 
 Persisting a verdict (append-only history + denormalized current):
 ```
@@ -316,4 +352,4 @@ from anything the candidate typed.
 | Invariant | Enforced by |
 | --- | --- |
 | Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, chunk atomic-swap, queue backoff, verified-email resolution, notifying in the announcing transaction | **Backend** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction | **Backend** |

@@ -10,6 +10,7 @@ from sync_api.jobs.payload import (
     NewTrackedLink,
     PublicJob,
     PublicJobPage,
+    PublicTenant,
     TrackedLink,
     TrackedLinkChanges,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "NewTrackedLink",
     "PublicJob",
     "PublicJobPage",
+    "PublicTenant",
     "TrackedLink",
     "TrackedLinkChanges",
     "TrackedLinkService",

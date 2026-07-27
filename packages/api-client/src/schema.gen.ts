@@ -648,6 +648,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's Applications, newest first
+         * @description Every Job applied to and where it stands. Page with `next_cursor`.
+         */
+        get: operations["listMyApplications"];
+        put?: never;
+        /**
+         * Apply to a Job
+         * @description Submit the Application, Snapshot, answers and Screening verdict in one transaction.
+         *
+         *     Nothing partial is ever observable: either the whole submission lands, verdict included,
+         *     or none of it did. Where the browser reached this Job through a campaign link, the
+         *     Application is attributed to it.
+         */
+        post: operations["submitApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -672,10 +700,77 @@ export interface components {
          */
         AccountType: "candidate" | "recruiter";
         /**
+         * Application
+         * @description One of the caller's own Applications.
+         *
+         *     Never the Screening verdict: what a Job screened on and how it landed is the Recruiter's
+         *     to say, not something a candidate reads off their own dashboard.
+         */
+        Application: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            job: components["schemas"]["AppliedJob"];
+            /**
+             * Cv Id
+             * Format: uuid
+             */
+            cv_id: string;
+            status: components["schemas"]["ApplicationStatus"];
+            /**
+             * Applied At
+             * Format: date-time
+             */
+            applied_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ApplicationPage
+         * @description One page of the caller's Applications, newest first.
+         */
+        ApplicationPage: {
+            /** Items */
+            items: components["schemas"]["Application"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+        };
+        /**
          * ApplicationQuestionType
          * @enum {string}
          */
         ApplicationQuestionType: "yes_no" | "short_text";
+        /**
+         * ApplicationStatus
+         * @enum {string}
+         */
+        ApplicationStatus: "new" | "reviewing" | "shortlisted" | "interview" | "offer" | "hired" | "rejected" | "withdrawn";
+        /**
+         * AppliedJob
+         * @description The Job an Application went to, as the candidate's own list names it.
+         */
+        AppliedJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            tenant: components["schemas"]["PublicTenant"];
+            /** Location */
+            location?: string | null;
+            /** Employment Type */
+            employment_type?: string | null;
+        };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -864,6 +959,52 @@ export interface components {
          * @enum {string}
          */
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
+        /**
+         * DuplicateApplicationProblemDetail
+         * @description A refused submission that names the Application the candidate already has.
+         */
+        DuplicateApplicationProblemDetail: {
+            /**
+             * Type
+             * @description Stable identifier for what went wrong.
+             * @default about:blank
+             * @example about:blank
+             */
+            type: string;
+            /**
+             * Title
+             * @description Short, human-readable summary of the problem type.
+             */
+            title: string;
+            /**
+             * Status
+             * @description The HTTP status code, repeated for out-of-band handling.
+             */
+            status: number;
+            /**
+             * Detail
+             * @description Explanation specific to this occurrence.
+             */
+            detail?: string | null;
+            /**
+             * Instance
+             * @description Path of the request that produced the problem.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates this response with the server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Application Id
+             * Format: uuid
+             * @description The Application already holding this job.
+             */
+            application_id: string;
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * DuplicateCvProblemDetail
          * @description A refused upload that names the CV the candidate already has.
@@ -1255,6 +1396,36 @@ export interface components {
              * @description False once an admin has revoked their access.
              */
             is_active: boolean;
+        };
+        /**
+         * NewApplication
+         * @description One submission: the Job, the CV behind it, the reviewed data, and the answers.
+         */
+        NewApplication: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /**
+             * Cv Id
+             * Format: uuid
+             * @description A CV of the caller's that has finished parsing.
+             */
+            cv_id: string;
+            /** @description The data the candidate reviewed. Captured as the Snapshot this Application is judged and read by, and never changed afterwards. */
+            profile: components["schemas"]["CandidateProfile"];
+            /**
+             * Answers
+             * @description One answer per question. Every required question needs one.
+             */
+            answers?: components["schemas"]["SubmittedAnswer"][];
+            /**
+             * Update Profile
+             * @description Also replace the live profile with the reviewed data, in the same transaction — one review improving both.
+             * @default false
+             */
+            update_profile: boolean;
         };
         /**
          * NewJob
@@ -1854,6 +2025,27 @@ export interface components {
          * @enum {string}
          */
         SkillImportance: "required" | "preferred" | "optional";
+        /**
+         * SubmittedAnswer
+         * @description One answer to one of the Job's questions, in the kind the question asked for.
+         */
+        SubmittedAnswer: {
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            /**
+             * Answer Boolean
+             * @description The answer to a `yes_no` question.
+             */
+            answer_boolean?: boolean | null;
+            /**
+             * Answer Text
+             * @description The answer to a `short_text` question.
+             */
+            answer_text?: string | null;
+        };
         /**
          * TenantView
          * @description A Tenant as its own recruiters see it.
@@ -4233,6 +4425,145 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listMyApplications: {
+        parameters: {
+            query?: {
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    submitApplication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewApplication"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Application"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No published Job has that id, or no CV of yours has that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description You have already applied to this job — the id of that Application is on the problem — or the CV you picked has not finished parsing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["DuplicateApplicationProblemDetail"];
+                };
+            };
+            /** @description The answers do not match the questions the Job asks, or the reviewed data names a skill or a language the platform does not know. All of them name the offending entries. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */

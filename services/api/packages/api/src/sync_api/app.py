@@ -12,6 +12,7 @@ from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_pro
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
 from sync_api.rate_limit import build_auth_rate_limiter, build_public_rate_limiter
 from sync_api.routes import (
+    applications,
     auth,
     candidates,
     cvs,
@@ -99,6 +100,7 @@ def create_app(settings: Settings | None = None, embedder: Embedder | None = Non
     app.include_router(search.router, prefix=API_PREFIX)
     app.include_router(tenant_jobs.router, prefix=API_PREFIX)
     app.include_router(jobs.router, prefix=API_PREFIX)
+    app.include_router(applications.router, prefix=API_PREFIX)
 
     describe_with_fastapis_defaults = app.openapi
 
