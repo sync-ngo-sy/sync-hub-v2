@@ -5,11 +5,14 @@ import signal
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
+from sync_comms import CommunicationDelivery
+from sync_comms.resend_sender import ResendEmailSender
 from sync_core import Database, Storage, configure_logging, get_logger
 from sync_ingestion import CvIngestion
 from sync_parsers.openai_extractor import OpenAiCvExtractor
 from sync_rag import ProfileEmbedding
 from sync_rag.openai_embedder import OpenAiEmbedder
+from sync_worker.communications import CommunicationsConsumer
 from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import QueueEngine, RetryPolicy
 from sync_worker.ingestion import CvIngestionConsumer
@@ -18,6 +21,7 @@ from sync_worker.runner import Drainable, consume, sweep
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from sync_comms import EmailSender
     from sync_core import Settings
     from sync_parsers import CvExtractor
     from sync_rag import Embedder
@@ -35,12 +39,14 @@ class Worker:
         settings: Settings,
         extractor: CvExtractor | None = None,
         embedder: Embedder | None = None,
+        sender: EmailSender | None = None,
     ) -> None:
         self._settings = settings
         self._database = Database(settings)
         self._storage = Storage.build(settings)
         self._extractor = extractor or _openai_extractor(settings)
         self._embedder = embedder or _openai_embedder(settings)
+        self._sender = sender or _resend_sender(settings)
         self._policy = RetryPolicy(
             max_attempts=settings.worker_max_attempts,
             backoff_seconds=settings.worker_retry_backoff_seconds,
@@ -62,9 +68,15 @@ class Worker:
                 stuck_after_seconds=self._settings.worker_stuck_job_seconds,
             ),
         )
+        communications: QueueEngine[Any] = QueueEngine(
+            self._database,
+            CommunicationsConsumer(CommunicationDelivery(self._database, self._sender)),
+            self._policy,
+        )
         return [
             (ingestion, self._settings.worker_ingestion_concurrency),
             (embedding, self._settings.worker_embedding_concurrency),
+            (communications, self._settings.worker_communications_concurrency),
         ]
 
     async def run(self) -> None:
@@ -118,6 +130,18 @@ def _openai_embedder(settings: Settings) -> Embedder:
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_embedding_model,
         timeout_seconds=settings.openai_timeout_seconds,
+    )
+
+
+def _resend_sender(settings: Settings) -> EmailSender:
+    if settings.resend_api_key is None:
+        raise MissingApiKeyError(
+            "SYNC_RESEND_API_KEY is not set — the worker cannot send Communications without it."
+        )
+    return ResendEmailSender.build(
+        api_key=settings.resend_api_key.get_secret_value(),
+        sender=settings.email_from,
+        timeout_seconds=settings.email_timeout_seconds,
     )
 
 

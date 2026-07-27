@@ -20,6 +20,7 @@ from tests.support.embedders import FakeEmbedder
 from tests.support.extractors import FakeExtractor, a_parse
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import my_id
+from tests.support.senders import CapturingSender
 from tests.support.worker import an_ingestion_worker
 
 
@@ -394,6 +395,7 @@ async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
         ),
         FakeExtractor(),
         FakeEmbedder(),
+        CapturingSender(),
     )
 
     running = asyncio.create_task(worker.run())

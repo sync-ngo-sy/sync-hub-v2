@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Final, Literal
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -15,6 +15,10 @@ class ApplicationConfirmation(BaseModel):
     """The receipt for a submitted Application. Names and ids; the sender writes the prose."""
 
     model_config = ConfigDict(frozen=True)
+
+    #: Which of the sender's templates turns this payload into prose. Versioned, so a row
+    #: queued today still says which wording it was queued for.
+    template_key: ClassVar[str] = "application-confirmation.v1"
 
     type: Literal[CommunicationType.APPLICATION_CONFIRMATION] = (
         CommunicationType.APPLICATION_CONFIRMATION
@@ -58,6 +62,7 @@ async def enqueue_email(
         communication_type=payload.type,
         recipient=recipient,
         payload=payload.model_dump(mode="json"),
+        template_key=payload.template_key,
         idempotency_key=idempotency_key,
     )
     session.add(communication)
