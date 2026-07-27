@@ -13,6 +13,7 @@ from sync_api.candidates.profile import (
     replace_live_profile,
     skills_named,
 )
+from sync_api.candidates.sections import a_language, a_project, an_education, an_experience
 
 __all__ = [
     "ActingCandidate",
@@ -23,7 +24,11 @@ __all__ = [
     "ProfileLanguage",
     "ProfileProject",
     "ProfileSkill",
+    "a_language",
+    "a_project",
     "acting_candidate",
+    "an_education",
+    "an_experience",
     "languages_named",
     "replace_live_profile",
     "skills_named",

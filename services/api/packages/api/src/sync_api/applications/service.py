@@ -155,7 +155,7 @@ class ApplicationService:
     async def withdraw(self, candidate: ActingCandidate, application_id: UUID) -> MovedApplication:
         """Leave the process, for good: the Job stays taken, so re-applying is not a thing."""
         async with transaction(self._db):
-            applied = await my_application(self._db, candidate.id, application_id)
+            applied = await my_application(self._db, candidate.id, application_id, to_move=True)
             moved = await move_application(
                 self._db,
                 applied,

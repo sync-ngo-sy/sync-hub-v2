@@ -1,19 +1,19 @@
 from sync_api.applications.payload import (
     AnsweredQuestion,
-    ApplicantPage,
-    ApplicantSummary,
     Application,
     ApplicationCv,
     ApplicationPage,
     ApplicationReview,
     ApplicationSnapshot,
     ApplicationStatusChange,
+    ApplicationSummary,
+    ApplicationSummaryPage,
     AppliedJob,
     MovedApplication,
     NewApplication,
     ReviewedJob,
     ScreeningVerdict,
-    StatusChange,
+    StatusHistoryEntry,
     SubmittedAnswer,
 )
 from sync_api.applications.review import ApplicationReviewService
@@ -21,8 +21,6 @@ from sync_api.applications.service import ApplicationService
 
 __all__ = [
     "AnsweredQuestion",
-    "ApplicantPage",
-    "ApplicantSummary",
     "Application",
     "ApplicationCv",
     "ApplicationPage",
@@ -31,11 +29,13 @@ __all__ = [
     "ApplicationService",
     "ApplicationSnapshot",
     "ApplicationStatusChange",
+    "ApplicationSummary",
+    "ApplicationSummaryPage",
     "AppliedJob",
     "MovedApplication",
     "NewApplication",
     "ReviewedJob",
     "ScreeningVerdict",
-    "StatusChange",
+    "StatusHistoryEntry",
     "SubmittedAnswer",
 ]

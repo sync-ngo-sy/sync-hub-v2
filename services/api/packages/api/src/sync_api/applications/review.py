@@ -7,15 +7,15 @@ from sqlalchemy import select
 from sync_api.applications.access import own_application
 from sync_api.applications.payload import (
     AnsweredQuestion,
-    ApplicantPage,
-    ApplicantSummary,
     ApplicationCv,
     ApplicationReview,
     ApplicationSnapshot,
+    ApplicationSummary,
+    ApplicationSummaryPage,
     MovedApplication,
     ReviewedJob,
     ScreeningVerdict,
-    StatusChange,
+    StatusHistoryEntry,
 )
 from sync_api.applications.pipeline import move_application
 from sync_api.candidates import (
@@ -24,6 +24,10 @@ from sync_api.candidates import (
     ProfileLanguage,
     ProfileProject,
     ProfileSkill,
+    a_language,
+    a_project,
+    an_education,
+    an_experience,
 )
 from sync_api.cvs import signed_download
 from sync_api.jobs.access import own_job
@@ -75,7 +79,7 @@ class ApplicationReviewService:
         self._storage = storage
         self._settings = settings
 
-    async def applicants(
+    async def page(
         self,
         recruiter: ActingRecruiter,
         job_id: UUID,
@@ -84,7 +88,7 @@ class ApplicationReviewService:
         qualification_status: QualificationStatus | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
-    ) -> ApplicantPage:
+    ) -> ApplicationSummaryPage:
         await own_job(self._db, recruiter.tenant.id, job_id)
 
         query = (
@@ -114,7 +118,7 @@ class ApplicationReviewService:
             ).tuples()
         )
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
-        return ApplicantPage(
+        return ApplicationSummaryPage(
             items=[_summary(application, snapshot) for application, snapshot in rows],
             next_cursor=next_cursor,
         )
@@ -142,7 +146,9 @@ class ApplicationReviewService:
         self, recruiter: ActingRecruiter, application_id: UUID, change: ApplicationStatusChange
     ) -> MovedApplication:
         async with transaction(self._db):
-            applied = await own_application(self._db, recruiter.tenant.id, application_id)
+            applied = await own_application(
+                self._db, recruiter.tenant.id, application_id, to_move=True
+            )
             moved = await move_application(
                 self._db,
                 applied,
@@ -151,7 +157,7 @@ class ApplicationReviewService:
                 by=recruiter.profile.id,
             )
             if change.status is ApplicationStatus.REJECTED:
-                await self._queue_the_rejection(recruiter, applied, moved.id)
+                await self._queue_the_rejection(recruiter, applied, moved.status_history_id)
 
         logger.info(
             "applications.moved",
@@ -168,7 +174,7 @@ class ApplicationReviewService:
         )
 
     async def _queue_the_rejection(
-        self, recruiter: ActingRecruiter, applied: Applied, move_id: UUID
+        self, recruiter: ActingRecruiter, applied: Applied, status_history_id: UUID
     ) -> None:
         """The one rejection that emails: keyed by the move, so undoing and deciding it again
         is a second decision the Candidate hears about, not a swallowed duplicate."""
@@ -181,7 +187,7 @@ class ApplicationReviewService:
             application_id=application.id,
             initiated_by_recruiter_id=recruiter.profile.id,
             recipient=email,
-            idempotency_key=f"application-rejection:{move_id}",
+            idempotency_key=f"application-rejection:{status_history_id}",
             payload=ApplicationRejection(
                 application_id=application.id,
                 job_title=applied.job.title,
@@ -191,8 +197,9 @@ class ApplicationReviewService:
         )
 
     async def _candidate_contact(self, candidate_id: UUID) -> tuple[str, str]:
-        """The name to greet and the address as it stands now; the sender resolves the verified
-        one again before it delivers."""
+        """The name to greet, and the address as it stands. Auditing what it was is all this
+        is for — the sender resolves the verified one again, and refuses a candidate who has
+        none, which is why an address-less identity is recorded rather than refused here."""
         full_name, email = (
             (
                 await self._db.execute(
@@ -229,19 +236,7 @@ class ApplicationReviewService:
             .where(ApplicationExperience.application_id == application_id)
             .order_by(ApplicationExperience.sort_order)
         )
-        return [
-            ProfileExperience(
-                job_title=row.job_title,
-                company_name=row.company_name,
-                start_year=row.start_year,
-                start_month=row.start_month,
-                end_year=row.end_year,
-                end_month=row.end_month,
-                is_current=row.is_current,
-                description=row.description,
-            )
-            for row in rows
-        ]
+        return [an_experience(row) for row in rows]
 
     async def _educations(self, application_id: UUID) -> list[ProfileEducation]:
         rows = await self._db.scalars(
@@ -249,16 +244,7 @@ class ApplicationReviewService:
             .where(ApplicationEducation.application_id == application_id)
             .order_by(ApplicationEducation.sort_order)
         )
-        return [
-            ProfileEducation(
-                institution=row.institution,
-                degree=row.degree,
-                field_of_study=row.field_of_study,
-                graduation_year=row.graduation_year,
-                description=row.description,
-            )
-            for row in rows
-        ]
+        return [an_education(row) for row in rows]
 
     async def _languages(self, application_id: UUID) -> list[ProfileLanguage]:
         rows = await self._db.scalars(
@@ -266,9 +252,7 @@ class ApplicationReviewService:
             .where(ApplicationLanguage.application_id == application_id)
             .order_by(ApplicationLanguage.sort_order)
         )
-        return [
-            ProfileLanguage(code=row.language_code, proficiency=row.proficiency) for row in rows
-        ]
+        return [a_language(row) for row in rows]
 
     async def _projects(self, application_id: UUID) -> list[ProfileProject]:
         rows = await self._db.scalars(
@@ -276,19 +260,7 @@ class ApplicationReviewService:
             .where(ApplicationProject.application_id == application_id)
             .order_by(ApplicationProject.sort_order)
         )
-        return [
-            ProfileProject(
-                name=row.name,
-                description=row.description,
-                project_url=row.project_url,
-                repository_url=row.repository_url,
-                start_year=row.start_year,
-                start_month=row.start_month,
-                end_year=row.end_year,
-                end_month=row.end_month,
-            )
-            for row in rows
-        ]
+        return [a_project(row) for row in rows]
 
     async def _skills(self, application_id: UUID) -> list[ProfileSkill]:
         rows = await self._db.execute(
@@ -323,14 +295,14 @@ class ApplicationReviewService:
             for answer, question in rows.tuples()
         ]
 
-    async def _history(self, application_id: UUID) -> list[StatusChange]:
+    async def _history(self, application_id: UUID) -> list[StatusHistoryEntry]:
         rows = await self._db.scalars(
             select(ApplicationStatusHistory)
             .where(ApplicationStatusHistory.application_id == application_id)
             .order_by(ApplicationStatusHistory.created_at, ApplicationStatusHistory.id)
         )
         return [
-            StatusChange(
+            StatusHistoryEntry(
                 status=row.new_status,
                 previous_status=row.previous_status,
                 source=row.change_source,
@@ -352,8 +324,8 @@ class ApplicationReviewService:
         )
 
 
-def _summary(application: Application, snapshot: ApplicationProfileSnapshot) -> ApplicantSummary:
-    return ApplicantSummary(
+def _summary(application: Application, snapshot: ApplicationProfileSnapshot) -> ApplicationSummary:
+    return ApplicationSummary(
         id=application.id,
         candidate_name=snapshot.full_name,
         headline=snapshot.headline,

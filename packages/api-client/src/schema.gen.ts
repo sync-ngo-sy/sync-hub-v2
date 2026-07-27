@@ -547,10 +547,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Who applied to the Job, newest first
-         * @description The triage list: who applied, where they stand, and how Screening judged them.
+         * The Job's Applications, newest first
+         * @description The triage list: who applied, where each one stands, and how Screening judged it.
          */
-        get: operations["listJobApplicants"];
+        get: operations["listJobApplications"];
         put?: never;
         post?: never;
         delete?: never;
@@ -771,7 +771,7 @@ export interface components {
         AccountType: "candidate" | "recruiter";
         /**
          * AnsweredQuestion
-         * @description One of the Job's questions, and what this applicant answered.
+         * @description One of the Job's questions, and what the Candidate answered.
          */
         AnsweredQuestion: {
             /**
@@ -786,53 +786,6 @@ export interface components {
             answer_boolean?: boolean | null;
             /** Answer Text */
             answer_text?: string | null;
-        };
-        /**
-         * ApplicantPage
-         * @description One page of a Job's applicants, newest first.
-         */
-        ApplicantPage: {
-            /** Items */
-            items: components["schemas"]["ApplicantSummary"][];
-            /**
-             * Next Cursor
-             * @description Send back as `cursor` for the following page.
-             */
-            next_cursor?: string | null;
-        };
-        /**
-         * ApplicantSummary
-         * @description One applicant, as the Job's triage list shows them.
-         */
-        ApplicantSummary: {
-            /**
-             * Id
-             * Format: uuid
-             * @description The Application. Read it for everything below the surface.
-             */
-            id: string;
-            /**
-             * Candidate Name
-             * @description The Snapshot's name: who they applied as.
-             */
-            candidate_name: string;
-            /** Headline */
-            headline?: string | null;
-            /** Location */
-            location?: string | null;
-            status: components["schemas"]["ApplicationStatus"];
-            /** @description The Screening verdict. */
-            qualification_status: components["schemas"]["QualificationStatus"];
-            /**
-             * Applied At
-             * Format: date-time
-             */
-            applied_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
         };
         /**
          * Application
@@ -974,7 +927,7 @@ export interface components {
              * History
              * @description Every move it has made, oldest first.
              */
-            history: components["schemas"]["StatusChange"][];
+            history: components["schemas"]["StatusHistoryEntry"][];
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Applied At
@@ -1023,7 +976,7 @@ export interface components {
          * @description Where to take the Application next.
          */
         ApplicationStatusChange: {
-            /** @description Any state that is not `withdrawn`, which is the candidate's own move. */
+            /** @description Where it goes. `withdrawn` is refused here: leaving is the candidate's own move, and theirs alone. */
             status: components["schemas"]["ApplicationStatus"];
         };
         /**
@@ -1049,6 +1002,53 @@ export interface components {
             status: components["schemas"]["ApplicationStatus"];
             /** @description Where it stood until this move. */
             previous_status: components["schemas"]["ApplicationStatus"];
+        };
+        /**
+         * ApplicationSummary
+         * @description One Application, as the Job's triage list shows it.
+         */
+        ApplicationSummary: {
+            /**
+             * Id
+             * Format: uuid
+             * @description The Application. Read it for everything below the surface.
+             */
+            id: string;
+            /**
+             * Candidate Name
+             * @description The Snapshot's name: who they applied as.
+             */
+            candidate_name: string;
+            /** Headline */
+            headline?: string | null;
+            /** Location */
+            location?: string | null;
+            status: components["schemas"]["ApplicationStatus"];
+            /** @description The Screening verdict. */
+            qualification_status: components["schemas"]["QualificationStatus"];
+            /**
+             * Applied At
+             * Format: date-time
+             */
+            applied_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ApplicationSummaryPage
+         * @description One page of a Job's Applications, newest first.
+         */
+        ApplicationSummaryPage: {
+            /** Items */
+            items: components["schemas"]["ApplicationSummary"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
         };
         /**
          * AppliedJob
@@ -2325,10 +2325,15 @@ export interface components {
          */
         SkillImportance: "required" | "preferred" | "optional";
         /**
-         * StatusChange
+         * StatusChangeSource
+         * @enum {string}
+         */
+        StatusChangeSource: "recruiter" | "candidate" | "system";
+        /**
+         * StatusHistoryEntry
          * @description One move in the Application's life, and who made it.
          */
-        StatusChange: {
+        StatusHistoryEntry: {
             status: components["schemas"]["ApplicationStatus"];
             /** @description Null on the first entry: the submission itself. */
             previous_status?: components["schemas"]["ApplicationStatus"] | null;
@@ -2339,11 +2344,6 @@ export interface components {
              */
             changed_at: string;
         };
-        /**
-         * StatusChangeSource
-         * @enum {string}
-         */
-        StatusChangeSource: "recruiter" | "candidate" | "system";
         /**
          * SubmittedAnswer
          * @description One answer to one of the Job's questions, in the kind the question asked for.
@@ -4355,7 +4355,7 @@ export interface operations {
             };
         };
     };
-    listJobApplicants: {
+    listJobApplications: {
         parameters: {
             query?: {
                 /** @description Only Applications in this pipeline state. */
@@ -4381,7 +4381,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApplicantPage"];
+                    "application/json": components["schemas"]["ApplicationSummaryPage"];
                 };
             };
             /** @description There is no valid session. */

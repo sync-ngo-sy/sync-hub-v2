@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from sync_api.applications import ApplicantPage
+from sync_api.applications import ApplicationSummaryPage
 from sync_api.dependencies import (
     ActingRecruiterDep,
     ApplicationReviewServiceDep,
@@ -133,8 +133,8 @@ async def replace_job_criteria(
 
 @router.get(
     "/{job_id}/applications",
-    operation_id="listJobApplicants",
-    summary="Who applied to the Job, newest first",
+    operation_id="listJobApplications",
+    summary="The Job's Applications, newest first",
     tags=["applications"],
     responses={
         **TENANT_ACCESS_REFUSED,
@@ -142,7 +142,7 @@ async def replace_job_criteria(
         422: openapi_problem("`cursor` is not one this API issued."),
     },
 )
-async def list_job_applicants(
+async def list_job_applications(
     job_id: UUID,
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
@@ -161,9 +161,9 @@ async def list_job_applicants(
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
-) -> ApplicantPage:
-    """The triage list: who applied, where they stand, and how Screening judged them."""
-    return await applications.applicants(
+) -> ApplicationSummaryPage:
+    """The triage list: who applied, where each one stands, and how Screening judged it."""
+    return await applications.page(
         recruiter,
         job_id,
         status=application_status,

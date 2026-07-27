@@ -108,8 +108,8 @@ class ApplicationPage(BaseModel):
     )
 
 
-class ApplicantSummary(BaseModel):
-    """One applicant, as the Job's triage list shows them."""
+class ApplicationSummary(BaseModel):
+    """One Application, as the Job's triage list shows it."""
 
     id: UUID = Field(description="The Application. Read it for everything below the surface.")
     candidate_name: str = Field(description="The Snapshot's name: who they applied as.")
@@ -121,10 +121,10 @@ class ApplicantSummary(BaseModel):
     updated_at: datetime
 
 
-class ApplicantPage(BaseModel):
-    """One page of a Job's applicants, newest first."""
+class ApplicationSummaryPage(BaseModel):
+    """One page of a Job's Applications, newest first."""
 
-    items: list[ApplicantSummary]
+    items: list[ApplicationSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
     )
@@ -147,7 +147,7 @@ class ApplicationSnapshot(BaseModel):
 
 
 class AnsweredQuestion(BaseModel):
-    """One of the Job's questions, and what this applicant answered."""
+    """One of the Job's questions, and what the Candidate answered."""
 
     question_id: UUID
     question_text: str
@@ -165,7 +165,7 @@ class ScreeningVerdict(BaseModel):
     )
 
 
-class StatusChange(BaseModel):
+class StatusHistoryEntry(BaseModel):
     """One move in the Application's life, and who made it."""
 
     status: ApplicationStatus
@@ -204,7 +204,7 @@ class ApplicationReview(BaseModel):
     screening: ScreeningVerdict
     snapshot: ApplicationSnapshot
     answers: list[AnsweredQuestion]
-    history: list[StatusChange] = Field(description="Every move it has made, oldest first.")
+    history: list[StatusHistoryEntry] = Field(description="Every move it has made, oldest first.")
     cv: ApplicationCv
     applied_at: datetime
     updated_at: datetime
@@ -214,7 +214,8 @@ class ApplicationStatusChange(BaseModel):
     """Where to take the Application next."""
 
     status: ApplicationStatus = Field(
-        description="Any state that is not `withdrawn`, which is the candidate's own move."
+        description="Where it goes. `withdrawn` is refused here: leaving is the candidate's "
+        "own move, and theirs alone."
     )
 
 

@@ -53,7 +53,7 @@ MOVES: Final[
 class Moved:
     """One move that happened, and the history row recording it."""
 
-    id: UUID
+    status_history_id: UUID
     status: ApplicationStatus
     previous_status: ApplicationStatus
     changed_at: datetime
@@ -96,7 +96,12 @@ async def move_application(
             previous_status=previous,
         ),
     )
-    return Moved(id=history.id, status=to, previous_status=previous, changed_at=history.created_at)
+    return Moved(
+        status_history_id=history.id,
+        status=to,
+        previous_status=previous,
+        changed_at=history.created_at,
+    )
 
 
 def _refuse_impossible_move(

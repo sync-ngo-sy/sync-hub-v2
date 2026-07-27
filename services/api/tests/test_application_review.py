@@ -24,10 +24,10 @@ from tests.support.applications import (
     a_reviewed_application,
     a_withdrawn_application,
     an_accepted_application,
-    applicants_of,
     apply_to,
     communications_of,
-    list_applicants,
+    job_applications_of,
+    list_job_applications,
     move_to,
     my_applications,
     qualification_history_of,
@@ -97,16 +97,16 @@ async def test_the_job_lists_who_applied_and_where_each_one_stands(
         other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE
     )
 
-    [applicant] = await applicants_of(recruiter, job["id"])
+    [listed] = await job_applications_of(recruiter, job["id"])
 
-    assert applicant["id"] == application["id"]
-    assert applicant["candidate_name"] == "Amina Haddad"
-    assert applicant["headline"] == "Backend engineer, 8 years"
-    assert applicant["status"] == "new"
-    assert applicant["qualification_status"] == "qualified"
+    assert listed["id"] == application["id"]
+    assert listed["candidate_name"] == "Amina Haddad"
+    assert listed["headline"] == "Backend engineer, 8 years"
+    assert listed["status"] == "new"
+    assert listed["qualification_status"] == "qualified"
 
 
-async def test_the_applicant_list_filters_by_status_and_by_verdict(
+async def test_the_application_list_filters_by_status_and_by_verdict(
     recruiter: AsyncClient,
     third_browser: AsyncClient,
     other_browser: AsyncClient,
@@ -127,14 +127,14 @@ async def test_the_applicant_list_filters_by_status_and_by_verdict(
     rejected = await an_accepted_application(third_browser, job["id"], rejected_cv)
     await a_moved_application(recruiter, rejected["id"], ApplicationStatus.REJECTED)
 
-    by_status = await applicants_of(recruiter, job["id"], status="rejected")
-    by_verdict = await applicants_of(recruiter, job["id"], qualification_status="qualified")
+    by_status = await job_applications_of(recruiter, job["id"], status="rejected")
+    by_verdict = await job_applications_of(recruiter, job["id"], qualification_status="qualified")
 
     assert [item["id"] for item in by_status] == [rejected["id"]]
     assert [item["id"] for item in by_verdict] == [qualified["id"]]
 
 
-async def test_the_applicant_list_pages_newest_first(
+async def test_the_application_list_pages_newest_first(
     recruiter: AsyncClient,
     third_browser: AsyncClient,
     other_browser: AsyncClient,
@@ -147,16 +147,18 @@ async def test_the_applicant_list_pages_newest_first(
     second_cv = await a_candidate_with_a_ready_cv(third_browser, mailbox, db_session, "stranger")
     second = await an_accepted_application(third_browser, job["id"], second_cv)
 
-    page = await list_applicants(recruiter, job["id"], limit=1)
+    page = await list_job_applications(recruiter, job["id"], limit=1)
     assert page.status_code == 200, page.text
     newest = page.json()
-    following = await applicants_of(recruiter, job["id"], limit=1, cursor=newest["next_cursor"])
+    following = await job_applications_of(
+        recruiter, job["id"], limit=1, cursor=newest["next_cursor"]
+    )
 
     assert [item["id"] for item in newest["items"]] == [second["id"]]
     assert [item["id"] for item in following] == [first["id"]]
 
 
-async def test_another_tenants_job_has_no_applicants_to_read(
+async def test_another_tenants_job_has_no_applications_to_read(
     recruiter: AsyncClient,
     browser: AsyncClient,
     other_browser: AsyncClient,
@@ -168,7 +170,7 @@ async def test_another_tenants_job_has_no_applicants_to_read(
     await an_accepted_application(other_browser, job["id"], cv_id)
     await an_admin(browser, mailbox, "rival")
 
-    refused = await list_applicants(browser, job["id"])
+    refused = await list_job_applications(browser, job["id"])
 
     assert refused.status_code == 404, refused.text
     assert refused.json()["type"] == "urn:sync:problem:job-not-found"
@@ -363,6 +365,24 @@ async def test_every_move_names_the_recruiter_who_made_it(
 
     assert move.change_source is StatusChangeSource.RECRUITER
     assert move.changed_by_profile_id is not None
+
+
+async def test_a_recruiter_may_take_an_application_back_to_where_it_started(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """`new` is a state like any other undecided one: free movement includes going back to it."""
+    job = await a_published_job(recruiter)
+    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
+
+    back = await a_moved_application(recruiter, application["id"], ApplicationStatus.NEW)
+
+    assert back["status"] == "new"
+    assert back["previous_status"] == "reviewing"
 
 
 async def test_a_hired_application_is_the_end_of_the_line(
@@ -657,7 +677,8 @@ async def test_the_withdrawal_is_recorded_as_the_candidates_own(
     assert [item["payload"]["status"] for item in await my_notifications(other_browser)] == [
         "withdrawn"
     ]
-    assert await communications_of(db_session, application["id"]) != []
+    [confirmation] = await communications_of(db_session, application["id"])
+    assert confirmation.communication_type is CommunicationType.APPLICATION_CONFIRMATION
 
 
 async def test_nobody_withdraws_somebody_elses_application(

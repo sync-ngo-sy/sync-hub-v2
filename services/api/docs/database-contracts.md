@@ -197,7 +197,9 @@ questions that were asked, `application_status_history` oldest first, and a shor
 Storage URL for the CV the Application was sent with.
 
 Moving is a light state machine (`sync_api.applications.pipeline`), and it is the backend's
-alone — no constraint or trigger knows about it:
+alone — no constraint or trigger knows about it, so the row is read `FOR UPDATE` inside the
+move's transaction: without that, two moves decided at once would each pass a check the other
+should have failed:
 - A Recruiter moves freely among `new`, `reviewing`, `shortlisted`, `interview` and `offer`,
   and from any of them to `hired` or `rejected`. Backwards included: a tracker that only went
   forwards would not match how hiring goes.

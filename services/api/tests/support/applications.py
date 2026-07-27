@@ -119,14 +119,16 @@ async def my_applications(browser: AsyncClient, **params: Any) -> list[dict[str,
     return items
 
 
-async def list_applicants(recruiter: AsyncClient, job_id: str | UUID, **params: Any) -> Response:
+async def list_job_applications(
+    recruiter: AsyncClient, job_id: str | UUID, **params: Any
+) -> Response:
     return await recruiter.get(f"{TENANT_JOBS}/{job_id}/applications", params=params)
 
 
-async def applicants_of(
+async def job_applications_of(
     recruiter: AsyncClient, job_id: str | UUID, **params: Any
 ) -> list[dict[str, Any]]:
-    response = await list_applicants(recruiter, job_id, **params)
+    response = await list_job_applications(recruiter, job_id, **params)
     assert response.status_code == 200, response.text
     items: list[dict[str, Any]] = response.json()["items"]
     return items
