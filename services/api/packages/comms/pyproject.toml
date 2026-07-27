@@ -12,7 +12,8 @@ dependencies = [
     "jinja2>=3.1",
     # The delivery provider. Confined to this package, behind the `EmailSender` port
     # everything else imports — the same arrangement `sync-parsers` has for extraction.
-    "resend>=2.15.0",
+    # The `async` extra is the httpx client `send_async` needs.
+    "resend[async]>=2.15.0",
     "sync-core",
 ]
 

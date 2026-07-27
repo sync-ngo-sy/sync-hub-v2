@@ -1543,6 +1543,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/cc/92/1c0912b68ae082a55dfdd32e4b5117905ae9fd1b6efc5f5e7c69a4ee6894/resend-2.35.0-py2.py3-none-any.whl", hash = "sha256:cd75299d626f4735af52910989b3f51919032ef316e2d60563c79c319e7b24a6", size = 87336, upload-time = "2026-07-27T16:46:47.229Z" },
 ]
 
+[package.optional-dependencies]
+async = [
+    { name = "httpx" },
+]
+
 [[package]]
 name = "ruff"
 version = "0.15.22"
@@ -1769,14 +1774,14 @@ version = "0.1.0"
 source = { editable = "packages/comms" }
 dependencies = [
     { name = "jinja2" },
-    { name = "resend" },
+    { name = "resend", extra = ["async"] },
     { name = "sync-core" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "resend", specifier = ">=2.15.0" },
+    { name = "resend", extras = ["async"], specifier = ">=2.15.0" },
     { name = "sync-core", editable = "packages/core" },
 ]
 

@@ -54,7 +54,7 @@ class CommunicationDelivery:
             raise UnsendableEmailError(f"the sender delivers email, not {message.channel.value}")
 
         recipient = await self._verified_email(message.candidate_id)
-        rendered = render(message.template_key, _payload_of(message))
+        rendered = render(message.template_key, _readable(message))
         sent = await self._sender.send(
             EmailMessage(
                 to=recipient,
@@ -111,7 +111,7 @@ class CommunicationDelivery:
         return email
 
 
-def _payload_of(message: QueuedCommunication) -> CommunicationPayload:
+def _readable(message: QueuedCommunication) -> CommunicationPayload:
     try:
         return payload_of(message.payload)
     except ValidationError as malformed:

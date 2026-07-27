@@ -268,7 +268,10 @@ section produces no chunk, so a profile with nothing in it produces nothing to f
   migration 13 added the three timestamps the claim, the backoff and the sweep need.
   `completed_at` is when the queue let go of the row either way; `sent_at` only ever means a
   provider accepted the message.
-- Claim `status='queued'`; resolve the recipient's verified email from `auth.users` — never
+- Claim `status='queued'` **and `channel='email'`**: one table will hold more than one
+  channel, and a row the email sender cannot deliver has to keep waiting for its own sender
+  rather than be claimed and buried.
+- Resolve the recipient's verified email from `auth.users` — never
   from a Snapshot and never from the row's own `recipient`, which is only what the address
   was when the message was queued. No confirmed email is a permanent failure, not a retry.
 - Render `template_key` (a backend-owned template, versioned, written at enqueue time) and

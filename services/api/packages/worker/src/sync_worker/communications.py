@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Final, cast
 
 from sync_comms import CommunicationDelivery, QueuedCommunication, UnsendableEmailError
 from sync_core import get_logger
-from sync_core.models import Communication, CommunicationStatus
+from sync_core.models import Communication, CommunicationChannel, CommunicationStatus
 from sync_worker.engine import PermanentFailureError, Queue
 
 if TYPE_CHECKING:
@@ -23,13 +23,12 @@ COMMUNICATIONS_QUEUE: Final = Queue(
     processing=CommunicationStatus.PROCESSING,
     completed=CommunicationStatus.SENT,
     failed=CommunicationStatus.FAILED,
+    mine=(Communication.channel == CommunicationChannel.EMAIL,),
 )
 
 
 class CommunicationsConsumer:
-    """The Communication row is both the job and its own audit trail: the engine settles the
-    queue columns, `record` writes the provider's evidence beside them in the same
-    transaction."""
+    """The Communication row is both the job and its own audit trail."""
 
     def __init__(self, delivery: CommunicationDelivery) -> None:
         self._delivery = delivery

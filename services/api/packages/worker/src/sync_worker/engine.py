@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from enum import Enum
     from uuid import UUID
 
-    from sqlalchemy import Table, Update
+    from sqlalchemy import ColumnElement, Table, Update
     from sqlalchemy.ext.asyncio import AsyncSession
     from structlog.stdlib import BoundLogger
 
@@ -41,6 +41,9 @@ class Queue:
     processing: Enum
     completed: Enum
     failed: Enum
+    #: Narrows a shared table to the rows this consumer can actually do something with, so
+    #: the ones it cannot are left waiting rather than claimed and buried.
+    mine: tuple[ColumnElement[bool], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +121,7 @@ class QueueEngine[ResultT]:
                 .where(
                     table.c.status == self.queue.processing,
                     table.c.started_at < self._policy.stuck_before,
+                    *self.queue.mine,
                 )
                 .order_by(table.c.started_at)
                 .limit(SWEEP_BATCH)
@@ -144,6 +148,7 @@ class QueueEngine[ResultT]:
             .where(
                 table.c.status == self.queue.pending,
                 or_(table.c.available_at.is_(None), table.c.available_at <= func.now()),
+                *self.queue.mine,
             )
             .order_by(table.c.created_at)
             .limit(1)

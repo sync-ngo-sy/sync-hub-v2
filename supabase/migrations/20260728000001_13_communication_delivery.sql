@@ -13,3 +13,10 @@ alter table communications
 
 create index communications_claim_idx on communications (available_at)
   where status in ('queued', 'processing');
+
+-- Confirmations queued before the sender existed name no template. They are all the one
+-- template there is, and without this they would be claimed once and buried as unrenderable.
+update communications
+   set template_key = 'application-confirmation.v1'
+ where template_key is null
+   and communication_type = 'application_confirmation';

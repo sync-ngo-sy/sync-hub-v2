@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_comms import EmailUnavailableError, UnsendableEmailError
 from sync_core import Database
 from sync_core.communications import ApplicationConfirmation
-from sync_core.models import Communication, CommunicationStatus
+from sync_core.models import Communication, CommunicationChannel, CommunicationStatus
 from tests.support.applications import an_accepted_application, communications_of
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_published_job
@@ -130,7 +130,9 @@ async def test_it_sends_to_the_verified_address_not_the_one_that_was_queued(
     awaiting = await an_application_awaiting_its_confirmation(
         recruiter, other_browser, mailbox, db_session
     )
-    await _queued_against(db_session, awaiting.communication_id, recipient="stale@example.com")
+    await _returned_to_the_queue(
+        db_session, awaiting.communication_id, recipient="stale@example.com"
+    )
     sender = CapturingSender()
 
     await a_communications_worker(database, sender).run_once()
@@ -271,7 +273,7 @@ async def test_a_row_naming_no_template_is_failed_without_reaching_the_provider(
     awaiting = await an_application_awaiting_its_confirmation(
         recruiter, other_browser, mailbox, db_session
     )
-    await _queued_against(db_session, awaiting.communication_id, template_key=None)
+    await _returned_to_the_queue(db_session, awaiting.communication_id, template_key=None)
     sender = CapturingSender()
 
     await a_communications_worker(database, sender).run_once()
@@ -300,7 +302,7 @@ async def test_a_re_claimed_row_cannot_send_the_message_twice(
     first = await reread(db_session, awaiting.communication_id)
     delivered_id = first.provider_message_id
 
-    await _queued_against(db_session, awaiting.communication_id)
+    await _returned_to_the_queue(db_session, awaiting.communication_id)
     await worker.run_once()
 
     assert sender.attempt_count == 2
@@ -310,21 +312,65 @@ async def test_a_re_claimed_row_cannot_send_the_message_twice(
     assert row.provider_message_id == delivered_id
 
 
+async def test_a_row_another_worker_is_holding_is_not_claimed_again(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+) -> None:
+    awaiting = await an_application_awaiting_its_confirmation(
+        recruiter, other_browser, mailbox, db_session
+    )
+    await _set(db_session, awaiting.communication_id, status=CommunicationStatus.PROCESSING)
+    sender = CapturingSender()
+
+    assert await a_communications_worker(database, sender).run_once() is False
+    assert sender.attempt_count == 0
+
+
+async def test_a_message_for_another_channel_is_left_for_its_own_sender(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+) -> None:
+    awaiting = await an_application_awaiting_its_confirmation(
+        recruiter, other_browser, mailbox, db_session
+    )
+    await _set(db_session, awaiting.communication_id, channel=CommunicationChannel.SMS)
+    sender = CapturingSender()
+
+    assert await a_communications_worker(database, sender).run_once() is False
+
+    assert sender.attempt_count == 0
+    row = await reread(db_session, awaiting.communication_id)
+    assert row.status is CommunicationStatus.QUEUED, "waiting, not buried by the email sender"
+
+
 async def test_an_empty_queue_is_no_work(database: Database) -> None:
     assert await a_communications_worker(database, CapturingSender()).run_once() is False
 
 
-async def _queued_against(session: AsyncSession, communication_id: UUID, **changes: object) -> None:
+async def _returned_to_the_queue(
+    session: AsyncSession, communication_id: UUID, **changes: object
+) -> None:
+    """What the sweep leaves behind: queued again, with nothing of the last claim on it."""
+    await _set(
+        session,
+        communication_id,
+        status=CommunicationStatus.QUEUED,
+        started_at=None,
+        completed_at=None,
+        available_at=None,
+        **changes,
+    )
+
+
+async def _set(session: AsyncSession, communication_id: UUID, **changes: object) -> None:
     await session.execute(
-        update(Communication)
-        .where(Communication.id == communication_id)
-        .values(
-            status=CommunicationStatus.QUEUED,
-            started_at=None,
-            completed_at=None,
-            available_at=None,
-            **changes,
-        )
+        update(Communication).where(Communication.id == communication_id).values(**changes)
     )
     await session.commit()
 
