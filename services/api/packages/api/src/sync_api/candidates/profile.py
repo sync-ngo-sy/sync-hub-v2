@@ -1,20 +1,3 @@
-"""Reading and replacing a Candidate's professional profile.
-
-The payload this works in is `sync_api.candidates.payload`; what happens here is the trip
-between it and the `candidate_*` tables.
-
-**The save is a replacement, not a merge.** Every section is written from the request, and
-a section left out of it is emptied, because a profile that merged would need a second
-vocabulary for "delete this experience" while the candidate's screen already has one: the
-form they submit. It is also one transaction, so nothing ever reads a profile whose
-headline and experiences describe different people.
-
-**Everything that can refuse the save refuses it before the first write.** The skills, the
-language codes and the Searchable opt-in are all checked against rows this request does not
-own, and a check that ran between the deletes and the inserts would answer a client with a
-profile it had already half emptied.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -61,13 +44,10 @@ logger = get_logger(__name__)
 
 
 class CandidateProfileService:
-    """One request's worth of profile work."""
-
     def __init__(self, session: AsyncSession) -> None:
         self._db = session
 
     async def profile(self, candidate_id: UUID) -> CandidateProfile:
-        """The whole profile in one value, every section in the candidate's own order."""
         candidate = await self._candidate(candidate_id)
         return CandidateProfile(
             headline=candidate.headline,
@@ -83,25 +63,6 @@ class CandidateProfileService:
         )
 
     async def replace(self, candidate_id: UUID, profile: CandidateProfile) -> CandidateProfile:
-        """Swap the whole profile for this one, in a single transaction.
-
-        Every child row of every section goes and comes back, rather than being matched up
-        with what was there: the candidate sent the profile they want, not a description of
-        the edits they made, and reconciling the two would be inventing a diff nobody asked
-        for. The cost is one delete and one insert per section; the benefit is that a save
-        cannot half-happen, and no reader ever sees a profile mid-edit.
-
-        The candidate row is locked for the duration, which is what makes two saves at once
-        last-write-wins rather than a merge of both. Without it each transaction deletes
-        only the rows the other had already committed, and the two sets of inserts land
-        together — leaving a profile that is neither save, or a duplicate-key failure on
-        `candidate_skills` for whichever one lost.
-
-        The re-embed job coalesces itself: every one of those writes fires the enqueue
-        trigger, which upserts the candidate's single job row (supabase ADR-0002), so a
-        save leaves exactly one — however many sections it touched, and however many saves
-        came before it.
-        """
         skills = await self._canonical_skill_ids(profile.skills)
         await self._refuse_unknown_languages(profile)
 
@@ -134,11 +95,6 @@ class CandidateProfileService:
         return await self.profile(candidate_id)
 
     async def _canonical_skill_ids(self, skills: Sequence[ProfileSkill]) -> dict[str, UUID]:
-        """The taxonomy id behind every named skill, or a refusal naming the ones it lacks.
-
-        Exact spellings only: a Canonical skill is one spelling and one id, and quietly
-        accepting a near-miss would put a skill in the profile that Screening never sees.
-        """
         if not skills:
             return {}
         rows = await self._db.execute(
@@ -146,8 +102,6 @@ class CandidateProfileService:
                 SkillTaxonomy.canonical_name.in_([skill.name for skill in skills])
             )
         )
-        # `.all()` first: a `Result` has `keys()`, so `dict()` would read it as a mapping
-        # and index it by column name rather than pairing up the two columns.
         known: dict[str, UUID] = dict(rows.tuples().all())
         _refuse_unknown(
             [
@@ -165,7 +119,6 @@ class CandidateProfileService:
         return known
 
     async def _refuse_unknown_languages(self, profile: CandidateProfile) -> None:
-        """Both places a language code can appear, checked in one query."""
         codes = {language.code for language in profile.languages}
         if profile.preferred_language_code is not None:
             codes.add(profile.preferred_language_code)
@@ -200,28 +153,14 @@ class CandidateProfileService:
         )
 
     async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
-        """Whether the candidate has a current CV that has actually been parsed.
-
-        The `candidates_searchable_needs_cv` CHECK can only see `current_cv_id`; migration
-        02 leaves the rest of the condition here, because "and that CV is `ready`" is a
-        second row and a constraint cannot reach it. Global search serves profiles built
-        from a parsed CV, so opting in without one would list a candidate the search index
-        has nothing of.
-        """
         if candidate.current_cv_id is None:
             return False
-        # Its own candidate's CV by construction: `candidates(id, current_cv_id)` is a
-        # composite foreign key into `cvs(candidate_id, id)`.
         cv = await self._db.get(Cv, candidate.current_cv_id)
         return (
             cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
         )
 
     async def _candidate(self, candidate_id: UUID, *, lock: bool = False) -> Candidate:
-        """The Candidate row, which the access gate has already put in the identity map.
-
-        `lock` re-reads it `FOR UPDATE`, which is how a save takes its turn.
-        """
         candidate = await self._db.get(Candidate, candidate_id, with_for_update=lock)
         if candidate is None:  # pragma: no cover — `acting_candidate` refused this already
             raise LookupError(f"no candidate row for {candidate_id}")
@@ -265,7 +204,6 @@ class CandidateProfileService:
         ]
 
     async def _skills(self, candidate_id: UUID) -> list[ProfileSkill]:
-        """Skills as the candidate reads them: the taxonomy's spelling, not its id."""
         rows = await self._db.execute(
             select(SkillTaxonomy.canonical_name, CandidateSkill.years_experience)
             .join(SkillTaxonomy, SkillTaxonomy.id == CandidateSkill.taxonomy_id)
@@ -309,11 +247,6 @@ class CandidateProfileService:
 
 
 def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, UUID]) -> list[Base]:
-    """The profile as rows, each section numbered by where the candidate put it.
-
-    Here rather than on `CandidateProfile` deliberately: the payload is the contract with
-    the SPA, and it stays free of the tables that happen to store it.
-    """
     rows: list[Base] = [
         CandidateExperience(
             candidate_id=candidate_id,
@@ -378,13 +311,6 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
 
 
 def _refuse_unknown(unknown: Sequence[InvalidField], *, problem_type: str, detail: str) -> None:
-    """Refuse a reference to data the platform does not have, located field by field.
-
-    The same body a failed schema validation produces, so a client parses one error shape
-    however an input was rejected; the `type` is what tells them which rule it broke. Dumped
-    to dicts because a `Problem`'s extensions are serialized as they are given, and a
-    `ProblemDetail` holding models would reach the JSON encoder still holding models.
-    """
     if not unknown:
         return
     raise Problem(

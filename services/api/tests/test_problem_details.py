@@ -1,5 +1,3 @@
-"""Every error leaves the API as RFC 9457 problem+json — never as HTML or a bare string."""
-
 from __future__ import annotations
 
 from httpx import AsyncClient

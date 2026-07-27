@@ -1,5 +1,3 @@
-"""The `ParsedCv` schema and the port CV extraction happens behind (ADR-0006)."""
-
 from sync_parsers.extractor import (
     CvExtractor,
     CvFile,

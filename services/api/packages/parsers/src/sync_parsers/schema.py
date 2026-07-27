@@ -1,24 +1,3 @@
-"""What the model is asked to read out of a CV.
-
-`ParsedCv` is the whole contract with the extractor: the JSON schema the model is
-constrained to (ADR-0006 — structured outputs, not a prompt asking nicely), the value the
-adapter hands back, the JSON stored in `cvs.parsed_cv_data`, and the body the polling
-endpoint answers with once a CV is `ready`.
-
-**Field names match `sync_api.candidates.payload` on purpose.** The candidate reviews this
-and posts the result to `PUT /v1/candidates/me/profile`; every name that differed between
-the two would be a translation the review screen had to perform, and a place the two could
-drift. `sync_ingestion` is what makes the match a promise rather than a coincidence — it
-coerces every field to the limits `sync_core.profile` sets before the parse is stored.
-
-**Nothing here constrains a value.** No ranges, no lengths, no required strings. Two
-reasons, and they point the same way. The API's strict-schema subset supports only some of
-what pydantic can express, so a constraint here is a constraint that may not survive the
-trip. And a model that answers `start_year: 1291` should cost us that one field, not the
-whole CV — which is exactly what a `ge=1900` here would cost, because `responses.parse`
-validates before we ever see it. The limits are applied afterwards, where they can be.
-"""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,11 +6,8 @@ from sync_core.models import LanguageProficiency
 
 
 class ParsedModel(BaseModel):
-    """Shared configuration for every shape the model fills in.
-
-    `extra="forbid"` is what makes pydantic emit `additionalProperties: false`, which the
-    strict-schema subset requires of every object in the document.
-    """
+    # `extra="forbid"` emits `additionalProperties: false`, which the strict-schema subset
+    # requires of every object in the document.
 
     model_config = ConfigDict(extra="forbid")
 
@@ -60,12 +36,7 @@ class ParsedEducation(ParsedModel):
 
 
 class ParsedSkill(ParsedModel):
-    """One Canonical skill the CV evidences.
-
-    `name` must be a Canonical skill spelled exactly as the prompt listed it. The backend
-    checks that rather than trusting it (ADR-0006): a name that is not in the taxonomy is
-    moved to `unmapped_skills`, where it is reviewed and never reaches Screening.
-    """
+    """One Canonical skill the CV evidences, named exactly as the prompt listed it."""
 
     name: str = Field(description="Exactly as spelled in the list of Canonical skills.")
     years_experience: float | None = Field(
@@ -98,12 +69,7 @@ class ParsedProject(ParsedModel):
 
 
 class ParsedCv(ParsedModel):
-    """Everything read out of one CV.
-
-    Every field is present in the model's answer — the strict-schema subset has no optional
-    properties, only nullable ones — so "the CV does not say" is `null` or an empty list
-    throughout, never an absent key.
-    """
+    """Everything read out of one CV. "Not stated" is null or an empty list, never an absent key."""
 
     full_name: str | None = Field(description="The candidate's name as the CV gives it.")
     email: str | None

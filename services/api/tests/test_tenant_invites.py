@@ -1,11 +1,3 @@
-"""Inviting a teammate, which by design is the same act as provisioning one.
-
-There is no invitations table: the Profile and the Recruiter are written the moment the
-invite is sent, so what these tests check is that a member exists from that moment, that
-the emailed link is what gives them a password, and that the Candidate-XOR-Recruiter rule
-survives an admin typing in an address that already belongs to a job seeker.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -32,7 +24,6 @@ from tests.support.tenants import (
 async def test_inviting_adds_the_member_before_they_accept(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The 201 is the roster row, not a promise of one."""
     await an_admin(browser, mailbox)
     email = an_invitee_address()
 
@@ -68,12 +59,6 @@ async def test_inviting_sends_the_invitation_email(browser: AsyncClient, mailbox
 async def test_the_invitation_lands_in_the_recruiter_portal(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The one property a valid token cannot vouch for: where the link actually goes.
-
-    GoTrue drops a `redirect_to` that is not in `additional_redirect_urls` and quietly falls
-    back to `site_url` — the *candidate* portal. The token in that email still redeems, so
-    every other test here would pass while every real invitee landed on the wrong app.
-    """
     await an_admin(browser, mailbox)
     email = an_invitee_address()
 
@@ -86,7 +71,6 @@ async def test_the_invitation_lands_in_the_recruiter_portal(
 async def test_accepting_sets_a_password_and_lands_in_the_tenant(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The acceptance criterion end to end: follow the link, choose a password, be at work."""
     admin_signup = await an_admin(browser, mailbox)
     email = an_invitee_address()
     await invite(browser, email=email)
@@ -105,7 +89,6 @@ async def test_accepting_sets_a_password_and_lands_in_the_tenant(
 async def test_the_password_chosen_on_acceptance_is_the_one_that_signs_them_in(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The invite's session is a convenience; the password is what has to outlive it."""
     await an_admin(browser, mailbox)
     email = an_invitee_address()
     await invite(browser, email=email)
@@ -142,7 +125,6 @@ async def test_an_invitation_can_name_the_admin_role(
 async def test_inviting_a_candidates_address_is_refused_and_adds_nobody(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """Candidate XOR Recruiter. `auth.users` is what refuses, so no flow has to remember to."""
     candidate = await a_confirmed_candidate(other_browser, mailbox)
     await an_admin(browser, mailbox)
 
@@ -173,11 +155,6 @@ async def test_inviting_someone_already_on_the_roster_is_refused(
 async def test_an_invited_address_cannot_start_a_tenant_of_its_own(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """A pending invitee owns their address already, even without having accepted.
-
-    Worth its own test because signup reaches GoTrue through a different endpoint than
-    inviting does, and the two do not refuse the same things.
-    """
     await an_admin(browser, mailbox)
     email = an_invitee_address()
     await invite(browser, email=email)
@@ -216,7 +193,6 @@ async def test_a_made_up_invitation_token_is_refused(browser: AsyncClient) -> No
 async def test_an_invited_teammate_cannot_sign_in_before_accepting(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """They are a member, but a member with no password and an unproven address."""
     await an_admin(browser, mailbox)
     email = an_invitee_address()
     await invite(browser, email=email)

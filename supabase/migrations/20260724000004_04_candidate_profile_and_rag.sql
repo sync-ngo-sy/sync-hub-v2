@@ -1,8 +1,5 @@
--- 04 · Current candidate profile, RAG chunks, and the embedding queue
---
--- profile_version (DBML) is intentionally gone (ADR supabase-0002). Any change to a
--- candidate_* table enqueues a coalesced re-embed job (migration 07 wires the trigger);
--- the worker deletes old chunks and re-embeds from the CURRENT profile.
+-- profile_version (DBML) is intentionally gone (ADR supabase-0002): any candidate_* change
+-- enqueues a coalesced re-embed, and the worker re-embeds from the CURRENT profile.
 
 set search_path = public, extensions;  -- so vector(...) and vector_cosine_ops resolve
 
@@ -120,8 +117,6 @@ create table candidate_languages (
 create index candidate_languages_language_idx   on candidate_languages (language_code, candidate_id);
 create index candidate_languages_sort_order_idx on candidate_languages (candidate_id, sort_order);
 
--- RAG chunks -----------------------------------------------------------------
-
 create table candidate_profile_chunks (
   id           uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references candidates (id) on delete cascade,
@@ -137,11 +132,8 @@ create table candidate_profile_chunks (
 
   unique (candidate_id, chunk_index)
 );
--- Approximate-nearest-neighbour index for cosine similarity (normalized embeddings).
 create index candidate_profile_chunks_embedding_hnsw
   on candidate_profile_chunks using hnsw (embedding vector_cosine_ops);
-
--- Embedding queue (coalesced: one row per candidate) --------------------------
 
 create table candidate_embedding_jobs (
   candidate_id uuid primary key references candidates (id) on delete cascade,
@@ -155,5 +147,4 @@ create table candidate_embedding_jobs (
 
   updated_at timestamptz not null default now()
 );
--- Worker claim index: only rows still needing embedding.
 create index candidate_embedding_jobs_claim_idx on candidate_embedding_jobs (updated_at) where dirty;

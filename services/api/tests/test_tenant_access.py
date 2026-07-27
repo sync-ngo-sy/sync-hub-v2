@@ -1,12 +1,3 @@
-"""Who may do what inside a Tenant, and the two switches that stop them entirely.
-
-Three questions, and every tenant-scoped route asks all three: is this caller a Recruiter,
-is their own access still on, and is their Tenant still running. The last is the operator's
-kill-switch, whose whole point is that it takes effect immediately and costs nothing to
-undo — so it is tested by turning it off, being refused, turning it back on, and finding
-everything exactly as it was.
-"""
-
 from __future__ import annotations
 
 from httpx import AsyncClient
@@ -24,7 +15,6 @@ from tests.support.tenants import (
     set_tenant_active,
 )
 
-#: Every route that only an active Recruiter of a running Tenant may reach.
 TENANT_SCOPED_ROUTES = ("/v1/tenants/me", "/v1/tenants/me/members")
 
 
@@ -102,8 +92,6 @@ async def test_a_deactivated_recruiter_is_refused_at_every_tenant_route(
         assert refused.status_code == 403, f"{route} answered {refused.status_code}"
         assert refused.json()["type"] == "urn:sync:problem:recruiter-deactivated"
 
-    # The writes too, and for the same reason: someone deactivated must not be able to
-    # reinstate themselves, which is the one change they would most want to make.
     reinstating_themselves = await change_member(other_browser, teammate["id"], is_active=True)
     assert reinstating_themselves.status_code == 403
     assert reinstating_themselves.json()["type"] == "urn:sync:problem:recruiter-deactivated"
@@ -113,11 +101,6 @@ async def test_a_deactivated_recruiter_is_refused_at_every_tenant_route(
 async def test_a_deactivated_recruiter_is_still_signed_in(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Deactivation revokes what they may do, not who they are.
-
-    Their session stays valid and `/auth/me` keeps answering, which is what lets the portal
-    say why the rest of it went away instead of bouncing them to a login form that works.
-    """
     await an_admin(browser, mailbox)
     teammate = await a_teammate(browser, other_browser, mailbox)
     await change_member(browser, teammate["id"], is_active=False)
@@ -144,11 +127,6 @@ async def test_reactivating_a_recruiter_restores_their_access(
 async def test_suspending_the_tenant_refuses_everyone_including_admins(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The kill-switch: one flag, and the whole company is locked out at once.
-
-    "Every recruiter-scoped operation", so the writes are checked as explicitly as the
-    reads — a suspension that still let an admin change the roster would not be one.
-    """
     signup = await an_admin(browser, mailbox)
     teammate = await a_teammate(browser, other_browser, mailbox)
 
@@ -171,7 +149,6 @@ async def test_suspending_the_tenant_refuses_everyone_including_admins(
 async def test_reactivating_the_tenant_restores_access_unchanged(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """Without data loss, which is the whole reason the kill-switch is a flag and not a delete."""
     signup = await an_admin(browser, mailbox)
     teammate = await a_teammate(browser, other_browser, mailbox)
     before = (await browser.get("/v1/tenants/me/members")).json()
@@ -188,7 +165,6 @@ async def test_reactivating_the_tenant_restores_access_unchanged(
 async def test_a_candidate_is_refused_at_every_tenant_route(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The Candidate half of the platform, refused at the Recruiter half's door."""
     candidate = await a_confirmed_candidate(browser, mailbox)
     signed_in = await sign_in(browser, candidate)
     assert signed_in.status_code == 200, signed_in.text
@@ -208,7 +184,6 @@ async def test_a_stranger_is_refused_at_every_tenant_route(browser: AsyncClient)
 async def test_the_last_active_admin_cannot_be_demoted(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Otherwise a Tenant can lock itself out of its own administration for good."""
     await an_admin(browser, mailbox)
     me = (await browser.get("/v1/tenants/me/members")).json()[0]
 
@@ -237,7 +212,6 @@ async def test_the_last_active_admin_cannot_be_deactivated(
 async def test_an_admin_may_step_down_once_someone_else_can_run_the_tenant(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The guard is about the Tenant keeping an admin, not about any one person keeping the role."""
     signup = await an_admin(browser, mailbox)
     await a_teammate(browser, other_browser, mailbox, role=RecruiterRole.ADMIN)
     roster = (await browser.get("/v1/tenants/me/members")).json()
@@ -253,7 +227,6 @@ async def test_an_admin_may_step_down_once_someone_else_can_run_the_tenant(
 async def test_an_admin_cannot_change_another_tenants_member(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Answered as though the member did not exist: a roster is not a thing to probe."""
     await an_admin(browser, mailbox, label="first")
     await an_admin(other_browser, mailbox, label="second")
     theirs = (await other_browser.get("/v1/tenants/me/members")).json()[0]

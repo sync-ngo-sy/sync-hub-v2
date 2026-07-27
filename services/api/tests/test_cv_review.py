@@ -1,14 +1,3 @@
-"""Making a raw parse into something the candidate can accept.
-
-A pure function over a `ParsedCv`, so these are direct unit tests with no stack behind
-them — the deliberately low seam, like Screening's.
-
-The property they are all about: whatever the model answers, what comes out is a valid
-`PUT /v1/candidates/me/profile` body. The review screen hands the parse straight back, so
-a field the profile would refuse is a field the candidate has to fix before they can save
-something they never wrote.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -60,9 +49,6 @@ def a_project(**changes: object) -> ParsedProject:
     ).model_copy(update=changes)
 
 
-# Skills -----------------------------------------------------------------------
-
-
 def test_a_canonical_skill_survives_in_the_platforms_spelling() -> None:
     parse = reviewed(skills=[ParsedSkill(name="  pYtHoN ", years_experience=8.0)])
 
@@ -70,7 +56,6 @@ def test_a_canonical_skill_survives_in_the_platforms_spelling() -> None:
 
 
 def test_an_unknown_skill_is_demoted_rather_than_dropped() -> None:
-    """The candidate has to see it — that is the whole difference from silently losing it."""
     parse = reviewed(
         skills=[
             ParsedSkill(name="Python", years_experience=None),
@@ -84,7 +69,6 @@ def test_an_unknown_skill_is_demoted_rather_than_dropped() -> None:
 
 
 def test_a_skill_listed_twice_becomes_one_entry() -> None:
-    """`candidate_skills` is keyed by `(candidate_id, taxonomy_id)`; a repeat cannot save."""
     parse = reviewed(
         skills=[
             ParsedSkill(name="Python", years_experience=8.0),
@@ -97,7 +81,6 @@ def test_a_skill_listed_twice_becomes_one_entry() -> None:
 
 @pytest.mark.parametrize("given,kept", [(-1.0, None), (0.0, 0.0), (8.26, 8.3), (10_000.0, 999.9)])
 def test_years_of_experience_are_fitted_to_the_column(given: float, kept: float | None) -> None:
-    """`numeric(4,1)`: one decimal place, never negative, and 999.9 at the top."""
     parse = reviewed(skills=[ParsedSkill(name="Python", years_experience=given)])
 
     assert parse.skills[0].years_experience == kept
@@ -109,9 +92,6 @@ def test_an_unmapped_skill_is_listed_once() -> None:
     assert parse.unmapped_skills == ["Telepathy"]
 
 
-# Languages --------------------------------------------------------------------
-
-
 def test_a_language_the_platform_knows_is_kept_by_its_code() -> None:
     parse = reviewed(
         languages=[ParsedLanguage(code=" AR ", proficiency=LanguageProficiency.NATIVE)]
@@ -121,7 +101,6 @@ def test_a_language_the_platform_knows_is_kept_by_its_code() -> None:
 
 
 def test_a_language_the_platform_has_no_code_for_is_dropped() -> None:
-    """Unlike a skill there is nowhere to surface it, and it would fail the profile save."""
     parse = reviewed(
         languages=[
             ParsedLanguage(code="en", proficiency=LanguageProficiency.FLUENT),
@@ -143,9 +122,6 @@ def test_a_language_claimed_twice_becomes_one_entry() -> None:
     assert parse.languages == [ParsedLanguage(code="en", proficiency=LanguageProficiency.FLUENT)]
 
 
-# Dates ------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize("year", [1291, 1899, 2101, 9999])
 def test_a_year_outside_the_schemas_range_is_forgotten(year: int) -> None:
     parse = reviewed(experiences=[an_experience(start_year=year)])
@@ -161,7 +137,6 @@ def test_a_month_that_is_not_a_month_is_forgotten(month: int) -> None:
 
 
 def test_a_period_that_ends_before_it_starts_loses_its_end() -> None:
-    """The `*_ordered` CHECK. Which end the model got wrong is unknowable, so the end goes."""
     parse = reviewed(experiences=[an_experience(start_year=2020, end_year=2015)])
 
     assert parse.experiences[0].start_year == 2020
@@ -177,7 +152,6 @@ def test_a_period_ending_the_month_it_started_is_kept() -> None:
 
 
 def test_a_current_job_with_an_end_date_is_no_longer_current() -> None:
-    """`cexp_current_has_no_end`. The dates are evidence; "still there" is an inference."""
     parse = reviewed(experiences=[an_experience(is_current=True, end_year=2022, end_month=4)])
 
     assert parse.experiences[0].end_year == 2022
@@ -190,11 +164,7 @@ def test_a_project_period_is_fitted_the_same_way() -> None:
     assert parse.projects[0].end_year is None
 
 
-# Text -------------------------------------------------------------------------
-
-
 def test_a_headline_longer_than_the_column_is_cut_rather_than_dropped() -> None:
-    """It is still the candidate's own words, and they are about to see them."""
     parse = reviewed(headline="x" * (MAX_LINE_LENGTH + 50))
 
     assert parse.headline is not None
@@ -216,11 +186,7 @@ def test_a_blank_field_means_the_cv_did_not_say(blank: str) -> None:
     assert parse.location is None
 
 
-# Entries without the one thing they need --------------------------------------
-
-
 def test_an_experience_with_no_job_title_is_not_an_experience() -> None:
-    """`candidate_experiences.job_title` is NOT NULL: there is no job being described."""
     parse = reviewed(experiences=[an_experience(job_title="  "), an_experience()])
 
     assert len(parse.experiences) == 1
@@ -249,7 +215,6 @@ def test_a_project_with_no_name_is_dropped() -> None:
 
 
 def test_a_section_longer_than_anyone_could_have_typed_is_cut() -> None:
-    """The profile is embedded whole for Global search; an unbounded section is a cost."""
     parse = reviewed(experiences=[an_experience() for _ in range(MAX_ENTRIES + 10)])
 
     assert len(parse.experiences) == MAX_ENTRIES

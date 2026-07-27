@@ -1,11 +1,3 @@
-"""The bell icon: what a Profile has been told, and what they have read.
-
-Seam 1 throughout — every test asks the API what the caller's notifications are, rather than
-reading the table. The producer tests are seam 3 on top of it: a CV is uploaded over HTTP,
-one worker cycle runs, and the notification is observed through the list endpoint, which is
-the whole point of the feature.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -37,16 +29,14 @@ from tests.support.notifications import (
 from tests.support.profiles import my_id
 from tests.support.worker import an_ingestion_worker
 
-#: An id for the payload tests, which are about the shapes rather than about any real row.
 A_CV = uuid4()
 
 
 class UnavailableError(Exception):
-    """What a provider having a moment looks like: retry this, and say nothing yet."""
+    pass
 
 
 async def test_a_new_candidate_has_nothing_to_read(browser: AsyncClient, mailbox: Mailbox) -> None:
-    """The empty state is a page, not a 404 — the bell renders the same way either way."""
     await a_signed_in_candidate(browser, mailbox)
 
     response = await browser.get(NOTIFICATIONS)
@@ -61,17 +51,9 @@ async def test_notifications_are_not_readable_without_a_session(browser: AsyncCl
     assert response.status_code == 401, response.text
 
 
-# The parse-failure producer ---------------------------------------------------
-
-
 async def test_a_cv_the_platform_gave_up_on_reaches_the_bell(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The whole point of the ticket: a failed parse is no longer silence.
-
-    Seam 3 on top of seam 1 — a real upload, one real worker cycle, and the notification read
-    back through the endpoint the SPA polls.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     unreadable = FakeExtractor(UnreadableCvError(UNREADABLE))
@@ -95,11 +77,6 @@ async def test_a_parse_still_being_retried_says_nothing(
     database: Database,
     storage: Storage,
 ) -> None:
-    """A notification cannot be withdrawn, so it waits until the platform has given up.
-
-    The CV is still `processing` at this point — telling a candidate their upload failed
-    while it is being retried would be a message the platform has to take back.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     down = FakeExtractor(UnavailableError("OpenAI is down"))
@@ -113,11 +90,6 @@ async def test_a_parse_still_being_retried_says_nothing(
 async def test_running_out_of_attempts_notifies_exactly_once(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The ticket's end-to-end chain: upload, a failing extractor, retries spent, one message.
-
-    One CV, one notification, carrying the whole typed payload — however many attempts it took
-    to establish that the platform was not going to manage it.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
@@ -141,7 +113,6 @@ async def test_running_out_of_attempts_notifies_exactly_once(
 async def test_a_retry_that_works_says_nothing_at_all(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The failure the candidate never needed to know about."""
     await a_signed_in_candidate(browser, mailbox)
     await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
@@ -161,11 +132,6 @@ async def test_a_job_buried_by_the_sweep_notifies_too(
     database: Database,
     storage: Storage,
 ) -> None:
-    """A worker dying on the last attempt must not cost the candidate their message.
-
-    The sweep buries the job instead of the worker that claimed it, and the notification is
-    written in that transaction just the same.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
@@ -192,12 +158,6 @@ async def test_a_job_buried_by_the_sweep_notifies_too(
 async def test_a_cv_deleted_mid_parse_leaves_nobody_to_tell(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The failure that has no recipient: the CV, and the row naming its owner, are gone.
-
-    Worth its own test because the notification's recipient comes off the `cvs` row. Writing
-    one for a row that no longer exists would fail the engine's whole transaction and leave
-    the job stuck `processing` — one deleted CV taking the queue down with it.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     vanishing = DeletingExtractor(database, UUID(cv["id"]))
@@ -206,9 +166,6 @@ async def test_a_cv_deleted_mid_parse_leaves_nobody_to_tell(
 
     assert await my_notifications(browser) == []
     assert await my_unread_count(browser) == 0
-
-
-# Unread, and marking read -----------------------------------------------------
 
 
 async def test_the_bell_counts_only_what_has_not_been_read(
@@ -229,7 +186,6 @@ async def test_the_bell_counts_only_what_has_not_been_read(
 async def test_a_notification_marked_read_stays_read_in_the_list(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """Read state is the notification's own, not something the list forgets."""
     await a_signed_in_candidate(browser, mailbox)
     await failed_parses(browser, database, storage)
     (notification,) = await my_notifications(browser)
@@ -244,7 +200,6 @@ async def test_a_notification_marked_read_stays_read_in_the_list(
 async def test_marking_read_twice_keeps_the_first_time(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The SPA marks on render, so this happens every time the list is opened."""
     await a_signed_in_candidate(browser, mailbox)
     await failed_parses(browser, database, storage)
     (notification,) = await my_notifications(browser)
@@ -268,9 +223,6 @@ async def test_marking_something_that_is_not_a_notification_is_a_404(
     assert response.json()["type"] == "urn:sync:problem:notification-not-found"
 
 
-# Only ever the recipient's ----------------------------------------------------
-
-
 async def test_one_candidates_notifications_are_invisible_to_another(
     browser: AsyncClient,
     other_browser: AsyncClient,
@@ -278,7 +230,6 @@ async def test_one_candidates_notifications_are_invisible_to_another(
     database: Database,
     storage: Storage,
 ) -> None:
-    """A Notification is addressed to one Profile. Nobody else has a list containing it."""
     await a_signed_in_candidate(browser, mailbox, "owner")
     await failed_parses(browser, database, storage)
     await a_signed_in_candidate(other_browser, mailbox, "stranger")
@@ -294,7 +245,6 @@ async def test_a_stranger_cannot_mark_somebody_elses_notification_read(
     database: Database,
     storage: Storage,
 ) -> None:
-    """404, not 403: a caller must not be able to tell somebody else's id from a made-up one."""
     await a_signed_in_candidate(browser, mailbox, "owner")
     await failed_parses(browser, database, storage)
     (notification,) = await my_notifications(browser)
@@ -306,13 +256,9 @@ async def test_a_stranger_cannot_mark_somebody_elses_notification_read(
     assert await my_unread_count(browser) == 1, "the owner's notification was marked read"
 
 
-# Paging -----------------------------------------------------------------------
-
-
 async def test_the_list_is_newest_first_and_pages_by_cursor(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """Three notifications, two pages, and every one of them seen exactly once."""
     await a_signed_in_candidate(browser, mailbox)
     oldest, middle, newest = await failed_parses(browser, database, storage, how_many=3)
 
@@ -334,7 +280,6 @@ async def test_the_list_is_newest_first_and_pages_by_cursor(
 async def test_a_full_final_page_ends_the_paging(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """A page as long as the limit is not evidence of another one behind it."""
     await a_signed_in_candidate(browser, mailbox)
     await failed_parses(browser, database, storage, how_many=2)
 
@@ -347,7 +292,6 @@ async def test_a_full_final_page_ends_the_paging(
 async def test_a_cursor_this_api_did_not_issue_is_refused(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Better than the arbitrary page a lenient parse would answer with."""
     await a_signed_in_candidate(browser, mailbox)
 
     response = await browser.get(NOTIFICATIONS, params={"cursor": "not-a-cursor"})
@@ -359,7 +303,6 @@ async def test_a_cursor_this_api_did_not_issue_is_refused(
 async def test_a_limit_the_api_will_not_serve_is_refused(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The ceiling is the API's, not the caller's — an unbounded list is a way to make one."""
     await a_signed_in_candidate(browser, mailbox)
 
     response = await browser.get(NOTIFICATIONS, params={"limit": 5000})
@@ -367,11 +310,7 @@ async def test_a_limit_the_api_will_not_serve_is_refused(
     assert response.status_code == 422, response.text
 
 
-# The payload union ------------------------------------------------------------
-
-
 def test_a_stored_payload_is_read_back_as_the_shape_its_type_names() -> None:
-    """The discriminator is the contract: one field decides what the rest of the object is."""
     failed = payload_of(
         {"type": "cv_parse_failed", "cv_id": str(A_CV), "display_name": "resume.pdf"}
     )
@@ -380,11 +319,6 @@ def test_a_stored_payload_is_read_back_as_the_shape_its_type_names() -> None:
 
 
 def test_the_type_is_mandatory_and_has_to_be_one_the_platform_knows() -> None:
-    """Without it there is no union, only a guess at which shape was meant.
-
-    Mandatory even with a default on the field: the default is what a *producer* may leave
-    out, and a stored payload that never carried a type is one nothing can dispatch on.
-    """
     with pytest.raises(ValidationError):
         payload_of({"cv_id": str(A_CV), "display_name": "resume.pdf"})
 
@@ -393,7 +327,6 @@ def test_the_type_is_mandatory_and_has_to_be_one_the_platform_knows() -> None:
 
 
 def test_a_payload_of_the_wrong_shape_for_its_type_is_refused() -> None:
-    """A `cv_parse_failed` is a cv_parse_failed's fields — the type is not a label to attach."""
     with pytest.raises(ValidationError):
         payload_of({"type": "cv_parse_failed", "display_name": "resume.pdf"})
 
@@ -401,9 +334,6 @@ def test_a_payload_of_the_wrong_shape_for_its_type_is_refused() -> None:
 async def test_the_database_refuses_a_payload_filed_under_another_type(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The migration's CHECK, which no route can demonstrate — `notify` fills the column and
-    the payload from one object, so the only producer that could disagree with itself is a
-    future one, and this is what refuses it."""
     await a_signed_in_candidate(browser, mailbox)
     recipient = await my_id(browser)
 
@@ -420,20 +350,11 @@ async def test_the_database_refuses_a_payload_filed_under_another_type(
 
 
 class DeletingExtractor:
-    """A CV that disappears while the worker is holding it.
-
-    The only way to reach the pipeline's missing-row path, and not a contrived one: a
-    candidate deleting a CV mid-parse does exactly this. Between the claim and the burial is
-    the only moment it can be arranged in — the pipeline reads the row on the way in and the
-    notification's recipient off it on the way out.
-    """
-
     def __init__(self, database: Database, cv_id: UUID) -> None:
         self._database = database
         self._cv_id = cv_id
 
     async def extract(self, file: CvFile, vocabulary: Vocabulary) -> ParsedCv:
         async with self._database.session() as session, transaction(session):
-            # Cascades into `ingestion_jobs`, so the claimed job goes with it.
             await session.execute(delete(Cv).where(Cv.id == self._cv_id))
         raise UnreadableCvError(UNREADABLE)

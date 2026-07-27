@@ -1,12 +1,6 @@
--- 01 · Extensions and enums
---
--- Extensions live in the `extensions` schema (Supabase convention). gen_random_uuid()
--- is core in PG13+, so no pgcrypto is needed.
+create extension if not exists vector with schema extensions;
+create extension if not exists moddatetime with schema extensions;
 
-create extension if not exists vector with schema extensions;      -- pgvector (RAG embeddings)
-create extension if not exists moddatetime with schema extensions; -- updated_at auto-touch
-
--- Identity discriminator: a profile is a candidate XOR a recruiter (enforced by composite FK).
 create type account_type as enum ('candidate', 'recruiter');
 
 create type recruiter_role as enum ('admin', 'recruiter');

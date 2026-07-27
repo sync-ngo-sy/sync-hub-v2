@@ -1,14 +1,10 @@
--- 06 · Communications, analytics, tenant CRM, and tracked job links
-
--- Tracked job links ----------------------------------------------------------
-
 create table tracked_job_links (
   id                      uuid primary key default gen_random_uuid(),
   tenant_id               uuid not null,
   job_id                  uuid not null,
   created_by_recruiter_id uuid not null,
 
-  name  text not null,               -- recruiter label: "LinkedIn", "July Campaign"
+  name  text not null,
   token text not null unique,        -- unguessable token in the public URL
 
   is_active  boolean not null default true,
@@ -20,17 +16,14 @@ create table tracked_job_links (
 
   unique (tenant_id, job_id, name),
   unique (tenant_id, id),
-  unique (job_id, id)                -- target for applications / job_view_events FKs
+  unique (job_id, id)
 );
 create index tracked_job_links_job_active_idx on tracked_job_links (job_id, is_active);
 create index tracked_job_links_created_by_idx on tracked_job_links (created_by_recruiter_id);
 
--- Now that tracked_job_links exists, wire the deferred applications FK.
 alter table applications
   add constraint applications_tracked_link_fk
   foreign key (job_id, tracked_link_id) references tracked_job_links (job_id, id);
-
--- Communications (also the delivery-audit record) ----------------------------
 
 create table communications (
   id        uuid primary key default gen_random_uuid(),
@@ -44,7 +37,7 @@ create table communications (
   communication_type communication_type    not null,
   status             communication_status  not null default 'queued',
 
-  recipient text not null,                     -- exact address/number used
+  recipient text not null,
   subject   text,
   payload   jsonb not null,
 
@@ -82,8 +75,6 @@ create index communications_tenant_recruiter_idx     on communications (tenant_i
 create unique index communications_provider_msg_uidx on communications (provider, provider_message_id)
   where provider is not null and provider_message_id is not null;
 
--- Job-view analytics (append-only) -------------------------------------------
-
 create table job_view_events (
   id     bigint generated always as identity primary key,
   job_id uuid not null references jobs (id) on delete cascade,
@@ -99,8 +90,6 @@ create table job_view_events (
 create index job_view_events_job_viewed_idx         on job_view_events (job_id, viewed_at);
 create index job_view_events_link_viewed_idx        on job_view_events (tracked_link_id, viewed_at);
 create index job_view_events_job_link_viewed_idx    on job_view_events (job_id, tracked_link_id, viewed_at);
-
--- Tenant CRM -----------------------------------------------------------------
 
 create table candidate_notes (
   id uuid primary key default gen_random_uuid(),
@@ -131,7 +120,7 @@ create table tenant_tags (
 
   unique (tenant_id, scope, name),
   unique (tenant_id, id),
-  unique (id, scope)                 -- target for the scope-enforcing composite FKs (guard #3)
+  unique (id, scope)
 );
 
 create table candidate_tag_assignments (
@@ -146,7 +135,7 @@ create table candidate_tag_assignments (
   primary key (candidate_id, tag_id),
 
   foreign key (tenant_id, tag_id)               references tenant_tags (tenant_id, id),
-  foreign key (tag_id, scope)                   references tenant_tags (id, scope),      -- candidate-scoped only
+  foreign key (tag_id, scope)                   references tenant_tags (id, scope),
   foreign key (tenant_id, added_by_recruiter_id) references recruiters (tenant_id, id)
 );
 create index candidate_tag_assignments_tenant_candidate_idx on candidate_tag_assignments (tenant_id, candidate_id);
@@ -166,7 +155,7 @@ create table application_tag_assignments (
 
   foreign key (tenant_id, application_id)        references applications (tenant_id, id) on delete cascade,
   foreign key (tenant_id, tag_id)                references tenant_tags (tenant_id, id),
-  foreign key (tag_id, scope)                    references tenant_tags (id, scope),      -- application-scoped only
+  foreign key (tag_id, scope)                    references tenant_tags (id, scope),
   foreign key (tenant_id, added_by_recruiter_id) references recruiters (tenant_id, id)
 );
 create index application_tag_assignments_tenant_app_idx on application_tag_assignments (tenant_id, application_id);

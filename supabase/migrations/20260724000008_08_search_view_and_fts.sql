@@ -1,8 +1,4 @@
--- 08 · Global-search eligibility view and full-text search
---
--- The view centralises the "who is discoverable" predicate (ADR-discussed). It is
--- security_invoker so base-table RLS still applies, and it is revoked from client roles;
--- the trusted backend joins it against candidate_profile_chunks for vector search. It never
+-- security_invoker so base-table RLS still applies; revoked from client roles. Never
 -- exposes email (not stored here) or phone.
 
 create view candidate_search_profiles with (security_invoker = true) as
@@ -25,8 +21,6 @@ create view candidate_search_profiles with (security_invoker = true) as
     and exists (select 1 from candidate_profile_chunks ch where ch.candidate_id = c.id);
 
 revoke all on candidate_search_profiles from anon, authenticated;
-
--- Full-text search (exact keyword/boolean filters; vector search covers semantics) --------
 
 alter table jobs add column search_vector tsvector
   generated always as (

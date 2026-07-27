@@ -1,11 +1,3 @@
-"""What the model is told before it is shown a CV.
-
-The shape of the answer is not in here — `ParsedCv` is, as a strict JSON schema the model
-cannot answer outside of. What is left for prose is the judgement the schema cannot
-express: which of two skill lists a name belongs in, when a number is supported by the CV
-and when it would be a guess, and that an absent fact is `null` rather than an invention.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
@@ -15,8 +7,6 @@ if TYPE_CHECKING:
 
     from sync_parsers.extractor import Vocabulary
 
-#: What `cvs.parsed_cv_schema_version` records. Bump it when `ParsedCv` changes shape, so a
-#: stored parse always says which version of the schema it satisfies.
 PARSED_CV_SCHEMA_VERSION: Final = 1
 
 INSTRUCTIONS: Final = """\
@@ -46,12 +36,6 @@ Language codes:
 
 
 def parse_instructions(vocabulary: Vocabulary) -> str:
-    """The system instructions for one parse, with the platform's vocabulary embedded.
-
-    Rebuilt per call rather than cached: the taxonomy is reference data an operator can add
-    to, and a worker that had memorized it at startup would keep mapping onto the old list
-    until it was restarted.
-    """
     return INSTRUCTIONS.format(
         canonical_skills=_as_list(vocabulary.canonical_skills),
         language_codes=_as_list(vocabulary.language_codes),

@@ -1,15 +1,3 @@
-"""The bell icon: what the caller has been told, and saying they have read it.
-
-No id in the path but the notification's own, and no `/me` either — a Notification is
-addressed to one Profile, so the session is the only addressee there is. Not
-`/candidates/me/...` for the same reason: the recipient is a Profile, and a Recruiter reading
-their own (empty, for now) list is the same request, not a second endpoint.
-
-Notifications are not posted here. They are written by the transaction whose outcome they
-announce, in the worker or in a route that changed something, which is why the only write on
-this surface is the caller marking one read.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated, Any, Final
@@ -24,8 +12,6 @@ from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 ROUTER_PREFIX: Final = "/notifications"
 
-#: What every route here answers when nobody is signed in. There is no 403: a Notification
-#: belongs to a Profile, and every Profile has a list of its own to read.
 NO_SESSION: Final[dict[int | str, dict[str, Any]]] = {
     401: openapi_problem("There is no valid session."),
 }
@@ -53,12 +39,7 @@ async def list_my_notifications(
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> NotificationPage:
-    """One page of what the platform has told this Profile.
-
-    Each item's `payload` says what happened, and its `type` says which shape the payload
-    takes — switch on that one field. Page by sending `next_cursor` back as `cursor`, and
-    stop when it comes back null.
-    """
+    """One page, newest first. Switch on each `payload.type`; page with `next_cursor`."""
     return await notifications.page(profile.id, cursor=cursor, limit=limit)
 
 
@@ -87,9 +68,5 @@ async def get_my_unread_notification_count(
 async def mark_my_notification_as_read(
     notification_id: UUID, profile: CurrentProfileDep, notifications: NotificationServiceDep
 ) -> Notification:
-    """Say the caller has seen this one, and answer with it as it now stands.
-
-    Safe to send again: a notification that is already read keeps the time it was first
-    read, so re-rendering a list does not turn `read_at` into "last seen".
-    """
+    """Mark one read and answer with it. Idempotent: `read_at` keeps the first time it was read."""
     return await notifications.mark_read(profile.id, notification_id)

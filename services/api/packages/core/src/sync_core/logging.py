@@ -1,13 +1,3 @@
-"""Structured logging for every process in the service.
-
-One handler on the root logger renders everything — our own structlog events and the
-foreign records emitted by uvicorn, SQLAlchemy and friends — through the same processor
-chain, so a deployment gets one parseable stream rather than two interleaved formats.
-
-Anything bound with `bind_request_context()` rides along on every line logged for the rest
-of that request, including lines logged by libraries that know nothing about it.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -19,8 +9,6 @@ from sync_core.settings import LogFormat, LogLevel
 
 REQUEST_ID_KEY = "request_id"
 
-# Shared by structlog's own chain and by `foreign_pre_chain`, so a uvicorn record and one
-# of our events carry the same keys.
 _SHARED_PROCESSORS: list[structlog.typing.Processor] = [
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.add_logger_name,
@@ -30,8 +18,6 @@ _SHARED_PROCESSORS: list[structlog.typing.Processor] = [
     structlog.processors.UnicodeDecoder(),
 ]
 
-# uvicorn installs its own colourising handlers; they would print every record a second
-# time in its own format. Clearing them lets the records propagate to our root handler.
 _LOGGERS_TO_UNSTYLE = ("uvicorn", "uvicorn.error", "uvicorn.access")
 
 
@@ -41,10 +27,6 @@ def configure_logging(
     log_format: LogFormat = LogFormat.JSON,
     stream: IO[str] | None = None,
 ) -> None:
-    """Point all logging at one structlog-rendered handler. Safe to call more than once.
-
-    `stream` defaults to stderr; tests pass a buffer to read back what was rendered.
-    """
     renderer: structlog.typing.Processor = (
         structlog.processors.JSONRenderer()
         if log_format is LogFormat.JSON
@@ -77,6 +59,8 @@ def configure_logging(
     root.handlers = [handler]
     root.setLevel(level.value)
 
+    # uvicorn's own colourising handlers would print every record a second time; clearing
+    # them lets the records propagate to our root handler instead.
     for name in _LOGGERS_TO_UNSTYLE:
         uvicorn_logger = logging.getLogger(name)
         uvicorn_logger.handlers = []
@@ -84,18 +68,12 @@ def configure_logging(
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
-    """A logger whose events carry whatever request context is currently bound."""
     return structlog.stdlib.get_logger(name)
 
 
 def bind_request_context(**values: Any) -> None:
-    """Attach values to every log line emitted from here until `clear_request_context()`.
-
-    Bound in a contextvar, so concurrent requests never see each other's context.
-    """
     structlog.contextvars.bind_contextvars(**values)
 
 
 def clear_request_context() -> None:
-    """Drop everything `bind_request_context()` bound in this context."""
     structlog.contextvars.clear_contextvars()
