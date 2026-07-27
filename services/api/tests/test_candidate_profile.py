@@ -13,8 +13,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.candidates.payload import MAX_ENTRIES
 from sync_core.models import CvParsingStatus
+from sync_core.profile import MAX_ENTRIES
 from tests.support.candidates import a_signed_in_candidate, sign_in
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import (

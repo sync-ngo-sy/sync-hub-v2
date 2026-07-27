@@ -129,11 +129,31 @@ where q.id = (
 Backoff on failure: set `status='pending'`, `available_at = now() + backoff(attempts)`,
 `error_message`. Give up (or dead-letter) after a max attempts.
 
+A claim, the work, and the outcome are **three transactions, not one** (`sync_worker.engine`).
+The claim commits immediately so the row is visibly `processing`; the slow work holds no
+transaction at all; the consumer's own writes are committed *with* the job's completion, so a
+finished job and the state it produced can never disagree. A consumer that knows its failure
+is settled raises `PermanentFailureError` and dies on the spot rather than spending the rest
+of its attempts confirming it. The sweep requeues a stuck `processing` row, or buries it when
+its attempts are already gone — otherwise a worker that died on its last attempt would leave
+the row, and whatever waits on it, stuck for good.
+
 ### CV ingestion (`ingestion_jobs` → `sync_ingestion`/`sync_parsers`/`sync_worker`)
 - One job per CV (enqueued by trigger on `cvs` insert; `cv_id` is UNIQUE).
 - Parse, then **write `cvs.parsing_status`** (`processing`→`ready`/`failed`) as the last step —
   `cvs.parsing_status` is authoritative; `ingestion_jobs.status` is internal plumbing readers
   ignore. Store the validated ParsedCv JSON in `cvs.parsed_cv_data`, set `parsed_at`.
+- `failed` is written **only when the job is dead for good**, never between retries: a CV that
+  flickered to `failed` would tell a candidate their upload was rejected while the platform was
+  still trying. `store` and `fail` are the consumer's `record`/`give_up`, so each is committed
+  in the same transaction as the job outcome that caused it.
+- Returned skills are re-validated against `skill_taxonomy` (case-insensitively, answering in
+  the canonical spelling); anything unmatched moves to the parse's `unmapped_skills`, which the
+  candidate reviews and Screening never reads. Unknown language codes are dropped, and every
+  other field is coerced to the limits in `sync_core.profile` — the review screen posts the
+  parse back to `PUT /v1/candidates/me/profile`, so a parse it would refuse is unusable.
+- The candidate's **first** `ready` CV sets `candidates.current_cv_id` if it is still unset, with
+  the candidate row locked `FOR UPDATE`. Only the first: after that it is the candidate's choice.
 
 ### Re-embedding (`candidate_embedding_jobs` → `sync_rag`)
 Coalesced, one row per candidate. Claim a dirty row, capture its `revision`, then:
@@ -184,6 +204,13 @@ per the partial-unique index), and inserts the `cvs` row — so object, row, and
 trigger-enqueued parse job succeed or fail together and the hash is never
 client-supplied. Downloads are short-lived signed URLs issued by the API. No client
 touches Storage directly.
+
+The object cannot join the row's transaction, so the ordering is: write the object, insert
+the row, and **remove the object again** if the insert does not land. That is the only order
+where a failure leaves nothing behind — including the loser of a duplicate race, which has
+written its object before the unique index refuses it. The path is
+`{candidate_id}/{cv_id}{extension}`, built from the media type the API accepted rather than
+from anything the candidate typed.
 
 ## Invariant ownership summary
 

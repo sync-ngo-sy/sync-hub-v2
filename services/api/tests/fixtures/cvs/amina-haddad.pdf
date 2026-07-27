@@ -1,0 +1,113 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 1397 >>
+stream
+BT
+/F1 11 Tf
+14 TL
+56 760 Td
+(Amina Haddad) Tj
+T*
+(amina.haddad@example.com  |  +963 11 555 0134  |  Damascus, Syria) Tj
+T*
+()  Tj
+T*
+(Backend engineer, 8 years) Tj
+T*
+()  Tj
+T*
+(Builds boring payment systems that stay up. Comfortable owning a service) Tj
+T*
+(end to end, from the schema to the on-call rota.) Tj
+T*
+()  Tj
+T*
+(EXPERIENCE) Tj
+T*
+()  Tj
+T*
+(Senior Backend Engineer, Acme Payments - Damascus) Tj
+T*
+(March 2021 - Present) Tj
+T*
+(Led the payments ledger rewrite in Python and PostgreSQL. Introduced) Tj
+T*
+(Docker-based local environments and cut deploy time from an hour to ten) Tj
+T*
+(minutes. Mentored three junior engineers.) Tj
+T*
+()  Tj
+T*
+(Backend Engineer, Globex - Damascus) Tj
+T*
+(January 2018 - February 2021) Tj
+T*
+(Built internal REST APIs in Python and Django. Ran the PostgreSQL) Tj
+T*
+(migration from a single instance to streaming replication.) Tj
+T*
+()  Tj
+T*
+(EDUCATION) Tj
+T*
+()  Tj
+T*
+(BSc Computer Science, Damascus University, 2017) Tj
+T*
+()  Tj
+T*
+(SKILLS) Tj
+T*
+()  Tj
+T*
+(Python \(8 years\), PostgreSQL \(7 years\), Docker, Kubernetes, React,) Tj
+T*
+(Quantum Blockchain Alignment, Vibe-Driven Development) Tj
+T*
+()  Tj
+T*
+(LANGUAGES) Tj
+T*
+()  Tj
+T*
+(Arabic - native. English - fluent \(professional working proficiency\).) Tj
+T*
+()  Tj
+T*
+(PROJECTS) Tj
+T*
+()  Tj
+T*
+(Sync - a recruitment platform, 2024 to present.) Tj
+T*
+(https://example.com/sync) Tj
+T*
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000317 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1766
+%%EOF

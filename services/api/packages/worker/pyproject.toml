@@ -10,7 +10,12 @@ requires-python = ">=3.12"
 dependencies = [
     "sync-core",
     "sync-ingestion",
+    "sync-parsers",
 ]
+
+[project.scripts]
+# The deployable command, alongside the API's `uvicorn sync_api.main:app`.
+sync-worker = "sync_worker.main:main"
 
 [build-system]
 requires = ["uv_build>=0.11.24,<0.12.0"]
@@ -19,3 +24,4 @@ build-backend = "uv_build"
 [tool.uv.sources]
 sync-core = { workspace = true }
 sync-ingestion = { workspace = true }
+sync-parsers = { workspace = true }

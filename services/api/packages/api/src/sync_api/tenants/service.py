@@ -39,8 +39,7 @@ from sync_api.problems import (
     Problem,
 )
 from sync_api.tenants.access import TenantSummary
-from sync_api.transactions import transaction
-from sync_core import get_logger
+from sync_core import get_logger, transaction
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant, User
 
 if TYPE_CHECKING:

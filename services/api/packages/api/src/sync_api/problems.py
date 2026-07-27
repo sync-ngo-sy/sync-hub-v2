@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from http import HTTPStatus
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -44,6 +45,13 @@ CANDIDATE_ONLY_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}candidate-only"
 UNKNOWN_CANONICAL_SKILL_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}unknown-canonical-skill"
 UNKNOWN_LANGUAGE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}unknown-language"
 SEARCHABLE_NEEDS_CV_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}searchable-needs-cv"
+CV_MEDIA_TYPE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}unsupported-cv-media-type"
+CV_TOO_LARGE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-too-large"
+CV_EMPTY_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-empty"
+DUPLICATE_CV_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}duplicate-cv"
+CV_NOT_FOUND_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-not-found"
+CV_FILE_UNAVAILABLE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-file-unavailable"
+STORAGE_UNAVAILABLE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}storage-unavailable"
 
 
 class ProblemDetail(BaseModel):
@@ -82,6 +90,17 @@ class ValidationProblemDetail(ProblemDetail):
     """A problem that can name every input it rejected."""
 
     errors: list[InvalidField] = Field(description="Every field that failed validation.")
+
+
+class DuplicateCvProblemDetail(ProblemDetail):
+    """A refused upload that can name the CV the candidate already has.
+
+    A typed member rather than a bare extension: the id is the useful half of this refusal
+    — it is what lets the SPA go straight to that CV — and a client cannot rely on
+    something the OpenAPI document only mentions in prose.
+    """
+
+    cv_id: UUID = Field(description="The CV already holding this exact file.")
 
 
 class Problem(Exception):  # noqa: N818  — it *is* a problem; the RFC's noun, not an "Error"

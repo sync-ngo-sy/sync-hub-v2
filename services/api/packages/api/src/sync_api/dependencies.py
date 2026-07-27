@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
+from sync_api.cvs import CvService
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
-from sync_core import Database, Settings
+from sync_core import Database, Settings, Storage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -99,6 +100,21 @@ def get_candidate_profile_service(session: SessionDep) -> CandidateProfileServic
 CandidateProfileServiceDep = Annotated[
     CandidateProfileService, Depends(get_candidate_profile_service)
 ]
+
+
+def get_storage(request: Request) -> Storage:
+    return cast("Storage", request.app.state.storage)
+
+
+def get_cv_service(
+    session: SessionDep,
+    storage: Annotated[Storage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> CvService:
+    return CvService(session, storage, settings)
+
+
+CvServiceDep = Annotated[CvService, Depends(get_cv_service)]
 
 
 def get_tenant_service(
