@@ -26,7 +26,7 @@ async def criteria_of(session: AsyncSession, job: Job) -> JobCriteriaView:
         minimum_total_experience_years=minimum_experience_of(job),
         skills=await skills_of(session, job.id),
         languages=await languages_of(session, job.id),
-        questions=await questions_of(session, job.id),
+        questions=await question_views_of(session, job.id),
     )
 
 
@@ -54,8 +54,8 @@ async def languages_of(session: AsyncSession, job_id: UUID) -> list[JobLanguageR
     ]
 
 
-async def questions_of(session: AsyncSession, job_id: UUID) -> list[JobQuestionView]:
-    rows = await _questions(session, job_id)
+async def question_views_of(session: AsyncSession, job_id: UUID) -> list[JobQuestionView]:
+    rows = await questions_of(session, job_id)
     return [
         JobQuestionView(
             id=row.id,
@@ -70,7 +70,7 @@ async def questions_of(session: AsyncSession, job_id: UUID) -> list[JobQuestionV
 
 async def public_questions_of(session: AsyncSession, job_id: UUID) -> list[PublicJobQuestion]:
     """Without `accepted_boolean_answer`: which answer passes is the Job's, not the applicant's."""
-    rows = await _questions(session, job_id)
+    rows = await questions_of(session, job_id)
     return [
         PublicJobQuestion(
             id=row.id,
@@ -82,7 +82,8 @@ async def public_questions_of(session: AsyncSession, job_id: UUID) -> list[Publi
     ]
 
 
-async def _questions(session: AsyncSession, job_id: UUID) -> list[JobApplicationQuestion]:
+async def questions_of(session: AsyncSession, job_id: UUID) -> list[JobApplicationQuestion]:
+    """Every question of the Job, in the order applicants are asked them."""
     rows = await session.scalars(
         select(JobApplicationQuestion)
         .where(JobApplicationQuestion.job_id == job_id)

@@ -49,6 +49,9 @@ JOB_CRITERIA_LOCKED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}job-criteria-locked"
 JOB_TRANSITION_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}job-transition-not-allowed"
 TRACKED_LINK_NAME_TAKEN_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}tracked-link-name-taken"
 TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}tracked-link-not-found"
+CV_NOT_READY_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-not-ready"
+DUPLICATE_APPLICATION_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}duplicate-application"
+INVALID_APPLICATION_ANSWERS_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}invalid-application-answers"
 
 
 class ProblemDetail(BaseModel):
@@ -93,6 +96,15 @@ class DuplicateCvProblemDetail(ProblemDetail):
     """A refused upload that names the CV the candidate already has."""
 
     cv_id: UUID = Field(description="The CV already holding this exact file.")
+
+
+class ApplicationConflictProblemDetail(ProblemDetail):
+    """A submission refused by the state something is already in."""
+
+    application_id: UUID | None = Field(
+        default=None,
+        description="The Application already holding this job. Only on a duplicate.",
+    )
 
 
 class Problem(Exception):  # noqa: N818  — it *is* a problem; the RFC's noun, not an "Error"

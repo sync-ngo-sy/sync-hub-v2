@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Annotated, cast
 from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.applications import ApplicationService
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
@@ -176,6 +177,13 @@ def get_visitor(
 
 
 VisitorDep = Annotated[Visitor, Depends(get_visitor)]
+
+
+def get_application_service(session: SessionDep) -> ApplicationService:
+    return ApplicationService(session)
+
+
+ApplicationServiceDep = Annotated[ApplicationService, Depends(get_application_service)]
 
 
 def get_embedder(request: Request) -> Embedder:

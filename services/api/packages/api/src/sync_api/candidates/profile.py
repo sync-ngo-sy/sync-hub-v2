@@ -56,47 +56,17 @@ class CandidateProfileService:
         )
 
     async def replace(self, candidate_id: UUID, profile: CandidateProfile) -> CandidateProfile:
-        skills = await canonical_skill_ids(self._db, _skills_named(profile))
-        await refuse_unknown_languages(self._db, _languages_named(profile))
+        skills = await canonical_skill_ids(self._db, skills_named(profile))
+        await refuse_unknown_languages(self._db, languages_named(profile))
 
         async with transaction(self._db):
-            candidate = await self._candidate(candidate_id, lock=True)
-            if profile.is_searchable and not await self._has_a_ready_cv(candidate):
-                raise Problem(
-                    status=409,
-                    type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
-                    detail="Upload a CV and wait for it to be processed before making your "
-                    "profile searchable.",
-                )
-
-            candidate.headline = profile.headline
-            candidate.summary = profile.summary
-            candidate.location = profile.location
-            candidate.preferred_language_code = profile.preferred_language_code
-            candidate.is_searchable = profile.is_searchable
-            for section in (
-                delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
-                delete(CandidateEducation).where(CandidateEducation.candidate_id == candidate_id),
-                delete(CandidateSkill).where(CandidateSkill.candidate_id == candidate_id),
-                delete(CandidateLanguage).where(CandidateLanguage.candidate_id == candidate_id),
-                delete(CandidateProject).where(CandidateProject.candidate_id == candidate_id),
-            ):
-                await self._db.execute(section)
-            self._db.add_all(_rows_for(candidate_id, profile, skills))
+            await replace_live_profile(self._db, candidate_id, profile, skills)
 
         logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
         return await self.profile(candidate_id)
 
-    async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
-        if candidate.current_cv_id is None:
-            return False
-        cv = await self._db.get(Cv, candidate.current_cv_id)
-        return (
-            cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
-        )
-
-    async def _candidate(self, candidate_id: UUID, *, lock: bool = False) -> Candidate:
-        candidate = await self._db.get(Candidate, candidate_id, with_for_update=lock)
+    async def _candidate(self, candidate_id: UUID) -> Candidate:
+        candidate = await self._db.get(Candidate, candidate_id)
         if candidate is None:  # pragma: no cover — `acting_candidate` refused this already
             raise LookupError(f"no candidate row for {candidate_id}")
         return candidate
@@ -181,6 +151,50 @@ class CandidateProfileService:
         ]
 
 
+async def replace_live_profile(
+    session: AsyncSession, candidate_id: UUID, profile: CandidateProfile, skills: dict[str, UUID]
+) -> None:
+    """Everything replacing a profile writes, without a transaction of its own.
+
+    A submission that also updates the live profile has to land in the *same* transaction as
+    the Application, so the write is here and the commit is the caller's. The candidate row is
+    locked for the duration: without it, two saves each delete only what the other has already
+    committed and both sets of inserts survive.
+    """
+    candidate = await session.get(Candidate, candidate_id, with_for_update=True)
+    if candidate is None:  # pragma: no cover — `acting_candidate` refused this already
+        raise LookupError(f"no candidate row for {candidate_id}")
+    if profile.is_searchable and not await _has_a_ready_cv(session, candidate):
+        raise Problem(
+            status=409,
+            type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
+            detail="Upload a CV and wait for it to be processed before making your "
+            "profile searchable.",
+        )
+
+    candidate.headline = profile.headline
+    candidate.summary = profile.summary
+    candidate.location = profile.location
+    candidate.preferred_language_code = profile.preferred_language_code
+    candidate.is_searchable = profile.is_searchable
+    for section in (
+        delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
+        delete(CandidateEducation).where(CandidateEducation.candidate_id == candidate_id),
+        delete(CandidateSkill).where(CandidateSkill.candidate_id == candidate_id),
+        delete(CandidateLanguage).where(CandidateLanguage.candidate_id == candidate_id),
+        delete(CandidateProject).where(CandidateProject.candidate_id == candidate_id),
+    ):
+        await session.execute(section)
+    session.add_all(_rows_for(candidate_id, profile, skills))
+
+
+async def _has_a_ready_cv(session: AsyncSession, candidate: Candidate) -> bool:
+    if candidate.current_cv_id is None:
+        return False
+    cv = await session.get(Cv, candidate.current_cv_id)
+    return cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
+
+
 def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, UUID]) -> list[Base]:
     rows: list[Base] = [
         CandidateExperience(
@@ -245,18 +259,19 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
     return rows
 
 
-def _skills_named(profile: CandidateProfile) -> dict[str, str]:
+def skills_named(profile: CandidateProfile, at: str = "body") -> dict[str, str]:
+    """Every skill name, keyed by where it sat in the request that carried the profile."""
     return {
-        f"body.skills.{position}.name": skill.name for position, skill in enumerate(profile.skills)
+        f"{at}.skills.{position}.name": skill.name for position, skill in enumerate(profile.skills)
     }
 
 
-def _languages_named(profile: CandidateProfile) -> dict[str, str]:
+def languages_named(profile: CandidateProfile, at: str = "body") -> dict[str, str]:
     """`preferred_language_code` is a language too, and is refused where the candidate typed it."""
     named = {
-        f"body.languages.{position}.code": language.code
+        f"{at}.languages.{position}.code": language.code
         for position, language in enumerate(profile.languages)
     }
     if profile.preferred_language_code is not None:
-        named["body.preferred_language_code"] = profile.preferred_language_code
+        named[f"{at}.preferred_language_code"] = profile.preferred_language_code
     return named
