@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from hashlib import sha256
 from secrets import token_urlsafe
@@ -15,6 +16,9 @@ VISITOR_COOKIE: Final = "sync_visitor"
 VISITOR_COOKIE_MAX_AGE_SECONDS: Final = 180 * 24 * 60 * 60
 
 SESSION_BYTES: Final = 16
+
+#: What `token_urlsafe(SESSION_BYTES)` produces, and the only thing read back out of the cookie.
+SESSION_ID: Final = re.compile(r"^[A-Za-z0-9_-]{22}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,9 +43,9 @@ class Visitors:
         self._same_site = cast("Literal['lax', 'strict', 'none']", settings.auth_cookie_same_site)
         self._domain = settings.auth_cookie_domain
 
-    def of(self, request: Request) -> Visitor:
+    def recognize(self, request: Request) -> Visitor:
         return Visitor(
-            session_id=request.cookies.get(VISITOR_COOKIE) or token_urlsafe(SESSION_BYTES),
+            session_id=_session_id(request.cookies.get(VISITOR_COOKIE)),
             visitor_hash=self._fingerprint(request),
         )
 
@@ -61,3 +65,11 @@ class Visitors:
         address = request.client.host if request.client else ""
         agent = request.headers.get("user-agent", "")
         return sha256(f"{self._salt}|{address}|{agent}".encode()).hexdigest()
+
+
+def _session_id(cookie: str | None) -> str:
+    """Anything but a cookie this API issued starts a new session: the column is analytics, and
+    a visitor is free to type whatever they like into their own cookie jar."""
+    return (
+        cookie if cookie is not None and SESSION_ID.match(cookie) else token_urlsafe(SESSION_BYTES)
+    )

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from sync_api.dependencies import ActingRecruiterDep, JobServiceDep
+from sync_api.dependencies import ActingRecruiterDep, JobServiceDep, TrackedLinkServiceDep
 from sync_api.errors import openapi_problem
 from sync_api.jobs import (
     JobChanges,
@@ -69,7 +69,7 @@ async def list_jobs(
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
     """Every Job of the tenant, whatever its state. Page with `next_cursor`."""
-    return await jobs.page(recruiter.tenant.id, status=job_status, cursor=cursor, limit=limit)
+    return await jobs.page(recruiter, status=job_status, cursor=cursor, limit=limit)
 
 
 @router.get(
@@ -80,7 +80,7 @@ async def list_jobs(
 )
 async def get_job(job_id: UUID, recruiter: ActingRecruiterDep, jobs: JobServiceDep) -> JobView:
     """The whole Job. `criteria_locked` says whether the criteria form is still editable."""
-    return await jobs.job(recruiter.tenant.id, job_id)
+    return await jobs.job(recruiter, job_id)
 
 
 @router.patch(
@@ -97,7 +97,7 @@ async def change_job(
     job_id: UUID, body: JobChanges, recruiter: ActingRecruiterDep, jobs: JobServiceDep
 ) -> JobView:
     """Change what you send and nothing else. The prose stays editable after applications land."""
-    return await jobs.change(recruiter.tenant.id, job_id, body)
+    return await jobs.change(recruiter, job_id, body)
 
 
 @router.put(
@@ -122,7 +122,7 @@ async def replace_job_criteria(
 
     Editable only until the Job's first Application: every applicant is judged by one bar.
     """
-    return await jobs.replace_criteria(recruiter.tenant.id, job_id, body)
+    return await jobs.replace_criteria(recruiter, job_id, body)
 
 
 @router.post(
@@ -137,10 +137,13 @@ async def replace_job_criteria(
     },
 )
 async def create_tracked_job_link(
-    job_id: UUID, body: NewTrackedLink, recruiter: ActingRecruiterDep, jobs: JobServiceDep
+    job_id: UUID,
+    body: NewTrackedLink,
+    recruiter: ActingRecruiterDep,
+    links: TrackedLinkServiceDep,
 ) -> TrackedLink:
     """Mint a link whose `token` attributes every view and application it brings to its name."""
-    return await jobs.create_link(recruiter, job_id, body)
+    return await links.create(recruiter, job_id, body)
 
 
 @router.get(
@@ -150,10 +153,10 @@ async def create_tracked_job_link(
     responses={**TENANT_ACCESS_REFUSED, **JOB_NOT_FOUND},
 )
 async def list_tracked_job_links(
-    job_id: UUID, recruiter: ActingRecruiterDep, jobs: JobServiceDep
+    job_id: UUID, recruiter: ActingRecruiterDep, links: TrackedLinkServiceDep
 ) -> list[TrackedLink]:
     """Every link of the Job, oldest first, each with the views it has brought."""
-    return await jobs.links(recruiter.tenant.id, job_id)
+    return await links.links(recruiter, job_id)
 
 
 @router.patch(
@@ -163,6 +166,7 @@ async def list_tracked_job_links(
     responses={
         **TENANT_ACCESS_REFUSED,
         404: openapi_problem("This tenant has no such Job, or the Job has no such link."),
+        409: openapi_problem("This Job already has a link by that name."),
     },
 )
 async def change_tracked_job_link(
@@ -170,7 +174,7 @@ async def change_tracked_job_link(
     link_id: UUID,
     body: TrackedLinkChanges,
     recruiter: ActingRecruiterDep,
-    jobs: JobServiceDep,
+    links: TrackedLinkServiceDep,
 ) -> TrackedLink:
     """Turning a link off stops it resolving; the views it already brought stay counted."""
-    return await jobs.change_link(recruiter.tenant.id, job_id, link_id, body)
+    return await links.change(recruiter, job_id, link_id, body)

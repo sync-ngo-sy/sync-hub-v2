@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
-from sync_api.jobs import JobBrowseService, JobService, Visitor, Visitors
+from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
 from sync_api.notifications import NotificationService
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
@@ -153,6 +153,13 @@ def get_job_browse_service(session: SessionDep) -> JobBrowseService:
 JobBrowseServiceDep = Annotated[JobBrowseService, Depends(get_job_browse_service)]
 
 
+def get_tracked_link_service(session: SessionDep) -> TrackedLinkService:
+    return TrackedLinkService(session)
+
+
+TrackedLinkServiceDep = Annotated[TrackedLinkService, Depends(get_tracked_link_service)]
+
+
 def get_visitors(settings: Annotated[Settings, Depends(get_app_settings)]) -> Visitors:
     return Visitors(settings)
 
@@ -163,7 +170,7 @@ def get_visitor(
     visitors: Annotated[Visitors, Depends(get_visitors)],
 ) -> Visitor:
     """Recognizes the browser reading a Job, and hands it back the cookie that says so."""
-    visitor = visitors.of(request)
+    visitor = visitors.recognize(request)
     visitors.remember(response, visitor)
     return visitor
 

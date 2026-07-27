@@ -3,11 +3,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import ColumnElement, Select, func, literal, literal_column, or_, select, tuple_
+from sqlalchemy import ColumnElement, Select, func, literal_column, or_, select
 
-from sync_api.jobs.criteria import languages_of, public_questions_of, skills_of
-from sync_api.jobs.payload import JobPublisher, PublicJob, PublicJobPage, PublicJobSummary
-from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor
+from sync_api.jobs.criteria import (
+    languages_of,
+    minimum_experience_of,
+    public_questions_of,
+    skills_of,
+)
+from sync_api.jobs.payload import PublicJob, PublicJobPage, PublicJobSummary, PublicTenant
+from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     JOB_NOT_FOUND_PROBLEM_TYPE,
     TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE,
@@ -44,7 +49,7 @@ class JobBrowseService:
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> PublicJobPage:
-        query = _public_jobs().order_by(Job.created_at.desc(), Job.id.desc()).limit(limit + 1)
+        query = _public_jobs()
         if keywords:
             query = query.where(
                 Job.search_vector.op("@@")(func.websearch_to_tsquery(ENGLISH, keywords))
@@ -53,20 +58,19 @@ class JobBrowseService:
             query = query.where(Job.location.ilike(_containing(location)))
         if employment_type:
             query = query.where(func.lower(Job.employment_type) == employment_type.lower())
-        if cursor is not None:
-            after = Cursor.decode(cursor)
-            query = query.where(
-                tuple_(Job.created_at, Job.id)
-                < tuple_(literal(after.created_at), literal(after.id))
-            )
 
-        found = list((await self._db.execute(query)).tuples())
-        rows, more = found[:limit], len(found) > limit
+        found = list(
+            (
+                await self._db.execute(
+                    newest_first(
+                        query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit
+                    )
+                )
+            ).tuples()
+        )
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return PublicJobPage(
-            items=[_summary(job, tenant) for job, tenant in rows],
-            next_cursor=Cursor(created_at=rows[-1][0].created_at, id=rows[-1][0].id).encode()
-            if more
-            else None,
+            items=[_summary(job, tenant) for job, tenant in rows], next_cursor=next_cursor
         )
 
     async def job(self, job_id: UUID, visitor: Visitor) -> PublicJob:
@@ -117,9 +121,7 @@ class JobBrowseService:
         return PublicJob(
             **_summary(job, tenant).model_dump(),
             description=job.description,
-            minimum_total_experience_years=None
-            if job.minimum_total_experience_years is None
-            else float(job.minimum_total_experience_years),
+            minimum_total_experience_years=minimum_experience_of(job),
             skills=await skills_of(self._db, job.id),
             languages=await languages_of(self._db, job.id),
             questions=await public_questions_of(self._db, job.id),
@@ -151,11 +153,16 @@ def _usable(link: TrackedJobLink) -> bool:
     return link.is_active and (link.expires_at is None or link.expires_at > datetime.now(UTC))
 
 
+def _cursor(row: tuple[Job, Tenant]) -> Cursor:
+    job, _tenant = row
+    return Cursor(created_at=job.created_at, id=job.id)
+
+
 def _summary(job: Job, tenant: Tenant) -> PublicJobSummary:
     return PublicJobSummary(
         id=job.id,
         title=job.title,
-        tenant=JobPublisher(name=tenant.name, slug=tenant.slug),
+        tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
         location=job.location,
         employment_type=job.employment_type,
         expires_at=job.expires_at,

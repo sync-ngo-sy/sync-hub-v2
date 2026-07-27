@@ -1,4 +1,5 @@
 from sync_api.jobs.browse import JobBrowseService
+from sync_api.jobs.links import TrackedLinkService
 from sync_api.jobs.payload import (
     JobChanges,
     JobCriteria,
@@ -29,6 +30,7 @@ __all__ = [
     "PublicJobPage",
     "TrackedLink",
     "TrackedLinkChanges",
+    "TrackedLinkService",
     "Visitor",
     "Visitors",
 ]

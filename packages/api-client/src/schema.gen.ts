@@ -1044,16 +1044,6 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
-         * JobPublisher
-         * @description The Tenant a public Job belongs to. Never more of it than a job board shows.
-         */
-        JobPublisher: {
-            /** Name */
-            name: string;
-            /** Slug */
-            slug: string;
-        };
-        /**
          * JobQuestion
          * @description One question every applicant answers.
          */
@@ -1702,7 +1692,7 @@ export interface components {
             id: string;
             /** Title */
             title: string;
-            tenant: components["schemas"]["JobPublisher"];
+            tenant: components["schemas"]["PublicTenant"];
             /** Location */
             location?: string | null;
             /** Employment Type */
@@ -1766,7 +1756,7 @@ export interface components {
             id: string;
             /** Title */
             title: string;
-            tenant: components["schemas"]["JobPublisher"];
+            tenant: components["schemas"]["PublicTenant"];
             /** Location */
             location?: string | null;
             /** Employment Type */
@@ -1778,6 +1768,16 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * PublicTenant
+         * @description The Tenant a published Job belongs to. Never more of it than a job board shows.
+         */
+        PublicTenant: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
         };
         /**
          * Readiness
@@ -4036,6 +4036,15 @@ export interface operations {
             };
             /** @description This tenant has no such Job, or the Job has no such link. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This Job already has a link by that name. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

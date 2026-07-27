@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 async def criteria_of(session: AsyncSession, job: Job) -> JobCriteriaView:
     return JobCriteriaView(
-        minimum_total_experience_years=_years(job),
+        minimum_total_experience_years=minimum_experience_of(job),
         skills=await skills_of(session, job.id),
         languages=await languages_of(session, job.id),
         questions=await questions_of(session, job.id),
@@ -91,7 +91,8 @@ async def _questions(session: AsyncSession, job_id: UUID) -> list[JobApplication
     return list(rows)
 
 
-def _years(job: Job) -> float | None:
+def minimum_experience_of(job: Job) -> float | None:
+    """`numeric(4,1)` reads back as a `Decimal`, which JSON has no use for."""
     return (
         None
         if job.minimum_total_experience_years is None

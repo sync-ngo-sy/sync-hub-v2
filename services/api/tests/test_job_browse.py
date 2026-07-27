@@ -8,8 +8,9 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.jobs.visitors import VISITOR_COOKIE
 from sync_core import Settings
-from tests.support.harness import asgi_client, spa_onto
+from tests.support.harness import TEST_HOST, asgi_client, spa_onto
 from tests.support.jobs import (
     JOBS,
     a_created_job,
@@ -20,8 +21,7 @@ from tests.support.jobs import (
     read_public_job,
     set_criteria,
 )
-from tests.support.mailbox import Mailbox
-from tests.support.tenants import an_admin, set_tenant_active
+from tests.support.tenants import set_tenant_active
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -34,18 +34,6 @@ A_FRONTEND_JOB = {
     "location": "Aleppo, Syria",
     "employment_type": "Part time",
 }
-
-
-@pytest.fixture
-async def recruiter(browser: AsyncClient, mailbox: Mailbox) -> AsyncClient:
-    await an_admin(browser, mailbox)
-    return browser
-
-
-@pytest.fixture
-async def visitor(app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with asgi_client(app) as anonymous:
-        yield anonymous
 
 
 @pytest.fixture
@@ -258,8 +246,20 @@ async def test_a_view_records_no_address_and_no_browser(
     known, stranger = await job_views(db_session, job["id"])
     assert known.visitor_hash is not None
     assert len(known.visitor_hash) == 64, "a sha-256 digest, not something readable"
-    assert "different browser" not in str(stranger.visitor_hash)
-    assert known.visitor_hash != stranger.visitor_hash
+    assert known.visitor_hash != stranger.visitor_hash, "two browsers, two visitors"
+
+
+async def test_a_session_id_a_visitor_made_up_is_not_the_one_that_is_recorded(
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    job = await a_published_job(recruiter)
+    visitor.cookies.set(VISITOR_COOKIE, "'; drop table job_view_events; --", domain=TEST_HOST)
+
+    await read_public_job(visitor, job["id"])
+
+    [view] = await job_views(db_session, job["id"])
+    assert view.session_id is not None
+    assert "drop table" not in view.session_id, "a cookie is the visitor's to write, not ours"
 
 
 async def test_a_job_that_does_not_exist_reads_the_same_as_one_that_is_not_published(

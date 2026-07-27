@@ -16,6 +16,7 @@ from tests.support import stack
 from tests.support.cvs import empty_cv_bucket
 from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.mailbox import Mailbox, mailbox_at
+from tests.support.tenants import an_admin
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -138,6 +139,20 @@ async def browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
 @pytest.fixture
 async def other_browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
     async with asgi_client(app, headers=SPA_HEADERS) as http_client:
+        yield http_client
+
+
+@pytest.fixture
+async def recruiter(browser: AsyncClient, mailbox: Mailbox) -> AsyncClient:
+    """A signed-in admin of a tenant of their own."""
+    await an_admin(browser, mailbox)
+    return browser
+
+
+@pytest.fixture
+async def visitor(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """Nobody: no session, no cookies of anyone else's, and a jar of their own."""
+    async with asgi_client(app) as http_client:
         yield http_client
 
 

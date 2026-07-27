@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.support.harness import asgi_client
 from tests.support.jobs import (
     TENANT_JOBS,
     a_created_job,
@@ -21,23 +18,6 @@ from tests.support.jobs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import an_admin
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from fastapi import FastAPI
-
-
-@pytest.fixture
-async def recruiter(browser: AsyncClient, mailbox: Mailbox) -> AsyncClient:
-    await an_admin(browser, mailbox)
-    return browser
-
-
-@pytest.fixture
-async def visitor(app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with asgi_client(app) as anonymous:
-        yield anonymous
 
 
 async def test_a_link_lands_on_its_job_and_the_view_is_attributed_to_it(
@@ -132,6 +112,21 @@ async def test_two_links_of_one_job_cannot_share_a_name(recruiter: AsyncClient) 
 
     assert refused.status_code == 409, refused.text
     assert refused.json()["type"] == "urn:sync:problem:tracked-link-name-taken"
+
+
+async def test_a_link_cannot_be_renamed_onto_a_siblings_name(recruiter: AsyncClient) -> None:
+    job = await a_published_job(recruiter)
+    await a_tracked_link(recruiter, job["id"], name="LinkedIn campaign")
+    flyer = await a_tracked_link(recruiter, job["id"], name="Print flyer")
+
+    refused = await change_link(recruiter, job["id"], flyer["id"], name="LinkedIn campaign")
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["type"] == "urn:sync:problem:tracked-link-name-taken"
+    assert [item["name"] for item in await links_of(recruiter, job["id"])] == [
+        "LinkedIn campaign",
+        "Print flyer",
+    ]
 
 
 async def test_another_tenant_cannot_reach_the_links(

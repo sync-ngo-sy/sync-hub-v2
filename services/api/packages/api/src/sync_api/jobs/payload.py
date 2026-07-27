@@ -148,9 +148,7 @@ class JobChanges(BaseModel):
 
     @model_validator(mode="after")
     def _what_a_job_cannot_do_without(self) -> JobChanges:
-        empty = [field for field in ("title", "description", "status") if _blanked(self, field)]
-        if empty:
-            raise ValueError(f"{', '.join(empty)} cannot be null")
+        _refuse_blanks(self, "title", "description", "status")
         return self
 
 
@@ -187,8 +185,8 @@ class JobPage(BaseModel):
     )
 
 
-class JobPublisher(BaseModel):
-    """The Tenant a public Job belongs to. Never more of it than a job board shows."""
+class PublicTenant(BaseModel):
+    """The Tenant a published Job belongs to. Never more of it than a job board shows."""
 
     name: str
     slug: str
@@ -199,7 +197,7 @@ class PublicJobSummary(BaseModel):
 
     id: UUID
     title: str
-    tenant: JobPublisher
+    tenant: PublicTenant
     location: str | None = None
     employment_type: str | None = None
     expires_at: datetime | None = None
@@ -241,9 +239,7 @@ class TrackedLinkChanges(BaseModel):
 
     @model_validator(mode="after")
     def _what_a_link_cannot_do_without(self) -> TrackedLinkChanges:
-        empty = [field for field in ("name", "is_active") if _blanked(self, field)]
-        if empty:
-            raise ValueError(f"{', '.join(empty)} cannot be null")
+        _refuse_blanks(self, "name", "is_active")
         return self
 
 
@@ -259,8 +255,16 @@ class TrackedLink(BaseModel):
     view_count: int = Field(description="Job views that arrived through this link.")
 
 
-def _blanked(model: BaseModel, field: str) -> bool:
-    return field in model.model_fields_set and getattr(model, field) is None
+def _refuse_blanks(model: BaseModel, *fields: str) -> None:
+    """A `PATCH` omits what it does not change; an explicit null on these would empty a column
+    the database will not have empty."""
+    blanked = [
+        field
+        for field in fields
+        if field in model.model_fields_set and getattr(model, field) is None
+    ]
+    if blanked:
+        raise ValueError(f"{', '.join(blanked)} cannot be null")
 
 
 def _refuse_repeats(names: list[str], singular: str) -> None:

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
+import pytest
 from httpx import AsyncClient
+from sqlalchemy import delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_core.models import JobSkill
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import (
     TENANT_JOBS,
@@ -324,6 +329,22 @@ async def test_criteria_lock_the_moment_the_first_application_arrives(
     assert refused.json()["type"] == "urn:sync:problem:job-criteria-locked"
     assert len((await read_job(browser, job["id"]))["criteria"]["skills"]) == 2
     assert (await read_job(browser, job["id"]))["criteria_locked"] is True
+
+
+async def test_the_lock_is_the_databases_own_and_not_the_backends_good_manners(
+    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+    await set_criteria(browser, job["id"], **DEMANDING)
+    await a_signed_in_candidate(other_browser, mailbox)
+    await an_application(db_session, job["id"], await my_id(other_browser))
+
+    with pytest.raises(IntegrityError):
+        await db_session.execute(
+            delete(JobSkill).where(JobSkill.job_id == UUID(job["id"])),
+        )
+    await db_session.rollback()
 
 
 async def test_the_prose_stays_editable_after_an_application_arrives(
