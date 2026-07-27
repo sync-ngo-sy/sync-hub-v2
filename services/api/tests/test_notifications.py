@@ -19,8 +19,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_core import Database, Storage, transaction
-from sync_core.models import ApplicationStatus, Cv, CvParsingStatus, IngestionJob, IngestionStatus
-from sync_core.notifications import ApplicationStatusChanged, CvParseFailed, payload_of
+from sync_core.models import Cv, CvParsingStatus, IngestionJob, IngestionStatus
+from sync_core.notifications import CvParseFailed, payload_of
 from sync_parsers import CvFile, ParsedCv, UnreadableCvError, Vocabulary
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv, cv_row
@@ -37,9 +37,8 @@ from tests.support.notifications import (
 from tests.support.profiles import my_id
 from tests.support.worker import an_ingestion_worker
 
-#: Ids for the payload tests, which are about the shapes rather than about any real row.
+#: An id for the payload tests, which are about the shapes rather than about any real row.
 A_CV = uuid4()
-AN_APPLICATION = uuid4()
 
 
 class UnavailableError(Exception):
@@ -114,7 +113,11 @@ async def test_a_parse_still_being_retried_says_nothing(
 async def test_running_out_of_attempts_notifies_exactly_once(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """One CV, one message — however many attempts it took to establish that."""
+    """The ticket's end-to-end chain: upload, a failing extractor, retries spent, one message.
+
+    One CV, one notification, carrying the whole typed payload — however many attempts it took
+    to establish that the platform was not going to manage it.
+    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
@@ -122,11 +125,17 @@ async def test_running_out_of_attempts_notifies_exactly_once(
     )
 
     await worker.run_once()
+    assert await my_notifications(browser) == [], "a retry left is not a failure to announce"
     await worker.run_once()
 
     items = await my_notifications(browser)
     assert len(items) == 1, items
-    assert items[0]["payload"]["cv_id"] == cv["id"]
+    assert items[0]["payload"] == {
+        "type": "cv_parse_failed",
+        "cv_id": cv["id"],
+        "display_name": "cv.pdf",
+    }
+    assert items[0]["read_at"] is None
 
 
 async def test_a_retry_that_works_says_nothing_at_all(
@@ -366,27 +375,16 @@ def test_a_stored_payload_is_read_back_as_the_shape_its_type_names() -> None:
     failed = payload_of(
         {"type": "cv_parse_failed", "cv_id": str(A_CV), "display_name": "resume.pdf"}
     )
-    moved = payload_of(
-        {
-            "type": "application_status_changed",
-            "application_id": str(AN_APPLICATION),
-            "job_title": "Backend Engineer",
-            "previous_status": "new",
-            "new_status": "shortlisted",
-        }
-    )
 
     assert failed == CvParseFailed(cv_id=A_CV, display_name="resume.pdf")
-    assert moved == ApplicationStatusChanged(
-        application_id=AN_APPLICATION,
-        job_title="Backend Engineer",
-        previous_status=ApplicationStatus.NEW,
-        new_status=ApplicationStatus.SHORTLISTED,
-    )
 
 
 def test_the_type_is_mandatory_and_has_to_be_one_the_platform_knows() -> None:
-    """Without it there is no union, only a guess at which shape was meant."""
+    """Without it there is no union, only a guess at which shape was meant.
+
+    Mandatory even with a default on the field: the default is what a *producer* may leave
+    out, and a stored payload that never carried a type is one nothing can dispatch on.
+    """
     with pytest.raises(ValidationError):
         payload_of({"cv_id": str(A_CV), "display_name": "resume.pdf"})
 
@@ -397,28 +395,15 @@ def test_the_type_is_mandatory_and_has_to_be_one_the_platform_knows() -> None:
 def test_a_payload_of_the_wrong_shape_for_its_type_is_refused() -> None:
     """A `cv_parse_failed` is a cv_parse_failed's fields — the type is not a label to attach."""
     with pytest.raises(ValidationError):
-        payload_of({"type": "cv_parse_failed", "application_id": str(AN_APPLICATION)})
-
-
-def test_only_the_payloads_about_an_application_name_one() -> None:
-    """What fills `notifications.application_id`, so the column cannot contradict the payload."""
-    assert CvParseFailed(cv_id=A_CV, display_name="resume.pdf").about_application is None
-    assert (
-        ApplicationStatusChanged(
-            application_id=AN_APPLICATION,
-            job_title="Backend Engineer",
-            previous_status=ApplicationStatus.NEW,
-            new_status=ApplicationStatus.REJECTED,
-        ).about_application
-        == AN_APPLICATION
-    )
+        payload_of({"type": "cv_parse_failed", "display_name": "resume.pdf"})
 
 
 async def test_the_database_refuses_a_payload_filed_under_another_type(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The migration's CHECK, which no route can demonstrate — `notify` fills both from one
-    payload, so the only producer that could disagree with itself is a future one."""
+    """The migration's CHECK, which no route can demonstrate — `notify` fills the column and
+    the payload from one object, so the only producer that could disagree with itself is a
+    future one, and this is what refuses it."""
     await a_signed_in_candidate(browser, mailbox)
     recipient = await my_id(browser)
 

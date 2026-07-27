@@ -42,23 +42,19 @@ async def test_notification_payloads_are_documented_as_a_discriminated_union(
 ) -> None:
     """The shapes have to be in the document, or `@sync/api-client` cannot narrow on `type`.
 
-    A payload the SPA has to `as`-cast is a payload the platform has not really typed, so
-    what this asserts is the thing a client actually needs: one `oneOf`, one discriminator,
-    and every member reachable through it by name.
+    A payload the SPA has to `as`-cast is a payload the platform has not really typed, so what
+    this asserts is what a client actually needs: a `oneOf`, a discriminator naming the field
+    to switch on, and every member reachable through the mapping by name. One member today —
+    this is the test that keeps the machinery in place while the second one is added.
     """
     schemas = app.openapi()["components"]["schemas"]
     payload = schemas["Notification"]["properties"]["payload"]
+    members = {member["$ref"].rsplit("/", 1)[-1] for member in payload["oneOf"]}
 
-    assert {member["$ref"].rsplit("/", 1)[-1] for member in payload["oneOf"]} == {
-        "CvParseFailed",
-        "ApplicationStatusChanged",
-    }
+    assert members == {"CvParseFailed"}
     assert payload["discriminator"]["propertyName"] == "type"
-    assert set(payload["discriminator"]["mapping"]) == {
-        "cv_parse_failed",
-        "application_status_changed",
-    }
-    for member in ("CvParseFailed", "ApplicationStatusChanged"):
+    assert set(payload["discriminator"]["mapping"]) == {"cv_parse_failed"}
+    for member in members:
         assert "type" in schemas[member]["properties"], f"{member} does not carry the discriminator"
 
 

@@ -1,14 +1,14 @@
 """What a notification looks like on the wire.
 
-The payload does the talking. There is deliberately no second `type` field beside it: the
-row carries one because the column is what queries and the unread index are keyed on, but a
-client switching on `payload.type` and a client switching on a sibling `type` would be two
-contracts for one fact, and the day they disagree is a bug nobody can see. One discriminated
-union, one field to switch on.
+The payload does the talking. There is deliberately no second `type` field beside it: the row
+carries one because the column is what queries and the unread index are keyed on, but a client
+switching on `payload.type` and a client switching on a sibling `type` would be two contracts
+for one fact, and the day they disagree is a bug nobody can see. One discriminated union, one
+field to switch on.
 
-For the same reason `application_id` is not repeated here. It is a column because
-notifications are queried and cascaded by it; the payloads that are about an Application say
-so themselves.
+`application_id` is not on the wire either. It is a column so notifications can be queried and
+cascaded by the Application they concern; what a client needs in order to *navigate* belongs in
+the payload of the types that have somewhere to go.
 """
 
 from __future__ import annotations

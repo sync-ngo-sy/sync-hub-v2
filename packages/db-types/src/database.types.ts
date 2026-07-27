@@ -2030,7 +2030,7 @@ export type Database = {
         | "advanced"
         | "fluent"
         | "native"
-      notification_type: "cv_parse_failed" | "application_status_changed"
+      notification_type: "cv_parse_failed"
       qualification_status:
         | "pending"
         | "qualified"
@@ -2202,7 +2202,7 @@ export const Constants = {
         "fluent",
         "native",
       ],
-      notification_type: ["cv_parse_failed", "application_status_changed"],
+      notification_type: ["cv_parse_failed"],
       qualification_status: [
         "pending",
         "qualified",

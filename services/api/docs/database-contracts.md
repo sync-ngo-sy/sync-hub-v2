@@ -188,15 +188,19 @@ An in-app message to one Profile, with a typed payload and a read/unread state. 
 Communication: never delivered externally, never queued, and never sent by a worker of its own.
 
 - **Who writes one**: whatever transaction the notification announces, through
-  `sync_core.notifications.notify(session, recipient, payload)`, which flushes and leaves the
-  commit to its caller. A permanent CV parse failure is the first producer; Application status
-  changes are the next. There is no endpoint that creates one — the only client write on the
-  surface is the recipient marking one read.
+  `sync_core.notifications.notify(session, recipient_profile_id, payload)`, which flushes and
+  leaves the commit to its caller. A permanent CV parse failure is the only producer so far;
+  Application status changes are the next. There is no endpoint that creates one — the only
+  client write on this surface is the recipient marking one read.
 - **Payloads** are a Pydantic discriminated union on the mandatory `type`, spelled once in
   `sync_core.notifications` and exposed through OpenAPI so the SPA narrows on that one field.
   They carry ids and names, never prose: English belongs to the frontend, which keeps a future
   translation out of the database. Adding a type is a `notification_type` value (migration), a
-  model, and a member of the union — nothing else.
+  model, a member of the union, and the producer that writes it — in one change, so no
+  deployed reader can meet a type it has never heard of.
+- `application_id` is part of the table (it is what the composite FK below defends) but no
+  producer fills it yet: the notifications that are *about* an Application arrive with the
+  pipeline states that cause them.
 - **DB-enforced on write** (rely on these): `payload ->> 'type' = type::text`, so the queryable
   column and the rendered payload cannot disagree; and the composite FK
   `(application_id, recipient_profile_id) → applications (id, candidate_id)`, so a notification
@@ -211,8 +215,10 @@ Communication: never delivered externally, never queued, and never sent by a wor
 - **Marking read** is idempotent and keeps the first `read_at`: the SPA marks on render, so the
   same notification is marked every time the list is opened, and moving the timestamp forward
   each time would make it a "last seen" field under a name that promises the first.
-- Deleting a Profile takes their notifications with it (`ON DELETE CASCADE`), which is what
-  account deletion relies on.
+- `ON DELETE CASCADE` on `recipient_profile_id` covers a Profile row genuinely going away —
+  which is the signup-rollback path, not account deletion. Account deletion *bans* the GoTrue
+  user and soft-deletes the Profile, so the cascade never fires and that flow has to delete
+  notifications itself.
 
 ## Global candidate search
 

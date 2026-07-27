@@ -10,10 +10,12 @@
 -- `type`. Postgres cannot check the members, but it can check that the two halves agree —
 -- see `notifications_payload_type_matches` — so a producer that writes one type's payload
 -- under another type's name is refused here rather than crashing whatever reads it back.
+--
+-- One value, because one thing produces notifications so far. Each later producer brings its
+-- own: an `alter type ... add value`, a model in the union, and the code that writes it.
 
 create type notification_type as enum (
-  'cv_parse_failed',            -- a CV the platform gave up on reading
-  'application_status_changed'  -- a Recruiter moved an Application, or the Candidate withdrew
+  'cv_parse_failed'  -- a CV the platform gave up on reading
 );
 
 create table notifications (
@@ -26,8 +28,8 @@ create table notifications (
   type    notification_type not null,
   payload jsonb            not null,
 
-  -- What this is about, when it is about an Application. NULL for the notifications that
-  -- are not — a failed CV parse, for one.
+  -- What this is about, when it is about an Application — the notifications of a Candidate's
+  -- own pipeline. NULL for the ones that are not, which is every one of them so far.
   application_id uuid,
 
   read_at    timestamptz,

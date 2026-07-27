@@ -524,37 +524,6 @@ export interface components {
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
-        /**
-         * ApplicationStatus
-         * @enum {string}
-         */
-        ApplicationStatus: "new" | "reviewing" | "shortlisted" | "interview" | "offer" | "hired" | "rejected" | "withdrawn";
-        /**
-         * ApplicationStatusChanged
-         * @description An Application moved to another status — by a Recruiter, or by the Candidate withdrawing.
-         */
-        ApplicationStatusChanged: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "application_status_changed";
-            /**
-             * Application Id
-             * Format: uuid
-             * @description The Application that moved.
-             */
-            application_id: string;
-            /**
-             * Job Title
-             * @description The Job it was submitted to, as it was titled.
-             */
-            job_title: string;
-            /** @description Where the Application was. */
-            previous_status: components["schemas"]["ApplicationStatus"];
-            /** @description Where it is now. */
-            new_status: components["schemas"]["ApplicationStatus"];
-        };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -709,9 +678,11 @@ export interface components {
          * CvParseFailed
          * @description The platform gave up on reading a CV.
          *
-         *     The reason is deliberately not here. It lives on the CV itself (`parsing_error`), where
-         *     it is one field of the document this points at, and it is written for a developer
-         *     reading a row rather than for a candidate reading a bell.
+         *     Frozen, because a payload is a record of something that already happened.
+         *
+         *     The reason is deliberately not here. It lives on the CV itself (`parsing_error`), where it
+         *     is one field of the document this points at, and it is written for a developer reading a
+         *     row rather than for a candidate reading a bell.
          */
         CvParseFailed: {
             /**
@@ -897,7 +868,7 @@ export interface components {
              * Payload
              * @description What happened. `type` says which shape the rest of this object takes.
              */
-            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["ApplicationStatusChanged"];
+            payload: components["schemas"]["CvParseFailed"];
             /**
              * Read At
              * @description When the caller read this. Null while it is still unread.

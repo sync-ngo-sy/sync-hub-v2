@@ -13,25 +13,20 @@ people are being told.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import func, literal, select, tuple_
+from sqlalchemy import func, literal, select, tuple_, update
 
 from sync_api.notifications.payload import Notification, NotificationPage, UnreadNotificationCount
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor
 from sync_api.problems import NOTIFICATION_NOT_FOUND_PROBLEM_TYPE, Problem
-from sync_core import get_logger, transaction
+from sync_core import transaction
 from sync_core.models import Notification as NotificationRow
 from sync_core.notifications import payload_of
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = get_logger(__name__)
 
 
 class NotificationService:
@@ -68,9 +63,9 @@ class NotificationService:
         found = list(await self._db.scalars(query))
         rows, more = found[:limit], len(found) > limit
         return NotificationPage(
-            items=_readable(rows),
+            items=[_as_payload(row) for row in rows],
             next_cursor=Cursor(created_at=rows[-1].created_at, id=rows[-1].id).encode()
-            if more and rows
+            if more
             else None,
         )
 
@@ -89,49 +84,34 @@ class NotificationService:
     async def mark_read(self, profile_id: UUID, notification_id: UUID) -> Notification:
         """Mark one notification read, and answer with it as it now stands.
 
-        Marking a read notification read again is a no-op that keeps the original time: the
-        SPA marks on render, so the same notification is marked every time the list is
-        opened, and moving `read_at` forward each time would make it a "last seen" field
-        under a name that promises the first.
+        Marking a read notification read again keeps the original time. `coalesce` rather than
+        reading the row and deciding in Python: the SPA marks on render, so the same
+        notification is marked every time the list is opened — often twice at once — and two
+        requests that both found `read_at` empty would both write, turning it into a "last
+        seen" field under a name that promises the first. One statement cannot race itself.
         """
-        notification = await self._own(profile_id, notification_id)
-        if notification.read_at is None:
-            async with transaction(self._db):
-                notification.read_at = datetime.now(UTC)
+        async with transaction(self._db):
+            marked = await self._db.scalars(
+                update(NotificationRow)
+                .where(
+                    NotificationRow.id == notification_id,
+                    # Scoped in the statement, so the update itself cannot reach somebody
+                    # else's row — not even for the moment before a check would refuse it.
+                    NotificationRow.recipient_profile_id == profile_id,
+                )
+                .values(read_at=func.coalesce(NotificationRow.read_at, func.now()))
+                .returning(NotificationRow)
+            )
+            notification = marked.one_or_none()
+            if notification is None:
+                # Nothing was updated, so the caller has no notification with that id.
+                # Whether somebody else does is deliberately not said.
+                raise Problem(
+                    status=404,
+                    type=NOTIFICATION_NOT_FOUND_PROBLEM_TYPE,
+                    detail="No notification of yours has that id.",
+                )
         return _as_payload(notification)
-
-    async def _own(self, profile_id: UUID, notification_id: UUID) -> NotificationRow:
-        """The caller's notification, or a 404 that says nothing about whose it is."""
-        notification = await self._db.scalar(
-            select(NotificationRow).where(
-                NotificationRow.id == notification_id,
-                NotificationRow.recipient_profile_id == profile_id,
-            )
-        )
-        if notification is None:
-            raise Problem(
-                status=404,
-                type=NOTIFICATION_NOT_FOUND_PROBLEM_TYPE,
-                detail="No notification of yours has that id.",
-            )
-        return notification
-
-
-def _readable(rows: Sequence[NotificationRow]) -> list[Notification]:
-    """The rows the API can still describe.
-
-    A payload that no longer fits its union means the shapes moved without their data — our
-    bug, and one worth a log line. The row is left out rather than allowed to 500 the whole
-    list, because a bell icon that cannot open is a worse failure than a bell icon missing
-    one entry.
-    """
-    described = []
-    for row in rows:
-        try:
-            described.append(_as_payload(row))
-        except ValueError:
-            logger.error("notifications.unreadable_payload", notification_id=str(row.id))
-    return described
 
 
 def _as_payload(row: NotificationRow) -> Notification:
