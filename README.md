@@ -165,3 +165,83 @@ pnpm --filter @sync/api gen:models
 Run these after backend/DB changes, then commit the updated generated files like any other code change.
 
 `sync_core.models` is generated the same way `@sync/db-types` is — from the migrated schema, never hand-edited. Its relationships are all `viewonly`: navigate through them, but write by assigning foreign key columns, because the schema's composite tenant keys give most rows two paths to their tenant.
+
+## Working on an issue
+
+Issues live in [GitHub Issues](https://github.com/sync-ngo-sy/sync-hub-v2/issues). Follow these steps in order.
+
+### 1. Install the tools (once per machine)
+
+| Tool | Why | Install |
+| --- | --- | --- |
+| Node 22+ | runs the frontends and Turborepo | [nodejs.org](https://nodejs.org/en/download) |
+| pnpm 11+ | the package manager for everything JS/TS | [pnpm.io/installation](https://pnpm.io/installation) |
+| uv | the package manager for the Python backend | [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
+| Docker | the local Supabase stack runs in containers | [docs.docker.com](https://docs.docker.com/get-started/get-docker/) |
+| Supabase CLI | starts and resets that stack | [supabase.com/docs](https://supabase.com/docs/guides/local-development/cli/getting-started) |
+| GitHub CLI | how issues and PRs are read and written | [cli.github.com](https://cli.github.com/) |
+
+Then sign in to GitHub, or nothing can read the issue:
+
+```bash
+gh auth login
+```
+
+**That is the whole list.** Turborepo, Ruff, mypy and pytest are *not* on it — they are declared in the repo and the two installs below fetch them. Don't install them globally.
+
+If you use VS Code, it will offer to install the Biome, Ruff and Python extensions from `.vscode/extensions.json` when you open the repo. Optional — they give you format-on-save, nothing more.
+
+### 2. Set the repo up (once per clone)
+
+Three commands, and all three are needed:
+
+```bash
+pnpm install                                     # JS deps, including Turborepo
+uv sync --directory services/api                 # Python deps, including Ruff, mypy and pytest
+cp services/api/.env.example services/api/.env   # your local config — git-ignored, so it does not exist yet
+```
+
+The third one is easy to skip and nothing works without it: the repo ships `.env.example` only, and the backend reads `services/api/.env`. Copy it now; you fill in two values in the next step.
+
+### 3. Start the stack (every session)
+
+**Start Docker first** — `supabase start` is just containers, and it fails without it. The first run downloads several GB of images and takes a while; later runs are fast.
+
+```bash
+supabase start
+supabase status
+```
+
+Open the `services/api/.env` you copied in step 2 and paste two values from `supabase status` into it:
+
+- `ANON_KEY` → `SYNC_SUPABASE_ANON_KEY`
+- `SERVICE_ROLE_KEY` → `SYNC_SUPABASE_SERVICE_ROLE_KEY`
+
+Leave every other line as it is. Only add `SYNC_OPENAI_API_KEY` if you are going to parse a real CV or run the `ai_live` tests.
+
+### 4. Set up Claude Code
+
+- **Model: Opus 5** (`/model`).
+- **Reasoning effort: xhigh.**
+
+Both matter. A smaller model or a lower effort produces work that looks finished and is not.
+
+### 5. Run it
+
+One command, with the issue number changed:
+
+```text
+/implement issue 8 in a dedicated branch, if you encounter any blockers stop and tell me
+```
+
+The "stop and tell me" half is the important half — it is what stops a wrong assumption from being built on for an hour.
+
+### 6. Check before you accept it
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm --filter @sync/api test   # needs the stack from step 3 running
+```
+
+All three must pass. Then read the diff yourself.
