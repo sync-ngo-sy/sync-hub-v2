@@ -17,7 +17,7 @@ from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
 from sync_api.rate_limit import build_auth_rate_limiter
-from sync_api.routes import auth, health, tenants
+from sync_api.routes import auth, candidates, health, tenants
 from sync_core import Database, Settings, configure_logging, get_logger, get_settings
 
 if TYPE_CHECKING:
@@ -84,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(tenants.router, prefix=API_PREFIX)
+    app.include_router(candidates.router, prefix=API_PREFIX)
 
     describe_with_fastapis_defaults = app.openapi
 
