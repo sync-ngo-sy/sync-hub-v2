@@ -1,12 +1,12 @@
-"""The candidate auth flows, from HTTP request to GoTrue and Postgres and back.
+"""The auth flows, from HTTP request to GoTrue and Postgres and back.
 
-The one thing worth reading closely is `register_candidate`. Signup spans two authorities —
-GoTrue owns the identity, Postgres owns the Profile and the Candidate — and no transaction
-covers both. What makes it atomic anyway is that the identity is created *first* and is
-deleted again if anything downstream fails: `profiles.id` references `auth.users(id)` with
-`ON DELETE CASCADE`, so removing the identity removes everything the flow had written.
-Failure therefore leaves no half-built account, only an address that is free to sign up
-again — which is the guarantee the ticket asks for.
+Everything here is about one person's identity and session: signing up, proving an address,
+signing in, rotating, signing out, and the two flows that arrive by emailed link — a
+password reset and an accepted invitation. Which *organization* someone belongs to is not
+this module's business; that is `sync_api.tenants`.
+
+`register_candidate` spans two authorities, GoTrue and Postgres, with no transaction over
+both. `sync_api.auth.registration` is what makes it atomic anyway, and says how.
 
 Everything a route can answer with is raised here as a `Problem`, so the routes stay a
 description of the HTTP surface and nothing else.
@@ -21,7 +21,6 @@ from uuid import UUID
 from sqlalchemy import select
 
 from sync_api.auth.gotrue import (
-    EmailAlreadyRegisteredError,
     EmailNotConfirmedError,
     EmailTokenType,
     GoTrueUnavailableError,
@@ -33,16 +32,19 @@ from sync_api.auth.gotrue import (
     SessionAlreadyEndedError,
     WeakPasswordError,
 )
+from sync_api.auth.registration import (
+    create_identity,
+    identity_undone_on_failure,
+    weak_password,
+)
 from sync_api.auth.tokens import InvalidAccessTokenError
 from sync_api.problems import (
-    EMAIL_ALREADY_REGISTERED_PROBLEM_TYPE,
     EMAIL_NOT_CONFIRMED_PROBLEM_TYPE,
     IDENTITY_UNAVAILABLE_PROBLEM_TYPE,
     INVALID_CREDENTIALS_PROBLEM_TYPE,
     INVALID_EMAIL_TOKEN_PROBLEM_TYPE,
     NOT_AUTHENTICATED_PROBLEM_TYPE,
     PASSWORD_UNCHANGED_PROBLEM_TYPE,
-    WEAK_PASSWORD_PROBLEM_TYPE,
     Problem,
 )
 from sync_core import get_logger
@@ -101,23 +103,10 @@ class AuthService:
         Returns before the address is confirmed — there is no session to hand back yet,
         because ADR-0005 refuses login until the candidate proves they own the address.
         """
-        try:
-            user = await self._gotrue.create_user(email=email, password=password)
-        except EmailAlreadyRegisteredError as exc:
-            raise Problem(
-                status=409,
-                type=EMAIL_ALREADY_REGISTERED_PROBLEM_TYPE,
-                detail="An account already exists for this email address.",
-            ) from exc
-        except WeakPasswordError as exc:
-            raise _weak_password() from exc
-
-        try:
+        user = await create_identity(self._gotrue, email=email, password=password)
+        async with identity_undone_on_failure(self._gotrue, user.id):
             await self._provision_candidate(user, full_name=full_name)
             await self._gotrue.send_confirmation_email(email)
-        except BaseException:
-            await self._undo_identity(user.id)
-            raise
 
         logger.info("auth.candidate_registered", profile_id=str(user.id))
         return ActingProfile(
@@ -134,6 +123,28 @@ class AuthService:
         session = await self._redeem(token_hash, EmailTokenType.SIGNUP)
         profile = await self._load_profile(session.user.id)
         logger.info("auth.email_confirmed", profile_id=str(profile.id))
+        return SignedIn(profile=profile, session=session)
+
+    async def accept_invite(self, *, token_hash: str, password: str) -> SignedIn:
+        """Redeem an invitation and set the password it deliberately arrived without.
+
+        The Profile and the Recruiter already exist — they were written the moment the
+        invite was sent, which is what `sync_api.tenants` means by inviting — so all that is
+        missing is a password and a session.
+
+        Unlike a password reset, the session the token bought is kept rather than revoked.
+        The invitee has just proved they read mail sent to that address and chosen a
+        password, which is every proof a sign-in asks for; sending them to a login form
+        would be a strange way to welcome someone onto a team.
+        """
+        session = await self._redeem(token_hash, EmailTokenType.INVITE)
+        try:
+            await self._gotrue.set_password(user_id=session.user.id, password=password)
+        except WeakPasswordError as exc:
+            raise weak_password() from exc
+
+        profile = await self._load_profile(session.user.id)
+        logger.info("auth.invite_accepted", profile_id=str(profile.id))
         return SignedIn(profile=profile, session=session)
 
     async def log_in(self, *, email: str, password: str) -> SignedIn:
@@ -202,7 +213,7 @@ class AuthService:
         try:
             await self._gotrue.set_password(user_id=session.user.id, password=password)
         except WeakPasswordError as exc:
-            raise _weak_password() from exc
+            raise weak_password() from exc
         except PasswordUnchangedError as exc:
             raise Problem(
                 status=400,
@@ -235,15 +246,6 @@ class AuthService:
             )
             await self._db.flush()
             self._db.add(Candidate(id=user.id))
-
-    async def _undo_identity(self, user_id: UUID) -> None:
-        """Delete the identity a failed signup created, cascading away anything it wrote."""
-        try:
-            await self._gotrue.delete_user(user_id)
-        except Exception:
-            # Reported, not raised: the caller is already failing for a better reason, and
-            # this line is what tells an operator an identity was stranded after all.
-            logger.exception("auth.signup_rollback_failed", profile_id=str(user_id))
 
     async def _redeem(self, token_hash: str, token_type: EmailTokenType) -> GoTrueSession:
         try:
@@ -288,14 +290,6 @@ class AuthService:
 def _unauthenticated(reason: object) -> Problem:
     logger.info("auth.rejected", reason=str(reason))
     return Problem(status=401, type=NOT_AUTHENTICATED_PROBLEM_TYPE, detail=UNAUTHENTICATED_DETAIL)
-
-
-def _weak_password() -> Problem:
-    return Problem(
-        status=400,
-        type=WEAK_PASSWORD_PROBLEM_TYPE,
-        detail="That password does not meet the identity provider's requirements.",
-    )
 
 
 def identity_provider_problem(exc: Exception) -> Problem:

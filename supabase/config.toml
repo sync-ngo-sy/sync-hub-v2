@@ -161,6 +161,9 @@ site_url = "http://127.0.0.1:5173"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+# The recruiter portal, which is where a teammate invite has to land: the API passes it as the
+# invite's `redirect_to`, and GoTrue drops any `redirect_to` that is not named here — silently,
+# falling back to `site_url`, so an invite would arrive pointing at the candidate portal.
 additional_redirect_urls = ["http://127.0.0.1:5174"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -253,14 +256,13 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
-
 # The stock templates link straight to `/auth/v1/verify`, which would hand the browser a Supabase
 # URL and redeem the token outside the API — exactly what ADR-0005 rules out. Ours carry the
 # `token_hash` to a page in the SPA, which posts it to the API.
+[auth.email.template.invite]
+subject = "You have been invited to Sync"
+content_path = "./supabase/templates/invite.html"
+
 [auth.email.template.confirmation]
 subject = "Confirm your Sync account"
 content_path = "./supabase/templates/confirmation.html"

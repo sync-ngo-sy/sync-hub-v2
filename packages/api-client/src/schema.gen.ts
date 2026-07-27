@@ -87,6 +87,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/accept-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a teammate invitation
+         * @description Redeem the `token_hash` from an invite email, choose a password, and sign in.
+         *
+         *     The Recruiter and their Tenant membership already exist — inviting is what created them
+         *     — so this adds the one thing missing and drops the invitee straight into their team.
+         */
+        post: operations["acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -156,7 +179,7 @@ export interface paths {
         };
         /**
          * The signed-in Profile
-         * @description Who the session cookie belongs to, after verifying its token against GoTrue's JWKS.
+         * @description Who the session cookie belongs to, once Supabase has verified its token.
          */
         get: operations["getCurrentProfile"];
         put?: never;
@@ -213,15 +236,133 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a tenant and its founding admin
+         * @description Self-serve onto the platform: one call creates the Tenant and the admin who runs it.
+         *
+         *     No session comes back, exactly as for a candidate: the founder confirms their address
+         *     first. Anything that fails part-way leaves neither a Tenant nor a usable address behind.
+         */
+        post: operations["signUpTenant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant the caller recruits for
+         * @description Answers only while both kill-switches are off, which makes it the SPA's liveness check.
+         */
+        get: operations["getMyTenant"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's recruiters
+         * @description Everyone on the roster, deactivated colleagues included — an admin has to see someone
+         *     to reactivate them. Any recruiter may read it; only an admin may change it.
+         */
+        get: operations["listTenantMembers"];
+        put?: never;
+        /**
+         * Invite a teammate
+         * @description Mail an invitation and add the invitee to the roster in the same breath.
+         *
+         *     They are a member from this moment — 201 is not a promise, it is the row — but they
+         *     cannot sign in until they follow the link and choose a password. An address that already
+         *     belongs to anyone, Candidate or Recruiter, is refused: one address, one account.
+         */
+        post: operations["inviteTenantMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/members/{recruiter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a teammate's role or access
+         * @description Promote, demote, deactivate or reinstate a colleague.
+         *
+         *     Deactivating is how a departure is handled: the row and everything attached to it stays,
+         *     and the person is refused at the door on their very next request.
+         */
+        patch: operations["changeTenantMember"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptInviteRequest */
+        AcceptInviteRequest: {
+            /**
+             * Token Hash
+             * @description The `token_hash` from the emailed link.
+             */
+            token_hash: string;
+            /**
+             * Password
+             * @description At least 8 characters.
+             * @example correct-horse-battery
+             */
+            password: string;
+        };
         /**
          * AccountType
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
+        /**
+         * ChangeMemberRequest
+         * @description Both fields optional: an admin changing a role should not have to restate access.
+         */
+        ChangeMemberRequest: {
+            role?: components["schemas"]["RecruiterRole"] | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
         /** ConfirmEmailRequest */
         ConfirmEmailRequest: {
             /**
@@ -278,6 +419,18 @@ export interface components {
              */
             type: string;
         };
+        /** InviteMemberRequest */
+        InviteMemberRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /** @default recruiter */
+            role: components["schemas"]["RecruiterRole"];
+        };
         /** LogInRequest */
         LogInRequest: {
             /**
@@ -291,6 +444,38 @@ export interface components {
              * @example correct-horse-battery
              */
             password: string;
+        };
+        /**
+         * MemberView
+         * @description One Recruiter on the roster.
+         */
+        MemberView: {
+            /**
+             * Id
+             * @description Shared with the Supabase Auth user and the Profile.
+             */
+            id: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            role: components["schemas"]["RecruiterRole"];
+            /**
+             * Is Active
+             * @description False once an admin has revoked their access.
+             */
+            is_active: boolean;
+        };
+        /**
+         * NewTenantView
+         * @description What self-serve signup produced.
+         */
+        NewTenantView: {
+            tenant: components["schemas"]["TenantView"];
+            admin: components["schemas"]["MemberView"];
         };
         /** PasswordResetRequest */
         PasswordResetRequest: {
@@ -381,6 +566,11 @@ export interface components {
              */
             database: "ok";
         };
+        /**
+         * RecruiterRole
+         * @enum {string}
+         */
+        RecruiterRole: "admin" | "recruiter";
         /** SignUpRequest */
         SignUpRequest: {
             /**
@@ -396,6 +586,49 @@ export interface components {
             password: string;
             /** Full Name */
             full_name: string;
+        };
+        /** SignUpTenantRequest */
+        SignUpTenantRequest: {
+            /**
+             * Tenant Name
+             * @description The hiring company's display name.
+             */
+            tenant_name: string;
+            /**
+             * Slug
+             * @description Lowercase letters, digits and single hyphens.
+             * @example acme-recruiting
+             */
+            slug: string;
+            /**
+             * Email
+             * Format: email
+             * @description The founding admin's address.
+             */
+            email: string;
+            /**
+             * Password
+             * @description At least 8 characters.
+             * @example correct-horse-battery
+             */
+            password: string;
+            /**
+             * Full Name
+             * @description The founding admin's name.
+             */
+            full_name: string;
+        };
+        /**
+         * TenantView
+         * @description A Tenant as its own recruiters see it.
+         */
+        TenantView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
         };
         /**
          * ValidationProblemDetail
@@ -619,6 +852,66 @@ export interface operations {
                 };
             };
             /** @description The link is invalid, spent, or expired. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileView"];
+                };
+            };
+            /** @description The link is spent or expired, or the password was refused. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -962,6 +1255,345 @@ export interface operations {
             };
             /** @description The identity provider is not answering. */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    signUpTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignUpTenantRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewTenantView"];
+                };
+            };
+            /** @description The identity provider rejected the password. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The slug or the email address is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMyTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listTenantMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberView"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    inviteTenantMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description That email address already has a Sync account. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    changeTenantMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recruiter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such member of this tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The change would leave the tenant with no active admin. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

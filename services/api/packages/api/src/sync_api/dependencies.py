@@ -8,10 +8,21 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
-from sync_core import Database
+from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
+from sync_core import Database, Settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+
+def get_app_settings(request: Request) -> Settings:
+    """The settings *this* app was built with — not `sync_core.get_settings()`.
+
+    They differ: the process-wide ones are read from the environment once and cached, while
+    `create_app` may have been handed a modified copy, which is how a test stands an app up
+    with a rate limit it can reach or a database it cannot.
+    """
+    return cast("Settings", request.app.state.settings)
 
 
 def get_database(request: Request) -> Database:
@@ -66,3 +77,37 @@ async def get_current_profile(
 
 
 CurrentProfileDep = Annotated[ActingProfile, Depends(get_current_profile)]
+
+
+def get_tenant_service(
+    session: SessionDep,
+    authentication: Annotated[Authentication, Depends(get_authentication)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> TenantService:
+    return TenantService(
+        session,
+        authentication.gotrue,
+        invite_redirect_url=str(settings.recruiter_portal_url).rstrip("/"),
+    )
+
+
+TenantServiceDep = Annotated[TenantService, Depends(get_tenant_service)]
+
+
+async def get_acting_recruiter(profile: CurrentProfileDep, session: SessionDep) -> ActingRecruiter:
+    """The caller's standing inside their Tenant, or a 403.
+
+    Depend on this from every tenant-scoped route: it is the single place the Recruiter and
+    Tenant kill-switches are read, so no route can be written that forgets one.
+    """
+    return await acting_recruiter(session, profile)
+
+
+ActingRecruiterDep = Annotated[ActingRecruiter, Depends(get_acting_recruiter)]
+
+
+def get_tenant_admin(recruiter: ActingRecruiterDep) -> ActingRecruiter:
+    return require_admin(recruiter)
+
+
+TenantAdminDep = Annotated[ActingRecruiter, Depends(get_tenant_admin)]

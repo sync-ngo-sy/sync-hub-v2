@@ -1,0 +1,20 @@
+<!--
+  Teammate invite. Same shape as `confirmation.html`, with one difference that matters:
+  the link goes to `{{ .RedirectTo }}` rather than `{{ .SiteURL }}`, because `site_url` is
+  the candidate portal and an invited recruiter belongs in the recruiter portal. The API
+  passes that URL on every invite, so this template never has to name a host itself.
+-->
+<h2>You have been invited to Sync</h2>
+
+<p>
+  Your team has added you to Sync. Choose a password to activate your
+  account and start recruiting with them.
+</p>
+
+<p>
+  <a href="{{ .RedirectTo }}/auth/accept-invite?token_hash={{ .TokenHash }}&type=invite">
+    Set my password
+  </a>
+</p>
+
+<p>If you were not expecting this invitation, ignore this message.</p>
