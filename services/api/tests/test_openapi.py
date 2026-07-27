@@ -37,6 +37,27 @@ async def test_error_responses_carry_a_schema(app: FastAPI) -> None:
         )
 
 
+async def test_notification_payloads_are_documented_as_a_discriminated_union(
+    app: FastAPI,
+) -> None:
+    """The shapes have to be in the document, or `@sync/api-client` cannot narrow on `type`.
+
+    A payload the SPA has to `as`-cast is a payload the platform has not really typed, so what
+    this asserts is what a client actually needs: a `oneOf`, a discriminator naming the field
+    to switch on, and every member reachable through the mapping by name. One member today —
+    this is the test that keeps the machinery in place while the second one is added.
+    """
+    schemas = app.openapi()["components"]["schemas"]
+    payload = schemas["Notification"]["properties"]["payload"]
+    members = {member["$ref"].rsplit("/", 1)[-1] for member in payload["oneOf"]}
+
+    assert members == {"CvParseFailed"}
+    assert payload["discriminator"]["propertyName"] == "type"
+    assert set(payload["discriminator"]["mapping"]) == {"cv_parse_failed"}
+    for member in members:
+        assert "type" in schemas[member]["properties"], f"{member} does not carry the discriminator"
+
+
 async def test_operations_have_stable_ids(app: FastAPI) -> None:
     """Renaming a Python function must not rename the client's method."""
     paths = app.openapi()["paths"]
@@ -56,11 +77,14 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "getMyCvDownloadLink",
         "getMyProfile",
         "getMyTenant",
+        "getMyUnreadNotificationCount",
         "getReadiness",
         "inviteTenantMember",
+        "listMyNotifications",
         "listTenantMembers",
         "logIn",
         "logOut",
+        "markMyNotificationAsRead",
         "refreshSession",
         "replaceMyProfile",
         "requestPasswordReset",

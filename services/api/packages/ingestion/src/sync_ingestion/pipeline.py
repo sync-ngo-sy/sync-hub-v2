@@ -9,6 +9,8 @@ queue row so it cannot happen twice.
   that sits at `uploaded` for ten seconds and looks stuck.
 - `parse` — download, model, review. No transaction, and no writes.
 - `store` / `fail` — the outcome, in a transaction the engine owns and commits with the job.
+  A failure writes the Candidate's Notification there too, so being told and it being true
+  are one commit.
 
 `cvs.parsing_status` is the authoritative state (`database-contracts.md`); `ingestion_jobs`
 is plumbing the SPA never sees. So the CV's status is written last on the way to `ready`,
@@ -27,6 +29,7 @@ from sqlalchemy import select, update
 
 from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
 from sync_core.models import Candidate, Cv, CvParsingStatus, Language, SkillTaxonomy
+from sync_core.notifications import CvParseFailed, notify
 from sync_core.storage import cv_media_type_of
 from sync_ingestion.review import reviewable
 from sync_parsers import (
@@ -123,11 +126,35 @@ class CvIngestion:
         await self._adopt_as_current(session, cv_id)
 
     async def fail(self, session: AsyncSession, cv_id: UUID, reason: str) -> None:
-        """Mark the CV failed. Only ever called for a job that will not be retried."""
+        """Mark the CV failed and tell the candidate so. Only ever called for a dead job.
+
+        The Notification is written here rather than anywhere later precisely so it shares
+        this transaction: a candidate is told their CV could not be read in the same commit
+        that makes it true, so there is no failed CV nobody was told about and no
+        notification about a failure that was rolled back.
+
+        The notification is also why `failed` being written once and only once matters. It is
+        a row in a list, not a status a client re-reads — a `failed` written between two
+        retries would leave the candidate holding a message the platform cannot take back.
+        """
+        cv = (
+            await session.execute(select(Cv.candidate_id, Cv.display_name).where(Cv.id == cv_id))
+        ).one_or_none()
+        if cv is None:
+            # The CV was deleted while its parse was in flight, taking the job with it
+            # (`ON DELETE CASCADE`). There is nothing left to fail and nobody to tell.
+            logger.warning("cv_ingestion.failed_cv_gone", cv_id=str(cv_id), reason=reason)
+            return
+
         await session.execute(
             update(Cv)
             .where(Cv.id == cv_id)
             .values(parsing_status=CvParsingStatus.FAILED, parsing_error=reason)
+        )
+        await notify(
+            session,
+            cv.candidate_id,
+            CvParseFailed(cv_id=cv_id, display_name=cv.display_name),
         )
         logger.warning("cv_ingestion.failed", cv_id=str(cv_id), reason=reason)
 

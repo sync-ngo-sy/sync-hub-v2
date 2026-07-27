@@ -154,6 +154,11 @@ the row, and whatever waits on it, stuck for good.
   parse back to `PUT /v1/candidates/me/profile`, so a parse it would refuse is unusable.
 - The candidate's **first** `ready` CV sets `candidates.current_cv_id` if it is still unset, with
   the candidate row locked `FOR UPDATE`. Only the first: after that it is the candidate's choice.
+- A dead job also inserts the candidate's `cv_parse_failed` **Notification**, in `give_up`'s own
+  transaction (see Notifications below) — so the progress indicator never ends in silence, and
+  no candidate is told about a failure the transaction then rolled back. If the `cvs` row has
+  been deleted meanwhile there is nothing to fail and nobody to tell, and the consumer says so
+  in the log rather than writing a notification whose recipient it cannot name.
 
 ### Re-embedding (`candidate_embedding_jobs` → `sync_rag`)
 Coalesced, one row per candidate. Claim a dirty row, capture its `revision`, then:
@@ -176,6 +181,44 @@ Never patch chunks in place. Search only ever sees a fully-embedded profile.
   set `status`, `provider`, `provider_message_id`, `sent_at`, or retry via `attempts`.
 - A recruiter-initiated row requires `application_id` and a same-tenant recruiter (DB CHECK +
   composite FKs enforce the shape; the backend sets them).
+
+## Notifications (written in the triggering transaction, no queue)
+
+An in-app message to one Profile, with a typed payload and a read/unread state. Distinct from a
+Communication: never delivered externally, never queued, and never sent by a worker of its own.
+
+- **Who writes one**: whatever transaction the notification announces, through
+  `sync_core.notifications.notify(session, recipient_profile_id, payload)`, which flushes and
+  leaves the commit to its caller. A permanent CV parse failure is the only producer so far;
+  Application status changes are the next. There is no endpoint that creates one — the only
+  client write on this surface is the recipient marking one read.
+- **Payloads** are a Pydantic discriminated union on the mandatory `type`, spelled once in
+  `sync_core.notifications` and exposed through OpenAPI so the SPA narrows on that one field.
+  They carry ids and names, never prose: English belongs to the frontend, which keeps a future
+  translation out of the database. Adding a type is a `notification_type` value (migration), a
+  model, a member of the union, and the producer that writes it — in one change, so no
+  deployed reader can meet a type it has never heard of.
+- `application_id` is part of the table (it is what the composite FK below defends) but no
+  producer fills it yet: the notifications that are *about* an Application arrive with the
+  pipeline states that cause them.
+- **DB-enforced on write** (rely on these): `payload ->> 'type' = type::text`, so the queryable
+  column and the rendered payload cannot disagree; and the composite FK
+  `(application_id, recipient_profile_id) → applications (id, candidate_id)`, so a notification
+  about an Application can only be addressed to the Candidate who applied. `notify` fills both
+  the column and the payload from one object, so a producer cannot get them out of step in the
+  first place — the constraints are there for the producer that tries.
+- **Reading** is scoped by `recipient_profile_id` *in the query*, never checked afterwards:
+  somebody else's notification and a nonexistent one must be the same 404. The list is keyset-
+  paginated on `(created_at desc, id desc)` — the ordering
+  `notifications_recipient_created_idx` provides — and the unread count is a `count(*)` over
+  the partial `read_at is null` index rather than a read of the list.
+- **Marking read** is idempotent and keeps the first `read_at`: the SPA marks on render, so the
+  same notification is marked every time the list is opened, and moving the timestamp forward
+  each time would make it a "last seen" field under a name that promises the first.
+- `ON DELETE CASCADE` on `recipient_profile_id` covers a Profile row genuinely going away —
+  which is the signup-rollback path, not account deletion. Account deletion *bans* the GoTrue
+  user and soft-deletes the Profile, so the cascade never fires and that flow has to delete
+  notifications itself.
 
 ## Global candidate search
 
@@ -216,5 +259,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; partial-unique CV | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, chunk atomic-swap, queue backoff, verified-email resolution | **Backend** |
+| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, chunk atomic-swap, queue backoff, verified-email resolution, notifying in the announcing transaction | **Backend** |

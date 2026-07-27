@@ -118,6 +118,10 @@ class LanguageProficiency(enum.StrEnum):
     NATIVE = "native"
 
 
+class NotificationType(enum.StrEnum):
+    CV_PARSE_FAILED = "cv_parse_failed"
+
+
 class QualificationStatus(enum.StrEnum):
     PENDING = "pending"
     QUALIFIED = "qualified"
@@ -2000,3 +2004,55 @@ class Communication(Base):
     )
     recruiter: Mapped[Optional["Recruiter"]] = relationship("Recruiter", viewonly=True)
     tenant: Mapped[Optional["Tenant"]] = relationship("Tenant", viewonly=True)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "(payload ->> 'type'::text) = type::text", name="notifications_payload_type_matches"
+        ),
+        ForeignKeyConstraint(
+            ["application_id", "recipient_profile_id"],
+            ["public.applications.id", "public.applications.candidate_id"],
+            ondelete="CASCADE",
+            name="notifications_application_id_recipient_profile_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["recipient_profile_id"],
+            ["public.profiles.id"],
+            ondelete="CASCADE",
+            name="notifications_recipient_profile_id_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="notifications_pkey"),
+        Index("notifications_application_idx", "application_id"),
+        Index("notifications_recipient_created_idx", "recipient_profile_id", "created_at", "id"),
+        Index(
+            "notifications_recipient_unread_idx",
+            "recipient_profile_id",
+            postgresql_where="(read_at IS NULL)",
+        ),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    recipient_profile_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    type: Mapped[NotificationType] = mapped_column(
+        Enum(
+            NotificationType,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="notification_type",
+        ),
+        nullable=False,
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    application_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    read_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    application: Mapped[Optional["Application"]] = relationship("Application", viewonly=True)
+    recipient_profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
