@@ -17,8 +17,8 @@ from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
 from sync_api.rate_limit import build_auth_rate_limiter
-from sync_api.routes import auth, candidates, health, tenants
-from sync_core import Database, Settings, configure_logging, get_logger, get_settings
+from sync_api.routes import auth, candidates, cvs, health, tenants
+from sync_core import Database, Settings, Storage, configure_logging, get_logger, get_settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -46,15 +46,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         authentication = Authentication.build(
             resolved, refresh_cookie_path=f"{API_PREFIX}{auth.ROUTER_PREFIX}"
         )
+        storage = Storage.build(resolved)
         app.state.settings = resolved
         app.state.database = database
         app.state.authentication = authentication
+        app.state.storage = storage
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield
         finally:
             await authentication.aclose()
+            await storage.aclose()
             await database.dispose()
             logger.info("api.stopped")
 
@@ -85,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(tenants.router, prefix=API_PREFIX)
     app.include_router(candidates.router, prefix=API_PREFIX)
+    app.include_router(cvs.router, prefix=API_PREFIX)
 
     describe_with_fastapis_defaults = app.openapi
 

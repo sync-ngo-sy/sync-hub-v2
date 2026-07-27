@@ -27,8 +27,10 @@ REFERENCE_SEED_GLOB: Final = "*_seed_reference.sql"
 # These belong to GoTrue and Storage, whose sequences the `postgres` role does not own —
 # hence no RESTART IDENTITY on them. Only our own tables need predictable generated ids.
 #
-# This clears Storage's *rows*, not the objects behind them. Nothing uploads yet; the CV
-# pipeline ticket has to add file cleanup here, or its tests will meet orphaned objects.
+# This clears Storage's *rows*, not the objects behind them — so `_clean_slate` deletes the
+# objects through Storage's own API first (`tests.support.cvs.empty_cv_bucket`). Truncating
+# these rows on their own would leave every CV any test ever uploaded on the stack's disk,
+# unreachable and uncollectable.
 EXTERNAL_TABLES_TO_TRUNCATE: Final = ("auth.users", "storage.objects")
 
 

@@ -360,6 +360,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/candidates/me/cvs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a CV
+         * @description Store the file and start reading it.
+         *
+         *     Answers as soon as the CV exists, not when it has been parsed — the reading happens in
+         *     the worker and takes about ten seconds. The response comes back `uploaded`; poll the
+         *     CV until it is `ready` or `failed`.
+         *
+         *     The same file twice is a 409 rather than a second CV, and the 409 carries the id of the
+         *     CV already holding it.
+         */
+        post: operations["uploadMyCv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/candidates/me/cvs/{cv_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A CV and how far its parse has got
+         * @description What to poll while a CV is being read.
+         *
+         *     `parsing_status` is the authoritative state: `uploaded` and `processing` mean keep
+         *     waiting, `ready` means `parsed_cv` is filled in, and `failed` means it never will be
+         *     and `parsing_error` says why.
+         */
+        get: operations["getMyCv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/candidates/me/cvs/{cv_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A short-lived link to the original file
+         * @description Where to fetch the file the candidate uploaded.
+         *
+         *     A fresh link each time, good for a few minutes. Ask for one when the candidate clicks;
+         *     storing one is storing a key to the document.
+         */
+        get: operations["getMyCvDownloadLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -383,6 +457,14 @@ export interface components {
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
+        /** Body_uploadMyCv */
+        Body_uploadMyCv: {
+            /**
+             * File
+             * @description The CV: PDF, DOC or DOCX, up to 10 MB.
+             */
+            file: string;
+        };
         /**
          * CandidateProfile
          * @description Everything a Candidate says about themselves professionally.
@@ -466,6 +548,119 @@ export interface components {
              * @example correct-horse-battery
              */
             password: string;
+        };
+        /**
+         * Cv
+         * @description One uploaded CV, and how far the platform has got with it.
+         */
+        Cv: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Display Name
+             * @description The name of the file the candidate uploaded.
+             */
+            display_name: string;
+            /** @description The authoritative state of this CV. Poll until it leaves `processing`. */
+            parsing_status: components["schemas"]["CvParsingStatus"];
+            /**
+             * Parsing Error
+             * @description Why the parse failed, when it did. Null otherwise.
+             */
+            parsing_error?: string | null;
+            /**
+             * Detected Language
+             * @description The language the CV is written in, once it has been read.
+             */
+            detected_language?: string | null;
+            /**
+             * Is Current
+             * @description Whether this is the CV the candidate applies and is found with.
+             */
+            is_current: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Parsed At */
+            parsed_at?: string | null;
+            /** @description What the AI read out of the CV — present only once `parsing_status` is `ready`. Skills are Canonical skills; everything else the CV named is in `unmapped_skills` for the candidate to review. */
+            parsed_cv?: components["schemas"]["ParsedCv"] | null;
+        };
+        /**
+         * CvDownloadLink
+         * @description Where to fetch the original file, for as long as the link lasts.
+         */
+        CvDownloadLink: {
+            /**
+             * Url
+             * @description A signed URL. Anyone holding it can read the file.
+             */
+            url: string;
+            /**
+             * Expires In Seconds
+             * @description How long the URL stays good for. Ask again rather than storing it.
+             */
+            expires_in_seconds: number;
+        };
+        /**
+         * CvParsingStatus
+         * @enum {string}
+         */
+        CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
+        /**
+         * DuplicateCvProblemDetail
+         * @description A refused upload that can name the CV the candidate already has.
+         *
+         *     A typed member rather than a bare extension: the id is the useful half of this refusal
+         *     — it is what lets the SPA go straight to that CV — and a client cannot rely on
+         *     something the OpenAPI document only mentions in prose.
+         */
+        DuplicateCvProblemDetail: {
+            /**
+             * Type
+             * @description Stable identifier for what went wrong.
+             * @default about:blank
+             * @example about:blank
+             */
+            type: string;
+            /**
+             * Title
+             * @description Short, human-readable summary of the problem type.
+             */
+            title: string;
+            /**
+             * Status
+             * @description The HTTP status code, repeated for out-of-band handling.
+             */
+            status: number;
+            /**
+             * Detail
+             * @description Explanation specific to this occurrence.
+             */
+            detail?: string | null;
+            /**
+             * Instance
+             * @description Path of the request that produced the problem.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates this response with the server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Cv Id
+             * Format: uuid
+             * @description The CV already holding this exact file.
+             */
+            cv_id: string;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * Health
@@ -563,6 +758,181 @@ export interface components {
         NewTenantView: {
             tenant: components["schemas"]["TenantView"];
             admin: components["schemas"]["MemberView"];
+        };
+        /**
+         * ParsedCv
+         * @description Everything read out of one CV.
+         *
+         *     Every field is present in the model's answer — the strict-schema subset has no optional
+         *     properties, only nullable ones — so "the CV does not say" is `null` or an empty list
+         *     throughout, never an absent key.
+         */
+        ParsedCv: {
+            /**
+             * Full Name
+             * @description The candidate's name as the CV gives it.
+             */
+            full_name: string | null;
+            /** Email */
+            email: string | null;
+            /** Phone */
+            phone: string | null;
+            /**
+             * Detected Language
+             * @description The language the CV itself is written in, as an ISO 639-1 code.
+             */
+            detected_language: string | null;
+            /**
+             * Headline
+             * @description The one-line professional title the CV leads with, if it has one.
+             * @example Backend engineer, 8 years
+             */
+            headline: string | null;
+            /**
+             * Summary
+             * @description The CV's own professional summary, if it has one.
+             */
+            summary: string | null;
+            /**
+             * Location
+             * @description Where the candidate is, as the CV puts it.
+             */
+            location: string | null;
+            /**
+             * Experiences
+             * @description Every job, most recent first.
+             */
+            experiences: components["schemas"]["ParsedExperience"][];
+            /**
+             * Educations
+             * @description Every qualification, most recent first.
+             */
+            educations: components["schemas"]["ParsedEducation"][];
+            /**
+             * Skills
+             * @description Every Canonical skill the CV evidences, by its exact name.
+             */
+            skills: components["schemas"]["ParsedSkill"][];
+            /**
+             * Languages
+             * @description Every language the CV claims.
+             */
+            languages: components["schemas"]["ParsedLanguage"][];
+            /**
+             * Projects
+             * @description Every project the CV describes.
+             */
+            projects: components["schemas"]["ParsedProject"][];
+            /**
+             * Unmapped Skills
+             * @description Every skill the CV names that is not in the Canonical list, in the CV's own words. The candidate sees these at review; they never reach Screening.
+             */
+            unmapped_skills: string[];
+        };
+        /**
+         * ParsedEducation
+         * @description One qualification the CV describes.
+         */
+        ParsedEducation: {
+            /** Institution */
+            institution: string;
+            /** Degree */
+            degree: string | null;
+            /** Field Of Study */
+            field_of_study: string | null;
+            /** Graduation Year */
+            graduation_year: number | null;
+            /** Description */
+            description: string | null;
+        };
+        /**
+         * ParsedExperience
+         * @description One job the CV describes.
+         */
+        ParsedExperience: {
+            /** Job Title */
+            job_title: string;
+            /**
+             * Company Name
+             * @description Null when the CV does not name one.
+             */
+            company_name: string | null;
+            /** Start Year */
+            start_year: number | null;
+            /** Start Month */
+            start_month: number | null;
+            /**
+             * End Year
+             * @description Null for a job the candidate still holds.
+             */
+            end_year: number | null;
+            /** End Month */
+            end_month: number | null;
+            /**
+             * Is Current
+             * @description The CV presents this as the candidate's job today.
+             */
+            is_current: boolean;
+            /**
+             * Description
+             * @description What the CV says they did, in its own words.
+             */
+            description: string | null;
+        };
+        /**
+         * ParsedLanguage
+         * @description One language the CV claims, and how well.
+         */
+        ParsedLanguage: {
+            /**
+             * Code
+             * @description Exactly as spelled in the list of language codes.
+             */
+            code: string;
+            /** @description The CV's own claim, mapped to the nearest of these. Use `fluent` for a language described as professional or business level. */
+            proficiency: components["schemas"]["LanguageProficiency"];
+        };
+        /**
+         * ParsedProject
+         * @description One thing the CV says the candidate built.
+         */
+        ParsedProject: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Project Url */
+            project_url: string | null;
+            /** Repository Url */
+            repository_url: string | null;
+            /** Start Year */
+            start_year: number | null;
+            /** Start Month */
+            start_month: number | null;
+            /** End Year */
+            end_year: number | null;
+            /** End Month */
+            end_month: number | null;
+        };
+        /**
+         * ParsedSkill
+         * @description One Canonical skill the CV evidences.
+         *
+         *     `name` must be a Canonical skill spelled exactly as the prompt listed it. The backend
+         *     checks that rather than trusting it (ADR-0006): a name that is not in the taxonomy is
+         *     moved to `unmapped_skills`, where it is reviewed and never reaches Screening.
+         */
+        ParsedSkill: {
+            /**
+             * Name
+             * @description Exactly as spelled in the list of Canonical skills.
+             */
+            name: string;
+            /**
+             * Years Experience
+             * @description Years of it, if the CV supports a figure. Null when it does not — a guess here becomes a number a recruiter filters on.
+             */
+            years_experience: number | null;
         };
         /** PasswordResetRequest */
         PasswordResetRequest: {
@@ -1903,6 +2273,245 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    uploadMyCv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploadMyCv"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cv"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This exact file is already one of the caller's CVs; `cv_id` is the one it is. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["DuplicateCvProblemDetail"];
+                };
+            };
+            /** @description The file is larger than the platform accepts. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is not a PDF, DOC or DOCX. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file store could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMyCv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cv"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller has no CV with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMyCvDownloadLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvDownloadLink"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller has no CV with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The stored file could not be reached. */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

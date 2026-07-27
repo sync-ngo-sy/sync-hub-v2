@@ -1,4 +1,8 @@
-"""Committing one request's work.
+"""Committing one unit of work.
+
+In `sync_core` rather than in the API because both processes need it and there is only one
+right answer: a request handler, a worker consumer and the queue engine all have to commit
+a group of writes together and roll them back together.
 
 One helper, because the obvious alternative is wrong in a way that only shows up once a
 route has an access gate in front of it.

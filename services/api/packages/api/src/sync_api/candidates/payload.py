@@ -17,20 +17,20 @@ authority (ADR-0001) — this is the same rule said early, where it can be said 
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Final
+from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, Field, StringConstraints, model_validator
 
 from sync_core.models import LanguageProficiency
-
-#: How many entries one section may carry. Not a schema limit — the schema has none — but
-#: the profile is embedded whole for Global search, and a section nobody could have typed
-#: is a way to make that work unboundedly expensive.
-MAX_ENTRIES: Final = 50
-
-#: `candidate_skills.years_experience` is `numeric(4,1)`: anything larger overflows the
-#: column, and a second decimal place is rounded away on the way in.
-MAX_YEARS_EXPERIENCE: Final = 999.9
+from sync_core.profile import (
+    EARLIEST_YEAR,
+    LATEST_YEAR,
+    MAX_ENTRIES,
+    MAX_LINE_LENGTH,
+    MAX_LINK_LENGTH,
+    MAX_PARAGRAPH_LENGTH,
+    MAX_YEARS_EXPERIENCE,
+)
 
 
 def _blank_as_unset(value: object) -> object:
@@ -38,16 +38,22 @@ def _blank_as_unset(value: object) -> object:
     return None if isinstance(value, str) and not value.strip() else value
 
 
-Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
-Paragraph = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
-Link = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+Line = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
+]
+Paragraph = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH)
+]
+Link = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH)
+]
 
 OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
 OptionalParagraph = Annotated[Paragraph | None, BeforeValidator(_blank_as_unset)]
 OptionalLink = Annotated[Link | None, BeforeValidator(_blank_as_unset)]
 
 #: The ranges the `candidate_*` CHECK constraints enforce.
-Year = Annotated[int, Field(ge=1900, le=2100)]
+Year = Annotated[int, Field(ge=EARLIEST_YEAR, le=LATEST_YEAR)]
 Month = Annotated[int, Field(ge=1, le=12)]
 
 LanguageCode = Annotated[

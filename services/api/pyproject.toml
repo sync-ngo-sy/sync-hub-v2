@@ -47,16 +47,25 @@ select = [
 # `TYPE_CHECKING` block turns into a NameError the moment the app starts. The TC rules
 # cannot tell those annotations apart from the type-only ones.
 "packages/api/src/sync_api/**" = ["TC001", "TC002", "TC003"]
+# Same problem one layer down: pydantic resolves a model's annotations when it builds the
+# model, so a field's type has to be importable at run time.
+"packages/parsers/src/sync_parsers/schema.py" = ["TC001", "TC002", "TC003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --strict-config"
 asyncio_mode = "auto"
 # One event loop for the whole session: the engine's asyncpg connections are pooled across
 # tests, and a connection cannot outlive the loop it was opened on.
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 filterwarnings = ["error"]
+markers = [
+    # Hits the real OpenAI API: needs a key, costs money, and is not deterministic. Run it
+    # deliberately with `-m ai_live`; everything else parses with the fake extractor.
+    "ai_live: exercises a real AI provider, excluded from the default run",
+]
+# `-m "not ai_live"` here rather than in CI, so a bare `pytest` never spends money.
+addopts = "-ra --strict-markers --strict-config -m 'not ai_live'"
 
 [tool.mypy]
 python_version = "3.12"

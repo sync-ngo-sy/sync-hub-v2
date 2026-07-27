@@ -18,17 +18,18 @@ from typing import TYPE_CHECKING
 import asyncpg
 import pytest
 from asgi_lifespan import LifespanManager
+from httpx import AsyncClient
 from sqlalchemy import text
 
 from sync_api.app import create_app
-from sync_core import Database, Settings, get_settings
+from sync_core import Database, Settings, Storage, get_settings
 from tests.support import stack
+from tests.support.cvs import empty_cv_bucket
 from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.mailbox import Mailbox, mailbox_at
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
-    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
 SKIP_RESET_ENV_VAR = "SYNC_TEST_SKIP_DB_RESET"
@@ -114,12 +115,27 @@ async def _data_tables(database: Database) -> list[str]:
         return [row[0] for row in result]
 
 
+@pytest.fixture(scope="session")
+async def storage(settings: Settings) -> AsyncIterator[Storage]:
+    """The `cvs` bucket, for arranging and inspecting what uploads actually stored."""
+    bucket = Storage.build(settings)
+    yield bucket
+    await bucket.aclose()
+
+
 @pytest.fixture(autouse=True)
 async def _clean_slate(
     _cleanup_connection: asyncpg.Connection,
     _data_tables: list[str],
+    storage: Storage,
 ) -> None:
-    """Empty every data table and replay the reference seed, before each test."""
+    """Empty every data table and the CV bucket, then replay the reference seed.
+
+    Storage first: its objects are found through `storage.objects`, so truncating that
+    table before deleting them would strand the files on disk with nothing able to name
+    them again.
+    """
+    await empty_cv_bucket(_cleanup_connection, storage)
     await _cleanup_connection.execute(stack.truncate_script(_data_tables))
     await _cleanup_connection.execute(stack.reference_seed_sql())
 
@@ -141,6 +157,17 @@ async def app(settings: Settings, _migrated_database: None) -> AsyncIterator[Fas
 @pytest.fixture(scope="session")
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     async with asgi_client(app) as http_client:
+        yield http_client
+
+
+@pytest.fixture(scope="session")
+async def web() -> AsyncIterator[AsyncClient]:
+    """A client that really goes over the network, unlike `client`.
+
+    `client` speaks to the app in-process, so every URL it is given is routed into the
+    ASGI app whatever its host says. A signed Storage URL has to be fetched from Storage.
+    """
+    async with AsyncClient() as http_client:
         yield http_client
 
 

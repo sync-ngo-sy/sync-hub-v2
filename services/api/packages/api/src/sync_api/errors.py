@@ -1,10 +1,10 @@
 """Turning every way a request can fail into one problem+json response.
 
-Four handlers cover the whole surface: `Problem` for errors a route raises deliberately,
-`GoTrueUnavailableError` for an identity provider that is down (one 502, so no flow has to
-remember to translate it), `HTTPException` for everything Starlette raises on our behalf
-(unknown route, wrong method, dependency failures), and `Exception` for the ones nobody
-saw coming.
+Five handlers cover the whole surface: `Problem` for errors a route raises deliberately,
+`GoTrueUnavailableError` for an identity provider that is down and `StorageError` for a
+file store that is (one 502 each, so no flow has to remember to translate them),
+`HTTPException` for everything Starlette raises on our behalf (unknown route, wrong method,
+dependency failures), and `Exception` for the ones nobody saw coming.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from sync_api.auth.service import identity_provider_problem
 from sync_api.middleware import REQUEST_ID_HEADER, request_id
 from sync_api.problems import (
     PROBLEM_JSON_MEDIA_TYPE,
+    STORAGE_UNAVAILABLE_PROBLEM_TYPE,
     VALIDATION_PROBLEM_TYPE,
     InvalidField,
     Problem,
@@ -28,7 +29,7 @@ from sync_api.problems import (
     ValidationProblemDetail,
     title_for,
 )
-from sync_core import get_logger
+from sync_core import StorageError, get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -135,9 +136,30 @@ async def handle_identity_provider_error(request: Request, exc: Exception) -> JS
     return await handle_problem(request, identity_provider_problem(exc))
 
 
+async def handle_storage_error(request: Request, exc: Exception) -> JSONResponse:
+    """Storage was unreachable or refused — one 502 for all of it.
+
+    Registered rather than caught per route for the reason the GoTrue handler exists: an
+    upload and a download both fail this way, and a route that forgot to translate it would
+    answer 500 to something that is plainly not the caller's fault. A route may still catch
+    a *particular* storage failure it can say something more useful about — a CV whose
+    object has gone missing does — but nothing has to.
+    """
+    logger.error("request.storage_unavailable", path=request.url.path, error=str(exc))
+    return await handle_problem(
+        request,
+        Problem(
+            status=502,
+            type=STORAGE_UNAVAILABLE_PROBLEM_TYPE,
+            detail="The file store could not be reached.",
+        ),
+    )
+
+
 def install_problem_handlers(app: FastAPI) -> None:
     app.add_exception_handler(Problem, handle_problem)
     app.add_exception_handler(GoTrueUnavailableError, handle_identity_provider_error)
+    app.add_exception_handler(StorageError, handle_storage_error)
     app.add_exception_handler(HTTPException, handle_http_exception)
     app.add_exception_handler(RequestValidationError, handle_validation_error)
     app.add_exception_handler(Exception, handle_unexpected_error)
