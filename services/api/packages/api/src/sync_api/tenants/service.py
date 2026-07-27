@@ -14,6 +14,7 @@ from sync_api.auth.registration import (
     identity_undone_on_failure,
     undo_identity,
 )
+from sync_api.integrity import violated_constraint
 from sync_api.problems import (
     LAST_TENANT_ADMIN_PROBLEM_TYPE,
     MEMBER_NOT_FOUND_PROBLEM_TYPE,
@@ -161,7 +162,7 @@ class TenantService:
                 await self._db.flush()
                 self._db.add(Recruiter(id=user.id, tenant_id=tenant.id, role=RecruiterRole.ADMIN))
         except IntegrityError as exc:
-            if _violated_constraint(exc) != TENANT_SLUG_CONSTRAINT:
+            if violated_constraint(exc) != TENANT_SLUG_CONSTRAINT:
                 raise
             raise Problem(
                 status=409,
@@ -212,14 +213,4 @@ def _member_from(row: tuple[UUID, str, str | None, RecruiterRole, bool]) -> Memb
 
 
 def _is_already_provisioned(exc: BaseException) -> bool:
-    return isinstance(exc, IntegrityError) and _violated_constraint(exc) == PROFILE_CONSTRAINT
-
-
-def _violated_constraint(exc: IntegrityError) -> str | None:
-    error: BaseException | None = exc.orig
-    while error is not None:
-        name = getattr(error, "constraint_name", None)
-        if isinstance(name, str):
-            return name
-        error = error.__cause__
-    return None
+    return isinstance(exc, IntegrityError) and violated_constraint(exc) == PROFILE_CONSTRAINT

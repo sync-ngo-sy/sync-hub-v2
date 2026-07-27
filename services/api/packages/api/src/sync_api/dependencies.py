@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, cast
 
-from fastapi import Depends, Request
+from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
+from sync_api.jobs import JobBrowseService, JobService, Visitor, Visitors
 from sync_api.notifications import NotificationService
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
@@ -136,6 +137,38 @@ def get_tenant_admin(recruiter: ActingRecruiterDep) -> ActingRecruiter:
 
 
 TenantAdminDep = Annotated[ActingRecruiter, Depends(get_tenant_admin)]
+
+
+def get_job_service(session: SessionDep) -> JobService:
+    return JobService(session)
+
+
+JobServiceDep = Annotated[JobService, Depends(get_job_service)]
+
+
+def get_job_browse_service(session: SessionDep) -> JobBrowseService:
+    return JobBrowseService(session)
+
+
+JobBrowseServiceDep = Annotated[JobBrowseService, Depends(get_job_browse_service)]
+
+
+def get_visitors(settings: Annotated[Settings, Depends(get_app_settings)]) -> Visitors:
+    return Visitors(settings)
+
+
+def get_visitor(
+    request: Request,
+    response: Response,
+    visitors: Annotated[Visitors, Depends(get_visitors)],
+) -> Visitor:
+    """Recognizes the browser reading a Job, and hands it back the cookie that says so."""
+    visitor = visitors.of(request)
+    visitors.remember(response, visitor)
+    return visitor
+
+
+VisitorDep = Annotated[Visitor, Depends(get_visitor)]
 
 
 def get_embedder(request: Request) -> Embedder:
