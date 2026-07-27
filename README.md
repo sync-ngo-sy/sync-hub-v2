@@ -111,29 +111,6 @@ and excluded by default:
 SYNC_OPENAI_API_KEY=sk-... uv run --directory services/api pytest -m ai_live
 ```
 
-## Calling the API from a frontend
-
-Auth is fully proxied by the backend (ADR-0005) — the apps ship no Supabase client and
-never see a token. Two things follow for anything calling the API from the browser:
-
-- **Send cookies.** The session lives in httpOnly cookies the API sets on sign-in, so
-  requests need `credentials: 'include'` (or `withCredentials`). Nothing readable from
-  JavaScript identifies the user; ask `GET /v1/auth/me` instead.
-- **Send `X-Sync-Request` on anything that changes data.** Any value. A cross-site form
-  cannot add a header, which is what — together with `SameSite` — stops another origin
-  forging a request with your session attached. Requests without it are refused with 403.
-
-The confirmation and password-reset emails link into the candidate portal
-(`/auth/confirm` and `/auth/reset-password`, from `supabase/templates/`), carrying a
-`token_hash` in the query string. Those pages post the token to `POST /v1/auth/confirm-email`
-and `POST /v1/auth/password-reset/confirm` — the browser never talks to Supabase.
-
-Teammate invites work the same way but land in the **recruiter** portal, at
-`/auth/accept-invite`, which posts the token plus a chosen password to
-`POST /v1/auth/accept-invite`. That URL comes from `SYNC_RECRUITER_PORTAL_URL`, and it has
-to be listed in `additional_redirect_urls` in `supabase/config.toml` — GoTrue silently
-falls back to `site_url` (the candidate portal) for any redirect it does not recognise.
-
 ## The shared packages
 
 These live in `packages/` and exist so the two apps don't duplicate code:
@@ -168,73 +145,65 @@ Run these after backend/DB changes, then commit the updated generated files like
 
 ## Working on an issue
 
-Issues live in [GitHub Issues](https://github.com/sync-ngo-sy/sync-hub-v2/issues). Follow these steps in order.
+Issues live in [GitHub Issues](https://github.com/sync-ngo-sy/sync-hub-v2/issues).
 
 ### 1. Install the tools (once per machine)
 
-| Tool | Why | Install |
-| --- | --- | --- |
-| Node 22+ | runs the frontends and Turborepo | [nodejs.org](https://nodejs.org/en/download) |
-| pnpm 11+ | the package manager for everything JS/TS | [pnpm.io/installation](https://pnpm.io/installation) |
-| uv | the package manager for the Python backend | [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
-| Docker | the local Supabase stack runs in containers | [docs.docker.com](https://docs.docker.com/get-started/get-docker/) |
-| Supabase CLI | starts and resets that stack | [supabase.com/docs](https://supabase.com/docs/guides/local-development/cli/getting-started) |
-| GitHub CLI | how issues and PRs are read and written | [cli.github.com](https://cli.github.com/) |
+| Tool | Install |
+| --- | --- |
+| Node 22+ | [nodejs.org](https://nodejs.org/en/download) |
+| pnpm 11+ | [pnpm.io/installation](https://pnpm.io/installation) |
+| uv | [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
+| Docker | [docs.docker.com](https://docs.docker.com/get-started/get-docker/) |
+| Supabase CLI | [supabase.com/docs](https://supabase.com/docs/guides/local-development/cli/getting-started) |
+| GitHub CLI | [cli.github.com](https://cli.github.com/) |
 
-Then sign in to GitHub, or nothing can read the issue:
+Then sign in:
 
 ```bash
 gh auth login
 ```
 
-**That is the whole list.** Turborepo, Ruff, mypy and pytest are *not* on it — they are declared in the repo and the two installs below fetch them. Don't install them globally.
-
-If you use VS Code, it will offer to install the Biome, Ruff and Python extensions from `.vscode/extensions.json` when you open the repo. Optional — they give you format-on-save, nothing more.
+Turborepo, Ruff, mypy and pytest come from the installs in step 2 — don't install them yourself. VS Code will offer the recommended extensions when you open the repo; optional.
 
 ### 2. Set the repo up (once per clone)
 
-Three commands, and all three are needed:
-
 ```bash
-pnpm install                                     # JS deps, including Turborepo
-uv sync --directory services/api                 # Python deps, including Ruff, mypy and pytest
-cp services/api/.env.example services/api/.env   # your local config — git-ignored, so it does not exist yet
+pnpm install
+uv sync --directory services/api
+cp services/api/.env.example services/api/.env   # git-ignored, so it does not exist yet
 ```
-
-The third one is easy to skip and nothing works without it: the repo ships `.env.example` only, and the backend reads `services/api/.env`. Copy it now; you fill in two values in the next step.
 
 ### 3. Start the stack (every session)
 
-**Start Docker first** — `supabase start` is just containers, and it fails without it. The first run downloads several GB of images and takes a while; later runs are fast.
+Start Docker first. The first run downloads several GB.
 
 ```bash
 supabase start
 supabase status
 ```
 
-Open the `services/api/.env` you copied in step 2 and paste two values from `supabase status` into it:
+Paste two keys from `supabase status` into `services/api/.env`:
 
-- `ANON_KEY` → `SYNC_SUPABASE_ANON_KEY`
-- `SERVICE_ROLE_KEY` → `SYNC_SUPABASE_SERVICE_ROLE_KEY`
+| `supabase status` | `services/api/.env` |
+| --- | --- |
+| Publishable | `SYNC_SUPABASE_ANON_KEY` |
+| Secret | `SYNC_SUPABASE_SERVICE_ROLE_KEY` |
 
-Leave every other line as it is. Only add `SYNC_OPENAI_API_KEY` if you are going to parse a real CV or run the `ai_live` tests.
+Leave every other line as it is. Add `SYNC_OPENAI_API_KEY` only to parse a real CV or run the `ai_live` tests.
 
 ### 4. Set up Claude Code
 
-- **Model: Opus 5** (`/model`).
-- **Reasoning effort: xhigh.**
-
-Both matter. A smaller model or a lower effort produces work that looks finished and is not.
+- Model: **Opus 5** (`/model`).
+- Reasoning effort: **xhigh**.
 
 ### 5. Run it
-
-One command, with the issue number changed:
 
 ```text
 /implement issue 8 in a dedicated branch, if you encounter any blockers stop and tell me
 ```
 
-The "stop and tell me" half is the important half — it is what stops a wrong assumption from being built on for an hour.
+Change the issue number.
 
 ### 6. Check before you accept it
 
@@ -244,4 +213,4 @@ pnpm lint
 pnpm --filter @sync/api test   # needs the stack from step 3 running
 ```
 
-All three must pass. Then read the diff yourself.
+All three must pass, then read the diff.
