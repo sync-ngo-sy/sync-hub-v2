@@ -107,6 +107,7 @@ class LanguageProficiency(enum.StrEnum):
 
 class NotificationType(enum.StrEnum):
     CV_PARSE_FAILED = "cv_parse_failed"
+    APPLICATION_STATUS_CHANGED = "application_status_changed"
 
 
 class QualificationStatus(enum.StrEnum):

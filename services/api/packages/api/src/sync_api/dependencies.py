@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated, cast
 from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.applications import ApplicationService
+from sync_api.applications import ApplicationReviewService, ApplicationService
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
@@ -184,6 +184,19 @@ def get_application_service(session: SessionDep) -> ApplicationService:
 
 
 ApplicationServiceDep = Annotated[ApplicationService, Depends(get_application_service)]
+
+
+def get_application_review_service(
+    session: SessionDep,
+    storage: Annotated[Storage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> ApplicationReviewService:
+    return ApplicationReviewService(session, storage, settings)
+
+
+ApplicationReviewServiceDep = Annotated[
+    ApplicationReviewService, Depends(get_application_review_service)
+]
 
 
 def get_embedder(request: Request) -> Embedder:

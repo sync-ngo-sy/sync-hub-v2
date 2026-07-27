@@ -426,7 +426,8 @@ async def test_a_withdrawn_application_still_holds_its_job(
     job = await a_published_job(recruiter)
     cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
     application = await an_accepted_application(other_browser, job["id"], cv_id)
-    await withdraw(db_session, application["id"])
+    withdrawn = await withdraw(other_browser, application["id"])
+    assert withdrawn.status_code == 200, withdrawn.text
 
     refused = await apply_to(other_browser, job["id"], cv_id)
 

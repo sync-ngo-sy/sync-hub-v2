@@ -29,12 +29,30 @@ class ApplicationConfirmation(BaseModel):
     candidate_name: str
 
 
-CommunicationPayload = Annotated[ApplicationConfirmation, Field(discriminator="type")]
+class ApplicationRejection(BaseModel):
+    """The one rejection a Candidate is emailed about: the one a human Recruiter decided."""
 
-_STORED_PAYLOAD: Final[TypeAdapter[ApplicationConfirmation]] = TypeAdapter(CommunicationPayload)
+    model_config = ConfigDict(frozen=True)
+
+    template_key: ClassVar[str] = "application-rejection.v1"
+
+    type: Literal[CommunicationType.APPLICATION_REJECTION] = CommunicationType.APPLICATION_REJECTION
+    application_id: UUID
+    job_title: str
+    tenant_name: str
+    candidate_name: str
 
 
-def payload_of(stored: dict[str, Any]) -> ApplicationConfirmation:
+CommunicationPayload = Annotated[
+    ApplicationConfirmation | ApplicationRejection, Field(discriminator="type")
+]
+
+_STORED_PAYLOAD: Final[TypeAdapter[ApplicationConfirmation | ApplicationRejection]] = TypeAdapter(
+    CommunicationPayload
+)
+
+
+def payload_of(stored: dict[str, Any]) -> ApplicationConfirmation | ApplicationRejection:
     return _STORED_PAYLOAD.validate_python(stored)
 
 
@@ -47,6 +65,7 @@ async def enqueue_email(
     idempotency_key: str,
     tenant_id: UUID | None,
     application_id: UUID | None,
+    initiated_by_recruiter_id: UUID | None = None,
 ) -> Communication:
     """Queue one message for the sender to deliver, and audit it.
 
@@ -58,6 +77,7 @@ async def enqueue_email(
         candidate_id=candidate_id,
         tenant_id=tenant_id,
         application_id=application_id,
+        initiated_by_recruiter_id=initiated_by_recruiter_id,
         channel=CommunicationChannel.EMAIL,
         communication_type=payload.type,
         recipient=recipient,

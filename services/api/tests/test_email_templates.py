@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from sync_comms import UnsendableEmailError, render
-from sync_core.communications import ApplicationConfirmation
+from sync_core.communications import ApplicationConfirmation, ApplicationRejection
 
 AN_APPLICATION_ID = uuid4()
 
@@ -50,6 +50,24 @@ def test_the_plain_text_part_is_never_html_escaped() -> None:
 
     assert "Marks & Spencer" in rendered.text
     assert "Marks &amp; Spencer" in rendered.html
+
+
+def test_the_rejection_names_the_job_and_the_tenant_without_a_reason() -> None:
+    rendered = render(
+        ApplicationRejection.template_key,
+        ApplicationRejection(
+            application_id=AN_APPLICATION_ID,
+            job_title="Senior Backend Engineer",
+            tenant_name="Acme Payments",
+            candidate_name="Amina Haddad",
+        ),
+    )
+
+    assert "Senior Backend Engineer" in rendered.subject
+    for part in (rendered.html, rendered.text):
+        assert "Amina Haddad" in part
+        assert "Acme Payments" in part
+        assert "Senior Backend Engineer" in part
 
 
 def test_a_template_key_nothing_is_registered_under_is_unsendable() -> None:

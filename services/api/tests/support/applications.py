@@ -16,21 +16,26 @@ from sync_core.models import (
     ApplicationProject,
     ApplicationQualificationHistory,
     ApplicationSkill,
-    ApplicationStatus,
     ApplicationStatusHistory,
     Communication,
+    Cv,
+    CvParsingStatus,
 )
 from tests.support.candidates import a_signed_in_candidate
-from tests.support.jobs import a_published_job, read_job, set_criteria
+from tests.support.cvs import an_uploaded_cv
+from tests.support.jobs import TENANT_JOBS, a_published_job, read_job, set_criteria
 from tests.support.profiles import a_profile, give_a_current_cv, my_id
 
 if TYPE_CHECKING:
     from httpx import AsyncClient, Response
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from sync_core.models import ApplicationStatus
     from tests.support.mailbox import Mailbox
 
 APPLICATIONS: Final = "/v1/applications"
+
+TENANT_APPLICATIONS: Final = "/v1/tenants/me/applications"
 
 A_YES_NO_QUESTION: Final[dict[str, Any]] = {
     "question_text": "Do you have the right to work in Syria?",
@@ -68,6 +73,19 @@ async def a_candidate_with_a_ready_cv(
     return await give_a_current_cv(session, await my_id(browser))
 
 
+async def a_candidate_with_a_stored_cv(
+    browser: AsyncClient, mailbox: Mailbox, session: AsyncSession, label: str = "applicant"
+) -> UUID:
+    """The same, with the file really in Storage — which is what a signed link needs."""
+    await a_signed_in_candidate(browser, mailbox, label)
+    uploaded = await an_uploaded_cv(browser)
+    await session.execute(
+        update(Cv).where(Cv.id == UUID(uploaded["id"])).values(parsing_status=CvParsingStatus.READY)
+    )
+    await session.commit()
+    return UUID(uploaded["id"])
+
+
 def a_submission(job_id: str | UUID, cv_id: str | UUID, **changes: Any) -> dict[str, Any]:
     return {
         "job_id": str(job_id),
@@ -99,6 +117,64 @@ async def my_applications(browser: AsyncClient, **params: Any) -> list[dict[str,
     assert response.status_code == 200, response.text
     items: list[dict[str, Any]] = response.json()["items"]
     return items
+
+
+async def list_job_applications(
+    recruiter: AsyncClient, job_id: str | UUID, **params: Any
+) -> Response:
+    return await recruiter.get(f"{TENANT_JOBS}/{job_id}/applications", params=params)
+
+
+async def job_applications_of(
+    recruiter: AsyncClient, job_id: str | UUID, **params: Any
+) -> list[dict[str, Any]]:
+    response = await list_job_applications(recruiter, job_id, **params)
+    assert response.status_code == 200, response.text
+    items: list[dict[str, Any]] = response.json()["items"]
+    return items
+
+
+async def read_application(recruiter: AsyncClient, application_id: str | UUID) -> Response:
+    return await recruiter.get(f"{TENANT_APPLICATIONS}/{application_id}")
+
+
+async def a_reviewed_application(
+    recruiter: AsyncClient, application_id: str | UUID
+) -> dict[str, Any]:
+    response = await read_application(recruiter, application_id)
+    assert response.status_code == 200, response.text
+    review: dict[str, Any] = response.json()
+    return review
+
+
+async def move_to(
+    recruiter: AsyncClient, application_id: str | UUID, status: ApplicationStatus | str
+) -> Response:
+    return await recruiter.patch(
+        f"{TENANT_APPLICATIONS}/{application_id}", json={"status": str(status)}
+    )
+
+
+async def a_moved_application(
+    recruiter: AsyncClient, application_id: str | UUID, status: ApplicationStatus | str
+) -> dict[str, Any]:
+    response = await move_to(recruiter, application_id, status)
+    assert response.status_code == 200, response.text
+    moved: dict[str, Any] = response.json()
+    return moved
+
+
+async def withdraw(browser: AsyncClient, application_id: str | UUID) -> Response:
+    return await browser.post(f"{APPLICATIONS}/{application_id}/withdraw")
+
+
+async def a_withdrawn_application(
+    browser: AsyncClient, application_id: str | UUID
+) -> dict[str, Any]:
+    response = await withdraw(browser, application_id)
+    assert response.status_code == 200, response.text
+    withdrawn: dict[str, Any] = response.json()
+    return withdrawn
 
 
 async def stored_application(session: AsyncSession, application_id: str | UUID) -> Application:
@@ -190,13 +266,3 @@ async def applications_of(session: AsyncSession, candidate_id: UUID) -> list[App
         select(Application).where(Application.candidate_id == candidate_id)
     )
     return list(rows)
-
-
-async def withdraw(session: AsyncSession, application_id: str | UUID) -> None:
-    """What #13's endpoint will do, written directly: what matters here is that the row stays."""
-    await session.execute(
-        update(Application)
-        .where(Application.id == UUID(str(application_id)))
-        .values(status=ApplicationStatus.WITHDRAWN)
-    )
-    await session.commit()

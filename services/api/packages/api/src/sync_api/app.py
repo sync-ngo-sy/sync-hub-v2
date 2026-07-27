@@ -20,6 +20,7 @@ from sync_api.routes import (
     jobs,
     notifications,
     search,
+    tenant_applications,
     tenant_jobs,
     tenants,
 )
@@ -99,6 +100,7 @@ def create_app(settings: Settings | None = None, embedder: Embedder | None = Non
     app.include_router(notifications.router, prefix=API_PREFIX)
     app.include_router(search.router, prefix=API_PREFIX)
     app.include_router(tenant_jobs.router, prefix=API_PREFIX)
+    app.include_router(tenant_applications.router, prefix=API_PREFIX)
     app.include_router(jobs.router, prefix=API_PREFIX)
     app.include_router(applications.router, prefix=API_PREFIX)
 

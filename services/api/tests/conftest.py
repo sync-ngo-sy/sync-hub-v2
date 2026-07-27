@@ -143,6 +143,13 @@ async def other_browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
+async def third_browser(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """A jar of its own — `recruiter` *is* `browser`, so a second applicant needs this one."""
+    async with asgi_client(app, headers=SPA_HEADERS) as http_client:
+        yield http_client
+
+
+@pytest.fixture
 async def recruiter(browser: AsyncClient, mailbox: Mailbox) -> AsyncClient:
     """A signed-in admin of a tenant of their own."""
     await an_admin(browser, mailbox)

@@ -5,7 +5,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from sync_api.dependencies import ActingRecruiterDep, JobServiceDep, TrackedLinkServiceDep
+from sync_api.applications import ApplicationSummaryPage
+from sync_api.dependencies import (
+    ActingRecruiterDep,
+    ApplicationReviewServiceDep,
+    JobServiceDep,
+    TrackedLinkServiceDep,
+)
 from sync_api.errors import openapi_problem
 from sync_api.jobs import (
     JobChanges,
@@ -21,7 +27,7 @@ from sync_api.jobs import (
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
-from sync_core.models import JobStatus
+from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus
 
 ROUTER_PREFIX: Final = "/tenants/me/jobs"
 
@@ -123,6 +129,48 @@ async def replace_job_criteria(
     Editable only until the Job's first Application: every applicant is judged by one bar.
     """
     return await jobs.replace_criteria(recruiter, job_id, body)
+
+
+@router.get(
+    "/{job_id}/applications",
+    operation_id="listJobApplications",
+    summary="The Job's Applications, newest first",
+    tags=["applications"],
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        **JOB_NOT_FOUND,
+        422: openapi_problem("`cursor` is not one this API issued."),
+    },
+)
+async def list_job_applications(
+    job_id: UUID,
+    recruiter: ActingRecruiterDep,
+    applications: ApplicationReviewServiceDep,
+    application_status: Annotated[
+        ApplicationStatus | None,
+        Query(alias="status", description="Only Applications in this pipeline state."),
+    ] = None,
+    qualification_status: Annotated[
+        QualificationStatus | None,
+        Query(description="Only Applications the Screening verdict decided this way."),
+    ] = None,
+    cursor: Annotated[
+        str | None,
+        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+    ] = None,
+    limit: Annotated[
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
+    ] = DEFAULT_PAGE_SIZE,
+) -> ApplicationSummaryPage:
+    """The triage list: who applied, where each one stands, and how Screening judged it."""
+    return await applications.page(
+        recruiter,
+        job_id,
+        status=application_status,
+        qualification_status=qualification_status,
+        cursor=cursor,
+        limit=limit,
+    )
 
 
 @router.post(

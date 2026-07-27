@@ -12,6 +12,7 @@ from sync_api.candidates.payload import (
     ProfileProject,
     ProfileSkill,
 )
+from sync_api.candidates.sections import a_language, a_project, an_education, an_experience
 from sync_api.problems import SEARCHABLE_NEEDS_CV_PROBLEM_TYPE, Problem
 from sync_api.vocabulary import canonical_skill_ids, refuse_unknown_languages
 from sync_core import get_logger, transaction
@@ -77,19 +78,7 @@ class CandidateProfileService:
             .where(CandidateExperience.candidate_id == candidate_id)
             .order_by(CandidateExperience.sort_order)
         )
-        return [
-            ProfileExperience(
-                job_title=row.job_title,
-                company_name=row.company_name,
-                start_year=row.start_year,
-                start_month=row.start_month,
-                end_year=row.end_year,
-                end_month=row.end_month,
-                is_current=row.is_current,
-                description=row.description,
-            )
-            for row in rows
-        ]
+        return [an_experience(row) for row in rows]
 
     async def _educations(self, candidate_id: UUID) -> list[ProfileEducation]:
         rows = await self._db.scalars(
@@ -97,16 +86,7 @@ class CandidateProfileService:
             .where(CandidateEducation.candidate_id == candidate_id)
             .order_by(CandidateEducation.sort_order)
         )
-        return [
-            ProfileEducation(
-                institution=row.institution,
-                degree=row.degree,
-                field_of_study=row.field_of_study,
-                graduation_year=row.graduation_year,
-                description=row.description,
-            )
-            for row in rows
-        ]
+        return [an_education(row) for row in rows]
 
     async def _skills(self, candidate_id: UUID) -> list[ProfileSkill]:
         rows = await self._db.execute(
@@ -126,9 +106,7 @@ class CandidateProfileService:
             .where(CandidateLanguage.candidate_id == candidate_id)
             .order_by(CandidateLanguage.sort_order)
         )
-        return [
-            ProfileLanguage(code=row.language_code, proficiency=row.proficiency) for row in rows
-        ]
+        return [a_language(row) for row in rows]
 
     async def _projects(self, candidate_id: UUID) -> list[ProfileProject]:
         rows = await self._db.scalars(
@@ -136,19 +114,7 @@ class CandidateProfileService:
             .where(CandidateProject.candidate_id == candidate_id)
             .order_by(CandidateProject.sort_order)
         )
-        return [
-            ProfileProject(
-                name=row.name,
-                description=row.description,
-                project_url=row.project_url,
-                repository_url=row.repository_url,
-                start_year=row.start_year,
-                start_month=row.start_month,
-                end_year=row.end_year,
-                end_month=row.end_month,
-            )
-            for row in rows
-        ]
+        return [a_project(row) for row in rows]
 
 
 async def replace_live_profile(
