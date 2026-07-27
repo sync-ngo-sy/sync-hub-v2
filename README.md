@@ -96,13 +96,6 @@ then failed every CV it claimed would be a much quieter kind of broken. The API 
 read the key, and the test suite parses with a fake extractor, so leaving it unset is fine
 until you actually want a CV read.
 
-A CV's `parsing_status` is the authoritative state: `uploaded` → `processing` →
-`ready`/`failed`. The SPA polls `GET /v1/candidates/me/cvs/{id}` until it leaves
-`processing`, and `failed` is only ever written once the job has genuinely run out of
-attempts — at which point the candidate also gets an in-app Notification, written in the same
-transaction, so a progress bar never ends in silence. That list is `GET /v1/notifications`,
-with `GET /v1/notifications/unread-count` for the bell.
-
 ### Tests that call a real model
 
 The suite parses with a deterministic fake, so a bare `pytest` costs nothing and hits no
@@ -112,26 +105,6 @@ and excluded by default:
 ```bash
 SYNC_OPENAI_API_KEY=sk-... uv run --directory services/api pytest -m ai_live
 ```
-
-## The public job board
-
-`GET /v1/jobs` and `GET /v1/jobs/{id}` need no account: they answer with published Jobs of
-tenants that have not been suspended, and only while the Job's `expires_at` is still ahead.
-`q` searches title, description and location, and is a filter rather than a ranking — the
-newest Job is always first. Because there is no session behind these routes they carry their
-own rate limit, per client address and per route (`SYNC_PUBLIC_RATE_LIMIT_MAX_REQUESTS`).
-
-Recruiters run their Jobs under `/v1/tenants/me/jobs`, where the two halves of a Job are
-deliberately separate endpoints. `PATCH` edits the prose and moves the Job through
-draft → published ⇄ closed → archived. `PUT .../criteria` replaces what Screening measures —
-required skills, languages, minimum experience, knockout questions — and stops working the
-moment the first Application arrives, answering 409 while the prose stays editable forever.
-`criteria_locked` on the Job says which of the two the form is in.
-
-A campaign gets a **tracked link**: `POST .../links` mints a token, `GET /v1/jobs/by-link/{token}`
-lands on the Job, and every view is attributed to the link that brought it. Reading a Job
-records a view either way — an anonymous `sync_visitor` cookie and a salted hash of address
-and user agent, so the counts add up without the analytics table knowing who anybody is.
 
 ## The shared packages
 
