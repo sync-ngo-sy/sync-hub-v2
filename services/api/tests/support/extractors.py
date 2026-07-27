@@ -1,11 +1,3 @@
-"""The `CvExtractor` the main suite parses with.
-
-Seam 2 of the testing plan: the port gets a deterministic fake, so every test about the
-pipeline — the queue, the retries, the taxonomy check, the auto-current rule — is about the
-pipeline rather than about what a model felt like answering that morning. The real adapter
-is exercised separately, by the `ai_live` suite.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -25,7 +17,6 @@ if TYPE_CHECKING:
 
 
 def a_parse(**changes: object) -> ParsedCv:
-    """A full, plausible parse — every section filled, every skill Canonical."""
     return AMINA.model_copy(update=changes)
 
 
@@ -93,14 +84,6 @@ AMINA = ParsedCv(
 
 
 class FakeExtractor:
-    """A `CvExtractor` that answers what the test told it to, in order.
-
-    Answers are consumed one per call and the last one repeats, so a test that wants "fail
-    twice, then work" writes exactly that, and one that wants "always fail" writes a single
-    exception. Every call is recorded, because *what the pipeline sent* — the filename, the
-    media type, the vocabulary it embedded — is as much of the contract as what came back.
-    """
-
     def __init__(self, *answers: ParsedCv | Exception) -> None:
         self._answers = list(answers) or [AMINA]
         self.calls: list[tuple[CvFile, Vocabulary]] = []

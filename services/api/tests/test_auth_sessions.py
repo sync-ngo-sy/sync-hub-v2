@@ -1,10 +1,3 @@
-"""Confirming, signing in, staying signed in, and signing out.
-
-Everything here goes through cookies rather than through tokens, because that is the whole
-point of ADR-0005: the SPA sends a request, the browser attaches the session, and no
-JavaScript anywhere is holding anything worth stealing.
-"""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -27,7 +20,6 @@ from tests.support.candidates import (
 from tests.support.harness import cookie_attributes, present_only, spa_onto
 from tests.support.mailbox import Mailbox
 
-#: Nothing listens here, so every call to GoTrue fails the way an outage does.
 UNREACHABLE_GOTRUE = "http://127.0.0.1:1"
 
 
@@ -93,7 +85,6 @@ async def test_signing_in_after_confirming_sets_the_session_cookies(
 
     refresh = cookie_attributes(response, REFRESH_TOKEN_COOKIE)
     assert refresh["httponly"] and refresh["secure"]
-    # Scoped to the two routes that spend it, so it is absent from every other request.
     assert refresh["path"] == "/v1/auth"
 
 
@@ -107,7 +98,6 @@ async def test_the_wrong_password_is_refused(browser: AsyncClient, mailbox: Mail
 
 
 async def test_an_unknown_address_is_refused_the_same_way(browser: AsyncClient) -> None:
-    """Same problem type as a wrong password: signing in must not reveal who has an account."""
     response = await sign_in(browser, a_signup())
 
     assert response.status_code == 401
@@ -115,11 +105,6 @@ async def test_an_unknown_address_is_refused_the_same_way(browser: AsyncClient) 
 
 
 async def test_an_identity_provider_that_is_down_is_a_502_not_a_500(settings: Settings) -> None:
-    """GoTrue being unreachable is not our bug, and the client should be able to tell.
-
-    Nothing catches this per flow — one handler on the application answers for all of them,
-    so this covers every route that reaches GoTrue, not only login.
-    """
     async with spa_onto(settings, supabase_url=UNREACHABLE_GOTRUE) as spa:
         response = await sign_in(spa, a_signup())
 
@@ -145,7 +130,6 @@ async def test_a_protected_route_refuses_a_token_that_is_not_a_token(
 async def test_a_soft_deleted_profile_cannot_act(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """Deleting a Profile has to end its sessions even while its access token is still valid."""
     signup = await a_confirmed_candidate(browser, mailbox)
     await sign_in(browser, signup)
 
@@ -156,14 +140,6 @@ async def test_a_soft_deleted_profile_cannot_act(
 
 
 async def test_refreshing_rotates_the_session(browser: AsyncClient, mailbox: Mailbox) -> None:
-    """A new refresh token replaces the old one, and the session carries on.
-
-    What is *not* asserted is that the old token dies on the spot, because it does not:
-    `refresh_token_reuse_interval` in `supabase/config.toml` deliberately keeps it working
-    for a few seconds, so two tabs refreshing at once do not sign each other out. The
-    property that matters — a refresh token that stops working for good — is what
-    `test_logging_out_revokes_the_session_at_the_identity_provider` covers.
-    """
     signup = await a_confirmed_candidate(browser, mailbox)
     await sign_in(browser, signup)
     before = browser.cookies[REFRESH_TOKEN_COOKIE]
@@ -194,13 +170,6 @@ async def test_refreshing_with_a_token_that_was_never_issued_is_refused(
 async def test_logging_out_revokes_the_session_at_the_identity_provider(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Not merely a cookie wipe: the refresh token has to be dead on the server too.
-
-    The access token stays valid until it expires — a stateless JWT cannot be recalled, and
-    ADR-0005 verifies claims rather than checking a revocation list per request. What logout
-    guarantees is that the session cannot be *extended*: no refresh, so at most one token
-    lifetime after logging out, the signup is unreachable.
-    """
     signup = await a_confirmed_candidate(browser, mailbox)
     await sign_in(browser, signup)
     refresh_token = browser.cookies[REFRESH_TOKEN_COOKIE]
@@ -227,7 +196,6 @@ async def test_logging_out_clears_the_cookies(browser: AsyncClient, mailbox: Mai
 async def test_logging_out_succeeds_whatever_the_caller_is_holding(
     browser: AsyncClient, cookie: str
 ) -> None:
-    """A logout that could fail would be a way to keep somebody signed in."""
     if cookie:
         present_only(browser, ACCESS_TOKEN_COOKIE, cookie)
 

@@ -1,5 +1,3 @@
-"""Settings, the database connection, the generated models, and shared logging."""
-
 from sync_core.db import Database
 from sync_core.logging import (
     bind_request_context,

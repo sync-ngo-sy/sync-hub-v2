@@ -1,21 +1,3 @@
-"""Onboarding a hiring company, and running its roster afterwards.
-
-Two things happen here that are worth reading closely.
-
-**Signup** creates four records across two authorities — an identity in GoTrue, and a
-Tenant, a Profile and a Recruiter in Postgres — and can be refused by either. The unique
-slug means it can be refused *after* the identity exists, which is the case
-`sync_api.auth.registration` is for.
-
-**Inviting is provisioning.** There is no invitations table, by design: the Profile and the
-Recruiter are written the moment the invite is sent, so an invited teammate is a member of
-the Tenant from that moment, merely one who cannot sign in yet because they have no
-password. What GoTrue's invite mints is the token that lets them set one
-(`AuthService.accept_invite`). The cost of the design is that a never-accepted invite leaves
-a real Recruiter row an admin has to deactivate; the benefit is that there is one place a
-member can be, so no route ever has to ask whether someone is a member *yet*.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -49,17 +31,12 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: Two constraints from migration 02 that this module answers for by name. Postgres reports
-#: which one it refused on, and that is how a 409 here can say *what* was taken rather than
-#: that something was.
 TENANT_SLUG_CONSTRAINT: Final = "tenants_slug_key"
 PROFILE_CONSTRAINT: Final = "profiles_pkey"
 
 
 @dataclass(frozen=True, slots=True)
 class Member:
-    """One Recruiter as their colleagues see them."""
-
     id: UUID
     full_name: str
     email: str
@@ -69,15 +46,11 @@ class Member:
 
 @dataclass(frozen=True, slots=True)
 class NewTenant:
-    """What self-serve signup produced: the organization and the person who now runs it."""
-
     tenant: TenantSummary
     admin: Member
 
 
 class TenantService:
-    """One request's worth of tenant work."""
-
     def __init__(self, session: AsyncSession, gotrue: GoTrue, *, invite_redirect_url: str) -> None:
         self._db = session
         self._gotrue = gotrue
@@ -86,11 +59,6 @@ class TenantService:
     async def sign_up(
         self, *, tenant_name: str, slug: str, email: str, password: str, full_name: str
     ) -> NewTenant:
-        """Create the Tenant, its founding admin, and the identity behind them.
-
-        Returns before the address is confirmed, exactly like a candidate signup: the
-        founder proves they own the address before they get a session.
-        """
         user = await create_identity(self._gotrue, email=email, password=password)
         async with identity_undone_on_failure(self._gotrue, user.id):
             tenant = await self._provision_tenant(
@@ -111,10 +79,6 @@ class TenantService:
         )
 
     async def members(self, tenant_id: UUID) -> list[Member]:
-        """Everyone on the Tenant's roster, deactivated colleagues included.
-
-        Deactivated on purpose: an admin cannot reactivate someone they cannot see.
-        """
         rows = await self._db.execute(
             MEMBER_QUERY.where(Recruiter.tenant_id == tenant_id).order_by(Profile.full_name)
         )
@@ -123,7 +87,6 @@ class TenantService:
     async def invite(
         self, *, tenant_id: UUID, email: str, full_name: str, role: RecruiterRole
     ) -> Member:
-        """Mail an invitation, and put the invitee on the roster in the same breath."""
         if await self._address_is_taken(email):
             raise email_already_registered()
 
@@ -142,13 +105,6 @@ class TenantService:
                 await self._db.flush()
                 self._db.add(Recruiter(id=user.id, tenant_id=tenant_id, role=role))
         except BaseException as exc:
-            # The one failure this flow must *not* undo. Two invitations of the same new
-            # address can both pass the check above; GoTrue creates the identity for the
-            # first and hands the second that very same user, so the loser collides on
-            # `profiles_pkey`. Deleting the identity then would cascade away the Profile and
-            # Recruiter the winner has already committed — and it has already answered 201.
-            # So the loser reports the address as taken, which by then it is, and leaves the
-            # identity to its rightful owner. Every other failure is ours to undo.
             if _is_already_provisioned(exc):
                 raise email_already_registered() from exc
             await undo_identity(self._gotrue, user.id)
@@ -165,12 +121,9 @@ class TenantService:
         role: RecruiterRole | None = None,
         is_active: bool | None = None,
     ) -> Member:
-        """Change a colleague's role, their access, or both."""
         async with transaction(self._db):
             recruiter = await self._db.get(Recruiter, recruiter_id)
             if recruiter is None or recruiter.tenant_id != tenant_id:
-                # Deliberately the same answer as a recruiter_id that does not exist: an
-                # admin must not be able to probe another Tenant's roster for membership.
                 raise Problem(
                     status=404,
                     type=MEMBER_NOT_FOUND_PROBLEM_TYPE,
@@ -182,9 +135,6 @@ class TenantService:
                 recruiter.is_active = is_active
             await self._db.flush()
 
-            # Checked after the write rather than before it, so one condition covers every
-            # way to reach it — demotion, deactivation, and an admin doing either to
-            # themselves. Raising inside the transaction is what undoes it.
             if not await self._has_an_active_admin(tenant_id):
                 raise Problem(
                     status=409,
@@ -200,13 +150,6 @@ class TenantService:
     async def _provision_tenant(
         self, user: GoTrueUser, *, tenant_name: str, slug: str, full_name: str
     ) -> TenantSummary:
-        """Write the Tenant, the Profile and the Recruiter in one transaction.
-
-        Ordered, not merely batched: the Recruiter's composite `(id, account_type)` foreign
-        key makes it unreferenceable until its Profile exists, and its `tenant_id` until the
-        Tenant does — so the flushes between them are what the schema requires rather than a
-        convenience.
-        """
         tenant = Tenant(name=tenant_name, slug=slug)
         try:
             async with transaction(self._db):
@@ -220,11 +163,6 @@ class TenantService:
         except IntegrityError as exc:
             if _violated_constraint(exc) != TENANT_SLUG_CONSTRAINT:
                 raise
-            # The one constraint-backed 409 in the API that deliberately does *not* carry the
-            # id of the row it collided with. Elsewhere that id is the caller's own resource
-            # and handing it back saves them a request; here it belongs to a different
-            # company, and this endpoint is unauthenticated — so returning it would turn
-            # signup into a way to enumerate tenants.
             raise Problem(
                 status=409,
                 type=TENANT_SLUG_TAKEN_PROBLEM_TYPE,
@@ -233,18 +171,6 @@ class TenantService:
         return TenantSummary(id=tenant.id, name=tenant.name, slug=tenant.slug)
 
     async def _address_is_taken(self, email: str) -> bool:
-        """Whether `auth.users` already knows this address — asked *before* GoTrue is called.
-
-        Everywhere else the platform lets the identity provider be the judge of that, and a
-        409 falls out of its refusal. Inviting cannot: GoTrue's invite endpoint deliberately
-        re-invites an address whose user exists but has never confirmed, answering with that
-        existing user rather than an error. Left to it, a second invitation to a teammate who
-        has not accepted yet would collide on `profiles_pkey` — and undoing *that* would
-        delete the identity of a member who is already on the roster.
-
-        So the question is asked here, where the answer costs one SELECT and no side effects
-        at all. GoTrue's own refusal is still translated below, for the race this cannot see.
-        """
         found = await self._db.scalar(
             select(User.id).where(func.lower(User.email) == email.lower())
         )
@@ -267,9 +193,6 @@ class TenantService:
         return _member_from(rows.tuples().one())
 
 
-#: Recruiter, name and address in one row. The address is read from `auth.users` because
-#: that is the only place a Profile's email lives (the shared-PK identity, supabase ADR-0001).
-#: A `Select` is generative — every `.where()` returns a new one — so sharing this is safe.
 MEMBER_QUERY = (
     select(Recruiter.id, Profile.full_name, User.email, Recruiter.role, Recruiter.is_active)
     .join(Profile, Profile.id == Recruiter.id)
@@ -289,16 +212,10 @@ def _member_from(row: tuple[UUID, str, str | None, RecruiterRole, bool]) -> Memb
 
 
 def _is_already_provisioned(exc: BaseException) -> bool:
-    """Whether this failure is "that identity is already somebody's Profile"."""
     return isinstance(exc, IntegrityError) and _violated_constraint(exc) == PROFILE_CONSTRAINT
 
 
 def _violated_constraint(exc: IntegrityError) -> str | None:
-    """The name of the constraint Postgres refused on, wherever the driver put it.
-
-    asyncpg carries it on its own exception, which SQLAlchemy wraps twice over, so the walk
-    down `__cause__` is what finds it under either layer.
-    """
     error: BaseException | None = exc.orig
     while error is not None:
         name = getattr(error, "constraint_name", None)

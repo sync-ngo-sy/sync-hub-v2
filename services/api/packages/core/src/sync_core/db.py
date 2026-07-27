@@ -1,13 +1,3 @@
-"""The database connection every process shares.
-
-ADR-0004: one async SQLAlchemy engine over asyncpg, connecting straight to Postgres with
-the service role. The backend is the only data client, so this is the whole data path —
-there is no PostgREST fallback.
-
-Callers get sessions, never the engine's connections, and a session is always scoped to a
-`with` block so it is returned to the pool even when the caller raises.
-"""
-
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -22,8 +12,6 @@ if TYPE_CHECKING:
 
 
 class Database:
-    """Owns the engine for a process and hands out sessions from it."""
-
     def __init__(self, settings: Settings) -> None:
         self._engine = create_async_engine(
             str(settings.database_url),
@@ -40,15 +28,8 @@ class Database:
 
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession]:
-        """A session that is closed on exit. Committing is the caller's decision.
-
-        The multi-row all-or-nothing writes ADR-0001 puts on the backend use
-        `async with session.begin()` inside this block; they arrive with the tickets that
-        need them.
-        """
         async with self._session_factory() as session:
             yield session
 
     async def dispose(self) -> None:
-        """Close every pooled connection. Call once, as the process shuts down."""
         await self._engine.dispose()

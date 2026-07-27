@@ -1,12 +1,3 @@
-"""Turning every way a request can fail into one problem+json response.
-
-Five handlers cover the whole surface: `Problem` for errors a route raises deliberately,
-`GoTrueUnavailableError` for an identity provider that is down and `StorageError` for a
-file store that is (one 502 each, so no flow has to remember to translate them),
-`HTTPException` for everything Starlette raises on our behalf (unknown route, wrong method,
-dependency failures), and `Exception` for the ones nobody saw coming.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
@@ -36,8 +27,6 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: What an unhandled error is allowed to say. The real cause goes to the logs, under the
-#: request id the client is holding.
 INTERNAL_ERROR_DETAIL = "The server could not complete the request."
 
 
@@ -54,7 +43,6 @@ def problem_response(
 
 
 def field_errors(raw_errors: Sequence[Any]) -> list[InvalidField]:
-    """Flatten pydantic's error list into locations a client can point a user at."""
     return [
         InvalidField(
             location=".".join(str(part) for part in error.get("loc", ())),
@@ -65,9 +53,9 @@ def field_errors(raw_errors: Sequence[Any]) -> list[InvalidField]:
     ]
 
 
-# Starlette types every handler as `(Request, Exception)` but dispatches on the class each
-# was registered against, so the narrowing below is a fact, not a guess.
 async def handle_problem(request: Request, exc: Exception) -> JSONResponse:
+    # Starlette types every handler as `(Request, Exception)` but dispatches on the class each
+    # was registered against, so the narrowing in this module is a fact, not a guess.
     problem = cast("Problem", exc)
     detail = ProblemDetail(
         type=problem.type,
@@ -81,7 +69,6 @@ async def handle_problem(request: Request, exc: Exception) -> JSONResponse:
 
 
 async def handle_http_exception(request: Request, exc: Exception) -> JSONResponse:
-    """Starlette's own failures — 404, 405, and anything a dependency raises."""
     http_exc = cast("HTTPException", exc)
     detail = ProblemDetail(
         title=title_for(http_exc.status_code),
@@ -106,13 +93,6 @@ async def handle_validation_error(request: Request, exc: Exception) -> JSONRespo
 
 
 async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    """The last resort. Says nothing about `exc` — the logs hold the detail.
-
-    The only handler that has to put the request id on the wire itself: Starlette wires
-    `Exception` to `ServerErrorMiddleware`, which sits *outside* every middleware we add, so
-    this response never passes the correlation middleware that echoes the header for
-    everything else.
-    """
     logger.exception(
         "request.unhandled_error",
         path=request.url.path,
@@ -132,19 +112,10 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 
 async def handle_identity_provider_error(request: Request, exc: Exception) -> JSONResponse:
-    """GoTrue was unreachable or answered something we cannot act on — one 502 for all of it."""
     return await handle_problem(request, identity_provider_problem(exc))
 
 
 async def handle_storage_error(request: Request, exc: Exception) -> JSONResponse:
-    """Storage was unreachable or refused — one 502 for all of it.
-
-    Registered rather than caught per route for the reason the GoTrue handler exists: an
-    upload and a download both fail this way, and a route that forgot to translate it would
-    answer 500 to something that is plainly not the caller's fault. A route may still catch
-    a *particular* storage failure it can say something more useful about — a CV whose
-    object has gone missing does — but nothing has to.
-    """
     logger.error("request.storage_unavailable", path=request.url.path, error=str(exc))
     return await handle_problem(
         request,
@@ -166,13 +137,6 @@ def install_problem_handlers(app: FastAPI) -> None:
 
 
 def use_problem_media_type(schema: dict[str, Any]) -> dict[str, Any]:
-    """Re-label every error response in an OpenAPI document as problem+json.
-
-    FastAPI files a response `model` under the route's own media type, which is always
-    `application/json`. Error bodies only ever leave as problem+json, so without this the
-    document — and the TypeScript client generated from it — promises a content type the
-    API never sends. Idempotent.
-    """
     for path_item in schema.get("paths", {}).values():
         for operation in path_item.values():
             if not isinstance(operation, dict):
@@ -190,12 +154,6 @@ def use_problem_media_type(schema: dict[str, Any]) -> dict[str, Any]:
 
 
 def openapi_problem(description: str, model: type[ProblemDetail] = ProblemDetail) -> dict[str, Any]:
-    """One entry for a route's `responses`, so a failure it can answer with is in the schema.
-
-    The `content` key is what `use_problem_media_type` keys off; without it FastAPI would
-    file the body under `application/json` and the generated client would expect the wrong
-    media type.
-    """
     return {
         "model": model,
         "description": description,
@@ -203,7 +161,6 @@ def openapi_problem(description: str, model: type[ProblemDetail] = ProblemDetail
     }
 
 
-#: Advertised on every route, so the generated client knows errors are problem+json.
 PROBLEM_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: openapi_problem("The request did not match the expected shape.", ValidationProblemDetail),
     500: openapi_problem("Something went wrong on the server."),

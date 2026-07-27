@@ -1,14 +1,3 @@
-"""The worker reading a CV: one claim-process cycle at a time.
-
-Seam 3. Every test here uploads over HTTP, drives exactly one worker cycle, and asserts on
-what the database says afterwards — the real queue, the real `SKIP LOCKED` claim, the real
-`cvs` state machine, and a fake extractor so the answer is the test's to choose.
-
-`cvs.parsing_status` is what these assert on throughout. It is the authoritative state
-(`database-contracts.md`); `ingestion_jobs.status` is plumbing, and it is checked only
-where the two are supposed to move together.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +23,7 @@ from tests.support.worker import an_ingestion_worker
 
 
 class UnavailableError(Exception):
-    """What a provider having a moment looks like to the consumer: retry this."""
+    pass
 
 
 async def test_a_claimed_cv_becomes_ready_with_its_parse(
@@ -44,7 +33,6 @@ async def test_a_claimed_cv_becomes_ready_with_its_parse(
     database: Database,
     storage: Storage,
 ) -> None:
-    """Upload, one cycle, and the candidate has something to review."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(database, storage, FakeExtractor())
@@ -68,7 +56,6 @@ async def test_a_claimed_cv_becomes_ready_with_its_parse(
 async def test_the_parse_reaches_the_candidate_through_the_polling_endpoint(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """What the worker wrote is what the SPA reads — status first, then the data."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     waiting = await browser.get(f"{CVS}/{cv['id']}")
@@ -88,7 +75,6 @@ async def test_the_parse_reaches_the_candidate_through_the_polling_endpoint(
 async def test_the_worker_is_sent_the_file_and_the_platforms_vocabulary(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The document goes to the model as itself (ADR-0006), with the taxonomy in the prompt."""
     await a_signed_in_candidate(browser, mailbox)
     content = some_bytes("the real bytes")
     await an_uploaded_cv(browser, content)
@@ -111,7 +97,6 @@ async def test_the_first_ready_cv_becomes_current_and_later_ones_do_not(
     database: Database,
     storage: Storage,
 ) -> None:
-    """Only the first: after that, which CV is current is the candidate's choice."""
     await a_signed_in_candidate(browser, mailbox)
     candidate_id = await my_id(browser)
     first = await an_uploaded_cv(browser, some_bytes("first"))
@@ -136,7 +121,6 @@ async def test_a_failed_cv_never_becomes_current(
     database: Database,
     storage: Storage,
 ) -> None:
-    """Searchability follows a parse, so a CV nobody could read is not one to be found by."""
     await a_signed_in_candidate(browser, mailbox)
     candidate_id = await my_id(browser)
     await an_uploaded_cv(browser)
@@ -151,11 +135,7 @@ async def test_a_failed_cv_never_becomes_current(
 
 
 async def test_an_empty_queue_is_no_work(database: Database, storage: Storage) -> None:
-    """What the poll loop backs off on."""
     assert await an_ingestion_worker(database, storage, FakeExtractor()).run_once() is False
-
-
-# Failure, retry and giving up -------------------------------------------------
 
 
 async def test_a_transient_failure_is_retried_and_the_cv_keeps_waiting(
@@ -165,11 +145,6 @@ async def test_a_transient_failure_is_retried_and_the_cv_keeps_waiting(
     database: Database,
     storage: Storage,
 ) -> None:
-    """The job goes back to `pending`; the CV stays `processing`.
-
-    The CV emphatically does not go to `failed`. A candidate watching a progress bar must
-    not be told their upload was rejected while the platform is still trying.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     down = FakeExtractor(UnavailableError("OpenAI is down"))
@@ -219,7 +194,6 @@ async def test_exhausting_the_attempts_fails_the_cv_with_a_reason(
     database: Database,
     storage: Storage,
 ) -> None:
-    """The last attempt is the one that turns a waiting CV into a failed one."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
@@ -247,7 +221,6 @@ async def test_a_document_that_cannot_be_read_is_not_tried_again(
     database: Database,
     storage: Storage,
 ) -> None:
-    """A permanent failure spends one attempt, not three — each one costs a model call."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     extractor = FakeExtractor(UnreadableCvError("this is a photograph of a cat"))
@@ -272,7 +245,6 @@ async def test_a_cv_whose_file_is_gone_fails_permanently(
     database: Database,
     storage: Storage,
 ) -> None:
-    """Retrying cannot conjure the object back, so the CV fails on the first attempt."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     await storage.remove((await cv_row(db_session, cv["id"])).storage_path)
@@ -284,9 +256,6 @@ async def test_a_cv_whose_file_is_gone_fails_permanently(
     assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.FAILED
 
 
-# The stuck-job sweep ----------------------------------------------------------
-
-
 async def test_the_sweep_requeues_a_job_whose_worker_died(
     browser: AsyncClient,
     mailbox: Mailbox,
@@ -294,7 +263,6 @@ async def test_the_sweep_requeues_a_job_whose_worker_died(
     database: Database,
     storage: Storage,
 ) -> None:
-    """A claim nobody is holding any more goes back on the queue and is parsed."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(database, storage, FakeExtractor(), stuck_after_seconds=60)
@@ -317,7 +285,6 @@ async def test_the_sweep_leaves_work_that_is_still_running_alone(
     database: Database,
     storage: Storage,
 ) -> None:
-    """A claim younger than the timeout belongs to a worker that is simply busy."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(database, storage, FakeExtractor(), stuck_after_seconds=600)
@@ -334,7 +301,6 @@ async def test_the_sweep_buries_a_job_that_died_on_its_last_attempt(
     database: Database,
     storage: Storage,
 ) -> None:
-    """Otherwise the CV behind it would say `processing` for ever."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
@@ -351,17 +317,9 @@ async def test_the_sweep_buries_a_job_that_died_on_its_last_attempt(
     assert "stopped responding" in row.parsing_error
 
 
-# The taxonomy check -----------------------------------------------------------
-
-
 async def test_a_skill_the_platform_does_not_know_is_demoted_for_review(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The prompt asks for Canonical skills; this is what happens when it does not get them.
-
-    The point is Screening: a skill that stayed in `skills` under an invented name would be
-    a skill a Job's criteria could match against.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     invented = a_parse(
@@ -382,7 +340,6 @@ async def test_a_skill_the_platform_does_not_know_is_demoted_for_review(
 async def test_a_canonical_skill_in_the_wrong_case_is_kept_in_the_platforms_spelling(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """ "postgresql" is the candidate's skill under a different shift key, not an unmapped one."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     shouted = a_parse(
@@ -394,9 +351,6 @@ async def test_a_canonical_skill_in_the_wrong_case_is_kept_in_the_platforms_spel
     parsed = (await browser.get(f"{CVS}/{cv['id']}")).json()["parsed_cv"]
     assert [skill["name"] for skill in parsed["skills"]] == ["PostgreSQL"]
     assert parsed["unmapped_skills"] == []
-
-
-# The retry policy's arithmetic ------------------------------------------------
 
 
 @pytest.mark.parametrize("attempts,seconds", [(1, 10), (2, 20), (3, 40)])
@@ -416,11 +370,6 @@ def test_attempts_run_out_at_the_maximum() -> None:
 async def _abandon_the_claim(
     session: AsyncSession, cv_id: str, *, claimed_ago: timedelta, attempts: int = 1
 ) -> None:
-    """Leave a job looking exactly like one a killed worker left behind.
-
-    Written straight into the queue because the alternative is killing a process mid-parse,
-    and `processing` with an old `started_at` is the entire trace such a worker leaves.
-    """
     await session.execute(
         update(IngestionJob)
         .where(IngestionJob.cv_id == cv_id)
@@ -433,19 +382,9 @@ async def _abandon_the_claim(
     await session.commit()
 
 
-# The worker process ------------------------------------------------------------
-
-
 async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
 ) -> None:
-    """The whole process, not one cycle: assembly, the poll loop, and the shutdown.
-
-    Everything else here drives `run_once` directly, which never touches the loop that
-    calls it in production. This is the test that would notice a consumer wired to the
-    wrong queue, a poll loop that stops after its first job, or a cancellation that hangs
-    instead of unwinding — none of which a single cycle can show.
-    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     worker = Worker(
@@ -468,7 +407,6 @@ async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
 
 
 async def _until_ready(session: AsyncSession, cv_id: str, *, within: float = 10.0) -> None:
-    """Wait for the worker to get to this CV, or say what state it gave up in."""
     deadline = asyncio.get_running_loop().time() + within
     while asyncio.get_running_loop().time() < deadline:
         status = (await cv_row(session, cv_id)).parsing_status

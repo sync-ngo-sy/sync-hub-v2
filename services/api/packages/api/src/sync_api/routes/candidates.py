@@ -1,10 +1,3 @@
-"""What a Candidate does to their own record.
-
-`/me` throughout, and for a stronger reason than the tenant routes have: a Candidate's data
-is nobody else's, so a candidate id in the path would be an id to try substituting for
-somebody else's. There is no such path. The session says who this is.
-"""
-
 from __future__ import annotations
 
 from typing import Any, Final
@@ -18,7 +11,6 @@ from sync_api.problems import ValidationProblemDetail
 
 ROUTER_PREFIX: Final = "/candidates"
 
-#: What any candidate-scoped route can answer with when it will not answer at all.
 CANDIDATE_ACCESS_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
     401: openapi_problem("There is no valid session."),
     403: openapi_problem("The caller is not a candidate."),
@@ -36,10 +28,7 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["candidates"])
 async def get_my_profile(
     candidate: ActingCandidateDep, profiles: CandidateProfileServiceDep
 ) -> CandidateProfile:
-    """Everything the profile form renders, in one payload — and a valid body to `PUT` back.
-
-    Every section is present even when empty: the form is the same form either way.
-    """
+    """Everything the profile form renders, and a valid body to `PUT` back."""
     return await profiles.profile(candidate.id)
 
 
@@ -62,9 +51,5 @@ async def replace_my_profile(
     candidate: ActingCandidateDep,
     profiles: CandidateProfileServiceDep,
 ) -> CandidateProfile:
-    """Save the profile whole, and answer with what was stored.
-
-    A replacement, not a patch: a section the body leaves out is a section the candidate
-    has emptied. The save is one transaction, so it either all happened or none of it did.
-    """
+    """Replace the profile whole — an omitted section is an emptied one — and answer with it."""
     return await profiles.replace(candidate.id, body)

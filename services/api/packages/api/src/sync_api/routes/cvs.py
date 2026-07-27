@@ -1,11 +1,3 @@
-"""Uploading a CV, watching it being read, and getting the original file back.
-
-`/me` throughout, for the reason `routes/candidates.py` gives: a CV is nobody else's, and
-a candidate id in the path would be an id to try substituting. The CV's own id *is* in the
-path — a candidate has several — and every route scopes its lookup by the session's
-candidate, so another candidate's id is a 404 rather than a document.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated, Any, Final
@@ -21,8 +13,6 @@ from sync_api.routes.candidates import CANDIDATE_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/candidates/me/cvs"
 
-#: What every route here can answer with when the id in the path is not one of the
-#: caller's CVs — whether because it is somebody else's or because it is nothing at all.
 CV_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
     404: openapi_problem("The caller has no CV with that id."),
 }
@@ -51,15 +41,7 @@ async def upload_my_cv(
     candidate: ActingCandidateDep,
     file: Annotated[UploadFile, File(description="The CV: PDF, DOC or DOCX, up to 10 MB.")],
 ) -> Cv:
-    """Store the file and start reading it.
-
-    Answers as soon as the CV exists, not when it has been parsed — the reading happens in
-    the worker and takes about ten seconds. The response comes back `uploaded`; poll the
-    CV until it is `ready` or `failed`.
-
-    The same file twice is a 409 rather than a second CV, and the 409 carries the id of the
-    CV already holding it.
-    """
+    """Store the file and start parsing it. Poll the CV until `ready` or `failed`."""
     return await cvs.upload(candidate.id, file)
 
 
@@ -70,12 +52,7 @@ async def upload_my_cv(
     responses={**CANDIDATE_ACCESS_REFUSED, **CV_NOT_FOUND},
 )
 async def get_my_cv(cv_id: UUID, cvs: CvServiceDep, candidate: ActingCandidateDep) -> Cv:
-    """What to poll while a CV is being read.
-
-    `parsing_status` is the authoritative state: `uploaded` and `processing` mean keep
-    waiting, `ready` means `parsed_cv` is filled in, and `failed` means it never will be
-    and `parsing_error` says why.
-    """
+    """What to poll while a CV is parsed. `parsing_status` is the authoritative state."""
     return await cvs.cv(candidate.id, cv_id)
 
 
@@ -92,9 +69,5 @@ async def get_my_cv(cv_id: UUID, cvs: CvServiceDep, candidate: ActingCandidateDe
 async def get_my_cv_download_link(
     cv_id: UUID, cvs: CvServiceDep, candidate: ActingCandidateDep
 ) -> CvDownloadLink:
-    """Where to fetch the file the candidate uploaded.
-
-    A fresh link each time, good for a few minutes. Ask for one when the candidate clicks;
-    storing one is storing a key to the document.
-    """
+    """A short-lived link to the uploaded file. Ask for a fresh one per click; never store it."""
     return await cvs.download_link(candidate.id, cv_id)

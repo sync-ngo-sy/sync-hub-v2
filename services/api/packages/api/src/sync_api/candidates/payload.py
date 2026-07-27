@@ -1,20 +1,3 @@
-"""What a Candidate's professional profile looks like on the wire.
-
-One model, both directions. What `GET` returns is exactly what `PUT` accepts, so the SPA
-can hand back the document it was given with the parts the candidate edited changed and
-nothing else. Two things follow from that.
-
-**No child row carries an id.** A save replaces them, so an id would promise a stability
-that does not exist. Order is the array's order instead — position in the list *is*
-`sort_order`, in and out.
-
-**Every rule the schema would refuse is restated here.** The `candidate_*` tables carry
-CHECK constraints for date ranges, months, years and a current job with no end; a request
-that breaks one of them is a client error, and a client error should name the field it is
-about rather than arrive as Postgres declining to write a row. The constraints remain the
-authority (ADR-0001) — this is the same rule said early, where it can be said usefully.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated, Any
@@ -52,7 +35,6 @@ OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
 OptionalParagraph = Annotated[Paragraph | None, BeforeValidator(_blank_as_unset)]
 OptionalLink = Annotated[Link | None, BeforeValidator(_blank_as_unset)]
 
-#: The ranges the `candidate_*` CHECK constraints enforce.
 Year = Annotated[int, Field(ge=EARLIEST_YEAR, le=LATEST_YEAR)]
 Month = Annotated[int, Field(ge=1, le=12)]
 
@@ -66,17 +48,11 @@ YearsOfExperience = Annotated[float, Field(ge=0, le=MAX_YEARS_EXPERIENCE)]
 
 
 def _section(description: str) -> Any:
-    """One repeated section of the profile, in the candidate's own order."""
     return Field(default_factory=list, max_length=MAX_ENTRIES, description=description)
 
 
 class DatedRange(BaseModel):
-    """Something that ran from roughly one month to roughly another, or still runs.
-
-    Every part is optional because a CV is: "2019 to present" and "March 2019" are both
-    things people write, and a profile that refused them would be refusing its own source
-    material.
-    """
+    """Something that ran from roughly one month to roughly another, or still runs."""
 
     start_year: Year | None = None
     start_month: Month | None = None
@@ -120,11 +96,7 @@ class ProfileEducation(BaseModel):
 
 
 class ProfileSkill(BaseModel):
-    """One Canonical skill, and how long the candidate has been doing it.
-
-    Named rather than identified: a Canonical skill *is* its one spelling, and the CV parse
-    speaks in those names — so the review flow can post back what it read.
-    """
+    """One Canonical skill, by its exact name, and how long the candidate has been doing it."""
 
     name: Line = Field(description="The Canonical skill's exact name.", examples=["Python"])
     years_experience: YearsOfExperience | None = Field(
@@ -149,10 +121,7 @@ class ProfileProject(DatedRange):
 
 
 class CandidateProfile(BaseModel):
-    """Everything a Candidate says about themselves professionally.
-
-    One model for both directions: a `GET` body is a valid `PUT` body, unchanged.
-    """
+    """Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body."""
 
     headline: OptionalLine = Field(default=None, examples=["Backend engineer, 8 years"])
     summary: OptionalParagraph = None
@@ -171,11 +140,8 @@ class CandidateProfile(BaseModel):
 
     @model_validator(mode="after")
     def _one_entry_per_skill_and_language(self) -> CandidateProfile:
-        """Both are keyed by what they name, so a repeat is a form bug, not a second entry.
-
-        Caught here rather than left to the composite primary keys, which would refuse the
-        save half way through it with a message about a constraint.
-        """
+        # Caught here rather than by the composite primary keys, which would refuse the save
+        # half way through with a message about a constraint.
         _refuse_repeats([skill.name for skill in self.skills], "skill")
         _refuse_repeats([language.code for language in self.languages], "language")
         return self

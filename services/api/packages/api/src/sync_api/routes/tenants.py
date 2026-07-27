@@ -1,15 +1,3 @@
-"""Getting a hiring company onto the platform, and running its roster once it is there.
-
-One route here is public — signup, which is how a Tenant comes to exist at all, and is
-rate limited like every other endpoint that mints an identity. Every other route asks for
-an `ActingRecruiter` and is therefore behind both kill-switches; the three that change the
-roster ask for an admin on top.
-
-`/me` rather than `/{tenant_id}` throughout: a Recruiter belongs to exactly one Tenant, so
-the path can never name a different one — there is no cross-tenant request to authorize,
-and no tenant id for a client to try substituting.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated, Any, Final
@@ -31,12 +19,8 @@ from sync_core.models import RecruiterRole
 
 ROUTER_PREFIX: Final = "/tenants"
 
-#: Lowercase, digits and single hyphens. A slug ends up in URLs and in email copy, so it is
-#: constrained here rather than left to whatever a signup form happens to send.
 SLUG_PATTERN: Final = r"^[a-z0-9]+(-[a-z0-9]+)*$"
 
-#: What any tenant-scoped route can answer with, and why a client should tell them apart:
-#: two of them the caller's own admins can fix, the third only Sync can.
 TENANT_ACCESS_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
     401: openapi_problem("There is no valid session."),
     403: openapi_problem(
@@ -137,11 +121,7 @@ class ChangeMemberRequest(BaseModel):
     },
 )
 async def sign_up_tenant(body: SignUpTenantRequest, tenants: TenantServiceDep) -> NewTenantView:
-    """Self-serve onto the platform: one call creates the Tenant and the admin who runs it.
-
-    No session comes back, exactly as for a candidate: the founder confirms their address
-    first. Anything that fails part-way leaves neither a Tenant nor a usable address behind.
-    """
+    """Create the Tenant and the admin who runs it. No session yet: the founder confirms first."""
     return NewTenantView.of(
         await tenants.sign_up(
             tenant_name=body.tenant_name,
@@ -173,8 +153,7 @@ async def get_my_tenant(recruiter: ActingRecruiterDep) -> TenantView:
 async def list_tenant_members(
     recruiter: ActingRecruiterDep, tenants: TenantServiceDep
 ) -> list[MemberView]:
-    """Everyone on the roster, deactivated colleagues included — an admin has to see someone
-    to reactivate them. Any recruiter may read it; only an admin may change it."""
+    """Everyone on the roster, deactivated colleagues included. Any recruiter may read it."""
     members = await tenants.members(recruiter.tenant.id)
     return [MemberView.of(member) for member in members]
 
@@ -194,12 +173,7 @@ async def list_tenant_members(
 async def invite_tenant_member(
     body: InviteMemberRequest, admin: TenantAdminDep, tenants: TenantServiceDep
 ) -> MemberView:
-    """Mail an invitation and add the invitee to the roster in the same breath.
-
-    They are a member from this moment — 201 is not a promise, it is the row — but they
-    cannot sign in until they follow the link and choose a password. An address that already
-    belongs to anyone, Candidate or Recruiter, is refused: one address, one account.
-    """
+    """Mail an invitation and add the invitee to the roster, pending their password."""
     member = await tenants.invite(
         tenant_id=admin.tenant.id, email=body.email, full_name=body.full_name, role=body.role
     )
@@ -222,11 +196,7 @@ async def change_tenant_member(
     admin: TenantAdminDep,
     tenants: TenantServiceDep,
 ) -> MemberView:
-    """Promote, demote, deactivate or reinstate a colleague.
-
-    Deactivating is how a departure is handled: the row and everything attached to it stays,
-    and the person is refused at the door on their very next request.
-    """
+    """Promote, demote, deactivate or reinstate a colleague. Deactivating keeps the row."""
     member = await tenants.change_member(
         tenant_id=admin.tenant.id,
         recruiter_id=recruiter_id,

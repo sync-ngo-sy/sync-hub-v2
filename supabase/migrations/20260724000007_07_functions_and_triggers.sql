@@ -1,10 +1,5 @@
--- 07 · Functions and triggers
---
--- All trigger functions are SECURITY INVOKER (the default). Every application write goes
--- through the service role, which triggers still fire for (unlike RLS) — so the criteria-lock
--- protects the invariant even against the trusted backend.
-
--- updated_at auto-touch ------------------------------------------------------
+-- All trigger functions are SECURITY INVOKER (the default). Triggers fire for the service
+-- role, unlike RLS — so the criteria lock below holds even against the trusted backend.
 
 create trigger set_updated_at before update on profiles
   for each row execute function extensions.moddatetime(updated_at);
@@ -28,8 +23,6 @@ create trigger set_updated_at before update on application_notes
   for each row execute function extensions.moddatetime(updated_at);
 create trigger set_updated_at before update on candidate_notes
   for each row execute function extensions.moddatetime(updated_at);
-
--- Re-embed enqueue (coalesced, one pending job per candidate) -----------------
 
 create function enqueue_candidate_reembed() returns trigger
 language plpgsql
@@ -68,8 +61,6 @@ create trigger reembed_on_change after insert or update or delete on candidate_p
 create trigger reembed_on_change after insert or update or delete on candidate_languages
   for each row execute function enqueue_candidate_reembed();
 
--- CV ingestion enqueue -------------------------------------------------------
-
 create function enqueue_cv_ingestion() returns trigger
 language plpgsql
 set search_path = ''
@@ -83,9 +74,6 @@ $$;
 
 create trigger ingest_on_upload after insert on cvs
   for each row execute function enqueue_cv_ingestion();
-
--- Screening-criteria lock (guard #2) -----------------------------------------
--- Once a job has any application, its screening inputs are frozen.
 
 create function forbid_locked_job_criteria() returns trigger
 language plpgsql

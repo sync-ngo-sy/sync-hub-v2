@@ -1,12 +1,9 @@
--- 05 · Applications and their immutable snapshot / history tables
---
--- On submission the trusted backend writes `applications` + every application_* row in one
--- transaction; those rows are immutable (enforced by RLS deny-by-default + backend discipline,
--- ADR root-0002). tenant_id is denormalized so tenant isolation is a composite FK, not just RLS.
+-- application_* rows are immutable once written. tenant_id is denormalized so tenant
+-- isolation is a composite FK rather than RLS alone.
 
 create table applications (
   id        uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null,               -- must equal jobs.tenant_id (composite FK below)
+  tenant_id uuid not null,
 
   candidate_id uuid not null references candidates (id),
   job_id       uuid not null,
@@ -20,14 +17,10 @@ create table applications (
   applied_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
-  -- Application and its job share one tenant.
   foreign key (tenant_id, job_id) references jobs (tenant_id, id),
-  -- Submitted CV belongs to the applying candidate.
   foreign key (candidate_id, cv_id) references cvs (candidate_id, id),
 
-  -- One application per (candidate, job), ever (ADR-discussed decision).
   unique (candidate_id, job_id),
-  -- Composite-FK targets used by children / communications.
   unique (job_id, id),
   unique (tenant_id, id),
   unique (id, candidate_id)
@@ -159,7 +152,6 @@ create table application_answers (
 
   primary key (application_id, question_id),
 
-  -- Answer belongs to this application's job, and to a real question of that job.
   foreign key (job_id, application_id) references applications (job_id, id) on delete cascade,
   foreign key (job_id, question_id)   references job_application_questions (job_id, id),
 
@@ -182,7 +174,6 @@ create table application_notes (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
-  -- Note, its application, and its author recruiter are all one tenant.
   foreign key (tenant_id, application_id) references applications (tenant_id, id) on delete cascade,
   foreign key (tenant_id, recruiter_id)   references recruiters (tenant_id, id)
 );

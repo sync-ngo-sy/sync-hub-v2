@@ -1,11 +1,3 @@
-"""What a CV looks like on the wire.
-
-One shape for all three routes, because they are three views of one thing: the upload
-answers with the CV it just created, the poll answers with the same CV a moment later, and
-the only difference between the two is how far the pipeline has got. A client that renders
-this renders the whole flow, from "uploaded" to a parse it can put on screen.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime

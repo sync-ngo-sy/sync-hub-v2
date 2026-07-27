@@ -1,5 +1,2 @@
--- Local dev/sample seed data (loaded by `supabase db reset`).
---
--- Reference data (languages, skill categories, skill taxonomy) lives in the versioned
--- migration 11_seed_reference.sql instead, because it is part of the schema contract and
--- must exist in every environment. Put throwaway local fixtures here.
+-- Local dev fixtures only, loaded by `supabase db reset`. Reference data that every
+-- environment needs is a migration instead — see 11_seed_reference.sql.

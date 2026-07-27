@@ -1,11 +1,3 @@
-"""Self-serve tenant signup: one call that has to leave four records or none.
-
-The same two-authority problem as candidate signup — GoTrue owns the identity, Postgres
-owns the Tenant, the Profile and the Recruiter — with one more way to fail: the slug is
-unique, so a signup can be refused *after* the identity exists. The tests that matter most
-are about what that refusal leaves behind.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -52,7 +44,6 @@ async def test_signup_creates_the_tenant_and_its_admin(
 
 
 async def test_signup_starts_no_session(browser: AsyncClient) -> None:
-    """201 is not a sign-in: the founder confirms their address like anyone else."""
     response = await sign_up_tenant(browser, a_tenant_signup())
 
     assert ACCESS_TOKEN_COOKIE not in response.cookies
@@ -85,12 +76,6 @@ async def test_the_confirmed_admin_can_sign_in_and_reach_their_tenant(
 async def test_a_taken_slug_is_refused_and_strands_no_identity(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """The rollback path, reached the way a real caller reaches it.
-
-    The slug collision happens in Postgres, long after GoTrue has minted the identity — so
-    without the undo, the second founder's address would be registered to an account the
-    platform knows nothing about, and unusable forever after.
-    """
     taken = a_tenant_signup()
     await sign_up_tenant(browser, taken)
     second = a_tenant_signup(slug=taken.slug)
@@ -110,7 +95,6 @@ async def test_a_taken_slug_is_refused_and_strands_no_identity(
 async def test_an_address_that_is_already_registered_is_refused(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Candidate XOR Recruiter, upheld by `auth.users` — one address, one account, either way."""
     first = a_tenant_signup()
     await sign_up_tenant(browser, first)
 
@@ -122,7 +106,6 @@ async def test_an_address_that_is_already_registered_is_refused(
 
 
 async def test_signup_refuses_a_malformed_slug(browser: AsyncClient) -> None:
-    """Slugs address a tenant in URLs and emails, so the shape is part of the contract."""
     response = await sign_up_tenant(browser, a_tenant_signup(slug="Not A Slug"))
 
     assert response.status_code == 422

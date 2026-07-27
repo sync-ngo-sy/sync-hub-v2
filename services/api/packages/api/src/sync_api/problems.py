@@ -1,10 +1,3 @@
-"""RFC 9457 problem details — the single shape every API error takes.
-
-Clients parse one thing whether a route 404s, a body fails validation, or something blows
-up. Domain errors added by later tickets raise `Problem` with their own `type` URN rather
-than inventing a second error shape.
-"""
-
 from __future__ import annotations
 
 from http import HTTPStatus
@@ -15,14 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
 
-#: A problem with no more specific type, per RFC 9457 §4.2.1.
 BLANK_PROBLEM_TYPE = "about:blank"
 
-#: URNs, so problem types stay stable identifiers without owning a URL that has to resolve.
 PROBLEM_TYPE_PREFIX = "urn:sync:problem:"
 
-# Every problem type the API can answer with, in one place: a client switching on `type` is
-# switching on this list, so it is as much a contract as the route table.
 VALIDATION_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}validation-error"
 CSRF_HEADER_REQUIRED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}csrf-header-required"
 RATE_LIMITED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}rate-limited"
@@ -95,12 +84,7 @@ class ValidationProblemDetail(ProblemDetail):
 
 
 class DuplicateCvProblemDetail(ProblemDetail):
-    """A refused upload that can name the CV the candidate already has.
-
-    A typed member rather than a bare extension: the id is the useful half of this refusal
-    — it is what lets the SPA go straight to that CV — and a client cannot rely on
-    something the OpenAPI document only mentions in prose.
-    """
+    """A refused upload that names the CV the candidate already has."""
 
     cv_id: UUID = Field(description="The CV already holding this exact file.")
 

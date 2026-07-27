@@ -1,5 +1,3 @@
-"""Every request gets an id, and every log line emitted while serving it carries that id."""
-
 from __future__ import annotations
 
 import io
@@ -15,7 +13,6 @@ from sync_core import LogFormat, configure_logging
 
 @pytest.fixture
 def log_stream() -> Iterator[io.StringIO]:
-    """Redirect the process-wide log handler into a buffer for the duration of a test."""
     stream = io.StringIO()
     configure_logging(log_format=LogFormat.JSON, stream=stream)
     yield stream
@@ -23,7 +20,6 @@ def log_stream() -> Iterator[io.StringIO]:
 
 
 def entries(stream: io.StringIO) -> list[dict[str, Any]]:
-    """The service's own log lines, JSON-decoded. Skips libraries logging on our handler."""
     return [
         entry
         for line in stream.getvalue().splitlines()
@@ -79,11 +75,6 @@ async def test_request_logs_describe_the_request(
 async def test_a_failing_request_logs_its_traceback_once_under_its_request_id(
     failing_client: AsyncClient, log_stream: io.StringIO
 ) -> None:
-    """The error handler runs outside the middleware; it must still know the request id.
-
-    Without this, an operator handed a request id by the 500 response finds every line
-    about that request except the one carrying the traceback.
-    """
     response = await failing_client.get("/v1/demo/boom", headers={"X-Request-Id": "trace-me"})
     assert response.status_code == 500
 

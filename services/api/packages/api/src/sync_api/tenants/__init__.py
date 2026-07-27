@@ -1,9 +1,3 @@
-"""Tenants: onboarding a hiring company, its roster, and the switches that gate both.
-
-`TenantService` is what a request calls; `ActingRecruiter` is the standing a tenant-scoped
-route has to establish before it does anything at all.
-"""
-
 from __future__ import annotations
 
 from sync_api.tenants.access import (

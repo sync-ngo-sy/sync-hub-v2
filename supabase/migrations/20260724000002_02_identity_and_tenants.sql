@@ -1,11 +1,7 @@
--- 02 · Identity and tenants
---
 -- Shared-PK identity (ADR supabase-0001): profiles.id = candidates.id = recruiters.id =
--- auth.users.id. A profile is a Candidate XOR a Recruiter, enforced declaratively: profiles
--- carries an account_type with UNIQUE (id, account_type); each child pins a constant
--- account_type (CHECK) and FKs (id, account_type) -> profiles, so the opposite child row is
--- physically unreferenceable. Cross-file FKs (current_cv_id, preferred_language_code) are
--- added in later migrations once their target tables exist.
+-- auth.users.id. The candidate-XOR-recruiter invariant is structural, not a backend rule:
+-- profiles has UNIQUE (id, account_type), each child pins a constant account_type, and the
+-- composite FK makes the opposite child row physically unreferenceable.
 
 create table tenants (
   id         uuid primary key default gen_random_uuid(),
@@ -28,7 +24,6 @@ create table profiles (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
 
-  -- Target for the candidate/recruiter composite FKs.
   unique (id, account_type)
 );
 
@@ -53,8 +48,6 @@ create table candidates (
   deleted_at timestamptz,
 
   foreign key (id, account_type) references profiles (id, account_type) on delete cascade,
-  -- A candidate cannot be searchable without a current CV (the CV must also be `ready`,
-  -- enforced by the trusted backend since that is a cross-row condition).
   constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null)
 );
 
@@ -73,7 +66,6 @@ create table recruiters (
   created_at timestamptz not null default now(),
 
   foreign key (id, account_type) references profiles (id, account_type) on delete cascade,
-  -- Target for tenant-scoped composite FKs (jobs, notes, tags, pools, ...).
   unique (tenant_id, id)
 );
 

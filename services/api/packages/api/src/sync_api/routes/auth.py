@@ -1,15 +1,3 @@
-"""Signing up, signing in, and everything in between.
-
-The whole surface a candidate's browser needs, and nothing a Supabase URL is required for
-(ADR-0005). Bodies in, cookies out: no route ever returns a token, because no SPA is meant
-to hold one.
-
-Every mutating route here is rate limited, logout included: it takes no credential worth
-guessing, but it does spend a GoTrue call on any cookie at all, and an unmetered endpoint
-that makes the API call something else is an amplifier. Only `GET /me` is exempt — the SPA
-calls it on every page it renders, so a limit there would be a limit on using the app.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated, Any, Final
@@ -23,21 +11,14 @@ from sync_api.errors import openapi_problem
 from sync_api.rate_limit import enforce_auth_rate_limit
 from sync_core.models import AccountType
 
-#: Mounted under the API prefix. The refresh cookie is scoped to the result, so this is the
-#: one place that decides how far that token travels.
 ROUTER_PREFIX: Final = "/auth"
 
-#: GoTrue enforces a minimum too, from `[auth] minimum_password_length`. This is the
-#: promise the API makes on its own, so a laxly configured project cannot weaken it.
 MINIMUM_PASSWORD_LENGTH: Final = 8
 
-#: bcrypt, which GoTrue hashes with, silently ignores everything past 72 bytes. Rejecting
-#: longer passwords beats accepting one and quietly not honouring most of it.
 MAXIMUM_PASSWORD_LENGTH: Final = 72
 
 RateLimited = Depends(enforce_auth_rate_limit)
 
-#: Any route that reaches GoTrue can answer with this, and none of them can do better.
 IDENTITY_PROVIDER_UNAVAILABLE: Final[dict[int | str, dict[str, Any]]] = {
     502: openapi_problem("The identity provider is not answering.")
 }
@@ -54,8 +35,6 @@ Password = Annotated[
     ),
 ]
 
-#: The opaque token from a confirmation or password-reset link, which the SPA reads out of
-#: its own URL and posts here rather than redeeming against GoTrue itself.
 EmailToken = Annotated[
     str,
     Field(min_length=1, max_length=512, description="The `token_hash` from the emailed link."),
@@ -126,11 +105,7 @@ class AcceptInviteRequest(BaseModel):
     },
 )
 async def sign_up(body: SignUpRequest, auth: AuthServiceDep) -> ProfileView:
-    """Provision the identity, the Profile and the Candidate, and send a confirmation email.
-
-    No session comes back: the candidate has to confirm the address before they can sign in.
-    Anything that fails part-way leaves the address free to sign up again.
-    """
+    """Create the identity, Profile and Candidate, and email a confirmation link. No session yet."""
     profile = await auth.register_candidate(
         email=body.email, password=body.password, full_name=body.full_name
     )
@@ -153,11 +128,7 @@ async def confirm_email(
     cookies: SessionCookiesDep,
     response: Response,
 ) -> ProfileView:
-    """Redeem the `token_hash` from the confirmation email, and sign the candidate in.
-
-    Signing them in is not a shortcut: redeeming the token proves they read mail sent to
-    that address, which is the same thing a password proves about the account.
-    """
+    """Redeem the `token_hash` from the confirmation email, and sign the candidate in."""
     return _signed_in(await auth.confirm_email(body.token_hash), cookies, response)
 
 
@@ -177,11 +148,7 @@ async def accept_invite(
     cookies: SessionCookiesDep,
     response: Response,
 ) -> ProfileView:
-    """Redeem the `token_hash` from an invite email, choose a password, and sign in.
-
-    The Recruiter and their Tenant membership already exist — inviting is what created them
-    — so this adds the one thing missing and drops the invitee straight into their team.
-    """
+    """Redeem the `token_hash` from an invite email, choose a password, and sign in."""
     return _signed_in(
         await auth.accept_invite(token_hash=body.token_hash, password=body.password),
         cookies,
@@ -241,11 +208,7 @@ async def refresh_session(
     dependencies=[RateLimited],
 )
 async def log_out(request: Request, auth: AuthServiceDep, cookies: SessionCookiesDep) -> Response:
-    """Revoke every session the caller has, then clear their cookies.
-
-    Succeeds whatever state the caller is in — a logout that could fail would be a way to
-    leave someone signed in.
-    """
+    """Revoke every session the caller has, then clear their cookies. Never fails."""
     await auth.log_out(cookies.read_access_token(request))
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     cookies.clear(response)
@@ -273,11 +236,7 @@ async def get_current_profile(profile: CurrentProfileDep) -> ProfileView:
     responses=IDENTITY_PROVIDER_UNAVAILABLE,
 )
 async def request_password_reset(body: PasswordResetRequest, auth: AuthServiceDep) -> Response:
-    """Send the reset email, if the address has an account.
-
-    Accepted either way, and with the same latency-free answer either way: a caller must not
-    be able to learn from this endpoint whether an address is registered.
-    """
+    """Send the reset email, if the address has an account. Accepted either way."""
     await auth.request_password_reset(body.email)
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
@@ -297,11 +256,7 @@ async def request_password_reset(body: PasswordResetRequest, auth: AuthServiceDe
 async def confirm_password_reset(
     body: ConfirmPasswordResetRequest, auth: AuthServiceDep, cookies: SessionCookiesDep
 ) -> Response:
-    """Redeem the `token_hash` from the reset email and set the new password.
-
-    Ends every session the account had, this caller's included, so the new password is the
-    only way back in.
-    """
+    """Redeem the `token_hash` from the reset email, set the new password, and end every session."""
     await auth.reset_password(token_hash=body.token_hash, password=body.password)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     cookies.clear(response)
@@ -309,6 +264,5 @@ async def confirm_password_reset(
 
 
 def _signed_in(signed_in: SignedIn, cookies: SessionCookiesDep, response: Response) -> ProfileView:
-    """Put the new session on the response and answer with who it belongs to."""
     cookies.issue(response, signed_in.session)
     return ProfileView.of(signed_in.profile)

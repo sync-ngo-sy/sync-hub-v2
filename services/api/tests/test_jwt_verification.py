@@ -1,11 +1,3 @@
-"""The adapter over the SDK's verification, which is all that is ours to test.
-
-Whether a signature holds is `get_claims()`'s question, and Supabase tests it. What is
-tested here is what the API does with the answer: the claims it acts on, and the single
-error every refusal has to become. How the verifier is *used* is covered through the API
-in `test_auth_sessions.py`.
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -24,8 +16,6 @@ from sync_api.auth.tokens import InvalidAccessTokenError, JwtVerifier
 
 
 class _Sdk:
-    """Stands in for the SDK client, answering with claims or raising the way it does."""
-
     def __init__(self, answer: dict[str, Any] | Exception | None) -> None:
         self._answer = answer
 
@@ -85,13 +75,11 @@ async def test_a_missing_email_becomes_none() -> None:
         AuthApiError("invalid claim: missing sub claim", 403, "bad_jwt"),
         AuthSessionMissingError(),
         AuthRetryableError("GoTrue did not answer", 0),
-        # A GoTrue that cannot be reached must refuse rather than admit.
         ConnectError("nothing is listening"),
         KeyError("exp"),
     ],
 )
 async def test_a_refusal_from_the_sdk_is_an_invalid_token(error: Exception) -> None:
-    """Whatever the SDK raises, the route above answers 401 and says nothing more."""
     with pytest.raises(InvalidAccessTokenError):
         await verifier_raising(error).verify("a.token")
 
