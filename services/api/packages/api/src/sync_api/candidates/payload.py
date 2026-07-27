@@ -2,47 +2,25 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, model_validator
 
+from sync_api.text import (
+    LanguageCode,
+    Line,
+    OptionalLine,
+    OptionalLink,
+    OptionalParagraph,
+)
 from sync_core.models import LanguageProficiency
 from sync_core.profile import (
     EARLIEST_YEAR,
     LATEST_YEAR,
     MAX_ENTRIES,
-    MAX_LINE_LENGTH,
-    MAX_LINK_LENGTH,
-    MAX_PARAGRAPH_LENGTH,
     MAX_YEARS_EXPERIENCE,
 )
 
-
-def _blank_as_unset(value: object) -> object:
-    """An empty input on a form means "not set", not "set to nothing"."""
-    return None if isinstance(value, str) and not value.strip() else value
-
-
-Line = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
-]
-Paragraph = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH)
-]
-Link = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH)
-]
-
-OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
-OptionalParagraph = Annotated[Paragraph | None, BeforeValidator(_blank_as_unset)]
-OptionalLink = Annotated[Link | None, BeforeValidator(_blank_as_unset)]
-
 Year = Annotated[int, Field(ge=EARLIEST_YEAR, le=LATEST_YEAR)]
 Month = Annotated[int, Field(ge=1, le=12)]
-
-LanguageCode = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
-    Field(description="A code from the platform's `languages` table.", examples=["en"]),
-]
 
 YearsOfExperience = Annotated[float, Field(ge=0, le=MAX_YEARS_EXPERIENCE)]
 

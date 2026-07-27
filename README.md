@@ -96,13 +96,6 @@ then failed every CV it claimed would be a much quieter kind of broken. The API 
 read the key, and the test suite parses with a fake extractor, so leaving it unset is fine
 until you actually want a CV read.
 
-A CV's `parsing_status` is the authoritative state: `uploaded` → `processing` →
-`ready`/`failed`. The SPA polls `GET /v1/candidates/me/cvs/{id}` until it leaves
-`processing`, and `failed` is only ever written once the job has genuinely run out of
-attempts — at which point the candidate also gets an in-app Notification, written in the same
-transaction, so a progress bar never ends in silence. That list is `GET /v1/notifications`,
-with `GET /v1/notifications/unread-count` for the bell.
-
 ### Tests that call a real model
 
 The suite parses with a deterministic fake, so a bare `pytest` costs nothing and hits no

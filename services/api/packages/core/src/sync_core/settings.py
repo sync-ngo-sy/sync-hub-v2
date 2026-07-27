@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     recruiter_portal_url: AnyHttpUrl
 
+    public_rate_limit_max_requests: int = Field(default=120, ge=1)
+    public_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    visitor_hash_salt: SecretStr | None = None
+
     cv_max_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
 
@@ -89,6 +93,16 @@ class Settings(BaseSettings):
     @property
     def storage_url(self) -> str:
         return f"{str(self.supabase_url).rstrip('/')}/storage/v1"
+
+    @property
+    def visitor_hash_secret(self) -> str:
+        """What Job view events are salted with — never a constant this repository ships.
+
+        Unset, it falls back to the service-role key: already a per-deployment secret, so an
+        analytics table still cannot be walked back to the addresses it was built from.
+        """
+        salt = self.visitor_hash_salt or self.supabase_service_role_key
+        return salt.get_secret_value()
 
 
 @lru_cache(maxsize=1)

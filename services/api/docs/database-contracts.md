@@ -61,6 +61,42 @@ The re-embed queue looks after itself: every one of those writes fires
 `enqueue_candidate_reembed`, which upserts the candidate's single `candidate_embedding_jobs`
 row, so any number of successive saves leaves exactly one dirty job with a bumped `revision`.
 
+## Jobs: the criteria lock, and what the public may read
+
+A Job's *criteria* — `job_skills`, `job_languages`, `job_application_questions` and
+`jobs.minimum_total_experience_years` — are one thing that freezes together, so
+`PUT /v1/tenants/me/jobs/{id}/criteria` replaces all four at once, deleting and re-inserting
+the child rows rather than matching them up. The prose (`title`, `description`, `location`,
+`employment_type`, `expires_at`) and the lifecycle move through a separate `PATCH`, which is
+why a typo can still be fixed after the applications start arriving.
+
+The lock itself is the database's: `forbid_locked_job_criteria` and
+`forbid_locked_job_min_experience` fire for the service role like any other trigger. The
+backend checks for an Application *before* writing anyway, so the recruiter gets a 409
+naming what is frozen instead of a constraint message — and repeats the check when the
+trigger refuses the write regardless, because an Application can land between the two.
+Emptying already-empty criteria fires no row trigger at all, which is the other reason the
+backend has to know the answer itself.
+
+`status` is a light state machine the backend owns (`job_status` is only an enum): a draft
+publishes or is archived, a published Job closes or is archived, a closed Job reopens, and
+an archived Job is finished. Anything else is a 409 rather than a silent write.
+
+Public browse and read (`GET /v1/jobs`, `/v1/jobs/{id}`, `/v1/jobs/by-link/{token}`) are the
+only endpoints with no session behind them, so they carry their own rate limit and their own
+`where` clause: `status = 'published'`, the owning `tenants.is_active`, and `expires_at`
+either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. `q` is a hard
+filter over `jobs.search_vector` (`websearch_to_tsquery`), never a ranking: the newest Job is
+always first. A public payload never carries `accepted_boolean_answer`; which answer passes a
+knockout question is the Job's business, not the applicant's.
+
+Reading one Job writes a `job_view_events` row — through a tracked link, with that link's id
+in it. The `session_id` is the platform's own `sync_visitor` cookie (issued on the first
+read, so it says "the same browser came back" and nothing else) and `visitor_hash` is a
+salted SHA-256 of address and user agent, so the analytics table cannot be walked back to the
+people in it. A `tracked_job_links` row that is inactive, past its `expires_at`, or points at
+a Job the public cannot see resolves to the same 404 as a token that was never issued.
+
 ## Application submission (the core transaction)
 
 Single DB transaction, service role. The DB guarantees structure; the backend must validate
@@ -279,5 +315,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, chunk atomic-swap, queue backoff, verified-email resolution, notifying in the announcing transaction | **Backend** |
+| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, chunk atomic-swap, queue backoff, verified-email resolution, notifying in the announcing transaction | **Backend** |

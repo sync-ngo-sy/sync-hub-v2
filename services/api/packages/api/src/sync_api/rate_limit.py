@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 MINIMUM_RETRY_AFTER_SECONDS = 1
 
 
-class AuthRateLimiter:
+class RateLimiter:
     def __init__(self, *, max_requests: int, window_seconds: float) -> None:
         self._limit = RateLimitItemPerSecond(max_requests, int(window_seconds))
         self._window = MovingWindowRateLimiter(MemoryStorage())
@@ -29,21 +29,43 @@ class AuthRateLimiter:
         return stats.reset_time - time()
 
 
-def build_auth_rate_limiter(settings: Settings) -> AuthRateLimiter:
-    return AuthRateLimiter(
+def build_auth_rate_limiter(settings: Settings) -> RateLimiter:
+    return RateLimiter(
         max_requests=settings.auth_rate_limit_max_requests,
         window_seconds=settings.auth_rate_limit_window_seconds,
     )
 
 
-def get_auth_rate_limiter(request: Request) -> AuthRateLimiter:
-    return cast("AuthRateLimiter", request.app.state.auth_rate_limiter)
+def build_public_rate_limiter(settings: Settings) -> RateLimiter:
+    return RateLimiter(
+        max_requests=settings.public_rate_limit_max_requests,
+        window_seconds=settings.public_rate_limit_window_seconds,
+    )
+
+
+def get_auth_rate_limiter(request: Request) -> RateLimiter:
+    return cast("RateLimiter", request.app.state.auth_rate_limiter)
+
+
+def get_public_rate_limiter(request: Request) -> RateLimiter:
+    return cast("RateLimiter", request.app.state.public_rate_limiter)
 
 
 async def enforce_auth_rate_limit(
-    request: Request, limiter: Annotated[AuthRateLimiter, Depends(get_auth_rate_limiter)]
+    request: Request, limiter: Annotated[RateLimiter, Depends(get_auth_rate_limiter)]
 ) -> None:
-    retry_after = await limiter.consume(request.scope["path"], caller_of(request))
+    await _enforce(limiter, request)
+
+
+async def enforce_public_rate_limit(
+    request: Request, limiter: Annotated[RateLimiter, Depends(get_public_rate_limiter)]
+) -> None:
+    """Blunts scraping of the one surface with no account behind it."""
+    await _enforce(limiter, request)
+
+
+async def _enforce(limiter: RateLimiter, request: Request) -> None:
+    retry_after = await limiter.consume(endpoint_of(request), caller_of(request))
     if retry_after is None:
         return
     raise Problem(
@@ -56,3 +78,10 @@ async def enforce_auth_rate_limit(
 
 def caller_of(request: Request) -> str:
     return request.client.host if request.client else "unknown"
+
+
+def endpoint_of(request: Request) -> str:
+    """The route's pattern, so reading a thousand jobs is a thousand hits on one budget."""
+    route = request.scope.get("route")
+    path = getattr(route, "path", None)
+    return path if isinstance(path, str) else cast("str", request.scope["path"])

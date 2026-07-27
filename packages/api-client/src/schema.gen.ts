@@ -469,6 +469,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's Jobs, newest first
+         * @description Every Job of the tenant, whatever its state. Page with `next_cursor`.
+         */
+        get: operations["listJobs"];
+        put?: never;
+        /**
+         * Write a new Job
+         * @description Create the Job as a draft. Nobody outside the tenant sees it until it is published.
+         */
+        post: operations["createJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Job, criteria and all
+         * @description The whole Job. `criteria_locked` says whether the criteria form is still editable.
+         */
+        get: operations["getJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a Job or move it through its lifecycle
+         * @description Change what you send and nothing else. The prose stays editable after applications land.
+         */
+        patch: operations["changeJob"];
+        trace?: never;
+    };
+    "/v1/tenants/me/jobs/{job_id}/criteria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace what the Job screens on
+         * @description Replace the criteria whole — an omitted section is an emptied one.
+         *
+         *     Editable only until the Job's first Application: every applicant is judged by one bar.
+         */
+        put: operations["replaceJobCriteria"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/jobs/{job_id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The Job's campaign links and their traffic
+         * @description Every link of the Job, oldest first, each with the views it has brought.
+         */
+        get: operations["listTrackedJobLinks"];
+        put?: never;
+        /**
+         * Name a campaign link to the Job
+         * @description Mint a link whose `token` attributes every view and application it brings to its name.
+         */
+        post: operations["createTrackedJobLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/jobs/{job_id}/links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a campaign link or turn it off
+         * @description Turning a link off stops it resolving; the views it already brought stay counted.
+         */
+        patch: operations["changeTrackedJobLink"];
+        trace?: never;
+    };
+    "/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published Jobs, newest first
+         * @description Open roles anyone can read, no account needed.
+         *
+         *     Every filter is a hard one, and `q` never changes the order: the newest Job is always first.
+         */
+        get: operations["browseJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/by-link/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The Job a campaign link leads to
+         * @description Where a campaign link lands. The view is recorded against the link that brought it.
+         */
+        get: operations["getJobByTrackedLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One published Job
+         * @description Everything applying asks for, and never the answers a knockout question screens on.
+         *
+         *     Reading a Job records a view: an anonymous session id and a salted hash, nothing that
+         *     names the reader.
+         */
+        get: operations["getPublicJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -492,6 +671,11 @@ export interface components {
          * @enum {string}
          */
         AccountType: "candidate" | "recruiter";
+        /**
+         * ApplicationQuestionType
+         * @enum {string}
+         */
+        ApplicationQuestionType: "yes_no" | "short_text";
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -773,6 +957,233 @@ export interface components {
             role: components["schemas"]["RecruiterRole"];
         };
         /**
+         * JobChanges
+         * @description What a Recruiter may still change. Omitted fields stay as they are.
+         */
+        JobChanges: {
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Employment Type */
+            employment_type?: string | null;
+            /**
+             * Expires At
+             * @description When the Job stops being public. Null means it stays up until closed.
+             */
+            expires_at?: string | null;
+            /** @description Where the Job goes next: `draft` → `published` ⇄ `closed`, and `archived` from anywhere. */
+            status?: components["schemas"]["JobStatus"] | null;
+        };
+        /**
+         * JobCriteria
+         * @description The bar an applicant is judged against. Replaced whole; frozen by the first Application.
+         */
+        JobCriteria: {
+            /**
+             * Minimum Total Experience Years
+             * @description Total years of work an applicant needs. Null asks for none.
+             */
+            minimum_total_experience_years?: number | null;
+            /**
+             * Skills
+             * @description Canonical skills the role asks for.
+             */
+            skills?: components["schemas"]["JobSkillRequirement"][];
+            /**
+             * Languages
+             * @description Languages the role asks for.
+             */
+            languages?: components["schemas"]["JobLanguageRequirement"][];
+            /**
+             * Questions
+             * @description Questions, in the order applicants answer them.
+             */
+            questions?: components["schemas"]["JobQuestion"][];
+        };
+        /**
+         * JobCriteriaView
+         * @description The stored criteria. A `GET` body is a valid `PUT` body; the question ids are ignored.
+         */
+        JobCriteriaView: {
+            /** Minimum Total Experience Years */
+            minimum_total_experience_years?: number | null;
+            /** Skills */
+            skills: components["schemas"]["JobSkillRequirement"][];
+            /** Languages */
+            languages: components["schemas"]["JobLanguageRequirement"][];
+            /** Questions */
+            questions: components["schemas"]["JobQuestionView"][];
+        };
+        /**
+         * JobLanguageRequirement
+         * @description One language an applicant has to speak, and how well.
+         */
+        JobLanguageRequirement: {
+            /**
+             * Code
+             * @description A code from the platform's `languages` table.
+             * @example en
+             */
+            code: string;
+            minimum_proficiency: components["schemas"]["LanguageProficiency"];
+        };
+        /**
+         * JobPage
+         * @description One page of the tenant's Jobs, newest first.
+         */
+        JobPage: {
+            /** Items */
+            items: components["schemas"]["JobSummary"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * JobQuestion
+         * @description One question every applicant answers.
+         */
+        JobQuestion: {
+            /** Question Text */
+            question_text: string;
+            question_type: components["schemas"]["ApplicationQuestionType"];
+            /**
+             * Is Required
+             * @description A required question has to be answered to apply.
+             * @default true
+             */
+            is_required: boolean;
+            /**
+             * Accepted Boolean Answer
+             * @description The answer that passes Screening, making this a knockout question. `yes_no` only; null asks without judging.
+             */
+            accepted_boolean_answer?: boolean | null;
+        };
+        /**
+         * JobQuestionView
+         * @description A stored question, which an Application's answer refers to by id.
+         */
+        JobQuestionView: {
+            /** Question Text */
+            question_text: string;
+            question_type: components["schemas"]["ApplicationQuestionType"];
+            /**
+             * Is Required
+             * @description A required question has to be answered to apply.
+             * @default true
+             */
+            is_required: boolean;
+            /**
+             * Accepted Boolean Answer
+             * @description The answer that passes Screening, making this a knockout question. `yes_no` only; null asks without judging.
+             */
+            accepted_boolean_answer?: boolean | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /**
+         * JobSkillRequirement
+         * @description One Canonical skill the Job asks for, and how much of it.
+         */
+        JobSkillRequirement: {
+            /**
+             * Name
+             * @description The Canonical skill's exact name.
+             * @example Python
+             */
+            name: string;
+            /**
+             * @description Only `required` can disqualify an applicant.
+             * @default preferred
+             */
+            importance: components["schemas"]["SkillImportance"];
+            /**
+             * Minimum Years
+             * @description Years of it an applicant needs. Null asks for the skill at any depth.
+             */
+            minimum_years?: number | null;
+        };
+        /**
+         * JobStatus
+         * @enum {string}
+         */
+        JobStatus: "draft" | "published" | "closed" | "archived";
+        /**
+         * JobSummary
+         * @description One of the tenant's Jobs, as its own list renders it.
+         */
+        JobSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            status: components["schemas"]["JobStatus"];
+            /** Location */
+            location?: string | null;
+            /** Employment Type */
+            employment_type?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * JobView
+         * @description A Job as its own Recruiters see it, criteria and all.
+         */
+        JobView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            status: components["schemas"]["JobStatus"];
+            /** Location */
+            location?: string | null;
+            /** Employment Type */
+            employment_type?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Description */
+            description: string;
+            criteria: components["schemas"]["JobCriteriaView"];
+            /**
+             * Criteria Locked
+             * @description True once the Job has an Application: the criteria are frozen from then on, and only the prose can still be edited.
+             */
+            criteria_locked: boolean;
+        };
+        /**
          * LanguageProficiency
          * @enum {string}
          */
@@ -846,12 +1257,56 @@ export interface components {
             is_active: boolean;
         };
         /**
+         * NewJob
+         * @description A Job as it is first written. It starts as a draft, with no criteria.
+         */
+        NewJob: {
+            /**
+             * Title
+             * @example Senior Backend Engineer
+             */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Location
+             * @example Damascus, Syria
+             */
+            location?: string | null;
+            /**
+             * Employment Type
+             * @example Full time
+             */
+            employment_type?: string | null;
+            /**
+             * Expires At
+             * @description When the Job stops being public. Null means it stays up until closed.
+             */
+            expires_at?: string | null;
+        };
+        /**
          * NewTenantView
          * @description What self-serve signup produced.
          */
         NewTenantView: {
             tenant: components["schemas"]["TenantView"];
             admin: components["schemas"]["MemberView"];
+        };
+        /**
+         * NewTrackedLink
+         * @description A named link to a Job, so the views and applications it brings can be told apart.
+         */
+        NewTrackedLink: {
+            /**
+             * Name
+             * @description What the campaign is called, unique per Job.
+             */
+            name: string;
+            /**
+             * Expires At
+             * @description When the Job stops being public. Null means it stays up until closed.
+             */
+            expires_at?: string | null;
         };
         /**
          * Notification
@@ -1226,6 +1681,105 @@ export interface components {
             phone: string | null;
         };
         /**
+         * PublicJob
+         * @description A published Job as a visitor reads it, with everything applying to it will ask for.
+         */
+        PublicJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            tenant: components["schemas"]["PublicTenant"];
+            /** Location */
+            location?: string | null;
+            /** Employment Type */
+            employment_type?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Minimum Total Experience Years */
+            minimum_total_experience_years?: number | null;
+            /** Skills */
+            skills: components["schemas"]["JobSkillRequirement"][];
+            /** Languages */
+            languages: components["schemas"]["JobLanguageRequirement"][];
+            /** Questions */
+            questions: components["schemas"]["PublicJobQuestion"][];
+        };
+        /**
+         * PublicJobPage
+         * @description One page of published Jobs, newest first.
+         */
+        PublicJobPage: {
+            /** Items */
+            items: components["schemas"]["PublicJobSummary"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * PublicJobQuestion
+         * @description A question as an applicant meets it — never the answer that would pass it.
+         */
+        PublicJobQuestion: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Question Text */
+            question_text: string;
+            question_type: components["schemas"]["ApplicationQuestionType"];
+            /** Is Required */
+            is_required: boolean;
+        };
+        /**
+         * PublicJobSummary
+         * @description One published Job, as the public list renders it.
+         */
+        PublicJobSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            tenant: components["schemas"]["PublicTenant"];
+            /** Location */
+            location?: string | null;
+            /** Employment Type */
+            employment_type?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PublicTenant
+         * @description The Tenant a published Job belongs to. Never more of it than a job board shows.
+         */
+        PublicTenant: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
          * Readiness
          * @description The process is up and its dependencies answer.
          */
@@ -1296,6 +1850,11 @@ export interface components {
             full_name: string;
         };
         /**
+         * SkillImportance
+         * @enum {string}
+         */
+        SkillImportance: "required" | "preferred" | "optional";
+        /**
          * TenantView
          * @description A Tenant as its own recruiters see it.
          */
@@ -1306,6 +1865,53 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * TrackedLink
+         * @description One campaign link, and how much traffic it has brought.
+         */
+        TrackedLink: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Token
+             * @description The unguessable part of the public URL.
+             */
+            token: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * View Count
+             * @description Job views that arrived through this link.
+             */
+            view_count: number;
+        };
+        /**
+         * TrackedLinkChanges
+         * @description What a Recruiter may change about a link. Omitted fields stay as they are.
+         */
+        TrackedLinkChanges: {
+            /** Name */
+            name?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /**
+             * Expires At
+             * @description When the Job stops being public. Null means it stays up until closed.
+             */
+            expires_at?: string | null;
         };
         /**
          * UnreadNotificationCount
@@ -2879,6 +3485,758 @@ export interface operations {
             };
             /** @description Global search is not configured on this deployment. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listJobs: {
+        parameters: {
+            query?: {
+                /** @description Only Jobs in this state. */
+                status?: components["schemas"]["JobStatus"] | null;
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewJob"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    changeJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobChanges"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The Job cannot move to that status from the one it is in. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replaceJobCriteria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobCriteria"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobCriteriaView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The Job has applications, so its criteria are frozen. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description A skill is not a Canonical skill, or a language code is not one the platform knows. Both name the offending entries. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listTrackedJobLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackedLink"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createTrackedJobLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewTrackedLink"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackedLink"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This Job already has a link by that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    changeTrackedJobLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackedLinkChanges"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackedLink"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no such Job, or the Job has no such link. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This Job already has a link by that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    browseJobs: {
+        parameters: {
+            query?: {
+                /** @description Words that must appear in the Job. Supports `"quoted phrases"`, `or` and `-excluded`. */
+                q?: string | null;
+                /** @description Matched inside the location. */
+                location?: string | null;
+                /** @description Matched exactly, any case. */
+                employment_type?: string | null;
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJobPage"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getJobByTrackedLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJob"];
+                };
+            };
+            /** @description No live link has that token. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getPublicJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJob"];
+                };
+            };
+            /** @description No published Job has that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

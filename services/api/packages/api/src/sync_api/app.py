@@ -10,8 +10,18 @@ from sync_api.auth import Authentication
 from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
-from sync_api.rate_limit import build_auth_rate_limiter
-from sync_api.routes import auth, candidates, cvs, health, notifications, search, tenants
+from sync_api.rate_limit import build_auth_rate_limiter, build_public_rate_limiter
+from sync_api.routes import (
+    auth,
+    candidates,
+    cvs,
+    health,
+    jobs,
+    notifications,
+    search,
+    tenant_jobs,
+    tenants,
+)
 from sync_core import Database, Settings, Storage, configure_logging, get_logger, get_settings
 from sync_rag.openai_embedder import OpenAiEmbedder
 
@@ -50,6 +60,7 @@ def create_app(settings: Settings | None = None, embedder: Embedder | None = Non
         app.state.storage = storage
         app.state.embedder = embedder or _openai_embedder(resolved)
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
+        app.state.public_rate_limiter = build_public_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield
@@ -86,6 +97,8 @@ def create_app(settings: Settings | None = None, embedder: Embedder | None = Non
     app.include_router(cvs.router, prefix=API_PREFIX)
     app.include_router(notifications.router, prefix=API_PREFIX)
     app.include_router(search.router, prefix=API_PREFIX)
+    app.include_router(tenant_jobs.router, prefix=API_PREFIX)
+    app.include_router(jobs.router, prefix=API_PREFIX)
 
     describe_with_fastapis_defaults = app.openapi
 

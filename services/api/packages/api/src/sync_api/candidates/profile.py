@@ -12,13 +12,8 @@ from sync_api.candidates.payload import (
     ProfileProject,
     ProfileSkill,
 )
-from sync_api.problems import (
-    SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
-    UNKNOWN_CANONICAL_SKILL_PROBLEM_TYPE,
-    UNKNOWN_LANGUAGE_PROBLEM_TYPE,
-    InvalidField,
-    Problem,
-)
+from sync_api.problems import SEARCHABLE_NEEDS_CV_PROBLEM_TYPE, Problem
+from sync_api.vocabulary import canonical_skill_ids, refuse_unknown_languages
 from sync_core import get_logger, transaction
 from sync_core.models import (
     Base,
@@ -30,12 +25,10 @@ from sync_core.models import (
     CandidateSkill,
     Cv,
     CvParsingStatus,
-    Language,
     SkillTaxonomy,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,8 +56,8 @@ class CandidateProfileService:
         )
 
     async def replace(self, candidate_id: UUID, profile: CandidateProfile) -> CandidateProfile:
-        skills = await self._canonical_skill_ids(profile.skills)
-        await self._refuse_unknown_languages(profile)
+        skills = await canonical_skill_ids(self._db, _skills_named(profile))
+        await refuse_unknown_languages(self._db, _languages_named(profile))
 
         async with transaction(self._db):
             candidate = await self._candidate(candidate_id, lock=True)
@@ -93,64 +86,6 @@ class CandidateProfileService:
 
         logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
         return await self.profile(candidate_id)
-
-    async def _canonical_skill_ids(self, skills: Sequence[ProfileSkill]) -> dict[str, UUID]:
-        if not skills:
-            return {}
-        rows = await self._db.execute(
-            select(SkillTaxonomy.canonical_name, SkillTaxonomy.id).where(
-                SkillTaxonomy.canonical_name.in_([skill.name for skill in skills])
-            )
-        )
-        known: dict[str, UUID] = dict(rows.tuples().all())
-        _refuse_unknown(
-            [
-                InvalidField(
-                    location=f"body.skills.{position}.name",
-                    message=f"“{skill.name}” is not a Canonical skill.",
-                    type="unknown_canonical_skill",
-                )
-                for position, skill in enumerate(skills)
-                if skill.name not in known
-            ],
-            problem_type=UNKNOWN_CANONICAL_SKILL_PROBLEM_TYPE,
-            detail="Every skill has to be one of the platform's Canonical skills.",
-        )
-        return known
-
-    async def _refuse_unknown_languages(self, profile: CandidateProfile) -> None:
-        codes = {language.code for language in profile.languages}
-        if profile.preferred_language_code is not None:
-            codes.add(profile.preferred_language_code)
-        if not codes:
-            return
-
-        known = set(
-            (await self._db.scalars(select(Language.code).where(Language.code.in_(codes)))).all()
-        )
-        unknown = [
-            InvalidField(
-                location=f"body.languages.{position}.code",
-                message=f"“{language.code}” is not a language the platform knows.",
-                type="unknown_language",
-            )
-            for position, language in enumerate(profile.languages)
-            if language.code not in known
-        ]
-        if profile.preferred_language_code not in {*known, None}:
-            unknown.append(
-                InvalidField(
-                    location="body.preferred_language_code",
-                    message=f"“{profile.preferred_language_code}” is not a language "
-                    "the platform knows.",
-                    type="unknown_language",
-                )
-            )
-        _refuse_unknown(
-            unknown,
-            problem_type=UNKNOWN_LANGUAGE_PROBLEM_TYPE,
-            detail="Every language has to be one of the platform's language codes.",
-        )
 
     async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
         if candidate.current_cv_id is None:
@@ -310,12 +245,18 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
     return rows
 
 
-def _refuse_unknown(unknown: Sequence[InvalidField], *, problem_type: str, detail: str) -> None:
-    if not unknown:
-        return
-    raise Problem(
-        status=422,
-        type=problem_type,
-        detail=detail,
-        errors=[field.model_dump() for field in unknown],
-    )
+def _skills_named(profile: CandidateProfile) -> dict[str, str]:
+    return {
+        f"body.skills.{position}.name": skill.name for position, skill in enumerate(profile.skills)
+    }
+
+
+def _languages_named(profile: CandidateProfile) -> dict[str, str]:
+    """`preferred_language_code` is a language too, and is refused where the candidate typed it."""
+    named = {
+        f"body.languages.{position}.code": language.code
+        for position, language in enumerate(profile.languages)
+    }
+    if profile.preferred_language_code is not None:
+        named["body.preferred_language_code"] = profile.preferred_language_code
+    return named
