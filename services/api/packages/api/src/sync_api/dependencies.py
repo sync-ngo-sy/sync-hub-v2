@@ -1,5 +1,3 @@
-"""What a route asks for and the app supplies."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, cast
@@ -19,12 +17,6 @@ if TYPE_CHECKING:
 
 
 def get_app_settings(request: Request) -> Settings:
-    """The settings *this* app was built with — not `sync_core.get_settings()`.
-
-    They differ: the process-wide ones are read from the environment once and cached, while
-    `create_app` may have been handed a modified copy, which is how a test stands an app up
-    with a rate limit it can reach or a database it cannot.
-    """
     return cast("Settings", request.app.state.settings)
 
 
@@ -35,7 +27,6 @@ def get_database(request: Request) -> Database:
 async def get_session(
     database: Annotated[Database, Depends(get_database)],
 ) -> AsyncIterator[AsyncSession]:
-    """A session for the duration of one request. Routes commit their own work."""
     async with database.session() as session:
         yield session
 
@@ -71,11 +62,6 @@ async def get_current_profile(
     auth: AuthServiceDep,
     cookies: SessionCookiesDep,
 ) -> ActingProfile:
-    """The Profile behind the session cookie, or a 401.
-
-    Depend on this from any route that needs to know who is asking — it is the way in.
-    ADR-0002 moved every ownership and tenant check into the API, and they all start here.
-    """
     return await auth.acting_profile(cookies.read_access_token(request))
 
 
@@ -83,11 +69,6 @@ CurrentProfileDep = Annotated[ActingProfile, Depends(get_current_profile)]
 
 
 async def get_acting_candidate(profile: CurrentProfileDep, session: SessionDep) -> ActingCandidate:
-    """The caller as a Candidate, or a 403.
-
-    Depend on this from every route that touches a candidate's own data: it establishes
-    whose data that is, so no route ever takes a candidate id from the client.
-    """
     return await acting_candidate(session, profile)
 
 
@@ -141,11 +122,6 @@ TenantServiceDep = Annotated[TenantService, Depends(get_tenant_service)]
 
 
 async def get_acting_recruiter(profile: CurrentProfileDep, session: SessionDep) -> ActingRecruiter:
-    """The caller's standing inside their Tenant, or a 403.
-
-    Depend on this from every tenant-scoped route: it is the single place the Recruiter and
-    Tenant kill-switches are read, so no route can be written that forgets one.
-    """
     return await acting_recruiter(session, profile)
 
 

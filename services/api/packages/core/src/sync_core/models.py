@@ -1,16 +1,3 @@
-"""SQLAlchemy models generated from the database schema — DO NOT EDIT BY HAND.
-
-Regenerate with `uv run python scripts/generate_models.py` after every migration
-(ADR-0004). The database, not this file, is the source of truth.
-
-Every relationship is `viewonly` — navigate and eager-load through them, but write by
-assigning foreign key columns. The schema isolates tenants with composite foreign keys, so
-most tenant-scoped tables reach their tenant through two overlapping paths (directly, and
-via the recruiter who owns the row); a writable relationship would leave SQLAlchemy
-guessing which one owns `tenant_id`. Explicit column writes are what ADR-0001 asks for
-anyway: the backend composes its own transactions.
-"""
-
 import datetime
 import decimal
 import enum

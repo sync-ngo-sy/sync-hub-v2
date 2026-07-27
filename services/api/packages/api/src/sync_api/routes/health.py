@@ -1,9 +1,3 @@
-"""Liveness and readiness.
-
-Two endpoints on purpose: an orchestrator restarting a process because Postgres blinked
-makes an outage worse, so only readiness touches the database.
-"""
-
 from __future__ import annotations
 
 from typing import Literal

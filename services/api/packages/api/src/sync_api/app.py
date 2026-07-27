@@ -1,9 +1,3 @@
-"""Assembling the FastAPI application.
-
-`create_app` builds a fully independent app every call — nothing module-level is shared —
-so a test can stand one up with its own settings without disturbing the others.
-"""
-
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -67,20 +61,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         description=DESCRIPTION,
         lifespan=lifespan,
         responses=PROBLEM_RESPONSES,
-        # Application-wide so no future route can forget it, and a dependency rather than
-        # middleware so it runs after routing — a POST to a GET-only path stays a 405.
         dependencies=[Depends(enforce_csrf_header)],
     )
 
-    # Added innermost first: Starlette treats the last one added as the outermost, and the
-    # access log has to run inside the id it reports.
+    # Added innermost first — Starlette treats the last one added as the outermost — so the
+    # access log runs inside the request id it reports.
     app.add_middleware(AccessLogMiddleware)
     app.add_middleware(
+        # A caller's own id is echoed as sent; the library would otherwise replace anything that
+        # is not a UUID4, breaking correlation with upstream tracing.
         CorrelationIdMiddleware,
         header_name=REQUEST_ID_HEADER,
-        # A caller's own id is echoed as sent. The library defaults to replacing anything
-        # that is not a UUID4, which would break correlation with any upstream tracing that
-        # numbers its requests differently.
         validator=None,
     )
     install_problem_handlers(app)

@@ -1,9 +1,3 @@
-"""API-proxied authentication (ADR-0005).
-
-`Authentication` is what the application assembles once and hands to every request;
-`AuthService` is what a request actually calls.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,15 +13,11 @@ from sync_api.auth.tokens import JwtVerifier
 if TYPE_CHECKING:
     from sync_core import Settings
 
-#: How long to wait on GoTrue before giving up and answering 502. Long enough for a slow
-#: password hash, short enough that a stalled identity provider cannot exhaust the workers.
 GOTRUE_TIMEOUT_SECONDS = 10.0
 
 
 @dataclass(frozen=True, slots=True)
 class Authentication:
-    """The auth machinery that outlives a request: one HTTP client, one key cache."""
-
     gotrue: GoTrue
     verifier: JwtVerifier
     cookies: SessionCookies
@@ -44,8 +34,6 @@ class Authentication:
                 service_role_key=settings.supabase_service_role_key.get_secret_value(),
                 anon_key=anon_key,
             ),
-            # The one SDK client kept past a single call: it caches the JWKS it fetched, and
-            # a fresh client per request would re-read the document every time.
             verifier=JwtVerifier(sdk_client(http, url=settings.gotrue_url, key=anon_key)),
             cookies=SessionCookies(settings, refresh_path=refresh_cookie_path),
             http=http,

@@ -1,10 +1,3 @@
-"""Signup: one call that has to leave three records or none.
-
-The identity lives in GoTrue and the Profile and Candidate live in Postgres, with no
-transaction spanning the two — so the tests that matter most here are the ones about what
-a *failed* signup leaves behind.
-"""
-
 from __future__ import annotations
 
 from httpx import AsyncClient
@@ -18,8 +11,6 @@ from tests.support.candidates import a_signup, sign_up
 from tests.support.harness import spa_onto
 from tests.support.mailbox import Mailbox
 
-#: Nothing listens here. Reaching the database is the step *after* the identity exists, so
-#: pointing an app at a dead port is how a test gets a signup to fail half-way.
 UNREACHABLE_DATABASE = "postgresql+asyncpg://postgres:postgres@127.0.0.1:1/postgres"
 
 
@@ -48,7 +39,6 @@ async def test_signup_creates_the_profile_and_the_candidate(
 async def test_signup_leaves_the_identity_unconfirmed(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """The address is not trusted until the candidate proves they read mail sent to it."""
     signup = a_signup()
 
     await sign_up(browser, signup)
@@ -70,7 +60,6 @@ async def test_signup_sends_a_confirmation_email(browser: AsyncClient, mailbox: 
 
 
 async def test_signup_starts_no_session(browser: AsyncClient) -> None:
-    """201 is not a sign-in: the candidate still has to confirm before they get cookies."""
     response = await sign_up(browser, a_signup())
 
     assert ACCESS_TOKEN_COOKIE not in response.cookies
@@ -112,12 +101,6 @@ async def test_signup_refuses_a_malformed_address(browser: AsyncClient) -> None:
 async def test_a_signup_that_cannot_reach_the_database_strands_no_identity(
     settings: Settings, db_session: AsyncSession
 ) -> None:
-    """The acceptance criterion, tested the only way that means anything: by breaking it.
-
-    GoTrue has already created the identity by the time the Profile insert fails, so the
-    flow has to go back and delete it. Were it not to, the address would be permanently
-    unusable — registered in GoTrue, unknown to the platform, and refused at signup.
-    """
     signup = a_signup()
 
     async with spa_onto(settings, database_url=UNREACHABLE_DATABASE) as broken:

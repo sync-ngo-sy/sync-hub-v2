@@ -1,6 +1,5 @@
--- 11 · Reference-data seed (part of the schema contract, applied to every environment)
---
--- Starter set — expand as needed. Dev/sample rows belong in supabase/seed.sql instead.
+-- Part of the schema contract, so it ships as a migration and is applied to every
+-- environment. Throwaway local fixtures belong in supabase/seed.sql instead.
 
 insert into languages (code, name) values
   ('en', 'English'), ('ar', 'Arabic'),  ('fr', 'French'),   ('es', 'Spanish'),

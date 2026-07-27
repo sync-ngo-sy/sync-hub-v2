@@ -1,5 +1,3 @@
-"""The queue worker: the process that drains the platform's Postgres table queues."""
-
 from sync_worker.engine import (
     ClaimedJob,
     Consumer,

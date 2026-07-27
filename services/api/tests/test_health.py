@@ -1,5 +1,3 @@
-"""The walking skeleton's proof of life: HTTP in, database out."""
-
 from __future__ import annotations
 
 from httpx import AsyncClient
