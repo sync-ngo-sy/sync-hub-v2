@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.applications.answers import answer_rows, refuse_unusable_answers
-from sync_api.applications.criteria import criteria_of, questions_of
+from sync_api.applications.criteria import screening_criteria_of
 from sync_api.applications.payload import (
     Application,
     ApplicationPage,
@@ -19,6 +19,7 @@ from sync_api.applications.snapshot import screened, snapshot_rows
 from sync_api.candidates import languages_named, replace_live_profile, skills_named
 from sync_api.jobs import PublicTenant
 from sync_api.jobs.access import open_job
+from sync_api.jobs.criteria import questions_of
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     CV_NOT_FOUND_PROBLEM_TYPE,
@@ -69,7 +70,7 @@ class ApplicationService:
         refuse_unusable_answers(await questions_of(self._db, job.id), new.answers)
         skills = await canonical_skill_ids(self._db, skills_named(new.profile, "body.profile"))
         await refuse_unknown_languages(self._db, languages_named(new.profile, "body.profile"))
-        criteria = await criteria_of(self._db, job)
+        criteria = await screening_criteria_of(self._db, job)
         await self._refuse_duplicate(candidate.id, job.id)
 
         application = ApplicationRow(
@@ -81,23 +82,21 @@ class ApplicationService:
             tracked_link_id=await self._link_that_brought_them(job.id, visitor),
             status=ApplicationStatus.NEW,
         )
-        verdict = screen(
-            criteria, screened(new.profile, skills, new.answers), today=datetime.now(UTC).date()
+        snapshot = snapshot_rows(
+            application.id,
+            new.profile,
+            skills,
+            full_name=candidate.profile.full_name,
+            phone=candidate.profile.phone,
         )
+        answers = answer_rows(application.id, job.id, new.answers)
+        verdict = screen(criteria, screened(snapshot, answers), today=datetime.now(UTC).date())
         try:
             async with transaction(self._db):
                 self._db.add(application)
                 await self._db.flush()
-                self._db.add_all(
-                    snapshot_rows(
-                        application.id,
-                        new.profile,
-                        skills,
-                        full_name=candidate.profile.full_name,
-                        phone=candidate.profile.phone,
-                    )
-                )
-                self._db.add_all(answer_rows(application.id, job.id, new.answers))
+                self._db.add_all(snapshot.all())
+                self._db.add_all(answers)
                 self._db.add(
                     ApplicationStatusHistory(
                         application_id=application.id,
@@ -143,7 +142,9 @@ class ApplicationService:
             application_id=str(application.id),
             job_id=str(job.id),
             qualification_status=verdict.status.value,
-            tracked_link_id=_or_none(application.tracked_link_id),
+            tracked_link_id=None
+            if application.tracked_link_id is None
+            else str(application.tracked_link_id),
         )
         await self._db.refresh(application)
         return _as_payload(application, job, tenant)
@@ -267,7 +268,3 @@ def _duplicate(existing: UUID) -> Problem:
         detail="You have already applied to this job.",
         application_id=str(existing),
     )
-
-
-def _or_none(value: UUID | None) -> str | None:
-    return None if value is None else str(value)

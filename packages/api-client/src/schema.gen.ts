@@ -731,6 +731,51 @@ export interface components {
             updated_at: string;
         };
         /**
+         * ApplicationConflictProblemDetail
+         * @description A submission refused by the state something is already in.
+         */
+        ApplicationConflictProblemDetail: {
+            /**
+             * Type
+             * @description Stable identifier for what went wrong.
+             * @default about:blank
+             * @example about:blank
+             */
+            type: string;
+            /**
+             * Title
+             * @description Short, human-readable summary of the problem type.
+             */
+            title: string;
+            /**
+             * Status
+             * @description The HTTP status code, repeated for out-of-band handling.
+             */
+            status: number;
+            /**
+             * Detail
+             * @description Explanation specific to this occurrence.
+             */
+            detail?: string | null;
+            /**
+             * Instance
+             * @description Path of the request that produced the problem.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates this response with the server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Application Id
+             * @description The Application already holding this job. Only on a duplicate.
+             */
+            application_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * ApplicationPage
          * @description One page of the caller's Applications, newest first.
          */
@@ -959,52 +1004,6 @@ export interface components {
          * @enum {string}
          */
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
-        /**
-         * DuplicateApplicationProblemDetail
-         * @description A refused submission that names the Application the candidate already has.
-         */
-        DuplicateApplicationProblemDetail: {
-            /**
-             * Type
-             * @description Stable identifier for what went wrong.
-             * @default about:blank
-             * @example about:blank
-             */
-            type: string;
-            /**
-             * Title
-             * @description Short, human-readable summary of the problem type.
-             */
-            title: string;
-            /**
-             * Status
-             * @description The HTTP status code, repeated for out-of-band handling.
-             */
-            status: number;
-            /**
-             * Detail
-             * @description Explanation specific to this occurrence.
-             */
-            detail?: string | null;
-            /**
-             * Instance
-             * @description Path of the request that produced the problem.
-             */
-            instance?: string | null;
-            /**
-             * Request Id
-             * @description Correlates this response with the server logs.
-             */
-            request_id?: string | null;
-            /**
-             * Application Id
-             * Format: uuid
-             * @description The Application already holding this job.
-             */
-            application_id: string;
-        } & {
-            [key: string]: unknown;
-        };
         /**
          * DuplicateCvProblemDetail
          * @description A refused upload that names the CV the candidate already has.
@@ -4548,13 +4547,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description You have already applied to this job — the id of that Application is on the problem — or the CV you picked has not finished parsing. */
+            /** @description You have already applied to this job — `application_id` is the one you sent, and a withdrawn Application still counts — or the CV you picked has not finished parsing, or the reviewed data opts in to Global search without a current, ready CV. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["DuplicateApplicationProblemDetail"];
+                    "application/problem+json": components["schemas"]["ApplicationConflictProblemDetail"];
                 };
             };
             /** @description The answers do not match the questions the Job asks, or the reviewed data names a skill or a language the platform does not know. All of them name the offending entries. */

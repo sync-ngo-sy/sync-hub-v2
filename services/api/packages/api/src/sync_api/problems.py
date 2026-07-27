@@ -98,10 +98,13 @@ class DuplicateCvProblemDetail(ProblemDetail):
     cv_id: UUID = Field(description="The CV already holding this exact file.")
 
 
-class DuplicateApplicationProblemDetail(ProblemDetail):
-    """A refused submission that names the Application the candidate already has."""
+class ApplicationConflictProblemDetail(ProblemDetail):
+    """A submission refused by the state something is already in."""
 
-    application_id: UUID = Field(description="The Application already holding this job.")
+    application_id: UUID | None = Field(
+        default=None,
+        description="The Application already holding this job. Only on a duplicate.",
+    )
 
 
 class Problem(Exception):  # noqa: N818  — it *is* a problem; the RFC's noun, not an "Error"

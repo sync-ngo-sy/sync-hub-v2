@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,7 @@ from sync_api.applications.screening import (
     SnapshotSkill,
 )
 from sync_core.models import (
+    ApplicationAnswer,
     ApplicationEducation,
     ApplicationExperience,
     ApplicationLanguage,
@@ -24,8 +26,29 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
-    from sync_api.applications.payload import SubmittedAnswer
     from sync_api.candidates import CandidateProfile
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotRows:
+    """The Snapshot as rows, before they are written. What Screening then reads."""
+
+    profile: ApplicationProfileSnapshot
+    experiences: list[ApplicationExperience]
+    educations: list[ApplicationEducation]
+    skills: list[ApplicationSkill]
+    languages: list[ApplicationLanguage]
+    projects: list[ApplicationProject]
+
+    def all(self) -> list[Base]:
+        return [
+            self.profile,
+            *self.experiences,
+            *self.educations,
+            *self.skills,
+            *self.languages,
+            *self.projects,
+        ]
 
 
 def snapshot_rows(
@@ -35,20 +58,18 @@ def snapshot_rows(
     *,
     full_name: str,
     phone: str | None,
-) -> list[Base]:
+) -> SnapshotRows:
     """The reviewed data, frozen. Immutable from here: the Application is judged and read by
     this, never by the live profile it was copied from."""
-    rows: list[Base] = [
-        ApplicationProfileSnapshot(
-            application_id=application_id,
-            full_name=full_name,
-            phone=phone,
-            headline=profile.headline,
-            summary=profile.summary,
-            location=profile.location,
-        )
-    ]
-    rows += [
+    captured = ApplicationProfileSnapshot(
+        application_id=application_id,
+        full_name=full_name,
+        phone=phone,
+        headline=profile.headline,
+        summary=profile.summary,
+        location=profile.location,
+    )
+    experiences = [
         ApplicationExperience(
             application_id=application_id,
             sort_order=order,
@@ -63,7 +84,7 @@ def snapshot_rows(
         )
         for order, entry in enumerate(profile.experiences)
     ]
-    rows += [
+    educations = [
         ApplicationEducation(
             application_id=application_id,
             sort_order=order,
@@ -75,7 +96,7 @@ def snapshot_rows(
         )
         for order, entry in enumerate(profile.educations)
     ]
-    rows += [
+    application_skills = [
         ApplicationSkill(
             application_id=application_id,
             sort_order=order,
@@ -84,7 +105,7 @@ def snapshot_rows(
         )
         for order, entry in enumerate(profile.skills)
     ]
-    rows += [
+    languages = [
         ApplicationLanguage(
             application_id=application_id,
             sort_order=order,
@@ -93,7 +114,7 @@ def snapshot_rows(
         )
         for order, entry in enumerate(profile.languages)
     ]
-    rows += [
+    projects = [
         ApplicationProject(
             application_id=application_id,
             sort_order=order,
@@ -108,38 +129,40 @@ def snapshot_rows(
         )
         for order, entry in enumerate(profile.projects)
     ]
-    return rows
+    return SnapshotRows(
+        profile=captured,
+        experiences=experiences,
+        educations=educations,
+        skills=application_skills,
+        languages=languages,
+        projects=projects,
+    )
 
 
-def screened(
-    profile: CandidateProfile, skills: dict[str, UUID], answers: Sequence[SubmittedAnswer]
-) -> Snapshot:
-    """The same data the rows above hold, in the shape Screening reads."""
+def screened(rows: SnapshotRows, answers: Sequence[ApplicationAnswer]) -> Snapshot:
+    """What Screening measures: the Snapshot rows themselves, and never the live profile."""
     return Snapshot(
         skills=tuple(
-            SnapshotSkill(
-                taxonomy_id=skills[entry.name],
-                years_experience=_as_decimal(entry.years_experience),
-            )
-            for entry in profile.skills
+            SnapshotSkill(taxonomy_id=row.taxonomy_id, years_experience=row.years_experience)
+            for row in rows.skills
         ),
         experiences=tuple(
             SnapshotExperience(
-                start_year=entry.start_year,
-                start_month=entry.start_month,
-                end_year=entry.end_year,
-                end_month=entry.end_month,
-                is_current=entry.is_current,
+                start_year=row.start_year,
+                start_month=row.start_month,
+                end_year=row.end_year,
+                end_month=row.end_month,
+                is_current=row.is_current,
             )
-            for entry in profile.experiences
+            for row in rows.experiences
         ),
         languages=tuple(
-            SnapshotLanguage(code=entry.code, proficiency=entry.proficiency)
-            for entry in profile.languages
+            SnapshotLanguage(code=row.language_code, proficiency=row.proficiency)
+            for row in rows.languages
         ),
         answers=tuple(
-            SnapshotAnswer(question_id=entry.question_id, answer_boolean=entry.answer_boolean)
-            for entry in answers
+            SnapshotAnswer(question_id=row.question_id, answer_boolean=row.answer_boolean)
+            for row in answers
         ),
     )
 

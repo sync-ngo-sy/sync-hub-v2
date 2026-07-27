@@ -102,8 +102,10 @@ a Job the public cannot see resolves to the same 404 as a token that was never i
 Single DB transaction, service role. The DB guarantees structure; the backend must validate
 everything below **before** committing.
 
-Backend-enforced preconditions (not expressible as constraints), all answered **before** the
-transaction opens, so a refusal never leaves half an Application:
+Backend-enforced preconditions (not expressible as constraints). All of these are answered
+**before** the transaction opens, so the common refusals never even begin an Application; the
+one that cannot be (the searchable opt-in below, which needs the candidate row locked) runs
+inside it and takes the whole submission back with it:
 1. The Job is one the public may read — `public_jobs()`, the same predicate browse uses. A Job
    nobody can read is a Job nobody can apply to, and both answer the same 404.
 2. `cv_id` belongs to the acting candidate and `deleted_at IS NULL` (404), and

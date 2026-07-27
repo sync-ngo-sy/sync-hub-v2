@@ -10,23 +10,18 @@ from sync_api.applications.screening import (
     LanguageCriterion,
     SkillCriterion,
 )
-from sync_core.models import (
-    JobApplicationQuestion,
-    JobLanguage,
-    JobSkill,
-    Language,
-    SkillTaxonomy,
-)
+from sync_api.jobs.criteria import questions_of
+from sync_core.models import JobLanguage, JobSkill, Language, SkillTaxonomy
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_core.models import Job
+    from sync_core.models import Job, JobApplicationQuestion
 
 
-async def criteria_of(session: AsyncSession, job: Job) -> Criteria:
+async def screening_criteria_of(session: AsyncSession, job: Job) -> Criteria:
     """The Job's bar, in the shape Screening measures against."""
     return Criteria(
         minimum_total_experience_years=job.minimum_total_experience_years,
@@ -34,16 +29,6 @@ async def criteria_of(session: AsyncSession, job: Job) -> Criteria:
         languages=await _languages(session, job.id),
         knockouts=_knockouts(await questions_of(session, job.id)),
     )
-
-
-async def questions_of(session: AsyncSession, job_id: UUID) -> list[JobApplicationQuestion]:
-    """Every question of the Job, in the order applicants are asked them."""
-    rows = await session.scalars(
-        select(JobApplicationQuestion)
-        .where(JobApplicationQuestion.job_id == job_id)
-        .order_by(JobApplicationQuestion.sort_order)
-    )
-    return list(rows)
 
 
 async def _skills(session: AsyncSession, job_id: UUID) -> tuple[SkillCriterion, ...]:

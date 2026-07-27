@@ -41,8 +41,8 @@ async def enqueue_email(
     recipient: str,
     payload: CommunicationPayload,
     idempotency_key: str,
-    tenant_id: UUID | None = None,
-    application_id: UUID | None = None,
+    tenant_id: UUID | None,
+    application_id: UUID | None,
 ) -> Communication:
     """Queue one message for the sender to deliver, and audit it.
 

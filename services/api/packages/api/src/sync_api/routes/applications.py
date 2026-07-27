@@ -8,7 +8,7 @@ from sync_api.applications import Application, ApplicationPage, NewApplication
 from sync_api.dependencies import ActingCandidateDep, ApplicationServiceDep, VisitorDep
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-from sync_api.problems import DuplicateApplicationProblemDetail, ValidationProblemDetail
+from sync_api.problems import ApplicationConflictProblemDetail, ValidationProblemDetail
 from sync_api.routes.candidates import CANDIDATE_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/applications"
@@ -18,9 +18,10 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
 SUBMISSION_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
     404: openapi_problem("No published Job has that id, or no CV of yours has that id."),
     409: openapi_problem(
-        "You have already applied to this job — the id of that Application is on the "
-        "problem — or the CV you picked has not finished parsing.",
-        DuplicateApplicationProblemDetail,
+        "You have already applied to this job — `application_id` is the one you sent, and a "
+        "withdrawn Application still counts — or the CV you picked has not finished parsing, "
+        "or the reviewed data opts in to Global search without a current, ready CV.",
+        ApplicationConflictProblemDetail,
     ),
     422: openapi_problem(
         "The answers do not match the questions the Job asks, or the reviewed data names a "

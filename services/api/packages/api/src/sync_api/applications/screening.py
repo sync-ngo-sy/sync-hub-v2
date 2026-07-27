@@ -228,7 +228,12 @@ def _months_worked(experiences: tuple[SnapshotExperience, ...], today: date) -> 
 
 
 def _period(experience: SnapshotExperience, today: date) -> tuple[int, int] | None:
-    """A job as the inclusive months it ran for, or nothing if the Snapshot cannot say."""
+    """A job as the inclusive months it ran for, or nothing if the Snapshot cannot say.
+
+    A missing month runs to the edge of its year — the reading `aexp_ordered` already takes,
+    where `coalesce(start_month,1)` and `coalesce(end_month,12)` decide whether a year-only
+    period is even valid. A year is the unit a year-only entry was given in.
+    """
     if experience.start_year is None:
         return None
     start = _month_index(experience.start_year, experience.start_month or 1)
