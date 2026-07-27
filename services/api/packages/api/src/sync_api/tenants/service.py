@@ -18,7 +18,6 @@ member can be, so no route ever has to ask whether someone is a member *yet*.
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 from uuid import UUID
@@ -40,12 +39,11 @@ from sync_api.problems import (
     Problem,
 )
 from sync_api.tenants.access import TenantSummary
+from sync_api.transactions import transaction
 from sync_core import get_logger
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant, User
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth.gotrue import GoTrue, GoTrueUser
@@ -138,7 +136,7 @@ class TenantService:
             raise email_already_registered() from exc
 
         try:
-            async with self._transaction():
+            async with transaction(self._db):
                 self._db.add(
                     Profile(id=user.id, account_type=AccountType.RECRUITER, full_name=full_name)
                 )
@@ -169,7 +167,7 @@ class TenantService:
         is_active: bool | None = None,
     ) -> Member:
         """Change a colleague's role, their access, or both."""
-        async with self._transaction():
+        async with transaction(self._db):
             recruiter = await self._db.get(Recruiter, recruiter_id)
             if recruiter is None or recruiter.tenant_id != tenant_id:
                 # Deliberately the same answer as a recruiter_id that does not exist: an
@@ -212,7 +210,7 @@ class TenantService:
         """
         tenant = Tenant(name=tenant_name, slug=slug)
         try:
-            async with self._transaction():
+            async with transaction(self._db):
                 self._db.add(tenant)
                 await self._db.flush()
                 self._db.add(
@@ -268,23 +266,6 @@ class TenantService:
     async def _member(self, recruiter_id: UUID) -> Member:
         rows = await self._db.execute(MEMBER_QUERY.where(Recruiter.id == recruiter_id))
         return _member_from(rows.tuples().one())
-
-    @asynccontextmanager
-    async def _transaction(self) -> AsyncIterator[None]:
-        """All-or-nothing, on a session that has very likely already read something.
-
-        Not `session.begin()`, which every other write in the codebase uses: by the time a
-        tenant-scoped route runs, the access gate has issued its SELECT and SQLAlchemy has
-        autobegun a transaction on this session — and `begin()` refuses to nest on one.
-        Committing at the end covers the same statements, and those reads coming along for
-        the ride costs nothing.
-        """
-        try:
-            yield
-            await self._db.commit()
-        except BaseException:
-            await self._db.rollback()
-            raise
 
 
 #: Recruiter, name and address in one row. The address is read from `auth.users` because
