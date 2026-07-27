@@ -188,6 +188,47 @@ update applications set qualification_status = <verdict>, qualification_reason =
   where id = <application_id>;
 ```
 
+## Application review (pipeline states)
+
+Reading is tenant-scoped in the query itself — the applicant list through the Job, the review
+through `applications.tenant_id` — so another tenant's Application and a nonexistent one are
+the same 404. A review reads the immutable `application_*` snapshot, the answers joined to the
+questions that were asked, `application_status_history` oldest first, and a short-lived signed
+Storage URL for the CV the Application was sent with.
+
+Moving is a light state machine (`sync_api.applications.pipeline`), and it is the backend's
+alone — no constraint or trigger knows about it, so the row is read `FOR UPDATE` inside the
+move's transaction: without that, two moves decided at once would each pass a check the other
+should have failed:
+- A Recruiter moves freely among `new`, `reviewing`, `shortlisted`, `interview` and `offer`,
+  and from any of them to `hired` or `rejected`. Backwards included: a tracker that only went
+  forwards would not match how hiring goes.
+- `hired` and `withdrawn` are final. `rejected` is final except back to `reviewing`, which is
+  the undo for a decision made on the wrong row.
+- `withdrawn` is the Candidate's own move, from any undecided state, and irreversible. A
+  Recruiter asking for it is refused, as is a move to the state the Application is already in.
+- Everything not spelled out is a 409 `application-transition-not-allowed`.
+
+Every accepted move, in one transaction:
+```
+update applications set status = :to            -- `updated_at` is the trigger's to write
+insert application_status_history(application_id, change_source, changed_by_profile_id,
+       previous_status, new_status)
+insert notifications(...)          -- `application_status_changed`, to the applicant
+insert communications(...)         -- only a Recruiter's `rejected`, status='queued'
+```
+The verdict is not part of it: `qualification_status`, `qualification_reason` and
+`application_qualification_history` belong to Screening, and moving an Application through the
+pipeline is not a re-screening. The rejection's `idempotency_key` is
+`application-rejection:{status_history_id}` rather than the Application's id — undoing a
+rejection and deciding it again is a second decision, and the Candidate hears about both.
+`initiated_by_recruiter_id` names the human who decided it, which is also what makes the row a
+recruiter-initiated one under the table's CHECKs.
+
+Withdrawal permanence is the schema's rather than the backend's: `UNIQUE(candidate_id, job_id)`
+does not care what state the row is in, so re-applying meets the same 409 carrying the existing
+`application_id` that any duplicate does.
+
 ## Workers (Postgres-table queues, SKIP LOCKED)
 
 Generic claim pattern — atomic claim-and-mark, non-blocking across workers:
@@ -290,18 +331,18 @@ Communication: never delivered externally, never queued, and never sent by a wor
 
 - **Who writes one**: whatever transaction the notification announces, through
   `sync_core.notifications.notify(session, recipient_profile_id, payload)`, which flushes and
-  leaves the commit to its caller. A permanent CV parse failure is the only producer so far;
-  Application status changes are the next. There is no endpoint that creates one — the only
-  client write on this surface is the recipient marking one read.
+  leaves the commit to its caller. There are two producers: a permanent CV parse failure, and
+  every Application status change. There is no endpoint that creates one — the only client
+  write on this surface is the recipient marking one read.
 - **Payloads** are a Pydantic discriminated union on the mandatory `type`, spelled once in
   `sync_core.notifications` and exposed through OpenAPI so the SPA narrows on that one field.
   They carry ids and names, never prose: English belongs to the frontend, which keeps a future
   translation out of the database. Adding a type is a `notification_type` value (migration), a
   model, a member of the union, and the producer that writes it — in one change, so no
   deployed reader can meet a type it has never heard of.
-- `application_id` is part of the table (it is what the composite FK below defends) but no
-  producer fills it yet: the notifications that are *about* an Application arrive with the
-  pipeline states that cause them.
+- `application_id` is filled from the payload rather than passed alongside it, so the queryable
+  column and the rendered payload cannot name different Applications. A `cv_parse_failed`
+  notification is about no Application and leaves it null.
 - **DB-enforced on write** (rely on these): `payload ->> 'type' = type::text`, so the queryable
   column and the rendered payload cannot disagree; and the composite FK
   `(application_id, recipient_profile_id) → applications (id, candidate_id)`, so a notification

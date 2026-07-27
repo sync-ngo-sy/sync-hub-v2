@@ -9,9 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_comms import EmailUnavailableError, UnsendableEmailError
 from sync_core import Database
-from sync_core.communications import ApplicationConfirmation
-from sync_core.models import Communication, CommunicationChannel, CommunicationStatus
-from tests.support.applications import an_accepted_application, communications_of
+from sync_core.communications import ApplicationConfirmation, ApplicationRejection
+from sync_core.models import (
+    ApplicationStatus,
+    Communication,
+    CommunicationChannel,
+    CommunicationStatus,
+)
+from tests.support.applications import (
+    a_moved_application,
+    an_accepted_application,
+    communications_of,
+)
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
@@ -351,6 +360,33 @@ async def test_a_message_for_another_channel_is_left_for_its_own_sender(
 
 async def test_an_empty_queue_is_no_work(database: Database) -> None:
     assert await a_communications_worker(database, CapturingSender()).run_once() is False
+
+
+async def test_a_recruiters_rejection_is_delivered_the_same_way(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+) -> None:
+    job = await a_published_job(recruiter)
+    signup = await a_signed_in_candidate(other_browser, mailbox, "applicant")
+    cv_id = await give_a_current_cv(db_session, await my_id(other_browser))
+    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+    sender = CapturingSender()
+    worker = a_communications_worker(database, sender)
+
+    assert await worker.run_once() is True, "the confirmation"
+    assert await worker.run_once() is True, "the rejection"
+
+    _confirmation, rejection = await communications_of(db_session, application["id"])
+    assert rejection.status is CommunicationStatus.SENT
+    assert rejection.template_key == ApplicationRejection.template_key
+    delivered = sender.sent[-1]
+    assert delivered.to == signup.email
+    assert job["title"] in delivered.subject
+    assert "Amina Haddad" in delivered.text
 
 
 async def _returned_to_the_queue(

@@ -42,9 +42,12 @@ async def test_notification_payloads_are_documented_as_a_discriminated_union(
     payload = schemas["Notification"]["properties"]["payload"]
     members = {member["$ref"].rsplit("/", 1)[-1] for member in payload["oneOf"]}
 
-    assert members == {"CvParseFailed"}
+    assert members == {"CvParseFailed", "ApplicationStatusChanged"}
     assert payload["discriminator"]["propertyName"] == "type"
-    assert set(payload["discriminator"]["mapping"]) == {"cv_parse_failed"}
+    assert set(payload["discriminator"]["mapping"]) == {
+        "cv_parse_failed",
+        "application_status_changed",
+    }
     for member in members:
         assert "type" in schemas[member]["properties"], f"{member} does not carry the discriminator"
 
@@ -59,6 +62,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
     assert sorted(operation_ids) == [
         "acceptInvite",
         "browseJobs",
+        "changeApplicationStatus",
         "changeJob",
         "changeTenantMember",
         "changeTrackedJobLink",
@@ -66,6 +70,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "confirmPasswordReset",
         "createJob",
         "createTrackedJobLink",
+        "getApplication",
         "getCurrentProfile",
         "getHealth",
         "getJob",
@@ -78,6 +83,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "getPublicJob",
         "getReadiness",
         "inviteTenantMember",
+        "listJobApplications",
         "listJobs",
         "listMyApplications",
         "listMyNotifications",
@@ -95,4 +101,5 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "signUpTenant",
         "submitApplication",
         "uploadMyCv",
+        "withdrawMyApplication",
     ]

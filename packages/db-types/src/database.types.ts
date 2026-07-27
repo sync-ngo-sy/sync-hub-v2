@@ -2022,7 +2022,7 @@ export type Database = {
       ingestion_status: 'pending' | 'processing' | 'completed' | 'failed';
       job_status: 'draft' | 'published' | 'closed' | 'archived';
       language_proficiency: 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'native';
-      notification_type: 'cv_parse_failed';
+      notification_type: 'cv_parse_failed' | 'application_status_changed';
       qualification_status: 'pending' | 'qualified' | 'disqualified' | 'review_required';
       recruiter_role: 'admin' | 'recruiter';
       skill_importance: 'required' | 'preferred' | 'optional';
@@ -2182,7 +2182,7 @@ export const Constants = {
       ingestion_status: ['pending', 'processing', 'completed', 'failed'],
       job_status: ['draft', 'published', 'closed', 'archived'],
       language_proficiency: ['beginner', 'intermediate', 'advanced', 'fluent', 'native'],
-      notification_type: ['cv_parse_failed'],
+      notification_type: ['cv_parse_failed', 'application_status_changed'],
       qualification_status: ['pending', 'qualified', 'disqualified', 'review_required'],
       recruiter_role: ['admin', 'recruiter'],
       skill_importance: ['required', 'preferred', 'optional'],

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from sync_core.models import Notification, NotificationType
+from sync_core.models import ApplicationStatus, Notification, NotificationType
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,12 +23,31 @@ class CvParseFailed(BaseModel):
     )
 
 
-NotificationPayload = Annotated[CvParseFailed, Field(discriminator="type")]
+class ApplicationStatusChanged(BaseModel):
+    """An Application has moved. Every move produces one of these, whoever caused it."""
 
-_STORED_PAYLOAD: Final[TypeAdapter[CvParseFailed]] = TypeAdapter(NotificationPayload)
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal[NotificationType.APPLICATION_STATUS_CHANGED] = (
+        NotificationType.APPLICATION_STATUS_CHANGED
+    )
+    application_id: UUID
+    job_title: str
+    tenant_name: str
+    status: ApplicationStatus = Field(description="Where the Application stands now.")
+    previous_status: ApplicationStatus = Field(description="Where it stood until this move.")
 
 
-def payload_of(stored: dict[str, Any]) -> CvParseFailed:
+NotificationPayload = Annotated[
+    CvParseFailed | ApplicationStatusChanged, Field(discriminator="type")
+]
+
+_STORED_PAYLOAD: Final[TypeAdapter[CvParseFailed | ApplicationStatusChanged]] = TypeAdapter(
+    NotificationPayload
+)
+
+
+def payload_of(stored: dict[str, Any]) -> CvParseFailed | ApplicationStatusChanged:
     return _STORED_PAYLOAD.validate_python(stored)
 
 
@@ -41,7 +60,13 @@ async def notify(
         recipient_profile_id=recipient_profile_id,
         type=payload.type,
         payload=payload.model_dump(mode="json"),
+        application_id=_application_of(payload),
     )
     session.add(notification)
     await session.flush()
     return notification
+
+
+def _application_of(payload: NotificationPayload) -> UUID | None:
+    """The queryable column, filled from the payload so the two cannot disagree."""
+    return payload.application_id if isinstance(payload, ApplicationStatusChanged) else None

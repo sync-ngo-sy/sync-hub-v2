@@ -29,6 +29,21 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+async def signed_download(storage: Storage, settings: Settings, cv: CvRow) -> CvDownloadLink:
+    """A short-lived link to the original file, for whoever is entitled to read it."""
+    expires_in = settings.cv_download_url_ttl_seconds
+    try:
+        url = await storage.signed_url(cv.storage_path, expires_in=expires_in)
+    except ObjectNotFoundError as missing:
+        logger.error("cvs.file_missing", cv_id=str(cv.id), path=cv.storage_path)
+        raise Problem(
+            status=502,
+            type=CV_FILE_UNAVAILABLE_PROBLEM_TYPE,
+            detail="The stored file for this CV could not be reached.",
+        ) from missing
+    return CvDownloadLink(url=url, expires_in_seconds=expires_in)
+
+
 class CvService:
     def __init__(self, session: AsyncSession, storage: Storage, settings: Settings) -> None:
         self._db = session
@@ -64,17 +79,7 @@ class CvService:
 
     async def download_link(self, candidate_id: UUID, cv_id: UUID) -> CvDownloadLink:
         cv = await self._own_cv(candidate_id, cv_id)
-        expires_in = self._settings.cv_download_url_ttl_seconds
-        try:
-            url = await self._storage.signed_url(cv.storage_path, expires_in=expires_in)
-        except ObjectNotFoundError as missing:
-            logger.error("cvs.file_missing", cv_id=str(cv_id), path=cv.storage_path)
-            raise Problem(
-                status=502,
-                type=CV_FILE_UNAVAILABLE_PROBLEM_TYPE,
-                detail="The stored file for this CV could not be reached.",
-            ) from missing
-        return CvDownloadLink(url=url, expires_in_seconds=expires_in)
+        return await signed_download(self._storage, self._settings, cv)
 
     async def _refuse_duplicate(self, candidate_id: UUID, file_hash: str) -> None:
         existing = await self._active_cv_with(candidate_id, file_hash)
