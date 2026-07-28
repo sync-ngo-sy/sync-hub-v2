@@ -12,6 +12,16 @@ from sync_api.applications import (
 )
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
+from sync_api.crm import (
+    ABOUT_APPLICATIONS,
+    ABOUT_CANDIDATES,
+    ON_APPLICATIONS,
+    ON_CANDIDATES,
+    NoteService,
+    TagAssignmentService,
+    TagService,
+    TalentPoolService,
+)
 from sync_api.cvs import CvService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
 from sync_api.notifications import NotificationService
@@ -143,6 +153,48 @@ def get_tenant_admin(recruiter: ActingRecruiterDep) -> ActingRecruiter:
 
 
 TenantAdminDep = Annotated[ActingRecruiter, Depends(get_tenant_admin)]
+
+
+def get_tag_service(session: SessionDep) -> TagService:
+    return TagService(session)
+
+
+TagServiceDep = Annotated[TagService, Depends(get_tag_service)]
+
+
+def get_application_tags(session: SessionDep) -> TagAssignmentService:
+    return TagAssignmentService(session, ON_APPLICATIONS)
+
+
+ApplicationTagsDep = Annotated[TagAssignmentService, Depends(get_application_tags)]
+
+
+def get_candidate_tags(session: SessionDep) -> TagAssignmentService:
+    return TagAssignmentService(session, ON_CANDIDATES)
+
+
+CandidateTagsDep = Annotated[TagAssignmentService, Depends(get_candidate_tags)]
+
+
+def get_application_notes(session: SessionDep) -> NoteService:
+    return NoteService(session, ABOUT_APPLICATIONS)
+
+
+ApplicationNotesDep = Annotated[NoteService, Depends(get_application_notes)]
+
+
+def get_candidate_notes(session: SessionDep) -> NoteService:
+    return NoteService(session, ABOUT_CANDIDATES)
+
+
+CandidateNotesDep = Annotated[NoteService, Depends(get_candidate_notes)]
+
+
+def get_talent_pool_service(session: SessionDep) -> TalentPoolService:
+    return TalentPoolService(session)
+
+
+TalentPoolServiceDep = Annotated[TalentPoolService, Depends(get_talent_pool_service)]
 
 
 def get_job_service(session: SessionDep) -> JobService:

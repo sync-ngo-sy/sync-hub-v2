@@ -162,24 +162,6 @@ create table application_answers (
 );
 create index application_answers_job_question_idx on application_answers (job_id, question_id);
 
-create table application_notes (
-  id uuid primary key default gen_random_uuid(),
-
-  tenant_id      uuid not null,
-  application_id uuid not null,
-  recruiter_id   uuid not null,
-
-  note_text text not null,
-
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-
-  foreign key (tenant_id, application_id) references applications (tenant_id, id) on delete cascade,
-  foreign key (tenant_id, recruiter_id)   references recruiters (tenant_id, id)
-);
-create index application_notes_app_created_idx      on application_notes (application_id, created_at);
-create index application_notes_tenant_recruiter_idx on application_notes (tenant_id, recruiter_id);
-
 create table application_status_history (
   id uuid primary key default gen_random_uuid(),
 

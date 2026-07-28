@@ -92,8 +92,8 @@ class FakeExtractor:
     def call_count(self) -> int:
         return len(self.calls)
 
-    async def extract(self, document: CvFile, vocabulary: Vocabulary) -> ParsedCv:
-        self.calls.append((document, vocabulary))
+    async def extract(self, file: CvFile, vocabulary: Vocabulary) -> ParsedCv:
+        self.calls.append((file, vocabulary))
         answer = self._answers[min(len(self.calls) - 1, len(self._answers) - 1)]
         if isinstance(answer, Exception):
             raise answer

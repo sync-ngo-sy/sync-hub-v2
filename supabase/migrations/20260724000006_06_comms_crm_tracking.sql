@@ -91,23 +91,31 @@ create index job_view_events_job_viewed_idx         on job_view_events (job_id, 
 create index job_view_events_link_viewed_idx        on job_view_events (tracked_link_id, viewed_at);
 create index job_view_events_job_link_viewed_idx    on job_view_events (job_id, tracked_link_id, viewed_at);
 
-create table candidate_notes (
+create table notes (
   id uuid primary key default gen_random_uuid(),
 
-  tenant_id    uuid not null references tenants (id),
-  candidate_id uuid not null references candidates (id),
-  recruiter_id uuid not null,
+  tenant_id      uuid not null references tenants (id),
+  application_id uuid,
+  candidate_id   uuid references candidates (id),
+  recruiter_id   uuid not null,
 
   note_text text not null,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
-  foreign key (tenant_id, recruiter_id) references recruiters (tenant_id, id)
+  foreign key (tenant_id, application_id) references applications (tenant_id, id) on delete cascade,
+  foreign key (tenant_id, recruiter_id)   references recruiters (tenant_id, id),
+
+  -- Exactly one subject, so each keeps a real FK and its own delete rule.
+  constraint notes_one_subject check (num_nonnulls(application_id, candidate_id) = 1)
 );
-create index candidate_notes_tenant_candidate_idx on candidate_notes (tenant_id, candidate_id, created_at);
-create index candidate_notes_candidate_idx        on candidate_notes (candidate_id);
-create index candidate_notes_recruiter_idx        on candidate_notes (recruiter_id);
+create index notes_application_created_idx on notes (application_id, created_at desc, id desc)
+  where application_id is not null;
+create index notes_tenant_candidate_created_idx
+  on notes (tenant_id, candidate_id, created_at desc, id desc) where candidate_id is not null;
+create index notes_candidate_idx        on notes (candidate_id) where candidate_id is not null;
+create index notes_tenant_recruiter_idx on notes (tenant_id, recruiter_id);
 
 create table tenant_tags (
   id        uuid primary key default gen_random_uuid(),
@@ -134,8 +142,8 @@ create table candidate_tag_assignments (
 
   primary key (candidate_id, tag_id),
 
-  foreign key (tenant_id, tag_id)               references tenant_tags (tenant_id, id),
-  foreign key (tag_id, scope)                   references tenant_tags (id, scope),
+  foreign key (tenant_id, tag_id)               references tenant_tags (tenant_id, id) on delete cascade,
+  foreign key (tag_id, scope)                   references tenant_tags (id, scope) on delete cascade,
   foreign key (tenant_id, added_by_recruiter_id) references recruiters (tenant_id, id)
 );
 create index candidate_tag_assignments_tenant_candidate_idx on candidate_tag_assignments (tenant_id, candidate_id);
@@ -154,8 +162,8 @@ create table application_tag_assignments (
   primary key (application_id, tag_id),
 
   foreign key (tenant_id, application_id)        references applications (tenant_id, id) on delete cascade,
-  foreign key (tenant_id, tag_id)                references tenant_tags (tenant_id, id),
-  foreign key (tag_id, scope)                    references tenant_tags (id, scope),
+  foreign key (tenant_id, tag_id)                references tenant_tags (tenant_id, id) on delete cascade,
+  foreign key (tag_id, scope)                    references tenant_tags (id, scope) on delete cascade,
   foreign key (tenant_id, added_by_recruiter_id) references recruiters (tenant_id, id)
 );
 create index application_tag_assignments_tenant_app_idx on application_tag_assignments (tenant_id, application_id);
@@ -173,5 +181,6 @@ create table talent_pool_members (
 
   foreign key (tenant_id, added_by_recruiter_id) references recruiters (tenant_id, id)
 );
-create index talent_pool_members_candidate_idx on talent_pool_members (candidate_id);
+create index talent_pool_members_tenant_added_idx on talent_pool_members (tenant_id, added_at desc, candidate_id desc);
+create index talent_pool_members_candidate_idx    on talent_pool_members (candidate_id);
 create index talent_pool_members_added_by_idx  on talent_pool_members (added_by_recruiter_id);

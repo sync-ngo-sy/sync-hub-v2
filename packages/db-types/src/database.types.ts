@@ -238,51 +238,6 @@ export type Database = {
           },
         ];
       };
-      application_notes: {
-        Row: {
-          application_id: string;
-          created_at: string;
-          id: string;
-          note_text: string;
-          recruiter_id: string;
-          tenant_id: string;
-          updated_at: string;
-        };
-        Insert: {
-          application_id: string;
-          created_at?: string;
-          id?: string;
-          note_text: string;
-          recruiter_id: string;
-          tenant_id: string;
-          updated_at?: string;
-        };
-        Update: {
-          application_id?: string;
-          created_at?: string;
-          id?: string;
-          note_text?: string;
-          recruiter_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'application_notes_tenant_id_application_id_fkey';
-            columns: ['tenant_id', 'application_id'];
-            isOneToOne: false;
-            referencedRelation: 'applications';
-            referencedColumns: ['tenant_id', 'id'];
-          },
-          {
-            foreignKeyName: 'application_notes_tenant_id_recruiter_id_fkey';
-            columns: ['tenant_id', 'recruiter_id'];
-            isOneToOne: false;
-            referencedRelation: 'recruiters';
-            referencedColumns: ['tenant_id', 'id'];
-          },
-        ];
-      };
       application_profile_snapshots: {
         Row: {
           application_id: string;
@@ -832,65 +787,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'languages';
             referencedColumns: ['code'];
-          },
-        ];
-      };
-      candidate_notes: {
-        Row: {
-          candidate_id: string;
-          created_at: string;
-          id: string;
-          note_text: string;
-          recruiter_id: string;
-          tenant_id: string;
-          updated_at: string;
-        };
-        Insert: {
-          candidate_id: string;
-          created_at?: string;
-          id?: string;
-          note_text: string;
-          recruiter_id: string;
-          tenant_id: string;
-          updated_at?: string;
-        };
-        Update: {
-          candidate_id?: string;
-          created_at?: string;
-          id?: string;
-          note_text?: string;
-          recruiter_id?: string;
-          tenant_id?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'candidate_notes_candidate_id_fkey';
-            columns: ['candidate_id'];
-            isOneToOne: false;
-            referencedRelation: 'candidate_search_profiles';
-            referencedColumns: ['candidate_id'];
-          },
-          {
-            foreignKeyName: 'candidate_notes_candidate_id_fkey';
-            columns: ['candidate_id'];
-            isOneToOne: false;
-            referencedRelation: 'candidates';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'candidate_notes_tenant_id_fkey';
-            columns: ['tenant_id'];
-            isOneToOne: false;
-            referencedRelation: 'tenants';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'candidate_notes_tenant_id_recruiter_id_fkey';
-            columns: ['tenant_id', 'recruiter_id'];
-            isOneToOne: false;
-            referencedRelation: 'recruiters';
-            referencedColumns: ['tenant_id', 'id'];
           },
         ];
       };
@@ -1644,6 +1540,75 @@ export type Database = {
           name?: string;
         };
         Relationships: [];
+      };
+      notes: {
+        Row: {
+          application_id: string | null;
+          candidate_id: string | null;
+          created_at: string;
+          id: string;
+          note_text: string;
+          recruiter_id: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          application_id?: string | null;
+          candidate_id?: string | null;
+          created_at?: string;
+          id?: string;
+          note_text: string;
+          recruiter_id: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          application_id?: string | null;
+          candidate_id?: string | null;
+          created_at?: string;
+          id?: string;
+          note_text?: string;
+          recruiter_id?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notes_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
+            referencedRelation: 'candidate_search_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'notes_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
+            referencedRelation: 'candidates';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notes_tenant_id_application_id_fkey';
+            columns: ['tenant_id', 'application_id'];
+            isOneToOne: false;
+            referencedRelation: 'applications';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'notes_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notes_tenant_id_recruiter_id_fkey';
+            columns: ['tenant_id', 'recruiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'recruiters';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
       };
       notifications: {
         Row: {

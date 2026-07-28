@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from sync_api.applications import (
     ApplicationReview,
@@ -12,9 +12,12 @@ from sync_api.applications import (
     MatchAssessmentPage,
     MovedApplication,
 )
+from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
 from sync_api.dependencies import (
     ActingRecruiterDep,
+    ApplicationNotesDep,
     ApplicationReviewServiceDep,
+    ApplicationTagsDep,
     MatchAssessmentServiceDep,
 )
 from sync_api.errors import openapi_problem
@@ -26,6 +29,10 @@ ROUTER_PREFIX: Final = "/tenants/me/applications"
 
 APPLICATION_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
     404: openapi_problem("This tenant has no application with that id."),
+}
+
+NOTE_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
+    404: openapi_problem("This tenant has no application, or no note on it, with that id."),
 }
 
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
@@ -136,3 +143,130 @@ async def list_application_match_assessments(
 ) -> MatchAssessmentPage:
     """The whole history, each entry with the model and prompt version that wrote it."""
     return await assessments.page(recruiter, application_id, cursor=cursor, limit=limit)
+
+
+@router.post(
+    "/{application_id}/notes",
+    operation_id="writeApplicationNote",
+    summary="Write a note on an Application",
+    status_code=status.HTTP_201_CREATED,
+    responses={**TENANT_ACCESS_REFUSED, **APPLICATION_NOT_FOUND},
+)
+async def write_application_note(
+    application_id: UUID,
+    body: NewNote,
+    recruiter: ActingRecruiterDep,
+    notes: ApplicationNotesDep,
+) -> Note:
+    """Private to the Tenant, and stamped with the recruiter who wrote it."""
+    return await notes.write(recruiter, application_id, body)
+
+
+@router.get(
+    "/{application_id}/notes",
+    operation_id="listApplicationNotes",
+    summary="The notes on one Application, newest first",
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        **APPLICATION_NOT_FOUND,
+        422: openapi_problem("`cursor` is not one this API issued."),
+    },
+)
+async def list_application_notes(
+    application_id: UUID,
+    recruiter: ActingRecruiterDep,
+    notes: ApplicationNotesDep,
+    cursor: Annotated[
+        str | None,
+        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+    ] = None,
+    limit: Annotated[
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
+    ] = DEFAULT_PAGE_SIZE,
+) -> NotePage:
+    """Everything this Tenant's recruiters have written here. No other tenant's notes."""
+    return await notes.page(recruiter, application_id, cursor=cursor, limit=limit)
+
+
+@router.patch(
+    "/{application_id}/notes/{note_id}",
+    operation_id="editApplicationNote",
+    summary="Rewrite a note on an Application",
+    responses={**TENANT_ACCESS_REFUSED, **NOTE_NOT_FOUND},
+)
+async def edit_application_note(
+    application_id: UUID,
+    note_id: UUID,
+    body: NoteChanges,
+    recruiter: ActingRecruiterDep,
+    notes: ApplicationNotesDep,
+) -> Note:
+    """Notes belong to the Tenant, so any of its recruiters may rewrite one — the author it
+    records stays the recruiter who first wrote it."""
+    return await notes.edit(recruiter, application_id, note_id, body)
+
+
+@router.delete(
+    "/{application_id}/notes/{note_id}",
+    operation_id="deleteApplicationNote",
+    summary="Delete a note from an Application",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**TENANT_ACCESS_REFUSED, **NOTE_NOT_FOUND},
+)
+async def delete_application_note(
+    application_id: UUID,
+    note_id: UUID,
+    recruiter: ActingRecruiterDep,
+    notes: ApplicationNotesDep,
+) -> Response:
+    """Any recruiter of the Tenant may delete any of its notes."""
+    await notes.remove(recruiter, application_id, note_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{application_id}/tags",
+    operation_id="listApplicationTags",
+    summary="The Tags on one Application",
+    responses={**TENANT_ACCESS_REFUSED, **APPLICATION_NOT_FOUND},
+)
+async def list_application_tags(
+    application_id: UUID, recruiter: ActingRecruiterDep, tags: ApplicationTagsDep
+) -> list[Tag]:
+    """The Tenant's own filing of this Application, by name. No other tenant's Tags are here."""
+    return await tags.tags(recruiter, application_id)
+
+
+@router.put(
+    "/{application_id}/tags/{tag_id}",
+    operation_id="tagApplication",
+    summary="Put one of the Tenant's Tags on an Application",
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        404: openapi_problem("This tenant has no application or no tag with that id."),
+        409: openapi_problem("That Tag is candidate-scoped and cannot go on an Application."),
+    },
+)
+async def tag_application(
+    application_id: UUID, tag_id: UUID, recruiter: ActingRecruiterDep, tags: ApplicationTagsDep
+) -> Tag:
+    """Idempotent: putting a Tag on twice leaves it on once, and answers with the Tag."""
+    return await tags.put_on(recruiter, application_id, tag_id)
+
+
+@router.delete(
+    "/{application_id}/tags/{tag_id}",
+    operation_id="untagApplication",
+    summary="Take a Tag off an Application",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        404: openapi_problem("This tenant has no application or no tag with that id."),
+    },
+)
+async def untag_application(
+    application_id: UUID, tag_id: UUID, recruiter: ActingRecruiterDep, tags: ApplicationTagsDep
+) -> Response:
+    """Idempotent: a Tag that was never on it is not an error."""
+    await tags.take_off(recruiter, application_id, tag_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

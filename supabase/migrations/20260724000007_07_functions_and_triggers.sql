@@ -19,9 +19,7 @@ create trigger set_updated_at before update on candidate_languages
   for each row execute function extensions.moddatetime(updated_at);
 create trigger set_updated_at before update on applications
   for each row execute function extensions.moddatetime(updated_at);
-create trigger set_updated_at before update on application_notes
-  for each row execute function extensions.moddatetime(updated_at);
-create trigger set_updated_at before update on candidate_notes
+create trigger set_updated_at before update on notes
   for each row execute function extensions.moddatetime(updated_at);
 
 create function enqueue_candidate_reembed() returns trigger

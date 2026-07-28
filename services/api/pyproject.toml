@@ -7,13 +7,13 @@ members = ["packages/*"]
 [dependency-groups]
 dev = [
     "ruff>=0.14",
-    "mypy>=1.18",
     "pytest>=8.4",
     "pytest-asyncio>=1.2",
     "httpx>=0.28",
     "sqlacodegen>=3.0",
     "asgi-lifespan>=2.1",
     "psycopg[binary]>=3.2",
+    "pyright>=1.1.411",
 ]
 
 [tool.ruff]
@@ -72,21 +72,14 @@ markers = [
 # Excluded here rather than in CI, so a bare `pytest` never spends money and never sends.
 addopts = "-ra --strict-markers --strict-config -m 'not ai_live and not email_live'"
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_unreachable = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-disallow_untyped_defs = true
-plugins = ["pydantic.mypy"]
+# Pyright rather than mypy, because pyright is the engine the editor runs (Pylance): one
+# checker, and the same answer in CI as under the cursor. `standard` plus the two rules that
+# keep what mypy's strict mode was really buying — every parameter annotated, every generic
+# given its arguments. `strict` adds 200 findings that are almost all untyped third-party
+# inference, so it is a separate decision, not this one.
+[tool.pyright]
+include = ["packages", "scripts", "tests"]
+typeCheckingMode = "standard"
+reportMissingParameterType = "error"
+reportMissingTypeArgument = "error"
 
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-disallow_untyped_defs = false
-
-# asyncpg ships no type information; it is reached through SQLAlchemy everywhere except
-# the test harness's reset connection.
-[[tool.mypy.overrides]]
-module = ["asyncpg.*"]
-ignore_missing_imports = true
