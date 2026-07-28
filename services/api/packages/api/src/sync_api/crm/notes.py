@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, select
+from sqlalchemy import Select, delete, select
 
 from sync_api.crm.access import ReachableSubject, reachable_application, reachable_candidate
 from sync_api.crm.payload import Note, NoteAuthor, NotePage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import NOTE_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core import get_logger, transaction
-from sync_core.models import ApplicationNote, CandidateNote, Profile
+from sync_core.models import Note as NoteRow
+from sync_core.models import Profile
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -23,49 +24,39 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-type NoteRow = ApplicationNote | CandidateNote
-
 
 @dataclass(frozen=True, slots=True)
-class Notebook:
-    """Where notes about one kind of thing are kept, and how the tenant reaches the thing."""
+class Subject:
+    """Which of a note's two subjects this is, and how the tenant reaches one of them."""
 
-    note: type[ApplicationNote] | type[CandidateNote]
-    subject: InstrumentedAttribute[UUID]
+    column: InstrumentedAttribute[UUID | None]
     reachable: ReachableSubject
 
 
-ABOUT_APPLICATIONS = Notebook(
-    note=ApplicationNote,
-    subject=ApplicationNote.application_id,
-    reachable=reachable_application,
-)
+ABOUT_APPLICATIONS = Subject(column=NoteRow.application_id, reachable=reachable_application)
 
-ABOUT_CANDIDATES = Notebook(
-    note=CandidateNote,
-    subject=CandidateNote.candidate_id,
-    reachable=reachable_candidate,
-)
+ABOUT_CANDIDATES = Subject(column=NoteRow.candidate_id, reachable=reachable_candidate)
 
 
 class NoteService:
-    """What one Tenant's recruiters have written down about one kind of thing.
+    """What one Tenant's recruiters have written down about one kind of subject.
 
-    Every read and every write is scoped by tenant in the query itself, so another tenant's
-    note is the same 404 as one that was never written.
+    Every read and every write is scoped by tenant *and* by subject in the query itself, so
+    another tenant's note — and a note about the other subject — is the same 404 as one that
+    was never written.
     """
 
-    def __init__(self, session: AsyncSession, notebook: Notebook) -> None:
+    def __init__(self, session: AsyncSession, subject: Subject) -> None:
         self._db = session
-        self._notebook = notebook
+        self._subject = subject
 
     async def write(self, recruiter: ActingRecruiter, subject_id: UUID, new: NewNote) -> Note:
-        await self._notebook.reachable(self._db, recruiter.tenant.id, subject_id)
-        note = self._notebook.note(
+        await self._subject.reachable(self._db, recruiter.tenant.id, subject_id)
+        note = NoteRow(
             tenant_id=recruiter.tenant.id,
             recruiter_id=recruiter.profile.id,
             note_text=new.text,
-            **{self._notebook.subject.key: subject_id},
+            **{self._subject.column.key: subject_id},
         )
         async with transaction(self._db):
             self._db.add(note)
@@ -86,29 +77,19 @@ class NoteService:
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> NotePage:
-        await self._notebook.reachable(self._db, recruiter.tenant.id, subject_id)
-        note = self._notebook.note
-        # A notebook is one of two tables, which `select` can only type as their common base.
-        found = cast(
-            "list[tuple[NoteRow, str]]",
-            list(
-                (
-                    await self._db.execute(
-                        newest_first(
-                            select(note, Profile.full_name)
-                            .join(Profile, Profile.id == note.recruiter_id)
-                            .where(
-                                self._notebook.subject == subject_id,
-                                note.tenant_id == recruiter.tenant.id,
-                            ),
-                            created_at=note.created_at,
-                            id_=note.id,
-                            cursor=cursor,
-                            limit=limit,
-                        )
+        await self._subject.reachable(self._db, recruiter.tenant.id, subject_id)
+        found = list(
+            (
+                await self._db.execute(
+                    newest_first(
+                        self._notes_about(recruiter, subject_id),
+                        created_at=NoteRow.created_at,
+                        id_=NoteRow.id,
+                        cursor=cursor,
+                        limit=limit,
                     )
-                ).tuples()
-            ),
+                )
+            ).tuples()
         )
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return NotePage(
@@ -131,43 +112,46 @@ class NoteService:
         return _as_payload(note, author)
 
     async def remove(self, recruiter: ActingRecruiter, subject_id: UUID, note_id: UUID) -> None:
-        await self._notebook.reachable(self._db, recruiter.tenant.id, subject_id)
-        note = self._notebook.note
+        await self._subject.reachable(self._db, recruiter.tenant.id, subject_id)
         async with transaction(self._db):
             deleted = await self._db.scalars(
-                delete(note)
+                delete(NoteRow)
                 .where(
-                    note.id == note_id,
-                    self._notebook.subject == subject_id,
-                    note.tenant_id == recruiter.tenant.id,
+                    NoteRow.id == note_id,
+                    self._subject.column == subject_id,
+                    NoteRow.tenant_id == recruiter.tenant.id,
                 )
-                .returning(note.id)
+                .returning(NoteRow.id)
             )
             if deleted.one_or_none() is None:
                 raise _no_such_note()
 
         logger.info("crm.note_deleted", note_id=str(note_id), tenant_id=str(recruiter.tenant.id))
 
+    def _notes_about(
+        self, recruiter: ActingRecruiter, subject_id: UUID
+    ) -> Select[tuple[NoteRow, str]]:
+        return (
+            select(NoteRow, Profile.full_name)
+            .join(Profile, Profile.id == NoteRow.recruiter_id)
+            .where(
+                self._subject.column == subject_id,
+                NoteRow.tenant_id == recruiter.tenant.id,
+            )
+        )
+
     async def _own_note(
         self, recruiter: ActingRecruiter, subject_id: UUID, note_id: UUID
     ) -> tuple[NoteRow, NoteAuthor]:
-        await self._notebook.reachable(self._db, recruiter.tenant.id, subject_id)
-        note = self._notebook.note
-        found = cast(
-            "tuple[NoteRow, str] | None",
+        await self._subject.reachable(self._db, recruiter.tenant.id, subject_id)
+        found = (
             (
                 await self._db.execute(
-                    select(note, Profile.full_name)
-                    .join(Profile, Profile.id == note.recruiter_id)
-                    .where(
-                        note.id == note_id,
-                        self._notebook.subject == subject_id,
-                        note.tenant_id == recruiter.tenant.id,
-                    )
+                    self._notes_about(recruiter, subject_id).where(NoteRow.id == note_id)
                 )
             )
             .tuples()
-            .first(),
+            .first()
         )
         if found is None:
             raise _no_such_note()

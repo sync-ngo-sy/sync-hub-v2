@@ -394,10 +394,19 @@ Communication: never delivered externally, never queued, and never sent by a wor
 
 ## Tenant CRM (notes, tags, talent pool)
 
-The tenant-private knowledge layer: `application_notes`, `candidate_notes`, `tenant_tags`,
-`candidate_tag_assignments`, `application_tag_assignments` and `talent_pool_members`. Every
-one of them carries `tenant_id`, and every read filters on it **in the query** — another
-tenant's note, tag or pool entry must be the same 404 as one that never existed.
+The tenant-private knowledge layer: `notes`, `tenant_tags`, `candidate_tag_assignments`,
+`application_tag_assignments` and `talent_pool_members`. Every one of them carries `tenant_id`,
+and every read filters on it **in the query** — another tenant's note, tag or pool entry must
+be the same 404 as one that never existed.
+
+- **One `notes` table, two subject columns.** `application_id` and `candidate_id` are both
+  nullable and `notes_one_subject` (`num_nonnulls(…) = 1`) makes exactly one of them set, so a
+  note about a Candidate and a note on an Application stay distinct records while sharing one
+  table, one trigger and one code path. Two columns rather than a `subject_type`/`subject_id`
+  pair because each keeps a **real** foreign key — and its own delete rule (below). Every read
+  filters the subject column as well as `tenant_id`, so a candidate note can never surface
+  through an Application's endpoint. The composite FK is MATCH SIMPLE, so the null half of a
+  row leaves its key unchecked rather than demanding a row that cannot exist.
 
 - **Reach** is what a recruiter is allowed to keep a record *on*. An Application: the tenant's
   own (`own_application`) — a property an Application never loses. A Candidate: one who has
@@ -420,20 +429,25 @@ tenant's note, tag or pool entry must be the same 404 as one that never existed.
 - **Assignment and pool membership are sets**: `insert … on conflict do nothing`, so putting a
   Tag on twice or saving a Candidate twice leaves one row with its original timestamp, and the
   endpoints are `PUT`/`DELETE` rather than `POST`. Taking off what was never on is a 204.
-- **Deleting a Tag deletes its assignments first**, in the same transaction: nothing cascades
-  from `tenant_tags`, and unfiling what the Tag filed is part of deleting it.
+- **Deleting a Tag unfiles it, in the database.** Both foreign keys of each assignment table
+  cascade from `tenant_tags`, so unfiling is not something a caller can forget to do. The
+  cascade is indexed: `*_tag_assignments_tag_idx (tag_id)` leads both keys.
 - A note's `recruiter_id` is the author and is written once; `updated_at` is the
   `set_updated_at` trigger's to write, so an edit has to `refresh` the row before answering
   with it or the response echoes the timestamp from before the edit. Any recruiter of the
   tenant may rewrite or delete any of its notes — they are the Tenant's record, not the
   individual's — and the recorded author does not change when they do.
 - Note lists are keyset-paginated on `(created_at desc, id desc)`, the talent pool on
-  `(added_at desc, candidate_id desc)`. The pool reads names and headlines live from
-  `profiles`/`candidates`; there is no snapshot here, unlike an Application.
-- `application_notes` and `application_tag_assignments` cascade with the Application
-  (`ON DELETE CASCADE` on the composite FK). `candidate_notes`, `candidate_tag_assignments`
-  and `talent_pool_members` do not cascade from a Candidate: account deletion soft-deletes the
-  Profile, so a tenant's own record of them is deliberately its own to remove.
+  `(added_at desc, candidate_id desc)`, and each has the index that ordering asks for:
+  `notes_application_created_idx` and `notes_tenant_candidate_created_idx` (both partial, so
+  neither carries the other subject's rows) and `talent_pool_members_tenant_added_idx`. The
+  pool reads names and headlines live from `profiles`/`candidates`; there is no snapshot here,
+  unlike an Application.
+- A note on an Application, and `application_tag_assignments`, cascade with the Application
+  (`ON DELETE CASCADE` on the composite FK). A note about a Candidate,
+  `candidate_tag_assignments` and `talent_pool_members` do not cascade from a Candidate:
+  account deletion soft-deletes the Profile, so a tenant's own record of them is deliberately
+  its own to remove — which is also why Reach outlives the Candidate leaving.
 
 ## Global candidate search
 
@@ -481,5 +495,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, unfiling a deleted Tag | **Backend** |
+| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on | **Backend** |

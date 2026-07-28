@@ -13,8 +13,8 @@ from sync_api.problems import (
 from sync_core.models import (
     Application,
     Candidate,
-    CandidateNote,
     CandidateTagAssignment,
+    Note,
     TalentPoolMember,
     TenantTag,
 )
@@ -84,8 +84,8 @@ async def reachable_candidate(session: AsyncSession, tenant_id: UUID, candidate_
 def _already_filed(tenant_id: UUID, candidate_id: UUID) -> ColumnElement[bool]:
     """Whether this Tenant has written anything of its own about this Candidate."""
     return or_(
-        select(CandidateNote.id)
-        .where(CandidateNote.tenant_id == tenant_id, CandidateNote.candidate_id == candidate_id)
+        select(Note.id)
+        .where(Note.tenant_id == tenant_id, Note.candidate_id == candidate_id)
         .exists(),
         select(CandidateTagAssignment.tag_id)
         .where(

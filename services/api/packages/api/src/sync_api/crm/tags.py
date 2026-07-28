@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, NoReturn
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.crm.access import own_tag
@@ -10,7 +10,7 @@ from sync_api.crm.payload import Tag
 from sync_api.integrity import violated_constraint
 from sync_api.problems import TAG_NAME_TAKEN_PROBLEM_TYPE, Problem
 from sync_core import get_logger, transaction
-from sync_core.models import ApplicationTagAssignment, CandidateTagAssignment, TenantTag
+from sync_core.models import TenantTag
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -64,15 +64,7 @@ class TagService:
     async def remove(self, recruiter: ActingRecruiter, tag_id: UUID) -> None:
         tag = await own_tag(self._db, recruiter.tenant.id, tag_id)
         async with transaction(self._db):
-            # Nothing cascades from `tenant_tags`: unfiling whatever the Tag filed is part of
-            # deleting it, and doing it here is what keeps both in the one transaction.
-            for assignment in (CandidateTagAssignment, ApplicationTagAssignment):
-                await self._db.execute(
-                    delete(assignment).where(
-                        assignment.tag_id == tag_id,
-                        assignment.tenant_id == recruiter.tenant.id,
-                    )
-                )
+            # Both assignment tables cascade from `tenant_tags`, so unfiling is the delete.
             await self._db.delete(tag)
 
         logger.info("crm.tag_deleted", tag_id=str(tag_id), tenant_id=str(recruiter.tenant.id))

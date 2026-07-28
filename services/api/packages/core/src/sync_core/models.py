@@ -929,46 +929,6 @@ class Recruiter(Base):
     tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
 
 
-class CandidateNote(Base):
-    __tablename__ = "candidate_notes"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["candidate_id"], ["public.candidates.id"], name="candidate_notes_candidate_id_fkey"
-        ),
-        ForeignKeyConstraint(
-            ["tenant_id", "recruiter_id"],
-            ["public.recruiters.tenant_id", "public.recruiters.id"],
-            name="candidate_notes_tenant_id_recruiter_id_fkey",
-        ),
-        ForeignKeyConstraint(
-            ["tenant_id"], ["public.tenants.id"], name="candidate_notes_tenant_id_fkey"
-        ),
-        PrimaryKeyConstraint("id", name="candidate_notes_pkey"),
-        Index("candidate_notes_candidate_idx", "candidate_id"),
-        Index("candidate_notes_recruiter_idx", "recruiter_id"),
-        Index("candidate_notes_tenant_candidate_idx", "tenant_id", "candidate_id", "created_at"),
-        {"schema": "public"},
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
-    )
-    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    candidate_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    note_text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()")
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()")
-    )
-
-    candidate: Mapped["Candidate"] = relationship("Candidate", viewonly=True)
-    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
-    tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
-
-
 class CandidateTagAssignment(Base):
     __tablename__ = "candidate_tag_assignments"
     __table_args__ = (
@@ -983,6 +943,7 @@ class CandidateTagAssignment(Base):
         ForeignKeyConstraint(
             ["tag_id", "scope"],
             ["public.tenant_tags.id", "public.tenant_tags.scope"],
+            ondelete="CASCADE",
             name="candidate_tag_assignments_tag_id_scope_fkey",
         ),
         ForeignKeyConstraint(
@@ -993,6 +954,7 @@ class CandidateTagAssignment(Base):
         ForeignKeyConstraint(
             ["tenant_id", "tag_id"],
             ["public.tenant_tags.tenant_id", "public.tenant_tags.id"],
+            ondelete="CASCADE",
             name="candidate_tag_assignments_tenant_id_tag_id_fkey",
         ),
         PrimaryKeyConstraint("candidate_id", "tag_id", name="candidate_tag_assignments_pkey"),
@@ -1104,6 +1066,7 @@ class TalentPoolMember(Base):
         PrimaryKeyConstraint("tenant_id", "candidate_id", name="talent_pool_members_pkey"),
         Index("talent_pool_members_added_by_idx", "added_by_recruiter_id"),
         Index("talent_pool_members_candidate_idx", "candidate_id"),
+        Index("talent_pool_members_tenant_added_idx", "tenant_id", "added_at", "candidate_id"),
         {"schema": "public"},
     )
 
@@ -1590,44 +1553,6 @@ class ApplicationLanguage(Base):
     language: Mapped["Language"] = relationship("Language", viewonly=True)
 
 
-class ApplicationNote(Base):
-    __tablename__ = "application_notes"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["tenant_id", "application_id"],
-            ["public.applications.tenant_id", "public.applications.id"],
-            ondelete="CASCADE",
-            name="application_notes_tenant_id_application_id_fkey",
-        ),
-        ForeignKeyConstraint(
-            ["tenant_id", "recruiter_id"],
-            ["public.recruiters.tenant_id", "public.recruiters.id"],
-            name="application_notes_tenant_id_recruiter_id_fkey",
-        ),
-        PrimaryKeyConstraint("id", name="application_notes_pkey"),
-        Index("application_notes_app_created_idx", "application_id", "created_at"),
-        Index("application_notes_tenant_recruiter_idx", "tenant_id", "recruiter_id"),
-        {"schema": "public"},
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
-    )
-    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    note_text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()")
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()")
-    )
-
-    application: Mapped["Application"] = relationship("Application", viewonly=True)
-    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
-
-
 class ApplicationProfileSnapshot(Base):
     __tablename__ = "application_profile_snapshots"
     __table_args__ = (
@@ -1829,6 +1754,7 @@ class ApplicationTagAssignment(Base):
         ForeignKeyConstraint(
             ["tag_id", "scope"],
             ["public.tenant_tags.id", "public.tenant_tags.scope"],
+            ondelete="CASCADE",
             name="application_tag_assignments_tag_id_scope_fkey",
         ),
         ForeignKeyConstraint(
@@ -1845,6 +1771,7 @@ class ApplicationTagAssignment(Base):
         ForeignKeyConstraint(
             ["tenant_id", "tag_id"],
             ["public.tenant_tags.tenant_id", "public.tenant_tags.id"],
+            ondelete="CASCADE",
             name="application_tag_assignments_tenant_id_tag_id_fkey",
         ),
         PrimaryKeyConstraint("application_id", "tag_id", name="application_tag_assignments_pkey"),
@@ -2000,6 +1927,67 @@ class Communication(Base):
     )
     recruiter: Mapped[Optional["Recruiter"]] = relationship("Recruiter", viewonly=True)
     tenant: Mapped[Optional["Tenant"]] = relationship("Tenant", viewonly=True)
+
+
+class Note(Base):
+    __tablename__ = "notes"
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(application_id, candidate_id) = 1", name="notes_one_subject"),
+        ForeignKeyConstraint(
+            ["candidate_id"], ["public.candidates.id"], name="notes_candidate_id_fkey"
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "application_id"],
+            ["public.applications.tenant_id", "public.applications.id"],
+            ondelete="CASCADE",
+            name="notes_tenant_id_application_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "recruiter_id"],
+            ["public.recruiters.tenant_id", "public.recruiters.id"],
+            name="notes_tenant_id_recruiter_id_fkey",
+        ),
+        ForeignKeyConstraint(["tenant_id"], ["public.tenants.id"], name="notes_tenant_id_fkey"),
+        PrimaryKeyConstraint("id", name="notes_pkey"),
+        Index(
+            "notes_application_created_idx",
+            "application_id",
+            "created_at",
+            "id",
+            postgresql_where="(application_id IS NOT NULL)",
+        ),
+        Index("notes_candidate_idx", "candidate_id", postgresql_where="(candidate_id IS NOT NULL)"),
+        Index(
+            "notes_tenant_candidate_created_idx",
+            "tenant_id",
+            "candidate_id",
+            "created_at",
+            "id",
+            postgresql_where="(candidate_id IS NOT NULL)",
+        ),
+        Index("notes_tenant_recruiter_idx", "tenant_id", "recruiter_id"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    note_text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    application_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+
+    candidate: Mapped[Optional["Candidate"]] = relationship("Candidate", viewonly=True)
+    application: Mapped[Optional["Application"]] = relationship("Application", viewonly=True)
+    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
+    tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
 
 
 class Notification(Base):
