@@ -333,7 +333,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Every CV the caller keeps
+         * @description Newest first, without the parses — a candidate keeps few enough that they do not page.
+         *     Deleted CVs are not among them.
+         */
+        get: operations["listMyCvs"];
         put?: never;
         /**
          * Upload a CV
@@ -360,6 +365,31 @@ export interface paths {
         get: operations["getMyCv"];
         put?: never;
         post?: never;
+        /**
+         * Delete a CV
+         * @description Frees a slot, and the file to be uploaded again. Whoever is reviewing an Application made
+         *     with it still sees it.
+         */
+        delete: operations["deleteMyCv"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/candidates/me/cvs/{cv_id}/make-current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply and be found with this CV from now on
+         * @description Only a `ready` CV can be current. Applications already submitted keep the CV they named.
+         */
+        post: operations["makeMyCvCurrent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1602,6 +1632,51 @@ export interface components {
             parsed_cv?: components["schemas"]["ParsedCv"] | null;
         };
         /**
+         * CvConflictProblemDetail
+         * @description An upload refused by the CVs the candidate already keeps.
+         */
+        CvConflictProblemDetail: {
+            /**
+             * Type
+             * @description Stable identifier for what went wrong.
+             * @default about:blank
+             * @example about:blank
+             */
+            type: string;
+            /**
+             * Title
+             * @description Short, human-readable summary of the problem type.
+             */
+            title: string;
+            /**
+             * Status
+             * @description The HTTP status code, repeated for out-of-band handling.
+             */
+            status: number;
+            /**
+             * Detail
+             * @description Explanation specific to this occurrence.
+             */
+            detail?: string | null;
+            /**
+             * Instance
+             * @description Path of the request that produced the problem.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates this response with the server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Cv Id
+             * @description The CV already holding this exact file. Only on a duplicate.
+             */
+            cv_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * CvDownloadLink
          * @description Where to fetch the original file, for as long as the link lasts.
          */
@@ -1645,50 +1720,44 @@ export interface components {
          */
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
         /**
-         * DuplicateCvProblemDetail
-         * @description A refused upload that names the CV the candidate already has.
+         * CvSummary
+         * @description One uploaded CV as it appears in the caller's list of them.
          */
-        DuplicateCvProblemDetail: {
+        CvSummary: {
             /**
-             * Type
-             * @description Stable identifier for what went wrong.
-             * @default about:blank
-             * @example about:blank
-             */
-            type: string;
-            /**
-             * Title
-             * @description Short, human-readable summary of the problem type.
-             */
-            title: string;
-            /**
-             * Status
-             * @description The HTTP status code, repeated for out-of-band handling.
-             */
-            status: number;
-            /**
-             * Detail
-             * @description Explanation specific to this occurrence.
-             */
-            detail?: string | null;
-            /**
-             * Instance
-             * @description Path of the request that produced the problem.
-             */
-            instance?: string | null;
-            /**
-             * Request Id
-             * @description Correlates this response with the server logs.
-             */
-            request_id?: string | null;
-            /**
-             * Cv Id
+             * Id
              * Format: uuid
-             * @description The CV already holding this exact file.
              */
-            cv_id: string;
-        } & {
-            [key: string]: unknown;
+            id: string;
+            /**
+             * Display Name
+             * @description The name of the file the candidate uploaded.
+             */
+            display_name: string;
+            /** @description The authoritative state of this CV. Poll until it leaves `processing`. */
+            parsing_status: components["schemas"]["CvParsingStatus"];
+            /**
+             * Parsing Error
+             * @description Why the parse failed, when it did. Null otherwise.
+             */
+            parsing_error?: string | null;
+            /**
+             * Detected Language
+             * @description The language the CV is written in, once it has been read.
+             */
+            detected_language?: string | null;
+            /**
+             * Is Current
+             * @description Whether this is the CV the candidate applies and is found with.
+             */
+            is_current: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Parsed At */
+            parsed_at?: string | null;
         };
         /**
          * Health
@@ -4258,6 +4327,62 @@ export interface operations {
             };
         };
     };
+    listMyCvs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvSummary"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     uploadMyCv: {
         parameters: {
             query?: never;
@@ -4298,13 +4423,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description This exact file is already one of the caller's CVs; `cv_id` is the one it is. */
+            /** @description This exact file is already one of the caller's CVs, and `cv_id` is the one it is; or the caller already keeps 5 CVs. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["DuplicateCvProblemDetail"];
+                    "application/problem+json": components["schemas"]["CvConflictProblemDetail"];
                 };
             };
             /** @description The file is larger than the platform accepts. */
@@ -4394,6 +4519,156 @@ export interface operations {
             };
             /** @description The caller has no CV with that id. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    deleteMyCv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller has no CV with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The CV is the current one; make another current first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    makeMyCvCurrent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cv"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller has no CV with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The CV has not been read yet, so it cannot be the current one. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

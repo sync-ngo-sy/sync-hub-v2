@@ -9,8 +9,8 @@ from sync_core.models import CvParsingStatus
 from sync_parsers import ParsedCv
 
 
-class Cv(BaseModel):
-    """One uploaded CV, and how far the platform has got with it."""
+class CvSummary(BaseModel):
+    """One uploaded CV as it appears in the caller's list of them."""
 
     id: UUID
     display_name: str = Field(description="The name of the file the candidate uploaded.")
@@ -28,6 +28,10 @@ class Cv(BaseModel):
     )
     created_at: datetime
     parsed_at: datetime | None = None
+
+
+class Cv(CvSummary):
+    """One uploaded CV, and how far the platform has got with it."""
 
     parsed_cv: ParsedCv | None = Field(
         default=None,

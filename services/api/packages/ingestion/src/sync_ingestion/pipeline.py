@@ -91,7 +91,9 @@ class CvIngestion:
 
     async def fail(self, session: AsyncSession, cv_id: UUID, reason: str) -> None:
         cv = (
-            await session.execute(select(Cv.candidate_id, Cv.display_name).where(Cv.id == cv_id))
+            await session.execute(
+                select(Cv.candidate_id, Cv.display_name, Cv.deleted_at).where(Cv.id == cv_id)
+            )
         ).one_or_none()
         if cv is None:
             logger.warning("cv_ingestion.failed_cv_gone", cv_id=str(cv_id), reason=reason)
@@ -102,12 +104,18 @@ class CvIngestion:
             .where(Cv.id == cv_id)
             .values(parsing_status=CvParsingStatus.FAILED, parsing_error=reason)
         )
-        await notify(
-            session,
-            cv.candidate_id,
-            CvParseFailed(cv_id=cv_id, display_name=cv.display_name),
+        if cv.deleted_at is None:
+            await notify(
+                session,
+                cv.candidate_id,
+                CvParseFailed(cv_id=cv_id, display_name=cv.display_name),
+            )
+        logger.warning(
+            "cv_ingestion.failed",
+            cv_id=str(cv_id),
+            reason=reason,
+            deleted=cv.deleted_at is not None,
         )
-        logger.warning("cv_ingestion.failed", cv_id=str(cv_id), reason=reason)
 
     async def _adopt_as_current(self, session: AsyncSession, cv_id: UUID) -> None:
         candidate_id = await session.scalar(select(Cv.candidate_id).where(Cv.id == cv_id))
@@ -115,6 +123,11 @@ class CvIngestion:
             return
         candidate = await session.get(Candidate, candidate_id, with_for_update=True)
         if candidate is None or candidate.current_cv_id is not None:
+            return
+        # Read under that lock, which deleting a CV takes too: a CV deleted while it was being
+        # read is not adopted, and the parse just paid for is not rolled back by the trigger
+        # that would refuse a deleted CV as the current one.
+        if await session.scalar(select(Cv.deleted_at).where(Cv.id == cv_id)) is not None:
             return
         candidate.current_cv_id = cv_id
         logger.info("cv_ingestion.adopted_as_current", candidate_id=str(candidate_id))

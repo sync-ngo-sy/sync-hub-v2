@@ -73,6 +73,52 @@ $$;
 create trigger ingest_on_upload after insert on cvs
   for each row execute function enqueue_cv_ingestion();
 
+-- A candidate's current CV is the one they apply and are found with, so a deleted CV is never
+-- it. Both directions are refused: deleting the CV that is current, and making a CV that is
+-- already deleted current.
+create function forbid_deleting_current_cv() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  current_cv uuid;
+begin
+  -- FOR UPDATE, because switching the current CV locks the same candidate row: the two
+  -- cannot interleave into a candidate whose current CV has just been deleted.
+  select c.current_cv_id into current_cv
+    from public.candidates c where c.id = new.candidate_id for update;
+  if current_cv = new.id then
+    raise exception 'cv % is the current CV of candidate %', new.id, new.candidate_id
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger forbid_deleting_current_cv before update of deleted_at on cvs
+  for each row when (new.deleted_at is not null and old.deleted_at is null)
+  execute function forbid_deleting_current_cv();
+
+create function forbid_deleted_current_cv() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if exists (
+    select 1 from public.cvs
+    where id = new.current_cv_id and candidate_id = new.id and deleted_at is not null
+  ) then
+    raise exception 'cv % is deleted and cannot be the current CV of candidate %',
+      new.current_cv_id, new.id using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger forbid_deleted_current_cv before update of current_cv_id on candidates
+  for each row when (new.current_cv_id is not null)
+  execute function forbid_deleted_current_cv();
+
 create function forbid_locked_job_criteria() returns trigger
 language plpgsql
 set search_path = ''

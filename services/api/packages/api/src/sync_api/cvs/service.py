@@ -1,21 +1,25 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Final
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.cvs.payload import Cv, CvDownloadLink
+from sync_api.cvs.payload import Cv, CvDownloadLink, CvSummary
 from sync_api.cvs.upload import received
 from sync_api.problems import (
     CV_FILE_UNAVAILABLE_PROBLEM_TYPE,
+    CV_IS_CURRENT_PROBLEM_TYPE,
+    CV_LIMIT_REACHED_PROBLEM_TYPE,
     CV_NOT_FOUND_PROBLEM_TYPE,
+    CV_NOT_READY_PROBLEM_TYPE,
     DUPLICATE_CV_PROBLEM_TYPE,
     Problem,
 )
 from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
-from sync_core.models import Candidate
+from sync_core.models import Candidate, CvParsingStatus
 from sync_core.models import Cv as CvRow
 from sync_core.storage import cv_object_path
 from sync_parsers import ParsedCv
@@ -27,6 +31,9 @@ if TYPE_CHECKING:
     from sync_core import Settings, Storage
 
 logger = get_logger(__name__)
+
+#: How many CVs a candidate may keep at once. A CV they have deleted no longer counts.
+MAX_ACTIVE_CVS: Final = 5
 
 
 async def signed_download(storage: Storage, settings: Settings, cv: CvRow) -> CvDownloadLink:
@@ -53,6 +60,7 @@ class CvService:
     async def upload(self, candidate_id: UUID, upload: UploadFile) -> Cv:
         async with received(upload, max_bytes=self._settings.cv_max_upload_bytes) as file:
             await self._refuse_duplicate(candidate_id, file.sha256)
+            await self._refuse_over_the_cap(candidate_id)
 
             cv_id = uuid4()
             storage_path = cv_object_path(candidate_id, cv_id, file.media_type)
@@ -74,8 +82,59 @@ class CvService:
         )
         return await self._as_payload(candidate_id, row)
 
+    async def cvs(self, candidate_id: UUID) -> list[CvSummary]:
+        rows = await self._db.scalars(
+            select(CvRow)
+            .where(_active_cvs_of(candidate_id))
+            .order_by(CvRow.created_at.desc(), CvRow.id.desc())
+        )
+        current = await self._current_cv_id(candidate_id)
+        return [_summary(row, current=current) for row in rows]
+
     async def cv(self, candidate_id: UUID, cv_id: UUID) -> Cv:
         return await self._as_payload(candidate_id, await self._own_cv(candidate_id, cv_id))
+
+    async def make_current(self, candidate_id: UUID, cv_id: UUID) -> Cv:
+        """The CV the candidate applies and is found with, once the platform has read it."""
+        async with transaction(self._db):
+            await self._lock(candidate_id)
+            cv = await self._own_cv(candidate_id, cv_id)
+            if cv.parsing_status is not CvParsingStatus.READY:
+                raise Problem(
+                    status=409,
+                    type=CV_NOT_READY_PROBLEM_TYPE,
+                    detail="This CV has not been read yet, so it cannot be the current one. "
+                    "Wait for it to be processed, or pick one that already has been.",
+                )
+            # Guarded, so making the current CV current again is not a profile change: any
+            # update of the candidate row enqueues a re-embedding of their whole profile.
+            await self._db.execute(
+                update(Candidate)
+                .where(
+                    Candidate.id == candidate_id,
+                    Candidate.current_cv_id.is_distinct_from(cv_id),
+                )
+                .values(current_cv_id=cv_id)
+            )
+
+        logger.info("cvs.made_current", candidate_id=str(candidate_id), cv_id=str(cv_id))
+        return await self._as_payload(candidate_id, cv)
+
+    async def remove(self, candidate_id: UUID, cv_id: UUID) -> None:
+        """Soft: the Applications a Tenant already reviews go on naming this CV and its file."""
+        async with transaction(self._db):
+            await self._lock(candidate_id)
+            cv = await self._own_cv(candidate_id, cv_id)
+            if await self._current_cv_id(candidate_id) == cv_id:
+                raise Problem(
+                    status=409,
+                    type=CV_IS_CURRENT_PROBLEM_TYPE,
+                    detail="This is your current CV. Make another CV current first, then "
+                    "delete this one.",
+                )
+            cv.deleted_at = datetime.now(UTC)
+
+        logger.info("cvs.deleted", candidate_id=str(candidate_id), cv_id=str(cv_id))
 
     async def download_link(self, candidate_id: UUID, cv_id: UUID) -> CvDownloadLink:
         cv = await self._own_cv(candidate_id, cv_id)
@@ -86,13 +145,24 @@ class CvService:
         if existing is not None:
             raise _duplicate(existing)
 
+    async def _refuse_over_the_cap(self, candidate_id: UUID) -> None:
+        if await self._active_cv_count(candidate_id) >= MAX_ACTIVE_CVS:
+            raise Problem(
+                status=409,
+                type=CV_LIMIT_REACHED_PROBLEM_TYPE,
+                detail=f"You can keep {MAX_ACTIVE_CVS} CVs at a time. Delete one you no "
+                "longer need first.",
+            )
+
+    async def _active_cv_count(self, candidate_id: UUID) -> int:
+        count = await self._db.scalar(
+            select(func.count()).select_from(CvRow).where(_active_cvs_of(candidate_id))
+        )
+        return int(count or 0)
+
     async def _active_cv_with(self, candidate_id: UUID, file_hash: str) -> UUID | None:
         existing: UUID | None = await self._db.scalar(
-            select(CvRow.id).where(
-                CvRow.candidate_id == candidate_id,
-                CvRow.file_hash == file_hash,
-                CvRow.deleted_at.is_(None),
-            )
+            select(CvRow.id).where(_active_cvs_of(candidate_id), CvRow.file_hash == file_hash)
         )
         return existing
 
@@ -112,9 +182,13 @@ class CvService:
             storage_path=storage_path,
             file_hash=file_hash,
         )
-        self._db.add(row)
         try:
             async with transaction(self._db):
+                # Counted again here: the check before the upload cannot see an insert that
+                # lands while the file is being written.
+                await self._lock(candidate_id)
+                await self._refuse_over_the_cap(candidate_id)
+                self._db.add(row)
                 await self._db.flush()
         except IntegrityError as clash:
             raise await self._duplicate_that_won(candidate_id, file_hash) from clash
@@ -135,11 +209,7 @@ class CvService:
 
     async def _own_cv(self, candidate_id: UUID, cv_id: UUID) -> CvRow:
         cv = await self._db.scalar(
-            select(CvRow).where(
-                CvRow.id == cv_id,
-                CvRow.candidate_id == candidate_id,
-                CvRow.deleted_at.is_(None),
-            )
+            select(CvRow).where(_active_cvs_of(candidate_id), CvRow.id == cv_id)
         )
         if cv is None:
             raise Problem(
@@ -149,19 +219,43 @@ class CvService:
             )
         return cv
 
+    async def _lock(self, candidate_id: UUID) -> None:
+        """The candidate row is what counting CVs, switching the current one and deleting one
+        all queue on, so no two of them can decide on the same stale answer."""
+        await self._db.execute(
+            select(Candidate.id).where(Candidate.id == candidate_id).with_for_update()
+        )
+
+    async def _current_cv_id(self, candidate_id: UUID) -> UUID | None:
+        current: UUID | None = await self._db.scalar(
+            select(Candidate.current_cv_id).where(Candidate.id == candidate_id)
+        )
+        return current
+
     async def _as_payload(self, candidate_id: UUID, cv: CvRow) -> Cv:
-        candidate = await self._db.get(Candidate, candidate_id)
+        current = await self._current_cv_id(candidate_id)
         return Cv(
-            id=cv.id,
-            display_name=cv.display_name,
-            parsing_status=cv.parsing_status,
-            parsing_error=cv.parsing_error,
-            detected_language=cv.detected_language,
-            is_current=candidate is not None and candidate.current_cv_id == cv.id,
-            created_at=cv.created_at,
-            parsed_at=cv.parsed_at,
+            **_summary(cv, current=current).model_dump(),
             parsed_cv=_parsed(cv),
         )
+
+
+def _active_cvs_of(candidate_id: UUID) -> ColumnElement[bool]:
+    """One candidate's CVs, the deleted ones excluded — what every read of their own asks for."""
+    return and_(CvRow.candidate_id == candidate_id, CvRow.deleted_at.is_(None))
+
+
+def _summary(cv: CvRow, *, current: UUID | None) -> CvSummary:
+    return CvSummary(
+        id=cv.id,
+        display_name=cv.display_name,
+        parsing_status=cv.parsing_status,
+        parsing_error=cv.parsing_error,
+        detected_language=cv.detected_language,
+        is_current=cv.id == current,
+        created_at=cv.created_at,
+        parsed_at=cv.parsed_at,
+    )
 
 
 def _parsed(cv: CvRow) -> ParsedCv | None:

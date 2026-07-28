@@ -61,6 +61,36 @@ The re-embed queue looks after itself: every one of those writes fires
 `enqueue_candidate_reembed`, which upserts the candidate's single `candidate_embedding_jobs`
 row, so any number of successive saves leaves exactly one dirty job with a bumped `revision`.
 
+## A candidate's CVs: how many, which is current, deleting one
+
+A Candidate keeps at most **five active CVs** — active meaning not soft-deleted, whatever each
+one's `parsing_status`. That is a count across rows, so the backend owns it: the upload refuses
+the sixth with a 409 before it writes anything, and counts again inside the insert's transaction
+with the candidate row locked `FOR UPDATE` — without the lock two uploads at once each count the
+CVs from before the other's insert, and six land.
+
+`candidates.current_cv_id` is the CV the candidate applies and is found with. It moves when they
+say so (`POST /v1/candidates/me/cvs/{id}/make-current`), or by itself onto their first `ready`
+CV (see CV ingestion below). Only a `ready` CV may take it: a CV still being read, or one whose
+parse failed, is refused with 409 `cv-not-ready`. The UPDATE is guarded on the value actually
+changing, because `reembed_on_change` fires on *any* write to the candidate row and a CV made
+current twice is no reason to re-embed a profile.
+
+Deleting a CV is **soft** — `cvs.deleted_at`, the row and the Storage object both left alone:
+1. The current CV is refused with 409 `cv-is-current`, telling the candidate to make another one
+   current first. So a searchable profile can never be stranded without a CV, and
+   `candidates_searchable_needs_cv` never has to catch it.
+2. Both directions of that are triggers too (migration 07), which is why every writer of
+   `current_cv_id` locks the candidate row: `forbid_deleting_current_cv` refuses soft-deleting
+   the CV that is current — taking the same `FOR UPDATE` lock, so a switch racing a delete
+   cannot interleave into a deleted CV being current — and `forbid_deleted_current_cv` refuses
+   pointing `current_cv_id` at a CV that is already deleted.
+3. `applications.(candidate_id, cv_id)` still resolves, and the object is still there, so a
+   Tenant reviewing an Application goes on reading the CV and downloading the file it was
+   submitted with. What the candidate keeps in their own list is not the record of what they sent.
+4. Dedup is over *active* CVs only (the partial unique index), so deleting a CV — a failed parse,
+   typically — frees that exact file to be uploaded again.
+
 ## Jobs: the criteria lock, and what the public may read
 
 A Job's *criteria* — `job_skills`, `job_languages`, `job_application_questions` and
@@ -299,11 +329,14 @@ the row, and whatever waits on it, stuck for good.
   parse back to `PUT /v1/candidates/me/profile`, so a parse it would refuse is unusable.
 - The candidate's **first** `ready` CV sets `candidates.current_cv_id` if it is still unset, with
   the candidate row locked `FOR UPDATE`. Only the first: after that it is the candidate's choice.
+  A CV **soft-deleted while it was being read** is not adopted — it is parsed and stored like any
+  other, and simply never becomes current.
 - A dead job also inserts the candidate's `cv_parse_failed` **Notification**, in `give_up`'s own
   transaction (see Notifications below) — so the progress indicator never ends in silence, and
   no candidate is told about a failure the transaction then rolled back. If the `cvs` row has
   been deleted meanwhile there is nothing to fail and nobody to tell, and the consumer says so
-  in the log rather than writing a notification whose recipient it cannot name.
+  in the log rather than writing a notification whose recipient it cannot name. A soft-deleted
+  CV still gets its `failed` status, but no Notification: the candidate has stopped waiting.
 
 ### Re-embedding (`candidate_embedding_jobs` → `sync_rag`/`sync_worker`)
 Coalesced, one row per candidate. Claim a dirty row, capture its `revision`, then:
@@ -522,6 +555,9 @@ trigger-enqueued parse job succeed or fail together and the hash is never
 client-supplied. Downloads are short-lived signed URLs issued by the API. No client
 touches Storage directly.
 
+Deleting a CV never deletes its object: the deletion is soft precisely so that the Applications
+already made with the CV keep their file (see "A candidate's CVs" above).
+
 The object cannot join the row's transaction, so the ordering is: write the object, insert
 the row, and **remove the object again** if the insert does not land. That is the only order
 where a failure leaves nothing behind — including the loser of a duplicate race, which has
@@ -533,5 +569,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |
+| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply or before becoming current, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |

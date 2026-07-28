@@ -150,8 +150,17 @@ _Avoid_: Skill string, Keyword.
 **CV**:
 A candidate document, parsed once by AI into immutable `parsed_cv_data`. The Candidate
 reviews the parse before it updates a profile or feeds an Application; the raw parse is
-never itself the authoritative profile.
+never itself the authoritative profile. A Candidate keeps up to five **active** CVs — ones
+they have not deleted — and deleting is soft: it leaves the Applications made with the CV,
+and the file itself, whole for the Tenants reviewing them.
 _Avoid_: Resume, Document.
+
+**Current CV**:
+The one CV a Candidate applies and is found with (`candidates.current_cv_id`). Only a CV
+that has been read (`ready`) can be it; the first one to be read becomes it by itself, and
+after that only the Candidate moves it. It is the one CV they cannot delete — they make
+another current first — so a deleted CV is never anybody's current CV.
+_Avoid_: Default CV, Primary CV, Main CV.
 
 **Screening**:
 The deterministic verdict — `qualified` / `disqualified` / `review_required` — computed
