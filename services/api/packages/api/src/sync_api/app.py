@@ -10,7 +10,11 @@ from sync_api.auth import Authentication
 from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
-from sync_api.rate_limit import build_auth_rate_limiter, build_public_rate_limiter
+from sync_api.rate_limit import (
+    build_assessment_rate_limiter,
+    build_auth_rate_limiter,
+    build_public_rate_limiter,
+)
 from sync_api.routes import (
     applications,
     auth,
@@ -24,12 +28,14 @@ from sync_api.routes import (
     tenant_jobs,
     tenants,
 )
+from sync_assessments.openai_assessor import OpenAiMatchAssessor
 from sync_core import Database, Settings, Storage, configure_logging, get_logger, get_settings
 from sync_rag.openai_embedder import OpenAiEmbedder
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from sync_assessments import MatchAssessor
     from sync_rag import Embedder
 
 logger = get_logger(__name__)
@@ -45,7 +51,11 @@ any value — which together with `SameSite` is what stops another origin forgin
 """
 
 
-def create_app(settings: Settings | None = None, embedder: Embedder | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    embedder: Embedder | None = None,
+    assessor: MatchAssessor | None = None,
+) -> FastAPI:
     resolved = settings or get_settings()
     configure_logging(level=resolved.log_level, log_format=resolved.log_format)
 
@@ -61,8 +71,10 @@ def create_app(settings: Settings | None = None, embedder: Embedder | None = Non
         app.state.authentication = authentication
         app.state.storage = storage
         app.state.embedder = embedder or _openai_embedder(resolved)
+        app.state.assessor = assessor or _openai_assessor(resolved)
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
         app.state.public_rate_limiter = build_public_rate_limiter(resolved)
+        app.state.assessment_rate_limiter = build_assessment_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield
@@ -120,5 +132,15 @@ def _openai_embedder(settings: Settings) -> Embedder | None:
     return OpenAiEmbedder.build(
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_embedding_model,
+        timeout_seconds=settings.openai_timeout_seconds,
+    )
+
+
+def _openai_assessor(settings: Settings) -> MatchAssessor | None:
+    if settings.openai_api_key is None:
+        return None
+    return OpenAiMatchAssessor.build(
+        api_key=settings.openai_api_key.get_secret_value(),
+        model=settings.openai_assessment_model,
         timeout_seconds=settings.openai_timeout_seconds,
     )

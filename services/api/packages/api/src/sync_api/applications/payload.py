@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sync_api.candidates import (
     CandidateProfile,
@@ -208,6 +208,43 @@ class ApplicationReview(BaseModel):
     cv: ApplicationCv
     applied_at: datetime
     updated_at: datetime
+
+
+class MatchAssessment(BaseModel):
+    """One AI reading of how well an Application answers its Job.
+
+    Advice a Recruiter weighs, and nothing more: it is drawn from the Snapshot and the Job's
+    criteria, it never touches the Screening verdict, and running it again appends another.
+    """
+
+    # Pydantic reserves the `model_` prefix for its own members; `model_name` is what the
+    # audit trail calls the model, and renaming it here would only hide that.
+    model_config = ConfigDict(protected_namespaces=())
+
+    id: UUID
+    match_percentage: float = Field(
+        description="How much of what the Job asks for this Application evidences, 0 to 100. "
+        "Not a probability, and not a verdict."
+    )
+    explanation: str | None = Field(default=None, description="Why, in the model's own words.")
+    strengths: list[str] = Field(
+        default_factory=list, description="The requirements it answers well, one phrase each."
+    )
+    gaps: list[str] = Field(
+        default_factory=list, description="The requirements it does not, one phrase each."
+    )
+    model_name: str = Field(description="The model that wrote it.")
+    prompt_version: str = Field(description="The prompt it was written under.")
+    assessed_at: datetime
+
+
+class MatchAssessmentPage(BaseModel):
+    """One page of an Application's assessments, newest first."""
+
+    items: list[MatchAssessment]
+    next_cursor: str | None = Field(
+        default=None, description="Send back as `cursor` for the following page."
+    )
 
 
 class ApplicationStatusChange(BaseModel):

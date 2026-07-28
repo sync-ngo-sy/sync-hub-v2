@@ -9,6 +9,7 @@ from limits import RateLimitItemPerSecond
 from limits.aio.storage import MemoryStorage
 from limits.aio.strategies import MovingWindowRateLimiter
 
+from sync_api.dependencies import ActingRecruiterDep
 from sync_api.problems import RATE_LIMITED_PROBLEM_TYPE, Problem
 
 if TYPE_CHECKING:
@@ -43,12 +44,23 @@ def build_public_rate_limiter(settings: Settings) -> RateLimiter:
     )
 
 
+def build_assessment_rate_limiter(settings: Settings) -> RateLimiter:
+    return RateLimiter(
+        max_requests=settings.assessment_rate_limit_max_requests,
+        window_seconds=settings.assessment_rate_limit_window_seconds,
+    )
+
+
 def get_auth_rate_limiter(request: Request) -> RateLimiter:
     return cast("RateLimiter", request.app.state.auth_rate_limiter)
 
 
 def get_public_rate_limiter(request: Request) -> RateLimiter:
     return cast("RateLimiter", request.app.state.public_rate_limiter)
+
+
+def get_assessment_rate_limiter(request: Request) -> RateLimiter:
+    return cast("RateLimiter", request.app.state.assessment_rate_limiter)
 
 
 async def enforce_auth_rate_limit(
@@ -64,8 +76,17 @@ async def enforce_public_rate_limit(
     await _enforce(limiter, request)
 
 
-async def _enforce(limiter: RateLimiter, request: Request) -> None:
-    retry_after = await limiter.consume(endpoint_of(request), caller_of(request))
+async def enforce_assessment_rate_limit(
+    request: Request,
+    recruiter: ActingRecruiterDep,
+    limiter: Annotated[RateLimiter, Depends(get_assessment_rate_limiter)],
+) -> None:
+    """Keeps one Tenant from spending the model budget of every other one."""
+    await _enforce(limiter, request, caller=str(recruiter.tenant.id))
+
+
+async def _enforce(limiter: RateLimiter, request: Request, *, caller: str | None = None) -> None:
+    retry_after = await limiter.consume(endpoint_of(request), caller or caller_of(request))
     if retry_after is None:
         return
     raise Problem(

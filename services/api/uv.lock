@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "sync-api",
+    "sync-assessments",
     "sync-comms",
     "sync-core",
     "sync-ingestion",
@@ -1745,6 +1746,7 @@ dependencies = [
     { name = "httpx" },
     { name = "limits" },
     { name = "python-multipart" },
+    { name = "sync-assessments" },
     { name = "sync-core" },
     { name = "sync-ingestion" },
     { name = "sync-parsers" },
@@ -1761,11 +1763,27 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "limits", specifier = ">=5.8" },
     { name = "python-multipart", specifier = ">=0.0.32" },
+    { name = "sync-assessments", editable = "packages/assessments" },
     { name = "sync-core", editable = "packages/core" },
     { name = "sync-ingestion", editable = "packages/ingestion" },
     { name = "sync-parsers", editable = "packages/parsers" },
     { name = "sync-rag", editable = "packages/rag" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.51.0" },
+]
+
+[[package]]
+name = "sync-assessments"
+version = "0.1.0"
+source = { editable = "packages/assessments" }
+dependencies = [
+    { name = "openai" },
+    { name = "sync-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "openai", specifier = ">=2.48.0" },
+    { name = "sync-core", editable = "packages/core" },
 ]
 
 [[package]]
