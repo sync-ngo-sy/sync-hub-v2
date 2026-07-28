@@ -633,6 +633,34 @@ export interface paths {
         patch: operations["changeApplicationStatus"];
         trace?: never;
     };
+    "/v1/tenants/me/applications/{application_id}/assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every AI match assessment of the Application, newest first
+         * @description The whole history, each entry with the model and prompt version that wrote it.
+         */
+        get: operations["listApplicationMatchAssessments"];
+        put?: never;
+        /**
+         * Ask an AI how well the Application answers the Job
+         * @description A percentage and an explanation, drawn from the Snapshot and the Job's criteria.
+         *
+         *     Advice, and only that: it never touches the Screening verdict, and it reads what the
+         *     candidate froze when they applied rather than their profile as it stands today. Each
+         *     call appends another assessment; none of them replaces the last.
+         */
+        post: operations["assessApplicationMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/jobs": {
         parameters: {
             query?: never;
@@ -1593,6 +1621,68 @@ export interface components {
              * @example correct-horse-battery
              */
             password: string;
+        };
+        /**
+         * MatchAssessment
+         * @description One AI reading of how well an Application answers its Job.
+         *
+         *     Advice a Recruiter weighs, and nothing more: it is drawn from the Snapshot and the Job's
+         *     criteria, it never touches the Screening verdict, and running it again appends another.
+         */
+        MatchAssessment: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Match Percentage
+             * @description How much of what the Job asks for this Application evidences, 0 to 100. Not a probability, and not a verdict.
+             */
+            match_percentage: number;
+            /**
+             * Explanation
+             * @description Why, in the model's own words.
+             */
+            explanation?: string | null;
+            /**
+             * Strengths
+             * @description The requirements it answers well, one phrase each.
+             */
+            strengths?: string[];
+            /**
+             * Gaps
+             * @description The requirements it does not, one phrase each.
+             */
+            gaps?: string[];
+            /**
+             * Model Name
+             * @description The model that wrote it.
+             */
+            model_name: string;
+            /**
+             * Prompt Version
+             * @description The prompt it was written under.
+             */
+            prompt_version: string;
+            /**
+             * Assessed At
+             * Format: date-time
+             */
+            assessed_at: string;
+        };
+        /**
+         * MatchAssessmentPage
+         * @description One page of an Application's assessments, newest first.
+         */
+        MatchAssessmentPage: {
+            /** Items */
+            items: components["schemas"]["MatchAssessment"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
         };
         /**
          * MatchedCandidate
@@ -4806,6 +4896,172 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listApplicationMatchAssessments: {
+        parameters: {
+            query?: {
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchAssessmentPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no application with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    assessApplicationMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchAssessment"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no application with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description The tenant has asked for too many assessments. `Retry-After` says how long to wait. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The model could not assess it. Nothing was recorded. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This deployment has no assessment model configured. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

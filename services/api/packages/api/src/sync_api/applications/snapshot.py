@@ -4,12 +4,26 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
+
+from sync_api.applications.payload import AnsweredQuestion, ApplicationSnapshot
 from sync_api.applications.screening import (
     Snapshot,
     SnapshotAnswer,
     SnapshotExperience,
     SnapshotLanguage,
     SnapshotSkill,
+)
+from sync_api.candidates import (
+    ProfileEducation,
+    ProfileExperience,
+    ProfileLanguage,
+    ProfileProject,
+    ProfileSkill,
+    a_language,
+    a_project,
+    an_education,
+    an_experience,
 )
 from sync_core.models import (
     ApplicationAnswer,
@@ -20,11 +34,15 @@ from sync_core.models import (
     ApplicationProject,
     ApplicationSkill,
     Base,
+    JobApplicationQuestion,
+    SkillTaxonomy,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.candidates import CandidateProfile
 
@@ -101,7 +119,7 @@ def snapshot_rows(
             application_id=application_id,
             sort_order=order,
             taxonomy_id=skills[entry.name],
-            years_experience=_as_decimal(entry.years_experience),
+            years_experience=as_decimal(entry.years_experience),
         )
         for order, entry in enumerate(profile.skills)
     ]
@@ -167,6 +185,95 @@ def screened(rows: SnapshotRows, answers: Sequence[ApplicationAnswer]) -> Snapsh
     )
 
 
-def _as_decimal(years: float | None) -> Decimal | None:
+def as_decimal(years: float | None) -> Decimal | None:
     """Through `str`, so `numeric(4,1)` stores the number that was typed, not its float."""
     return None if years is None else Decimal(str(years))
+
+
+async def snapshot_of(session: AsyncSession, application_id: UUID) -> ApplicationSnapshot:
+    """The frozen data back out, whole. What a Recruiter reviews and what an assessment
+    reads — neither of them ever the live profile it was copied from."""
+    captured = await session.get(ApplicationProfileSnapshot, application_id)
+    if captured is None:  # pragma: no cover — written in the submission transaction
+        raise LookupError(f"no snapshot for application {application_id}")
+    return ApplicationSnapshot(
+        full_name=captured.full_name,
+        phone=captured.phone,
+        headline=captured.headline,
+        summary=captured.summary,
+        location=captured.location,
+        experiences=await _experiences(session, application_id),
+        educations=await _educations(session, application_id),
+        skills=await _skills(session, application_id),
+        languages=await _languages(session, application_id),
+        projects=await _projects(session, application_id),
+    )
+
+
+async def answers_of(session: AsyncSession, application_id: UUID) -> list[AnsweredQuestion]:
+    """Every question the Job asked, in the order it asked them, and what was answered."""
+    rows = await session.execute(
+        select(ApplicationAnswer, JobApplicationQuestion)
+        .join(JobApplicationQuestion, JobApplicationQuestion.id == ApplicationAnswer.question_id)
+        .where(ApplicationAnswer.application_id == application_id)
+        .order_by(JobApplicationQuestion.sort_order)
+    )
+    return [
+        AnsweredQuestion(
+            question_id=question.id,
+            question_text=question.question_text,
+            question_type=question.question_type,
+            answer_boolean=answer.answer_boolean,
+            answer_text=answer.answer_text,
+        )
+        for answer, question in rows.tuples()
+    ]
+
+
+async def _experiences(session: AsyncSession, application_id: UUID) -> list[ProfileExperience]:
+    rows = await session.scalars(
+        select(ApplicationExperience)
+        .where(ApplicationExperience.application_id == application_id)
+        .order_by(ApplicationExperience.sort_order)
+    )
+    return [an_experience(row) for row in rows]
+
+
+async def _educations(session: AsyncSession, application_id: UUID) -> list[ProfileEducation]:
+    rows = await session.scalars(
+        select(ApplicationEducation)
+        .where(ApplicationEducation.application_id == application_id)
+        .order_by(ApplicationEducation.sort_order)
+    )
+    return [an_education(row) for row in rows]
+
+
+async def _languages(session: AsyncSession, application_id: UUID) -> list[ProfileLanguage]:
+    rows = await session.scalars(
+        select(ApplicationLanguage)
+        .where(ApplicationLanguage.application_id == application_id)
+        .order_by(ApplicationLanguage.sort_order)
+    )
+    return [a_language(row) for row in rows]
+
+
+async def _projects(session: AsyncSession, application_id: UUID) -> list[ProfileProject]:
+    rows = await session.scalars(
+        select(ApplicationProject)
+        .where(ApplicationProject.application_id == application_id)
+        .order_by(ApplicationProject.sort_order)
+    )
+    return [a_project(row) for row in rows]
+
+
+async def _skills(session: AsyncSession, application_id: UUID) -> list[ProfileSkill]:
+    rows = await session.execute(
+        select(SkillTaxonomy.canonical_name, ApplicationSkill.years_experience)
+        .join(SkillTaxonomy, SkillTaxonomy.id == ApplicationSkill.taxonomy_id)
+        .where(ApplicationSkill.application_id == application_id)
+        .order_by(ApplicationSkill.sort_order)
+    )
+    return [
+        ProfileSkill(name=name, years_experience=None if years is None else float(years))
+        for name, years in rows.tuples()
+    ]

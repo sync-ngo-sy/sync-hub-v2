@@ -71,8 +71,14 @@ class Settings(BaseSettings):
 
     openai_api_key: SecretStr | None = None
     openai_cv_model: str = "gpt-4o-mini"
+    openai_assessment_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_timeout_seconds: float = Field(default=120.0, gt=0)
+
+    #: Per Tenant, not per browser: what this limit protects is the model budget, and one
+    #: tenant's recruiters share the cost of every assessment they ask for.
+    assessment_rate_limit_max_requests: int = Field(default=20, ge=1)
+    assessment_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
 
     resend_api_key: SecretStr | None = None
     #: Resend's sandbox sender, which needs no verified domain. Every deployment that sends

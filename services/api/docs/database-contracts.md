@@ -229,6 +229,36 @@ Withdrawal permanence is the schema's rather than the backend's: `UNIQUE(candida
 does not care what state the row is in, so re-applying meets the same 409 carrying the existing
 `application_id` that any duplicate does.
 
+## AI match assessments (advisory, append-only)
+
+A Recruiter asks for one; it runs synchronously and writes exactly one row:
+```
+insert application_ai_match_assessments(application_id, match_percentage, explanation,
+       assessment_details, model_name, prompt_version);
+```
+Its input on the Candidate's side is the immutable `application_*` snapshot — what they froze
+when they applied, never their live `candidate_*` rows. On the Job's side it is the criteria
+Screening measured (`job_skills`, `job_languages`, `jobs.minimum_total_experience_years`) plus
+the Job's own words (`title`, `description`, `location`, `employment_type`), which is what lets
+a model say anything the deterministic verdict could not. Those words are read as they stand:
+the criteria lock freezes the bar once an Application arrives, and deliberately not the prose.
+Nothing else is written: `applications.qualification_status`, `qualification_reason` and
+`application_qualification_history` are Screening's, and no number of assessments is a word in
+them. Running it again appends; the history reads newest first (`created_at desc, id desc`,
+keyset-paged) and nothing ever overwrites an earlier row.
+
+`match_percentage` is `numeric(5,2)` under a 0–100 CHECK, and the model's number is clamped
+into that range at the port's edge — the strict-schema subset a provider accepts carries no
+`minimum`/`maximum`, so the column's range cannot be asked of the model itself.
+`assessment_details` holds the strengths and gaps as jsonb, read back defensively: a row an
+older `prompt_version` wrote is still read by today's code. `model_name` and `prompt_version`
+are what make an assessment auditable after either changes.
+
+The model is called with no transaction open — the reads above are rolled back first, so a
+provider taking its time holds no Postgres connection — and the insert is its own transaction
+afterwards. A provider failure therefore leaves nothing behind (502), and a deployment with no
+`SYNC_OPENAI_API_KEY` answers 503 while still serving the history.
+
 ## Workers (Postgres-table queues, SKIP LOCKED)
 
 Generic claim pattern — atomic claim-and-mark, non-blocking across workers:
