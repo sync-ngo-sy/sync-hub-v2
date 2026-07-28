@@ -26,7 +26,7 @@ from tests.support.assessments import (
 )
 from tests.support.assessors import MODEL, FakeAssessor
 from tests.support.harness import SPA_HEADERS, asgi_client
-from tests.support.profiles import a_profile
+from tests.support.profiles import a_filled_profile, a_profile, a_saved_profile
 from tests.support.tenants import an_admin
 
 if TYPE_CHECKING:
@@ -125,13 +125,12 @@ async def an_application_to(
 ) -> dict[str, Any]:
     """One Application to one Job that screens on something, ready to be assessed."""
     job = await a_job_screening_on(recruiter, **A_JOBS_CRITERIA)
-    cv_id = await a_candidate_with_a_ready_cv(applicant, mailbox, session)
+    await a_candidate_with_a_ready_cv(applicant, mailbox, session)
+    await a_saved_profile(applicant, AN_APPLICANTS_PROFILE)
     [question] = questions_of(job)
     return await an_accepted_application(
         applicant,
         job["id"],
-        cv_id,
-        profile=AN_APPLICANTS_PROFILE,
         answers=[{"question_id": question["id"], "answer_boolean": True}],
     )
 
@@ -204,14 +203,13 @@ async def test_it_reads_the_frozen_snapshot_and_never_the_live_profile(
     assessor: FakeAssessor,
 ) -> None:
     application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    rewritten = await applicant.put(
-        "/v1/candidates/me/profile",
-        json=a_profile(
+    await a_saved_profile(
+        applicant,
+        a_filled_profile(
             headline="Rust engineer, 10 years",
             skills=[{"name": "Rust", "years_experience": 10.0}],
         ),
     )
-    assert rewritten.status_code == 200, rewritten.text
 
     assessment = await an_assessment(recruiter, application["id"])
 

@@ -22,17 +22,15 @@ ROUTER_PREFIX: Final = "/applications"
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
 
 SUBMISSION_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
-    404: openapi_problem("No published Job has that id, or no CV of yours has that id."),
+    404: openapi_problem("No published Job has that id."),
     409: openapi_problem(
         "You have already applied to this job — `application_id` is the one you sent, and a "
-        "withdrawn Application still counts — or the CV you picked has not finished parsing, "
-        "or the reviewed data opts in to Global search without a current, ready CV.",
+        "withdrawn Application still counts — or you have no current CV to apply with.",
         ApplicationConflictProblemDetail,
     ),
     422: openapi_problem(
-        "The answers do not match the questions the Job asks, or the reviewed data names a "
-        "skill or a language the platform does not know. All of them name the offending "
-        "entries.",
+        "The answers do not match the questions the Job asks, and name the offending entries; "
+        "or your profile is too thin to apply with, and `detail` says what is missing.",
         ValidationProblemDetail,
     ),
 }
@@ -53,9 +51,10 @@ async def submit_application(
 ) -> Application:
     """Submit the Application, Snapshot, answers and Screening verdict in one transaction.
 
-    Nothing partial is ever observable: either the whole submission lands, verdict included,
-    or none of it did. Where the browser reached this Job through a campaign link, the
-    Application is attributed to it.
+    The Snapshot is copied from the caller's live profile and the CV they currently hold —
+    neither is in the request. Nothing partial is ever observable: either the whole submission
+    lands, verdict included, or none of it did. Where the browser reached this Job through a
+    campaign link, the Application is attributed to it.
     """
     return await applications.submit(candidate, visitor, body)
 

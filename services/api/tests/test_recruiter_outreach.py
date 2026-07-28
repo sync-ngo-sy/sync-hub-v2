@@ -20,7 +20,12 @@ from tests.support.messaging import (
     a_sent_message,
     send_message,
 )
-from tests.support.profiles import give_a_current_cv, my_id
+from tests.support.profiles import (
+    a_filled_profile,
+    a_saved_profile,
+    give_a_current_cv,
+    my_id,
+)
 from tests.support.senders import CapturingSender
 from tests.support.worker import a_communications_worker
 
@@ -42,9 +47,10 @@ async def an_applicant(
 ) -> Applicant:
     job = await a_published_job(recruiter)
     signup = await a_signed_in_candidate(browser, mailbox, "applicant")
-    cv_id = await give_a_current_cv(session, await my_id(browser))
+    await give_a_current_cv(session, await my_id(browser))
+    await a_saved_profile(browser, a_filled_profile())
     return Applicant(
-        application=await an_accepted_application(browser, job["id"], cv_id),
+        application=await an_accepted_application(browser, job["id"]),
         email=signup.email,
         job_title=job["title"],
     )

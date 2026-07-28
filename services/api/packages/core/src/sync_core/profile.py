@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Final
 
 MAX_ENTRIES: Final = 50
@@ -14,3 +15,8 @@ LATEST_YEAR: Final = 2100
 MAX_LINE_LENGTH: Final = 200
 MAX_PARAGRAPH_LENGTH: Final = 5000
 MAX_LINK_LENGTH: Final = 2000
+
+
+def as_decimal(years: float) -> Decimal:
+    """Through `str`, so `numeric(4,1)` stores the number that was typed, not its float."""
+    return Decimal(str(years))

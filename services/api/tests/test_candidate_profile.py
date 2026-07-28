@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_core.models import CvParsingStatus
-from sync_core.profile import MAX_ENTRIES
+from sync_core.profile import MAX_ENTRIES, MAX_LINE_LENGTH
 from tests.support.candidates import a_signed_in_candidate, sign_in
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
@@ -25,6 +25,8 @@ from tests.support.tenants import an_admin
 PROFILE = "/v1/candidates/me/profile"
 
 A_FULL_PROFILE: dict[str, Any] = {
+    "full_name": "Amina Haddad",
+    "phone": "+963 11 555 0100",
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
     "location": "Damascus, Syria",
@@ -63,7 +65,7 @@ A_FULL_PROFILE: dict[str, Any] = {
     ],
     "skills": [
         {"name": "Python", "years_experience": 8.0},
-        {"name": "PostgreSQL", "years_experience": None},
+        {"name": "PostgreSQL", "years_experience": 6.5},
     ],
     "languages": [
         {"code": "ar", "proficiency": "native"},
@@ -81,6 +83,7 @@ A_FULL_PROFILE: dict[str, Any] = {
             "end_month": None,
         }
     ],
+    "unmapped_skills": ["Kubernetes wrangling"],
 }
 
 ONE_SAVE: dict[str, Any] = a_profile(
@@ -122,6 +125,48 @@ async def test_a_saved_profile_comes_back_exactly_as_it_was_sent(
     assert saved.status_code == 200, saved.text
     assert saved.json() == A_FULL_PROFILE
     assert (await browser.get(PROFILE)).json() == A_FULL_PROFILE
+
+
+async def test_the_name_and_phone_are_written_through_to_the_account(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """One profile, spread across two tables. The candidate should not be able to tell."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE, json=a_profile(full_name="Amina Haddad-Nassar", phone="+963 11 555 0199")
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["full_name"] == "Amina Haddad-Nassar"
+    assert (await browser.get("/v1/auth/me")).json()["full_name"] == "Amina Haddad-Nassar"
+    assert (await browser.get(PROFILE)).json()["phone"] == "+963 11 555 0199"
+
+
+async def test_an_email_address_is_not_settable_on_the_profile(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """Only auth has a confirmed address, so nothing here can claim to change one."""
+    signup = await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json={**a_profile(), "email": "someone-else@example.com"})
+
+    assert saved.status_code == 200, saved.text
+    assert "email" not in saved.json()
+    assert (await browser.get("/v1/auth/me")).json()["email"] == signup.email
+
+
+async def test_unmapped_skills_are_kept_as_typed_and_deduplicated_case_insensitively(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE, json=a_profile(unmapped_skills=["Kubernetes", "kubernetes", "Bash"])
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["unmapped_skills"] == ["Kubernetes", "Bash"]
 
 
 async def test_saving_again_replaces_every_section_instead_of_adding_to_it(
@@ -225,7 +270,8 @@ async def test_a_refused_save_leaves_the_previous_profile_exactly_as_it_was(
     await browser.put(PROFILE, json=A_FULL_PROFILE)
 
     refused = await browser.put(
-        PROFILE, json=a_profile(headline="Wiped", skills=[{"name": "Sorcery"}])
+        PROFILE,
+        json=a_profile(headline="Wiped", skills=[{"name": "Sorcery", "years_experience": 1.0}]),
     )
 
     assert refused.status_code == 422
@@ -357,6 +403,10 @@ MALFORMED = {
         {"experiences": [{"job_title": "Engineer", "start_year": 2020, "start_month": 13}]},
         "body.experiences.0.start_month",
     ),
+    "a skill with no years at all": (
+        {"skills": [{"name": "Python"}]},
+        "body.skills.0.years_experience",
+    ),
     "negative years of experience": (
         {"skills": [{"name": "Python", "years_experience": -1}]},
         "body.skills.0.years_experience",
@@ -369,8 +419,22 @@ MALFORMED = {
         {"experiences": [{"job_title": "Engineer"}] * (MAX_ENTRIES + 1)},
         "body.experiences",
     ),
+    "more unmapped skills than the section holds": (
+        {"unmapped_skills": ["Sorcery"] * (MAX_ENTRIES + 1)},
+        "body.unmapped_skills",
+    ),
+    "an unmapped skill longer than a line": (
+        {"unmapped_skills": ["x" * (MAX_LINE_LENGTH + 1)]},
+        "body.unmapped_skills.0",
+    ),
+    "no name at all": ({"full_name": ""}, "body.full_name"),
     "the same skill twice": (
-        {"skills": [{"name": "Python"}, {"name": "Python"}]},
+        {
+            "skills": [
+                {"name": "Python", "years_experience": 1.0},
+                {"name": "Python", "years_experience": 2.0},
+            ]
+        },
         "body",
     ),
     "the same language twice": (

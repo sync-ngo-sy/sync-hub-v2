@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from sync_api.text import (
     LanguageCode,
@@ -23,6 +23,16 @@ Year = Annotated[int, Field(ge=EARLIEST_YEAR, le=LATEST_YEAR)]
 Month = Annotated[int, Field(ge=1, le=12)]
 
 YearsOfExperience = Annotated[float, Field(ge=0, le=MAX_YEARS_EXPERIENCE)]
+
+
+def _deduplicated(names: list[str]) -> list[str]:
+    kept: dict[str, str] = {}
+    for name in names:
+        kept.setdefault(name.lower(), name)
+    return list(kept.values())
+
+
+UnmappedSkills = Annotated[list[Line], AfterValidator(_deduplicated)]
 
 
 def _section(description: str) -> Any:
@@ -77,8 +87,20 @@ class ProfileSkill(BaseModel):
     """One Canonical skill, by its exact name, and how long the candidate has been doing it."""
 
     name: Line = Field(description="The Canonical skill's exact name.", examples=["Python"])
+    years_experience: YearsOfExperience = Field(
+        description="Stored to one decimal place. Required: blank and `1` are opposites, not "
+        "neighbours, and only the candidate can say which."
+    )
+
+
+class DraftSkill(BaseModel):
+    """One Canonical skill on a draft, where the years may not be known yet."""
+
+    name: Line = Field(description="The Canonical skill's exact name.", examples=["Python"])
     years_experience: YearsOfExperience | None = Field(
-        default=None, description="Stored to one decimal place. Null means unstated."
+        default=None,
+        description="Null for a skill the CV newly names: the candidate fills it in before the "
+        "profile will save.",
     )
 
 
@@ -98,13 +120,19 @@ class ProfileProject(DatedRange):
     repository_url: OptionalLink = None
 
 
-class CandidateProfile(BaseModel):
-    """Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body."""
+class ProfileClaims(BaseModel):
+    """The fields a live profile and a draft of one share, whatever their skills look like."""
 
+    full_name: Line = Field(examples=["Amina Haddad"])
+    phone: OptionalLine = None
     headline: OptionalLine = Field(default=None, examples=["Backend engineer, 8 years"])
     summary: OptionalParagraph = None
     location: OptionalLine = Field(default=None, examples=["Damascus, Syria"])
-    preferred_language_code: LanguageCode | None = None
+    preferred_language_code: LanguageCode | None = Field(
+        default=None,
+        description="A recruiter search filter, and never read off a CV: the language a "
+        "document happens to be written in is not a preference.",
+    )
     is_searchable: bool = Field(
         default=False,
         description="Opt in to cross-tenant Global search. Requires a current, ready CV.",
@@ -112,16 +140,48 @@ class CandidateProfile(BaseModel):
 
     experiences: list[ProfileExperience] = _section("Jobs, in the candidate's own order.")
     educations: list[ProfileEducation] = _section("Qualifications, in the candidate's own order.")
-    skills: list[ProfileSkill] = _section("Canonical skills, in the candidate's own order.")
     languages: list[ProfileLanguage] = _section("Languages spoken, in the candidate's own order.")
     projects: list[ProfileProject] = _section("Projects, in the candidate's own order.")
 
+    unmapped_skills: UnmappedSkills = _section(
+        "Skills the candidate claims that the platform has no Canonical name for. Kept as "
+        "typed, deduplicated case-insensitively. Recruiters read them; Screening never does."
+    )
+
     @model_validator(mode="after")
-    def _one_entry_per_skill_and_language(self) -> CandidateProfile:
-        # Caught here rather than by the composite primary keys, which would refuse the save
+    def _one_entry_per_language(self) -> ProfileClaims:
+        # Caught here rather than by the composite primary key, which would refuse the save
         # half way through with a message about a constraint.
-        _refuse_repeats([skill.name for skill in self.skills], "skill")
         _refuse_repeats([language.code for language in self.languages], "language")
+        return self
+
+
+class CandidateProfile(ProfileClaims):
+    """Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body."""
+
+    skills: list[ProfileSkill] = _section("Canonical skills, in the candidate's own order.")
+
+    @model_validator(mode="after")
+    def _one_entry_per_skill(self) -> CandidateProfile:
+        _refuse_repeats([skill.name for skill in self.skills], "skill")
+        return self
+
+
+class ProfileDraft(ProfileClaims):
+    """A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
+
+    Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
+    newly names has no years until the candidate types them.
+    """
+
+    skills: list[DraftSkill] = _section(
+        "Every skill already on the profile, years and all, plus the ones this CV names that "
+        "were not there — those with `years_experience` null."
+    )
+
+    @model_validator(mode="after")
+    def _one_entry_per_skill(self) -> ProfileDraft:
+        _refuse_repeats([skill.name for skill in self.skills], "skill")
         return self
 
 

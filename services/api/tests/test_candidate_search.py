@@ -29,7 +29,10 @@ A_BACKEND_ENGINEER: dict[str, Any] = {
     "summary": "Builds payment systems in Python and PostgreSQL.",
     "location": "Damascus, Syria",
     "preferred_language_code": "ar",
-    "skills": [{"name": "Python", "years_experience": 8.0}, {"name": "PostgreSQL"}],
+    "skills": [
+        {"name": "Python", "years_experience": 8.0},
+        {"name": "PostgreSQL", "years_experience": 6.0},
+    ],
     "educations": [
         {
             "institution": "Damascus University",
@@ -45,7 +48,10 @@ A_FRONTEND_ENGINEER: dict[str, Any] = {
     "summary": "Builds React interfaces.",
     "location": "Damascus, Syria",
     "preferred_language_code": "en",
-    "skills": [{"name": "React"}, {"name": "TypeScript"}],
+    "skills": [
+        {"name": "React", "years_experience": 4.0},
+        {"name": "TypeScript", "years_experience": 3.0},
+    ],
 }
 
 A_GRAPHIC_DESIGNER: dict[str, Any] = {
@@ -53,7 +59,7 @@ A_GRAPHIC_DESIGNER: dict[str, Any] = {
     "summary": "Brand identity and print work.",
     "location": "Paris, France",
     "preferred_language_code": "fr",
-    "skills": [{"name": "Figma"}],
+    "skills": [{"name": "Figma", "years_experience": 5.0}],
 }
 
 FOR_A_BACKEND_ENGINEER = {"q": "backend engineer python payment systems"}

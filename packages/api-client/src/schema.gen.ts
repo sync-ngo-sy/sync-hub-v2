@@ -335,8 +335,8 @@ export interface paths {
         };
         /**
          * Every CV the caller keeps
-         * @description Newest first, without the parses — a candidate keeps few enough that they do not page.
-         *     Deleted CVs are not among them.
+         * @description Newest first — a candidate keeps few enough that they do not page. Deleted CVs are not
+         *     among them.
          */
         get: operations["listMyCvs"];
         put?: never;
@@ -371,6 +371,28 @@ export interface paths {
          *     with it still sees it.
          */
         delete: operations["deleteMyCv"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/candidates/me/cvs/{cv_id}/profile-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this CV says the caller's profile could be
+         * @description Computed and saved nowhere: review it, edit it, then `PUT` it to
+         *     `/candidates/me/profile`, which replaces. Skills already on the profile come back with the
+         *     years the candidate typed; skills only this CV names come back with none.
+         */
+        get: operations["getMyProfileDraftFromCv"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1128,9 +1150,10 @@ export interface paths {
          * Apply to a Job
          * @description Submit the Application, Snapshot, answers and Screening verdict in one transaction.
          *
-         *     Nothing partial is ever observable: either the whole submission lands, verdict included,
-         *     or none of it did. Where the browser reached this Job through a campaign link, the
-         *     Application is attributed to it.
+         *     The Snapshot is copied from the caller's live profile and the CV they currently hold —
+         *     neither is in the request. Nothing partial is ever observable: either the whole submission
+         *     lands, verdict included, or none of it did. Where the browser reached this Job through a
+         *     campaign link, the Application is attributed to it.
          */
         post: operations["submitApplication"];
         delete?: never;
@@ -1355,7 +1378,7 @@ export interface components {
         };
         /**
          * ApplicationSnapshot
-         * @description The reviewed data as it was frozen when the Application was sent, and never since.
+         * @description The candidate's profile as it was frozen when the Application was sent, and never since.
          */
         ApplicationSnapshot: {
             /** Full Name */
@@ -1368,6 +1391,11 @@ export interface components {
             summary?: string | null;
             /** Location */
             location?: string | null;
+            /**
+             * Unmapped Skills
+             * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
+             */
+            unmapped_skills?: string[];
             /** Experiences */
             experiences?: components["schemas"]["ProfileExperience"][];
             /** Educations */
@@ -1503,6 +1531,13 @@ export interface components {
          */
         CandidateProfile: {
             /**
+             * Full Name
+             * @example Amina Haddad
+             */
+            full_name: string;
+            /** Phone */
+            phone?: string | null;
+            /**
              * Headline
              * @example Backend engineer, 8 years
              */
@@ -1514,7 +1549,10 @@ export interface components {
              * @example Damascus, Syria
              */
             location?: string | null;
-            /** Preferred Language Code */
+            /**
+             * Preferred Language Code
+             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
+             */
             preferred_language_code?: string | null;
             /**
              * Is Searchable
@@ -1533,11 +1571,6 @@ export interface components {
              */
             educations?: components["schemas"]["ProfileEducation"][];
             /**
-             * Skills
-             * @description Canonical skills, in the candidate's own order.
-             */
-            skills?: components["schemas"]["ProfileSkill"][];
-            /**
              * Languages
              * @description Languages spoken, in the candidate's own order.
              */
@@ -1547,6 +1580,16 @@ export interface components {
              * @description Projects, in the candidate's own order.
              */
             projects?: components["schemas"]["ProfileProject"][];
+            /**
+             * Unmapped Skills
+             * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
+             */
+            unmapped_skills?: string[];
+            /**
+             * Skills
+             * @description Canonical skills, in the candidate's own order.
+             */
+            skills?: components["schemas"]["ProfileSkill"][];
         };
         /**
          * ChangeMemberRequest
@@ -1628,8 +1671,6 @@ export interface components {
             created_at: string;
             /** Parsed At */
             parsed_at?: string | null;
-            /** @description What the AI read out of the CV — present only once `parsing_status` is `ready`. Skills are Canonical skills; everything else the CV named is in `unmapped_skills` for the candidate to review. */
-            parsed_cv?: components["schemas"]["ParsedCv"] | null;
         };
         /**
          * CvConflictProblemDetail
@@ -1720,44 +1761,21 @@ export interface components {
          */
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
         /**
-         * CvSummary
-         * @description One uploaded CV as it appears in the caller's list of them.
+         * DraftSkill
+         * @description One Canonical skill on a draft, where the years may not be known yet.
          */
-        CvSummary: {
+        DraftSkill: {
             /**
-             * Id
-             * Format: uuid
+             * Name
+             * @description The Canonical skill's exact name.
+             * @example Python
              */
-            id: string;
+            name: string;
             /**
-             * Display Name
-             * @description The name of the file the candidate uploaded.
+             * Years Experience
+             * @description Null for a skill the CV newly names: the candidate fills it in before the profile will save.
              */
-            display_name: string;
-            /** @description The authoritative state of this CV. Poll until it leaves `processing`. */
-            parsing_status: components["schemas"]["CvParsingStatus"];
-            /**
-             * Parsing Error
-             * @description Why the parse failed, when it did. Null otherwise.
-             */
-            parsing_error?: string | null;
-            /**
-             * Detected Language
-             * @description The language the CV is written in, once it has been read.
-             */
-            detected_language?: string | null;
-            /**
-             * Is Current
-             * @description Whether this is the CV the candidate applies and is found with.
-             */
-            is_current: boolean;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Parsed At */
-            parsed_at?: string | null;
+            years_experience?: number | null;
         };
         /**
          * Health
@@ -2242,7 +2260,10 @@ export interface components {
         };
         /**
          * NewApplication
-         * @description One submission: the Job, the CV behind it, the reviewed data, and the answers.
+         * @description One submission: the Job, and the answers to the questions it asks.
+         *
+         *     Nothing else. The Snapshot is copied server-side from the caller's live profile and the CV
+         *     they currently hold, so there is no way to apply with data the profile does not have.
          */
         NewApplication: {
             /**
@@ -2251,24 +2272,10 @@ export interface components {
              */
             job_id: string;
             /**
-             * Cv Id
-             * Format: uuid
-             * @description A CV of the caller's that has finished parsing.
-             */
-            cv_id: string;
-            /** @description The data the candidate reviewed. Captured as the Snapshot this Application is judged and read by, and never changed afterwards. */
-            profile: components["schemas"]["CandidateProfile"];
-            /**
              * Answers
              * @description One answer per question. Every required question needs one.
              */
             answers?: components["schemas"]["SubmittedAnswer"][];
-            /**
-             * Update Profile
-             * @description Also replace the live profile with the reviewed data, in the same transaction — one review improving both.
-             * @default false
-             */
-            update_profile: boolean;
         };
         /**
          * NewJob
@@ -2486,173 +2493,6 @@ export interface components {
              */
             template_id: string;
         };
-        /**
-         * ParsedCv
-         * @description Everything read out of one CV. "Not stated" is null or an empty list, never an absent key.
-         */
-        ParsedCv: {
-            /**
-             * Full Name
-             * @description The candidate's name as the CV gives it.
-             */
-            full_name: string | null;
-            /** Email */
-            email: string | null;
-            /** Phone */
-            phone: string | null;
-            /**
-             * Detected Language
-             * @description The language the CV itself is written in, as an ISO 639-1 code.
-             */
-            detected_language: string | null;
-            /**
-             * Headline
-             * @description The one-line professional title the CV leads with, if it has one.
-             * @example Backend engineer, 8 years
-             */
-            headline: string | null;
-            /**
-             * Summary
-             * @description The CV's own professional summary, if it has one.
-             */
-            summary: string | null;
-            /**
-             * Location
-             * @description Where the candidate is, as the CV puts it.
-             */
-            location: string | null;
-            /**
-             * Experiences
-             * @description Every job, most recent first.
-             */
-            experiences: components["schemas"]["ParsedExperience"][];
-            /**
-             * Educations
-             * @description Every qualification, most recent first.
-             */
-            educations: components["schemas"]["ParsedEducation"][];
-            /**
-             * Skills
-             * @description Every Canonical skill the CV evidences, by its exact name.
-             */
-            skills: components["schemas"]["ParsedSkill"][];
-            /**
-             * Languages
-             * @description Every language the CV claims.
-             */
-            languages: components["schemas"]["ParsedLanguage"][];
-            /**
-             * Projects
-             * @description Every project the CV describes.
-             */
-            projects: components["schemas"]["ParsedProject"][];
-            /**
-             * Unmapped Skills
-             * @description Every skill the CV names that is not in the Canonical list, in the CV's own words. The candidate sees these at review; they never reach Screening.
-             */
-            unmapped_skills: string[];
-        };
-        /**
-         * ParsedEducation
-         * @description One qualification the CV describes.
-         */
-        ParsedEducation: {
-            /** Institution */
-            institution: string;
-            /** Degree */
-            degree: string | null;
-            /** Field Of Study */
-            field_of_study: string | null;
-            /** Graduation Year */
-            graduation_year: number | null;
-            /** Description */
-            description: string | null;
-        };
-        /**
-         * ParsedExperience
-         * @description One job the CV describes.
-         */
-        ParsedExperience: {
-            /** Job Title */
-            job_title: string;
-            /**
-             * Company Name
-             * @description Null when the CV does not name one.
-             */
-            company_name: string | null;
-            /** Start Year */
-            start_year: number | null;
-            /** Start Month */
-            start_month: number | null;
-            /**
-             * End Year
-             * @description Null for a job the candidate still holds.
-             */
-            end_year: number | null;
-            /** End Month */
-            end_month: number | null;
-            /**
-             * Is Current
-             * @description The CV presents this as the candidate's job today.
-             */
-            is_current: boolean;
-            /**
-             * Description
-             * @description What the CV says they did, in its own words.
-             */
-            description: string | null;
-        };
-        /**
-         * ParsedLanguage
-         * @description One language the CV claims, and how well.
-         */
-        ParsedLanguage: {
-            /**
-             * Code
-             * @description Exactly as spelled in the list of language codes.
-             */
-            code: string;
-            /** @description The CV's own claim, mapped to the nearest of these. Use `fluent` for a language described as professional or business level. */
-            proficiency: components["schemas"]["LanguageProficiency"];
-        };
-        /**
-         * ParsedProject
-         * @description One thing the CV says the candidate built.
-         */
-        ParsedProject: {
-            /** Name */
-            name: string;
-            /** Description */
-            description: string | null;
-            /** Project Url */
-            project_url: string | null;
-            /** Repository Url */
-            repository_url: string | null;
-            /** Start Year */
-            start_year: number | null;
-            /** Start Month */
-            start_month: number | null;
-            /** End Year */
-            end_year: number | null;
-            /** End Month */
-            end_month: number | null;
-        };
-        /**
-         * ParsedSkill
-         * @description One Canonical skill the CV evidences, named exactly as the prompt listed it.
-         */
-        ParsedSkill: {
-            /**
-             * Name
-             * @description Exactly as spelled in the list of Canonical skills.
-             */
-            name: string;
-            /**
-             * Years Experience
-             * @description Years of it, if the CV supports a figure. Null when it does not — a guess here becomes a number a recruiter filters on.
-             */
-            years_experience: number | null;
-        };
         /** PasswordResetRequest */
         PasswordResetRequest: {
             /**
@@ -2723,6 +2563,75 @@ export interface components {
             request_id?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * ProfileDraft
+         * @description A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
+         *
+         *     Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
+         *     newly names has no years until the candidate types them.
+         */
+        ProfileDraft: {
+            /**
+             * Full Name
+             * @example Amina Haddad
+             */
+            full_name: string;
+            /** Phone */
+            phone?: string | null;
+            /**
+             * Headline
+             * @example Backend engineer, 8 years
+             */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /**
+             * Location
+             * @example Damascus, Syria
+             */
+            location?: string | null;
+            /**
+             * Preferred Language Code
+             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
+             */
+            preferred_language_code?: string | null;
+            /**
+             * Is Searchable
+             * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
+             * @default false
+             */
+            is_searchable: boolean;
+            /**
+             * Experiences
+             * @description Jobs, in the candidate's own order.
+             */
+            experiences?: components["schemas"]["ProfileExperience"][];
+            /**
+             * Educations
+             * @description Qualifications, in the candidate's own order.
+             */
+            educations?: components["schemas"]["ProfileEducation"][];
+            /**
+             * Languages
+             * @description Languages spoken, in the candidate's own order.
+             */
+            languages?: components["schemas"]["ProfileLanguage"][];
+            /**
+             * Projects
+             * @description Projects, in the candidate's own order.
+             */
+            projects?: components["schemas"]["ProfileProject"][];
+            /**
+             * Unmapped Skills
+             * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
+             */
+            unmapped_skills?: string[];
+            /**
+             * Skills
+             * @description Every skill already on the profile, years and all, plus the ones this CV names that were not there — those with `years_experience` null.
+             */
+            skills?: components["schemas"]["DraftSkill"][];
         };
         /**
          * ProfileEducation
@@ -2814,9 +2723,9 @@ export interface components {
             name: string;
             /**
              * Years Experience
-             * @description Stored to one decimal place. Null means unstated.
+             * @description Stored to one decimal place. Required: blank and `1` are opposites, not neighbours, and only the candidate can say which.
              */
-            years_experience?: number | null;
+            years_experience: number;
         };
         /**
          * ProfileView
@@ -4342,7 +4251,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CvSummary"][];
+                    "application/json": components["schemas"]["Cv"][];
                 };
             };
             /** @description There is no valid session. */
@@ -4592,6 +4501,82 @@ export interface operations {
                 };
             };
             /** @description The CV is the current one; make another current first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMyProfileDraftFromCv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileDraft"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller has no CV with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The CV has not been read yet, so there is nothing to fill from. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8112,7 +8097,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description No published Job has that id, or no CV of yours has that id. */
+            /** @description No published Job has that id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8121,7 +8106,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description You have already applied to this job — `application_id` is the one you sent, and a withdrawn Application still counts — or the CV you picked has not finished parsing, or the reviewed data opts in to Global search without a current, ready CV. */
+            /** @description You have already applied to this job — `application_id` is the one you sent, and a withdrawn Application still counts — or you have no current CV to apply with. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8130,7 +8115,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ApplicationConflictProblemDetail"];
                 };
             };
-            /** @description The answers do not match the questions the Job asks, or the reviewed data names a skill or a language the platform does not know. All of them name the offending entries. */
+            /** @description The answers do not match the questions the Job asks, and name the offending entries; or your profile is too thin to apply with, and `detail` says what is missing. */
             422: {
                 headers: {
                     [name: string]: unknown;

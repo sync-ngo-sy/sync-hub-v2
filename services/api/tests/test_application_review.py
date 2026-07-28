@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
 from uuid import uuid4
 
 from httpx import AsyncClient
@@ -17,7 +16,7 @@ from sync_core.models import (
 from tests.support.applications import (
     A_SHORT_TEXT_QUESTION,
     A_YES_NO_QUESTION,
-    a_candidate_with_a_ready_cv,
+    a_candidate_who_can_apply,
     a_candidate_with_a_stored_cv,
     a_job_screening_on,
     a_moved_application,
@@ -40,49 +39,7 @@ from tests.support.applications import (
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
-from tests.support.profiles import a_profile
 from tests.support.tenants import an_admin
-
-A_REVIEWED_PROFILE: dict[str, Any] = a_profile(
-    headline="Backend engineer, 8 years",
-    summary="Builds boring systems that stay up.",
-    location="Damascus, Syria",
-    experiences=[
-        {
-            "job_title": "Senior Engineer",
-            "company_name": "Acme",
-            "start_year": 2018,
-            "start_month": 1,
-            "end_year": None,
-            "end_month": None,
-            "is_current": True,
-            "description": None,
-        }
-    ],
-    educations=[
-        {
-            "institution": "Damascus University",
-            "degree": "BSc",
-            "field_of_study": "Computer Science",
-            "graduation_year": 2017,
-            "description": None,
-        }
-    ],
-    skills=[{"name": "Python", "years_experience": 8.0}],
-    languages=[{"code": "ar", "proficiency": "native"}],
-    projects=[
-        {
-            "name": "Ledger",
-            "description": None,
-            "project_url": None,
-            "repository_url": None,
-            "start_year": 2022,
-            "start_month": 3,
-            "end_year": None,
-            "end_month": None,
-        }
-    ],
-)
 
 
 async def test_the_job_lists_who_applied_and_where_each_one_stands(
@@ -92,10 +49,8 @@ async def test_the_job_lists_who_applied_and_where_each_one_stands(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(
-        other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE
-    )
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     [listed] = await job_applications_of(recruiter, job["id"])
 
@@ -116,15 +71,12 @@ async def test_the_application_list_filters_by_status_and_by_verdict(
     job = await a_job_screening_on(
         recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": None}]
     )
-    qualified_cv = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    qualified = await an_accepted_application(
-        other_browser,
-        job["id"],
-        qualified_cv,
-        profile=a_profile(skills=[{"name": "Rust", "years_experience": 4.0}]),
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, skills=[{"name": "Rust", "years_experience": 4.0}]
     )
-    rejected_cv = await a_candidate_with_a_ready_cv(third_browser, mailbox, db_session, "stranger")
-    rejected = await an_accepted_application(third_browser, job["id"], rejected_cv)
+    qualified = await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "stranger")
+    rejected = await an_accepted_application(third_browser, job["id"])
     await a_moved_application(recruiter, rejected["id"], ApplicationStatus.REJECTED)
 
     by_status = await job_applications_of(recruiter, job["id"], status="rejected")
@@ -142,10 +94,10 @@ async def test_the_application_list_pages_newest_first(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    first_cv = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    first = await an_accepted_application(other_browser, job["id"], first_cv)
-    second_cv = await a_candidate_with_a_ready_cv(third_browser, mailbox, db_session, "stranger")
-    second = await an_accepted_application(third_browser, job["id"], second_cv)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    first = await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "stranger")
+    second = await an_accepted_application(third_browser, job["id"])
 
     page = await list_job_applications(recruiter, job["id"], limit=1)
     assert page.status_code == 200, page.text
@@ -166,8 +118,8 @@ async def test_another_tenants_job_has_no_applications_to_read(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await an_accepted_application(other_browser, job["id"])
     await an_admin(browser, mailbox, "rival")
 
     refused = await list_job_applications(browser, job["id"])
@@ -183,13 +135,11 @@ async def test_the_review_holds_the_snapshot_the_answers_and_the_verdict(
     db_session: AsyncSession,
 ) -> None:
     job = await a_job_screening_on(recruiter, questions=[A_YES_NO_QUESTION, A_SHORT_TEXT_QUESTION])
-    cv_id = await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
+    await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
     yes_no, short_text = questions_of(job)
     application = await an_accepted_application(
         other_browser,
         job["id"],
-        cv_id,
-        profile=A_REVIEWED_PROFILE,
         answers=[
             {"question_id": yes_no["id"], "answer_boolean": True},
             {"question_id": short_text["id"], "answer_text": "In two weeks."},
@@ -206,8 +156,8 @@ async def test_the_review_holds_the_snapshot_the_answers_and_the_verdict(
     assert snapshot["headline"] == "Backend engineer, 8 years"
     assert [entry["job_title"] for entry in snapshot["experiences"]] == ["Senior Engineer"]
     assert [entry["institution"] for entry in snapshot["educations"]] == ["Damascus University"]
-    assert [entry["name"] for entry in snapshot["skills"]] == ["Python"]
-    assert [entry["code"] for entry in snapshot["languages"]] == ["ar"]
+    assert [entry["name"] for entry in snapshot["skills"]] == ["Python", "PostgreSQL"]
+    assert [entry["code"] for entry in snapshot["languages"]] == ["ar", "en"]
     assert [entry["name"] for entry in snapshot["projects"]] == ["Ledger"]
     assert [
         (entry["question_text"], entry["answer_boolean"], entry["answer_text"])
@@ -227,10 +177,8 @@ async def test_the_review_says_why_the_verdict_went_the_way_it_did(
     job = await a_job_screening_on(
         recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": 3}]
     )
-    cv_id = await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(
-        other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE
-    )
+    await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     review = await a_reviewed_application(recruiter, application["id"])
 
@@ -247,7 +195,7 @@ async def test_the_review_links_the_cv_the_candidate_applied_with(
 ) -> None:
     job = await a_published_job(recruiter)
     cv_id = await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
 
     review = await a_reviewed_application(recruiter, application["id"])
 
@@ -265,8 +213,8 @@ async def test_the_review_carries_the_whole_status_history(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
 
     review = await a_reviewed_application(recruiter, application["id"])
@@ -287,8 +235,8 @@ async def test_another_tenants_application_is_the_same_404(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await an_admin(browser, mailbox, "rival")
 
     unknown = await read_application(browser, uuid4())
@@ -306,8 +254,8 @@ async def test_reviewing_is_only_for_recruiters(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     refused = await read_application(other_browser, application["id"])
 
@@ -322,8 +270,8 @@ async def test_a_recruiter_moves_an_application_through_the_pipeline_and_back(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     for status in (
         ApplicationStatus.REVIEWING,
@@ -357,8 +305,8 @@ async def test_every_move_names_the_recruiter_who_made_it(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
 
     _submission, move = await status_history_of(db_session, application["id"])
@@ -375,8 +323,8 @@ async def test_a_recruiter_may_take_an_application_back_to_where_it_started(
 ) -> None:
     """`new` is a state like any other undecided one: free movement includes going back to it."""
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
 
     back = await a_moved_application(recruiter, application["id"], ApplicationStatus.NEW)
@@ -392,8 +340,8 @@ async def test_a_hired_application_is_the_end_of_the_line(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.HIRED)
 
     refused = await move_to(recruiter, application["id"], ApplicationStatus.REVIEWING)
@@ -411,8 +359,8 @@ async def test_a_rejection_can_only_be_undone_back_to_reviewing(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
 
     refused = await move_to(recruiter, application["id"], ApplicationStatus.SHORTLISTED)
@@ -429,8 +377,8 @@ async def test_a_recruiter_cannot_withdraw_on_the_candidates_behalf(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     refused = await move_to(recruiter, application["id"], ApplicationStatus.WITHDRAWN)
 
@@ -445,8 +393,8 @@ async def test_a_move_to_where_it_already_is_changes_nothing(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     refused = await move_to(recruiter, application["id"], ApplicationStatus.NEW)
 
@@ -462,8 +410,8 @@ async def test_moving_is_only_for_recruiters_of_the_tenant(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await an_admin(browser, mailbox, "rival")
 
     by_the_candidate = await move_to(other_browser, application["id"], ApplicationStatus.REVIEWING)
@@ -480,8 +428,8 @@ async def test_every_move_reaches_the_candidates_bell(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
     await a_moved_application(recruiter, application["id"], ApplicationStatus.SHORTLISTED)
 
@@ -503,8 +451,8 @@ async def test_a_move_that_is_refused_tells_the_candidate_nothing(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.HIRED)
 
     await move_to(recruiter, application["id"], ApplicationStatus.OFFER)
@@ -521,8 +469,8 @@ async def test_a_rejection_a_human_decided_also_queues_the_email(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
 
@@ -547,8 +495,8 @@ async def test_only_a_rejection_is_worth_an_email(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
     await a_moved_application(recruiter, application["id"], ApplicationStatus.HIRED)
@@ -565,8 +513,8 @@ async def test_a_second_rejection_is_a_second_email(
 ) -> None:
     """Undoing a rejection and deciding it again is two decisions, and the Candidate hears both."""
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
@@ -590,8 +538,8 @@ async def test_no_status_change_ever_touches_the_verdict(
     job = await a_job_screening_on(
         recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": None}]
     )
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
     await a_moved_application(recruiter, application["id"], ApplicationStatus.HIRED)
@@ -609,8 +557,8 @@ async def test_a_candidate_withdraws_and_the_job_is_closed_to_them_for_good(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     withdrawn = await a_withdrawn_application(other_browser, application["id"])
 
@@ -618,7 +566,7 @@ async def test_a_candidate_withdraws_and_the_job_is_closed_to_them_for_good(
     assert withdrawn["previous_status"] == "new"
     assert withdrawn["changed_at"]
     assert [item["status"] for item in await my_applications(other_browser)] == ["withdrawn"]
-    refused = await apply_to(other_browser, job["id"], cv_id)
+    refused = await apply_to(other_browser, job["id"])
     assert refused.status_code == 409, refused.text
     assert refused.json()["type"] == "urn:sync:problem:duplicate-application"
     assert refused.json()["application_id"] == application["id"]
@@ -631,8 +579,8 @@ async def test_withdrawing_is_final_for_everyone(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_withdrawn_application(other_browser, application["id"])
 
     again = await withdraw(other_browser, application["id"])
@@ -650,8 +598,8 @@ async def test_a_decided_application_can_no_longer_be_withdrawn(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.HIRED)
 
     refused = await withdraw(other_browser, application["id"])
@@ -667,8 +615,8 @@ async def test_the_withdrawal_is_recorded_as_the_candidates_own(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
 
     await a_withdrawn_application(other_browser, application["id"])
 
@@ -690,9 +638,9 @@ async def test_nobody_withdraws_somebody_elses_application(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
-    await a_candidate_with_a_ready_cv(browser, mailbox, db_session, "stranger")
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(browser, mailbox, db_session, "stranger")
 
     somebody_elses = await withdraw(browser, application["id"])
     unknown = await withdraw(browser, uuid4())

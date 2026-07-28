@@ -19,7 +19,7 @@ from tests.support.cvs import CVS, an_uploaded_cv, cv_row, ingestion_job, some_b
 from tests.support.embedders import FakeEmbedder
 from tests.support.extractors import FakeExtractor, a_parse
 from tests.support.mailbox import Mailbox
-from tests.support.profiles import my_id
+from tests.support.profiles import my_id, my_profile_draft
 from tests.support.senders import CapturingSender
 from tests.support.worker import an_ingestion_worker
 
@@ -55,23 +55,24 @@ async def test_a_claimed_cv_becomes_ready_with_its_parse(
     assert job.completed_at is not None
 
 
-async def test_the_parse_reaches_the_candidate_through_the_polling_endpoint(
+async def test_the_parse_reaches_the_candidate_as_a_profile_draft(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    waiting = await browser.get(f"{CVS}/{cv['id']}")
-    assert waiting.json()["parsed_cv"] is None
+    too_early = await my_profile_draft(browser, cv["id"])
+    assert too_early.status_code == 409, too_early.text
+    assert too_early.json()["type"] == "urn:sync:problem:cv-not-ready"
 
     await an_ingestion_worker(database, storage, FakeExtractor()).run_once()
 
-    response = await browser.get(f"{CVS}/{cv['id']}")
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["parsing_status"] == CvParsingStatus.READY
-    assert body["parsed_cv"]["headline"] == "Backend engineer, 8 years"
-    assert [skill["name"] for skill in body["parsed_cv"]["skills"]] == ["Python", "PostgreSQL"]
-    assert body["is_current"] is True
+    polled = await browser.get(f"{CVS}/{cv['id']}")
+    assert polled.json()["parsing_status"] == CvParsingStatus.READY
+    assert polled.json()["is_current"] is True
+    draft = await my_profile_draft(browser, cv["id"])
+    assert draft.status_code == 200, draft.text
+    assert draft.json()["headline"] == "Backend engineer, 8 years"
+    assert [skill["name"] for skill in draft.json()["skills"]] == ["Python", "PostgreSQL"]
 
 
 async def test_the_worker_is_sent_the_file_and_the_platforms_vocabulary(
@@ -334,9 +335,9 @@ async def test_a_skill_the_platform_does_not_know_is_demoted_for_review(
 
     await an_ingestion_worker(database, storage, FakeExtractor(invented)).run_once()
 
-    parsed = (await browser.get(f"{CVS}/{cv['id']}")).json()["parsed_cv"]
-    assert [skill["name"] for skill in parsed["skills"]] == ["Python"]
-    assert parsed["unmapped_skills"] == ["Quantum Blockchain Alignment"]
+    draft = (await my_profile_draft(browser, cv["id"])).json()
+    assert [skill["name"] for skill in draft["skills"]] == ["Python"]
+    assert draft["unmapped_skills"] == ["Quantum Blockchain Alignment"]
 
 
 async def test_a_canonical_skill_in_the_wrong_case_is_kept_in_the_platforms_spelling(
@@ -350,9 +351,9 @@ async def test_a_canonical_skill_in_the_wrong_case_is_kept_in_the_platforms_spel
 
     await an_ingestion_worker(database, storage, FakeExtractor(shouted)).run_once()
 
-    parsed = (await browser.get(f"{CVS}/{cv['id']}")).json()["parsed_cv"]
-    assert [skill["name"] for skill in parsed["skills"]] == ["PostgreSQL"]
-    assert parsed["unmapped_skills"] == []
+    draft = (await my_profile_draft(browser, cv["id"])).json()
+    assert [skill["name"] for skill in draft["skills"]] == ["PostgreSQL"]
+    assert draft["unmapped_skills"] == []
 
 
 @pytest.mark.parametrize("attempts,seconds", [(1, 10), (2, 20), (3, 40)])

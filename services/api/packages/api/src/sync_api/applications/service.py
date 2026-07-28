@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.applications.access import my_application
@@ -19,18 +19,16 @@ from sync_api.applications.payload import (
 from sync_api.applications.pipeline import move_application
 from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
-from sync_api.candidates import languages_named, replace_live_profile, skills_named
 from sync_api.jobs import PublicTenant
 from sync_api.jobs.access import open_job
 from sync_api.jobs.criteria import questions_of
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
-    CV_NOT_FOUND_PROBLEM_TYPE,
-    CV_NOT_READY_PROBLEM_TYPE,
     DUPLICATE_APPLICATION_PROBLEM_TYPE,
+    INCOMPLETE_PROFILE_PROBLEM_TYPE,
+    NO_CURRENT_CV_PROBLEM_TYPE,
     Problem,
 )
-from sync_api.vocabulary import canonical_skill_ids, refuse_unknown_languages
 from sync_core import get_logger, transaction
 from sync_core.communications import ApplicationConfirmation, enqueue_email
 from sync_core.models import (
@@ -40,8 +38,10 @@ from sync_core.models import (
     ApplicationQualificationHistory,
     ApplicationStatus,
     ApplicationStatusHistory,
-    Cv,
-    CvParsingStatus,
+    Candidate,
+    CandidateEducation,
+    CandidateExperience,
+    CandidateSkill,
     Job,
     JobViewEvent,
     StatusChangeSource,
@@ -69,10 +69,9 @@ class ApplicationService:
     ) -> Application:
         """The core transaction: an Application is never observable without its verdict."""
         job, tenant = await open_job(self._db, new.job_id)
-        await self._refuse_unready_cv(candidate.id, new.cv_id)
+        cv_id = await self._current_cv(candidate.id)
         refuse_unusable_answers(await questions_of(self._db, job.id), new.answers)
-        skills = await canonical_skill_ids(self._db, skills_named(new.profile, "body.profile"))
-        await refuse_unknown_languages(self._db, languages_named(new.profile, "body.profile"))
+        await self._refuse_incomplete_profile(candidate.id)
         criteria = await screening_criteria_of(self._db, job)
         await self._refuse_duplicate(candidate.id, job.id)
 
@@ -81,24 +80,17 @@ class ApplicationService:
             tenant_id=job.tenant_id,
             candidate_id=candidate.id,
             job_id=job.id,
-            cv_id=new.cv_id,
+            cv_id=cv_id,
             tracked_link_id=await self._link_that_brought_them(job.id, visitor),
             status=ApplicationStatus.NEW,
         )
-        snapshot = snapshot_rows(
-            application.id,
-            new.profile,
-            skills,
-            full_name=candidate.profile.full_name,
-            phone=candidate.profile.phone,
-        )
         answers = answer_rows(application.id, job.id, new.answers)
-        verdict = screen(criteria, screened(snapshot, answers), today=datetime.now(UTC).date())
         try:
             async with transaction(self._db):
                 self._db.add(application)
                 await self._db.flush()
-                self._db.add_all(snapshot.all())
+                for statement in snapshot_rows(application.id, candidate.id):
+                    await self._db.execute(statement)
                 self._db.add_all(answers)
                 self._db.add(
                     ApplicationStatusHistory(
@@ -108,6 +100,11 @@ class ApplicationService:
                         previous_status=None,
                         new_status=ApplicationStatus.NEW,
                     )
+                )
+                verdict = screen(
+                    criteria,
+                    await screened(self._db, application.id, answers),
+                    today=datetime.now(UTC).date(),
                 )
                 application.qualification_status = verdict.status
                 application.qualification_reason = verdict.reason
@@ -133,8 +130,6 @@ class ApplicationService:
                         candidate_name=candidate.profile.full_name,
                     ),
                 )
-                if new.update_profile:
-                    await replace_live_profile(self._db, candidate.id, new.profile, skills)
         except IntegrityError as clash:
             # `applications_candidate_id_job_id_key` also refuses an application that landed
             # between the check above and this write.
@@ -202,25 +197,48 @@ class ApplicationService:
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return ApplicationPage(items=[_as_payload(*row) for row in rows], next_cursor=next_cursor)
 
-    async def _refuse_unready_cv(self, candidate_id: UUID, cv_id: UUID) -> None:
-        cv = await self._db.scalar(
-            select(Cv).where(
-                Cv.id == cv_id, Cv.candidate_id == candidate_id, Cv.deleted_at.is_(None)
-            )
+    async def _current_cv(self, candidate_id: UUID) -> UUID:
+        """The CV the candidate holds — the only one they can apply with.
+
+        Whether it exists and is not deleted is the database's answer already
+        (`forbid_deleting_current_cv`, `forbid_deleted_current_cv`), so all that is left to
+        check is that the pointer is set at all.
+        """
+        current: UUID | None = await self._db.scalar(
+            select(Candidate.current_cv_id).where(Candidate.id == candidate_id)
         )
-        if cv is None:
-            raise Problem(
-                status=404,
-                type=CV_NOT_FOUND_PROBLEM_TYPE,
-                detail="No CV of yours has that id.",
-            )
-        if cv.parsing_status is not CvParsingStatus.READY:
+        if current is None:
             raise Problem(
                 status=409,
-                type=CV_NOT_READY_PROBLEM_TYPE,
-                detail="This CV is still being processed. Wait for it to finish, or apply "
-                "with another one.",
+                type=NO_CURRENT_CV_PROBLEM_TYPE,
+                detail="You have no CV yet. Upload one in your profile settings, then apply.",
             )
+        return current
+
+    async def _refuse_incomplete_profile(self, candidate_id: UUID) -> None:
+        """A profile too thin to judge. Named, because "422" alone sends nobody anywhere."""
+        skills = await self._section_count(CandidateSkill, candidate_id)
+        experiences = await self._section_count(CandidateExperience, candidate_id)
+        educations = await self._section_count(CandidateEducation, candidate_id)
+
+        missing = []
+        if not skills:
+            missing.append("at least one skill")
+        if not experiences and not educations:
+            missing.append("either a job or a qualification")
+        if missing:
+            raise Problem(
+                status=422,
+                type=INCOMPLETE_PROFILE_PROBLEM_TYPE,
+                detail=f"Your profile needs {' and '.join(missing)} before you can apply. "
+                "Fill it in in your profile settings.",
+            )
+
+    async def _section_count(self, section: type, candidate_id: UUID) -> int:
+        count = await self._db.scalar(
+            select(func.count()).select_from(section).where(section.candidate_id == candidate_id)
+        )
+        return int(count or 0)
 
     async def _refuse_duplicate(self, candidate_id: UUID, job_id: UUID) -> None:
         existing = await self._existing(candidate_id, job_id)

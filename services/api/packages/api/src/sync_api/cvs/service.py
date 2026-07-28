@@ -7,7 +7,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import ColumnElement, and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.cvs.payload import Cv, CvDownloadLink, CvSummary
+from sync_api.candidates import ProfileDraft, draft_of, stated_skills
+from sync_api.cvs.payload import Cv, CvDownloadLink
 from sync_api.cvs.upload import received
 from sync_api.problems import (
     CV_FILE_UNAVAILABLE_PROBLEM_TYPE,
@@ -19,7 +20,7 @@ from sync_api.problems import (
     Problem,
 )
 from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
-from sync_core.models import Candidate, CvParsingStatus
+from sync_core.models import Candidate, CvParsingStatus, Profile
 from sync_core.models import Cv as CvRow
 from sync_core.storage import cv_object_path
 from sync_parsers import ParsedCv
@@ -82,17 +83,47 @@ class CvService:
         )
         return await self._as_payload(candidate_id, row)
 
-    async def cvs(self, candidate_id: UUID) -> list[CvSummary]:
+    async def cvs(self, candidate_id: UUID) -> list[Cv]:
         rows = await self._db.scalars(
             select(CvRow)
             .where(_active_cvs_of(candidate_id))
             .order_by(CvRow.created_at.desc(), CvRow.id.desc())
         )
         current = await self._current_cv_id(candidate_id)
-        return [_summary(row, current=current) for row in rows]
+        return [_payload(row, current=current) for row in rows]
 
     async def cv(self, candidate_id: UUID, cv_id: UUID) -> Cv:
         return await self._as_payload(candidate_id, await self._own_cv(candidate_id, cv_id))
+
+    async def profile_draft(self, candidate_id: UUID, cv_id: UUID) -> ProfileDraft:
+        """What this CV says the profile could be. Nothing is written: the candidate reviews it
+        and `PUT`s it back, which is the only way a profile ever gets populated."""
+        cv = await self._own_cv(candidate_id, cv_id)
+        if cv.parsing_status is not CvParsingStatus.READY:
+            raise Problem(
+                status=409,
+                type=CV_NOT_READY_PROBLEM_TYPE,
+                detail="This CV has not been read yet, so there is nothing to fill a profile "
+                "from. Wait for it to be processed.",
+            )
+        parsed = _parsed(cv)
+        if parsed is None:
+            raise Problem(
+                status=409,
+                type=CV_NOT_READY_PROBLEM_TYPE,
+                detail="What was read out of this CV can no longer be understood. Upload it again.",
+            )
+        candidate = await self._db.get(Candidate, candidate_id)
+        identity = await self._db.get(Profile, candidate_id)
+        if candidate is None or identity is None:
+            # pragma: no cover — `acting_candidate` refused this already
+            raise LookupError(f"no candidate row for {candidate_id}")
+        return draft_of(
+            parsed,
+            candidate=candidate,
+            full_name=identity.full_name,
+            skills=await stated_skills(self._db, candidate_id),
+        )
 
     async def make_current(self, candidate_id: UUID, cv_id: UUID) -> Cv:
         """The CV the candidate applies and is found with, once the platform has read it."""
@@ -233,11 +264,7 @@ class CvService:
         return current
 
     async def _as_payload(self, candidate_id: UUID, cv: CvRow) -> Cv:
-        current = await self._current_cv_id(candidate_id)
-        return Cv(
-            **_summary(cv, current=current).model_dump(),
-            parsed_cv=_parsed(cv),
-        )
+        return _payload(cv, current=await self._current_cv_id(candidate_id))
 
 
 def _active_cvs_of(candidate_id: UUID) -> ColumnElement[bool]:
@@ -245,8 +272,8 @@ def _active_cvs_of(candidate_id: UUID) -> ColumnElement[bool]:
     return and_(CvRow.candidate_id == candidate_id, CvRow.deleted_at.is_(None))
 
 
-def _summary(cv: CvRow, *, current: UUID | None) -> CvSummary:
-    return CvSummary(
+def _payload(cv: CvRow, *, current: UUID | None) -> Cv:
+    return Cv(
         id=cv.id,
         display_name=cv.display_name,
         parsing_status=cv.parsing_status,

@@ -39,6 +39,8 @@ create table candidates (
   summary  text,
   location text,
 
+  unmapped_skills text[] not null default '{}',
+
   preferred_language_code text,  -- FK to languages(code) added in migration 03
 
   is_searchable boolean not null default false,
