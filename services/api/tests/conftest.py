@@ -158,6 +158,14 @@ async def recruiter(browser: AsyncClient, mailbox: Mailbox) -> AsyncClient:
 
 
 @pytest.fixture
+async def rival(app: FastAPI, mailbox: Mailbox) -> AsyncIterator[AsyncClient]:
+    """A second Tenant, signed in, with a jar of its own — where a leak between tenants shows."""
+    async with asgi_client(app, headers=SPA_HEADERS) as browser:
+        await an_admin(browser, mailbox, label="rival")
+        yield browser
+
+
+@pytest.fixture
 async def visitor(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Nobody: no session, no cookies of anyone else's, and a jar of their own."""
     async with asgi_client(app) as http_client:

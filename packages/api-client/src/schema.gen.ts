@@ -532,10 +532,8 @@ export interface paths {
         put?: never;
         /**
          * Save a Message template
-         * @description The template is the Tenant's, and any of its recruiters may send from or rewrite it.
-         *
-         *     A `{{ … }}` naming anything the platform cannot fill is refused here rather than at send
-         *     time, so a template that saves always sends.
+         * @description The Tenant's, for any of its recruiters. An unfillable `{{ … }}` is refused here, so a
+         *     template that saves always sends.
          */
         post: operations["createMessageTemplate"];
         delete?: never;
@@ -558,8 +556,8 @@ export interface paths {
         get: operations["getMessageTemplate"];
         /**
          * Rewrite a Message template
-         * @description All of it at once, and the last write wins. Messages already sent from it keep the words
-         *     they were sent with.
+         * @description All of it at once, last write wins. Messages already sent keep the words they were sent
+         *     with.
          */
         put: operations["reviseMessageTemplate"];
         post?: never;
@@ -913,11 +911,10 @@ export interface paths {
         put?: never;
         /**
          * Email the applicant from a Message template
-         * @description Placeholders resolve here and now, against this Application; the response is the exact
-         *     words queued for the applicant.
+         * @description Placeholders resolve against this Application, and the response is the exact words queued.
          *
-         *     Sending is a decision of its own — the same template twice is two messages — and the
-         *     Candidate's verified address is resolved by the sender, not by this request.
+         *     Each send is its own decision: the same template twice is two messages. The Candidate's
+         *     verified address is the sender's to resolve, not this request's.
          */
         post: operations["messageApplicant"];
         delete?: never;
@@ -2880,6 +2877,34 @@ export interface components {
          */
         QualificationStatus: "pending" | "qualified" | "disqualified" | "review_required";
         /**
+         * QueuedMessage
+         * @description The Communication a recruiter's message became: the resolved words, and where it is.
+         */
+        QueuedMessage: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Subject
+             * @description The subject as the Candidate will see it, resolved.
+             */
+            subject: string;
+            /**
+             * Body
+             * @description The message as the Candidate will read it, resolved.
+             */
+            body: string;
+            /** @description `queued`: the sender delivers it, and never rewrites the words above. */
+            status: components["schemas"]["CommunicationStatus"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
          * Readiness
          * @description The process is up and its dependencies answer.
          */
@@ -2926,34 +2951,6 @@ export interface components {
              * @description Which criteria decided it. Null until Screening has run.
              */
             reason?: string | null;
-        };
-        /**
-         * SentMessage
-         * @description The Communication a recruiter's message became: the resolved words, and where it is.
-         */
-        SentMessage: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Subject
-             * @description The subject as the Candidate will see it, resolved.
-             */
-            subject: string;
-            /**
-             * Body
-             * @description The message as the Candidate will read it, resolved.
-             */
-            body: string;
-            /** @description `queued` on the way out. The sender settles it, and never rewrites the words above. */
-            status: components["schemas"]["CommunicationStatus"];
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
         };
         /** SignUpRequest */
         SignUpRequest: {
@@ -7024,7 +7021,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SentMessage"];
+                    "application/json": components["schemas"]["QueuedMessage"];
                 };
             };
             /** @description There is no valid session. */

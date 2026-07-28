@@ -33,11 +33,8 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["message-templates"])
 async def create_message_template(
     body: NewMessageTemplate, recruiter: ActingRecruiterDep, templates: MessageTemplateServiceDep
 ) -> MessageTemplate:
-    """The template is the Tenant's, and any of its recruiters may send from or rewrite it.
-
-    A `{{ … }}` naming anything the platform cannot fill is refused here rather than at send
-    time, so a template that saves always sends.
-    """
+    """The Tenant's, for any of its recruiters. An unfillable `{{ … }}` is refused here, so a
+    template that saves always sends."""
     return await templates.create(recruiter, body)
 
 
@@ -79,8 +76,8 @@ async def revise_message_template(
     recruiter: ActingRecruiterDep,
     templates: MessageTemplateServiceDep,
 ) -> MessageTemplate:
-    """All of it at once, and the last write wins. Messages already sent from it keep the words
-    they were sent with."""
+    """All of it at once, last write wins. Messages already sent keep the words they were sent
+    with."""
     return await templates.revise(recruiter, template_id, body)
 
 

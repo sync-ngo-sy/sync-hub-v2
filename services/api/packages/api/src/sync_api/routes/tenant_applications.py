@@ -22,7 +22,7 @@ from sync_api.dependencies import (
     OutreachServiceDep,
 )
 from sync_api.errors import openapi_problem
-from sync_api.messaging import OutgoingMessage, SentMessage
+from sync_api.messaging import OutgoingMessage, QueuedMessage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_assessment_rate_limit
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
@@ -164,12 +164,11 @@ async def message_applicant(
     body: OutgoingMessage,
     recruiter: ActingRecruiterDep,
     outreach: OutreachServiceDep,
-) -> SentMessage:
-    """Placeholders resolve here and now, against this Application; the response is the exact
-    words queued for the applicant.
+) -> QueuedMessage:
+    """Placeholders resolve against this Application, and the response is the exact words queued.
 
-    Sending is a decision of its own — the same template twice is two messages — and the
-    Candidate's verified address is resolved by the sender, not by this request.
+    Each send is its own decision: the same template twice is two messages. The Candidate's
+    verified address is the sender's to resolve, not this request's.
     """
     return await outreach.send(recruiter, application_id, body)
 

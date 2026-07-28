@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Final, NoReturn
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.integrity import violated_constraint
+from sync_api.integrity import refuse_duplicate
 from sync_api.messaging.access import own_message_template
 from sync_api.messaging.payload import MessageTemplate
-from sync_api.problems import MESSAGE_TEMPLATE_NAME_TAKEN_PROBLEM_TYPE, Problem
+from sync_api.problems import MESSAGE_TEMPLATE_NAME_TAKEN_PROBLEM_TYPE
 from sync_core import get_logger, transaction
 from sync_core.models import MessageTemplate as MessageTemplateRow
 
@@ -102,10 +102,9 @@ class MessageTemplateService:
 
 def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:
     """A template is what a recruiter picks by name, so two of one name is a clean 409."""
-    if violated_constraint(clash) != NAME_CONSTRAINT:
-        raise clash
-    raise Problem(
-        status=409,
-        type=MESSAGE_TEMPLATE_NAME_TAKEN_PROBLEM_TYPE,
+    refuse_duplicate(
+        clash,
+        NAME_CONSTRAINT,
+        problem_type=MESSAGE_TEMPLATE_NAME_TAKEN_PROBLEM_TYPE,
         detail=f"This tenant already has a message template called “{name}”.",
-    ) from clash
+    )

@@ -4,20 +4,16 @@ from sync_api.messaging.payload import (
     MessageTemplateChanges,
     NewMessageTemplate,
     OutgoingMessage,
-    SentMessage,
+    QueuedMessage,
 )
-from sync_api.messaging.placeholders import KNOWN, SYNTAX, Placeholders
 from sync_api.messaging.templates import MessageTemplateService
 
 __all__ = [
-    "KNOWN",
-    "SYNTAX",
     "MessageTemplate",
     "MessageTemplateChanges",
     "MessageTemplateService",
     "NewMessageTemplate",
     "OutgoingMessage",
     "OutreachService",
-    "Placeholders",
-    "SentMessage",
+    "QueuedMessage",
 ]

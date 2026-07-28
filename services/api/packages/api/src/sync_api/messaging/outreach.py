@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sync_api.applications.access import own_application
 from sync_api.messaging.access import own_message_template
-from sync_api.messaging.payload import SentMessage
+from sync_api.messaging.payload import QueuedMessage
 from sync_api.messaging.placeholders import Placeholders
 from sync_core import get_logger, transaction
 from sync_core.communications import RecruiterMessage, candidate_contact, enqueue_email
@@ -25,8 +25,7 @@ class OutreachService:
     """A Recruiter writing one applicant from one of the Tenant's Message templates.
 
     Placeholders resolve here, once, and the resolved words are what the Communication carries —
-    so the audit of what a Candidate was sent survives the template being rewritten, and the
-    sender never renders a tenant's prose a second time.
+    so what a Candidate was sent outlives the template being rewritten.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -34,7 +33,7 @@ class OutreachService:
 
     async def send(
         self, recruiter: ActingRecruiter, application_id: UUID, outgoing: OutgoingMessage
-    ) -> SentMessage:
+    ) -> QueuedMessage:
         applied = await own_application(self._db, recruiter.tenant.id, application_id)
         template = await own_message_template(self._db, recruiter.tenant.id, outgoing.template_id)
         application = applied.application
@@ -60,9 +59,7 @@ class OutreachService:
                 application_id=application.id,
                 initiated_by_recruiter_id=recruiter.profile.id,
                 recipient=email,
-                # Every send is a decision of its own: a recruiter who sends the same template
-                # twice means it twice. So there is nothing in the request to derive a key from,
-                # and this one is only what stops a re-claimed row reaching the candidate again.
+                # Nothing to derive a key from: the same template sent twice is meant twice.
                 idempotency_key=f"recruiter-message:{uuid4()}",
                 payload=payload,
             )
@@ -74,7 +71,7 @@ class OutreachService:
             template_id=str(template.id),
             tenant_id=str(recruiter.tenant.id),
         )
-        return SentMessage(
+        return QueuedMessage(
             id=communication.id,
             subject=payload.subject,
             body=payload.body,

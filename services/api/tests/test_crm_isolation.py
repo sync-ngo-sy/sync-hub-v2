@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,22 +28,7 @@ from tests.support.crm import (
     tags_of,
     take_tag_off,
 )
-from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.mailbox import Mailbox
-from tests.support.tenants import an_admin
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from fastapi import FastAPI
-
-
-@pytest.fixture
-async def rival(app: FastAPI, mailbox: Mailbox) -> AsyncIterator[AsyncClient]:
-    """A second Tenant, signed in, that has met the same Candidate."""
-    async with asgi_client(app, headers=SPA_HEADERS) as browser:
-        await an_admin(browser, mailbox, label="rival")
-        yield browser
 
 
 async def test_a_rival_tenant_sees_none_of_the_notes_tags_or_pool_entries(

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +12,6 @@ from sync_core.communications import RecruiterMessage
 from sync_core.models import CommunicationStatus, CommunicationType
 from tests.support.applications import an_accepted_application, communications_of
 from tests.support.candidates import a_signed_in_candidate
-from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
 from tests.support.messaging import (
@@ -24,14 +22,9 @@ from tests.support.messaging import (
 )
 from tests.support.profiles import give_a_current_cv, my_id
 from tests.support.senders import CapturingSender
-from tests.support.tenants import an_admin
 from tests.support.worker import a_communications_worker
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from fastapi import FastAPI
-
     from sync_core.models import Communication
 
 
@@ -55,14 +48,6 @@ async def an_applicant(
         email=signup.email,
         job_title=job["title"],
     )
-
-
-@pytest.fixture
-async def rival(app: FastAPI, mailbox: Mailbox) -> AsyncIterator[AsyncClient]:
-    """A second Tenant, signed in, with no claim on this Tenant's applicants or templates."""
-    async with asgi_client(app, headers=SPA_HEADERS) as browser:
-        await an_admin(browser, mailbox, label="rival")
-        yield browser
 
 
 async def _the_message(session: AsyncSession, application_id: str) -> Communication:

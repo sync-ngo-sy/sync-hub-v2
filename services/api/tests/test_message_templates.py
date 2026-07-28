@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 
 from tests.support.candidates import a_signed_in_candidate
-from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.mailbox import Mailbox
 from tests.support.messaging import (
     MESSAGE_TEMPLATE_NAME_TAKEN,
@@ -20,20 +18,7 @@ from tests.support.messaging import (
     revise_template,
     templates_of,
 )
-from tests.support.tenants import an_admin
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from fastapi import FastAPI
-
-
-@pytest.fixture
-async def rival(app: FastAPI, mailbox: Mailbox) -> AsyncIterator[AsyncClient]:
-    """A second Tenant, signed in, keeping templates of its own."""
-    async with asgi_client(app, headers=SPA_HEADERS) as browser:
-        await an_admin(browser, mailbox, label="rival")
-        yield browser
+from tests.support.tenants import a_teammate
 
 
 async def test_a_saved_template_keeps_the_words_as_written(recruiter: AsyncClient) -> None:
@@ -175,6 +160,24 @@ async def test_a_template_with_no_placeholders_at_all_is_fine(recruiter: AsyncCl
     accepted = await create_template(recruiter, subject="A quick note", body="We will be in touch.")
 
     assert accepted.status_code == 201, accepted.text
+
+
+async def test_a_teammate_who_is_no_admin_manages_the_tenants_templates_too(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """Templates are the Tenant's, so its recruiters manage them — not only its admins."""
+    ours = await a_saved_template(recruiter, name="Offer")
+    await a_teammate(recruiter, other_browser, mailbox)
+
+    theirs = await create_template(other_browser, name="Interview invitation")
+    revised = await revise_template(other_browser, ours["id"], name="Offer (revised)")
+
+    assert theirs.status_code == 201, theirs.text
+    assert revised.status_code == 200, revised.text
+    assert [template["name"] for template in await templates_of(other_browser)] == [
+        "Interview invitation",
+        "Offer (revised)",
+    ]
 
 
 async def test_another_tenants_template_reads_as_absent(

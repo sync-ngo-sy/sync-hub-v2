@@ -5,18 +5,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from sync_api.messaging.placeholders import SYNTAX, unknown_in
+from sync_api.messaging.placeholders import KNOWN, as_written, unknown_in
 from sync_api.text import Line, Paragraph
 from sync_core.models import CommunicationStatus
 from sync_core.models import MessageTemplate as MessageTemplateRow
+
+_MAY_USE = f"May use {as_written(KNOWN)}."
 
 
 class _TemplateText(BaseModel):
     """The words of a Message template, and the one rule they have to obey.
 
     A placeholder no send could fill is refused here rather than at send time: a template is
-    saved once and sent from for months, so the recruiter who wrote the typo is the one who
-    should hear about it.
+    saved once and sent from for months, so the recruiter who typed it should be the one to hear.
     """
 
     name: Line = Field(
@@ -24,12 +25,11 @@ class _TemplateText(BaseModel):
         examples=["Interview invitation"],
     )
     subject: Line = Field(
-        description=f"The subject line. May use {SYNTAX}.",
+        description=f"The subject line. {_MAY_USE}",
         examples=["An interview for {{ job_title }}?"],
     )
     body: Paragraph = Field(
-        description=f"The message itself, as plain text. May use {SYNTAX}. A blank line parts "
-        "paragraphs.",
+        description=f"The message itself, as plain text. {_MAY_USE} A blank line parts paragraphs.",
         examples=[
             "Hi {{ candidate_name }},\n\nWe would like to talk to you about "
             "{{ job_title }}.\n\n{{ tenant_name }}"
@@ -41,8 +41,7 @@ class _TemplateText(BaseModel):
     def _fillable(cls, written: str) -> str:
         unknown = unknown_in(written)
         if unknown:
-            named = ", ".join(f"`{{{{ {name} }}}}`" for name in unknown)
-            raise ValueError(f"names {named}, which no message can fill. Use only {SYNTAX}.")
+            raise ValueError(f"names {as_written(unknown)}, which no message can fill. {_MAY_USE}")
         return written
 
 
@@ -82,14 +81,13 @@ class OutgoingMessage(BaseModel):
     template_id: UUID = Field(description="A Message template of the recruiter's own Tenant.")
 
 
-class SentMessage(BaseModel):
+class QueuedMessage(BaseModel):
     """The Communication a recruiter's message became: the resolved words, and where it is."""
 
     id: UUID
     subject: str = Field(description="The subject as the Candidate will see it, resolved.")
     body: str = Field(description="The message as the Candidate will read it, resolved.")
     status: CommunicationStatus = Field(
-        description="`queued` on the way out. The sender settles it, and never rewrites the "
-        "words above."
+        description="`queued`: the sender delivers it, and never rewrites the words above."
     )
     created_at: datetime
