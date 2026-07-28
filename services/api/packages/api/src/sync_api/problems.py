@@ -38,6 +38,8 @@ CV_MEDIA_TYPE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}unsupported-cv-media-type"
 CV_TOO_LARGE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-too-large"
 CV_EMPTY_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-empty"
 DUPLICATE_CV_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}duplicate-cv"
+CV_LIMIT_REACHED_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-limit-reached"
+CV_IS_CURRENT_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-is-current"
 CV_NOT_FOUND_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-not-found"
 CV_FILE_UNAVAILABLE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-file-unavailable"
 STORAGE_UNAVAILABLE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}storage-unavailable"
@@ -103,10 +105,13 @@ class ValidationProblemDetail(ProblemDetail):
     errors: list[InvalidField] = Field(description="Every field that failed validation.")
 
 
-class DuplicateCvProblemDetail(ProblemDetail):
-    """A refused upload that names the CV the candidate already has."""
+class CvConflictProblemDetail(ProblemDetail):
+    """An upload refused by the CVs the candidate already keeps."""
 
-    cv_id: UUID = Field(description="The CV already holding this exact file.")
+    cv_id: UUID | None = Field(
+        default=None,
+        description="The CV already holding this exact file. Only on a duplicate.",
+    )
 
 
 class ApplicationConflictProblemDetail(ProblemDetail):

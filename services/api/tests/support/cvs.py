@@ -7,13 +7,16 @@ from uuid import UUID, uuid4
 from sqlalchemy import select, text
 
 from sync_core.models import Cv, IngestionJob
+from tests.support.extractors import FakeExtractor
+from tests.support.worker import an_ingestion_worker
 
 if TYPE_CHECKING:
     import asyncpg
     from httpx import AsyncClient, Response
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_core import Storage
+    from sync_core import Database, Storage
+    from sync_parsers import CvExtractor
 
 CVS: Final = "/v1/candidates/me/cvs"
 PDF: Final = "application/pdf"
@@ -46,6 +49,43 @@ async def an_uploaded_cv(browser: AsyncClient, content: bytes | None = None) -> 
     assert response.status_code == 201, response.text
     body: dict[str, Any] = response.json()
     return body
+
+
+async def a_read_cv(
+    browser: AsyncClient,
+    database: Database,
+    storage: Storage,
+    content: bytes | None = None,
+    *,
+    extractor: CvExtractor | None = None,
+) -> dict[str, Any]:
+    """An uploaded CV the worker has already read — where managing several of them starts."""
+    uploaded = await an_uploaded_cv(browser, content)
+    worker = an_ingestion_worker(database, storage, extractor or FakeExtractor())
+    assert await worker.run_once() is True, "the parse job was not there to run"
+    return await a_cv(browser, uploaded["id"])
+
+
+async def my_cvs(browser: AsyncClient) -> list[dict[str, Any]]:
+    response = await browser.get(CVS)
+    assert response.status_code == 200, response.text
+    cvs: list[dict[str, Any]] = response.json()
+    return cvs
+
+
+async def a_cv(browser: AsyncClient, cv_id: UUID | str) -> dict[str, Any]:
+    response = await browser.get(f"{CVS}/{cv_id}")
+    assert response.status_code == 200, response.text
+    cv: dict[str, Any] = response.json()
+    return cv
+
+
+async def make_current(browser: AsyncClient, cv_id: UUID | str) -> Response:
+    return await browser.post(f"{CVS}/{cv_id}/make-current")
+
+
+async def delete_cv(browser: AsyncClient, cv_id: UUID | str) -> Response:
+    return await browser.delete(f"{CVS}/{cv_id}")
 
 
 async def cv_row(session: AsyncSession, cv_id: UUID | str) -> Cv:
