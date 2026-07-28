@@ -71,9 +71,7 @@ class CommunicationStatus(enum.StrEnum):
 class CommunicationType(enum.StrEnum):
     APPLICATION_CONFIRMATION = "application_confirmation"
     APPLICATION_REJECTION = "application_rejection"
-    APPLICATION_STATUS_UPDATE = "application_status_update"
-    INGESTION_FAILURE = "ingestion_failure"
-    GENERAL = "general"
+    RECRUITER_MESSAGE = "recruiter_message"
 
 
 class CvParsingStatus(enum.StrEnum):
@@ -1043,6 +1041,42 @@ class Job(Base):
             "to_tsvector('english'::regconfig, ((((COALESCE(title, ''::text) || ' '::text) || COALESCE(description, ''::text)) || ' '::text) || COALESCE(location, ''::text)))",
             persisted=True,
         ),
+    )
+
+    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
+    tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
+
+
+class MessageTemplate(Base):
+    __tablename__ = "message_templates"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "created_by_recruiter_id"],
+            ["public.recruiters.tenant_id", "public.recruiters.id"],
+            name="message_templates_tenant_id_created_by_recruiter_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id"], ["public.tenants.id"], name="message_templates_tenant_id_fkey"
+        ),
+        PrimaryKeyConstraint("id", name="message_templates_pkey"),
+        UniqueConstraint("tenant_id", "name", name="message_templates_tenant_id_name_key"),
+        Index("message_templates_created_by_idx", "created_by_recruiter_id"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_by_recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
     )
 
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)

@@ -24,6 +24,7 @@ from sync_api.crm import (
 )
 from sync_api.cvs import CvService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
+from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
@@ -188,6 +189,20 @@ def get_candidate_notes(session: SessionDep) -> NoteService:
 
 
 CandidateNotesDep = Annotated[NoteService, Depends(get_candidate_notes)]
+
+
+def get_message_template_service(session: SessionDep) -> MessageTemplateService:
+    return MessageTemplateService(session)
+
+
+MessageTemplateServiceDep = Annotated[MessageTemplateService, Depends(get_message_template_service)]
+
+
+def get_outreach_service(session: SessionDep) -> OutreachService:
+    return OutreachService(session)
+
+
+OutreachServiceDep = Annotated[OutreachService, Depends(get_outreach_service)]
 
 
 def get_talent_pool_service(session: SessionDep) -> TalentPoolService:

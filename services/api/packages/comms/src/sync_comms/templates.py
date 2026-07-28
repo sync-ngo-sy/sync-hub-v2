@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 from jinja2 import Environment, StrictUndefined
+from markupsafe import Markup, escape
 
 from sync_comms.email import UnsendableEmailError
-from sync_core.communications import ApplicationConfirmation, ApplicationRejection
+from sync_core.communications import ApplicationConfirmation, ApplicationRejection, RecruiterMessage
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -19,6 +21,25 @@ if TYPE_CHECKING:
 # job title a recruiter wrote. The markup escapes it; the plain-text part must not.
 _MARKUP: Final = Environment(autoescape=True, undefined=StrictUndefined)
 _PLAIN: Final = Environment(autoescape=False, undefined=StrictUndefined)
+
+_BLANK_LINE: Final = re.compile(r"\n\s*\n")
+
+
+def _paragraphs(text: str) -> Markup:
+    """A recruiter's plain typing as markup: a blank line parts paragraphs, a single one breaks
+    a line. Only the message a Recruiter wrote needs it — the rest of the prose here is ours,
+    and already markup. Doing it with `white-space` instead would lose the shape of the message
+    in every Outlook, which renders mail through Word.
+    """
+    blocks = (
+        escape(block.strip()).replace("\n", Markup("<br>"))
+        for block in _BLANK_LINE.split(text)
+        if block.strip()
+    )
+    return Markup("\n").join(Markup("<p>{}</p>").format(block) for block in blocks)
+
+
+_MARKUP.filters["paragraphs"] = _paragraphs
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,9 +118,23 @@ Your other applications are unaffected, and you are welcome to apply for future 
 """,
 )
 
+RECRUITER_MESSAGE: Final = _template(
+    subject="{{ subject }}",
+    html="""
+{{ body | paragraphs }}
+<p>— {{ tenant_name }}, via Sync</p>
+""",
+    text="""
+{{ body }}
+
+— {{ tenant_name }}, via Sync
+""",
+)
+
 TEMPLATES: Final[Mapping[str, EmailTemplate]] = {
     ApplicationConfirmation.template_key: APPLICATION_CONFIRMATION,
     ApplicationRejection.template_key: APPLICATION_REJECTION,
+    RecruiterMessage.template_key: RECRUITER_MESSAGE,
 }
 
 

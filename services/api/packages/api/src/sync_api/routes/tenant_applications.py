@@ -19,8 +19,10 @@ from sync_api.dependencies import (
     ApplicationReviewServiceDep,
     ApplicationTagsDep,
     MatchAssessmentServiceDep,
+    OutreachServiceDep,
 )
 from sync_api.errors import openapi_problem
+from sync_api.messaging import OutgoingMessage, SentMessage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_assessment_rate_limit
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
@@ -143,6 +145,33 @@ async def list_application_match_assessments(
 ) -> MatchAssessmentPage:
     """The whole history, each entry with the model and prompt version that wrote it."""
     return await assessments.page(recruiter, application_id, cursor=cursor, limit=limit)
+
+
+@router.post(
+    "/{application_id}/messages",
+    operation_id="messageApplicant",
+    summary="Email the applicant from a Message template",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        404: openapi_problem(
+            "This tenant has no application, or no message template, with that id."
+        ),
+    },
+)
+async def message_applicant(
+    application_id: UUID,
+    body: OutgoingMessage,
+    recruiter: ActingRecruiterDep,
+    outreach: OutreachServiceDep,
+) -> SentMessage:
+    """Placeholders resolve here and now, against this Application; the response is the exact
+    words queued for the applicant.
+
+    Sending is a decision of its own — the same template twice is two messages — and the
+    Candidate's verified address is resolved by the sender, not by this request.
+    """
+    return await outreach.send(recruiter, application_id, body)
 
 
 @router.post(
