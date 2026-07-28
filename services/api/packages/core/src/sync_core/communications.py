@@ -4,8 +4,15 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from sqlalchemy import select
 
-from sync_core.models import Communication, CommunicationChannel, CommunicationType
+from sync_core.models import (
+    Communication,
+    CommunicationChannel,
+    CommunicationType,
+    Profile,
+    User,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,17 +50,54 @@ class ApplicationRejection(BaseModel):
     candidate_name: str
 
 
-CommunicationPayload = Annotated[
-    ApplicationConfirmation | ApplicationRejection, Field(discriminator="type")
-]
+class RecruiterMessage(BaseModel):
+    """What a Recruiter wrote one applicant, from a Message template with its placeholders
+    already resolved. Unlike the other two, the prose is the tenant's rather than the sender's,
+    so it is carried here — the template it came from can be rewritten or deleted afterwards
+    without touching what the Candidate was actually sent."""
 
-_STORED_PAYLOAD: Final[TypeAdapter[ApplicationConfirmation | ApplicationRejection]] = TypeAdapter(
-    CommunicationPayload
-)
+    model_config = ConfigDict(frozen=True)
+
+    template_key: ClassVar[str] = "recruiter-message.v1"
+
+    type: Literal[CommunicationType.RECRUITER_MESSAGE] = CommunicationType.RECRUITER_MESSAGE
+    application_id: UUID
+    tenant_name: str
+    template_name: str
+    subject: str
+    body: str
 
 
-def payload_of(stored: dict[str, Any]) -> ApplicationConfirmation | ApplicationRejection:
+AnyCommunication = ApplicationConfirmation | ApplicationRejection | RecruiterMessage
+
+CommunicationPayload = Annotated[AnyCommunication, Field(discriminator="type")]
+
+_STORED_PAYLOAD: Final[TypeAdapter[AnyCommunication]] = TypeAdapter(CommunicationPayload)
+
+
+def payload_of(stored: dict[str, Any]) -> AnyCommunication:
     return _STORED_PAYLOAD.validate_python(stored)
+
+
+async def candidate_contact(session: AsyncSession, candidate_id: UUID) -> tuple[str, str]:
+    """The name to greet, and the address as it stands, for a message about to be queued.
+
+    Auditing what the address was is all the second of those is for — the sender resolves the
+    verified one again, and refuses a candidate who has none, which is why an address-less
+    identity is recorded here rather than refused.
+    """
+    full_name, email = (
+        (
+            await session.execute(
+                select(Profile.full_name, User.email)
+                .join(User, User.id == Profile.id)
+                .where(Profile.id == candidate_id)
+            )
+        )
+        .tuples()
+        .one()
+    )
+    return full_name, email or ""
 
 
 async def enqueue_email(

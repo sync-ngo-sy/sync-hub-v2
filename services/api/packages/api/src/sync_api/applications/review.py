@@ -21,17 +21,15 @@ from sync_api.cvs import signed_download
 from sync_api.jobs.access import own_job
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_core import get_logger, transaction
-from sync_core.communications import ApplicationRejection, enqueue_email
+from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
 from sync_core.models import (
     Application,
     ApplicationProfileSnapshot,
     ApplicationStatus,
     ApplicationStatusHistory,
     Cv,
-    Profile,
     QualificationStatus,
     StatusChangeSource,
-    User,
 )
 
 if TYPE_CHECKING:
@@ -159,7 +157,7 @@ class ApplicationReviewService:
         """The one rejection that emails: keyed by the move, so undoing and deciding it again
         is a second decision the Candidate hears about, not a swallowed duplicate."""
         application = applied.application
-        full_name, email = await self._candidate_contact(application.candidate_id)
+        full_name, email = await candidate_contact(self._db, application.candidate_id)
         await enqueue_email(
             self._db,
             candidate_id=application.candidate_id,
@@ -175,23 +173,6 @@ class ApplicationReviewService:
                 candidate_name=full_name,
             ),
         )
-
-    async def _candidate_contact(self, candidate_id: UUID) -> tuple[str, str]:
-        """The name to greet, and the address as it stands. Auditing what it was is all this
-        is for — the sender resolves the verified one again, and refuses a candidate who has
-        none, which is why an address-less identity is recorded rather than refused here."""
-        full_name, email = (
-            (
-                await self._db.execute(
-                    select(Profile.full_name, User.email)
-                    .join(User, User.id == Profile.id)
-                    .where(Profile.id == candidate_id)
-                )
-            )
-            .tuples()
-            .one()
-        )
-        return full_name, email or ""
 
     async def _history(self, application_id: UUID) -> list[StatusHistoryEntry]:
         rows = await self._db.scalars(

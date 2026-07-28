@@ -103,8 +103,9 @@ _Avoid_: Admin action, Privileged call.
 
 **Communication**:
 An outbound message (email for now) to a Candidate, recorded once and auditable forever.
-Candidate-facing email is deliberately scarce: an application confirmation, and a rejection
-decided by a human Recruiter. A Screening verdict never messages anyone by itself.
+Candidate-facing email is deliberately scarce: an application confirmation, a rejection decided
+by a human Recruiter, and what a Recruiter writes an applicant from a Message template. A
+Screening verdict never messages anyone by itself.
 _Avoid_: Email (the channel), Notification.
 
 **Notification**:

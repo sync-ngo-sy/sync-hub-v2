@@ -7,8 +7,8 @@ from sqlalchemy.exc import IntegrityError
 
 from sync_api.crm.access import own_tag
 from sync_api.crm.payload import Tag
-from sync_api.integrity import violated_constraint
-from sync_api.problems import TAG_NAME_TAKEN_PROBLEM_TYPE, Problem
+from sync_api.integrity import refuse_duplicate
+from sync_api.problems import TAG_NAME_TAKEN_PROBLEM_TYPE
 from sync_core import get_logger, transaction
 from sync_core.models import TenantTag
 
@@ -72,10 +72,9 @@ class TagService:
 
 def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:
     """A Tag is what a recruiter files by, so two of one name in one scope is a clean 409."""
-    if violated_constraint(clash) != NAME_CONSTRAINT:
-        raise clash
-    raise Problem(
-        status=409,
-        type=TAG_NAME_TAKEN_PROBLEM_TYPE,
+    refuse_duplicate(
+        clash,
+        NAME_CONSTRAINT,
+        problem_type=TAG_NAME_TAKEN_PROBLEM_TYPE,
         detail=f"This tenant already has a tag called “{name}” in that scope.",
-    ) from clash
+    )

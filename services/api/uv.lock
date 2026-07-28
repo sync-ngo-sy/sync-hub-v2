@@ -1648,6 +1648,7 @@ version = "0.1.0"
 source = { editable = "packages/comms" }
 dependencies = [
     { name = "jinja2" },
+    { name = "markupsafe" },
     { name = "resend", extra = ["async"] },
     { name = "sync-core" },
 ]
@@ -1655,6 +1656,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
+    { name = "markupsafe", specifier = ">=3.0" },
     { name = "resend", extras = ["async"], specifier = ">=2.15.0" },
     { name = "sync-core", editable = "packages/core" },
 ]

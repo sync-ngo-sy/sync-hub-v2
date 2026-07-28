@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from sync_comms import UnsendableEmailError, render
-from sync_core.communications import ApplicationConfirmation, ApplicationRejection
+from sync_core.communications import ApplicationConfirmation, ApplicationRejection, RecruiterMessage
 
 AN_APPLICATION_ID = uuid4()
 
@@ -68,6 +68,47 @@ def test_the_rejection_names_the_job_and_the_tenant_without_a_reason() -> None:
         assert "Amina Haddad" in part
         assert "Acme Payments" in part
         assert "Senior Backend Engineer" in part
+
+
+def a_recruiters_message(**changes: object) -> RecruiterMessage:
+    return RecruiterMessage(
+        application_id=AN_APPLICATION_ID,
+        tenant_name="Acme Payments",
+        template_name="Interview invitation",
+        subject="An interview for Senior Backend Engineer?",
+        body="Hi Amina,\n\nWe would like to meet you.",
+    ).model_copy(update=changes)
+
+
+def test_a_recruiters_message_is_sent_under_the_subject_they_wrote() -> None:
+    rendered = render(RecruiterMessage.template_key, a_recruiters_message())
+
+    assert rendered.subject == "An interview for Senior Backend Engineer?"
+    assert "We would like to meet you." in rendered.text
+    assert "Acme Payments" in rendered.text
+
+
+def test_the_shape_of_what_a_recruiter_typed_survives_into_the_markup() -> None:
+    rendered = render(
+        RecruiterMessage.template_key,
+        a_recruiters_message(body="Hi Amina,\n\nTwo lines:\nthe second one.\n\nThanks."),
+    )
+
+    assert "<p>Hi Amina,</p>" in rendered.html
+    assert "<p>Two lines:<br>the second one.</p>" in rendered.html
+    assert "<p>Thanks.</p>" in rendered.html
+
+
+def test_a_recruiters_own_typing_cannot_reach_the_markup_either() -> None:
+    rendered = render(
+        RecruiterMessage.template_key,
+        a_recruiters_message(body="<script>alert('x')</script> & regards"),
+    )
+
+    assert "<script>" not in rendered.html
+    assert "&lt;script&gt;" in rendered.html
+    assert "&amp;" in rendered.html
+    assert "<script>alert('x')</script> & regards" in rendered.text
 
 
 def test_a_template_key_nothing_is_registered_under_is_unsendable() -> None:
