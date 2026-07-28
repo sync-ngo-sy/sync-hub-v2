@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING, Literal, NoReturn
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
@@ -22,8 +22,8 @@ from sync_core.models import ApplicationTagAssignment, CandidateTagAssignment, T
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from sqlalchemy import ColumnElement
     from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.orm import InstrumentedAttribute
 
     from sync_api.tenants import ActingRecruiter
 
@@ -35,21 +35,29 @@ class Filing:
     """Where one kind of thing's Tags are kept, and how the tenant reaches the thing itself."""
 
     assignment: type[ApplicationTagAssignment] | type[CandidateTagAssignment]
-    subject: InstrumentedAttribute[UUID]
+    id_column: Literal["application_id", "candidate_id"]
     reachable: ReachableSubject
     scope_constraint: str
+
+    def is_(self, subject_id: UUID) -> ColumnElement[bool]:
+        """Names the thing being filed. A method rather than a column held on this class: a
+        mapped attribute is itself a descriptor, and one stored as a field reads back as the
+        id's *value* rather than the column to compare against."""
+        if self.assignment is ApplicationTagAssignment:
+            return ApplicationTagAssignment.application_id == subject_id
+        return CandidateTagAssignment.candidate_id == subject_id
 
 
 ON_APPLICATIONS = Filing(
     assignment=ApplicationTagAssignment,
-    subject=ApplicationTagAssignment.application_id,
+    id_column="application_id",
     reachable=reachable_application,
     scope_constraint="application_tag_assignments_tag_id_scope_fkey",
 )
 
 ON_CANDIDATES = Filing(
     assignment=CandidateTagAssignment,
-    subject=CandidateTagAssignment.candidate_id,
+    id_column="candidate_id",
     reachable=reachable_candidate,
     scope_constraint="candidate_tag_assignments_tag_id_scope_fkey",
 )
@@ -69,7 +77,7 @@ class TagAssignmentService:
             select(TenantTag)
             .join(assignment, assignment.tag_id == TenantTag.id)
             .where(
-                self._filing.subject == subject_id,
+                self._filing.is_(subject_id),
                 assignment.tenant_id == recruiter.tenant.id,
             )
             .order_by(TenantTag.name)
@@ -87,7 +95,7 @@ class TagAssignmentService:
             tenant_id=recruiter.tenant.id,
             tag_id=tag_id,
             added_by_recruiter_id=recruiter.profile.id,
-            **{self._filing.subject.key: subject_id},
+            **{self._filing.id_column: subject_id},
         )
         try:
             async with transaction(self._db):
@@ -110,7 +118,7 @@ class TagAssignmentService:
         async with transaction(self._db):
             await self._db.execute(
                 delete(assignment).where(
-                    self._filing.subject == subject_id,
+                    self._filing.is_(subject_id),
                     assignment.tag_id == tag_id,
                     assignment.tenant_id == recruiter.tenant.id,
                 )

@@ -115,7 +115,7 @@ _Avoid_: Alert, Push, Message.
 
 **Message template**:
 A Tenant's reusable, named subject/body with placeholders, rendered into a concrete
-Communication when a Recruiter messages an applicant. Saving a reusable draft *is*
+Communication when a Recruiter messages an applicant. Saving a reusable draft _is_
 creating a Message template.
 _Avoid_: Draft, Canned response.
 

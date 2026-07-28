@@ -17,7 +17,9 @@ REFRESH_TOKEN_MAX_AGE_SECONDS: Final = 14 * 24 * 60 * 60
 class SessionCookies:
     def __init__(self, settings: Settings, *, refresh_path: str) -> None:
         self._secure = settings.auth_cookie_secure
-        self._same_site = cast("Literal['lax', 'strict', 'none']", settings.auth_cookie_same_site)
+        self._same_site: Literal["lax", "strict", "none"] = cast(
+            "Literal['lax', 'strict', 'none']", settings.auth_cookie_same_site
+        )
         self._domain = settings.auth_cookie_domain
         self._refresh_path = refresh_path
 

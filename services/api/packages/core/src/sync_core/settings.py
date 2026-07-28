@@ -120,4 +120,5 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    # Every required field is read from the environment, which no checker can see.
+    return Settings()  # pyright: ignore[reportCallIssue]

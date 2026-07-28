@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from sqlalchemy import Select, delete, select
 
@@ -16,8 +16,8 @@ from sync_core.models import Profile
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from sqlalchemy import ColumnElement
     from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.orm import InstrumentedAttribute
 
     from sync_api.crm.payload import NewNote, NoteChanges
     from sync_api.tenants import ActingRecruiter
@@ -29,13 +29,21 @@ logger = get_logger(__name__)
 class Subject:
     """Which of a note's two subjects this is, and how the tenant reaches one of them."""
 
-    column: InstrumentedAttribute[UUID | None]
+    id_column: Literal["application_id", "candidate_id"]
     reachable: ReachableSubject
 
+    def is_(self, subject_id: UUID) -> ColumnElement[bool]:
+        """Names the note's subject. A method rather than a column held on this class: a
+        mapped attribute is itself a descriptor, and one stored as a field reads back as the
+        id's *value* rather than the column to compare against."""
+        if self.id_column == "application_id":
+            return NoteRow.application_id == subject_id
+        return NoteRow.candidate_id == subject_id
 
-ABOUT_APPLICATIONS = Subject(column=NoteRow.application_id, reachable=reachable_application)
 
-ABOUT_CANDIDATES = Subject(column=NoteRow.candidate_id, reachable=reachable_candidate)
+ABOUT_APPLICATIONS = Subject(id_column="application_id", reachable=reachable_application)
+
+ABOUT_CANDIDATES = Subject(id_column="candidate_id", reachable=reachable_candidate)
 
 
 class NoteService:
@@ -56,7 +64,7 @@ class NoteService:
             tenant_id=recruiter.tenant.id,
             recruiter_id=recruiter.profile.id,
             note_text=new.text,
-            **{self._subject.column.key: subject_id},
+            **{self._subject.id_column: subject_id},
         )
         async with transaction(self._db):
             self._db.add(note)
@@ -118,7 +126,7 @@ class NoteService:
                 delete(NoteRow)
                 .where(
                     NoteRow.id == note_id,
-                    self._subject.column == subject_id,
+                    self._subject.is_(subject_id),
                     NoteRow.tenant_id == recruiter.tenant.id,
                 )
                 .returning(NoteRow.id)
@@ -135,7 +143,7 @@ class NoteService:
             select(NoteRow, Profile.full_name)
             .join(Profile, Profile.id == NoteRow.recruiter_id)
             .where(
-                self._subject.column == subject_id,
+                self._subject.is_(subject_id),
                 NoteRow.tenant_id == recruiter.tenant.id,
             )
         )
@@ -172,7 +180,7 @@ def _author(recruiter: ActingRecruiter) -> NoteAuthor:
 
 
 def _cursor(row: tuple[NoteRow, str]) -> Cursor:
-    note, _author_name = row
+    note, _ = row
     return Cursor(created_at=note.created_at, id=note.id)
 
 
