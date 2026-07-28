@@ -40,7 +40,9 @@ class Visitors:
     def __init__(self, settings: Settings) -> None:
         self._salt = settings.visitor_hash_secret
         self._secure = settings.auth_cookie_secure
-        self._same_site = cast("Literal['lax', 'strict', 'none']", settings.auth_cookie_same_site)
+        self._same_site: Literal["lax", "strict", "none"] = cast(
+            "Literal['lax', 'strict', 'none']", settings.auth_cookie_same_site
+        )
         self._domain = settings.auth_cookie_domain
 
     def recognize(self, request: Request) -> Visitor:

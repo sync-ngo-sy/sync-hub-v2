@@ -66,10 +66,9 @@ async def test_logging_out_is_rate_limited_too(settings: Settings) -> None:
 
 async def test_reading_the_current_profile_is_not_rate_limited(settings: Settings) -> None:
     async with spa_onto(settings, auth_rate_limit_max_requests=A_TIGHT_LIMIT) as spa:
-        for _ in range(A_TIGHT_LIMIT + 2):
-            response = await spa.get("/v1/auth/me")
+        answered = [await spa.get("/v1/auth/me") for _ in range(A_TIGHT_LIMIT + 2)]
 
-    assert response.status_code == 401
+    assert answered[-1].status_code == 401
 
 
 async def test_the_csrf_header_is_documented_where_a_client_generator_will_find_it(

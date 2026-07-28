@@ -48,7 +48,7 @@ jobs:
         run: pnpm exec turbo run test --filter='./apps/*' --filter='./packages/*'
 
   api:
-    name: API (ruff, mypy, pytest)
+    name: API (ruff, pyright, pytest)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -77,8 +77,8 @@ jobs:
       - name: Format check (ruff format)
         run: uv run ruff format --check .
 
-      - name: Typecheck (mypy)
-        run: uv run mypy packages scripts tests
+      - name: Typecheck (pyright)
+        run: uv run pyright
 
       # The suite drives the app against the real stack — the real Postgres with the real
       # migrations and triggers, plus GoTrue and Storage. Only services no test touches are

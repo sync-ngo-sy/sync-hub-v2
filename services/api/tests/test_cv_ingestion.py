@@ -412,6 +412,7 @@ async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
 
 async def _until_ready(session: AsyncSession, cv_id: str, *, within: float = 10.0) -> None:
     deadline = asyncio.get_running_loop().time() + within
+    status: CvParsingStatus | None = None
     while asyncio.get_running_loop().time() < deadline:
         status = (await cv_row(session, cv_id)).parsing_status
         if status is CvParsingStatus.READY:
