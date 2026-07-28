@@ -392,6 +392,44 @@ Communication: never delivered externally, never queued, and never sent by a wor
   user and soft-deletes the Profile, so the cascade never fires and that flow has to delete
   notifications itself.
 
+## Tenant CRM (notes, tags, talent pool)
+
+The tenant-private knowledge layer: `application_notes`, `candidate_notes`, `tenant_tags`,
+`candidate_tag_assignments`, `application_tag_assignments` and `talent_pool_members`. Every
+one of them carries `tenant_id`, and every read filters on it **in the query** — another
+tenant's note, tag or pool entry must be the same 404 as one that never existed.
+
+- **Reach** is what a recruiter is allowed to keep a record *on*. An Application: the tenant's
+  own (`own_application`). A Candidate: one who has applied to this tenant, or one who is
+  `is_searchable` and not soft-deleted — the two places a recruiter meets a Candidate, since
+  the pool's whole point is saving a Global search hit. Anyone else is a 404, so candidate ids
+  cannot be walked.
+- **Tag scope is the database's guard, not the backend's.** An assignment row leaves `scope`
+  to its column default (`'application'` / `'candidate'`), so the composite FK
+  `(tag_id, scope) → tenant_tags (id, scope)` is what proves the Tag belongs on that kind of
+  thing. The backend catches that one constraint by name and answers 409
+  `tag-scope-mismatch`; it never pre-checks the scope itself. The `scope = '…'` CHECK on each
+  assignment table stops a backend bug from writing a row whose `scope` disagrees with the
+  table it is in.
+- Which tenant's Tag it is, though, *is* checked first (`own_tag`), so borrowing another
+  tenant's Tag is a 404 rather than a constraint message.
+- **Assignment and pool membership are sets**: `insert … on conflict do nothing`, so putting a
+  Tag on twice or saving a Candidate twice leaves one row with its original timestamp, and the
+  endpoints are `PUT`/`DELETE` rather than `POST`. Taking off what was never on is a 204.
+- **Deleting a Tag deletes its assignments first**, in the same transaction: nothing cascades
+  from `tenant_tags`, and unfiling what the Tag filed is part of deleting it.
+- A note's `recruiter_id` is the author and is written once; `updated_at` moves under the
+  `set_updated_at` trigger. Any recruiter of the tenant may rewrite or delete any of its
+  notes — they are the Tenant's record, not the individual's — and the recorded author does
+  not change when they do.
+- Note lists are keyset-paginated on `(created_at desc, id desc)`, the talent pool on
+  `(added_at desc, candidate_id desc)`. The pool reads names and headlines live from
+  `profiles`/`candidates`; there is no snapshot here, unlike an Application.
+- `application_notes` and `application_tag_assignments` cascade with the Application
+  (`ON DELETE CASCADE` on the composite FK). `candidate_notes`, `candidate_tag_assignments`
+  and `talent_pool_members` do not cascade from a Candidate: account deletion soft-deletes the
+  Profile, so a tenant's own record of them is deliberately its own to remove.
+
 ## Global candidate search
 
 `GET /v1/search/candidates`, recruiter-only. Discoverability is the `candidate_search_profiles`
@@ -439,4 +477,4 @@ from anything the candidate typed.
 | Invariant | Enforced by |
 | --- | --- |
 | Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction | **Backend** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, unfiling a deleted Tag | **Backend** |
