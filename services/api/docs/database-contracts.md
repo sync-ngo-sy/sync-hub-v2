@@ -353,6 +353,44 @@ section produces no chunk, so a profile with nothing in it produces nothing to f
   the same transaction that marks the row `sent`, so evidence and status cannot disagree.
 - A recruiter-initiated row requires `application_id` and a same-tenant recruiter (DB CHECK +
   composite FKs enforce the shape; the backend sets them).
+- `communication_type` spells exactly the three messages a Candidate is ever emailed: the
+  receipt, the rejection a human decided, and `recruiter_message` — what a Recruiter wrote them
+  from a Message template. A status change and a failed CV parse are Notifications, not
+  Communications, which is why neither is a value here.
+
+## Message templates (`message_templates` → `sync_api.messaging`)
+
+A Tenant's reusable, named subject/body, rendered into one Communication when a Recruiter
+messages an applicant. `/v1/tenants/me/message-templates`, plus
+`POST /v1/tenants/me/applications/{id}/messages` to send from one.
+
+- **The placeholder vocabulary is the backend's**, not the database's: the fields of
+  `sync_api.messaging.placeholders.Placeholders` (candidate name, job title, tenant name) are
+  the whole set, and `KNOWN` is derived from them so nothing can pass validation that send time
+  could not fill. A `{{ … }}` naming anything else — including a malformed one like
+  `{{ Job Title }}` — is a 422 at **save** time, on the field that wrote it. A template is
+  saved once and sent from for months, so the recruiter who typed it is the one who should hear.
+- Substitution is a plain regex over `{{ name }}`, deliberately not a template engine: a
+  recruiter's typing is data, and nothing a tenant writes is ever evaluated. Whitespace inside
+  the braces is theirs, so `{{name}}` and `{{ name }}` are one placeholder.
+- **Placeholders resolve once, in the API, at send time**, and the resolved subject and body are
+  what the Communication's `payload` carries. So the audit of what a Candidate was sent survives
+  the template being rewritten or deleted, and the sender never renders a tenant's prose: its
+  `recruiter-message.v1` template only wraps the already-resolved words in an envelope, turning
+  the plain-text body into paragraphs (autoescaped — a recruiter's typing cannot reach the
+  markup either).
+- `unique (tenant_id, name)` is what a duplicate name 409s on; that index is also the ordering
+  the listing reads, and the listing does not page. Any recruiter of the Tenant may send from,
+  rewrite or delete any of them; `created_by_recruiter_id` records who first wrote one and never
+  changes. `updated_at` is the `set_updated_at` trigger's, so a revision `refresh`es before
+  answering.
+- Sending resolves the Application through `own_application` and the template through
+  `own_message_template`, both scoped by tenant **in the query** — so another tenant's applicant
+  and another tenant's template are each the same 404, and the recruiter-initiated shape the
+  `communications` CHECKs demand cannot be satisfied with anything but this tenant's own.
+- Each send is its own decision: the same template sent twice is two Communications. There is
+  nothing in the request to derive an idempotency key from, so a fresh one is minted — it is the
+  provider's guard against a re-claimed row, not request-level idempotency.
 
 ## Notifications (written in the triggering transaction, no queue)
 
@@ -495,5 +533,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on | **Backend** |
+| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before apply, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final, NoReturn
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.integrity import violated_constraint
+from sync_api.integrity import refuse_duplicate
 from sync_api.jobs.access import own_job
 from sync_api.jobs.payload import TrackedLink
 from sync_api.problems import (
@@ -115,13 +115,12 @@ class TrackedLinkService:
 
 def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:
     """A link's name is what a report calls it, so two of them in one Job is a clean 409."""
-    if violated_constraint(clash) != NAME_CONSTRAINT:
-        raise clash
-    raise Problem(
-        status=409,
-        type=TRACKED_LINK_NAME_TAKEN_PROBLEM_TYPE,
+    refuse_duplicate(
+        clash,
+        NAME_CONSTRAINT,
+        problem_type=TRACKED_LINK_NAME_TAKEN_PROBLEM_TYPE,
         detail=f"This job already has a link called “{name}”.",
-    ) from clash
+    )
 
 
 def _as_payload(link: TrackedJobLink, *, views: int) -> TrackedLink:

@@ -27,6 +27,7 @@ from sync_api.routes import (
     tenant_applications,
     tenant_candidates,
     tenant_jobs,
+    tenant_message_templates,
     tenant_tags,
     tenant_talent_pool,
     tenants,
@@ -115,6 +116,7 @@ def create_app(
     app.include_router(notifications.router, prefix=API_PREFIX)
     app.include_router(search.router, prefix=API_PREFIX)
     app.include_router(tenant_tags.router, prefix=API_PREFIX)
+    app.include_router(tenant_message_templates.router, prefix=API_PREFIX)
     app.include_router(tenant_candidates.router, prefix=API_PREFIX)
     app.include_router(tenant_talent_pool.router, prefix=API_PREFIX)
     app.include_router(tenant_jobs.router, prefix=API_PREFIX)

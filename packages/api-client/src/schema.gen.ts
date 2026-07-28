@@ -517,6 +517,60 @@ export interface paths {
         patch: operations["renameTenantTag"];
         trace?: never;
     };
+    "/v1/tenants/me/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every Message template of the Tenant
+         * @description By name — a Tenant keeps few enough of these that they do not page.
+         */
+        get: operations["listMessageTemplates"];
+        put?: never;
+        /**
+         * Save a Message template
+         * @description The Tenant's, for any of its recruiters. An unfillable `{{ … }}` is refused here, so a
+         *     template that saves always sends.
+         */
+        post: operations["createMessageTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/message-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Message template, whole
+         * @description The unresolved words, placeholders and all — what an editor opens.
+         */
+        get: operations["getMessageTemplate"];
+        /**
+         * Rewrite a Message template
+         * @description All of it at once, last write wins. Messages already sent keep the words they were sent
+         *     with.
+         */
+        put: operations["reviseMessageTemplate"];
+        post?: never;
+        /**
+         * Delete a Message template
+         * @description Nothing sent from it is affected: each Communication carries its own resolved words.
+         */
+        delete: operations["deleteMessageTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/candidates/{candidate_id}/notes": {
         parameters: {
             query?: never;
@@ -840,6 +894,29 @@ export interface paths {
          *     call appends another assessment; none of them replaces the last.
          */
         post: operations["assessApplicationMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/applications/{application_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email the applicant from a Message template
+         * @description Placeholders resolve against this Application, and the response is the exact words queued.
+         *
+         *     Each send is its own decision: the same template twice is two messages. The Candidate's
+         *     verified address is the sender's to resolve, not this request's.
+         */
+        post: operations["messageApplicant"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1455,6 +1532,11 @@ export interface components {
          * @enum {string}
          */
         ChunkType: "identity" | "experience" | "education" | "skills" | "languages" | "project";
+        /**
+         * CommunicationStatus
+         * @enum {string}
+         */
+        CommunicationStatus: "queued" | "processing" | "sent" | "failed";
         /** ConfirmEmailRequest */
         ConfirmEmailRequest: {
             /**
@@ -2017,6 +2099,61 @@ export interface components {
             is_active: boolean;
         };
         /**
+         * MessageTemplate
+         * @description One of the Tenant's Message templates, as it was saved.
+         */
+        MessageTemplate: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Subject */
+            subject: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * MessageTemplateChanges
+         * @description A Message template as it should now read — all of it, and the last write wins.
+         */
+        MessageTemplateChanges: {
+            /**
+             * Name
+             * @description What the Tenant files it under. Unique per Tenant.
+             * @example Interview invitation
+             */
+            name: string;
+            /**
+             * Subject
+             * @description The subject line. May use `{{ candidate_name }}`, `{{ job_title }}`, `{{ tenant_name }}`.
+             * @example An interview for {{ job_title }}?
+             */
+            subject: string;
+            /**
+             * Body
+             * @description The message itself, as plain text. May use `{{ candidate_name }}`, `{{ job_title }}`, `{{ tenant_name }}`. A blank line parts paragraphs.
+             * @example Hi {{ candidate_name }},
+             *
+             *     We would like to talk to you about {{ job_title }}.
+             *
+             *     {{ tenant_name }}
+             */
+            body: string;
+        };
+        /**
          * MovedApplication
          * @description Where an Application stands after a move, and where it came from.
          */
@@ -2091,6 +2228,34 @@ export interface components {
              * @description When the Job stops being public. Null means it stays up until closed.
              */
             expires_at?: string | null;
+        };
+        /**
+         * NewMessageTemplate
+         * @description A reusable message to save under a name.
+         */
+        NewMessageTemplate: {
+            /**
+             * Name
+             * @description What the Tenant files it under. Unique per Tenant.
+             * @example Interview invitation
+             */
+            name: string;
+            /**
+             * Subject
+             * @description The subject line. May use `{{ candidate_name }}`, `{{ job_title }}`, `{{ tenant_name }}`.
+             * @example An interview for {{ job_title }}?
+             */
+            subject: string;
+            /**
+             * Body
+             * @description The message itself, as plain text. May use `{{ candidate_name }}`, `{{ job_title }}`, `{{ tenant_name }}`. A blank line parts paragraphs.
+             * @example Hi {{ candidate_name }},
+             *
+             *     We would like to talk to you about {{ job_title }}.
+             *
+             *     {{ tenant_name }}
+             */
+            body: string;
         };
         /**
          * NewNote
@@ -2239,6 +2404,18 @@ export interface components {
              * @description Send back as `cursor` for the following page. Null on the last page — which is the only thing that means there is no more to fetch.
              */
             next_cursor?: string | null;
+        };
+        /**
+         * OutgoingMessage
+         * @description Which of the Tenant's Message templates to write this applicant from.
+         */
+        OutgoingMessage: {
+            /**
+             * Template Id
+             * Format: uuid
+             * @description A Message template of the recruiter's own Tenant.
+             */
+            template_id: string;
         };
         /**
          * ParsedCv
@@ -2699,6 +2876,34 @@ export interface components {
          * @enum {string}
          */
         QualificationStatus: "pending" | "qualified" | "disqualified" | "review_required";
+        /**
+         * QueuedMessage
+         * @description The Communication a recruiter's message became: the resolved words, and where it is.
+         */
+        QueuedMessage: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Subject
+             * @description The subject as the Candidate will see it, resolved.
+             */
+            subject: string;
+            /**
+             * Body
+             * @description The message as the Candidate will read it, resolved.
+             */
+            body: string;
+            /** @description `queued`: the sender delivers it, and never rewrites the words above. */
+            status: components["schemas"]["CommunicationStatus"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * Readiness
          * @description The process is up and its dependencies answer.
@@ -4798,6 +5003,343 @@ export interface operations {
             };
         };
     };
+    listMessageTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplate"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createMessageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewMessageTemplate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplate"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The Tenant already has a Message template of that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getMessageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplate"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no message template with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    reviseMessageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageTemplateChanges"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageTemplate"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no message template with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The Tenant already has a Message template of that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    deleteMessageTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no message template with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listCandidateNotes: {
         parameters: {
             query?: {
@@ -6449,6 +6991,77 @@ export interface operations {
             };
             /** @description This deployment has no assessment model configured. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    messageApplicant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutgoingMessage"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueuedMessage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no application, or no message template, with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -10,6 +10,9 @@ requires-python = ">=3.12"
 dependencies = [
     # The prose. Autoescaping is what keeps a candidate's own name out of the markup.
     "jinja2>=3.1",
+    # Jinja's own escaping, named because the recruiter-message template reaches for it
+    # directly rather than getting it through an autoescaped `{{ }}`.
+    "markupsafe>=3.0",
     # The delivery provider. Confined to this package, behind the `EmailSender` port
     # everything else imports — the same arrangement `sync-parsers` has for extraction.
     # The `async` extra is the httpx client `send_async` needs.

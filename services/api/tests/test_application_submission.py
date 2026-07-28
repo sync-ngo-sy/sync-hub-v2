@@ -6,7 +6,7 @@ from uuid import uuid4
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_core.communications import payload_of
+from sync_core.communications import ApplicationConfirmation, payload_of
 from sync_core.models import (
     ApplicationStatus,
     CommunicationStatus,
@@ -180,6 +180,7 @@ async def test_the_confirmation_is_queued_in_the_same_transaction(
     assert confirmation.sent_at is None
     assert confirmation.tenant_id is not None
     payload = payload_of(confirmation.payload)
+    assert isinstance(payload, ApplicationConfirmation)
     assert payload.job_title == job["title"]
     assert payload.candidate_name == "Amina Haddad"
 

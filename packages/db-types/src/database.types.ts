@@ -1541,6 +1541,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      message_templates: {
+        Row: {
+          body: string;
+          created_at: string;
+          created_by_recruiter_id: string;
+          id: string;
+          name: string;
+          subject: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          created_by_recruiter_id: string;
+          id?: string;
+          name: string;
+          subject: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          body?: string;
+          created_at?: string;
+          created_by_recruiter_id?: string;
+          id?: string;
+          name?: string;
+          subject?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'message_templates_tenant_id_created_by_recruiter_id_fkey';
+            columns: ['tenant_id', 'created_by_recruiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'recruiters';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'message_templates_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       notes: {
         Row: {
           application_id: string | null;
@@ -1980,9 +2028,7 @@ export type Database = {
       communication_type:
         | 'application_confirmation'
         | 'application_rejection'
-        | 'application_status_update'
-        | 'ingestion_failure'
-        | 'general';
+        | 'recruiter_message';
       cv_parsing_status: 'uploaded' | 'processing' | 'ready' | 'failed';
       ingestion_status: 'pending' | 'processing' | 'completed' | 'failed';
       job_status: 'draft' | 'published' | 'closed' | 'archived';
@@ -2139,9 +2185,7 @@ export const Constants = {
       communication_type: [
         'application_confirmation',
         'application_rejection',
-        'application_status_update',
-        'ingestion_failure',
-        'general',
+        'recruiter_message',
       ],
       cv_parsing_status: ['uploaded', 'processing', 'ready', 'failed'],
       ingestion_status: ['pending', 'processing', 'completed', 'failed'],

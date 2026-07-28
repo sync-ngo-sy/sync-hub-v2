@@ -20,9 +20,9 @@ create type qualification_status     as enum ('pending', 'qualified', 'disqualif
 
 create type communication_channel as enum ('email', 'sms');
 create type communication_status  as enum ('queued', 'processing', 'sent', 'failed');
+-- A status change and a failed CV parse are Notifications (migration 12), not email.
 create type communication_type    as enum (
-  'application_confirmation', 'application_rejection', 'application_status_update',
-  'ingestion_failure', 'general'
+  'application_confirmation', 'application_rejection', 'recruiter_message'
 );
 
 create type language_proficiency as enum ('beginner', 'intermediate', 'advanced', 'fluent', 'native');

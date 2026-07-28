@@ -6,7 +6,7 @@ from uuid import uuid4
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_core.communications import payload_of
+from sync_core.communications import ApplicationRejection, payload_of
 from sync_core.models import (
     ApplicationStatus,
     CommunicationStatus,
@@ -532,6 +532,7 @@ async def test_a_rejection_a_human_decided_also_queues_the_email(
     assert rejection.status is CommunicationStatus.QUEUED
     assert rejection.tenant_id is not None
     payload = payload_of(rejection.payload)
+    assert isinstance(payload, ApplicationRejection)
     assert payload.job_title == job["title"]
     assert payload.candidate_name == "Amina Haddad"
     assert [item["payload"]["status"] for item in await my_notifications(other_browser)] == [
