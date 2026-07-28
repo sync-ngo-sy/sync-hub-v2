@@ -107,6 +107,16 @@ class ValidationProblemDetail(ProblemDetail):
     errors: list[InvalidField] = Field(description="Every field that failed validation.")
 
 
+class SubmissionRefusedProblemDetail(ProblemDetail):
+    """A submission refused either by its answers or by the profile behind it."""
+
+    errors: list[InvalidField] = Field(
+        default_factory=list,
+        description="Every answer that failed validation. Empty when the profile is what is "
+        "missing — `detail` says what.",
+    )
+
+
 class CvConflictProblemDetail(ProblemDetail):
     """An upload refused by the CVs the candidate already keeps."""
 

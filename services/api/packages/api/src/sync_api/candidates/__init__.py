@@ -13,16 +13,25 @@ from sync_api.candidates.payload import (
 from sync_api.candidates.profile import (
     CandidateProfileService,
     languages_named,
+    refuse_incomplete_profile,
     skills_named,
     stated_skills,
+    whole_candidate,
 )
-from sync_api.candidates.sections import a_language, a_project, an_education, an_experience
+from sync_api.candidates.sections import (
+    LiveSection,
+    a_language,
+    a_project,
+    an_education,
+    an_experience,
+)
 
 __all__ = [
     "ActingCandidate",
     "CandidateProfile",
     "CandidateProfileService",
     "DraftSkill",
+    "LiveSection",
     "ProfileDraft",
     "ProfileEducation",
     "ProfileExperience",
@@ -36,6 +45,8 @@ __all__ = [
     "an_experience",
     "draft_of",
     "languages_named",
+    "refuse_incomplete_profile",
     "skills_named",
     "stated_skills",
+    "whole_candidate",
 ]

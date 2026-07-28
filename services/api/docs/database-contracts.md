@@ -55,6 +55,9 @@ stays an auth flow with re-confirmation.
 that the Canonical taxonomy has no name for. They persist, they feed the search embedding
 (`sync_rag.chunks`, in the `skills` chunk), and Screening never reads them. Pydantic caps the
 list at `MAX_ENTRIES`, each entry at `MAX_LINE_LENGTH`, and deduplicates case-insensitively.
+`application_profile_snapshots.unmapped_skills text[] not null default '{}'` is its frozen twin,
+copied with the rest of the Snapshot. Neither column needed a new trigger: `reembed_on_change`
+and `set_updated_at` already fire on `candidates`.
 
 Backend-enforced preconditions (all checked **before** anything is written, so a refusal
 cannot leave a section emptied):
@@ -171,27 +174,37 @@ The request body is `{job_id, answers}` and nothing else. There is no `cv_id`, n
 no `update_profile`: the Snapshot is copied from the live profile server-side, so there is no way
 to apply with data the profile does not hold. Choosing a CV is a profile-settings action.
 
-Backend-enforced preconditions (not expressible as constraints), all answered **before** the
-transaction opens, so a refusal never begins an Application:
+Backend-enforced preconditions (not expressible as constraints). The first three are answered
+**before** the transaction opens, so the common refusals never begin an Application; the two
+that read the profile run **inside** it, with the candidate row locked `FOR UPDATE`, and take
+the whole submission back with them:
 1. The Job is one the public may read — `public_jobs()`, the same predicate browse uses. A Job
    nobody can read is a Job nobody can apply to, and both answer the same 404.
-2. `candidates.current_cv_id` is not null (409 `no-current-cv`). That the CV exists and is not
+2. Every `is_required` question of the job is answered, and each answer's type matches
+   (`yes_no` → `answer_boolean`, `short_text` → `answer_text`). *(The single-answer-kind CHECK
+   and the answer→question FK are DB-enforced; "all required answered" is not.)* One 422 names
+   every offending entry — unanswered, mistyped, or asked by some other Job.
+3. The candidate has not applied to this Job already: 409 carrying `application_id`. Withdrawal
+   permanence falls out of the same rule — a withdrawn Application still holds its job, because
+   `UNIQUE(candidate_id, job_id)` does not care what state it is in. The unique index refuses
+   one that lands between this check and the write, and the `IntegrityError` answers the same
+   409.
+4. `candidates.current_cv_id` is not null (409 `no-current-cv`). That the CV exists and is not
    deleted is the database's answer already — `forbid_deleting_current_cv` and
    `forbid_deleted_current_cv` — so the pointer being set is all that is left to check. How far
    its parse got is **not** checked: every upload is parsed, and a Candidate who swapped to an
    unread CV is not applying with worse data than the profile they already reviewed.
-3. Every `is_required` question of the job is answered, and each answer's type matches
-   (`yes_no` → `answer_boolean`, `short_text` → `answer_text`). *(The single-answer-kind CHECK
-   and the answer→question FK are DB-enforced; "all required answered" is not.)* One 422 names
-   every offending entry — unanswered, mistyped, or asked by some other Job.
-4. The profile is worth judging: at least one skill, and either an experience or an education
+5. The profile is worth judging: at least one skill, and either an experience or an education
    (422 `incomplete-profile`, whose `detail` names what is missing). Skills and languages are
    **not** re-validated here — `PUT /candidates/me/profile` already guarantees every
    `taxonomy_id` and `language_code` in the live tables, so `sync_api.vocabulary` no longer runs
    on this path.
-5. The candidate has not applied to this Job already: 409 carrying `application_id`. Withdrawal
-   permanence falls out of the same rule — a withdrawn Application still holds its job, because
-   `UNIQUE(candidate_id, job_id)` does not care what state it is in.
+
+Why 4 and 5 are inside the lock: both read the same live profile the Snapshot is then copied
+from, and every writer of a profile queues on the candidate row. Checked outside it, a
+`PUT /candidates/me/profile` landing in between would leave an Application whose Snapshot is
+thinner than the profile that passed — an empty Snapshot screened on nothing, which is the state
+these two exist to prevent.
 
 DB-enforced on write (rely on these — a backend bug cannot bypass them):
 - `applications.(tenant_id, job_id)` → `jobs` (tenant match); `(candidate_id, cv_id)` → `cvs`
@@ -200,6 +213,8 @@ DB-enforced on write (rely on these — a backend bug cannot bypass them):
 
 Write order in the tx:
 ```
+select candidates for update                    -- what every writer of the profile queues on
+-- then preconditions 4 and 5 above, which read the profile this is about to copy
 insert applications(id, tenant_id, candidate_id, job_id, cv_id, tracked_link_id)
 insert application_profile_snapshots  select from profiles ⋈ candidates    -- the scalar row
 insert application_experiences/_educations/_skills/_languages/_projects

@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import ColumnElement, and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.candidates import ProfileDraft, draft_of, stated_skills
+from sync_api.candidates import ProfileDraft, draft_of, stated_skills, whole_candidate
 from sync_api.cvs.payload import Cv, CvDownloadLink
 from sync_api.cvs.upload import received
 from sync_api.problems import (
@@ -20,7 +20,7 @@ from sync_api.problems import (
     Problem,
 )
 from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
-from sync_core.models import Candidate, CvParsingStatus, Profile
+from sync_core.models import Candidate, CvParsingStatus
 from sync_core.models import Cv as CvRow
 from sync_core.storage import cv_object_path
 from sync_parsers import ParsedCv
@@ -107,17 +107,9 @@ class CvService:
                 "from. Wait for it to be processed.",
             )
         parsed = _parsed(cv)
-        if parsed is None:
-            raise Problem(
-                status=409,
-                type=CV_NOT_READY_PROBLEM_TYPE,
-                detail="What was read out of this CV can no longer be understood. Upload it again.",
-            )
-        candidate = await self._db.get(Candidate, candidate_id)
-        identity = await self._db.get(Profile, candidate_id)
-        if candidate is None or identity is None:
-            # pragma: no cover — `acting_candidate` refused this already
-            raise LookupError(f"no candidate row for {candidate_id}")
+        if parsed is None:  # pragma: no cover — `ready` is written after the parse is stored
+            raise LookupError(f"cv {cv.id} is ready with no readable parse")
+        candidate, identity = await whole_candidate(self._db, candidate_id)
         return draft_of(
             parsed,
             candidate=candidate,

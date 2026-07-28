@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from sync_api.candidates.payload import (
     CandidateProfile,
@@ -12,8 +12,18 @@ from sync_api.candidates.payload import (
     ProfileProject,
     ProfileSkill,
 )
-from sync_api.candidates.sections import a_language, a_project, an_education, an_experience
-from sync_api.problems import SEARCHABLE_NEEDS_CV_PROBLEM_TYPE, Problem
+from sync_api.candidates.sections import (
+    LiveSection,
+    a_language,
+    a_project,
+    an_education,
+    an_experience,
+)
+from sync_api.problems import (
+    INCOMPLETE_PROFILE_PROBLEM_TYPE,
+    SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
+    Problem,
+)
 from sync_api.vocabulary import canonical_skill_ids, refuse_unknown_languages
 from sync_core import get_logger, transaction
 from sync_core.models import (
@@ -104,13 +114,7 @@ class CandidateProfileService:
     async def _candidate(
         self, candidate_id: UUID, *, lock: bool = False
     ) -> tuple[Candidate, Profile]:
-        """The two rows one profile is spread across: the claims, and the identity."""
-        candidate = await self._db.get(Candidate, candidate_id, with_for_update=lock)
-        identity = await self._db.get(Profile, candidate_id)
-        if candidate is None or identity is None:
-            # pragma: no cover — `acting_candidate` refused this already
-            raise LookupError(f"no candidate row for {candidate_id}")
-        return candidate, identity
+        return await whole_candidate(self._db, candidate_id, lock=lock)
 
     async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
         if candidate.current_cv_id is None:
@@ -151,6 +155,47 @@ class CandidateProfileService:
             .order_by(CandidateProject.sort_order)
         )
         return [a_project(row) for row in rows]
+
+
+async def whole_candidate(
+    session: AsyncSession, candidate_id: UUID, *, lock: bool = False
+) -> tuple[Candidate, Profile]:
+    """The two rows one profile is spread across: the claims, and the identity.
+
+    `lock` takes the candidate row `FOR UPDATE`. Every writer of a profile queues on that row,
+    so a reader that is about to copy the profile somewhere should take it too.
+    """
+    candidate = await session.get(Candidate, candidate_id, with_for_update=lock)
+    identity = await session.get(Profile, candidate_id)
+    if candidate is None or identity is None:  # pragma: no cover — `acting_candidate` refused this
+        raise LookupError(f"no candidate row for {candidate_id}")
+    return candidate, identity
+
+
+async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
+    """A profile too thin to judge an Application by. Named, because "422" alone sends nobody
+    anywhere."""
+    missing = []
+    if not await _section_count(session, CandidateSkill, candidate_id):
+        missing.append("at least one skill")
+    if not await _section_count(session, CandidateExperience, candidate_id) and not (
+        await _section_count(session, CandidateEducation, candidate_id)
+    ):
+        missing.append("either a job or a qualification")
+    if missing:
+        raise Problem(
+            status=422,
+            type=INCOMPLETE_PROFILE_PROBLEM_TYPE,
+            detail=f"Your profile needs {' and '.join(missing)} before you can apply. "
+            "Fill it in in your profile settings.",
+        )
+
+
+async def _section_count(session: AsyncSession, section: LiveSection, candidate_id: UUID) -> int:
+    count = await session.scalar(
+        select(func.count()).select_from(section).where(section.candidate_id == candidate_id)
+    )
+    return int(count or 0)
 
 
 async def stated_skills(session: AsyncSession, candidate_id: UUID) -> list[ProfileSkill]:

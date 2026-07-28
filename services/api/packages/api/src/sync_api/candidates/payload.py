@@ -111,6 +111,32 @@ class ProfileLanguage(BaseModel):
     proficiency: LanguageProficiency
 
 
+# Repeats are caught here rather than by the composite primary keys, which would refuse the save
+# half way through with a message about a constraint.
+def _refuse_repeats(names: list[str], singular: str) -> None:
+    repeated = sorted({name for name in names if names.count(name) > 1})
+    if repeated:
+        raise ValueError(f"one entry per {singular}; repeated: {', '.join(repeated)}")
+
+
+def _one_entry_per_skill[SkillEntry: (ProfileSkill, DraftSkill)](
+    skills: list[SkillEntry],
+) -> list[SkillEntry]:
+    _refuse_repeats([skill.name for skill in skills], "skill")
+    return skills
+
+
+def _one_entry_per_language(languages: list[ProfileLanguage]) -> list[ProfileLanguage]:
+    _refuse_repeats([language.code for language in languages], "language")
+    return languages
+
+
+type OneEntryPerSkill[SkillEntry: (ProfileSkill, DraftSkill)] = Annotated[
+    list[SkillEntry], AfterValidator(_one_entry_per_skill)
+]
+OneEntryPerLanguage = Annotated[list[ProfileLanguage], AfterValidator(_one_entry_per_language)]
+
+
 class ProfileProject(DatedRange):
     """One thing the candidate built."""
 
@@ -140,7 +166,7 @@ class ProfileClaims(BaseModel):
 
     experiences: list[ProfileExperience] = _section("Jobs, in the candidate's own order.")
     educations: list[ProfileEducation] = _section("Qualifications, in the candidate's own order.")
-    languages: list[ProfileLanguage] = _section("Languages spoken, in the candidate's own order.")
+    languages: OneEntryPerLanguage = _section("Languages spoken, in the candidate's own order.")
     projects: list[ProfileProject] = _section("Projects, in the candidate's own order.")
 
     unmapped_skills: UnmappedSkills = _section(
@@ -148,23 +174,13 @@ class ProfileClaims(BaseModel):
         "typed, deduplicated case-insensitively. Recruiters read them; Screening never does."
     )
 
-    @model_validator(mode="after")
-    def _one_entry_per_language(self) -> ProfileClaims:
-        # Caught here rather than by the composite primary key, which would refuse the save
-        # half way through with a message about a constraint.
-        _refuse_repeats([language.code for language in self.languages], "language")
-        return self
-
 
 class CandidateProfile(ProfileClaims):
     """Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body."""
 
-    skills: list[ProfileSkill] = _section("Canonical skills, in the candidate's own order.")
-
-    @model_validator(mode="after")
-    def _one_entry_per_skill(self) -> CandidateProfile:
-        _refuse_repeats([skill.name for skill in self.skills], "skill")
-        return self
+    skills: OneEntryPerSkill[ProfileSkill] = _section(
+        "Canonical skills, in the candidate's own order."
+    )
 
 
 class ProfileDraft(ProfileClaims):
@@ -174,18 +190,7 @@ class ProfileDraft(ProfileClaims):
     newly names has no years until the candidate types them.
     """
 
-    skills: list[DraftSkill] = _section(
+    skills: OneEntryPerSkill[DraftSkill] = _section(
         "Every skill already on the profile, years and all, plus the ones this CV names that "
         "were not there — those with `years_experience` null."
     )
-
-    @model_validator(mode="after")
-    def _one_entry_per_skill(self) -> ProfileDraft:
-        _refuse_repeats([skill.name for skill in self.skills], "skill")
-        return self
-
-
-def _refuse_repeats(names: list[str], singular: str) -> None:
-    repeated = sorted({name for name in names if names.count(name) > 1})
-    if repeated:
-        raise ValueError(f"one entry per {singular}; repeated: {', '.join(repeated)}")

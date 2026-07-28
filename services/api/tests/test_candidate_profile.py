@@ -435,7 +435,7 @@ MALFORMED = {
                 {"name": "Python", "years_experience": 2.0},
             ]
         },
-        "body",
+        "body.skills",
     ),
     "the same language twice": (
         {
@@ -444,7 +444,7 @@ MALFORMED = {
                 {"code": "en", "proficiency": "beginner"},
             ]
         },
-        "body",
+        "body.languages",
     ),
 }
 

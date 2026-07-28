@@ -8,6 +8,13 @@ from sync_api.candidates.payload import (
     ProfileLanguage,
     ProfileProject,
 )
+from sync_core.models import (
+    CandidateEducation,
+    CandidateExperience,
+    CandidateLanguage,
+    CandidateProject,
+    CandidateSkill,
+)
 
 if TYPE_CHECKING:
     from sync_core.models import (
@@ -15,11 +22,17 @@ if TYPE_CHECKING:
         ApplicationExperience,
         ApplicationLanguage,
         ApplicationProject,
-        CandidateEducation,
-        CandidateExperience,
-        CandidateLanguage,
-        CandidateProject,
     )
+
+#: Every live section carries `candidate_id` and `sort_order`; naming them all is what lets code
+#: handed one of them read those two columns off it.
+type LiveSection = (
+    type[CandidateExperience]
+    | type[CandidateEducation]
+    | type[CandidateSkill]
+    | type[CandidateLanguage]
+    | type[CandidateProject]
+)
 
 # A Snapshot section and the live section it was copied from carry the same fields, so one
 # reading of a row serves the profile a Candidate edits and the frozen one a Recruiter reads.

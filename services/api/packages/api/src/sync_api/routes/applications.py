@@ -14,7 +14,10 @@ from sync_api.applications import (
 from sync_api.dependencies import ActingCandidateDep, ApplicationServiceDep, VisitorDep
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-from sync_api.problems import ApplicationConflictProblemDetail, ValidationProblemDetail
+from sync_api.problems import (
+    ApplicationConflictProblemDetail,
+    SubmissionRefusedProblemDetail,
+)
 from sync_api.routes.candidates import CANDIDATE_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/applications"
@@ -29,9 +32,9 @@ SUBMISSION_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
         ApplicationConflictProblemDetail,
     ),
     422: openapi_problem(
-        "The answers do not match the questions the Job asks, and name the offending entries; "
-        "or your profile is too thin to apply with, and `detail` says what is missing.",
-        ValidationProblemDetail,
+        "The answers do not match the questions the Job asks, and `errors` names the offending "
+        "entries; or your profile is too thin to apply with, and `detail` says what is missing.",
+        SubmissionRefusedProblemDetail,
     ),
 }
 

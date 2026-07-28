@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from uuid import uuid4
 
 from httpx import AsyncClient
@@ -50,6 +51,7 @@ from tests.support.profiles import (
     make_no_cv_current,
     my_id,
     my_profile,
+    save_profile,
 )
 
 
@@ -347,6 +349,31 @@ async def test_an_empty_profile_is_refused_before_anything_is_written(
     assert refused.status_code == 422, refused.text
     assert await applications_of(db_session, await my_id(other_browser)) == []
     assert await my_applications(other_browser) == []
+
+
+async def test_a_save_racing_a_submission_cannot_snapshot_a_profile_nobody_judged(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Both take the candidate row's lock, so the two cannot interleave into an Application whose
+    Snapshot is thinner than the profile the preconditions passed."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+
+    emptying, applying = await asyncio.gather(
+        save_profile(other_browser, a_filled_profile(skills=[], experiences=[], educations=[])),
+        apply_to(other_browser, job["id"]),
+    )
+
+    assert emptying.status_code == 200, emptying.text
+    if applying.status_code == 201:
+        snapshot = await snapshot_of(db_session, applying.json()["id"])
+        assert snapshot.skills, "an Application was snapshotted from an emptied profile"
+    else:
+        assert applying.status_code == 422, applying.text
+        assert applying.json()["type"] == "urn:sync:problem:incomplete-profile"
 
 
 async def test_every_required_question_has_to_be_answered(

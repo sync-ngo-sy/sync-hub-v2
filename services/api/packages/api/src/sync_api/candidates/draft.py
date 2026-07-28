@@ -10,7 +10,10 @@ from sync_api.candidates.payload import (
     ProfileLanguage,
     ProfileProject,
 )
+from sync_core import get_logger
 from sync_core.profile import MAX_ENTRIES
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -100,4 +103,6 @@ def _merged_skills(parsed: ParsedCv, saved: Sequence[ProfileSkill]) -> list[Draf
         for skill in parsed.skills
         if skill.name not in already
     ]
+    if len(merged) > MAX_ENTRIES:
+        logger.info("candidates.draft_skills_capped", dropped=len(merged) - MAX_ENTRIES)
     return merged[:MAX_ENTRIES]

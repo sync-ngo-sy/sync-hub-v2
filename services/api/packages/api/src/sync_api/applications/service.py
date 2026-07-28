@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.applications.access import my_application
@@ -19,13 +19,13 @@ from sync_api.applications.payload import (
 from sync_api.applications.pipeline import move_application
 from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
+from sync_api.candidates import refuse_incomplete_profile, whole_candidate
 from sync_api.jobs import PublicTenant
 from sync_api.jobs.access import open_job
 from sync_api.jobs.criteria import questions_of
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     DUPLICATE_APPLICATION_PROBLEM_TYPE,
-    INCOMPLETE_PROFILE_PROBLEM_TYPE,
     NO_CURRENT_CV_PROBLEM_TYPE,
     Problem,
 )
@@ -39,9 +39,6 @@ from sync_core.models import (
     ApplicationStatus,
     ApplicationStatusHistory,
     Candidate,
-    CandidateEducation,
-    CandidateExperience,
-    CandidateSkill,
     Job,
     JobViewEvent,
     StatusChangeSource,
@@ -69,32 +66,38 @@ class ApplicationService:
     ) -> Application:
         """The core transaction: an Application is never observable without its verdict."""
         job, tenant = await open_job(self._db, new.job_id)
-        cv_id = await self._current_cv(candidate.id)
         refuse_unusable_answers(await questions_of(self._db, job.id), new.answers)
-        await self._refuse_incomplete_profile(candidate.id)
         criteria = await screening_criteria_of(self._db, job)
         await self._refuse_duplicate(candidate.id, job.id)
 
-        application = ApplicationRow(
-            id=uuid4(),
-            tenant_id=job.tenant_id,
-            candidate_id=candidate.id,
-            job_id=job.id,
-            cv_id=cv_id,
-            tracked_link_id=await self._link_that_brought_them(job.id, visitor),
-            status=ApplicationStatus.NEW,
-        )
-        answers = answer_rows(application.id, job.id, new.answers)
+        application_id = uuid4()
+        answers = answer_rows(application_id, job.id, new.answers)
         try:
             async with transaction(self._db):
+                # Under the candidate row's lock, and so inside the transaction: every writer of
+                # a profile queues on that row, and a save landing between these checks and the
+                # copy below would otherwise Snapshot a profile nobody ever judged as complete.
+                held, _identity = await whole_candidate(self._db, candidate.id, lock=True)
+                cv_id = self._held_cv(held)
+                await refuse_incomplete_profile(self._db, candidate.id)
+
+                application = ApplicationRow(
+                    id=application_id,
+                    tenant_id=job.tenant_id,
+                    candidate_id=candidate.id,
+                    job_id=job.id,
+                    cv_id=cv_id,
+                    tracked_link_id=await self._link_that_brought_them(job.id, visitor),
+                    status=ApplicationStatus.NEW,
+                )
                 self._db.add(application)
                 await self._db.flush()
-                for statement in snapshot_rows(application.id, candidate.id):
+                for statement in snapshot_rows(application_id, candidate.id):
                     await self._db.execute(statement)
                 self._db.add_all(answers)
                 self._db.add(
                     ApplicationStatusHistory(
-                        application_id=application.id,
+                        application_id=application_id,
                         change_source=StatusChangeSource.CANDIDATE,
                         changed_by_profile_id=candidate.id,
                         previous_status=None,
@@ -103,14 +106,14 @@ class ApplicationService:
                 )
                 verdict = screen(
                     criteria,
-                    await screened(self._db, application.id, answers),
+                    await screened(self._db, application_id, answers),
                     today=datetime.now(UTC).date(),
                 )
                 application.qualification_status = verdict.status
                 application.qualification_reason = verdict.reason
                 self._db.add(
                     ApplicationQualificationHistory(
-                        application_id=application.id,
+                        application_id=application_id,
                         qualification_status=verdict.status,
                         qualification_reason=verdict.reason,
                         screening_version=SCREENING_VERSION,
@@ -120,11 +123,11 @@ class ApplicationService:
                     self._db,
                     candidate_id=candidate.id,
                     tenant_id=job.tenant_id,
-                    application_id=application.id,
+                    application_id=application_id,
                     recipient=candidate.profile.email,
-                    idempotency_key=_confirmation_key(application.id),
+                    idempotency_key=_confirmation_key(application_id),
                     payload=ApplicationConfirmation(
-                        application_id=application.id,
+                        application_id=application_id,
                         job_title=job.title,
                         tenant_name=tenant.name,
                         candidate_name=candidate.profile.full_name,
@@ -137,7 +140,7 @@ class ApplicationService:
 
         logger.info(
             "applications.submitted",
-            application_id=str(application.id),
+            application_id=str(application_id),
             job_id=str(job.id),
             qualification_status=verdict.status.value,
             tracked_link_id=None
@@ -197,48 +200,20 @@ class ApplicationService:
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return ApplicationPage(items=[_as_payload(*row) for row in rows], next_cursor=next_cursor)
 
-    async def _current_cv(self, candidate_id: UUID) -> UUID:
+    def _held_cv(self, candidate: Candidate) -> UUID:
         """The CV the candidate holds — the only one they can apply with.
 
         Whether it exists and is not deleted is the database's answer already
         (`forbid_deleting_current_cv`, `forbid_deleted_current_cv`), so all that is left to
         check is that the pointer is set at all.
         """
-        current: UUID | None = await self._db.scalar(
-            select(Candidate.current_cv_id).where(Candidate.id == candidate_id)
-        )
-        if current is None:
+        if candidate.current_cv_id is None:
             raise Problem(
                 status=409,
                 type=NO_CURRENT_CV_PROBLEM_TYPE,
                 detail="You have no CV yet. Upload one in your profile settings, then apply.",
             )
-        return current
-
-    async def _refuse_incomplete_profile(self, candidate_id: UUID) -> None:
-        """A profile too thin to judge. Named, because "422" alone sends nobody anywhere."""
-        skills = await self._section_count(CandidateSkill, candidate_id)
-        experiences = await self._section_count(CandidateExperience, candidate_id)
-        educations = await self._section_count(CandidateEducation, candidate_id)
-
-        missing = []
-        if not skills:
-            missing.append("at least one skill")
-        if not experiences and not educations:
-            missing.append("either a job or a qualification")
-        if missing:
-            raise Problem(
-                status=422,
-                type=INCOMPLETE_PROFILE_PROBLEM_TYPE,
-                detail=f"Your profile needs {' and '.join(missing)} before you can apply. "
-                "Fill it in in your profile settings.",
-            )
-
-    async def _section_count(self, section: type, candidate_id: UUID) -> int:
-        count = await self._db.scalar(
-            select(func.count()).select_from(section).where(section.candidate_id == candidate_id)
-        )
-        return int(count or 0)
+        return candidate.current_cv_id
 
     async def _refuse_duplicate(self, candidate_id: UUID, job_id: UUID) -> None:
         existing = await self._existing(candidate_id, job_id)

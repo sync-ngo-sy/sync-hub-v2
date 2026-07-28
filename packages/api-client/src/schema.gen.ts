@@ -1585,11 +1585,8 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
-            /**
-             * Skills
-             * @description Canonical skills, in the candidate's own order.
-             */
-            skills?: components["schemas"]["ProfileSkill"][];
+            /** @description Canonical skills, in the candidate's own order. */
+            skills?: components["schemas"]["OneEntryPerSkill_ProfileSkill__MaxLen_max_length_50_"];
         };
         /**
          * ChangeMemberRequest
@@ -2481,6 +2478,8 @@ export interface components {
              */
             next_cursor?: string | null;
         };
+        OneEntryPerSkill_DraftSkill__MaxLen_max_length_50_: components["schemas"]["DraftSkill"][];
+        OneEntryPerSkill_ProfileSkill__MaxLen_max_length_50_: components["schemas"]["ProfileSkill"][];
         /**
          * OutgoingMessage
          * @description Which of the Tenant's Message templates to write this applicant from.
@@ -2627,11 +2626,8 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
-            /**
-             * Skills
-             * @description Every skill already on the profile, years and all, plus the ones this CV names that were not there — those with `years_experience` null.
-             */
-            skills?: components["schemas"]["DraftSkill"][];
+            /** @description Every skill already on the profile, years and all, plus the ones this CV names that were not there — those with `years_experience` null. */
+            skills?: components["schemas"]["OneEntryPerSkill_DraftSkill__MaxLen_max_length_50_"];
         };
         /**
          * ProfileEducation
@@ -3001,6 +2997,51 @@ export interface components {
              * Format: date-time
              */
             changed_at: string;
+        };
+        /**
+         * SubmissionRefusedProblemDetail
+         * @description A submission refused either by its answers or by the profile behind it.
+         */
+        SubmissionRefusedProblemDetail: {
+            /**
+             * Type
+             * @description Stable identifier for what went wrong.
+             * @default about:blank
+             * @example about:blank
+             */
+            type: string;
+            /**
+             * Title
+             * @description Short, human-readable summary of the problem type.
+             */
+            title: string;
+            /**
+             * Status
+             * @description The HTTP status code, repeated for out-of-band handling.
+             */
+            status: number;
+            /**
+             * Detail
+             * @description Explanation specific to this occurrence.
+             */
+            detail?: string | null;
+            /**
+             * Instance
+             * @description Path of the request that produced the problem.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates this response with the server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Errors
+             * @description Every answer that failed validation. Empty when the profile is what is missing — `detail` says what.
+             */
+            errors?: components["schemas"]["InvalidField"][];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * SubmittedAnswer
@@ -8115,13 +8156,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ApplicationConflictProblemDetail"];
                 };
             };
-            /** @description The answers do not match the questions the Job asks, and name the offending entries; or your profile is too thin to apply with, and `detail` says what is missing. */
+            /** @description The answers do not match the questions the Job asks, and `errors` names the offending entries; or your profile is too thin to apply with, and `detail` says what is missing. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                    "application/problem+json": components["schemas"]["SubmissionRefusedProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */

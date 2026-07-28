@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Final
 
 from sqlalchemy import insert, literal, select
 
@@ -13,6 +14,7 @@ from sync_api.applications.screening import (
     SnapshotSkill,
 )
 from sync_api.candidates import (
+    LiveSection,
     ProfileEducation,
     ProfileExperience,
     ProfileLanguage,
@@ -31,6 +33,7 @@ from sync_core.models import (
     ApplicationProfileSnapshot,
     ApplicationProject,
     ApplicationSkill,
+    Base,
     Candidate,
     CandidateEducation,
     CandidateExperience,
@@ -49,18 +52,39 @@ if TYPE_CHECKING:
     from sqlalchemy import Executable
     from sqlalchemy.ext.asyncio import AsyncSession
 
-#: The scalar row, and then one statement per child table. Every pair is (snapshot column,
-#: live column) with the same name on both sides — which is what keeps the copy mechanical and
-#: kills the add-a-column-forget-to-map-it bug. `email` is deliberately absent: only
-#: `auth.users` has a confirmed one. So are the settings on `candidates`, which would be
-#: frozen by a Snapshot and leave someone asking why changing a setting changed nothing.
-_SCALARS = ("full_name", "phone", "headline", "summary", "location", "unmapped_skills")
 
-_SECTIONS: tuple[tuple[type, type, tuple[str, ...]], ...] = (
-    (
-        ApplicationExperience,
-        CandidateExperience,
-        (
+@dataclass(frozen=True, slots=True)
+class Twin:
+    """One section, and the live table it is frozen from. The column names are the same on both
+    sides, which is what keeps the copy mechanical and kills the add-a-column-forget-to-map-it
+    bug — so one list of names serves the `INSERT` and the `SELECT` alike."""
+
+    frozen: type[Base]
+    live: LiveSection
+    columns: tuple[str, ...]
+
+    def copy_into(self, application_id: UUID, candidate_id: UUID) -> Executable:
+        return insert(self.frozen).from_select(
+            ["application_id", *self.columns],
+            select(
+                literal(application_id),
+                *(getattr(self.live, column) for column in self.columns),
+            )
+            .where(self.live.candidate_id == candidate_id)
+            .order_by(self.live.sort_order),
+        )
+
+
+#: `email` is deliberately absent from the scalar row: only `auth.users` has a confirmed one. So
+#: are the settings on `candidates` — freezing a setting would leave someone asking why changing
+#: it changed nothing.
+SCALARS: Final = ("full_name", "phone", "headline", "summary", "location", "unmapped_skills")
+
+SECTIONS: Final = (
+    Twin(
+        frozen=ApplicationExperience,
+        live=CandidateExperience,
+        columns=(
             "sort_order",
             "job_title",
             "company_name",
@@ -72,17 +96,32 @@ _SECTIONS: tuple[tuple[type, type, tuple[str, ...]], ...] = (
             "description",
         ),
     ),
-    (
-        ApplicationEducation,
-        CandidateEducation,
-        ("sort_order", "institution", "degree", "field_of_study", "graduation_year", "description"),
+    Twin(
+        frozen=ApplicationEducation,
+        live=CandidateEducation,
+        columns=(
+            "sort_order",
+            "institution",
+            "degree",
+            "field_of_study",
+            "graduation_year",
+            "description",
+        ),
     ),
-    (ApplicationSkill, CandidateSkill, ("sort_order", "taxonomy_id", "years_experience")),
-    (ApplicationLanguage, CandidateLanguage, ("sort_order", "language_code", "proficiency")),
-    (
-        ApplicationProject,
-        CandidateProject,
-        (
+    Twin(
+        frozen=ApplicationSkill,
+        live=CandidateSkill,
+        columns=("sort_order", "taxonomy_id", "years_experience"),
+    ),
+    Twin(
+        frozen=ApplicationLanguage,
+        live=CandidateLanguage,
+        columns=("sort_order", "language_code", "proficiency"),
+    ),
+    Twin(
+        frozen=ApplicationProject,
+        live=CandidateProject,
+        columns=(
             "sort_order",
             "name",
             "description",
@@ -104,7 +143,7 @@ def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
     it was copied from.
     """
     scalar_row = insert(ApplicationProfileSnapshot).from_select(
-        ["application_id", *_SCALARS],
+        ["application_id", *SCALARS],
         select(
             literal(application_id),
             Profile.full_name,
@@ -119,15 +158,7 @@ def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
     )
     return [
         scalar_row,
-        *(
-            insert(frozen).from_select(
-                ["application_id", *columns],
-                select(literal(application_id), *(getattr(live, column) for column in columns))
-                .where(live.candidate_id == candidate_id)
-                .order_by(live.sort_order),
-            )
-            for frozen, live, columns in _SECTIONS
-        ),
+        *(section.copy_into(application_id, candidate_id) for section in SECTIONS),
     ]
 
 
