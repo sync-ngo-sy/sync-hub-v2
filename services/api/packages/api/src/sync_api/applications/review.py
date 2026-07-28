@@ -6,10 +6,8 @@ from sqlalchemy import select
 
 from sync_api.applications.access import own_application
 from sync_api.applications.payload import (
-    AnsweredQuestion,
     ApplicationCv,
     ApplicationReview,
-    ApplicationSnapshot,
     ApplicationSummary,
     ApplicationSummaryPage,
     MovedApplication,
@@ -18,17 +16,7 @@ from sync_api.applications.payload import (
     StatusHistoryEntry,
 )
 from sync_api.applications.pipeline import move_application
-from sync_api.candidates import (
-    ProfileEducation,
-    ProfileExperience,
-    ProfileLanguage,
-    ProfileProject,
-    ProfileSkill,
-    a_language,
-    a_project,
-    an_education,
-    an_experience,
-)
+from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.cvs import signed_download
 from sync_api.jobs.access import own_job
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
@@ -36,20 +24,12 @@ from sync_core import get_logger, transaction
 from sync_core.communications import ApplicationRejection, enqueue_email
 from sync_core.models import (
     Application,
-    ApplicationAnswer,
-    ApplicationEducation,
-    ApplicationExperience,
-    ApplicationLanguage,
     ApplicationProfileSnapshot,
-    ApplicationProject,
-    ApplicationSkill,
     ApplicationStatus,
     ApplicationStatusHistory,
     Cv,
-    JobApplicationQuestion,
     Profile,
     QualificationStatus,
-    SkillTaxonomy,
     StatusChangeSource,
     User,
 )
@@ -134,8 +114,8 @@ class ApplicationReviewService:
                 status=application.qualification_status,
                 reason=application.qualification_reason,
             ),
-            snapshot=await self._snapshot(application.id),
-            answers=await self._answers(application.id),
+            snapshot=await snapshot_of(self._db, application.id),
+            answers=await answers_of(self._db, application.id),
             history=await self._history(application.id),
             cv=await self._cv(application.cv_id),
             applied_at=application.applied_at,
@@ -212,88 +192,6 @@ class ApplicationReviewService:
             .one()
         )
         return full_name, email or ""
-
-    async def _snapshot(self, application_id: UUID) -> ApplicationSnapshot:
-        captured = await self._db.get(ApplicationProfileSnapshot, application_id)
-        if captured is None:  # pragma: no cover — written in the submission transaction
-            raise LookupError(f"no snapshot for application {application_id}")
-        return ApplicationSnapshot(
-            full_name=captured.full_name,
-            phone=captured.phone,
-            headline=captured.headline,
-            summary=captured.summary,
-            location=captured.location,
-            experiences=await self._experiences(application_id),
-            educations=await self._educations(application_id),
-            skills=await self._skills(application_id),
-            languages=await self._languages(application_id),
-            projects=await self._projects(application_id),
-        )
-
-    async def _experiences(self, application_id: UUID) -> list[ProfileExperience]:
-        rows = await self._db.scalars(
-            select(ApplicationExperience)
-            .where(ApplicationExperience.application_id == application_id)
-            .order_by(ApplicationExperience.sort_order)
-        )
-        return [an_experience(row) for row in rows]
-
-    async def _educations(self, application_id: UUID) -> list[ProfileEducation]:
-        rows = await self._db.scalars(
-            select(ApplicationEducation)
-            .where(ApplicationEducation.application_id == application_id)
-            .order_by(ApplicationEducation.sort_order)
-        )
-        return [an_education(row) for row in rows]
-
-    async def _languages(self, application_id: UUID) -> list[ProfileLanguage]:
-        rows = await self._db.scalars(
-            select(ApplicationLanguage)
-            .where(ApplicationLanguage.application_id == application_id)
-            .order_by(ApplicationLanguage.sort_order)
-        )
-        return [a_language(row) for row in rows]
-
-    async def _projects(self, application_id: UUID) -> list[ProfileProject]:
-        rows = await self._db.scalars(
-            select(ApplicationProject)
-            .where(ApplicationProject.application_id == application_id)
-            .order_by(ApplicationProject.sort_order)
-        )
-        return [a_project(row) for row in rows]
-
-    async def _skills(self, application_id: UUID) -> list[ProfileSkill]:
-        rows = await self._db.execute(
-            select(SkillTaxonomy.canonical_name, ApplicationSkill.years_experience)
-            .join(SkillTaxonomy, SkillTaxonomy.id == ApplicationSkill.taxonomy_id)
-            .where(ApplicationSkill.application_id == application_id)
-            .order_by(ApplicationSkill.sort_order)
-        )
-        return [
-            ProfileSkill(name=name, years_experience=None if years is None else float(years))
-            for name, years in rows.tuples()
-        ]
-
-    async def _answers(self, application_id: UUID) -> list[AnsweredQuestion]:
-        rows = await self._db.execute(
-            select(ApplicationAnswer, JobApplicationQuestion)
-            .join(
-                JobApplicationQuestion,
-                JobApplicationQuestion.id == ApplicationAnswer.question_id,
-            )
-            .where(ApplicationAnswer.application_id == application_id)
-            .order_by(JobApplicationQuestion.sort_order)
-        )
-        return [
-            AnsweredQuestion(
-                question_id=question.id,
-                question_text=question.question_text,
-                question_type=question.question_type,
-                answer_boolean=answer.answer_boolean,
-                answer_text=answer.answer_text,
-            )
-            for answer, question in rows.tuples()
-        ]
 
     async def _history(self, application_id: UUID) -> list[StatusHistoryEntry]:
         rows = await self._db.scalars(

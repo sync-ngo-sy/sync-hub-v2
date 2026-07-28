@@ -1,3 +1,4 @@
+from sync_api.applications.assessment import MatchAssessmentService
 from sync_api.applications.payload import (
     AnsweredQuestion,
     Application,
@@ -9,6 +10,8 @@ from sync_api.applications.payload import (
     ApplicationSummary,
     ApplicationSummaryPage,
     AppliedJob,
+    MatchAssessment,
+    MatchAssessmentPage,
     MovedApplication,
     NewApplication,
     ReviewedJob,
@@ -32,6 +35,9 @@ __all__ = [
     "ApplicationSummary",
     "ApplicationSummaryPage",
     "AppliedJob",
+    "MatchAssessment",
+    "MatchAssessmentPage",
+    "MatchAssessmentService",
     "MovedApplication",
     "NewApplication",
     "ReviewedJob",

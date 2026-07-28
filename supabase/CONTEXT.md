@@ -128,3 +128,10 @@ The deterministic verdict — `qualified` / `disqualified` / `review_required` �
 from an Application's Snapshot against its Job's criteria. There is no match score; AI
 match assessments are advisory only and never override it.
 _Avoid_: Scoring, Ranking, Matching.
+
+**AI match assessment**:
+A Recruiter's on-demand second opinion on one Application: a percentage and an explanation
+a model wrote, read from the same Snapshot and Job criteria Screening measured. Advisory,
+and append-only — each run adds one more, stamped with the model and prompt version that
+wrote it, and none of them touches the Screening verdict.
+_Avoid_: Match score, AI screening, Ranking.

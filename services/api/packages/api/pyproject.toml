@@ -17,6 +17,7 @@ dependencies = [
     "limits>=5.8",
     # What pydantic's `EmailStr` validates with.
     "email-validator>=2.2",
+    "sync-assessments",
     "sync-core",
     "sync-ingestion",
     "sync-parsers",
@@ -35,6 +36,7 @@ requires = ["uv_build>=0.11.24,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
+sync-assessments = { workspace = true }
 sync-core = { workspace = true }
 sync-rag = { workspace = true }
 sync-parsers = { workspace = true }

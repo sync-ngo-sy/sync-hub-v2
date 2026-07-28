@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING, Annotated, cast
 from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.applications import ApplicationReviewService, ApplicationService
+from sync_api.applications import (
+    ApplicationReviewService,
+    ApplicationService,
+    MatchAssessmentService,
+)
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
 from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
 from sync_api.cvs import CvService
@@ -14,6 +18,7 @@ from sync_api.notifications import NotificationService
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
+from sync_assessments import MatchAssessor
 from sync_core import Database, Settings, Storage
 from sync_rag import Embedder
 
@@ -197,6 +202,21 @@ def get_application_review_service(
 ApplicationReviewServiceDep = Annotated[
     ApplicationReviewService, Depends(get_application_review_service)
 ]
+
+
+def get_assessor(request: Request) -> MatchAssessor | None:
+    """None where the deployment has no model configured. The service is what refuses to
+    assess without one, so an Application's assessment history stays readable regardless."""
+    return cast("MatchAssessor | None", request.app.state.assessor)
+
+
+def get_match_assessment_service(
+    session: SessionDep, assessor: Annotated[MatchAssessor | None, Depends(get_assessor)]
+) -> MatchAssessmentService:
+    return MatchAssessmentService(session, assessor)
+
+
+MatchAssessmentServiceDep = Annotated[MatchAssessmentService, Depends(get_match_assessment_service)]
 
 
 def get_embedder(request: Request) -> Embedder:

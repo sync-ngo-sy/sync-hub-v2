@@ -42,6 +42,7 @@ def _stack_environment() -> Iterator[None]:
             "SYNC_SUPABASE_ANON_KEY": config["ANON_KEY"],
             "SYNC_AUTH_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_PUBLIC_RATE_LIMIT_MAX_REQUESTS": "100000",
+            "SYNC_ASSESSMENT_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_RECRUITER_PORTAL_URL": RECRUITER_PORTAL_URL,
         }
     )
