@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Final
+from typing import Annotated, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
@@ -9,16 +9,10 @@ from sync_api.crm import PooledCandidate, TalentPoolPage
 from sync_api.dependencies import ActingRecruiterDep, TalentPoolServiceDep
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from sync_api.routes.tenant_candidates import CANDIDATE_OUT_OF_REACH
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/tenants/me/talent-pool"
-
-CANDIDATE_OUT_OF_REACH: Final[dict[int | str, dict[str, Any]]] = {
-    404: openapi_problem(
-        "No Candidate this tenant can reach has that id — they have neither applied to one of "
-        "its Jobs nor opted in to Global search."
-    ),
-}
 
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["talent pool"])
 

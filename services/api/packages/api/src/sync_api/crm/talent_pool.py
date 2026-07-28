@@ -40,8 +40,7 @@ class TalentPoolService:
                     candidate_id=candidate_id,
                     added_by_recruiter_id=recruiter.profile.id,
                 )
-                # Saving a Candidate twice is one pool entry, and it keeps the first `added_at`:
-                # the pool is a set, and when a Tenant first saved someone is worth keeping.
+                # Keeps the first `added_at`: when a Tenant first saved someone is worth having.
                 .on_conflict_do_nothing()
             )
 

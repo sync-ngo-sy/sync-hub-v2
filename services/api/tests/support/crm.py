@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from tests.support.applications import a_candidate_with_a_ready_cv, an_accepted_application
+from tests.support.applications import (
+    TENANT_APPLICATIONS,
+    a_candidate_with_a_ready_cv,
+    an_accepted_application,
+)
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_published_job
 from tests.support.profiles import a_profile, give_a_current_cv, my_id
@@ -16,7 +20,6 @@ if TYPE_CHECKING:
     from tests.support.mailbox import Mailbox
 
 TENANT_TAGS: Final = "/v1/tenants/me/tags"
-TENANT_APPLICATIONS: Final = "/v1/tenants/me/applications"
 TENANT_CANDIDATES: Final = "/v1/tenants/me/candidates"
 TALENT_POOL: Final = "/v1/tenants/me/talent-pool"
 CANDIDATE_PROFILE: Final = "/v1/candidates/me/profile"
@@ -171,6 +174,12 @@ async def a_searchable_candidate(
     opted_in = await browser.put(CANDIDATE_PROFILE, json=a_profile(is_searchable=True))
     assert opted_in.status_code == 200, opted_in.text
     return candidate_id
+
+
+async def stop_being_searchable(browser: AsyncClient) -> None:
+    """The Candidate takes themselves back out of Global search."""
+    opted_out = await browser.put(CANDIDATE_PROFILE, json=a_profile(is_searchable=False))
+    assert opted_out.status_code == 200, opted_out.text
 
 
 async def a_candidate_nobody_has_met(

@@ -75,6 +75,24 @@ async def test_a_note_is_rewritten_in_place_and_keeps_who_wrote_it(
     assert [one["text"] for one in read] == ["Strong on payments and Go."]
 
 
+async def test_rewriting_a_note_moves_the_timestamp_the_database_keeps(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to_this_tenant(recruiter, other_browser, mailbox, db_session)
+    note = await a_note(recruiter, application_notes(application["id"]), "Strong on payments.")
+
+    rewritten = await edit_note(
+        recruiter, application_notes(application["id"]), note["id"], "Strong on payments and Go."
+    )
+
+    assert rewritten.json()["updated_at"] > note["updated_at"]
+    [read] = await notes_of(recruiter, application_notes(application["id"]))
+    assert rewritten.json()["updated_at"] == read["updated_at"]
+
+
 async def test_a_teammate_may_rewrite_and_delete_a_note_they_did_not_write(
     recruiter: AsyncClient,
     other_browser: AsyncClient,

@@ -67,7 +67,12 @@ class TagService:
             # Nothing cascades from `tenant_tags`: unfiling whatever the Tag filed is part of
             # deleting it, and doing it here is what keeps both in the one transaction.
             for assignment in (CandidateTagAssignment, ApplicationTagAssignment):
-                await self._db.execute(delete(assignment).where(assignment.tag_id == tag_id))
+                await self._db.execute(
+                    delete(assignment).where(
+                        assignment.tag_id == tag_id,
+                        assignment.tenant_id == recruiter.tenant.id,
+                    )
+                )
             await self._db.delete(tag)
 
         logger.info("crm.tag_deleted", tag_id=str(tag_id), tenant_id=str(recruiter.tenant.id))

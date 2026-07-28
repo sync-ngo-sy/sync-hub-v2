@@ -127,15 +127,24 @@ class NoteService:
             note.note_text = changes.text
 
         logger.info("crm.note_edited", note_id=str(note_id), tenant_id=str(recruiter.tenant.id))
+        await self._db.refresh(note)  # `updated_at` is the trigger's to write, not ours
         return _as_payload(note, author)
 
     async def remove(self, recruiter: ActingRecruiter, subject_id: UUID, note_id: UUID) -> None:
-        await self._own_note(recruiter, subject_id, note_id)
+        await self._notebook.reachable(self._db, recruiter.tenant.id, subject_id)
         note = self._notebook.note
         async with transaction(self._db):
-            await self._db.execute(
-                delete(note).where(note.id == note_id, note.tenant_id == recruiter.tenant.id)
+            deleted = await self._db.scalars(
+                delete(note)
+                .where(
+                    note.id == note_id,
+                    self._notebook.subject == subject_id,
+                    note.tenant_id == recruiter.tenant.id,
+                )
+                .returning(note.id)
             )
+            if deleted.one_or_none() is None:
+                raise _no_such_note()
 
         logger.info("crm.note_deleted", note_id=str(note_id), tenant_id=str(recruiter.tenant.id))
 
@@ -161,13 +170,17 @@ class NoteService:
             .first(),
         )
         if found is None:
-            raise Problem(
-                status=404,
-                type=NOTE_NOT_FOUND_PROBLEM_TYPE,
-                detail="No note of this tenant has that id.",
-            )
+            raise _no_such_note()
         row, full_name = found
         return row, NoteAuthor(id=row.recruiter_id, full_name=full_name)
+
+
+def _no_such_note() -> Problem:
+    return Problem(
+        status=404,
+        type=NOTE_NOT_FOUND_PROBLEM_TYPE,
+        detail="No note of this tenant has that id.",
+    )
 
 
 def _author(recruiter: ActingRecruiter) -> NoteAuthor:

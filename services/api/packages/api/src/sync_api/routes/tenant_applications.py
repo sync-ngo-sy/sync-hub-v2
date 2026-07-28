@@ -243,7 +243,6 @@ async def list_application_tags(
     summary="Put one of the Tenant's Tags on an Application",
     responses={
         **TENANT_ACCESS_REFUSED,
-        **APPLICATION_NOT_FOUND,
         404: openapi_problem("This tenant has no application or no tag with that id."),
         409: openapi_problem("That Tag is candidate-scoped and cannot go on an Application."),
     },

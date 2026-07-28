@@ -47,9 +47,9 @@ async def test_two_tags_of_one_scope_cannot_share_a_name(recruiter: AsyncClient)
 async def test_one_name_can_mean_one_thing_of_a_candidate_and_another_of_an_application(
     recruiter: AsyncClient,
 ) -> None:
-    await a_tag(recruiter, name="Shortlist", scope="candidate")
+    await a_tag(recruiter, name="Urgent", scope="candidate")
 
-    accepted = await create_tag(recruiter, name="Shortlist", scope="application")
+    accepted = await create_tag(recruiter, name="Urgent", scope="application")
 
     assert accepted.status_code == 201, accepted.text
     assert len(await tags_of(recruiter)) == 2

@@ -85,8 +85,10 @@ says nothing about another's.
 _Avoid_: Shortlist, Bench, Saved list, Favourites.
 
 **Reach**:
-Which Candidates a Tenant may keep a record on: one who has applied to one of its Jobs, or
-one who is Searchable. Any other Candidate reads as absent, so ids cannot be probed.
+Which Candidates a Tenant may keep a record on: one who has applied to one of its Jobs, one
+who is Searchable, or one it has already filed. Any other Candidate reads as absent, so ids
+cannot be probed. The last clause is what keeps a record the Tenant made its own to read and
+undo — a Candidate who opts back out of Global search cannot strand it.
 _Avoid_: Visibility, Access.
 
 ### Access

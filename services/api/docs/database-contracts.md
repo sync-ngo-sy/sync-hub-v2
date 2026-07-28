@@ -400,10 +400,14 @@ one of them carries `tenant_id`, and every read filters on it **in the query** �
 tenant's note, tag or pool entry must be the same 404 as one that never existed.
 
 - **Reach** is what a recruiter is allowed to keep a record *on*. An Application: the tenant's
-  own (`own_application`). A Candidate: one who has applied to this tenant, or one who is
-  `is_searchable` and not soft-deleted — the two places a recruiter meets a Candidate, since
-  the pool's whole point is saving a Global search hit. Anyone else is a 404, so candidate ids
-  cannot be walked.
+  own (`own_application`) — a property an Application never loses. A Candidate: one who has
+  applied to this tenant, or one who is `is_searchable` and not soft-deleted — the two places a
+  recruiter meets a Candidate, since the pool's whole point is saving a Global search hit —
+  **or one this tenant has already filed** (a note, a tag assignment, or a pool entry of its
+  own). That last clause is not convenience: without it a Candidate who opts back out of
+  Global search, or soft-deletes, would strand the notes, tags and pool entry a tenant wrote
+  while it could still see them — listed but permanently unreadable and un-removable. Anyone
+  else is a 404, so candidate ids cannot be walked.
 - **Tag scope is the database's guard, not the backend's.** An assignment row leaves `scope`
   to its column default (`'application'` / `'candidate'`), so the composite FK
   `(tag_id, scope) → tenant_tags (id, scope)` is what proves the Tag belongs on that kind of
@@ -418,10 +422,11 @@ tenant's note, tag or pool entry must be the same 404 as one that never existed.
   endpoints are `PUT`/`DELETE` rather than `POST`. Taking off what was never on is a 204.
 - **Deleting a Tag deletes its assignments first**, in the same transaction: nothing cascades
   from `tenant_tags`, and unfiling what the Tag filed is part of deleting it.
-- A note's `recruiter_id` is the author and is written once; `updated_at` moves under the
-  `set_updated_at` trigger. Any recruiter of the tenant may rewrite or delete any of its
-  notes — they are the Tenant's record, not the individual's — and the recorded author does
-  not change when they do.
+- A note's `recruiter_id` is the author and is written once; `updated_at` is the
+  `set_updated_at` trigger's to write, so an edit has to `refresh` the row before answering
+  with it or the response echoes the timestamp from before the edit. Any recruiter of the
+  tenant may rewrite or delete any of its notes — they are the Tenant's record, not the
+  individual's — and the recorded author does not change when they do.
 - Note lists are keyset-paginated on `(created_at desc, id desc)`, the talent pool on
   `(added_at desc, candidate_id desc)`. The pool reads names and headlines live from
   `profiles`/`candidates`; there is no snapshot here, unlike an Application.

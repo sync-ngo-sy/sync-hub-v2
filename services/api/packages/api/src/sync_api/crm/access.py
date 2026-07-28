@@ -10,12 +10,20 @@ from sync_api.problems import (
     TAG_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
-from sync_core.models import Application, Candidate, TenantTag
+from sync_core.models import (
+    Application,
+    Candidate,
+    CandidateNote,
+    CandidateTagAssignment,
+    TalentPoolMember,
+    TenantTag,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from uuid import UUID
 
+    from sqlalchemy import ColumnElement
     from sqlalchemy.ext.asyncio import AsyncSession
 
 #: Answers "may this tenant keep a record on that?" — and raises the 404 where it may not.
@@ -43,23 +51,52 @@ async def reachable_application(
 
 
 async def reachable_candidate(session: AsyncSession, tenant_id: UUID, candidate_id: UUID) -> None:
-    """A Candidate this Tenant has actually met: one who applied to it, or one who opted in to
-    Global search. Anybody else reads as absent, so candidate ids cannot be probed."""
+    """A Candidate this Tenant has met: one who applied to it, one Global search shows the
+    world, or one it has already filed. Anybody else reads as absent, so candidate ids cannot
+    be probed.
+
+    That last clause is what keeps a record the Tenant made its own to read and undo: a
+    Candidate who opts back out of Global search, or deletes their account, would otherwise
+    strand the notes, tags and pool entry the Tenant wrote while it could still see them.
+    """
     applied = (
         select(Application.id)
         .where(Application.tenant_id == tenant_id, Application.candidate_id == candidate_id)
         .exists()
     )
-    reachable = await session.scalar(
-        select(Candidate.id).where(
+    in_sight = (
+        select(Candidate.id)
+        .where(
             Candidate.id == candidate_id,
             Candidate.deleted_at.is_(None),
             or_(Candidate.is_searchable, applied),
         )
+        .exists()
     )
-    if reachable is None:
+    if not await session.scalar(select(or_(in_sight, _already_filed(tenant_id, candidate_id)))):
         raise Problem(
             status=404,
             type=CANDIDATE_NOT_FOUND_PROBLEM_TYPE,
             detail="No candidate this tenant can reach has that id.",
         )
+
+
+def _already_filed(tenant_id: UUID, candidate_id: UUID) -> ColumnElement[bool]:
+    """Whether this Tenant has written anything of its own about this Candidate."""
+    return or_(
+        select(CandidateNote.id)
+        .where(CandidateNote.tenant_id == tenant_id, CandidateNote.candidate_id == candidate_id)
+        .exists(),
+        select(CandidateTagAssignment.tag_id)
+        .where(
+            CandidateTagAssignment.tenant_id == tenant_id,
+            CandidateTagAssignment.candidate_id == candidate_id,
+        )
+        .exists(),
+        select(TalentPoolMember.candidate_id)
+        .where(
+            TalentPoolMember.tenant_id == tenant_id,
+            TalentPoolMember.candidate_id == candidate_id,
+        )
+        .exists(),
+    )

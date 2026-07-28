@@ -11,6 +11,7 @@ from tests.support.crm import (
     drop_from_pool,
     pool_of,
     save_to_pool,
+    stop_being_searchable,
 )
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import my_id
@@ -72,6 +73,23 @@ async def test_saving_the_same_candidate_twice_leaves_one_pool_entry(
     assert again.status_code == 200, again.text
     assert again.json()["added_at"] == first.json()["added_at"]
     assert len(await pool_of(recruiter)) == 1
+
+
+async def test_a_candidate_who_stops_being_searchable_can_still_be_dropped(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The pool entry is the Tenant's own record — losing sight of someone must not strand it."""
+    candidate_id = await a_searchable_candidate(other_browser, mailbox, db_session)
+    await save_to_pool(recruiter, candidate_id)
+    await stop_being_searchable(other_browser)
+
+    dropped = await drop_from_pool(recruiter, candidate_id)
+
+    assert dropped.status_code == 204, dropped.text
+    assert await pool_of(recruiter) == []
 
 
 async def test_a_candidate_dropped_from_the_pool_leaves_it(
