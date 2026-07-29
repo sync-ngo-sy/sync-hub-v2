@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 DEFAULT_PASSWORD: Final = "correct-horse-battery"
 
+DELETION: Final = "/v1/candidates/me/deletion"
+
 
 @dataclass(frozen=True, slots=True)
 class Signup:
@@ -48,6 +50,15 @@ async def sign_in(browser: AsyncClient, signup: Signup, *, password: str | None 
 async def confirm_email(browser: AsyncClient, mailbox: Mailbox, signup: Signup) -> Response:
     token_hash = await mailbox.confirmation_token(signup.email)
     return await browser.post("/v1/auth/confirm-email", json={"token_hash": token_hash})
+
+
+async def delete_my_account(browser: AsyncClient, password: str = DEFAULT_PASSWORD) -> Response:
+    return await browser.post(DELETION, json={"password": password})
+
+
+async def a_deleted_account(browser: AsyncClient, password: str = DEFAULT_PASSWORD) -> None:
+    response = await delete_my_account(browser, password)
+    assert response.status_code == 204, response.text
 
 
 async def a_confirmed_candidate(
