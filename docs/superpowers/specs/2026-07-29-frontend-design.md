@@ -19,7 +19,7 @@ explicit fast-follow bucket (§13) and never blocks v1.
 ### Candidate portal (mobile-first, flawless from 360px up)
 
 | Page | Backed by |
-|---|---|
+| -------------------------------- | ------------------------------------- |
 | Landing (public, the one animated surface) | — |
 | Browse jobs, job detail | `browseJobs`, `getPublicJob` |
 | Tracked-link landing `/l/:token` (silent; no tracking UI) | `getJobByTrackedLink` |
@@ -34,7 +34,7 @@ explicit fast-follow bucket (§13) and never blocks v1.
 ### Recruiter portal (desktop-first ≥1024px; everything still usable on a phone — responsiveness is a per-ticket acceptance criterion, not a later pass)
 
 | Page | Backed by |
-|---|---|
+| -------------------------------- | ------------------------------------- |
 | Landing (public: what the platform is, WhatsApp + mailto contact, workspace sign-up) | `signUpTenant` |
 | Log in, accept invite, password reset | auth ops |
 | Dashboard (authed home) | real data only, see §10 |
@@ -52,7 +52,7 @@ full-page notice naming the right portal — never a bare 403.
 ## 3. Stack
 
 | Concern | Choice |
-|---|---|
+| -------------------------------- | ------------------------------------- |
 | Routing | TanStack Router (file-based, type-safe routes and search params) |
 | Server state | TanStack Query via `openapi-react-query` over the generated `openapi-fetch` client |
 | Client generation | `openapi-typescript` from `services/api`'s `openapi.json` (existing `gen` script) |
@@ -72,7 +72,7 @@ validation, `import.meta.env` validation. Never for API responses (ADR-0008).
 
 ## 4. Code layout
 
-```
+```text
 packages/ui/                      ← design system (data-free, ADR-0009)
   src/styles/globals.css          ← the one token file (§8)
   src/components/ui/              ← shadcn CLI output, NEVER hand-edited,
@@ -293,6 +293,7 @@ usable".
 ## 14. Phasing (for `/to-tickets`)
 
 **Phase 0 — foundations (blocking):**
+
 1. Tokens: this document's §8 values land in `packages/ui/src/styles/globals.css`
    (light + `.dark`), fonts, fluid heading scale.
 2. shadcn setup: `components.json`, primitives batch into `components/ui/`, Biome
