@@ -225,11 +225,11 @@ action buttons and confirmations. Charts use the teal ramp + gray; `--warning`/
 **Brand:** logo mark at `apps/logo.png` (favicon + OG base); headers pair the mark
 with "Sync" in Geist. Titles: `<Page> · Sync` (candidate) / `<Page> · Sync Recruiter`.
 
-**Reference mockups** (gitignored, `.superpowers/brainstorm/design-directions/`,
-serve with `python3 -m http.server`): `ledger/dashboard{,-dark}.html` — the approved
-dashboard; `landing-concepts/editorial{,-dark}.html` — the approved candidate
-landing; `chips/index.html` — the chip-scheme study. These four pages are the visual
-contract; other pages follow their register.
+**Reference mockups** live in `docs/design/mockups/` (see its README for how to serve
+them): the approved Recruiter Dashboard and Candidate Landing, each in light and dark.
+Those four pages are the visual contract — they fix layout, spacing, and component
+register, and every other page follows them. This document remains the source of truth
+for token *values* until `@sync/ui` carries them.
 
 ## 9. Landings & motion
 
