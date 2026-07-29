@@ -326,6 +326,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/candidates/me/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete the caller's account
+         * @description Scrub the profile, purge the discovery artifacts and ban the login. Applications stay.
+         *
+         *     Irreversible, and confirmed with the caller's password. The Applications a Tenant already
+         *     received — their Snapshots and the CV files behind them — go on being readable to that Tenant.
+         */
+        post: operations["deleteMyAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/candidates/me/cvs": {
         parameters: {
             query?: never;
@@ -1757,6 +1780,14 @@ export interface components {
          * @enum {string}
          */
         CvParsingStatus: "uploaded" | "processing" | "ready" | "failed";
+        /** DeleteAccountRequest */
+        DeleteAccountRequest: {
+            /**
+             * Password
+             * @description The caller's current password, confirming the deletion.
+             */
+            password: string;
+        };
         /**
          * DraftSkill
          * @description One Canonical skill on a draft, where the years may not be known yet.
@@ -4258,6 +4289,64 @@ export interface operations {
                 };
             };
             /** @description A skill is not a Canonical skill, or a language code is not one the platform knows. Both name the offending entries. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    deleteMyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description There is no valid session, or the password is wrong. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
             422: {
                 headers: {
                     [name: string]: unknown;

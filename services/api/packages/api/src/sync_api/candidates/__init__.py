@@ -1,4 +1,5 @@
 from sync_api.candidates.access import ActingCandidate, acting_candidate
+from sync_api.candidates.deletion import DELETED_NAME, CandidateDeletion
 from sync_api.candidates.draft import draft_of
 from sync_api.candidates.payload import (
     CandidateProfile,
@@ -27,7 +28,9 @@ from sync_api.candidates.sections import (
 )
 
 __all__ = [
+    "DELETED_NAME",
     "ActingCandidate",
+    "CandidateDeletion",
     "CandidateProfile",
     "CandidateProfileService",
     "DraftSkill",

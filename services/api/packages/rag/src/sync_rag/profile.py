@@ -54,11 +54,13 @@ class CurrentProfile:
 
 
 async def current_profile(session: AsyncSession, candidate_id: UUID) -> CurrentProfile | None:
+    """A deleted Candidate reads as absent, so a re-embed enqueued by their own scrub — every
+    write in it fires `reembed_on_change` — rebuilds nothing instead of re-indexing the remains."""
     identity = (
         await session.execute(
             select(Candidate, Profile.full_name)
             .join(Profile, Profile.id == Candidate.id)
-            .where(Candidate.id == candidate_id)
+            .where(Candidate.id == candidate_id, Candidate.deleted_at.is_(None))
         )
     ).first()
     if identity is None:

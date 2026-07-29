@@ -11,7 +11,12 @@ from sync_api.applications import (
     MatchAssessmentService,
 )
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
-from sync_api.candidates import ActingCandidate, CandidateProfileService, acting_candidate
+from sync_api.candidates import (
+    ActingCandidate,
+    CandidateDeletion,
+    CandidateProfileService,
+    acting_candidate,
+)
 from sync_api.crm import (
     ABOUT_APPLICATIONS,
     ABOUT_CANDIDATES,
@@ -103,6 +108,16 @@ def get_candidate_profile_service(session: SessionDep) -> CandidateProfileServic
 CandidateProfileServiceDep = Annotated[
     CandidateProfileService, Depends(get_candidate_profile_service)
 ]
+
+
+def get_candidate_deletion(
+    session: SessionDep,
+    authentication: Annotated[Authentication, Depends(get_authentication)],
+) -> CandidateDeletion:
+    return CandidateDeletion(session, authentication.gotrue)
+
+
+CandidateDeletionDep = Annotated[CandidateDeletion, Depends(get_candidate_deletion)]
 
 
 def get_notification_service(session: SessionDep) -> NotificationService:

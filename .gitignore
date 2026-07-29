@@ -22,6 +22,7 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.compose.example
 
 # Editor / OS
 .vscode/*

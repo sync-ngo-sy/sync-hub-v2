@@ -94,3 +94,40 @@ jobs:
         if: always()
         working-directory: .
         run: supabase stop --no-backup
+
+  images:
+    # Named after the matrix value, not both targets: GitHub appends it in parentheses, so
+    # "Images (api, worker)" rendered as "Images (api, worker) (api)".
+    name: Image (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [api, worker]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Built, not pushed: this job proves the Dockerfile and the lockfile still agree. The
+      # GitHub Actions cache keeps the dependency layer between runs.
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: services/api
+          file: services/api/Dockerfile
+          target: ${{ matrix.target }}
+          push: false
+          load: true
+          tags: sync-${{ matrix.target }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,scope=${{ matrix.target }},mode=max
+
+      # Not the entry points themselves: `sync_api.main` and `sync-worker` both build Settings at
+      # import, and this job has no environment to give them.
+      - name: Smoke (the package imports)
+        run: |
+          docker run --rm --entrypoint python "sync-${{ matrix.target }}:${{ github.sha }}" \
+            -c 'import ${{ matrix.target == 'api' && 'sync_api.app' || 'sync_worker.main' }}'

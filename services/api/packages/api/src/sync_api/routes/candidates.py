@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Final
+from typing import Annotated, Any, Final
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
+from pydantic import BaseModel, Field
 
 from sync_api.candidates import CandidateProfile
-from sync_api.dependencies import ActingCandidateDep, CandidateProfileServiceDep
+from sync_api.dependencies import (
+    ActingCandidateDep,
+    CandidateDeletionDep,
+    CandidateProfileServiceDep,
+    SessionCookiesDep,
+)
 from sync_api.errors import openapi_problem
 from sync_api.problems import ValidationProblemDetail
 
@@ -17,6 +23,17 @@ CANDIDATE_ACCESS_REFUSED: Final[dict[int | str, dict[str, Any]]] = {
 }
 
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["candidates"])
+
+
+class DeleteAccountRequest(BaseModel):
+    password: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=72,
+            description="The caller's current password, confirming the deletion.",
+        ),
+    ]
 
 
 @router.get(
@@ -53,3 +70,31 @@ async def replace_my_profile(
 ) -> CandidateProfile:
     """Replace the profile whole — an omitted section is an emptied one — and answer with it."""
     return await profiles.replace(candidate.id, body)
+
+
+@router.post(
+    "/me/deletion",
+    operation_id="deleteMyAccount",
+    summary="Delete the caller's account",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses={
+        **CANDIDATE_ACCESS_REFUSED,
+        401: openapi_problem("There is no valid session, or the password is wrong."),
+    },
+)
+async def delete_my_account(
+    body: DeleteAccountRequest,
+    candidate: ActingCandidateDep,
+    deletion: CandidateDeletionDep,
+    cookies: SessionCookiesDep,
+) -> Response:
+    """Scrub the profile, purge the discovery artifacts and ban the login. Applications stay.
+
+    Irreversible, and confirmed with the caller's password. The Applications a Tenant already
+    received — their Snapshots and the CV files behind them — go on being readable to that Tenant.
+    """
+    await deletion.delete(candidate.id, email=candidate.profile.email, password=body.password)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookies.clear(response)
+    return response
