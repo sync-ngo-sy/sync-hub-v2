@@ -52,7 +52,7 @@ class CandidateDeletion:
     async def delete(self, candidate_id: UUID, *, email: str, password: str) -> None:
         await self._confirm(email=email, password=password)
         await self._scrub(candidate_id)
-        await self._close_the_door(candidate_id)
+        await self._ban_the_login(candidate_id)
         logger.info("candidates.account_deleted", candidate_id=str(candidate_id))
 
     async def _confirm(self, *, email: str, password: str) -> None:
@@ -125,7 +125,7 @@ class CandidateDeletion:
                 )
             )
 
-    async def _close_the_door(self, candidate_id: UUID) -> None:
+    async def _ban_the_login(self, candidate_id: UUID) -> None:
         """After the scrub: a ban that failed would otherwise leave a login onto a blank account.
 
         The rows are already gone by the time this runs, so an unreachable GoTrue is logged rather

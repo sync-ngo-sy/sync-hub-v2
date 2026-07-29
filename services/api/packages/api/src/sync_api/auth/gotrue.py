@@ -154,7 +154,6 @@ class GoTrue:
                 "refresh_token_not_found": InvalidRefreshTokenError,
                 "refresh_token_already_used": InvalidRefreshTokenError,
                 "validation_failed": InvalidRefreshTokenError,
-                # A deleted account: the session is over, which is a 401 and not a 502.
                 "user_banned": InvalidRefreshTokenError,
             }
         ):
@@ -187,7 +186,12 @@ class GoTrue:
             )
 
     async def verify_password(self, *, email: str, password: str) -> None:
-        """Confirm the caller is who the session says before something irreversible."""
+        """Confirm the caller is who the session says, before something irreversible.
+
+        GoTrue offers no way to check a password without signing in, so this mints a session that
+        is never used. Harmless where it is called — the account is banned moments later — but not
+        a general-purpose check.
+        """
         await self.sign_in_with_password(email=email, password=password)
 
     async def revoke_sessions(self, access_token: str) -> None:

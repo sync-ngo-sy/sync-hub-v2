@@ -11,12 +11,10 @@
 
 name: sync
 
+# No `build:` here — a YAML merge is shallow, and each service replaces the key whole.
 x-backend: &backend
-  build:
-    context: ./services/api
-    dockerfile: Dockerfile
   # Read as-is, so a key absent from `.env` stays absent in the container rather than arriving as
-  # an empty string — which is a value, and not the same thing as "no key".
+  # an empty string. See docs/runbook-local-dev.md.
   env_file:
     - path: .env
       required: true

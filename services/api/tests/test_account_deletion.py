@@ -7,6 +7,7 @@ from asgi_lifespan import LifespanManager
 from sqlalchemy import func, select
 
 from sync_api.app import create_app
+from sync_api.candidates import DELETED_NAME
 from sync_core.models import Candidate, Cv, Notification, Profile, User
 from tests.support.applications import (
     a_candidate_with_a_stored_cv,
@@ -58,9 +59,6 @@ INVALID_CREDENTIALS: Final = "urn:sync:problem:invalid-credentials"
 
 CANDIDATE_ONLY: Final = "urn:sync:problem:candidate-only"
 
-#: What the scrub leaves in `profiles.full_name`, which is `NOT NULL`.
-DELETED_NAME: Final = "Deleted account"
-
 A_BACKEND_ENGINEER: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
     "summary": "Builds payment systems in Python and PostgreSQL.",
@@ -84,8 +82,8 @@ async def stored_candidate(session: AsyncSession, candidate_id: UUID) -> Candida
 
 
 async def stored_account(session: AsyncSession, candidate_id: UUID) -> tuple[Profile, Candidate]:
-    """Both rows one profile is spread across, under a single expiry: a second `expire_all`
-    would expire the first row again, and reading it back would lazy-load off the event loop."""
+    """Both rows under a single expiry. Reading them one helper at a time would expire the first
+    row again and lazy-load it back off the event loop."""
     profile = await stored_profile(session, candidate_id)
     candidate = await session.get(Candidate, candidate_id)
     assert candidate is not None, f"no candidates row for {candidate_id}"

@@ -56,8 +56,13 @@ async def reachable_candidate(session: AsyncSession, tenant_id: UUID, candidate_
     be probed.
 
     That last clause is what keeps a record the Tenant made its own to read and undo: a
-    Candidate who opts back out of Global search, or deletes their account, would otherwise
-    strand the notes, tags and pool entry the Tenant wrote while it could still see them.
+    Candidate who opts back out of Global search would otherwise strand the notes, tags and
+    pool entry the Tenant wrote while it could still see them.
+
+    Deletion is the one case it does not cover whole. A Talent pool is a discovery artifact, so
+    `CandidateDeletion` purges the entry outright — a Tenant whose only anchor was the pool loses
+    reach with it. The notes and tags it wrote survive and go on anchoring, because those are
+    what it actually authored.
     """
     applied = (
         select(Application.id)

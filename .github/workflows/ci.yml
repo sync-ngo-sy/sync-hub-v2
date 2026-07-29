@@ -123,7 +123,9 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.target }}
           cache-to: type=gha,scope=${{ matrix.target }},mode=max
 
-      - name: Smoke (the entry point imports)
+      # Not the entry points themselves: `sync_api.main` and `sync-worker` both build Settings at
+      # import, and this job has no environment to give them.
+      - name: Smoke (the package imports)
         run: |
           docker run --rm --entrypoint python "sync-${{ matrix.target }}:${{ github.sha }}" \
             -c 'import ${{ matrix.target == 'api' && 'sync_api.app' || 'sync_worker.main' }}'
