@@ -40,6 +40,9 @@ def _stack_environment() -> Iterator[None]:
             "SYNC_SUPABASE_URL": config["API_URL"],
             "SYNC_SUPABASE_SERVICE_ROLE_KEY": config["SERVICE_ROLE_KEY"],
             "SYNC_SUPABASE_ANON_KEY": config["ANON_KEY"],
+            # Pinned, not inherited: `.env.example` turns this off for local development, so a
+            # developer who copied it would otherwise run the cookie tests against `Secure=false`.
+            "SYNC_AUTH_COOKIE_SECURE": "true",
             "SYNC_AUTH_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_PUBLIC_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_ASSESSMENT_RATE_LIMIT_MAX_REQUESTS": "100000",

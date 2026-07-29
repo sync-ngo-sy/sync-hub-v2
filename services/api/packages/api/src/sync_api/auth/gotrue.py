@@ -26,6 +26,9 @@ class EmailTokenType(StrEnum):
 
 GLOBAL_SCOPE: Final = "global"
 
+#: A century, which is GoTrue's way of saying "until somebody lifts it".
+BAN_FOREVER: Final = "876000h"
+
 
 @dataclass(frozen=True, slots=True)
 class GoTrueUser:
@@ -135,6 +138,9 @@ class GoTrue:
             {
                 "invalid_credentials": InvalidCredentialsError,
                 "email_not_confirmed": EmailNotConfirmedError,
+                # A deleted account. Indistinguishable from a wrong password on purpose: which
+                # addresses once had an account is not something a login form should answer.
+                "user_banned": InvalidCredentialsError,
             }
         ):
             answered = await self._as_caller().sign_in_with_password(
@@ -148,6 +154,8 @@ class GoTrue:
                 "refresh_token_not_found": InvalidRefreshTokenError,
                 "refresh_token_already_used": InvalidRefreshTokenError,
                 "validation_failed": InvalidRefreshTokenError,
+                # A deleted account: the session is over, which is a 401 and not a 502.
+                "user_banned": InvalidRefreshTokenError,
             }
         ):
             answered = await self._as_caller().refresh_session(refresh_token)
@@ -169,6 +177,18 @@ class GoTrue:
             {"weak_password": WeakPasswordError, "same_password": PasswordUnchangedError}
         ):
             await self._as_admin().admin.update_user_by_id(str(user_id), {"password": password})
+
+    async def ban_user(self, user_id: UUID) -> None:
+        """Indefinitely, so the credential stops opening anything without the row going away:
+        `auth.users` is what every Profile hangs off, and an Application still names one."""
+        with refusals({}):
+            await self._as_admin().admin.update_user_by_id(
+                str(user_id), {"ban_duration": BAN_FOREVER}
+            )
+
+    async def verify_password(self, *, email: str, password: str) -> None:
+        """Confirm the caller is who the session says before something irreversible."""
+        await self.sign_in_with_password(email=email, password=password)
 
     async def revoke_sessions(self, access_token: str) -> None:
         with refusals(

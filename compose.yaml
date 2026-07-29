@@ -1,0 +1,67 @@
+# The API and the worker, run as containers against the Supabase CLI stack.
+#
+# The stack is started separately (`supabase start`) and owns Postgres, GoTrue, Storage and
+# Mailpit. These two services join its network and talk to it by container name, so nothing
+# depends on the host's loopback.
+#
+#   cp .env.compose.example .env   # then fill in the two keys from `supabase status -o env`
+#   docker compose up --build
+#
+# See docs/runbook-local-dev.md.
+
+name: sync
+
+x-backend: &backend
+  build:
+    context: ./services/api
+    dockerfile: Dockerfile
+  # Read as-is, so a key absent from `.env` stays absent in the container rather than arriving as
+  # an empty string — which is a value, and not the same thing as "no key".
+  env_file:
+    - path: .env
+      required: true
+  # Wins over `.env`: inside the network the stack answers on its own names and default ports.
+  environment: &backend-env
+    SYNC_ENVIRONMENT: local
+    SYNC_DATABASE_URL: postgresql+asyncpg://postgres:postgres@supabase_db_sync1:5432/postgres
+    SYNC_SUPABASE_URL: http://supabase_kong_sync1:8000
+    SYNC_LOG_FORMAT: console
+  networks: [supabase]
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *backend
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      <<: *backend-env
+      # Session cookies are `Secure` by default, which a browser will not send over plain HTTP.
+      SYNC_AUTH_COOKIE_SECURE: "false"
+    ports:
+      - "${SYNC_API_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health/ready')"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  worker:
+    <<: *backend
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+      target: worker
+
+networks:
+  # Created by `supabase start`; `external` so compose joins it instead of making its own.
+  supabase:
+    name: supabase_network_sync1
+    external: true
