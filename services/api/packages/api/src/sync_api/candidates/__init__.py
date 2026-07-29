@@ -1,6 +1,9 @@
 from sync_api.candidates.access import ActingCandidate, acting_candidate
+from sync_api.candidates.draft import draft_of
 from sync_api.candidates.payload import (
     CandidateProfile,
+    DraftSkill,
+    ProfileDraft,
     ProfileEducation,
     ProfileExperience,
     ProfileLanguage,
@@ -10,15 +13,26 @@ from sync_api.candidates.payload import (
 from sync_api.candidates.profile import (
     CandidateProfileService,
     languages_named,
-    replace_live_profile,
+    refuse_incomplete_profile,
     skills_named,
+    stated_skills,
+    whole_candidate,
 )
-from sync_api.candidates.sections import a_language, a_project, an_education, an_experience
+from sync_api.candidates.sections import (
+    LiveSection,
+    a_language,
+    a_project,
+    an_education,
+    an_experience,
+)
 
 __all__ = [
     "ActingCandidate",
     "CandidateProfile",
     "CandidateProfileService",
+    "DraftSkill",
+    "LiveSection",
+    "ProfileDraft",
     "ProfileEducation",
     "ProfileExperience",
     "ProfileLanguage",
@@ -29,7 +43,10 @@ __all__ = [
     "acting_candidate",
     "an_education",
     "an_experience",
+    "draft_of",
     "languages_named",
-    "replace_live_profile",
+    "refuse_incomplete_profile",
     "skills_named",
+    "stated_skills",
+    "whole_candidate",
 ]

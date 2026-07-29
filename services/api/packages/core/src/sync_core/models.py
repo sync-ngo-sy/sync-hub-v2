@@ -27,7 +27,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -311,6 +311,9 @@ class Candidate(Base):
         ),
         nullable=False,
         server_default=text("'candidate'::account_type"),
+    )
+    unmapped_skills: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]")
     )
     is_searchable: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
@@ -844,9 +847,7 @@ class TenantTag(Base):
 class CandidateSkill(Base):
     __tablename__ = "candidate_skills"
     __table_args__ = (
-        CheckConstraint(
-            "years_experience IS NULL OR years_experience >= 0::numeric", name="cskill_years_nonneg"
-        ),
+        CheckConstraint("years_experience >= 0::numeric", name="cskill_years_nonneg"),
         ForeignKeyConstraint(
             ["candidate_id"],
             ["public.candidates.id"],
@@ -864,6 +865,7 @@ class CandidateSkill(Base):
 
     candidate_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     taxonomy_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    years_experience: Mapped[decimal.Decimal] = mapped_column(Numeric(4, 1), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
@@ -871,7 +873,6 @@ class CandidateSkill(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
-    years_experience: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
 
     candidate: Mapped["Candidate"] = relationship("Candidate", viewonly=True)
     taxonomy: Mapped["SkillTaxonomy"] = relationship("SkillTaxonomy", viewonly=True)
@@ -1602,6 +1603,9 @@ class ApplicationProfileSnapshot(Base):
 
     application_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     full_name: Mapped[str] = mapped_column(Text, nullable=False)
+    unmapped_skills: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]")
+    )
     captured_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
@@ -1693,9 +1697,7 @@ class ApplicationQualificationHistory(Base):
 class ApplicationSkill(Base):
     __tablename__ = "application_skills"
     __table_args__ = (
-        CheckConstraint(
-            "years_experience IS NULL OR years_experience >= 0::numeric", name="askill_years_nonneg"
-        ),
+        CheckConstraint("years_experience >= 0::numeric", name="askill_years_nonneg"),
         ForeignKeyConstraint(
             ["application_id"],
             ["public.applications.id"],
@@ -1715,8 +1717,8 @@ class ApplicationSkill(Base):
 
     application_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     taxonomy_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    years_experience: Mapped[decimal.Decimal] = mapped_column(Numeric(4, 1), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    years_experience: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
     taxonomy: Mapped["SkillTaxonomy"] = relationship("SkillTaxonomy", viewonly=True)

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from tests.support.applications import (
     TENANT_APPLICATIONS,
-    a_candidate_with_a_ready_cv,
+    a_candidate_who_can_apply,
     an_accepted_application,
 )
 from tests.support.candidates import a_signed_in_candidate
@@ -37,8 +37,8 @@ async def an_application_to_this_tenant(
 ) -> dict[str, Any]:
     """One Candidate's Application to one of the Tenant's Jobs — what a note is written on."""
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(applicant, mailbox, session)
-    return await an_accepted_application(applicant, job["id"], cv_id)
+    await a_candidate_who_can_apply(applicant, mailbox, session)
+    return await an_accepted_application(applicant, job["id"])
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,11 +59,11 @@ async def one_candidate_who_applied_to_both(
 ) -> OneCandidateTwoTenants:
     ours = await a_published_job(recruiter)
     theirs = await a_published_job(rival)
-    cv_id = await a_candidate_with_a_ready_cv(applicant, mailbox, session)
+    await a_candidate_who_can_apply(applicant, mailbox, session)
     return OneCandidateTwoTenants(
         candidate_id=await my_id(applicant),
-        here=await an_accepted_application(applicant, ours["id"], cv_id),
-        there=await an_accepted_application(applicant, theirs["id"], cv_id),
+        here=await an_accepted_application(applicant, ours["id"]),
+        there=await an_accepted_application(applicant, theirs["id"]),
     )
 
 

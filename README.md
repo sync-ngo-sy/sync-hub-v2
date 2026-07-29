@@ -76,25 +76,25 @@ The suite reads the stack's URL and keys from `supabase status`, so it works reg
 ## The queue worker
 
 The backend is two deployable units: the FastAPI app, and one worker process that drains the
-platform's Postgres table queues (ADR-0003). Right now it has one consumer — CV parsing —
-and later tickets add re-embedding and outbound communications to the same process.
+platform's Postgres table queues
 
 ```bash
 uv run --directory services/api sync-worker
 ```
 
 Uploading a CV is the API's job and needs nothing extra; *parsing* it is the worker's, and
-that needs an OpenAI key:
+that needs an OpenAI key — as sending queued emails needs a Resend one:
 
 ```bash
 # services/api/.env
 SYNC_OPENAI_API_KEY=sk-...
+SYNC_RESEND_API_KEY=re_...
 ```
 
-Without it the worker refuses to start, deliberately — a worker that started happily and
+Without them the worker refuses to start, deliberately — a worker that started happily and
 then failed every CV it claimed would be a much quieter kind of broken. The API does not
-read the key, and the test suite parses with a fake extractor, so leaving it unset is fine
-until you actually want a CV read.
+read either key, and the test suite uses fakes, so leaving them unset is fine until you
+actually want a CV read or an email sent.
 
 ### Tests that call a real model
 
@@ -185,7 +185,7 @@ Paste two keys from `supabase status` into `services/api/.env`:
 | Publishable | `SYNC_SUPABASE_ANON_KEY` |
 | Secret | `SYNC_SUPABASE_SERVICE_ROLE_KEY` |
 
-Leave every other line as it is. Add `SYNC_OPENAI_API_KEY` only to parse a real CV or run the `ai_live` tests.
+Leave every other line as it is. Add `SYNC_OPENAI_API_KEY` and `SYNC_RESEND_API_KEY` only when you run the worker (see [The queue worker](#the-queue-worker)).
 
 ### 4. Set up Claude Code
 

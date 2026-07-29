@@ -6,7 +6,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sync_api.candidates import (
-    CandidateProfile,
     ProfileEducation,
     ProfileExperience,
     ProfileLanguage,
@@ -44,23 +43,17 @@ class SubmittedAnswer(BaseModel):
 
 
 class NewApplication(BaseModel):
-    """One submission: the Job, the CV behind it, the reviewed data, and the answers."""
+    """One submission: the Job, and the answers to the questions it asks.
+
+    Nothing else. The Snapshot is copied server-side from the caller's live profile and the CV
+    they currently hold, so there is no way to apply with data the profile does not have.
+    """
 
     job_id: UUID
-    cv_id: UUID = Field(description="A CV of the caller's that has finished parsing.")
-    profile: CandidateProfile = Field(
-        description="The data the candidate reviewed. Captured as the Snapshot this Application "
-        "is judged and read by, and never changed afterwards."
-    )
     answers: list[SubmittedAnswer] = Field(
         default_factory=list,
         max_length=MAX_ENTRIES,
         description="One answer per question. Every required question needs one.",
-    )
-    update_profile: bool = Field(
-        default=False,
-        description="Also replace the live profile with the reviewed data, in the same "
-        "transaction — one review improving both.",
     )
 
     @model_validator(mode="after")
@@ -131,13 +124,18 @@ class ApplicationSummaryPage(BaseModel):
 
 
 class ApplicationSnapshot(BaseModel):
-    """The reviewed data as it was frozen when the Application was sent, and never since."""
+    """The candidate's profile as it was frozen when the Application was sent, and never since."""
 
     full_name: str
     phone: OptionalLine = None
     headline: OptionalLine = None
     summary: OptionalParagraph = None
     location: OptionalLine = None
+    unmapped_skills: list[str] = Field(
+        default_factory=list,
+        description="Skills the candidate claims that the platform has no Canonical name for. "
+        "Screening never read them; a human reading the Application should.",
+    )
 
     experiences: list[ProfileExperience] = Field(default_factory=list)
     educations: list[ProfileEducation] = Field(default_factory=list)

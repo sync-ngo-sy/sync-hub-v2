@@ -20,7 +20,11 @@ renders pages to images or extracts text, and touching nothing else.
 
 Skill mapping happens in-model: the parse prompt embeds the canonical `skill_taxonomy`
 names and `ParsedCv` skills must come from that list; everything else lands in an
-`unmapped_skills` list surfaced at candidate review and never reaches Screening.
+`unmapped_skills` list surfaced at candidate review. Those names **persist** — a `text[]`
+on `candidates`, copied to `application_profile_snapshots` with the rest of the Snapshot —
+so a recruiter reading a profile or an Application sees them, and they feed the search
+embedding. Screening never reads them: an unmapped name has no `taxonomy_id` to measure a
+Job's criteria against.
 
 ## Considered options
 

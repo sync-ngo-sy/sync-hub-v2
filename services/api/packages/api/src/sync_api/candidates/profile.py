@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from sync_api.candidates.payload import (
     CandidateProfile,
@@ -12,8 +12,18 @@ from sync_api.candidates.payload import (
     ProfileProject,
     ProfileSkill,
 )
-from sync_api.candidates.sections import a_language, a_project, an_education, an_experience
-from sync_api.problems import SEARCHABLE_NEEDS_CV_PROBLEM_TYPE, Problem
+from sync_api.candidates.sections import (
+    LiveSection,
+    a_language,
+    a_project,
+    an_education,
+    an_experience,
+)
+from sync_api.problems import (
+    INCOMPLETE_PROFILE_PROBLEM_TYPE,
+    SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
+    Problem,
+)
 from sync_api.vocabulary import canonical_skill_ids, refuse_unknown_languages
 from sync_core import get_logger, transaction
 from sync_core.models import (
@@ -26,8 +36,10 @@ from sync_core.models import (
     CandidateSkill,
     Cv,
     CvParsingStatus,
+    Profile,
     SkillTaxonomy,
 )
+from sync_core.profile import as_decimal
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -42,35 +54,75 @@ class CandidateProfileService:
         self._db = session
 
     async def profile(self, candidate_id: UUID) -> CandidateProfile:
-        candidate = await self._candidate(candidate_id)
+        candidate, identity = await self._candidate(candidate_id)
         return CandidateProfile(
+            full_name=identity.full_name,
+            phone=identity.phone,
             headline=candidate.headline,
             summary=candidate.summary,
             location=candidate.location,
             preferred_language_code=candidate.preferred_language_code,
             is_searchable=candidate.is_searchable,
+            unmapped_skills=candidate.unmapped_skills,
             experiences=await self._experiences(candidate_id),
             educations=await self._educations(candidate_id),
-            skills=await self._skills(candidate_id),
+            skills=await stated_skills(self._db, candidate_id),
             languages=await self._languages(candidate_id),
             projects=await self._projects(candidate_id),
         )
 
     async def replace(self, candidate_id: UUID, profile: CandidateProfile) -> CandidateProfile:
+        """Replace the profile whole, identity included, in one transaction.
+
+        The candidate row is locked for the duration: without it, two saves each delete only
+        what the other has already committed and both sets of inserts survive.
+        """
         skills = await canonical_skill_ids(self._db, skills_named(profile))
         await refuse_unknown_languages(self._db, languages_named(profile))
 
         async with transaction(self._db):
-            await replace_live_profile(self._db, candidate_id, profile, skills)
+            candidate, identity = await self._candidate(candidate_id, lock=True)
+            if profile.is_searchable and not await self._has_a_ready_cv(candidate):
+                raise Problem(
+                    status=409,
+                    type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
+                    detail="Upload a CV and wait for it to be processed before making your "
+                    "profile searchable.",
+                )
+
+            identity.full_name = profile.full_name
+            identity.phone = profile.phone
+            candidate.headline = profile.headline
+            candidate.summary = profile.summary
+            candidate.location = profile.location
+            candidate.preferred_language_code = profile.preferred_language_code
+            candidate.is_searchable = profile.is_searchable
+            candidate.unmapped_skills = profile.unmapped_skills
+            for section in (
+                delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
+                delete(CandidateEducation).where(CandidateEducation.candidate_id == candidate_id),
+                delete(CandidateSkill).where(CandidateSkill.candidate_id == candidate_id),
+                delete(CandidateLanguage).where(CandidateLanguage.candidate_id == candidate_id),
+                delete(CandidateProject).where(CandidateProject.candidate_id == candidate_id),
+            ):
+                await self._db.execute(section)
+            self._db.add_all(_rows_for(candidate_id, profile, skills))
 
         logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
         return await self.profile(candidate_id)
 
-    async def _candidate(self, candidate_id: UUID) -> Candidate:
-        candidate = await self._db.get(Candidate, candidate_id)
-        if candidate is None:  # pragma: no cover — `acting_candidate` refused this already
-            raise LookupError(f"no candidate row for {candidate_id}")
-        return candidate
+    async def _candidate(
+        self, candidate_id: UUID, *, lock: bool = False
+    ) -> tuple[Candidate, Profile]:
+        return await whole_candidate(self._db, candidate_id, lock=lock)
+
+    async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
+        if candidate.current_cv_id is None:
+            return False
+        cv = await self._db.get(Cv, candidate.current_cv_id)
+        return (
+            cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
+        )
 
     async def _experiences(self, candidate_id: UUID) -> list[ProfileExperience]:
         rows = await self._db.scalars(
@@ -87,18 +139,6 @@ class CandidateProfileService:
             .order_by(CandidateEducation.sort_order)
         )
         return [an_education(row) for row in rows]
-
-    async def _skills(self, candidate_id: UUID) -> list[ProfileSkill]:
-        rows = await self._db.execute(
-            select(SkillTaxonomy.canonical_name, CandidateSkill.years_experience)
-            .join(SkillTaxonomy, SkillTaxonomy.id == CandidateSkill.taxonomy_id)
-            .where(CandidateSkill.candidate_id == candidate_id)
-            .order_by(CandidateSkill.sort_order)
-        )
-        return [
-            ProfileSkill(name=name, years_experience=None if years is None else float(years))
-            for name, years in rows.tuples()
-        ]
 
     async def _languages(self, candidate_id: UUID) -> list[ProfileLanguage]:
         rows = await self._db.scalars(
@@ -117,48 +157,56 @@ class CandidateProfileService:
         return [a_project(row) for row in rows]
 
 
-async def replace_live_profile(
-    session: AsyncSession, candidate_id: UUID, profile: CandidateProfile, skills: dict[str, UUID]
-) -> None:
-    """Everything replacing a profile writes, without a transaction of its own.
+async def whole_candidate(
+    session: AsyncSession, candidate_id: UUID, *, lock: bool = False
+) -> tuple[Candidate, Profile]:
+    """The two rows one profile is spread across: the claims, and the identity.
 
-    A submission that also updates the live profile has to land in the *same* transaction as
-    the Application, so the write is here and the commit is the caller's. The candidate row is
-    locked for the duration: without it, two saves each delete only what the other has already
-    committed and both sets of inserts survive.
+    `lock` takes the candidate row `FOR UPDATE`. Every writer of a profile queues on that row,
+    so a reader that is about to copy the profile somewhere should take it too.
     """
-    candidate = await session.get(Candidate, candidate_id, with_for_update=True)
-    if candidate is None:  # pragma: no cover — `acting_candidate` refused this already
+    candidate = await session.get(Candidate, candidate_id, with_for_update=lock)
+    identity = await session.get(Profile, candidate_id)
+    if candidate is None or identity is None:  # pragma: no cover — `acting_candidate` refused this
         raise LookupError(f"no candidate row for {candidate_id}")
-    if profile.is_searchable and not await _has_a_ready_cv(session, candidate):
+    return candidate, identity
+
+
+async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
+    """A profile too thin to judge an Application by. Named, because "422" alone sends nobody
+    anywhere."""
+    missing = []
+    if not await _section_count(session, CandidateSkill, candidate_id):
+        missing.append("at least one skill")
+    if not await _section_count(session, CandidateExperience, candidate_id) and not (
+        await _section_count(session, CandidateEducation, candidate_id)
+    ):
+        missing.append("either a job or a qualification")
+    if missing:
         raise Problem(
-            status=409,
-            type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
-            detail="Upload a CV and wait for it to be processed before making your "
-            "profile searchable.",
+            status=422,
+            type=INCOMPLETE_PROFILE_PROBLEM_TYPE,
+            detail=f"Your profile needs {' and '.join(missing)} before you can apply. "
+            "Fill it in in your profile settings.",
         )
 
-    candidate.headline = profile.headline
-    candidate.summary = profile.summary
-    candidate.location = profile.location
-    candidate.preferred_language_code = profile.preferred_language_code
-    candidate.is_searchable = profile.is_searchable
-    for section in (
-        delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
-        delete(CandidateEducation).where(CandidateEducation.candidate_id == candidate_id),
-        delete(CandidateSkill).where(CandidateSkill.candidate_id == candidate_id),
-        delete(CandidateLanguage).where(CandidateLanguage.candidate_id == candidate_id),
-        delete(CandidateProject).where(CandidateProject.candidate_id == candidate_id),
-    ):
-        await session.execute(section)
-    session.add_all(_rows_for(candidate_id, profile, skills))
+
+async def _section_count(session: AsyncSession, section: LiveSection, candidate_id: UUID) -> int:
+    count = await session.scalar(
+        select(func.count()).select_from(section).where(section.candidate_id == candidate_id)
+    )
+    return int(count or 0)
 
 
-async def _has_a_ready_cv(session: AsyncSession, candidate: Candidate) -> bool:
-    if candidate.current_cv_id is None:
-        return False
-    cv = await session.get(Cv, candidate.current_cv_id)
-    return cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
+async def stated_skills(session: AsyncSession, candidate_id: UUID) -> list[ProfileSkill]:
+    """The candidate's Canonical skills, in their own order, with the years they typed."""
+    rows = await session.execute(
+        select(SkillTaxonomy.canonical_name, CandidateSkill.years_experience)
+        .join(SkillTaxonomy, SkillTaxonomy.id == CandidateSkill.taxonomy_id)
+        .where(CandidateSkill.candidate_id == candidate_id)
+        .order_by(CandidateSkill.sort_order)
+    )
+    return [ProfileSkill(name=name, years_experience=float(years)) for name, years in rows.tuples()]
 
 
 def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, UUID]) -> list[Base]:
@@ -194,7 +242,7 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
             candidate_id=candidate_id,
             sort_order=order,
             taxonomy_id=skills[entry.name],
-            years_experience=entry.years_experience,
+            years_experience=as_decimal(entry.years_experience),
         )
         for order, entry in enumerate(profile.skills)
     ]
@@ -225,19 +273,19 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
     return rows
 
 
-def skills_named(profile: CandidateProfile, at: str = "body") -> dict[str, str]:
+def skills_named(profile: CandidateProfile) -> dict[str, str]:
     """Every skill name, keyed by where it sat in the request that carried the profile."""
     return {
-        f"{at}.skills.{position}.name": skill.name for position, skill in enumerate(profile.skills)
+        f"body.skills.{position}.name": skill.name for position, skill in enumerate(profile.skills)
     }
 
 
-def languages_named(profile: CandidateProfile, at: str = "body") -> dict[str, str]:
+def languages_named(profile: CandidateProfile) -> dict[str, str]:
     """`preferred_language_code` is a language too, and is refused where the candidate typed it."""
     named = {
-        f"{at}.languages.{position}.code": language.code
+        f"body.languages.{position}.code": language.code
         for position, language in enumerate(profile.languages)
     }
     if profile.preferred_language_code is not None:
-        named[f"{at}.preferred_language_code"] = profile.preferred_language_code
+        named["body.preferred_language_code"] = profile.preferred_language_code
     return named

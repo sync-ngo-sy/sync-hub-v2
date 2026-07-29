@@ -38,12 +38,26 @@ fixed at creation (candidate XOR recruiter, enforced by composite FK).
 
 ## Candidate profile replacement
 
-`PUT /v1/candidates/me/profile` replaces the live profile whole, in one transaction, service
-role. The candidate row is locked `FOR UPDATE` and updated, and every `candidate_*` child row
-is deleted and re-inserted — never matched up and patched — so no reader ever sees a
-half-saved profile and `sort_order` is simply the position each entry had in the request. The
-lock is what makes concurrent saves last-write-wins: without it each transaction deletes only
-what the other has already committed, and both sets of inserts survive.
+A Candidate keeps **one** profile, and it is the only source an Application is ever built from.
+`PUT /v1/candidates/me/profile` replaces it whole, in one transaction, service role. The
+candidate row is locked `FOR UPDATE` and updated, and every `candidate_*` child row is deleted
+and re-inserted — never matched up and patched — so no reader ever sees a half-saved profile and
+`sort_order` is simply the position each entry had in the request. The lock is what makes
+concurrent saves last-write-wins: without it each transaction deletes only what the other has
+already committed, and both sets of inserts survive.
+
+One profile spans two tables, and the `PUT` writes both in that same transaction:
+`profiles.full_name`/`phone` (the identity) and `candidates` plus its children (the claims).
+`email` is **not** settable here — only `auth.users` holds a confirmed address, and changing one
+stays an auth flow with re-confirmation.
+
+`candidates.unmapped_skills text[] not null default '{}'` holds the skills a Candidate claims
+that the Canonical taxonomy has no name for. They persist, they feed the search embedding
+(`sync_rag.chunks`, in the `skills` chunk), and Screening never reads them. Pydantic caps the
+list at `MAX_ENTRIES`, each entry at `MAX_LINE_LENGTH`, and deduplicates case-insensitively.
+`application_profile_snapshots.unmapped_skills text[] not null default '{}'` is its frozen twin,
+copied with the rest of the Snapshot. Neither column needed a new trigger: `reembed_on_change`
+and `set_updated_at` already fire on `candidates`.
 
 Backend-enforced preconditions (all checked **before** anything is written, so a refusal
 cannot leave a section emptied):
@@ -56,10 +70,34 @@ cannot leave a section emptied):
    it here — and the whole condition is answered as a 409, not a write failure.
 3. The date, month, year and one-entry-per-skill rules the `candidate_*` CHECKs enforce are
    restated in the request model, so a bad shape is a located 422 and never reaches Postgres.
+4. `candidate_skills.years_experience` is `NOT NULL` with **no default**, so every skill on a
+   saved profile carries years and a skill without them is a located 422. The parser refuses to
+   guess years for a reason: blank means unknown and Screening routes it to a human, while `1`
+   is compared against a Job's `minimum_years` and **auto-rejects** — so a defaulted `1` would
+   silently discard a ten-year engineer.
 
 The re-embed queue looks after itself: every one of those writes fires
 `enqueue_candidate_reembed`, which upserts the candidate's single `candidate_embedding_jobs`
 row, so any number of successive saves leaves exactly one dirty job with a bumped `revision`.
+
+### Filling a profile from a CV
+
+`GET /v1/candidates/me/cvs/{cv_id}/profile-draft` computes a `ProfileDraft` from
+`cvs.parsed_cv_data` and **persists nothing**; 409 unless `parsing_status = 'ready'`. The
+Candidate reviews it, edits it, and `PUT`s it back — which is the only way a profile gets
+populated.
+
+Only skills merge. They have a natural key (the Canonical name, and so `taxonomy_id`), so the
+years the Candidate typed by hand survive a re-import: the draft carries over every skill
+already on the profile with its `years_experience`, and adds the skills this CV names that were
+not there with `years_experience` null. Experiences, educations, languages and projects have no
+such key — matching them by shape would leave duplicates to delete by hand — so they come from
+the CV alone. `ProfileDraft` is therefore a distinct type from `CandidateProfile`, with
+`skills[].years_experience` nullable: a draft is incomplete by nature, a saved profile never is.
+
+`is_searchable` and `preferred_language_code` are taken from the Candidate's current values, not
+the CV. They are settings, and a CV's `detected_language` is the language the document happens
+to be written in — a CV written in English by someone who wants Arabic would get the wrong one.
 
 ## A candidate's CVs: how many, which is current, deleting one
 
@@ -132,23 +170,41 @@ a Job the public cannot see resolves to the same 404 as a token that was never i
 Single DB transaction, service role. The DB guarantees structure; the backend must validate
 everything below **before** committing.
 
-Backend-enforced preconditions (not expressible as constraints). All of these are answered
-**before** the transaction opens, so the common refusals never even begin an Application; the
-one that cannot be (the searchable opt-in below, which needs the candidate row locked) runs
-inside it and takes the whole submission back with it:
+The request body is `{job_id, answers}` and nothing else. There is no `cv_id`, no `profile` and
+no `update_profile`: the Snapshot is copied from the live profile server-side, so there is no way
+to apply with data the profile does not hold. Choosing a CV is a profile-settings action.
+
+Backend-enforced preconditions (not expressible as constraints). The first three are answered
+**before** the transaction opens, so the common refusals never begin an Application; the two
+that read the profile run **inside** it, with the candidate row locked `FOR UPDATE`, and take
+the whole submission back with them:
 1. The Job is one the public may read — `public_jobs()`, the same predicate browse uses. A Job
    nobody can read is a Job nobody can apply to, and both answer the same 404.
-2. `cv_id` belongs to the acting candidate and `deleted_at IS NULL` (404), and
-   `parsing_status = 'ready'` (409 — a CV still being read is not a refusal of the CV).
-3. Every `is_required` question of the job is answered, and each answer's type matches
+2. Every `is_required` question of the job is answered, and each answer's type matches
    (`yes_no` → `answer_boolean`, `short_text` → `answer_text`). *(The single-answer-kind CHECK
    and the answer→question FK are DB-enforced; "all required answered" is not.)* One 422 names
    every offending entry — unanswered, mistyped, or asked by some other Job.
-4. Every skill of the reviewed data is a Canonical skill and every language code is known —
-   `sync_api.vocabulary`, as the profile `PUT` uses it, located at `body.profile.…`.
-5. The candidate has not applied to this Job already: 409 carrying `application_id`. Withdrawal
+3. The candidate has not applied to this Job already: 409 carrying `application_id`. Withdrawal
    permanence falls out of the same rule — a withdrawn Application still holds its job, because
-   `UNIQUE(candidate_id, job_id)` does not care what state it is in.
+   `UNIQUE(candidate_id, job_id)` does not care what state it is in. The unique index refuses
+   one that lands between this check and the write, and the `IntegrityError` answers the same
+   409.
+4. `candidates.current_cv_id` is not null (409 `no-current-cv`). That the CV exists and is not
+   deleted is the database's answer already — `forbid_deleting_current_cv` and
+   `forbid_deleted_current_cv` — so the pointer being set is all that is left to check. How far
+   its parse got is **not** checked: every upload is parsed, and a Candidate who swapped to an
+   unread CV is not applying with worse data than the profile they already reviewed.
+5. The profile is worth judging: at least one skill, and either an experience or an education
+   (422 `incomplete-profile`, whose `detail` names what is missing). Skills and languages are
+   **not** re-validated here — `PUT /candidates/me/profile` already guarantees every
+   `taxonomy_id` and `language_code` in the live tables, so `sync_api.vocabulary` no longer runs
+   on this path.
+
+Why 4 and 5 are inside the lock: both read the same live profile the Snapshot is then copied
+from, and every writer of a profile queues on the candidate row. Checked outside it, a
+`PUT /candidates/me/profile` landing in between would leave an Application whose Snapshot is
+thinner than the profile that passed — an empty Snapshot screened on nothing, which is the state
+these two exist to prevent.
 
 DB-enforced on write (rely on these — a backend bug cannot bypass them):
 - `applications.(tenant_id, job_id)` → `jobs` (tenant match); `(candidate_id, cv_id)` → `cvs`
@@ -157,24 +213,37 @@ DB-enforced on write (rely on these — a backend bug cannot bypass them):
 
 Write order in the tx:
 ```
+select candidates for update                    -- what every writer of the profile queues on
+-- then preconditions 4 and 5 above, which read the profile this is about to copy
 insert applications(id, tenant_id, candidate_id, job_id, cv_id, tracked_link_id)
-insert application_profile_snapshots(...)
-insert application_experiences/_educations/_skills/_projects/_languages(...)   -- the reviewed data
+insert application_profile_snapshots  select from profiles ⋈ candidates    -- the scalar row
+insert application_experiences/_educations/_skills/_languages/_projects
+                                      select from the candidate_* twin     -- one per table
 insert application_answers(application_id, job_id, question_id, answer_*)
 insert application_status_history(application_id, change_source='candidate', new_status='new')
--- then run screening (below) synchronously, inside this same transaction —
--- an application is never observable without its verdict
+-- then read the rows just written and run screening (below) synchronously, inside this same
+-- transaction — an application is never observable without its verdict
 insert communications(...)                      -- the confirmation, status='queued'
--- and, if asked for, the live-profile replacement
 ```
-The reviewed data may come from the candidate's live `candidate_*` tables **or** a reviewed
-alternate-CV form; the snapshot is source-agnostic and immutable afterward. `full_name` and
-`phone` are not part of it: they are the candidate's identity, read off `profiles` rather than
-retyped per application. Optionally, if the candidate chose "also update my global profile",
-their `candidate_*` rows are replaced in the same tx by the same
-`candidates.replace_live_profile` the profile `PUT` calls — which is why the re-embed trigger
-coalesces the whole submission into the candidate's single dirty job, and why a refusal it
-raises (opting in to Global search without a ready CV) rolls the Application back with it.
+The Snapshot is six **column-listed `INSERT … SELECT`s**: one `profiles ⋈ candidates` join for
+the scalar row, and one per child table. The invariant that makes that possible is **identical
+column names on both sides, and exactly one live source per field** — which is what keeps the
+copy mechanical and kills the add-a-column-forget-to-map-it bug. `application_*` and
+`candidate_*` are column-for-column twins; the only differences are the parent FK's name and the
+`created_at`/`updated_at` the candidate children carry and the immutable application children
+correctly do not.
+
+Two deliberate asymmetries: `full_name` and `phone` come from `profiles`, because they are the
+candidate's identity rather than a per-application claim; and `preferred_language_code`,
+`is_searchable` and `current_cv_id` are **never** snapshotted, because they are settings and
+pointers — freezing a setting would leave someone asking why changing it changed nothing.
+`email` is on neither side: only `auth.users` has a confirmed one, and `delivery.py` resolves it
+there on every send.
+
+The Snapshot is immutable from the moment it is written, and submission writes **nothing** back
+to the live profile. The review moment has moved from per-application to per-profile-edit: there
+is no per-Job tailoring, and one Application per Job (a withdrawn one still counting) means a
+frozen mistake cannot be retried.
 
 The confirmation Communication is written here rather than by a producer of its own, for the
 reason a Notification is: a candidate is never told about an Application the transaction then
@@ -192,9 +261,12 @@ turned off between the view and the submission still gets the credit: it brought
 ## Screening (deterministic, no score)
 
 Reads **only** the immutable `application_*` snapshot for the application — never the live
-`candidate_*` tables. Rules (all mandatory criteria must pass ⇒ `qualified`):
+`candidate_*` tables, and never `unmapped_skills` on either side. Rules (all mandatory criteria
+must pass ⇒ `qualified`):
 - required skill absent → `disqualified`; required-skill years < `minimum_years` →
-  `disqualified`; unknown years for a required skill → `review_required`.
+  `disqualified`; unknown years for a required skill → `review_required`. That last branch is
+  unreachable now that `years_experience` is `NOT NULL` on both sides; the rule stays because
+  Screening should not be the thing that decides what a missing number means.
 - total experience < `jobs.minimum_total_experience_years` → `disqualified`; cannot be computed
   → `review_required`.
 - required language absent / below `minimum_proficiency` → `disqualified`.
@@ -325,8 +397,10 @@ the row, and whatever waits on it, stuck for good.
 - Returned skills are re-validated against `skill_taxonomy` (case-insensitively, answering in
   the canonical spelling); anything unmatched moves to the parse's `unmapped_skills`, which the
   candidate reviews and Screening never reads. Unknown language codes are dropped, and every
-  other field is coerced to the limits in `sync_core.profile` — the review screen posts the
-  parse back to `PUT /v1/candidates/me/profile`, so a parse it would refuse is unusable.
+  other field is coerced to the limits in `sync_core.profile` — the review screen posts the draft
+  built from this parse back to `PUT /v1/candidates/me/profile`, so a parse it would refuse is
+  unusable. The parse is not on the CV payload; it reaches the candidate only as a
+  `ProfileDraft` (see *Filling a profile from a CV* above).
 - The candidate's **first** `ready` CV sets `candidates.current_cv_id` if it is still unset, with
   the candidate row locked `FOR UPDATE`. Only the first: after that it is the candidate's choice.
   A CV **soft-deleted while it was being read** is not adopted — it is parsed and stored like any
@@ -570,4 +644,4 @@ from anything the candidate typed.
 | Invariant | Enforced by |
 | --- | --- |
 | Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before apply or before becoming current, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |

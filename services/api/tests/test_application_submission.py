@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+import asyncio
 from uuid import uuid4
 
 from httpx import AsyncClient
@@ -17,6 +17,7 @@ from sync_core.models import (
 from tests.support.applications import (
     A_SHORT_TEXT_QUESTION,
     A_YES_NO_QUESTION,
+    a_candidate_who_can_apply,
     a_candidate_with_a_ready_cv,
     a_job_screening_on,
     an_accepted_application,
@@ -42,58 +43,15 @@ from tests.support.jobs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
-    a_profile,
-    embedding_jobs,
+    AN_EDUCATION,
+    AN_EXPERIENCE,
+    a_filled_profile,
+    a_saved_profile,
     give_a_current_cv,
+    make_no_cv_current,
     my_id,
     my_profile,
-)
-
-A_REVIEWED_PROFILE: dict[str, Any] = a_profile(
-    headline="Backend engineer, 8 years",
-    summary="Builds boring systems that stay up.",
-    location="Damascus, Syria",
-    experiences=[
-        {
-            "job_title": "Senior Engineer",
-            "company_name": "Acme",
-            "start_year": 2018,
-            "start_month": 1,
-            "end_year": None,
-            "end_month": None,
-            "is_current": True,
-            "description": None,
-        }
-    ],
-    educations=[
-        {
-            "institution": "Damascus University",
-            "degree": "BSc",
-            "field_of_study": "Computer Science",
-            "graduation_year": 2017,
-            "description": None,
-        }
-    ],
-    skills=[
-        {"name": "Python", "years_experience": 8.0},
-        {"name": "PostgreSQL", "years_experience": 6.0},
-    ],
-    languages=[
-        {"code": "ar", "proficiency": "native"},
-        {"code": "en", "proficiency": "fluent"},
-    ],
-    projects=[
-        {
-            "name": "Ledger",
-            "description": None,
-            "project_url": None,
-            "repository_url": None,
-            "start_year": 2022,
-            "start_month": 3,
-            "end_year": None,
-            "end_month": None,
-        }
-    ],
+    save_profile,
 )
 
 
@@ -104,9 +62,9 @@ async def test_a_candidate_applies_and_sees_it_in_their_applications(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
 
     assert application["job"]["id"] == job["id"]
     assert application["job"]["title"] == job["title"]
@@ -121,11 +79,9 @@ async def test_one_submission_writes_the_whole_application(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    cv_id = await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(
-        other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE
-    )
+    application = await an_accepted_application(other_browser, job["id"])
 
     stored = await stored_application(db_session, application["id"])
     assert stored.status is ApplicationStatus.NEW
@@ -140,18 +96,16 @@ async def test_one_submission_writes_the_whole_application(
     assert verdict.screening_version == "1"
 
 
-async def test_the_snapshot_is_the_reviewed_data_and_the_candidates_own_name(
+async def test_the_snapshot_is_copied_from_the_live_profile(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(
-        other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE
-    )
+    application = await an_accepted_application(other_browser, job["id"])
 
     snapshot = await snapshot_of(db_session, application["id"])
     assert snapshot.profile is not None
@@ -161,7 +115,52 @@ async def test_the_snapshot_is_the_reviewed_data_and_the_candidates_own_name(
     assert [row.institution for row in snapshot.educations] == ["Damascus University"]
     assert [row.name for row in snapshot.projects] == ["Ledger"]
     assert [row.language_code for row in snapshot.languages] == ["ar", "en"]
-    assert len(snapshot.skills) == 2
+    assert [float(row.years_experience) for row in snapshot.skills] == [8.0, 6.0]
+
+
+async def test_a_profile_in_the_request_is_not_what_gets_snapshotted(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The whole point of the change: no way to apply with data the profile does not hold."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+
+    application = await an_accepted_application(
+        other_browser,
+        job["id"],
+        profile=a_filled_profile(headline="Principal engineer, 20 years"),
+        cv_id=str(uuid4()),
+        update_profile=True,
+    )
+
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert snapshot.profile.headline == "Backend engineer, 8 years"
+
+
+async def test_the_snapshot_carries_the_unmapped_skills_and_screening_never_saw_them(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_job_screening_on(
+        recruiter, skills=[{"name": "Python", "importance": "required", "minimum_years": 3}]
+    )
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, unmapped_skills=["Kubernetes wrangling", "Bash"]
+    )
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert snapshot.profile.unmapped_skills == ["Kubernetes wrangling", "Bash"]
+    stored = await stored_application(db_session, application["id"])
+    assert stored.qualification_status is QualificationStatus.QUALIFIED
 
 
 async def test_the_confirmation_is_queued_in_the_same_transaction(
@@ -171,9 +170,9 @@ async def test_the_confirmation_is_queued_in_the_same_transaction(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
 
     [confirmation] = await communications_of(db_session, application["id"])
     assert confirmation.status is CommunicationStatus.QUEUED
@@ -192,13 +191,12 @@ async def test_the_answers_are_stored_against_their_questions(
     db_session: AsyncSession,
 ) -> None:
     job = await a_job_screening_on(recruiter, questions=[A_YES_NO_QUESTION, A_SHORT_TEXT_QUESTION])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     yes_no, short_text = questions_of(job)
 
     application = await an_accepted_application(
         other_browser,
         job["id"],
-        cv_id,
         answers=[
             {"question_id": yes_no["id"], "answer_boolean": True},
             {"question_id": short_text["id"], "answer_text": "In two weeks."},
@@ -222,47 +220,160 @@ async def test_a_job_nobody_can_read_is_a_job_nobody_can_apply_to(
     db_session: AsyncSession,
 ) -> None:
     draft = await a_created_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    refused = await apply_to(other_browser, draft["id"], cv_id)
+    refused = await apply_to(other_browser, draft["id"])
 
     assert refused.status_code == 404, refused.text
     assert refused.json()["type"] == "urn:sync:problem:job-not-found"
 
 
-async def test_applying_with_a_cv_that_is_not_yours_is_refused(
-    recruiter: AsyncClient,
-    browser: AsyncClient,
-    other_browser: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    job = await a_published_job(recruiter)
-    someone_elses = await a_candidate_with_a_ready_cv(browser, mailbox, db_session, "stranger")
-    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-
-    refused = await apply_to(other_browser, job["id"], someone_elses)
-
-    assert refused.status_code == 404, refused.text
-    assert refused.json()["type"] == "urn:sync:problem:cv-not-found"
-
-
-async def test_applying_with_a_cv_that_is_still_being_read_is_refused(
+async def test_applying_without_a_current_cv_is_refused(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    unready = await give_a_current_cv(
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await make_no_cv_current(db_session, await my_id(other_browser))
+
+    refused = await apply_to(other_browser, job["id"])
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["type"] == "urn:sync:problem:no-current-cv"
+
+
+async def test_the_cv_is_the_current_one_and_the_request_cannot_name_another(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    swapped = await give_a_current_cv(db_session, await my_id(other_browser))
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    assert (await stored_application(db_session, application["id"])).cv_id == swapped
+
+
+async def test_how_far_the_parse_got_is_not_a_submit_precondition(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Only `current_cv_id` being set is checked. Whether that CV has been read is not."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await give_a_current_cv(
         db_session, await my_id(other_browser), parsing_status=CvParsingStatus.PROCESSING
     )
 
-    refused = await apply_to(other_browser, job["id"], unready)
+    accepted = await apply_to(other_browser, job["id"])
 
-    assert refused.status_code == 409, refused.text
-    assert refused.json()["type"] == "urn:sync:problem:cv-not-ready"
+    assert accepted.status_code == 201, accepted.text
+
+
+async def test_applying_with_no_skills_is_refused_and_says_so(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_saved_profile(other_browser, a_filled_profile(skills=[]))
+
+    refused = await apply_to(other_browser, job["id"])
+
+    assert refused.status_code == 422, refused.text
+    problem = refused.json()
+    assert problem["type"] == "urn:sync:problem:incomplete-profile"
+    assert "at least one skill" in problem["detail"]
+
+
+async def test_applying_with_neither_a_job_nor_a_qualification_is_refused_and_says_so(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_saved_profile(other_browser, a_filled_profile(experiences=[], educations=[]))
+
+    refused = await apply_to(other_browser, job["id"])
+
+    assert refused.status_code == 422, refused.text
+    assert "either a job or a qualification" in refused.json()["detail"]
+
+
+async def test_either_a_job_or_a_qualification_is_enough(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_saved_profile(
+        other_browser, a_filled_profile(experiences=[], educations=[AN_EDUCATION])
+    )
+    only_educated = await apply_to(other_browser, job["id"])
+    assert only_educated.status_code == 201, only_educated.text
+
+    await a_saved_profile(
+        other_browser, a_filled_profile(experiences=[AN_EXPERIENCE], educations=[])
+    )
+    elsewhere = await a_published_job(recruiter)
+
+    only_employed = await apply_to(other_browser, elsewhere["id"])
+
+    assert only_employed.status_code == 201, only_employed.text
+
+
+async def test_an_empty_profile_is_refused_before_anything_is_written(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+
+    refused = await apply_to(other_browser, job["id"])
+
+    assert refused.status_code == 422, refused.text
+    assert await applications_of(db_session, await my_id(other_browser)) == []
+    assert await my_applications(other_browser) == []
+
+
+async def test_a_save_racing_a_submission_cannot_snapshot_a_profile_nobody_judged(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Both take the candidate row's lock, so the two cannot interleave into an Application whose
+    Snapshot is thinner than the profile the preconditions passed."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+
+    emptying, applying = await asyncio.gather(
+        save_profile(other_browser, a_filled_profile(skills=[], experiences=[], educations=[])),
+        apply_to(other_browser, job["id"]),
+    )
+
+    assert emptying.status_code == 200, emptying.text
+    if applying.status_code == 201:
+        snapshot = await snapshot_of(db_session, applying.json()["id"])
+        assert snapshot.skills, "an Application was snapshotted from an emptied profile"
+    else:
+        assert applying.status_code == 422, applying.text
+        assert applying.json()["type"] == "urn:sync:problem:incomplete-profile"
 
 
 async def test_every_required_question_has_to_be_answered(
@@ -272,13 +383,12 @@ async def test_every_required_question_has_to_be_answered(
     db_session: AsyncSession,
 ) -> None:
     job = await a_job_screening_on(recruiter, questions=[A_YES_NO_QUESTION, A_SHORT_TEXT_QUESTION])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     yes_no, _short_text = questions_of(job)
 
     refused = await apply_to(
         other_browser,
         job["id"],
-        cv_id,
         answers=[{"question_id": yes_no["id"], "answer_boolean": True}],
     )
 
@@ -296,13 +406,12 @@ async def test_an_answer_of_the_wrong_kind_is_refused(
     db_session: AsyncSession,
 ) -> None:
     job = await a_job_screening_on(recruiter, questions=[A_YES_NO_QUESTION])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     [yes_no] = questions_of(job)
 
     refused = await apply_to(
         other_browser,
         job["id"],
-        cv_id,
         answers=[{"question_id": yes_no["id"], "answer_text": "Yes, I do."}],
     )
 
@@ -320,13 +429,12 @@ async def test_an_answer_to_another_jobs_question_is_refused(
 ) -> None:
     job = await a_published_job(recruiter)
     elsewhere = await a_job_screening_on(recruiter, questions=[A_YES_NO_QUESTION])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     [somebody_elses_question] = questions_of(elsewhere)
 
     refused = await apply_to(
         other_browser,
         job["id"],
-        cv_id,
         answers=[{"question_id": somebody_elses_question["id"], "answer_boolean": True}],
     )
 
@@ -343,59 +451,11 @@ async def test_an_optional_question_may_go_unanswered(
     job = await a_job_screening_on(
         recruiter, questions=[{**A_SHORT_TEXT_QUESTION, "is_required": False}]
     )
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
 
     assert await answers_of(db_session, application["id"]) == []
-
-
-async def test_a_skill_the_platform_does_not_know_is_refused_where_it_was_typed(
-    recruiter: AsyncClient,
-    other_browser: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-
-    refused = await apply_to(
-        other_browser,
-        job["id"],
-        cv_id,
-        profile=a_profile(skills=[{"name": "Telepathy", "years_experience": 3.0}]),
-    )
-
-    assert refused.status_code == 422, refused.text
-    problem = refused.json()
-    assert problem["type"] == "urn:sync:problem:unknown-canonical-skill"
-    assert problem["errors"][0]["location"] == "body.profile.skills.0.name"
-
-
-async def test_a_refused_submission_leaves_nothing_behind(
-    recruiter: AsyncClient,
-    other_browser: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    """The searchable check runs inside the transaction, after the Application is written."""
-    job = await a_published_job(recruiter)
-    ready = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    candidate_id = await my_id(other_browser)
-    await give_a_current_cv(db_session, candidate_id, parsing_status=CvParsingStatus.PROCESSING)
-
-    refused = await apply_to(
-        other_browser,
-        job["id"],
-        ready,
-        profile=a_profile(is_searchable=True),
-        update_profile=True,
-    )
-
-    assert refused.status_code == 409, refused.text
-    assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
-    assert await applications_of(db_session, candidate_id) == []
-    assert await my_applications(other_browser) == []
 
 
 async def test_applying_twice_answers_with_the_application_already_there(
@@ -405,10 +465,10 @@ async def test_applying_twice_answers_with_the_application_already_there(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    first = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    first = await an_accepted_application(other_browser, job["id"])
 
-    refused = await apply_to(other_browser, job["id"], cv_id)
+    refused = await apply_to(other_browser, job["id"])
 
     assert refused.status_code == 409, refused.text
     problem = refused.json()
@@ -425,12 +485,12 @@ async def test_a_withdrawn_application_still_holds_its_job(
 ) -> None:
     """Withdrawal is final per job, and the uniqueness that makes it so is the schema's."""
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     withdrawn = await withdraw(other_browser, application["id"])
     assert withdrawn.status_code == 200, withdrawn.text
 
-    refused = await apply_to(other_browser, job["id"], cv_id)
+    refused = await apply_to(other_browser, job["id"])
 
     assert refused.status_code == 409, refused.text
     assert refused.json()["application_id"] == application["id"]
@@ -446,11 +506,9 @@ async def test_the_verdict_is_written_with_the_application(
         recruiter,
         skills=[{"name": "Rust", "importance": "required", "minimum_years": 3}],
     )
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(
-        other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE
-    )
+    application = await an_accepted_application(other_browser, job["id"])
 
     stored = await stored_application(db_session, application["id"])
     assert stored.qualification_status is QualificationStatus.DISQUALIFIED
@@ -465,13 +523,12 @@ async def test_a_knockout_answer_decides_the_verdict(
     db_session: AsyncSession,
 ) -> None:
     job = await a_job_screening_on(recruiter, questions=[A_YES_NO_QUESTION])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     [knockout] = questions_of(job)
 
     application = await an_accepted_application(
         other_browser,
         job["id"],
-        cv_id,
         answers=[{"question_id": knockout["id"], "answer_boolean": False}],
     )
 
@@ -479,27 +536,25 @@ async def test_a_knockout_answer_decides_the_verdict(
     assert stored.qualification_status is QualificationStatus.DISQUALIFIED
 
 
-async def test_unstated_years_of_a_required_skill_send_it_to_a_human(
+async def test_a_new_application_never_carries_unknown_years(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """Years are required at save, so `review_required` on unknown years is unreachable here."""
     job = await a_job_screening_on(
         recruiter,
         skills=[{"name": "Python", "importance": "required", "minimum_years": 5}],
     )
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
 
-    application = await an_accepted_application(
-        other_browser,
-        job["id"],
-        cv_id,
-        profile=a_profile(skills=[{"name": "Python", "years_experience": None}]),
-    )
+    application = await an_accepted_application(other_browser, job["id"])
 
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert all(row.years_experience is not None for row in snapshot.skills)
     stored = await stored_application(db_session, application["id"])
-    assert stored.qualification_status is QualificationStatus.REVIEW_REQUIRED
+    assert stored.qualification_status is QualificationStatus.QUALIFIED
 
 
 async def test_an_application_is_attributed_to_the_link_that_brought_it(
@@ -510,11 +565,11 @@ async def test_an_application_is_attributed_to_the_link_that_brought_it(
 ) -> None:
     job = await a_published_job(recruiter)
     link = await a_tracked_link(recruiter, job["id"])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     landed = await follow_link(other_browser, link["token"])
     assert landed.status_code == 200, landed.text
 
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
 
     stored = await stored_application(db_session, application["id"])
     assert str(stored.tracked_link_id) == link["id"]
@@ -528,48 +583,29 @@ async def test_an_applicant_who_found_the_job_themselves_is_attributed_to_nobody
 ) -> None:
     job = await a_published_job(recruiter)
     await a_tracked_link(recruiter, job["id"])
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     assert (await read_public_job(other_browser, job["id"])).status_code == 200
 
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
 
     stored = await stored_application(db_session, application["id"])
     assert stored.tracked_link_id is None
 
 
-async def test_one_review_can_improve_the_live_profile_too(
+async def test_applying_leaves_the_live_profile_exactly_as_it_was(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """Submission reads the profile and writes nothing back to it."""
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    before = await my_profile(other_browser)
 
-    await an_accepted_application(
-        other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE, update_profile=True
-    )
+    await an_accepted_application(other_browser, job["id"])
 
-    live = await my_profile(other_browser)
-    assert live["headline"] == "Backend engineer, 8 years"
-    assert [skill["name"] for skill in live["skills"]] == ["Python", "PostgreSQL"]
-    assert len(await embedding_jobs(db_session, await my_id(other_browser))) == 1
-
-
-async def test_the_live_profile_is_left_alone_unless_the_candidate_asked(
-    recruiter: AsyncClient,
-    other_browser: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-
-    await an_accepted_application(other_browser, job["id"], cv_id, profile=A_REVIEWED_PROFILE)
-
-    live = await my_profile(other_browser)
-    assert live["headline"] is None
-    assert live["skills"] == []
+    assert await my_profile(other_browser) == before
 
 
 async def test_the_applications_list_says_where_each_one_stands_and_no_more(
@@ -581,8 +617,8 @@ async def test_the_applications_list_says_where_each_one_stands_and_no_more(
     job = await a_job_screening_on(
         recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": None}]
     )
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await an_accepted_application(other_browser, job["id"])
 
     [listed] = await my_applications(other_browser)
 
@@ -600,9 +636,9 @@ async def test_another_candidates_applications_are_not_in_the_list(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    theirs = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    await an_accepted_application(other_browser, job["id"], theirs)
-    await a_candidate_with_a_ready_cv(browser, mailbox, db_session, "stranger")
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(browser, mailbox, db_session, "stranger")
 
     assert await my_applications(browser) == []
 
@@ -611,10 +647,9 @@ async def test_applying_is_only_for_candidates(
     recruiter: AsyncClient, other_browser: AsyncClient
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = uuid4()
 
-    assert (await apply_to(other_browser, job["id"], cv_id)).status_code == 401
-    refused = await apply_to(recruiter, job["id"], cv_id)
+    assert (await apply_to(other_browser, job["id"])).status_code == 401
+    refused = await apply_to(recruiter, job["id"])
     assert refused.status_code == 403, refused.text
     assert refused.json()["type"] == "urn:sync:problem:candidate-only"
 
@@ -626,8 +661,8 @@ async def test_the_first_application_freezes_what_the_job_screens_on(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    cv_id = await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    await an_accepted_application(other_browser, job["id"], cv_id)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await an_accepted_application(other_browser, job["id"])
 
     refused = await set_criteria(
         recruiter, job["id"], skills=[{"name": "Python", "importance": "required"}]

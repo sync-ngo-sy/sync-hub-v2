@@ -5,7 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, File, Response, UploadFile, status
 
-from sync_api.cvs import MAX_ACTIVE_CVS, Cv, CvDownloadLink, CvSummary
+from sync_api.candidates import ProfileDraft
+from sync_api.cvs import MAX_ACTIVE_CVS, Cv, CvDownloadLink
 from sync_api.dependencies import ActingCandidateDep, CvServiceDep
 from sync_api.errors import openapi_problem
 from sync_api.problems import CvConflictProblemDetail
@@ -52,9 +53,9 @@ async def upload_my_cv(
     summary="Every CV the caller keeps",
     responses=CANDIDATE_ACCESS_REFUSED,
 )
-async def list_my_cvs(cvs: CvServiceDep, candidate: ActingCandidateDep) -> list[CvSummary]:
-    """Newest first, without the parses — a candidate keeps few enough that they do not page.
-    Deleted CVs are not among them."""
+async def list_my_cvs(cvs: CvServiceDep, candidate: ActingCandidateDep) -> list[Cv]:
+    """Newest first — a candidate keeps few enough that they do not page. Deleted CVs are not
+    among them."""
     return await cvs.cvs(candidate.id)
 
 
@@ -67,6 +68,26 @@ async def list_my_cvs(cvs: CvServiceDep, candidate: ActingCandidateDep) -> list[
 async def get_my_cv(cv_id: UUID, cvs: CvServiceDep, candidate: ActingCandidateDep) -> Cv:
     """What to poll while a CV is parsed. `parsing_status` is the authoritative state."""
     return await cvs.cv(candidate.id, cv_id)
+
+
+@router.get(
+    "/{cv_id}/profile-draft",
+    operation_id="getMyProfileDraftFromCv",
+    summary="What this CV says the caller's profile could be",
+    responses={
+        **CANDIDATE_ACCESS_REFUSED,
+        **CV_NOT_FOUND,
+        409: openapi_problem("The CV has not been read yet, so there is nothing to fill from."),
+    },
+)
+async def get_my_profile_draft_from_cv(
+    cv_id: UUID, cvs: CvServiceDep, candidate: ActingCandidateDep
+) -> ProfileDraft:
+    """Computed and saved nowhere: review it, edit it, then `PUT` it to
+    `/candidates/me/profile`, which replaces. Skills already on the profile come back with the
+    years the candidate typed; skills only this CV names come back with none.
+    """
+    return await cvs.profile_draft(candidate.id, cv_id)
 
 
 @router.post(

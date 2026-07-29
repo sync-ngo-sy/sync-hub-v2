@@ -247,6 +247,7 @@ export type Database = {
           location: string | null;
           phone: string | null;
           summary: string | null;
+          unmapped_skills: string[];
         };
         Insert: {
           application_id: string;
@@ -256,6 +257,7 @@ export type Database = {
           location?: string | null;
           phone?: string | null;
           summary?: string | null;
+          unmapped_skills?: string[];
         };
         Update: {
           application_id?: string;
@@ -265,6 +267,7 @@ export type Database = {
           location?: string | null;
           phone?: string | null;
           summary?: string | null;
+          unmapped_skills?: string[];
         };
         Relationships: [
           {
@@ -366,19 +369,19 @@ export type Database = {
           application_id: string;
           sort_order: number;
           taxonomy_id: string;
-          years_experience: number | null;
+          years_experience: number;
         };
         Insert: {
           application_id: string;
           sort_order?: number;
           taxonomy_id: string;
-          years_experience?: number | null;
+          years_experience: number;
         };
         Update: {
           application_id?: string;
           sort_order?: number;
           taxonomy_id?: string;
-          years_experience?: number | null;
+          years_experience?: number;
         };
         Relationships: [
           {
@@ -908,7 +911,7 @@ export type Database = {
           sort_order: number;
           taxonomy_id: string;
           updated_at: string;
-          years_experience: number | null;
+          years_experience: number;
         };
         Insert: {
           candidate_id: string;
@@ -916,7 +919,7 @@ export type Database = {
           sort_order?: number;
           taxonomy_id: string;
           updated_at?: string;
-          years_experience?: number | null;
+          years_experience: number;
         };
         Update: {
           candidate_id?: string;
@@ -924,7 +927,7 @@ export type Database = {
           sort_order?: number;
           taxonomy_id?: string;
           updated_at?: string;
-          years_experience?: number | null;
+          years_experience?: number;
         };
         Relationships: [
           {
@@ -1026,6 +1029,7 @@ export type Database = {
           preferred_language_code: string | null;
           search_vector: unknown;
           summary: string | null;
+          unmapped_skills: string[];
           updated_at: string;
         };
         Insert: {
@@ -1040,6 +1044,7 @@ export type Database = {
           preferred_language_code?: string | null;
           search_vector?: unknown;
           summary?: string | null;
+          unmapped_skills?: string[];
           updated_at?: string;
         };
         Update: {
@@ -1054,6 +1059,7 @@ export type Database = {
           preferred_language_code?: string | null;
           search_vector?: unknown;
           summary?: string | null;
+          unmapped_skills?: string[];
           updated_at?: string;
         };
         Relationships: [

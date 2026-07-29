@@ -24,7 +24,12 @@ from tests.support.applications import (
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
-from tests.support.profiles import give_a_current_cv, my_id
+from tests.support.profiles import (
+    a_filled_profile,
+    a_saved_profile,
+    give_a_current_cv,
+    my_id,
+)
 from tests.support.senders import PROVIDER, CapturingSender
 from tests.support.worker import a_communications_worker
 
@@ -44,8 +49,9 @@ async def an_application_awaiting_its_confirmation(
 ) -> Awaiting:
     job = await a_published_job(recruiter)
     signup = await a_signed_in_candidate(browser, mailbox, "applicant")
-    cv_id = await give_a_current_cv(session, await my_id(browser))
-    application = await an_accepted_application(browser, job["id"], cv_id)
+    await give_a_current_cv(session, await my_id(browser))
+    await a_saved_profile(browser, a_filled_profile())
+    application = await an_accepted_application(browser, job["id"])
 
     [queued] = await communications_of(session, application["id"])
     assert queued.status is CommunicationStatus.QUEUED
@@ -371,8 +377,9 @@ async def test_a_recruiters_rejection_is_delivered_the_same_way(
 ) -> None:
     job = await a_published_job(recruiter)
     signup = await a_signed_in_candidate(other_browser, mailbox, "applicant")
-    cv_id = await give_a_current_cv(db_session, await my_id(other_browser))
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    await give_a_current_cv(db_session, await my_id(other_browser))
+    await a_saved_profile(other_browser, a_filled_profile())
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
     sender = CapturingSender()
     worker = a_communications_worker(database, sender)
