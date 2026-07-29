@@ -41,7 +41,6 @@ async def test_uploading_a_cv_returns_it_waiting_to_be_read(
     body = response.json()
     assert body["display_name"] == "amina-haddad.pdf"
     assert body["parsing_status"] == CvParsingStatus.UPLOADED
-    assert body["parsed_cv"] is None
     assert body["parsed_at"] is None
     assert body["parsing_error"] is None
     assert body["is_current"] is False

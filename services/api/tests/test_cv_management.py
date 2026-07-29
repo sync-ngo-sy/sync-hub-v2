@@ -36,7 +36,7 @@ from tests.support.extractors import FakeExtractor
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
-from tests.support.profiles import embedding_jobs, my_id
+from tests.support.profiles import embedding_jobs, give_a_current_cv, my_id
 from tests.support.tenants import an_admin
 from tests.support.worker import an_ingestion_worker
 
@@ -291,7 +291,8 @@ async def test_a_cv_an_application_holds_stays_whole_for_the_tenant(
 ) -> None:
     job = await a_published_job(recruiter)
     cv_id = await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
-    application = await an_accepted_application(other_browser, job["id"], cv_id)
+    application = await an_accepted_application(other_browser, job["id"])
+    await give_a_current_cv(db_session, await my_id(other_browser))
 
     assert (await delete_cv(other_browser, cv_id)).status_code == 204
 

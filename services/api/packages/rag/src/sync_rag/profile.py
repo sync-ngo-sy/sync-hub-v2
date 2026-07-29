@@ -48,6 +48,7 @@ class CurrentProfile:
     experiences: Sequence[CandidateExperience]
     educations: Sequence[CandidateEducation]
     skills: Sequence[NamedSkill]
+    unmapped_skills: Sequence[str]
     languages: Sequence[SpokenLanguage]
     projects: Sequence[CandidateProject]
 
@@ -69,6 +70,7 @@ async def current_profile(session: AsyncSession, candidate_id: UUID) -> CurrentP
         headline=candidate.headline,
         summary=candidate.summary,
         location=candidate.location,
+        unmapped_skills=list(candidate.unmapped_skills),
         experiences=list(
             await session.scalars(
                 select(CandidateExperience)

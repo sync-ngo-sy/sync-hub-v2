@@ -52,6 +52,8 @@ JOB_TRANSITION_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}job-transition-not-allowed"
 TRACKED_LINK_NAME_TAKEN_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}tracked-link-name-taken"
 TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}tracked-link-not-found"
 CV_NOT_READY_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}cv-not-ready"
+NO_CURRENT_CV_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}no-current-cv"
+INCOMPLETE_PROFILE_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}incomplete-profile"
 DUPLICATE_APPLICATION_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}duplicate-application"
 INVALID_APPLICATION_ANSWERS_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}invalid-application-answers"
 APPLICATION_NOT_FOUND_PROBLEM_TYPE = f"{PROBLEM_TYPE_PREFIX}application-not-found"
@@ -103,6 +105,16 @@ class ValidationProblemDetail(ProblemDetail):
     """A problem that can name every input it rejected."""
 
     errors: list[InvalidField] = Field(description="Every field that failed validation.")
+
+
+class SubmissionRefusedProblemDetail(ProblemDetail):
+    """A submission refused either by its answers or by the profile behind it."""
+
+    errors: list[InvalidField] = Field(
+        default_factory=list,
+        description="Every answer that failed validation. Empty when the profile is what is "
+        "missing — `detail` says what.",
+    )
 
 
 class CvConflictProblemDetail(ProblemDetail):

@@ -41,8 +41,9 @@ def chunks_of(profile: CurrentProfile) -> list[ProfileChunk]:
         written.append(
             _chunk(ChunkType.EDUCATION, "Education", *map(_education, profile.educations))
         )
-    if profile.skills:
-        written.append(_chunk(ChunkType.SKILLS, "Skills", ", ".join(map(_skill, profile.skills))))
+    named = [*map(_skill, profile.skills), *profile.unmapped_skills]
+    if named:
+        written.append(_chunk(ChunkType.SKILLS, "Skills", ", ".join(named)))
     if profile.languages:
         written.append(
             _chunk(ChunkType.LANGUAGES, "Languages", ", ".join(map(_language, profile.languages)))

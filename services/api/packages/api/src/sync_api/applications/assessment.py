@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sync_api.applications.access import own_application
 from sync_api.applications.criteria import screening_criteria_of
 from sync_api.applications.payload import MatchAssessment, MatchAssessmentPage
-from sync_api.applications.snapshot import answers_of, as_decimal, snapshot_of
+from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     ASSESSMENT_FAILED_PROBLEM_TYPE,
@@ -32,6 +32,7 @@ from sync_assessments import (
 )
 from sync_core import get_logger, transaction
 from sync_core.models import ApplicationAiMatchAssessment, Language
+from sync_core.profile import as_decimal
 
 if TYPE_CHECKING:
     from uuid import UUID

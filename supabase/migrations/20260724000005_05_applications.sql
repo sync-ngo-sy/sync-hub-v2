@@ -38,6 +38,8 @@ create table application_profile_snapshots (
   summary   text,
   location  text,
 
+  unmapped_skills text[] not null default '{}',
+
   captured_at timestamptz not null default now()
 );
 
@@ -92,8 +94,8 @@ create table application_skills (
   application_id uuid not null references applications (id) on delete cascade,
   taxonomy_id    uuid not null references skill_taxonomy (id),
 
-  years_experience numeric(4,1)
-    constraint askill_years_nonneg check (years_experience is null or years_experience >= 0),
+  years_experience numeric(4,1) not null
+    constraint askill_years_nonneg check (years_experience >= 0),
   sort_order int not null default 0,
 
   primary key (application_id, taxonomy_id)

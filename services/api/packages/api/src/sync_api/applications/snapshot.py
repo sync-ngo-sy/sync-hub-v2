@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import select
+from sqlalchemy import insert, literal, select
 
 from sync_api.applications.payload import AnsweredQuestion, ApplicationSnapshot
 from sync_api.applications.screening import (
@@ -15,6 +14,7 @@ from sync_api.applications.screening import (
     SnapshotSkill,
 )
 from sync_api.candidates import (
+    LiveSection,
     ProfileEducation,
     ProfileExperience,
     ProfileLanguage,
@@ -34,7 +34,14 @@ from sync_core.models import (
     ApplicationProject,
     ApplicationSkill,
     Base,
+    Candidate,
+    CandidateEducation,
+    CandidateExperience,
+    CandidateLanguage,
+    CandidateProject,
+    CandidateSkill,
     JobApplicationQuestion,
+    Profile,
     SkillTaxonomy,
 )
 
@@ -42,127 +49,142 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
+    from sqlalchemy import Executable
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from sync_api.candidates import CandidateProfile
 
 
 @dataclass(frozen=True, slots=True)
-class SnapshotRows:
-    """The Snapshot as rows, before they are written. What Screening then reads."""
+class Twin:
+    """One section, and the live table it is frozen from. The column names are the same on both
+    sides, which is what keeps the copy mechanical and kills the add-a-column-forget-to-map-it
+    bug — so one list of names serves the `INSERT` and the `SELECT` alike."""
 
-    profile: ApplicationProfileSnapshot
-    experiences: list[ApplicationExperience]
-    educations: list[ApplicationEducation]
-    skills: list[ApplicationSkill]
-    languages: list[ApplicationLanguage]
-    projects: list[ApplicationProject]
+    frozen: type[Base]
+    live: LiveSection
+    columns: tuple[str, ...]
 
-    def all(self) -> list[Base]:
-        return [
-            self.profile,
-            *self.experiences,
-            *self.educations,
-            *self.skills,
-            *self.languages,
-            *self.projects,
-        ]
+    def copy_into(self, application_id: UUID, candidate_id: UUID) -> Executable:
+        return insert(self.frozen).from_select(
+            ["application_id", *self.columns],
+            select(
+                literal(application_id),
+                *(getattr(self.live, column) for column in self.columns),
+            )
+            .where(self.live.candidate_id == candidate_id)
+            .order_by(self.live.sort_order),
+        )
 
 
-def snapshot_rows(
-    application_id: UUID,
-    profile: CandidateProfile,
-    skills: dict[str, UUID],
-    *,
-    full_name: str,
-    phone: str | None,
-) -> SnapshotRows:
-    """The reviewed data, frozen. Immutable from here: the Application is judged and read by
-    this, never by the live profile it was copied from."""
-    captured = ApplicationProfileSnapshot(
-        application_id=application_id,
-        full_name=full_name,
-        phone=phone,
-        headline=profile.headline,
-        summary=profile.summary,
-        location=profile.location,
+#: `email` is deliberately absent from the scalar row: only `auth.users` has a confirmed one. So
+#: are the settings on `candidates` — freezing a setting would leave someone asking why changing
+#: it changed nothing.
+SCALARS: Final = ("full_name", "phone", "headline", "summary", "location", "unmapped_skills")
+
+SECTIONS: Final = (
+    Twin(
+        frozen=ApplicationExperience,
+        live=CandidateExperience,
+        columns=(
+            "sort_order",
+            "job_title",
+            "company_name",
+            "start_year",
+            "start_month",
+            "end_year",
+            "end_month",
+            "is_current",
+            "description",
+        ),
+    ),
+    Twin(
+        frozen=ApplicationEducation,
+        live=CandidateEducation,
+        columns=(
+            "sort_order",
+            "institution",
+            "degree",
+            "field_of_study",
+            "graduation_year",
+            "description",
+        ),
+    ),
+    Twin(
+        frozen=ApplicationSkill,
+        live=CandidateSkill,
+        columns=("sort_order", "taxonomy_id", "years_experience"),
+    ),
+    Twin(
+        frozen=ApplicationLanguage,
+        live=CandidateLanguage,
+        columns=("sort_order", "language_code", "proficiency"),
+    ),
+    Twin(
+        frozen=ApplicationProject,
+        live=CandidateProject,
+        columns=(
+            "sort_order",
+            "name",
+            "description",
+            "project_url",
+            "repository_url",
+            "start_year",
+            "start_month",
+            "end_year",
+            "end_month",
+        ),
+    ),
+)
+
+
+def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
+    """The live profile frozen, as six column-listed `INSERT … SELECT`s.
+
+    Immutable from here: the Application is judged and read by this, never by the live profile
+    it was copied from.
+    """
+    scalar_row = insert(ApplicationProfileSnapshot).from_select(
+        ["application_id", *SCALARS],
+        select(
+            literal(application_id),
+            Profile.full_name,
+            Profile.phone,
+            Candidate.headline,
+            Candidate.summary,
+            Candidate.location,
+            Candidate.unmapped_skills,
+        )
+        .join_from(Candidate, Profile, Profile.id == Candidate.id)
+        .where(Candidate.id == candidate_id),
     )
-    experiences = [
-        ApplicationExperience(
-            application_id=application_id,
-            sort_order=order,
-            job_title=entry.job_title,
-            company_name=entry.company_name,
-            start_year=entry.start_year,
-            start_month=entry.start_month,
-            end_year=entry.end_year,
-            end_month=entry.end_month,
-            is_current=entry.is_current,
-            description=entry.description,
-        )
-        for order, entry in enumerate(profile.experiences)
+    return [
+        scalar_row,
+        *(section.copy_into(application_id, candidate_id) for section in SECTIONS),
     ]
-    educations = [
-        ApplicationEducation(
-            application_id=application_id,
-            sort_order=order,
-            institution=entry.institution,
-            degree=entry.degree,
-            field_of_study=entry.field_of_study,
-            graduation_year=entry.graduation_year,
-            description=entry.description,
-        )
-        for order, entry in enumerate(profile.educations)
-    ]
-    application_skills = [
-        ApplicationSkill(
-            application_id=application_id,
-            sort_order=order,
-            taxonomy_id=skills[entry.name],
-            years_experience=as_decimal(entry.years_experience),
-        )
-        for order, entry in enumerate(profile.skills)
-    ]
-    languages = [
-        ApplicationLanguage(
-            application_id=application_id,
-            sort_order=order,
-            language_code=entry.code,
-            proficiency=entry.proficiency,
-        )
-        for order, entry in enumerate(profile.languages)
-    ]
-    projects = [
-        ApplicationProject(
-            application_id=application_id,
-            sort_order=order,
-            name=entry.name,
-            description=entry.description,
-            project_url=entry.project_url,
-            repository_url=entry.repository_url,
-            start_year=entry.start_year,
-            start_month=entry.start_month,
-            end_year=entry.end_year,
-            end_month=entry.end_month,
-        )
-        for order, entry in enumerate(profile.projects)
-    ]
-    return SnapshotRows(
-        profile=captured,
-        experiences=experiences,
-        educations=educations,
-        skills=application_skills,
-        languages=languages,
-        projects=projects,
+
+
+async def screened(
+    session: AsyncSession, application_id: UUID, answers: Sequence[ApplicationAnswer]
+) -> Snapshot:
+    """What Screening measures: the Snapshot rows just written, and never the live profile."""
+    skills = await session.execute(
+        select(ApplicationSkill.taxonomy_id, ApplicationSkill.years_experience)
+        .where(ApplicationSkill.application_id == application_id)
+        .order_by(ApplicationSkill.sort_order)
     )
-
-
-def screened(rows: SnapshotRows, answers: Sequence[ApplicationAnswer]) -> Snapshot:
-    """What Screening measures: the Snapshot rows themselves, and never the live profile."""
+    experiences = await session.scalars(
+        select(ApplicationExperience)
+        .where(ApplicationExperience.application_id == application_id)
+        .order_by(ApplicationExperience.sort_order)
+    )
+    languages = await session.execute(
+        select(ApplicationLanguage.language_code, ApplicationLanguage.proficiency)
+        .where(ApplicationLanguage.application_id == application_id)
+        .order_by(ApplicationLanguage.sort_order)
+    )
     return Snapshot(
         skills=tuple(
-            SnapshotSkill(taxonomy_id=row.taxonomy_id, years_experience=row.years_experience)
-            for row in rows.skills
+            SnapshotSkill(taxonomy_id=taxonomy_id, years_experience=years)
+            for taxonomy_id, years in skills.tuples()
         ),
         experiences=tuple(
             SnapshotExperience(
@@ -172,22 +194,17 @@ def screened(rows: SnapshotRows, answers: Sequence[ApplicationAnswer]) -> Snapsh
                 end_month=row.end_month,
                 is_current=row.is_current,
             )
-            for row in rows.experiences
+            for row in experiences
         ),
         languages=tuple(
-            SnapshotLanguage(code=row.language_code, proficiency=row.proficiency)
-            for row in rows.languages
+            SnapshotLanguage(code=code, proficiency=proficiency)
+            for code, proficiency in languages.tuples()
         ),
         answers=tuple(
             SnapshotAnswer(question_id=row.question_id, answer_boolean=row.answer_boolean)
             for row in answers
         ),
     )
-
-
-def as_decimal(years: float | None) -> Decimal | None:
-    """Through `str`, so `numeric(4,1)` stores the number that was typed, not its float."""
-    return None if years is None else Decimal(str(years))
 
 
 async def snapshot_of(session: AsyncSession, application_id: UUID) -> ApplicationSnapshot:
@@ -202,6 +219,7 @@ async def snapshot_of(session: AsyncSession, application_id: UUID) -> Applicatio
         headline=captured.headline,
         summary=captured.summary,
         location=captured.location,
+        unmapped_skills=captured.unmapped_skills,
         experiences=await _experiences(session, application_id),
         educations=await _educations(session, application_id),
         skills=await _skills(session, application_id),
@@ -273,7 +291,4 @@ async def _skills(session: AsyncSession, application_id: UUID) -> list[ProfileSk
         .where(ApplicationSkill.application_id == application_id)
         .order_by(ApplicationSkill.sort_order)
     )
-    return [
-        ProfileSkill(name=name, years_experience=None if years is None else float(years))
-        for name, years in rows.tuples()
-    ]
+    return [ProfileSkill(name=name, years_experience=float(years)) for name, years in rows.tuples()]

@@ -17,6 +17,7 @@ from sync_core.models import (
     ApplicationQualificationHistory,
     ApplicationSkill,
     ApplicationStatusHistory,
+    Candidate,
     Communication,
     Cv,
     CvParsingStatus,
@@ -24,7 +25,7 @@ from sync_core.models import (
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv
 from tests.support.jobs import TENANT_JOBS, a_published_job, read_job, set_criteria
-from tests.support.profiles import a_profile, give_a_current_cv, my_id
+from tests.support.profiles import a_filled_profile, a_saved_profile, give_a_current_cv, my_id
 
 if TYPE_CHECKING:
     from httpx import AsyncClient, Response
@@ -68,9 +69,25 @@ def questions_of(job: dict[str, Any]) -> list[dict[str, Any]]:
 async def a_candidate_with_a_ready_cv(
     browser: AsyncClient, mailbox: Mailbox, session: AsyncSession, label: str = "applicant"
 ) -> UUID:
-    """A signed-in Candidate holding the one thing applying insists on."""
+    """A signed-in Candidate holding a current CV. Their profile is still empty."""
     await a_signed_in_candidate(browser, mailbox, label)
     return await give_a_current_cv(session, await my_id(browser))
+
+
+async def a_candidate_who_can_apply(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    session: AsyncSession,
+    label: str = "applicant",
+    **changes: Any,
+) -> UUID:
+    """The two things applying insists on: a current CV, and a profile worth judging.
+
+    Answers with the current CV's id — what the Snapshot's Application will name.
+    """
+    cv_id = await a_candidate_with_a_ready_cv(browser, mailbox, session, label)
+    await a_saved_profile(browser, a_filled_profile(**changes))
+    return cv_id
 
 
 async def a_candidate_with_a_stored_cv(
@@ -82,31 +99,28 @@ async def a_candidate_with_a_stored_cv(
     await session.execute(
         update(Cv).where(Cv.id == UUID(uploaded["id"])).values(parsing_status=CvParsingStatus.READY)
     )
+    await session.execute(
+        update(Candidate)
+        .where(Candidate.id == await my_id(browser))
+        .values(current_cv_id=UUID(uploaded["id"]))
+    )
     await session.commit()
+    await a_saved_profile(browser, a_filled_profile())
     return UUID(uploaded["id"])
 
 
-def a_submission(job_id: str | UUID, cv_id: str | UUID, **changes: Any) -> dict[str, Any]:
-    return {
-        "job_id": str(job_id),
-        "cv_id": str(cv_id),
-        "profile": a_profile(),
-        "answers": [],
-        "update_profile": False,
-        **changes,
-    }
+def a_submission(job_id: str | UUID, **changes: Any) -> dict[str, Any]:
+    return {"job_id": str(job_id), "answers": [], **changes}
 
 
-async def apply_to(
-    browser: AsyncClient, job_id: str | UUID, cv_id: str | UUID, **changes: Any
-) -> Response:
-    return await browser.post(APPLICATIONS, json=a_submission(job_id, cv_id, **changes))
+async def apply_to(browser: AsyncClient, job_id: str | UUID, **changes: Any) -> Response:
+    return await browser.post(APPLICATIONS, json=a_submission(job_id, **changes))
 
 
 async def an_accepted_application(
-    browser: AsyncClient, job_id: str | UUID, cv_id: str | UUID, **changes: Any
+    browser: AsyncClient, job_id: str | UUID, **changes: Any
 ) -> dict[str, Any]:
-    response = await apply_to(browser, job_id, cv_id, **changes)
+    response = await apply_to(browser, job_id, **changes)
     assert response.status_code == 201, response.text
     application: dict[str, Any] = response.json()
     return application

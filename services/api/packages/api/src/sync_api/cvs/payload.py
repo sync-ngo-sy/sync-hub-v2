@@ -6,11 +6,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from sync_core.models import CvParsingStatus
-from sync_parsers import ParsedCv
 
 
-class CvSummary(BaseModel):
-    """One uploaded CV as it appears in the caller's list of them."""
+class Cv(BaseModel):
+    """One uploaded CV, and how far the platform has got with it."""
 
     id: UUID
     display_name: str = Field(description="The name of the file the candidate uploaded.")
@@ -28,17 +27,6 @@ class CvSummary(BaseModel):
     )
     created_at: datetime
     parsed_at: datetime | None = None
-
-
-class Cv(CvSummary):
-    """One uploaded CV, and how far the platform has got with it."""
-
-    parsed_cv: ParsedCv | None = Field(
-        default=None,
-        description="What the AI read out of the CV — present only once `parsing_status` is "
-        "`ready`. Skills are Canonical skills; everything else the CV named is in "
-        "`unmapped_skills` for the candidate to review.",
-    )
 
 
 class CvDownloadLink(BaseModel):
