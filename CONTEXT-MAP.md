@@ -9,10 +9,15 @@ most contexts below don't have one yet.
 - [Database](./supabase/CONTEXT.md) — the Postgres schema: identity, tenancy, the
   recruitment domain tables, and the invariants the database enforces on its own
   (constraints, RLS, trusted RPCs).
+- [Candidate Portal](./apps/candidate-portal/CONTEXT.md) — the candidate-facing web
+  app: browsing and applying to Jobs, CVs, the professional profile, Applications.
+- [Recruiter Portal](./apps/recruiter-portal/CONTEXT.md) — the tenant-facing web app:
+  Jobs, the application Pipeline, the tenant CRM, and team management.
+- [Design System](./packages/ui/CONTEXT.md) — the shared visual language of both
+  portals: tokens, primitives, and molecules that render purely from props.
 
 Not yet modelled (no `CONTEXT.md` until their terms are resolved):
-`apps/candidate-portal`, `apps/recruiter-portal`, `packages/api-client`,
-`packages/db-types`, `packages/ui`, `services/api`.
+`packages/api-client`, `packages/db-types`, `services/api`.
 
 ## Relationships
 
@@ -22,3 +27,9 @@ Not yet modelled (no `CONTEXT.md` until their terms are resolved):
   backend blindly.
 - **Database → packages/db-types**: `db-types` is generated from the live schema; the
   database is the source of truth.
+- **services/api → packages/api-client**: the client is generated from the API's
+  OpenAPI schema; the API is the source of truth (see ADR-0008).
+- **Portals → services/api**: both portals speak to the backend only through
+  `packages/api-client` — never raw HTTP (ADR-0008).
+- **Design System → Portals**: both portals render from the shared design system;
+  the design system itself never fetches data (ADR-0009).
