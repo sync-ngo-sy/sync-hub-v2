@@ -16,7 +16,7 @@ you are allowed to add dependencies.
 
 ### Don't over comment
 
-Only reach for a comment when it's impossible to infer or understand without code; docstrings for routing functions are an exception because they become the description in the OpenAPI schema, but they should be very minimal.
+Only reach for a comment when it's impossible to infer or understand without code.
 
 Don't edit the readme.md file unless explicitly told to.
 
