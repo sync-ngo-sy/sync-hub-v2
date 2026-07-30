@@ -1,0 +1,17 @@
+@import "@sync/ui/globals.css";
+
+/* The Ledger weights the Dashboard mockup fixes, which sit between Tailwind's steps. */
+@theme {
+  --font-weight-emphasis: 560;
+  --font-weight-strong: 640;
+}
+
+/* This portal is the dense surface: 14px body at the mockup's 450 base weight. The Candidate
+   Portal reads at 16px, so the shared token file cannot pick either one. */
+@layer base {
+  body {
+    font-size: var(--text-body-dense);
+    line-height: var(--text-body-dense--line-height);
+    font-weight: 450;
+  }
+}
