@@ -3,7 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Candidate Portal</title>
+    <link rel="icon" href="/logo.png" />
+    <title>Sync</title>
+    <script>
+      // Runs before paint so the correct theme applies with no flash.
+      (() => {
+        var stored = localStorage.getItem('sync-candidate-theme');
+        var dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', dark);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

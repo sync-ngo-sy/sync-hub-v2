@@ -15,7 +15,8 @@
       "!**/*.gen.ts",
       "!**/routeTree.gen.ts",
       "!**/*.css",
-      "!packages/ui/src/components/ui/**"
+      "!packages/ui/src/components/ui",
+      "!docs"
     ]
   },
   "formatter": {

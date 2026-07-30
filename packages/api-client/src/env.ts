@@ -22,7 +22,11 @@ const clientEnvSchema = z.object({
     .refine((value) => {
       const pathname = basePathname(value);
       return pathname === null || !pathname.replace(/\/+$/, '').endsWith('/v1');
-    }, 'must not end in /v1 — the generated paths already carry that prefix'),
+    }, 'must not end in /v1 — the generated paths already carry that prefix')
+    // Vite omits the key entirely when no .env declares it, so absent has to mean the same
+    // thing as empty: same-origin. Otherwise a portal that passes `import.meta.env` straight
+    // through throws at import time on a fresh checkout.
+    .default(''),
 });
 
 export interface ClientEnv {

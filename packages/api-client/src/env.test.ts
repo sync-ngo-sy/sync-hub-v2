@@ -16,8 +16,16 @@ describe('readClientEnv', () => {
     expect(readClientEnv({ VITE_API_BASE_URL: '/api' }).apiBaseUrl).toBe('/api');
   });
 
-  it('throws loudly when the base URL is missing', () => {
-    expect(() => readClientEnv({})).toThrow(/Invalid frontend environment/);
+  it('defaults an absent base URL to same-origin', () => {
+    expect(readClientEnv({}).apiBaseUrl).toBe('');
+  });
+
+  it('defaults an explicitly undefined base URL to same-origin', () => {
+    expect(readClientEnv({ VITE_API_BASE_URL: undefined }).apiBaseUrl).toBe('');
+  });
+
+  it('defaults when handed a whole import.meta.env that never declared the variable', () => {
+    expect(readClientEnv({ MODE: 'development', BASE_URL: '/', DEV: true }).apiBaseUrl).toBe('');
   });
 
   it('throws loudly when the base URL is malformed', () => {
