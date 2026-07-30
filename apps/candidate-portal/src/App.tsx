@@ -1,4 +1,4 @@
-import { Button } from '@sync/ui/components/button';
+import { Button } from '@sync/ui/components/ui/button';
 
 export function App() {
   return (

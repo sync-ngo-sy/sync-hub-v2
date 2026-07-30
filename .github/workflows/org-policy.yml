@@ -1,0 +1,175 @@
+# Applies project-scoped organisation policies. See infra/org-policies/README.md.
+#
+# Three things gate the apply job, and only the first is enforced by this file:
+#   1. github.actor must be the owner login below.
+#   2. The org-policy environment requires a review before the job starts.
+#   3. Google refuses the token unless it comes from this repository, that environment and
+#      that actor -- the workload identity provider's attribute condition and the
+#      principalSet on the service account, both set by scripts/bootstrap-ci-org-policy.sh.
+#
+# Steps 2 and 3 are the real controls: 1 lives in a file that a repository admin could edit.
+# Nothing here can touch the organisation-wide baseline; apply-org-policy.sh refuses it.
+
+name: Org policy
+
+on:
+  # Both, because changes here land directly on main as often as through a pull request.
+  push:
+    branches: [main]
+    paths:
+      - infra/org-policies/**
+      - scripts/apply-org-policy.sh
+      - scripts/bootstrap-ci-org-policy.sh
+      - .github/workflows/org-policy.yml
+  pull_request:
+    paths:
+      - infra/org-policies/**
+      - scripts/apply-org-policy.sh
+      - scripts/bootstrap-ci-org-policy.sh
+      - .github/workflows/org-policy.yml
+  workflow_dispatch:
+    inputs:
+      policy_file:
+        description: Policy file to apply
+        required: true
+        default: infra/org-policies/project-sync-ngo-prod.yaml
+        type: choice
+        options:
+          - infra/org-policies/project-sync-ngo-prod.yaml
+      reason:
+        description: Why this is being applied (recorded in the run summary)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: org-policy
+  cancel-in-progress: false
+
+env:
+  OWNER_LOGIN: abdulqdaer-q
+  GCP_PROJECT: sync-ngo-prod
+  GCP_PROJECT_NUMBER: "870458118919"
+  WIF_POOL: github
+  WIF_PROVIDER: sync-hub-v2
+  APPLY_SA: org-policy-applier@sync-ngo-prod.iam.gserviceaccount.com
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Shellcheck
+        run: shellcheck scripts/apply-org-policy.sh scripts/bootstrap-ci-org-policy.sh
+
+      # --check runs the same parser and guards the apply path uses, with no cloud calls.
+      - name: Applied files are project-scoped
+        run: |
+          set -euo pipefail
+          for f in infra/org-policies/project-*.yaml; do
+            ./scripts/apply-org-policy.sh --check "$f"
+          done
+
+      - name: The organisation baseline is refused
+        run: |
+          set -uo pipefail
+          if ./scripts/apply-org-policy.sh --check infra/org-policies/org-baseline.yaml; then
+            echo "::error::org-baseline.yaml was accepted as an applyable file"
+            exit 1
+          fi
+          echo "refused, as expected"
+
+  apply:
+    name: Apply
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: org-policy
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Only the owner may apply
+        env:
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if [ "$ACTOR" != "$OWNER_LOGIN" ]; then
+            echo "::error::$ACTOR is not authorised to apply organisation policy."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Google Cloud CLI is present
+        run: |
+          set -euo pipefail
+          command -v gcloud >/dev/null || {
+            echo "::error::gcloud is not on this runner image; install it before authenticating."
+            exit 1
+          }
+          gcloud version | head -1
+
+      # Federated, keyless, and deliberately without a third-party action: the runner
+      # exchanges its OIDC token for a short-lived Google credential itself. No repository
+      # secret exists to leak, and there is no action to pin.
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="${APPLY_SA}" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth login --cred-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud config set project "${GCP_PROJECT}" --quiet
+          echo "authenticated as $(gcloud config get-value account 2>/dev/null)"
+
+      - name: Apply
+        id: apply
+        env:
+          POLICY_FILE: ${{ inputs.policy_file }}
+        run: |
+          set -euo pipefail
+          ./scripts/apply-org-policy.sh --yes "$POLICY_FILE" | tee "${RUNNER_TEMP}/apply.log"
+
+      - name: Record the change
+        if: always()
+        env:
+          POLICY_FILE: ${{ inputs.policy_file }}
+          REASON: ${{ inputs.reason }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Organisation policy applied"
+            echo
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| file | \`${POLICY_FILE}\` |"
+            echo "| project | \`${GCP_PROJECT}\` |"
+            echo "| requested by | \`${ACTOR}\` |"
+            echo "| outcome | \`${{ steps.apply.outcome }}\` |"
+            echo
+            echo "**Reason**"
+            echo
+            echo "${REASON}"
+            echo
+            echo '```'
+            cat "${RUNNER_TEMP}/apply.log" 2>/dev/null || echo "(no output captured)"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true
