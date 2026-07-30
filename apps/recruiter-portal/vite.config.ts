@@ -1,11 +1,22 @@
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    tailwindcss(),
+    // Must precede the React plugin: it generates the route tree the app imports.
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      // Route tests are colocated with their routes and are not themselves routes.
+      routeFileIgnorePattern: '\\.test\\.tsx?$',
+    }),
+    react(),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -14,11 +25,18 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': {
+      // Same-origin in dev, so the session cookies stay same-site.
+      '/v1': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/testing/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    // jsdom's own origin, so tests exercise the same-origin topology production runs.
+    env: { VITE_API_BASE_URL: 'http://localhost:3000' },
   },
 });
