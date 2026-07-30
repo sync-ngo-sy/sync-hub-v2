@@ -1,16 +1,33 @@
 import { z } from 'zod';
 
+/** Path the base resolves to, or `null` when the value is not a usable base at all. */
+function basePathname(value: string): string | null {
+  if (value === '') return '';
+  if (/^https?:\/\//.test(value)) {
+    try {
+      return new URL(value).pathname;
+    } catch {
+      return null;
+    }
+  }
+  return value.startsWith('/') && !value.startsWith('//') ? value : null;
+}
+
 const clientEnvSchema = z.object({
   VITE_API_BASE_URL: z
     .string()
     .refine(
-      (value) => value === '' || /^https?:\/\//.test(value),
-      'must be empty (same-origin) or an absolute http(s) URL — the generated paths already include /v1',
-    ),
+      (value) => basePathname(value) !== null,
+      'must be empty (same-origin), a root-relative path, or an absolute http(s) URL',
+    )
+    .refine((value) => {
+      const pathname = basePathname(value);
+      return pathname === null || !pathname.replace(/\/+$/, '').endsWith('/v1');
+    }, 'must not end in /v1 — the generated paths already carry that prefix'),
 });
 
 export interface ClientEnv {
-  /** Origin the generated `/v1/...` paths resolve against; empty means same-origin. */
+  /** Base the generated `/v1/...` paths resolve against; empty means same-origin. */
   apiBaseUrl: string;
 }
 
