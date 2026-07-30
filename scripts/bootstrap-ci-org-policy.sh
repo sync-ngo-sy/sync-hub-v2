@@ -97,12 +97,30 @@ echo "  only tokens from ${REPO} carrying environment=${ENVIRONMENT} and actor=$
 echo "  may impersonate ${SA_EMAIL}"
 
 # ---------------------------------------------------------------- role ---------
-echo "--- policy admin on the project ---"
-gcloud projects add-iam-policy-binding "$PROJECT" \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/orgpolicy.policyAdmin" \
-  --condition=None >/dev/null || exit 1
-echo "  granted roles/orgpolicy.policyAdmin on ${PROJECT} (project scope, not organisation)"
+# Deliberately not granted here. roles/orgpolicy.policyAdmin is grantable at the
+# organisation only -- confirmed with `gcloud iam list-grantable-roles`, which offers just
+# policyViewer on a project. So an identity that can run set-policy can rewrite every
+# organisation policy, including the domain restriction and the key-creation ban. That is
+# more power than the change it performs, so this script stops short of granting it.
+echo "--- applier authority: NOT granted ---"
+cat <<'ROLE'
+  roles/orgpolicy.policyAdmin exists only at organisation scope, so there is no
+  project-scoped grant that would let this service account run set-policy safely.
+
+  Two supported ways forward, both needing one organisation-level action by a human:
+
+    1. Tag-conditioned exception (narrow). A human creates a tag key/value once and
+       rewrites the organisation policy to allow all members only where that tag is
+       attached, keeping the restrictive default. Attaching the tag is then the whole
+       operation, and roles/resourcemanager.tagUser IS grantable per project -- so this
+       account gets "may flip a pre-approved exception", nothing more.
+
+    2. Apply the project policy by hand, once (scripts/apply-org-policy.sh), and leave
+       the workflow to validation only. Simplest, and there is no recurring operation
+       for a single project.
+
+  See infra/org-policies/README.md.
+ROLE
 
 # ---------------------------------------------------------------- next ---------
 cat <<NEXT
