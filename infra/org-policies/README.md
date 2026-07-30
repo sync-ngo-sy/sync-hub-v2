@@ -89,7 +89,14 @@ gcloud run deploy drs-probe --image=us-docker.pkg.dev/cloudrun/container/hello -
 gcloud run services delete drs-probe --region=europe-west3 --project=sync-ngo-prod --quiet
 ```
 
-### If the probe fails with the tag attached
+**Retry once before concluding anything.** Run immediately after the tag is attached, the
+deploy reports `Setting IAM policy failed` and the binding is refused with
+`FAILED_PRECONDITION: One or more users named in the policy do not belong to a permitted
+customer`. A minute later the same binding succeeds. That is tag propagation, not a broken
+condition — confirmed on 2026-07-30, where the retry returned an `allUsers` invoker binding
+and an anonymous `HTTP 200`.
+
+### If the probe still fails with the tag attached
 
 Then tag conditions do not cover this constraint, and the fallback is the project-scoped
 override in `project-sync-ngo-prod.yaml`:
