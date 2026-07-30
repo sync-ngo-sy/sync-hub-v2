@@ -71,7 +71,10 @@ else
 fi
 
 # ---------------------------------------------------------------- backup -------
-BACKUP=$(mktemp -t "drs-org-policy-backup-$(date -u +%Y%m%dT%H%M%SZ)").yaml
+WORKDIR=$(mktemp -d -t drs-org-policy)
+BACKUP="${WORKDIR}/backup.yaml"
+PAYLOAD="${WORKDIR}/payload.yaml"
+
 echo
 echo "--- current organisation policy (backed up) ---"
 if ! gcloud org-policies describe "$CONSTRAINT" --organization="$ORG" >"$BACKUP" 2>&1; then
@@ -84,15 +87,16 @@ echo
 echo "  backup: $BACKUP"
 
 # The live etag goes into the payload so a concurrent change fails the write instead of
-# being silently overwritten. It is fetched rather than committed because it changes on
-# every write.
-ETAG=$(awk -F': *' '/^ *etag:/ { gsub(/["'\'']/, "", $2); print $2; exit }' "$BACKUP")
+# being silently overwritten. Fetched rather than committed, because it changes on every
+# write -- and read by field name, because describe prints two different etags: a
+# top-level one with a trailing '-' and the spec one, which is the only one set-policy
+# accepts. Parsing the first 'etag:' line out of the YAML picks the wrong one.
+ETAG=$(gcloud org-policies describe "$CONSTRAINT" --organization="$ORG" --format="value(spec.etag)" 2>/dev/null)
 if [ -z "$ETAG" ]; then
-  echo "could not read an etag from the current policy; refusing to write blind." >&2
+  echo "could not read spec.etag from the current policy; refusing to write blind." >&2
   exit 1
 fi
 
-PAYLOAD=$(mktemp -t drs-org-policy-payload).yaml
 awk -v etag="$ETAG" '{ print } /^spec:/ { print "  etag: " etag }' "$POLICY_FILE" >"$PAYLOAD"
 
 echo
