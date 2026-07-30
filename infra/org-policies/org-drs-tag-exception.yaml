@@ -1,0 +1,30 @@
+# The organisation policy for Domain Restricted Sharing, with a tag-keyed exception.
+# Issue: https://github.com/sync-ngo-sy/sync-hub-v2/issues/76
+#
+# Applied ONCE, by a human, with scripts/bootstrap-drs-tag-exception.sh. Never by CI:
+# writing this file requires roles/orgpolicy.policyAdmin, which exists only at
+# organisation scope and therefore carries authority over every constraint in the
+# organisation. That is the whole reason for the shape below.
+#
+# Rule order matters. Conditional rules are evaluated first; the unconditional rule is the
+# default. So a project carrying the tag allows any member, and every other project in the
+# organisation stays restricted to the Workspace customer ID.
+#
+# What this buys: the *shape* of the exception is decided here, once, by a person. Deciding
+# which projects get it becomes a tag binding, and roles/resourcemanager.tagUser is
+# grantable per project -- so automation can flip a pre-approved exception without ever
+# holding the power to invent a new one.
+
+name: organizations/471724145580/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+    - condition:
+        title: Public Cloud Run exception
+        description: >-
+          Projects tagged drs-exception=public-cloud-run may bind allUsers, which Cloud Run
+          needs to serve the public careers board anonymously.
+        expression: resource.matchTag("471724145580/drs-exception", "public-cloud-run")
+      allowAll: true
+    - values:
+        allowedValues:
+          - C02rvm4mx # the sync.ngo Workspace customer ID

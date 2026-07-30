@@ -10,17 +10,17 @@
 # happens through the workflow. The same steps can be clicked through in the Console if
 # you would rather not run a shell script; the resource names below are what to create.
 #
-# Run as an account with roles/owner on the project (subscription@sync.ngo has it) plus
-# roles/resourcemanager.organizationAdmin, which is what allows granting policyAdmin.
+# Run ./scripts/bootstrap-drs-tag-exception.sh FIRST -- it creates the tag this grants
+# access to. Run this as an account with roles/owner on the project; subscription@sync.ngo
+# has it.
 #
 # Re-running is safe: every step checks for what it creates.
 #
-# WHAT THIS GRANTS, STATED PLAINLY: roles/orgpolicy.policyAdmin on sync-ngo-prod lets the
-# holder override *any* organisation-policy constraint on that project, not only domain
-# restricted sharing. That includes iam.disableServiceAccountKeyCreation. The controls that
-# keep it narrow are the org-policy environment's required reviewer, the attribute
-# condition pinning the token to this repository, and the principalSet pinning it to that
-# environment and to one GitHub actor. Cloud Audit Logs record every SetOrgPolicy call.
+# WHAT THIS GRANTS, STATED PLAINLY: roles/resourcemanager.tagUser on one tag value and on
+# one project. That is enough to attach an exception a human already defined at the
+# organisation level, and not enough to define one, alter it, or affect any other
+# constraint. The workflow additionally cannot attach the tag to a project missing from
+# infra/org-policies/exception-projects.txt. Cloud Audit Logs record every tag binding.
 
 set -uo pipefail
 
@@ -32,6 +32,9 @@ SA_ID=org-policy-applier
 REPO=sync-ngo-sy/sync-hub-v2
 ENVIRONMENT=org-policy
 ACTOR=abdulqdaer-q
+
+ORG=471724145580
+TAG_VALUE_PATH="${ORG}/drs-exception/public-cloud-run"
 
 SA_EMAIL="${SA_ID}@${PROJECT}.iam.gserviceaccount.com"
 POOL_PATH="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}"
@@ -97,30 +100,30 @@ echo "  only tokens from ${REPO} carrying environment=${ENVIRONMENT} and actor=$
 echo "  may impersonate ${SA_EMAIL}"
 
 # ---------------------------------------------------------------- role ---------
-# Deliberately not granted here. roles/orgpolicy.policyAdmin is grantable at the
-# organisation only -- confirmed with `gcloud iam list-grantable-roles`, which offers just
-# policyViewer on a project. So an identity that can run set-policy can rewrite every
-# organisation policy, including the domain restriction and the key-creation ban. That is
-# more power than the change it performs, so this script stops short of granting it.
-echo "--- applier authority: NOT granted ---"
-cat <<'ROLE'
-  roles/orgpolicy.policyAdmin exists only at organisation scope, so there is no
-  project-scoped grant that would let this service account run set-policy safely.
+# roles/orgpolicy.policyAdmin is deliberately NOT granted, and could not be granted here
+# even if it were wanted: `gcloud iam list-grantable-roles` offers only policyViewer on a
+# project, so an identity able to run set-policy necessarily holds authority over every
+# constraint in the organisation. tagUser is the narrow substitute -- it can flip an
+# exception a human already defined, and nothing else.
+echo "--- applier authority: tagUser on the exception tag ---"
+if ! gcloud resource-manager tags values describe "$TAG_VALUE_PATH" >/dev/null 2>&1; then
+  echo "  the tag ${TAG_VALUE_PATH} does not exist yet." >&2
+  echo "  Run ./scripts/bootstrap-drs-tag-exception.sh first -- it creates the tag and" >&2
+  echo "  rewrites the organisation policy that gives the tag its meaning." >&2
+  exit 1
+fi
 
-  Two supported ways forward, both needing one organisation-level action by a human:
+gcloud resource-manager tags values add-iam-policy-binding "$TAG_VALUE_PATH" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/resourcemanager.tagUser" >/dev/null || exit 1
+echo "  on the tag value: ${TAG_VALUE_PATH}"
 
-    1. Tag-conditioned exception (narrow). A human creates a tag key/value once and
-       rewrites the organisation policy to allow all members only where that tag is
-       attached, keeping the restrictive default. Attaching the tag is then the whole
-       operation, and roles/resourcemanager.tagUser IS grantable per project -- so this
-       account gets "may flip a pre-approved exception", nothing more.
-
-    2. Apply the project policy by hand, once (scripts/apply-org-policy.sh), and leave
-       the workflow to validation only. Simplest, and there is no recurring operation
-       for a single project.
-
-  See infra/org-policies/README.md.
-ROLE
+gcloud projects add-iam-policy-binding "$PROJECT" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/resourcemanager.tagUser" \
+  --condition=None >/dev/null || exit 1
+echo "  on the project  : ${PROJECT}"
+echo "  attaching a tag needs both; neither can create or alter an organisation policy."
 
 # ---------------------------------------------------------------- next ---------
 cat <<NEXT

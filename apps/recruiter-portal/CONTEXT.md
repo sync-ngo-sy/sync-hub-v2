@@ -26,3 +26,13 @@ _Avoid_: Funnel, workflow, stages.
 The full-page notice shown when a signed-in Profile of the other account type opens this
 portal, naming the portal they should be in.
 _Avoid_: 403 page, forbidden page.
+
+**Workspace**:
+The signed-in area behind the sidebar — everything a Recruiter reaches once a session
+exists. Distinct from the Tenant, which is the organization the workspace belongs to.
+_Avoid_: App, admin area, back office.
+
+**Kitchen sink**:
+The dev-only route that renders every design-system piece this portal uses, in the active
+theme. It stands in for Storybook and never ships in a production build.
+_Avoid_: Storybook, style guide, playground.
