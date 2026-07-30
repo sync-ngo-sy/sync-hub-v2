@@ -1,22 +1,13 @@
-# RECORD ONLY — never applied by tooling. `scripts/apply-org-policy.sh` refuses this file.
+# RECORD ONLY — never applied by tooling. Both apply-org-policy.sh and the Org policy
+# workflow refuse organisation-scoped files, and CI asserts that they do.
 #
-# This is what the sync.ngo organisation enforces, transcribed from the live policies on
-# 2026-07-30 (etags and update timestamps omitted, since they change on every write). It
-# is committed so that the narrow exception in this directory can be read against the
-# default it departs from, in one diff.
+# Transcribed from the live policy on 2026-07-30. Committed so the exception in this
+# directory can be read against the constraints it lives beside, in one diff.
 #
-# Nothing in this repository should be able to change these. An apply that could rewrite
-# them would make the deploy pipeline the most privileged thing in the account.
+# Domain restricted sharing used to be recorded here too. It is now actively managed, in
+# org-drs-tag-exception.yaml, because the exception is expressed as a conditional rule
+# inside that policy rather than as a separate project-scoped override.
 
----
-name: organizations/471724145580/policies/iam.allowedPolicyMemberDomains
-spec:
-  rules:
-    - values:
-        allowedValues:
-          - C02rvm4mx # the sync.ngo Workspace customer ID
-
----
 # Enforced, and the reason Workload Identity Federation is mandatory for CI rather than
 # merely preferred: no service-account key can be minted to authenticate with instead.
 name: organizations/471724145580/policies/iam.disableServiceAccountKeyCreation

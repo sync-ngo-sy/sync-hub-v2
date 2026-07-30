@@ -1,0 +1,9 @@
+# Projects allowed to carry drs-exception=public-cloud-run.
+#
+# This file is the reviewed artifact. attach-drs-exception.sh refuses any project not
+# listed here, in every mode, so adding a project to the exception means a commit that
+# CODEOWNERS routes to a review -- not a one-off command someone ran.
+#
+# One project id per line. Everything after '#' is ignored.
+
+sync-ngo-prod # hosts the public API; the careers board calls it anonymously
