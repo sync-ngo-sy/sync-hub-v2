@@ -1,0 +1,11 @@
+# Paths from which someone can reach the cloud account, rather than just the code.
+#
+# This file only has teeth while the "protect main" ruleset has "Require review from
+# Code Owners" enabled — without it, GitHub merely auto-requests the owner as a reviewer.
+#
+# /.github/ is here for two reasons: it covers this file, and it covers the workflows
+# that hold the federated CI identity, where an edit can mint cloud credentials.
+
+/infra/     @abdulqdaer-q
+/scripts/   @abdulqdaer-q
+/.github/   @abdulqdaer-q

@@ -22,6 +22,9 @@
   "[json]": { "editor.defaultFormatter": "biomejs.biome" },
   "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
 
+  // Don't let VS Code's Git integration append a Co-authored-by trailer for AI-assisted commits.
+  "git.addAICoAuthor": "off",
+
   // Keep noise out of search / file watching.
   "search.exclude": {
     "**/node_modules": true,
