@@ -1,12 +1,9 @@
 import type { Middleware } from 'openapi-fetch';
 
-/** The backend gates every unsafe method on the presence of this header (ADR-0005). */
 export const CSRF_HEADER = 'X-Sync-Request';
 
-/** The backend only checks that the header is present, so any non-empty value serves. */
 const CSRF_VALUE = '1';
 
-/** Session-refresh endpoint — the only path the backend lets mint fresh auth cookies. */
 export const REFRESH_PATH = '/v1/auth/refresh';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE']);
@@ -25,12 +22,6 @@ export interface AuthFetchOptions {
   onSessionExpired?: () => void;
 }
 
-/**
- * A `fetch` that transparently recovers one expired access token: on a 401 it refreshes
- * the session once — coalescing concurrent refreshes into a single call — and replays the
- * original request. A failed refresh, or a second 401 after a successful one, signals
- * `onSessionExpired` and returns the 401 untouched.
- */
 export function createAuthFetch({
   baseUrl,
   onSessionExpired,

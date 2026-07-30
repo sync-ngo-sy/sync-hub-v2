@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-/** Path the base resolves to, or `null` when the value is not a usable base at all. */
 function basePathname(value: string): string | null {
   if (value === '') return '';
   if (/^https?:\/\//.test(value)) {
@@ -27,15 +26,9 @@ const clientEnvSchema = z.object({
 });
 
 export interface ClientEnv {
-  /** Base the generated `/v1/...` paths resolve against; empty means same-origin. */
   apiBaseUrl: string;
 }
 
-/**
- * Validate the frontend environment the API client depends on, throwing at startup rather
- * than letting a misconfiguration surface later as an opaque failed request. Callers pass
- * their bundler's env (`import.meta.env`); tests pass an explicit record.
- */
 export function readClientEnv(source: Record<string, unknown>): ClientEnv {
   const result = clientEnvSchema.safeParse(source);
   if (!result.success) {

@@ -1,10 +1,8 @@
 import { createOpenApiHttp } from 'openapi-msw';
 import type { components, paths } from '../schema.gen';
 
-/** Absolute origin the client and handlers share — MSW needs absolute URLs under Node. */
 export const API_ORIGIN = 'http://sync.test';
 
-/** Request handlers typed against the generated schema: a wrong path or body fails compile. */
 export const http = createOpenApiHttp<paths>({ baseUrl: API_ORIGIN });
 
 export const PROFILE: components['schemas']['ProfileView'] = {

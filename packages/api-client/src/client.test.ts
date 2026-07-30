@@ -15,8 +15,6 @@ const makeClient = (onSessionExpired?: () => void) =>
 
 describe('credentials', () => {
   it('sends cookie credentials on every request', async () => {
-    // Read the credentials mode off the outgoing Request directly — undici normalizes
-    // it away at the MSW boundary, so a network-seam handler cannot observe it.
     const seen: RequestCredentials[] = [];
     const original = globalThis.fetch;
     globalThis.fetch = (async (input: Request) => {
