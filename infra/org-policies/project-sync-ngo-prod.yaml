@@ -1,0 +1,22 @@
+# Scoped exception to Domain Restricted Sharing for the project that hosts the public API.
+# Issue: https://github.com/sync-ngo-sy/sync-hub-v2/issues/76
+#
+# Why this exists: the public careers board calls the API anonymously, which needs an
+# `allUsers` invoker binding on the Cloud Run service. `allUsers` belongs to no domain,
+# so the organisation's allowedPolicyMemberDomains rule denies it. The constraint takes
+# domains and customer IDs only — there is no value that means "and also allUsers" — so
+# the only exception available is to stop enforcing the constraint at a narrower scope.
+#
+# Why it is narrow: this policy replaces the inherited rule for this one project and
+# nothing else. `inheritFromParent: false` is what stops the organisation rule from being
+# merged back in; the organisation default stays restrictive for every other project.
+#
+# What it costs: the exception is per-project, not per-service. Inside sync-ngo-prod any
+# IAM binding to any outside identity becomes possible, so this project should host the
+# public API and little else.
+
+name: projects/sync-ngo-prod/policies/iam.allowedPolicyMemberDomains
+spec:
+  inheritFromParent: false
+  rules:
+    - allowAll: true
