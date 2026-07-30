@@ -7,6 +7,16 @@ import { setAuthenticated } from './session';
 
 type Profile = components['schemas']['ProfileView'];
 
+/**
+ * Seed a freshly issued session into the cache: latch it as live and prime the profile query,
+ * so the next guard reads a signed-in profile without a round-trip. Shared by every route that
+ * ends holding a new session — login, email confirmation, password reset.
+ */
+export function establishSession(queryClient: QueryClient, profile: Profile): void {
+  setAuthenticated(true);
+  queryClient.setQueryData(profileQueryOptions.queryKey, profile);
+}
+
 /** Where an authenticated profile belongs: candidates in the app, anyone else on Wrong-portal. */
 export function homePathFor(profile: Profile): '/applications' | '/wrong-portal' {
   return profile.account_type === 'candidate' ? '/applications' : '/wrong-portal';

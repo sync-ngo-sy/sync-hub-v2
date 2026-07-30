@@ -5,47 +5,39 @@ import { Card, CardContent, CardHeader, CardTitle } from '@sync/ui/components/ui
 import { Input } from '@sync/ui/components/ui/input';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { useLogin } from '../features/auth/hooks/use-login';
-import { loginSchema } from '../features/auth/schemas/login-schema';
-import { bounceIfAuthed, isSafeReturnTo } from '../lib/auth';
+import { useSignUp } from '../features/auth/hooks/use-signup';
+import { signUpSchema } from '../features/auth/schemas/signup-schema';
+import { bounceIfAuthed } from '../lib/auth';
 import { errorStatus } from '../lib/errors';
 
-const loginSearchSchema = z.object({
-  // Drop any returnTo that isn't an in-app path, so it can never become an external redirect.
-  returnTo: z
-    .string()
-    .optional()
-    .transform((value) => (value && isSafeReturnTo(value) ? value : undefined)),
-});
-
-export const Route = createFileRoute('/login')({
-  validateSearch: (search: Record<string, unknown>) => loginSearchSchema.parse(search),
+export const Route = createFileRoute('/signup')({
   beforeLoad: async ({ context }) => {
     await bounceIfAuthed(context.queryClient);
   },
-  component: LoginPage,
+  component: SignUpPage,
 });
 
-function errorMessage(error: unknown): string {
-  return errorStatus(error) === 403
-    ? 'Confirm your email address before logging in.'
-    : 'Incorrect email or password.';
-}
-
-function LoginPage() {
-  const { returnTo } = Route.useSearch();
-  const { login, mutation } = useLogin();
+function SignUpPage() {
+  const { signUp, mutation } = useSignUp();
   const form = useForm({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    resolver: zodResolver(signUpSchema),
+    defaultValues: { full_name: '', email: '', password: '' },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await login(values, returnTo);
+      await signUp(values);
     } catch (error) {
-      form.setError('root', { message: errorMessage(error) });
+      // The server's own rejections render against the field they concern, not as a toast.
+      if (errorStatus(error) === 409) {
+        form.setError('email', { message: 'An account already exists for this email address.' });
+      } else if (errorStatus(error) === 400) {
+        form.setError('password', {
+          message: 'That password was rejected. Choose a stronger one.',
+        });
+      } else {
+        form.setError('root', { message: 'Something went wrong. Try again.' });
+      }
     }
   });
 
@@ -53,15 +45,18 @@ function LoginPage() {
     <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
       <Card>
         <CardHeader>
-          <CardTitle>Log in</CardTitle>
+          <CardTitle>Create your account</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+            <FormField control={form.control} name="full_name" label="Full name">
+              {(field) => <Input {...field} autoComplete="name" />}
+            </FormField>
             <FormField control={form.control} name="email" label="Email">
               {(field) => <Input {...field} type="email" autoComplete="email" />}
             </FormField>
             <FormField control={form.control} name="password" label="Password">
-              {(field) => <Input {...field} type="password" autoComplete="current-password" />}
+              {(field) => <Input {...field} type="password" autoComplete="new-password" />}
             </FormField>
             {form.formState.errors.root ? (
               <p role="alert" className="text-sm text-destructive-foreground">
@@ -69,20 +64,15 @@ function LoginPage() {
               </p>
             ) : null}
             <Button type="submit" disabled={mutation.isPending}>
-              Log in
+              Create account
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            <Link to="/forgot-password" className="underline underline-offset-4">
-              Forgot your password?
-            </Link>
-          </p>
         </CardContent>
       </Card>
       <p className="mt-4 text-center text-sm text-muted-foreground">
-        New to Sync?{' '}
-        <Link to="/signup" className="underline underline-offset-4">
-          Create an account
+        Already have an account?{' '}
+        <Link to="/login" search={{ returnTo: undefined }} className="underline underline-offset-4">
+          Log in
         </Link>
       </p>
     </div>

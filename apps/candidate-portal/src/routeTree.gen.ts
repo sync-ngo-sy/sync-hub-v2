@@ -11,10 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as CheckEmailRouteImport } from './routes/check-email'
 import { Route as DevKitchenSinkRouteImport } from './routes/dev-kitchen-sink'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AuthedApplicationsRouteImport } from './routes/_authed.applications'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,14 +30,29 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckEmailRoute = CheckEmailRouteImport.update({
+  id: '/check-email',
+  path: '/check-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevKitchenSinkRoute = DevKitchenSinkRouteImport.update({
   id: '/dev-kitchen-sink',
   path: '/dev-kitchen-sink',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WrongPortalRoute = WrongPortalRouteImport.update({
@@ -45,52 +65,106 @@ const AuthedApplicationsRoute = AuthedApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/check-email': typeof CheckEmailRoute
   '/dev-kitchen-sink': typeof DevKitchenSinkRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/check-email': typeof CheckEmailRoute
   '/dev-kitchen-sink': typeof DevKitchenSinkRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/check-email': typeof CheckEmailRoute
   '/dev-kitchen-sink': typeof DevKitchenSinkRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_authed/applications': typeof AuthedApplicationsRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+    | '/'
+    | '/check-email'
+    | '/dev-kitchen-sink'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/wrong-portal'
+    | '/applications'
+    | '/auth/confirm'
+    | '/auth/reset-password'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+  to:
+    | '/'
+    | '/check-email'
+    | '/dev-kitchen-sink'
+    | '/forgot-password'
+    | '/login'
+    | '/signup'
+    | '/wrong-portal'
+    | '/applications'
+    | '/auth/confirm'
+    | '/auth/reset-password'
   id:
     | '__root__'
     | '/'
     | '/_authed'
+    | '/check-email'
     | '/dev-kitchen-sink'
+    | '/forgot-password'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/_authed/applications'
+    | '/auth/confirm'
+    | '/auth/reset-password'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  CheckEmailRoute: typeof CheckEmailRoute
   DevKitchenSinkRoute: typeof DevKitchenSinkRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   WrongPortalRoute: typeof WrongPortalRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/check-email': {
+      id: '/check-email'
+      path: '/check-email'
+      fullPath: '/check-email'
+      preLoaderRoute: typeof CheckEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dev-kitchen-sink': {
       id: '/dev-kitchen-sink'
       path: '/dev-kitchen-sink'
@@ -116,11 +197,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevKitchenSinkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wrong-portal': {
@@ -136,6 +231,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/applications'
       preLoaderRoute: typeof AuthedApplicationsRouteImport
       parentRoute: typeof AuthedRoute
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -154,9 +263,14 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  CheckEmailRoute: CheckEmailRoute,
   DevKitchenSinkRoute: DevKitchenSinkRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   WrongPortalRoute: WrongPortalRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
