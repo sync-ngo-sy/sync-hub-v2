@@ -24,13 +24,17 @@ function WidgetFallback({ resetErrorBoundary }: FallbackProps) {
 export function WidgetErrorBoundary({
   children,
   context,
+  onReset,
 }: {
   children: ReactNode;
   context?: Record<string, unknown>;
+  /** Wired to a `QueryErrorResetBoundary` so Retry refetches the failed query, not just re-renders. */
+  onReset?: () => void;
 }) {
   return (
     <ErrorBoundary
       FallbackComponent={WidgetFallback}
+      onReset={onReset}
       onError={(error) => reportError(error, { boundary: 'widget', ...context })}
     >
       {children}

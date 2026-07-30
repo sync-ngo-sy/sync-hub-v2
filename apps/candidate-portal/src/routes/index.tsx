@@ -20,14 +20,18 @@ function LandingPage() {
       <p className="max-w-md text-muted-foreground">
         Sync connects candidates across Syria with employers hiring today.
       </p>
-      <Button
-        size="lg"
-        render={
-          <Link to="/login" search={{ returnTo: undefined }}>
-            Log in
-          </Link>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Button size="lg" render={<Link to="/jobs">Browse jobs</Link>} />
+        <Button
+          size="lg"
+          variant="outline"
+          render={
+            <Link to="/login" search={{ returnTo: undefined }}>
+              Log in
+            </Link>
+          }
+        />
+      </div>
     </div>
   );
 }

@@ -15,6 +15,9 @@ import { Route as DevKitchenSinkRouteImport } from './routes/dev-kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AuthedApplicationsRouteImport } from './routes/_authed.applications'
+import { Route as JobsIndexRouteImport } from './routes/jobs.index'
+import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
+import { Route as LTokenRouteImport } from './routes/l.$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +48,21 @@ const AuthedApplicationsRoute = AuthedApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AuthedRoute,
 } as any)
+const JobsIndexRoute = JobsIndexRouteImport.update({
+  id: '/jobs/',
+  path: '/jobs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobsJobIdRoute = JobsJobIdRouteImport.update({
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LTokenRoute = LTokenRouteImport.update({
+  id: '/l/$token',
+  path: '/l/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +70,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
+  '/l/$token': typeof LTokenRoute
+  '/jobs/': typeof JobsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +80,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
+  '/l/$token': typeof LTokenRoute
+  '/jobs': typeof JobsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,13 +92,31 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_authed/applications': typeof AuthedApplicationsRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
+  '/l/$token': typeof LTokenRoute
+  '/jobs/': typeof JobsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/jobs/$jobId'
+    | '/l/$token'
+    | '/jobs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+  to:
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/jobs/$jobId'
+    | '/l/$token'
+    | '/jobs'
   id:
     | '__root__'
     | '/'
@@ -83,6 +125,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/wrong-portal'
     | '/_authed/applications'
+    | '/jobs/$jobId'
+    | '/l/$token'
+    | '/jobs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -91,6 +136,9 @@ export interface RootRouteChildren {
   DevKitchenSinkRoute: typeof DevKitchenSinkRoute
   LoginRoute: typeof LoginRoute
   WrongPortalRoute: typeof WrongPortalRoute
+  JobsJobIdRoute: typeof JobsJobIdRoute
+  LTokenRoute: typeof LTokenRoute
+  JobsIndexRoute: typeof JobsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -137,6 +185,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedApplicationsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/jobs/': {
+      id: '/jobs/'
+      path: '/jobs'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof JobsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jobs/$jobId': {
+      id: '/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof JobsJobIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/l/$token': {
+      id: '/l/$token'
+      path: '/l/$token'
+      fullPath: '/l/$token'
+      preLoaderRoute: typeof LTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -157,6 +226,9 @@ const rootRouteChildren: RootRouteChildren = {
   DevKitchenSinkRoute: DevKitchenSinkRoute,
   LoginRoute: LoginRoute,
   WrongPortalRoute: WrongPortalRoute,
+  JobsJobIdRoute: JobsJobIdRoute,
+  LTokenRoute: LTokenRoute,
+  JobsIndexRoute: JobsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
