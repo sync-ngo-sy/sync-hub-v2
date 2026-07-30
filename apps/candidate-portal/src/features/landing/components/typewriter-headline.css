@@ -1,0 +1,53 @@
+/* The landing hero's one animation, isolated in the lazy chunk that imports it so no other route
+   pays for it. Characters fade in left-to-right behind a resting caret; inline (not inline-block)
+   spans keep normal word wrapping, real spaces stay plain text so lines still break. */
+
+.tw-char {
+  opacity: 0;
+  animation: tw-char-in 0.12s ease forwards;
+  animation-delay: calc(var(--tw-i) * 45ms);
+}
+
+@keyframes tw-char-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.tw-caret {
+  display: inline-block;
+  width: 0.06em;
+  height: 0.82em;
+  margin-left: 0.04em;
+  translate: 0 0.1em;
+  background: var(--primary);
+  opacity: 0;
+  animation:
+    tw-caret-in 0.01s linear forwards,
+    tw-blink 1.1s steps(1) infinite;
+  animation-delay: calc(var(--tw-i) * 45ms), calc(var(--tw-i) * 45ms);
+}
+
+@keyframes tw-caret-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tw-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Belt-and-braces: the hero already renders the static variant under reduced motion, but if this
+   chunk is ever shown regardless, drop the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .tw-char {
+    opacity: 1;
+    animation: none;
+  }
+  .tw-caret {
+    display: none;
+  }
+}

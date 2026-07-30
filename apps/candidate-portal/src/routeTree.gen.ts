@@ -10,87 +10,136 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthedRouteImport } from './routes/_authed'
-import { Route as DevKitchenSinkRouteImport } from './routes/dev-kitchen-sink'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
-import { Route as AuthedApplicationsRouteImport } from './routes/_authed.applications'
+import { Route as ShellRouteImport } from './routes/_shell'
+import { Route as ShellAuthedRouteImport } from './routes/_shell._authed'
+import { Route as ShellDevKitchenSinkRouteImport } from './routes/_shell.dev-kitchen-sink'
+import { Route as ShellLoginRouteImport } from './routes/_shell.login'
+import { Route as ShellSignupRouteImport } from './routes/_shell.signup'
+import { Route as ShellWrongPortalRouteImport } from './routes/_shell.wrong-portal'
+import { Route as ShellAuthedApplicationsRouteImport } from './routes/_shell._authed.applications'
+import { Route as ShellJobsIndexRouteImport } from './routes/_shell.jobs.index'
+import { Route as ShellJobsJobIdRouteImport } from './routes/_shell.jobs.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedRoute = AuthedRouteImport.update({
-  id: '/_authed',
+const ShellRoute = ShellRouteImport.update({
+  id: '/_shell',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DevKitchenSinkRoute = DevKitchenSinkRouteImport.update({
+const ShellAuthedRoute = ShellAuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellDevKitchenSinkRoute = ShellDevKitchenSinkRouteImport.update({
   id: '/dev-kitchen-sink',
   path: '/dev-kitchen-sink',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ShellRoute,
 } as any)
-const LoginRoute = LoginRouteImport.update({
+const ShellLoginRoute = ShellLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ShellRoute,
 } as any)
-const WrongPortalRoute = WrongPortalRouteImport.update({
+const ShellSignupRoute = ShellSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellWrongPortalRoute = ShellWrongPortalRouteImport.update({
   id: '/wrong-portal',
   path: '/wrong-portal',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ShellRoute,
 } as any)
-const AuthedApplicationsRoute = AuthedApplicationsRouteImport.update({
+const ShellAuthedApplicationsRoute = ShellAuthedApplicationsRouteImport.update({
   id: '/applications',
   path: '/applications',
-  getParentRoute: () => AuthedRoute,
+  getParentRoute: () => ShellAuthedRoute,
+} as any)
+const ShellJobsIndexRoute = ShellJobsIndexRouteImport.update({
+  id: '/jobs/',
+  path: '/jobs/',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellJobsJobIdRoute = ShellJobsJobIdRouteImport.update({
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => ShellRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dev-kitchen-sink': typeof DevKitchenSinkRoute
-  '/login': typeof LoginRoute
-  '/wrong-portal': typeof WrongPortalRoute
-  '/applications': typeof AuthedApplicationsRoute
+  '/dev-kitchen-sink': typeof ShellDevKitchenSinkRoute
+  '/login': typeof ShellLoginRoute
+  '/signup': typeof ShellSignupRoute
+  '/wrong-portal': typeof ShellWrongPortalRoute
+  '/applications': typeof ShellAuthedApplicationsRoute
+  '/jobs/$jobId': typeof ShellJobsJobIdRoute
+  '/jobs/': typeof ShellJobsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dev-kitchen-sink': typeof DevKitchenSinkRoute
-  '/login': typeof LoginRoute
-  '/wrong-portal': typeof WrongPortalRoute
-  '/applications': typeof AuthedApplicationsRoute
+  '/dev-kitchen-sink': typeof ShellDevKitchenSinkRoute
+  '/login': typeof ShellLoginRoute
+  '/signup': typeof ShellSignupRoute
+  '/wrong-portal': typeof ShellWrongPortalRoute
+  '/applications': typeof ShellAuthedApplicationsRoute
+  '/jobs/$jobId': typeof ShellJobsJobIdRoute
+  '/jobs': typeof ShellJobsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_authed': typeof AuthedRouteWithChildren
-  '/dev-kitchen-sink': typeof DevKitchenSinkRoute
-  '/login': typeof LoginRoute
-  '/wrong-portal': typeof WrongPortalRoute
-  '/_authed/applications': typeof AuthedApplicationsRoute
+  '/_shell': typeof ShellRouteWithChildren
+  '/_shell/_authed': typeof ShellAuthedRouteWithChildren
+  '/_shell/dev-kitchen-sink': typeof ShellDevKitchenSinkRoute
+  '/_shell/login': typeof ShellLoginRoute
+  '/_shell/signup': typeof ShellSignupRoute
+  '/_shell/wrong-portal': typeof ShellWrongPortalRoute
+  '/_shell/_authed/applications': typeof ShellAuthedApplicationsRoute
+  '/_shell/jobs/$jobId': typeof ShellJobsJobIdRoute
+  '/_shell/jobs/': typeof ShellJobsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/signup'
+    | '/wrong-portal'
+    | '/applications'
+    | '/jobs/$jobId'
+    | '/jobs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+  to:
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/signup'
+    | '/wrong-portal'
+    | '/applications'
+    | '/jobs/$jobId'
+    | '/jobs'
   id:
     | '__root__'
     | '/'
-    | '/_authed'
-    | '/dev-kitchen-sink'
-    | '/login'
-    | '/wrong-portal'
-    | '/_authed/applications'
+    | '/_shell'
+    | '/_shell/_authed'
+    | '/_shell/dev-kitchen-sink'
+    | '/_shell/login'
+    | '/_shell/signup'
+    | '/_shell/wrong-portal'
+    | '/_shell/_authed/applications'
+    | '/_shell/jobs/$jobId'
+    | '/_shell/jobs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthedRoute: typeof AuthedRouteWithChildren
-  DevKitchenSinkRoute: typeof DevKitchenSinkRoute
-  LoginRoute: typeof LoginRoute
-  WrongPortalRoute: typeof WrongPortalRoute
+  ShellRoute: typeof ShellRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -102,61 +151,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed': {
-      id: '/_authed'
+    '/_shell': {
+      id: '/_shell'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof AuthedRouteImport
+      preLoaderRoute: typeof ShellRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dev-kitchen-sink': {
-      id: '/dev-kitchen-sink'
+    '/_shell/_authed': {
+      id: '/_shell/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ShellAuthedRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/dev-kitchen-sink': {
+      id: '/_shell/dev-kitchen-sink'
       path: '/dev-kitchen-sink'
       fullPath: '/dev-kitchen-sink'
-      preLoaderRoute: typeof DevKitchenSinkRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ShellDevKitchenSinkRouteImport
+      parentRoute: typeof ShellRoute
     }
-    '/login': {
-      id: '/login'
+    '/_shell/login': {
+      id: '/_shell/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ShellLoginRouteImport
+      parentRoute: typeof ShellRoute
     }
-    '/wrong-portal': {
-      id: '/wrong-portal'
+    '/_shell/signup': {
+      id: '/_shell/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof ShellSignupRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/wrong-portal': {
+      id: '/_shell/wrong-portal'
       path: '/wrong-portal'
       fullPath: '/wrong-portal'
-      preLoaderRoute: typeof WrongPortalRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ShellWrongPortalRouteImport
+      parentRoute: typeof ShellRoute
     }
-    '/_authed/applications': {
-      id: '/_authed/applications'
+    '/_shell/_authed/applications': {
+      id: '/_shell/_authed/applications'
       path: '/applications'
       fullPath: '/applications'
-      preLoaderRoute: typeof AuthedApplicationsRouteImport
-      parentRoute: typeof AuthedRoute
+      preLoaderRoute: typeof ShellAuthedApplicationsRouteImport
+      parentRoute: typeof ShellAuthedRoute
+    }
+    '/_shell/jobs/': {
+      id: '/_shell/jobs/'
+      path: '/jobs'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof ShellJobsIndexRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/jobs/$jobId': {
+      id: '/_shell/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof ShellJobsJobIdRouteImport
+      parentRoute: typeof ShellRoute
     }
   }
 }
 
-interface AuthedRouteChildren {
-  AuthedApplicationsRoute: typeof AuthedApplicationsRoute
+interface ShellAuthedRouteChildren {
+  ShellAuthedApplicationsRoute: typeof ShellAuthedApplicationsRoute
 }
 
-const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedApplicationsRoute: AuthedApplicationsRoute,
+const ShellAuthedRouteChildren: ShellAuthedRouteChildren = {
+  ShellAuthedApplicationsRoute: ShellAuthedApplicationsRoute,
 }
 
-const AuthedRouteWithChildren =
-  AuthedRoute._addFileChildren(AuthedRouteChildren)
+const ShellAuthedRouteWithChildren = ShellAuthedRoute._addFileChildren(
+  ShellAuthedRouteChildren,
+)
+
+interface ShellRouteChildren {
+  ShellAuthedRoute: typeof ShellAuthedRouteWithChildren
+  ShellDevKitchenSinkRoute: typeof ShellDevKitchenSinkRoute
+  ShellLoginRoute: typeof ShellLoginRoute
+  ShellSignupRoute: typeof ShellSignupRoute
+  ShellWrongPortalRoute: typeof ShellWrongPortalRoute
+  ShellJobsJobIdRoute: typeof ShellJobsJobIdRoute
+  ShellJobsIndexRoute: typeof ShellJobsIndexRoute
+}
+
+const ShellRouteChildren: ShellRouteChildren = {
+  ShellAuthedRoute: ShellAuthedRouteWithChildren,
+  ShellDevKitchenSinkRoute: ShellDevKitchenSinkRoute,
+  ShellLoginRoute: ShellLoginRoute,
+  ShellSignupRoute: ShellSignupRoute,
+  ShellWrongPortalRoute: ShellWrongPortalRoute,
+  ShellJobsJobIdRoute: ShellJobsJobIdRoute,
+  ShellJobsIndexRoute: ShellJobsIndexRoute,
+}
+
+const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthedRoute: AuthedRouteWithChildren,
-  DevKitchenSinkRoute: DevKitchenSinkRoute,
-  LoginRoute: LoginRoute,
-  WrongPortalRoute: WrongPortalRoute,
+  ShellRoute: ShellRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

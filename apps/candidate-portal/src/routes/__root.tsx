@@ -1,5 +1,4 @@
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
-import { AppShell } from '../components/app-shell';
 import { AppToaster } from '../components/app-toaster';
 import { RouteErrorFallback } from '../components/route-error-fallback';
 import { Devtools } from '../lib/devtools';
@@ -11,12 +10,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   errorComponent: RouteErrorFallback,
 });
 
+// The app frame lives in the `_shell` layout, not here: the Editorial landing renders full-bleed
+// with its own chrome, every other route inherits AppShell. ThemeProvider stays global so both
+// register in either theme.
 function RootComponent() {
   return (
     <ThemeProvider>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <Outlet />
       <AppToaster />
       <Devtools />
     </ThemeProvider>

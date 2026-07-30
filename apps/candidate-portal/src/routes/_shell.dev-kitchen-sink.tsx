@@ -16,7 +16,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
-export const Route = createFileRoute('/dev-kitchen-sink')({
+export const Route = createFileRoute('/_shell/dev-kitchen-sink')({
   beforeLoad: () => {
     if (!import.meta.env.DEV) throw notFound();
   },

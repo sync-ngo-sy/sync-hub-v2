@@ -19,7 +19,7 @@ const loginSearchSchema = z.object({
     .transform((value) => (value && isSafeReturnTo(value) ? value : undefined)),
 });
 
-export const Route = createFileRoute('/login')({
+export const Route = createFileRoute('/_shell/login')({
   validateSearch: (search: Record<string, unknown>) => loginSearchSchema.parse(search),
   beforeLoad: async ({ context }) => {
     await bounceIfAuthed(context.queryClient);

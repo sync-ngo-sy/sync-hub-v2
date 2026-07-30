@@ -12,12 +12,13 @@ describe('login flow', () => {
     server.use(
       http.get('/v1/auth/me', ({ response }) => response(401).json(PROBLEM)),
       http.post('/v1/auth/refresh', ({ response }) => response(401).json(PROBLEM)),
+      http.get('/v1/jobs', ({ response }) => response(200).json({ items: [], next_cursor: null })),
     );
 
     const { router } = renderApp('/');
 
     expect(
-      await screen.findByText('Sync connects candidates across Syria with employers hiring today.'),
+      await screen.findByRole('heading', { name: "Syria's jobs, in one clear place." }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/');
   });

@@ -3,7 +3,7 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { createFileRoute } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 
-export const Route = createFileRoute('/_authed/applications')({
+export const Route = createFileRoute('/_shell/_authed/applications')({
   component: ApplicationsPage,
 });
 

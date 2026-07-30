@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useLogout } from '../features/auth/hooks/use-logout';
 import { loadProfile } from '../lib/auth';
 
-export const Route = createFileRoute('/wrong-portal')({
+export const Route = createFileRoute('/_shell/wrong-portal')({
   beforeLoad: async ({ context, location }) => {
     const profile = await loadProfile(context.queryClient);
     if (!profile) throw redirect({ to: '/login', search: { returnTo: location.href } });
