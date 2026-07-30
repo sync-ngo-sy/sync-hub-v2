@@ -5,11 +5,7 @@ import { isUnauthorized } from '@/lib/problem';
 
 export type Profile = components['schemas']['ProfileView'];
 
-/**
- * Auth state is this query and nothing else — sessions are HttpOnly cookies the app cannot
- * read. `null` means there is no valid session; anything else (a 500, an outage) is rethrown
- * so the route boundary offers a Retry instead of pretending the caller is signed out.
- */
+/** `null` is "no session"; every other failure rethrows rather than implying a sign-out. */
 export async function ensureCurrentProfile(queryClient: QueryClient): Promise<Profile | null> {
   try {
     return await queryClient.ensureQueryData(currentProfileOptions);
@@ -17,12 +13,4 @@ export async function ensureCurrentProfile(queryClient: QueryClient): Promise<Pr
     if (isUnauthorized(error)) return null;
     throw error;
   }
-}
-
-export function initials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  const first = parts[0]?.[0] ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
-  return `${first}${last}`.toUpperCase();
 }

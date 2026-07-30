@@ -1,9 +1,6 @@
 import { lazy, Suspense } from 'react';
 
-/**
- * Built behind `import.meta.env.DEV`, so the ternaries below fold to `null` in a production
- * build and the dynamic imports are dropped with them.
- */
+/** The ternaries fold to `null` in a production build, dropping the dynamic imports too. */
 const RouterDevtools = import.meta.env.DEV
   ? lazy(() =>
       import('@tanstack/react-router-devtools').then((m) => ({

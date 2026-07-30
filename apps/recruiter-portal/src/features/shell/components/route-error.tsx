@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { reportError } from '@/lib/report-error';
 import { ErrorCard } from './error-card';
 
-/** Tier three: this route's own content failed, but the shell around it still stands. */
 export function RouteError({ error, reset }: ErrorComponentProps<unknown>) {
   const router = useRouter();
 
@@ -23,7 +22,6 @@ export function RouteError({ error, reset }: ErrorComponentProps<unknown>) {
   );
 }
 
-/** The last boundary before a white screen: the shell itself could not render. */
 export function AppCrash({ error }: ErrorComponentProps<unknown>) {
   useEffect(() => {
     reportError(error, { boundary: 'app-shell' });

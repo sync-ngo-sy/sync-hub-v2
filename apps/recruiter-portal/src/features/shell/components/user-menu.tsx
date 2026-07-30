@@ -5,9 +5,17 @@ import {
   DropdownMenuTrigger,
 } from '@sync/ui/components/ui/dropdown-menu';
 import { LogOut } from 'lucide-react';
-import { initials, type Profile } from '@/features/auth/current-profile';
+import type { Profile } from '@/features/auth/current-profile';
 import { useLogOut } from '@/features/auth/hooks/use-log-out';
 import { useMyTenant } from '../hooks/use-my-tenant';
+
+function initials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  const first = parts[0]?.[0] ?? '';
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
+  return `${first}${last}`.toUpperCase();
+}
 
 export function UserMenu({ profile }: { profile: Profile }) {
   const logOut = useLogOut();
@@ -25,12 +33,12 @@ export function UserMenu({ profile }: { profile: Profile }) {
       >
         <span
           aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-strong text-accent-foreground"
         >
           {initials(profile.full_name)}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.8125rem] font-medium text-foreground">
+          <span className="block truncate text-[0.8125rem] font-emphasis text-foreground">
             {profile.full_name}
           </span>
           <span className="block truncate text-xs text-muted-foreground">

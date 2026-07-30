@@ -1,8 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { logsOut, signedInAsRecruiter, signedOut, signsIn } from '@/features/auth/testing/handlers';
+import { client } from '@/lib/api';
+import { problem } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
-import { server } from '@/testing/server';
+import { http, server } from '@/testing/server';
 
 type App = Awaited<ReturnType<typeof renderApp>>;
 
@@ -94,6 +96,26 @@ describe('the login page with a session already in hand', () => {
     const { router } = await renderApp('/login?returnTo=https%3A%2F%2Fevil.test');
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'));
+  });
+});
+
+describe('a session that dies while the user is on a loaded page', () => {
+  it('is carried to the login page, remembering where they were', async () => {
+    server.use(...signedInAsRecruiter(), logsOut());
+
+    const { router } = await renderApp('/jobs');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/jobs'));
+
+    server.use(
+      ...signedOut(),
+      http.get('/v1/tenants/me', ({ response }) =>
+        response(401).json(problem(401, 'Unauthorized')),
+      ),
+    );
+    await client.GET('/v1/tenants/me');
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    expect(router.state.location.search).toEqual({ returnTo: '/jobs' });
   });
 });
 

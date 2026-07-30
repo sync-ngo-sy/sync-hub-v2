@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { Suspense } from 'react';
-import { WrongPortalScreen } from '@/features/auth/components/wrong-portal-screen';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
 import { AppShell } from '@/features/shell/components/app-shell';
 import { PageSkeleton } from '@/features/shell/components/page-skeleton';
@@ -12,20 +11,19 @@ export const Route = createFileRoute('/_app')({
     if (!profile) {
       throw redirect({ to: '/login', search: { returnTo: location.href } });
     }
+    // Turned away here rather than in the component, so none of the workspace's own loaders
+    // ever run for an account that does not belong in it.
+    if (profile.account_type !== 'recruiter') {
+      throw redirect({ to: '/wrong-portal' });
+    }
     return { profile };
   },
   component: AppLayout,
-  // The guard itself failing leaves no shell to render the error inside.
   errorComponent: AppCrash,
 });
 
 function AppLayout() {
   const { profile } = Route.useRouteContext();
-
-  if (profile.account_type !== 'recruiter') {
-    return <WrongPortalScreen />;
-  }
-
   return (
     <AppShell profile={profile}>
       <Suspense fallback={<PageSkeleton />}>

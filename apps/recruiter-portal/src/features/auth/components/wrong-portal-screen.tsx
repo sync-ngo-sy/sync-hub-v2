@@ -3,10 +3,6 @@ import { LoaderCircle } from 'lucide-react';
 import { Brand } from '@/features/shell/components/brand';
 import { useLogOut } from '../hooks/use-log-out';
 
-/**
- * A signed-in Candidate opened the Recruiter Portal. Name the portal they belong in and give
- * them the one action that gets them out — never a bare 403.
- */
 export function WrongPortalScreen() {
   const logOut = useLogOut();
 

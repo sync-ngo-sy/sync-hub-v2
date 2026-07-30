@@ -1,10 +1,6 @@
 import { readClientEnv } from '@sync/api-client';
 
-/**
- * Same-origin is the production topology (the portal is served same-site with the API) and
- * the dev topology (the Vite proxy forwards `/v1`), so an unset base URL is the default
- * rather than an error. A malformed one still fails loudly at startup.
- */
+/** An unset base URL means same-origin, which is both the dev and the production topology. */
 export const env = readClientEnv({
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? '',
 });

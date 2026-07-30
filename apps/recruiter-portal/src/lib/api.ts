@@ -3,11 +3,8 @@ import { env } from './env';
 
 let sessionExpiredHandler: (() => void) | undefined;
 
-/**
- * The client detects expiry (a refresh that could not be rotated) before the router exists,
- * so the router installs its handler here once it is built.
- */
-export function onSessionExpired(handler: () => void): void {
+/** One slot, installed by the router once it exists: the newest router wins. */
+export function setSessionExpiredHandler(handler: () => void): void {
   sessionExpiredHandler = handler;
 }
 

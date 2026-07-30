@@ -84,10 +84,28 @@ describe('a candidate account opening the Recruiter Portal', () => {
   it('gets a screen naming the portal they belong in, not a bare error', async () => {
     server.use(...signedInAsCandidate());
 
-    await renderApp('/dashboard');
+    const { router } = await renderApp('/dashboard');
 
     expect(await screen.findByRole('heading', { name: /Candidate Portal/ })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Workspace' })).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/wrong-portal');
+  });
+
+  it('is turned away before any of the workspace loads', async () => {
+    server.use(...signedInAsCandidate());
+
+    const { router } = await renderApp('/wrong-portal');
+
+    expect(await screen.findByRole('heading', { name: /Candidate Portal/ })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/wrong-portal');
+  });
+
+  it('sends a recruiter who lands there back to the workspace', async () => {
+    server.use(...signedInAsRecruiter());
+
+    const { router } = await renderApp('/wrong-portal');
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'));
   });
 
   it('can sign out from there', async () => {

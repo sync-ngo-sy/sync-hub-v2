@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { LogInForm } from '@/features/auth/components/log-in-form';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
 import { PublicHeader } from '@/features/shell/components/public-header';
+import { pageTitle } from '@/lib/page-title';
 import { safeReturnTo } from '@/lib/return-to';
 
 export const Route = createFileRoute('/login')({
@@ -14,7 +15,7 @@ export const Route = createFileRoute('/login')({
       throw returnTo ? redirect({ href: returnTo }) : redirect({ to: '/dashboard' });
     }
   },
-  head: () => ({ meta: [{ title: 'Sign in · Sync Recruiter' }] }),
+  head: () => ({ meta: [{ title: pageTitle('Sign in') }] }),
   component: LogInPage,
 });
 

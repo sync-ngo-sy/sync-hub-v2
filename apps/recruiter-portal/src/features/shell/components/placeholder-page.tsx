@@ -2,10 +2,7 @@ import { EmptyState } from '@sync/ui/components/empty-state';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { Hammer } from 'lucide-react';
 
-/**
- * A destination the shell already routes to, whose feature ticket has not landed yet. Each
- * of those tickets replaces this body with the real page.
- */
+/** A destination the shell routes to already; its own ticket replaces this body. */
 export function PlaceholderPage({ title }: { title: string }) {
   return (
     <div className="space-y-8">

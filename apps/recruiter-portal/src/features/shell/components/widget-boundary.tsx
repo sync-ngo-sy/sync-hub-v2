@@ -4,13 +4,11 @@ import { reportError } from '@/lib/report-error';
 import { ErrorCard } from './error-card';
 
 interface WidgetBoundaryProps {
-  /** Names the panel in the report, e.g. "recent-applications". */
   source: string;
   message?: string;
   children: ReactNode;
 }
 
-/** Tier two: one panel fails, says so where it sits, and the rest of the page keeps working. */
 export function WidgetBoundary({ source, message, children }: WidgetBoundaryProps) {
   return (
     <ErrorBoundary

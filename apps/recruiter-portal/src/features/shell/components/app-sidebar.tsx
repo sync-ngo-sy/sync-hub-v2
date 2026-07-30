@@ -10,12 +10,11 @@ const NAV_LINK =
   'relative flex items-center gap-2.5 rounded-lg py-2.5 pr-3 pl-4 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-primary before:opacity-0 [&_svg]:size-[1.125rem] [&_svg]:shrink-0 [&_svg]:text-muted-foreground';
 
 const NAV_LINK_ACTIVE =
-  'bg-sidebar-accent font-medium text-accent-foreground before:opacity-100 [&_svg]:text-accent-foreground';
+  'bg-sidebar-accent font-emphasis text-accent-foreground before:opacity-100 [&_svg]:text-accent-foreground';
 
 interface AppSidebarProps {
   profile: Profile;
   className?: string;
-  /** Lets the drawer close itself when a destination is chosen. */
   onNavigate?: () => void;
 }
 

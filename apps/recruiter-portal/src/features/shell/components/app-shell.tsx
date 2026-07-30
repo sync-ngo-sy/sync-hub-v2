@@ -6,10 +6,6 @@ import type { Profile } from '@/features/auth/current-profile';
 import { AppSidebar } from './app-sidebar';
 import { Brand } from './brand';
 
-/**
- * Desktop-first: the sidebar is a column of the page grid from `lg` up, and the same sidebar
- * is a drawer below it — tablet included, per the ticket.
- */
 export function AppShell({ profile, children }: { profile: Profile; children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 

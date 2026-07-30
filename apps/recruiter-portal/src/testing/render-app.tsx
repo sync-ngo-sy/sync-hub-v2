@@ -6,11 +6,7 @@ import { createQueryClient } from '@/lib/query-client';
 import { createAppRouter } from '@/lib/router';
 import { ThemeProvider } from '@/lib/theme';
 
-/**
- * Mounts the app the way `main.tsx` does — real router, real query client, real API client —
- * with only the network intercepted by MSW. The router settles before the helper returns, so
- * tests assert on a loaded route rather than on a pending one.
- */
+/** Mounts the app as `main.tsx` does, with only the network intercepted, and lets it settle. */
 export async function renderApp(path = '/') {
   window.history.replaceState(null, '', path);
   localStorage.clear();

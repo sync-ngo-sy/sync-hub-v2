@@ -1,3 +1,4 @@
+import { ChartCard } from '@sync/ui/components/chart-card';
 import { DataTable } from '@sync/ui/components/data-table';
 import { EmptyState } from '@sync/ui/components/empty-state';
 import { FormField } from '@sync/ui/components/form-field';
@@ -49,6 +50,13 @@ interface DemoRow {
   candidate: string;
   job: string;
 }
+
+const CHART_ROWS = [
+  { label: 'LinkedIn post', share: '100%', value: 342, color: 'bg-chart-1' },
+  { label: 'WhatsApp groups', share: '82%', value: 281, color: 'bg-chart-2' },
+  { label: 'Facebook page', share: '28%', value: 97, color: 'bg-chart-3' },
+  { label: 'University board', share: '12%', value: 41, color: 'bg-chart-4' },
+];
 
 const DEMO_ROWS: DemoRow[] = [
   { id: '1', candidate: 'Lina Khoury', job: 'Field Coordinator, Aleppo' },
@@ -144,6 +152,24 @@ export default function KitchenSinkPage() {
           loadMore={{ hasMore: true, onLoadMore: () => toast('Loaded more') }}
           actions={[{ label: 'Open', onSelect: (row) => toast(row.candidate) }]}
         />
+      </Section>
+
+      <Section title="Chart card">
+        <ChartCard title="Where applicants find you" description="Views per tracked link">
+          <div className="flex flex-col gap-4">
+            {CHART_ROWS.map(({ label, share, value, color }) => (
+              <div key={label} className="grid grid-cols-[7rem_1fr_2.5rem] items-center gap-3">
+                <span className="text-[0.8125rem] text-secondary-foreground">{label}</span>
+                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full ${color}`} style={{ width: share }} />
+                </div>
+                <span className="text-end text-[0.8125rem] font-emphasis tabular-nums text-foreground">
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </ChartCard>
       </Section>
 
       <Section title="Empty, loading, error">
