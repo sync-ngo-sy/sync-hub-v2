@@ -1,0 +1,25 @@
+# RECORD ONLY — never applied by tooling. `scripts/apply-org-policy.sh` refuses this file.
+#
+# This is what the sync.ngo organisation enforces, transcribed from the live policies on
+# 2026-07-30 (etags and update timestamps omitted, since they change on every write). It
+# is committed so that the narrow exception in this directory can be read against the
+# default it departs from, in one diff.
+#
+# Nothing in this repository should be able to change these. An apply that could rewrite
+# them would make the deploy pipeline the most privileged thing in the account.
+
+---
+name: organizations/471724145580/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+    - values:
+        allowedValues:
+          - C02rvm4mx # the sync.ngo Workspace customer ID
+
+---
+# Enforced, and the reason Workload Identity Federation is mandatory for CI rather than
+# merely preferred: no service-account key can be minted to authenticate with instead.
+name: organizations/471724145580/policies/iam.disableServiceAccountKeyCreation
+spec:
+  rules:
+    - enforce: true
