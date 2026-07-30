@@ -222,7 +222,7 @@ action buttons and confirmations. Charts use the teal ramp + gray; `--warning`/
 }
 ```
 
-**Brand:** logo mark at `apps/logo.png` (favicon + OG base); headers pair the mark
+**Brand:** logo mark at `apps/<project>/public/logo.png` (favicon + OG base); headers pair the mark
 with "Sync" in Geist. Titles: `<Page> · Sync` (candidate) / `<Page> · Sync Recruiter`.
 
 **Reference mockups** live in `docs/design/mockups/` (see its README for how to serve
