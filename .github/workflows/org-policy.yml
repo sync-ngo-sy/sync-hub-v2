@@ -13,6 +13,14 @@
 name: Org policy
 
 on:
+  # Both, because changes here land directly on main as often as through a pull request.
+  push:
+    branches: [main]
+    paths:
+      - infra/org-policies/**
+      - scripts/apply-org-policy.sh
+      - scripts/bootstrap-ci-org-policy.sh
+      - .github/workflows/org-policy.yml
   pull_request:
     paths:
       - infra/org-policies/**
