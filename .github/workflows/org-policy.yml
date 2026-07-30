@@ -1,14 +1,20 @@
-# Applies project-scoped organisation policies. See infra/org-policies/README.md.
+# Grants a project the domain-restricted-sharing exception by attaching the tag the
+# organisation policy is keyed on. See infra/org-policies/README.md.
 #
-# Three things gate the apply job, and only the first is enforced by this file:
+# Four things gate the attach job, and only the first is enforced by this file:
 #   1. github.actor must be the owner login below.
 #   2. The org-policy environment requires a review before the job starts.
 #   3. Google refuses the token unless it comes from this repository, that environment and
 #      that actor -- the workload identity provider's attribute condition and the
 #      principalSet on the service account, both set by scripts/bootstrap-ci-org-policy.sh.
+#   4. The project must be listed in infra/org-policies/exception-projects.txt.
 #
-# Steps 2 and 3 are the real controls: 1 lives in a file that a repository admin could edit.
-# Nothing here can touch the organisation-wide baseline; apply-org-policy.sh refuses it.
+# 2, 3 and 4 are the real controls: 1 lives in a file a repository admin could edit.
+#
+# The identity here holds roles/resourcemanager.tagUser and nothing more, so this workflow
+# cannot write an organisation policy at all -- it can only flip an exception a human
+# already defined. Defining one is scripts/bootstrap-drs-tag-exception.sh, interactive and
+# local by design.
 
 name: Org policy
 
@@ -19,25 +25,29 @@ on:
     paths:
       - infra/org-policies/**
       - scripts/apply-org-policy.sh
+      - scripts/attach-drs-exception.sh
       - scripts/bootstrap-ci-org-policy.sh
+      - scripts/bootstrap-drs-tag-exception.sh
       - .github/workflows/org-policy.yml
   pull_request:
     paths:
       - infra/org-policies/**
       - scripts/apply-org-policy.sh
+      - scripts/attach-drs-exception.sh
       - scripts/bootstrap-ci-org-policy.sh
+      - scripts/bootstrap-drs-tag-exception.sh
       - .github/workflows/org-policy.yml
   workflow_dispatch:
     inputs:
-      policy_file:
-        description: Policy file to apply
+      project:
+        description: Project to grant the exception
         required: true
-        default: infra/org-policies/project-sync-ngo-prod.yaml
+        default: sync-ngo-prod
         type: choice
         options:
-          - infra/org-policies/project-sync-ngo-prod.yaml
+          - sync-ngo-prod
       reason:
-        description: Why this is being applied (recorded in the run summary)
+        description: Why this is being granted (recorded in the run summary)
         required: true
         type: string
 
@@ -65,27 +75,48 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Shellcheck
-        run: shellcheck scripts/apply-org-policy.sh scripts/bootstrap-ci-org-policy.sh
+        run: shellcheck scripts/*.sh
 
-      # --check runs the same parser and guards the apply path uses, with no cloud calls.
-      - name: Applied files are project-scoped
+      # --check runs the same allowlist guard the attach path uses, with no cloud calls.
+      - name: Allowlisted projects are accepted
+        run: |
+          set -euo pipefail
+          sed 's/#.*//' infra/org-policies/exception-projects.txt | tr -d '[:blank:]' \
+            | grep -v '^$' | while read -r p; do
+            ./scripts/attach-drs-exception.sh --check "$p"
+          done
+
+      - name: A project not on the allowlist is refused
+        run: |
+          set -uo pipefail
+          if ./scripts/attach-drs-exception.sh --check definitely-not-allowlisted; then
+            echo "::error::an unlisted project was accepted"
+            exit 1
+          fi
+          echo "refused, as expected"
+
+      # The project-scoped file is the documented fallback if tag conditions turn out not to
+      # cover this constraint, so it has to stay valid even while unused.
+      - name: The fallback project policy is still valid
         run: |
           set -euo pipefail
           for f in infra/org-policies/project-*.yaml; do
             ./scripts/apply-org-policy.sh --check "$f"
           done
 
-      - name: The organisation baseline is refused
+      - name: The organisation policy is not applyable from here
         run: |
           set -uo pipefail
-          if ./scripts/apply-org-policy.sh --check infra/org-policies/org-baseline.yaml; then
-            echo "::error::org-baseline.yaml was accepted as an applyable file"
-            exit 1
-          fi
+          for f in infra/org-policies/org-*.yaml; do
+            if ./scripts/apply-org-policy.sh --check "$f"; then
+              echo "::error::$f was accepted as an applyable file"
+              exit 1
+            fi
+          done
           echo "refused, as expected"
 
-  apply:
-    name: Apply
+  attach:
+    name: Attach
     if: github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
@@ -94,13 +125,13 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Only the owner may apply
+      - name: Only the owner may grant the exception
         env:
           ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
           if [ "$ACTOR" != "$OWNER_LOGIN" ]; then
-            echo "::error::$ACTOR is not authorised to apply organisation policy."
+            echo "::error::$ACTOR is not authorised to grant the exception."
             exit 1
           fi
 
@@ -135,31 +166,31 @@ jobs:
           gcloud config set project "${GCP_PROJECT}" --quiet
           echo "authenticated as $(gcloud config get-value account 2>/dev/null)"
 
-      - name: Apply
-        id: apply
+      - name: Attach the exception tag
+        id: attach
         env:
-          POLICY_FILE: ${{ inputs.policy_file }}
+          TARGET_PROJECT: ${{ inputs.project }}
         run: |
           set -euo pipefail
-          ./scripts/apply-org-policy.sh --yes "$POLICY_FILE" | tee "${RUNNER_TEMP}/apply.log"
+          ./scripts/attach-drs-exception.sh --yes "$TARGET_PROJECT" | tee "${RUNNER_TEMP}/apply.log"
 
       - name: Record the change
         if: always()
         env:
-          POLICY_FILE: ${{ inputs.policy_file }}
+          TARGET_PROJECT: ${{ inputs.project }}
           REASON: ${{ inputs.reason }}
           ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
           {
-            echo "## Organisation policy applied"
+            echo "## Domain restricted sharing exception granted"
             echo
             echo "| field | value |"
             echo "| --- | --- |"
-            echo "| file | \`${POLICY_FILE}\` |"
-            echo "| project | \`${GCP_PROJECT}\` |"
+            echo "| project | \`${TARGET_PROJECT}\` |"
+            echo "| tag | \`471724145580/drs-exception/public-cloud-run\` |"
             echo "| requested by | \`${ACTOR}\` |"
-            echo "| outcome | \`${{ steps.apply.outcome }}\` |"
+            echo "| outcome | \`${{ steps.attach.outcome }}\` |"
             echo
             echo "**Reason**"
             echo
