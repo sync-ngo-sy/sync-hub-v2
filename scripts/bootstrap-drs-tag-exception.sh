@@ -70,6 +70,17 @@ else
     --description="May bind allUsers so Cloud Run can serve the public API." || exit 1
 fi
 
+# Without this, the local attach path the README documents fails with PERMISSION_DENIED.
+# roles/resourcemanager.tagAdmin carries no tag-binding permissions at all, and project
+# roles/owner does -- but tagValueBindings.create has to be held on the tag value, which
+# lives at the organisation, so project owner never reaches it.
+ACCOUNT=$(gcloud config get-value account 2>/dev/null)
+echo "--- tagUser on the tag value for ${ACCOUNT} ---"
+gcloud resource-manager tags values add-iam-policy-binding "$NAMESPACED_VALUE" \
+  --member="user:${ACCOUNT}" \
+  --role="roles/resourcemanager.tagUser" >/dev/null || exit 1
+echo "  granted"
+
 # ---------------------------------------------------------------- backup -------
 WORKDIR=$(mktemp -d -t drs-org-policy)
 BACKUP="${WORKDIR}/backup.yaml"
