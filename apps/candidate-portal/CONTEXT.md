@@ -21,6 +21,14 @@ _Avoid_: Campaign page, referral page.
 The signed-in Candidate's home: their Applications, newest first.
 _Avoid_: Dashboard (reserved for the Recruiter Portal's home).
 
+**Account area**:
+Everything behind the sign-in guard — My Applications, CVs, the profile editor,
+Notifications, Account settings. Routes live under the `_account` layout, whose guard is
+the single place a Profile is checked before any of its loaders run. Browsing is
+deliberately outside it: a Job is public, and the `_browse` layout renders the same
+chrome with or without a session.
+_Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
+
 **Wrong-portal screen**:
 The full-page notice shown when a signed-in Profile of the other account type opens this
 portal, naming the portal they should be in.
