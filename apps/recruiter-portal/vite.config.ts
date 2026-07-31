@@ -36,7 +36,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/testing/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
-    // jsdom's own origin, so tests exercise the same-origin topology production runs.
-    env: { VITE_API_BASE_URL: 'http://localhost:3000' },
+    // jsdom's own origin, so tests exercise the same-origin topology production runs. The contact
+    // values are deliberately distinct from the code defaults, so a test asserting them proves the
+    // landing reads the env rather than a hardcoded fallback.
+    env: {
+      VITE_API_BASE_URL: 'http://localhost:3000',
+      VITE_CONTACT_WHATSAPP: '963111222333',
+      VITE_CONTACT_EMAIL: 'team@sync.test',
+    },
   },
 });

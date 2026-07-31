@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AppApplicationsRouteImport } from './routes/_app/applications'
 import { Route as AppCandidatesRouteImport } from './routes/_app/candidates'
@@ -39,6 +40,11 @@ const KitchenSinkRoute = KitchenSinkRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WrongPortalRoute = WrongPortalRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AppApplicationsRoute
   '/candidates': typeof AppCandidatesRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AppApplicationsRoute
   '/candidates': typeof AppCandidatesRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_app/applications': typeof AppApplicationsRoute
   '/_app/candidates': typeof AppCandidatesRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/kitchen-sink'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/applications'
     | '/candidates'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/'
     | '/kitchen-sink'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/applications'
     | '/candidates'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/kitchen-sink'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/_app/applications'
     | '/_app/candidates'
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   WrongPortalRoute: typeof WrongPortalRoute
 }
 
@@ -202,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wrong-portal': {
@@ -290,6 +310,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   WrongPortalRoute: WrongPortalRoute,
 }
 export const routeTree = rootRouteImport

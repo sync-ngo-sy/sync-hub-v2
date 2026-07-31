@@ -1,25 +1,27 @@
-import { Button } from '@sync/ui/components/ui/button';
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { PublicHeader } from '@/features/shell/components/public-header';
+import { createFileRoute } from '@tanstack/react-router';
+import { Capabilities } from '@/features/landing/components/capabilities';
+import { ContactBand } from '@/features/landing/components/contact-band';
+import { Hero } from '@/features/landing/components/hero';
+import { HowItWorks } from '@/features/landing/components/how-it-works';
+import { LandingFooter } from '@/features/landing/components/landing-footer';
+import { LandingNav } from '@/features/landing/components/landing-nav';
 
 export const Route = createFileRoute('/')({
-  head: () => ({ meta: [{ title: 'Sync Recruiter' }] }),
+  head: () => ({ meta: [{ title: 'Sync for employers' }] }),
   component: LandingPage,
 });
 
-/** Stands in until the Recruiter landing ticket designs the real page. */
 function LandingPage() {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <PublicHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-5 py-16 text-center">
-        <p className="text-muted-foreground">Sync Recruiter is where companies hire on Sync.</p>
-        <div>
-          <Button size="lg" render={<Link to="/login" />}>
-            Sign in
-          </Button>
-        </div>
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      <LandingNav />
+      <main className="flex-1">
+        <Hero />
+        <HowItWorks />
+        <Capabilities />
+        <ContactBand />
       </main>
+      <LandingFooter />
     </div>
   );
 }
