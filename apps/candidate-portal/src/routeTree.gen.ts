@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as DevKitchenSinkRouteImport } from './routes/dev-kitchen-sink'
+import { Route as GoodbyeRouteImport } from './routes/goodbye'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AuthedApplicationsRouteImport } from './routes/_authed.applications'
+import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,6 +30,11 @@ const AuthedRoute = AuthedRouteImport.update({
 const DevKitchenSinkRoute = DevKitchenSinkRouteImport.update({
   id: '/dev-kitchen-sink',
   path: '/dev-kitchen-sink',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoodbyeRoute = GoodbyeRouteImport.update({
+  id: '/goodbye',
+  path: '/goodbye',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -45,50 +52,77 @@ const AuthedApplicationsRoute = AuthedApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dev-kitchen-sink': typeof DevKitchenSinkRoute
+  '/goodbye': typeof GoodbyeRoute
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/settings': typeof AuthedSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dev-kitchen-sink': typeof DevKitchenSinkRoute
+  '/goodbye': typeof GoodbyeRoute
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/settings': typeof AuthedSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/dev-kitchen-sink': typeof DevKitchenSinkRoute
+  '/goodbye': typeof GoodbyeRoute
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_authed/applications': typeof AuthedApplicationsRoute
+  '/_authed/settings': typeof AuthedSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/goodbye'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+  to:
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/goodbye'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/_authed'
     | '/dev-kitchen-sink'
+    | '/goodbye'
     | '/login'
     | '/wrong-portal'
     | '/_authed/applications'
+    | '/_authed/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
   DevKitchenSinkRoute: typeof DevKitchenSinkRoute
+  GoodbyeRoute: typeof GoodbyeRoute
   LoginRoute: typeof LoginRoute
   WrongPortalRoute: typeof WrongPortalRoute
 }
@@ -116,6 +150,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevKitchenSinkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/goodbye': {
+      id: '/goodbye'
+      path: '/goodbye'
+      fullPath: '/goodbye'
+      preLoaderRoute: typeof GoodbyeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -137,15 +178,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedApplicationsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/settings': {
+      id: '/_authed/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthedSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
   AuthedApplicationsRoute: typeof AuthedApplicationsRoute
+  AuthedSettingsRoute: typeof AuthedSettingsRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedApplicationsRoute: AuthedApplicationsRoute,
+  AuthedSettingsRoute: AuthedSettingsRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -155,6 +205,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
   DevKitchenSinkRoute: DevKitchenSinkRoute,
+  GoodbyeRoute: GoodbyeRoute,
   LoginRoute: LoginRoute,
   WrongPortalRoute: WrongPortalRoute,
 }

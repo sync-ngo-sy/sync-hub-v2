@@ -145,6 +145,37 @@ describe('401 → refresh → retry', () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
   });
 
+  it('surfaces a credential-challenge 401 without replaying or expiring when the session is live', async () => {
+    let deletionCalls = 0;
+    server.use(
+      http.post('/v1/candidates/me/deletion', ({ response }) => {
+        deletionCalls += 1;
+        return response(401).json(PROBLEM);
+      }),
+      // A successful refresh proves the session is live, so the 401 is a wrong-password domain error.
+      http.post('/v1/auth/refresh', ({ response }) => response(200).json(PROFILE)),
+    );
+    const onSessionExpired = vi.fn();
+    const { error } = await makeClient(onSessionExpired).client.POST('/v1/candidates/me/deletion', {
+      body: { password: 'wrong' },
+    });
+    expect(error).toBeDefined();
+    expect(deletionCalls).toBe(1); // not replayed
+    expect(onSessionExpired).not.toHaveBeenCalled();
+  });
+
+  it('expires on a credential-challenge 401 when the session is actually dead', async () => {
+    server.use(
+      http.post('/v1/candidates/me/deletion', ({ response }) => response(401).json(PROBLEM)),
+      http.post('/v1/auth/refresh', ({ response }) => response(401).json(PROBLEM)),
+    );
+    const onSessionExpired = vi.fn();
+    await makeClient(onSessionExpired).client.POST('/v1/candidates/me/deletion', {
+      body: { password: 'whatever' },
+    });
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+  });
+
   it('coalesces concurrent 401s into a single refresh', async () => {
     let meCalls = 0;
     let refreshCalls = 0;

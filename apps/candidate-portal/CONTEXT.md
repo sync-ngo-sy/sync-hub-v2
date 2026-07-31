@@ -25,3 +25,13 @@ _Avoid_: Dashboard (reserved for the Recruiter Portal's home).
 The full-page notice shown when a signed-in Profile of the other account type opens this
 portal, naming the portal they should be in.
 _Avoid_: 403 page, forbidden page.
+
+**Danger zone**:
+The visually separated region of Account settings that holds account deletion, kept apart
+so the destructive action is never reached by accident.
+_Avoid_: Advanced settings, delete section.
+
+**Farewell screen**:
+The public, signed-out page a Candidate lands on after deleting their account. A terminal
+state: it confirms the deletion, thanks them, and offers only the way back to the Landing page.
+_Avoid_: Goodbye page, account-deleted page, confirmation page.
