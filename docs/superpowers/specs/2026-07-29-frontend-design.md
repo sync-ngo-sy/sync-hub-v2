@@ -234,15 +234,7 @@ sub-18px text):
 }
 ```
 
-**Dense app-chrome type steps, added 2026-07-31 (during #48):** the fluid display/h2/h3
-ramp above belongs to the editorial landing. The Dashboard mockup — desktop-only — fixes
-the app surfaces at their own sizes, so `@sync/ui` carries four more steps, named for what
-they label rather than as heading levels: `--text-page-title` (26px, eased to 22px on a
-phone), `--text-title` (a 15px card heading), `--text-figure` (the 29px stat-card number)
-and `--text-meta` (13px). Each pairs the mockup's weight with its size. `--shadow-card`
-carries the mockups' near-zero card shadow, identical in both themes.
-
-**Brand:** logo mark at `apps/logo.png` (favicon + OG base); headers pair the mark
+**Brand:** logo mark at `apps/<project-name>/public/logo.png` (favicon + OG base); headers pair the mark
 with "Sync" in Geist. Titles: `<Page> · Sync` (candidate) / `<Page> · Sync Recruiter`.
 
 **Reference mockups** live in `docs/design/mockups/` (see its README for how to serve
