@@ -164,8 +164,18 @@ Negatives carry a small circle-x icon; "review required" carries a circle-alert 
 action buttons and confirmations. Charts use the teal ramp + gray; `--warning`/
 `--info` are defined for rare banner use, never chips.
 
-**Approved light tokens** (from the mockups; `#1D867E` on white is ~3.4:1, so
-`--accent-foreground` `#166B65` is the mandatory teal for sub-18px text):
+**Destructive role, revised 2026-07-31 (during #46):** the shadcn primitives consume
+`--destructive` as the red *itself* — `text-destructive`, and `bg-destructive/10` for a
+wash — so the original tint-plus-text pairing rendered `#FBEAEA` text on white at
+1.16:1. `--destructive` is now the red (`#9F3129` / `#F0938A`), `--destructive-muted`
+carries the flat tint the values below first named, and `--destructive-foreground` is
+the text on a solid red fill. The rendered result is unchanged: `bg-destructive/10`
+computes to `#F5EAEA`, within a hair of the approved `#FBEAEA`, with `#9F3129` text on
+it at 6.06:1.
+
+**Approved light tokens** (from the mockups; `#1D867E` on white measures 4.41:1 — under
+AA's 4.5:1 for small text — so `--accent-foreground` `#166B65` is the mandatory teal for
+sub-18px text):
 
 ```css
 :root {
@@ -176,7 +186,8 @@ action buttons and confirmations. Charts use the teal ramp + gray; `--warning`/
   --secondary: #F5F5F4;   --secondary-foreground: #44403C;
   --muted: #F0EFED;       --muted-foreground: #78716C;
   --accent: #EAF5F3;      --accent-foreground: #166B65;
-  --destructive: #FBEAEA; --destructive-foreground: #9F3129;
+  --destructive: #9F3129; --destructive-foreground: #FFFFFF;
+  --destructive-muted: #FBEAEA;
   --success: #E7F5EC;     --success-foreground: #1E6B45;
   --warning: #FCF1DC;     --warning-foreground: #8A5A0A;
   --info: #E9F1FB;        --info-foreground: #1E4E8C;
@@ -204,7 +215,8 @@ action buttons and confirmations. Charts use the teal ramp + gray; `--warning`/
   --secondary: #211E1C;   --secondary-foreground: #D6D3D1;
   --muted: rgba(255,255,255,0.06); --muted-foreground: #A29E9A;
   --accent: rgba(63,181,168,0.16); --accent-foreground: #3FB5A8;
-  --destructive: rgba(224,94,84,0.18); --destructive-foreground: #F0938A;
+  --destructive: #F0938A; --destructive-foreground: #131211;
+  --destructive-muted: rgba(224,94,84,0.18);
   --success: rgba(74,179,126,0.16);    --success-foreground: #6FD19B;
   --warning: rgba(217,155,42,0.16);    --warning-foreground: #E8B94D;
   --info: rgba(74,130,216,0.16);       --info-foreground: #7FB0F0;
