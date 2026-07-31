@@ -8,7 +8,7 @@ import { StatCardShell } from './stat-card';
 // Each skeleton reuses the shell of the molecule it stands in for, and is hidden from
 // assistive technology: the surface that swaps it for real content owns announcing that.
 
-function placeholderKeys(count: number, prefix: string) {
+export function placeholderKeys(count: number, prefix: string) {
   return Array.from({ length: count }, (_, index) => `${prefix}-${index}`);
 }
 
