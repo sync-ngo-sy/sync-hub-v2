@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { problemMessage } from '@/lib/api-problem';
 
-/** Revokes every session the caller has, lands on the landing page, then empties the cache. */
 export function useLogOut() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();

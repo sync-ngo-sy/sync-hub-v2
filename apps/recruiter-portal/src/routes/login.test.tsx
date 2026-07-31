@@ -7,7 +7,7 @@ import {
   signedInAs,
   signedOut,
 } from '@/features/auth/testing/handlers';
-import { RECRUITER, WRONG_PASSWORD } from '@/testing/fixtures';
+import { CANDIDATE, RECRUITER, WRONG_PASSWORD } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -73,5 +73,13 @@ describe('signing in', () => {
     const { router } = await renderApp('/login?returnTo=%2Ftemplates');
 
     expect(router.state.location.pathname).toBe('/templates');
+  });
+
+  it('sends a signed-in candidate to the Wrong-portal screen, not the sign-in form', async () => {
+    server.use(...signedInAs(CANDIDATE));
+
+    const { router } = await renderApp('/login');
+
+    expect(router.state.location.pathname).toBe('/wrong-portal');
   });
 });

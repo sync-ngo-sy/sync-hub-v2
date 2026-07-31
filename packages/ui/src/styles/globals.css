@@ -74,6 +74,12 @@
 }
 
 @theme {
+  /* Both approved mockups render at these three weights; Tailwind's stock 400/500/600
+     is a visibly lighter register than the design they fix. */
+  --font-weight-normal: 450;
+  --font-weight-medium: 560;
+  --font-weight-semibold: 640;
+
   --text-display: clamp(3.5rem, 2.3rem + 5vw, 6rem);
   --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.02em;
@@ -204,6 +210,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans text-reading antialiased;
+    @apply bg-background text-foreground font-sans font-normal text-reading antialiased;
   }
 }

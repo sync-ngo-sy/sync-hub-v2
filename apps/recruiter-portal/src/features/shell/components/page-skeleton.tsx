@@ -1,6 +1,5 @@
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 
-/** Matches the shape of a workspace page — a header, then a stack of cards. */
 export function PageSkeleton() {
   return (
     <div role="status" aria-label="Loading" className="space-y-8">

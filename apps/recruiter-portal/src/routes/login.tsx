@@ -10,7 +10,8 @@ export const Route = createFileRoute('/login')({
   validateSearch: z.object({ returnTo: z.string().optional() }),
   beforeLoad: async ({ context, search }) => {
     const profile = await ensureCurrentProfile(context.queryClient);
-    if (profile?.account_type !== 'recruiter') return;
+    if (!profile) return;
+    if (profile.account_type !== 'recruiter') throw redirect({ to: '/wrong-portal' });
     const returnTo = resolveReturnTo(search.returnTo);
     throw returnTo ? redirect({ href: returnTo }) : redirect({ to: '/dashboard' });
   },

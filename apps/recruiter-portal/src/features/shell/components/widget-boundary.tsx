@@ -3,10 +3,6 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { reportError } from '@/lib/report-error';
 import { ErrorCard } from './error-card';
 
-/**
- * Tier two of three: one panel fails, the rest of the page survives, and the reader gets
- * a Retry that re-mounts only what broke.
- */
 export function WidgetBoundary({ name, children }: { name: string; children: ReactNode }) {
   return (
     <ErrorBoundary

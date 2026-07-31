@@ -6,10 +6,6 @@ import { expect } from 'vitest';
 import { createQueryClient } from '@/lib/query-client';
 import { createAppRouter } from '@/lib/router';
 
-/**
- * The whole app, at a starting URL: the real router, the real query client and the real
- * generated API client, with MSW the only stand-in.
- */
 export async function renderApp(path = '/') {
   const queryClient = createQueryClient();
   const router = createAppRouter(queryClient, createMemoryHistory({ initialEntries: [path] }));

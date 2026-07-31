@@ -1,4 +1,3 @@
-import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import type { Profile } from '@/features/auth/current-profile';
 import { DESTINATIONS } from '@/features/shell/nav';
@@ -6,21 +5,9 @@ import { AccountMenu } from './account-menu';
 import { Brand } from './brand';
 import { ThemeToggle } from './theme-toggle';
 
-/**
- * The mockup's 240px register: hairline right rule, teal active rail, account row
- * beneath a divider. The same component fills the drawer below `lg`.
- */
-export function Sidebar({
-  profile,
-  className,
-  onNavigate,
-}: {
-  profile: Profile;
-  className?: string;
-  onNavigate?: () => void;
-}) {
+export function Sidebar({ profile, onNavigate }: { profile: Profile; onNavigate?: () => void }) {
   return (
-    <div className={cn('flex h-full flex-col bg-sidebar py-6', className)}>
+    <div className="flex h-full flex-col bg-sidebar py-6">
       <Brand className="mb-8 px-5" />
 
       <nav aria-label="Workspace" className="flex flex-1 flex-col gap-0.5 px-3">

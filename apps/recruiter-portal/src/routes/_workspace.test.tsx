@@ -1,10 +1,9 @@
-import { http } from '@sync/api-client/testing';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { client } from '@/lib/api';
-import { CANDIDATE, NO_SESSION, RECRUITER } from '@/testing/fixtures';
+import { CANDIDATE, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -35,10 +34,7 @@ describe('the workspace guard', () => {
     server.use(...signedInAs(RECRUITER));
     const { router } = await renderApp('/jobs');
 
-    server.use(
-      http.get('/v1/auth/me', ({ response }) => response(401).json(NO_SESSION)),
-      http.post('/v1/auth/refresh', ({ response }) => response(401).json(NO_SESSION)),
-    );
+    server.use(...signedOut());
     await client.GET('/v1/auth/me');
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));

@@ -9,7 +9,6 @@ interface ErrorCardProps {
   retryLabel?: string;
 }
 
-/** The one recoverable-failure shape: what broke, and one way out. Never a white screen. */
 export function ErrorCard({ title, description, onRetry, retryLabel = 'Retry' }: ErrorCardProps) {
   return (
     <Card>

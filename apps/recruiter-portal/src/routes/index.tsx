@@ -6,16 +6,13 @@ export const Route = createFileRoute('/')({
   component: LandingPage,
 });
 
-/** Provisional: the Recruiter landing gets its own ticket. */
+/** Provisional: #60 designs the real landing. */
 function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <PublicHeader />
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-5 py-16 text-center">
-        <h1 className="font-heading text-h2 text-foreground">Hiring, in one clear place.</h1>
-        <p className="text-muted-foreground">
-          Sync Recruiter is where companies publish jobs and review the people who apply.
-        </p>
+        <p className="text-muted-foreground">Sync Recruiter is where companies hire on Sync.</p>
         <div>
           <Button size="lg" render={<Link to="/login" />}>
             Sign in

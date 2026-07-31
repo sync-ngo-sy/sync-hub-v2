@@ -1,13 +1,13 @@
 import { Briefcase, FileText, Inbox, LayoutDashboard, Settings, Star, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
+import type { FileRouteTypes } from '@/routeTree.gen';
 
 export interface Destination {
-  to: string;
+  to: FileRouteTypes['to'];
   label: string;
   icon: ComponentType<{ className?: string }>;
 }
 
-/** The seven destinations the approved Dashboard mockup fixes, in its order. */
 export const DESTINATIONS: Destination[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/jobs', label: 'Jobs', icon: Briefcase },

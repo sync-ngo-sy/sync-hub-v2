@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@sync/ui/components/ui
 import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
-import { Separator } from '@sync/ui/components/ui/separator';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Switch } from '@sync/ui/components/ui/switch';
 import {
@@ -23,7 +22,6 @@ import { Info } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 import { PageHeader } from '@/features/shell/components/page-header';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
-import { StatusChip } from './status-chip';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -48,10 +46,6 @@ const SURFACES: [label: string, swatch: string][] = [
   ['destructive', 'bg-destructive'],
 ];
 
-/**
- * The dev-only gallery that stands in for Storybook: every primitive this portal composes
- * from, on one page, so both themes can be checked at a glance.
- */
 export default function KitchenSink() {
   const emailId = useId();
   const noteId = useId();
@@ -84,22 +78,6 @@ export default function KitchenSink() {
         <Button disabled>Disabled</Button>
         <Button size="sm">Small</Button>
         <Button size="lg">Large</Button>
-      </Section>
-
-      <Section title="Status chips">
-        <StatusChip tone="qualified">Qualified</StatusChip>
-        <StatusChip tone="shortlisted">Shortlisted</StatusChip>
-        <StatusChip tone="interview">Interview</StatusChip>
-        <StatusChip tone="offer">Offer</StatusChip>
-        <StatusChip tone="hired">Hired</StatusChip>
-        <StatusChip>New</StatusChip>
-        <StatusChip>Reviewing</StatusChip>
-        <StatusChip icon="attention">Review required</StatusChip>
-        <StatusChip icon="negative">Disqualified</StatusChip>
-        <StatusChip icon="negative">Rejected</StatusChip>
-        <Separator orientation="vertical" className="h-6" />
-        <Badge>Badge</Badge>
-        <Badge variant="outline">Outline</Badge>
       </Section>
 
       <Section title="Forms">
@@ -173,10 +151,10 @@ export default function KitchenSink() {
                       </TableCell>
                       <TableCell>Field Coordinator, Aleppo</TableCell>
                       <TableCell>
-                        <StatusChip tone="qualified">Qualified</StatusChip>
+                        <Badge variant="secondary">Qualified</Badge>
                       </TableCell>
                       <TableCell>
-                        <StatusChip>New</StatusChip>
+                        <Badge variant="outline">New</Badge>
                       </TableCell>
                     </TableRow>
                     <TableRow>
@@ -190,10 +168,10 @@ export default function KitchenSink() {
                       </TableCell>
                       <TableCell>Logistics Assistant</TableCell>
                       <TableCell>
-                        <StatusChip icon="negative">Disqualified</StatusChip>
+                        <Badge variant="secondary">Disqualified</Badge>
                       </TableCell>
                       <TableCell>
-                        <StatusChip icon="negative">Rejected</StatusChip>
+                        <Badge variant="outline">Rejected</Badge>
                       </TableCell>
                     </TableRow>
                   </TableBody>

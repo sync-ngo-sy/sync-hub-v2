@@ -1,11 +1,14 @@
+import type { components } from '@sync/api-client';
+
+type ProblemDetail = components['schemas']['ProblemDetail'];
+
 /**
- * `openapi-react-query` rejects with the parsed response body, so a failed call arrives
- * as the API's RFC 9457 problem document — or, when the request never reached the API,
- * as whatever `fetch` threw. These readers narrow both without pretending to know which.
+ * `openapi-react-query` rejects with the parsed body, so a failed call arrives as the API's
+ * problem document — or, when the request never reached the API, as whatever `fetch` threw.
  */
-function problemBody(error: unknown): Record<string, unknown> | null {
+function problemBody(error: unknown): Partial<ProblemDetail> | null {
   return typeof error === 'object' && error !== null && !(error instanceof Error)
-    ? (error as Record<string, unknown>)
+    ? (error as Partial<ProblemDetail>)
     : null;
 }
 
@@ -21,9 +24,7 @@ export function isClientError(error: unknown): boolean {
 
 export function problemMessage(error: unknown, fallback: string): string {
   const body = problemBody(error);
-  const detail = body?.detail;
-  if (typeof detail === 'string' && detail !== '') return detail;
-  const title = body?.title;
-  if (typeof title === 'string' && title !== '') return title;
+  if (typeof body?.detail === 'string' && body.detail !== '') return body.detail;
+  if (typeof body?.title === 'string' && body.title !== '') return body.title;
   return fallback;
 }
