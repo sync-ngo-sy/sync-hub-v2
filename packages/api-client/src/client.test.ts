@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from './client';
-import { API_ORIGIN, http, PROFILE, SESSION_EXPIRED } from './testing/http';
+import { API_ORIGIN, http, PROFILE, SESSION_EXPIRED, WRONG_PASSWORD } from './testing/http';
 
 const server = setupServer();
 
@@ -10,7 +10,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-function seen(): Request[] {
+function recordRequests(): Request[] {
   const requests: Request[] = [];
   server.events.on('request:start', ({ request }) => requests.push(request));
   return requests;
@@ -24,7 +24,7 @@ afterEach(() => server.events.removeAllListeners());
 
 describe('the assembled client', () => {
   it('sends cookie credentials and no CSRF header on a safe request', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     server.use(http.get('/v1/auth/me', ({ response }) => response(200).json(PROFILE)));
 
     const { client } = createApiClient({ baseUrl: API_ORIGIN });
@@ -37,7 +37,7 @@ describe('the assembled client', () => {
   });
 
   it('sends the CSRF header on a mutating request', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     server.use(http.post('/v1/auth/logout', ({ response }) => response(204).empty()));
 
     const { client } = createApiClient({ baseUrl: API_ORIGIN });
@@ -49,9 +49,18 @@ describe('the assembled client', () => {
   });
 });
 
+describe('an unusable API base', () => {
+  it.each(['https://api.sync.test/v1', 'not-a-url'])(
+    'is refused at construction rather than at the first request: %j',
+    (baseUrl) => {
+      expect(() => createApiClient({ baseUrl })).toThrow(/api-client/);
+    },
+  );
+});
+
 describe('an expired access token', () => {
   it('is recovered by exactly one refresh and one retry', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     let attempts = 0;
     server.use(
       http.get('/v1/auth/me', ({ response }) =>
@@ -74,7 +83,7 @@ describe('an expired access token', () => {
   });
 
   it('signals session expiry when the refresh itself is rejected', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     const onSessionExpired = vi.fn();
     server.use(
       http.get('/v1/auth/me', ({ response }) => response(401).json(SESSION_EXPIRED)),
@@ -90,7 +99,7 @@ describe('an expired access token', () => {
   });
 
   it('signals session expiry when the retry is rejected too, without refreshing twice', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     const onSessionExpired = vi.fn();
     server.use(
       http.get('/v1/auth/me', ({ response }) => response(401).json(SESSION_EXPIRED)),
@@ -110,7 +119,7 @@ describe('an expired access token', () => {
   });
 
   it('coalesces concurrent 401s into a single refresh', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     let refreshed = false;
     server.use(
       http.get('/v1/auth/me', ({ response }) =>
@@ -134,6 +143,7 @@ describe('an expired access token', () => {
   });
 
   it('replays the retried request with its body and CSRF header intact', async () => {
+    const requests = recordRequests();
     const bodies: unknown[] = [];
     let refreshed = false;
     server.use(
@@ -164,10 +174,31 @@ describe('an expired access token', () => {
       { name: 'Arabic', scope: 'candidate' },
       { name: 'Arabic', scope: 'candidate' },
     ]);
+    const tagWrites = requests.filter(
+      (request) => new URL(request.url).pathname === '/v1/tenants/me/tags',
+    );
+    expect(tagWrites.map((request) => request.headers.get('X-Sync-Request'))).toEqual(['1', '1']);
+  });
+
+  it('leaves a wrong-password 401 alone, so the app can say so', async () => {
+    const requests = recordRequests();
+    const onSessionExpired = vi.fn();
+    server.use(
+      http.post('/v1/candidates/me/deletion', ({ response }) => response(401).json(WRONG_PASSWORD)),
+    );
+
+    const { client } = createApiClient({ baseUrl: API_ORIGIN, onSessionExpired });
+    const { error } = await client.POST('/v1/candidates/me/deletion', {
+      body: { password: 'wrong' },
+    });
+
+    expect(error?.type).toBe('urn:sync:problem:invalid-credentials');
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(trace(requests)).toEqual(['POST /v1/candidates/me/deletion']);
   });
 
   it('does not refresh in response to the refresh endpoint rejecting', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     const onSessionExpired = vi.fn();
     server.use(
       http.post('/v1/auth/refresh', ({ response }) => response(401).json(SESSION_EXPIRED)),
@@ -184,7 +215,7 @@ describe('an expired access token', () => {
 
 describe('the exported query hooks', () => {
   it('resolve through the same hardened fetch, inheriting the 401 recovery', async () => {
-    const requests = seen();
+    const requests = recordRequests();
     let refreshed = false;
     server.use(
       http.get('/v1/auth/me', ({ response }) =>

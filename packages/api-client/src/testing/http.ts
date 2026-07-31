@@ -15,7 +15,15 @@ export const PROFILE: components['schemas']['ProfileView'] = {
 };
 
 export const SESSION_EXPIRED: components['schemas']['ProblemDetail'] = {
-  type: 'about:blank',
+  type: 'urn:sync:problem:not-authenticated',
   title: 'Unauthorized',
   status: 401,
+  detail: 'Sign in to continue.',
+};
+
+export const WRONG_PASSWORD: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:invalid-credentials',
+  title: 'Unauthorized',
+  status: 401,
+  detail: 'That email and password do not match an account.',
 };

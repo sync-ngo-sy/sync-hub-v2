@@ -2,5 +2,5 @@ export type { Api, ApiFetchClient, CreateApiClientOptions, SyncApiClient } from 
 export { createApiClient } from './client';
 export type { ClientEnv } from './env';
 export { readClientEnv } from './env';
-export { CSRF_HEADER, REFRESH_PATH } from './middleware';
+export { CSRF_HEADER, REFRESH_PATH, SESSION_PROBLEM_TYPE } from './middleware';
 export type { components, paths } from './schema.gen';

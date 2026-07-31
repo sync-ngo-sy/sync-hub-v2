@@ -16,24 +16,30 @@ function carriesVersionPrefix(path: string): boolean {
   return path.replace(/\/+$/, '').endsWith('/v1');
 }
 
-const clientEnvSchema = z.object({
-  VITE_API_BASE_URL: z.string().superRefine((value, ctx) => {
-    const path = basePath(value);
-    if (path === null) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'must be empty (same-origin), a root-relative path, or an absolute http(s) URL',
-      });
-      return;
-    }
-    if (carriesVersionPrefix(path)) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'must not end in /v1 — the generated paths already carry that prefix',
-      });
-    }
-  }),
+const apiBaseSchema = z.string().superRefine((value, ctx) => {
+  const path = basePath(value);
+  if (path === null) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'must be empty (same-origin), a root-relative path, or an absolute http(s) URL',
+    });
+    return;
+  }
+  if (carriesVersionPrefix(path)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'must not end in /v1 — the generated paths already carry that prefix',
+    });
+  }
 });
+
+const clientEnvSchema = z.object({ VITE_API_BASE_URL: apiBaseSchema });
+
+function describe(error: z.ZodError, fallbackPath: string): string {
+  return error.issues
+    .map((issue) => `${issue.path.join('.') || fallbackPath}: ${issue.message}`)
+    .join('; ');
+}
 
 export interface ClientEnv {
   apiBaseUrl: string;
@@ -42,10 +48,19 @@ export interface ClientEnv {
 export function readClientEnv(source: Record<string, unknown>): ClientEnv {
   const result = clientEnvSchema.safeParse(source);
   if (!result.success) {
-    const detail = result.error.issues
-      .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
-      .join('; ');
-    throw new Error(`[@sync/api-client] Invalid frontend environment — ${detail}`);
+    throw new Error(
+      `[@sync/api-client] Invalid frontend environment — ${describe(result.error, 'VITE_API_BASE_URL')}`,
+    );
   }
   return { apiBaseUrl: result.data.VITE_API_BASE_URL };
+}
+
+export function assertApiBase(value: string): string {
+  const result = apiBaseSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error(
+      `[@sync/api-client] Unusable API base ${JSON.stringify(value)} — ${describe(result.error, 'baseUrl')}`,
+    );
+  }
+  return result.data;
 }

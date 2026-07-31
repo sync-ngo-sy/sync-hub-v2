@@ -1,5 +1,6 @@
 import createFetchClient, { type Client } from 'openapi-fetch';
 import createQueryClient, { type OpenapiQueryClient } from 'openapi-react-query';
+import { assertApiBase } from './env';
 import { createAuthFetch, csrfMiddleware } from './middleware';
 import type { paths } from './schema.gen';
 
@@ -17,10 +18,9 @@ export interface SyncApiClient {
   api: Api;
 }
 
-export function createApiClient({
-  baseUrl,
-  onSessionExpired,
-}: CreateApiClientOptions): SyncApiClient {
+export function createApiClient(options: CreateApiClientOptions): SyncApiClient {
+  const baseUrl = assertApiBase(options.baseUrl);
+  const { onSessionExpired } = options;
   const client = createFetchClient<paths>({
     baseUrl,
     credentials: 'include',
