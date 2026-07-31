@@ -11,6 +11,7 @@ import { LogOut, Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useLogout } from '../features/auth/hooks/use-logout';
 import { useProfile } from '../features/auth/hooks/use-profile';
+import { NotificationBell } from '../features/notifications/components/notification-bell';
 import { useTheme } from '../lib/theme';
 
 function ThemeToggle() {
@@ -25,6 +26,12 @@ function ThemeToggle() {
       {theme === 'dark' ? <Sun aria-hidden /> : <Moon aria-hidden />}
     </Button>
   );
+}
+
+function CandidateBell() {
+  const { data: profile } = useProfile();
+  if (profile?.account_type !== 'candidate') return null;
+  return <NotificationBell />;
 }
 
 function AccountMenu() {
@@ -75,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <CandidateBell />
           <AccountMenu />
         </div>
       </header>

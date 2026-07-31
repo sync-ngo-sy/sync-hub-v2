@@ -15,6 +15,7 @@ import { Route as DevKitchenSinkRouteImport } from './routes/dev-kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AuthedApplicationsRouteImport } from './routes/_authed.applications'
+import { Route as AuthedNotificationsRouteImport } from './routes/_authed.notifications'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +46,11 @@ const AuthedApplicationsRoute = AuthedApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedNotificationsRoute = AuthedNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/notifications': typeof AuthedNotificationsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/notifications': typeof AuthedNotificationsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,13 +76,25 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_authed/applications': typeof AuthedApplicationsRoute
+  '/_authed/notifications': typeof AuthedNotificationsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/notifications'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+  to:
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/notifications'
   id:
     | '__root__'
     | '/'
@@ -83,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/wrong-portal'
     | '/_authed/applications'
+    | '/_authed/notifications'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,15 +158,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedApplicationsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/notifications': {
+      id: '/_authed/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthedNotificationsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
   AuthedApplicationsRoute: typeof AuthedApplicationsRoute
+  AuthedNotificationsRoute: typeof AuthedNotificationsRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedApplicationsRoute: AuthedApplicationsRoute,
+  AuthedNotificationsRoute: AuthedNotificationsRoute,
 }
 
 const AuthedRouteWithChildren =

@@ -25,3 +25,9 @@ _Avoid_: Dashboard (reserved for the Recruiter Portal's home).
 The full-page notice shown when a signed-in Profile of the other account type opens this
 portal, naming the portal they should be in.
 _Avoid_: 403 page, forbidden page.
+
+**Notifications**:
+The header bell with its unread badge, its dropdown of the most recent items, and the
+view-all page. Each item renders per payload type and, when opened, marks itself read and
+deep-links to the resource it is about (a CV, an Application). There is no mark-all.
+_Avoid_: Alerts, activity feed, inbox.
