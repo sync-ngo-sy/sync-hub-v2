@@ -101,6 +101,33 @@
 
   --text-dense: 0.875rem;
   --text-dense--line-height: 1.5;
+
+  /* The dense app-chrome steps, transcribed from the Dashboard mockup, which is desktop-only
+     and fixes them at one size each. They sit below the h2/h3 ramp the editorial landing
+     uses, so they are named for what they label rather than as heading levels: the page
+     title (26px, eased to 22px on a phone), a card heading (15px), the figure on a stat card
+     (29px), and the meta line under or beside either (13px). */
+  --text-page-title: clamp(1.375rem, 1.15rem + 1vw, 1.625rem);
+  --text-page-title--line-height: 1.2;
+  --text-page-title--letter-spacing: -0.01em;
+  --text-page-title--font-weight: 640;
+
+  --text-title: 0.9375rem;
+  --text-title--line-height: 1.4;
+  --text-title--font-weight: 640;
+
+  --text-figure: 1.8125rem;
+  --text-figure--line-height: 1;
+  --text-figure--letter-spacing: -0.02em;
+  --text-figure--font-weight: 560;
+
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.5;
+  --text-meta--font-weight: 450;
+
+  /* The mockups carry the same near-zero card shadow in both themes, so it is one value
+     rather than a :root/.dark pair. */
+  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04);
 }
 
 :root {
