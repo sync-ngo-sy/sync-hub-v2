@@ -1,0 +1,3 @@
+/* No body override: this portal keeps globals.css's 16px reading size, where the
+   recruiter portal steps down to the dense one. */
+@import "@sync/ui/globals.css";
