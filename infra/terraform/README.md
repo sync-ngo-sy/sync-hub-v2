@@ -13,11 +13,21 @@ created once by `scripts/bootstrap-terraform-state.sh`.
 Google is the only provider, pinned in each root module with `.terraform.lock.hcl`
 committed.
 
+## Tooling
+
+OpenTofu (`brew install opentofu`), not Terraform. Homebrew dropped the `terraform` formula
+after the BUSL relicence, so Terraform now needs a third-party tap; OpenTofu is in core, is
+MPL-licensed, and is a drop-in. The lockfiles therefore record
+`registry.opentofu.org/hashicorp/google` — switching to Terraform means regenerating them.
+
 ## Running
 
 ```bash
-cd infra/terraform/envs/staging && terraform init && terraform plan
+cd infra/terraform/envs/staging && tofu init && tofu plan
 ```
+
+The `gcs` backend authenticates with application default credentials, which are separate
+from your `gcloud` login: `gcloud auth application-default login`.
 
 `terraform.tfvars` in each environment carries what differs. `services` and `secret_ids` are
 empty until #88 and #84 fill them, so a plan today reports no changes.
