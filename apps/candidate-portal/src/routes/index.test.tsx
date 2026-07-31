@@ -9,20 +9,13 @@ import {
 } from '@/features/landing/testing/handlers';
 import { env } from '@/lib/env';
 import { PUBLIC_JOBS } from '@/testing/fixtures';
+import { stubMatchMedia } from '@/testing/media-query';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
 function prefersReducedMotion() {
   vi.spyOn(window, 'matchMedia').mockImplementation(
-    (query: string) =>
-      ({
-        matches: query.includes('prefers-reduced-motion'),
-        media: query,
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }) as unknown as MediaQueryList,
+    stubMatchMedia((query) => query.includes('prefers-reduced-motion')),
   );
 }
 
@@ -102,6 +95,7 @@ describe('the candidate landing', () => {
   });
 
   it('offers a retry when the newest jobs cannot be loaded, and keeps the rest of the page', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     server.use(...ratelimitsJobs());
 
     const { user } = await renderApp('/');
@@ -109,6 +103,10 @@ describe('the candidate landing', () => {
     expect(await screen.findByText("Couldn't load the newest roles.")).toBeVisible();
     expect(screen.getByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Open roles' })).toBeVisible();
+    expect(consoleError).toHaveBeenCalledWith(
+      '[widget: Newest roles]',
+      expect.objectContaining({ status: 429 }),
+    );
 
     server.use(...listsJobs(PUBLIC_JOBS));
     await user.click(screen.getByRole('button', { name: 'Retry' }));

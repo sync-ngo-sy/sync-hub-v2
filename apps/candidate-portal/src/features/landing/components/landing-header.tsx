@@ -26,10 +26,7 @@ export function LandingHeader() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Link
-            to="/login"
-            className={cn(buttonVariants({ variant: 'ghost' }), NAV_BUTTON, 'px-3')}
-          >
+          <Link to="/login" className={cn(buttonVariants({ variant: 'ghost' }), NAV_BUTTON)}>
             Sign in
           </Link>
           {/* Below `sm` the hero's own CTA carries sign-up: two buttons plus the brand do not

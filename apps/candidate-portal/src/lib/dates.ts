@@ -11,11 +11,7 @@ const UNITS: [limit: number, unit: Intl.RelativeTimeFormatUnit][] = [
   [Number.POSITIVE_INFINITY, 'year'],
 ];
 
-/**
- * Lists carry these, with {@link absoluteDateTime} as the hover title (§7.7). The first minute
- * — and any clock skew that puts a timestamp in the future — collapses to "just now" rather
- * than counting seconds.
- */
+/** Lists carry these, with {@link absoluteDateTime} as the hover title (§7.7). */
 export function relativeTime(iso: string, now: Date = new Date()): string {
   let amount = (new Date(iso).getTime() - now.getTime()) / 1000;
   if (Math.abs(amount) < 60) return 'just now';

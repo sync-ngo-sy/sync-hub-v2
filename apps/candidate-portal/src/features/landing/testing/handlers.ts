@@ -1,9 +1,7 @@
-import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 import { delay } from 'msw';
+import type { PublicJob } from '@/features/landing/hooks/use-newest-jobs';
 import { TOO_MANY_REQUESTS } from '@/testing/fixtures';
-
-type PublicJob = components['schemas']['PublicJobSummary'];
 
 export function listsJobs(items: PublicJob[]) {
   return [http.get('/v1/jobs', ({ response }) => response(200).json({ items, next_cursor: null }))];

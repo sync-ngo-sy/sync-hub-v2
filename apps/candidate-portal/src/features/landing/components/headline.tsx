@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-/** The sentence the landing exists to say. Its one teal word is the only accent on the page. */
 export const HEADLINE = {
   before: "Syria's jobs, in one ",
   accent: 'clear',

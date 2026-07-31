@@ -1,20 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { stubMatchMedia } from './media-query';
 import { server } from './server';
 
-// jsdom ships neither, and the theme and the responsive chrome both read them.
-window.matchMedia ??= (query: string) =>
-  ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }) as unknown as MediaQueryList;
+window.matchMedia ??= stubMatchMedia(() => false);
 
 // jsdom defines scrollTo only to throw "not implemented", so this replaces rather than fills in.
 window.scrollTo = vi.fn();

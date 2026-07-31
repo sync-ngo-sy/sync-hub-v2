@@ -11,7 +11,7 @@ export function LandingFooter() {
   return (
     <footer className="pt-14 pb-8">
       <Wrap>
-        <div className="mb-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr]">
+        <div className="mb-10 grid gap-8 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <Brand className="mb-3" />
             <p className="max-w-[34ch] text-dense text-muted-foreground">

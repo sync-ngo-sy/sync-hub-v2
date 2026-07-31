@@ -24,12 +24,9 @@ function useTypedLength(total: number): number {
 }
 
 /**
- * The landing's one animation, in its own chunk: the hero imports it lazily, so a reader who
- * asked for less motion — and every other route — never loads it.
- *
- * Every character is in the DOM from the first frame, hidden rather than absent, so the
- * finished layout holds and nothing reflows as the line types itself. Assistive tech reads
- * the sentence once, off the label; the characters themselves are hidden from it.
+ * The default export is what the hero lazy-loads. Every character is in the DOM from the first
+ * frame, hidden rather than absent, so nothing reflows as the line types itself; assistive tech
+ * reads the sentence once off the label instead of character by character.
  */
 export default function TypewriterHeadline() {
   const typed = useTypedLength(CHARACTERS.length);
