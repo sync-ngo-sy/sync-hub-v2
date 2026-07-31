@@ -8,5 +8,5 @@
       "@sync/ui/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "vitest.config.ts"]
 }
