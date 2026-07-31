@@ -20,13 +20,6 @@ A hand-written shared component composed from Primitives and Tokens (a data tabl
 stat card, an empty state). Owned, linted, and tested like any of our code.
 _Avoid_: Widget, composite.
 
-**Chip**:
-The pill that states one status — an Application's, a Job's, a Screening verdict's — in the
-approved scheme: teal tints for positive states deepening toward hired, gray for everything
-else, and an icon wherever the state is negative or needs review, because color never
-carries the meaning alone. Never red; red belongs to irreversible actions.
-_Avoid_: Badge, tag, pill, label.
-
 **Promotion**:
 The move of a component from one portal's feature into the Design System, permitted only
 when a second consumer appears. Until then the component stays where it was born.
