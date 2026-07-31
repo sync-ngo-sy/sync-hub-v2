@@ -11,26 +11,13 @@
     "gen": "openapi-typescript http://localhost:8000/openapi.json -o ./src/schema.gen.ts",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "openapi-fetch": "^0.17.0",
-    "openapi-react-query": "^0.5.4",
-    "zod": "^4.4.3"
-  },
-  "peerDependencies": {
-    "@tanstack/react-query": "^5.80.0",
-    "react": "^19.2.0"
+    "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "@tanstack/react-query": "^5.101.4",
-    "@types/node": "^24.13.2",
-    "msw": "^2.15.0",
-    "openapi-msw": "^2.0.0",
     "openapi-typescript": "^7.13.0",
-    "react": "^19.2.7",
-    "typescript": "~6.0.3",
-    "vitest": "^4.1.10"
+    "typescript": "~6.0.3"
   }
 }

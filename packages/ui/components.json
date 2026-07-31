@@ -15,7 +15,7 @@
     "utils": "@sync/ui/lib/utils",
     "hooks": "@sync/ui/hooks",
     "lib": "@sync/ui/lib",
-    "ui": "@sync/ui/components/ui"
+    "ui": "@sync/ui/components"
   },
   "rtl": false,
   "menuColor": "default",
