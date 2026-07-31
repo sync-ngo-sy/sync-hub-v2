@@ -1,0 +1,7 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+tfplan
+
+# .terraform.lock.hcl is committed on purpose — it is the provider pin.
