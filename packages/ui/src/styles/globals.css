@@ -36,6 +36,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-muted: var(--destructive-muted);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -119,8 +120,11 @@
   --muted-foreground: #78716C;
   --accent: #EAF5F3;
   --accent-foreground: #166B65;
-  --destructive: #FBEAEA;
-  --destructive-foreground: #9F3129;
+  /* --destructive is the red itself: shadcn primitives use it as text and as the
+     base of a /10 wash. --destructive-muted keeps the flat tint §8 first named. */
+  --destructive: #9F3129;
+  --destructive-foreground: #FFFFFF;
+  --destructive-muted: #FBEAEA;
   --success: #E7F5EC;
   --success-foreground: #1E6B45;
   --warning: #FCF1DC;
@@ -164,8 +168,9 @@
   --muted-foreground: #A29E9A;
   --accent: rgba(63, 181, 168, 0.16);
   --accent-foreground: #3FB5A8;
-  --destructive: rgba(224, 94, 84, 0.18);
-  --destructive-foreground: #F0938A;
+  --destructive: #F0938A;
+  --destructive-foreground: #131211;
+  --destructive-muted: rgba(224, 94, 84, 0.18);
   --success: rgba(74, 179, 126, 0.16);
   --success-foreground: #6FD19B;
   --warning: rgba(217, 155, 42, 0.16);
