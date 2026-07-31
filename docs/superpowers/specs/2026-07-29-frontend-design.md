@@ -234,7 +234,7 @@ sub-18px text):
 }
 ```
 
-**Brand:** logo mark at `apps/logo.png` (favicon + OG base); headers pair the mark
+**Brand:** logo mark at `apps/<project-name>/public/logo.png` (favicon + OG base); headers pair the mark
 with "Sync" in Geist. Titles: `<Page> · Sync` (candidate) / `<Page> · Sync Recruiter`.
 
 **Reference mockups** live in `docs/design/mockups/` (see its README for how to serve
