@@ -8,12 +8,12 @@ function chipFor(label: string) {
   return screen.getByText(label);
 }
 
-/** What the chip actually paints — the primitive's `aria-invalid:` and `hover:` rules describe
- * states this chip never enters. */
+/** Every rule that can paint the chip, in either theme — only the vendored primitive's
+ * `aria-invalid:` styling is out of scope, being a state a chip never enters. */
 function paintClasses(label: string) {
   return chipFor(label)
     .className.split(/\s+/)
-    .filter((token) => !token.includes(':'));
+    .filter((token) => !token.includes('aria-invalid:'));
 }
 
 describe('StatusChip', () => {

@@ -11,7 +11,7 @@ import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Switch } from '@sync/ui/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import { Inbox, Info, Trash2 } from 'lucide-react';
+import { Inbox, Info } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { PageHeader } from '@/features/shell/components/page-header';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
@@ -112,12 +112,7 @@ function ApplicationsTable() {
       onRowOpen={(application) => console.info('open', application.id)}
       rowActions={(application) => [
         { label: 'Move to shortlist', onSelect: () => console.info('shortlist', application.id) },
-        {
-          label: 'Reject',
-          icon: Trash2,
-          destructive: true,
-          onSelect: () => console.info('reject', application.id),
-        },
+        { label: 'Reject', onSelect: () => console.info('reject', application.id) },
       ]}
       empty={{
         icon: Inbox,

@@ -19,36 +19,38 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tan
 import { CircleAlert, type LucideIcon, MoreHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EmptyState } from './empty-state';
+import { placeholderKeys } from './skeletons';
 
-/** Re-exported so a portal defines columns without depending on TanStack Table itself. */
+/** Aliased so a portal can define columns without taking TanStack Table as a dependency. */
 export type DataTableColumn<TRow> = ColumnDef<TRow>;
 
 export interface DataTableRowAction {
   label: string;
   onSelect: () => void;
-  icon?: LucideIcon;
-  destructive?: boolean;
+}
+
+export interface DataTableError {
+  message?: string;
+  onRetry: () => void;
 }
 
 export interface DataTableProps<TRow> {
-  /** Names the grid for assistive technology, and is the noun the footer counts. */
   label: string;
   columns: DataTableColumn<TRow>[];
   data: TRow[];
   getRowId: (row: TRow) => string;
-  /** Names each row for the controls that act on it. */
   rowLabel: (row: TRow) => string;
   onRowOpen?: (row: TRow) => void;
   rowActions?: (row: TRow) => DataTableRowAction[];
   isLoading?: boolean;
-  error?: { message?: string; onRetry: () => void };
+  error?: DataTableError;
   empty: { icon: LucideIcon; message: string; action: ReactNode };
-  /** Cursor pages, never page numbers: the API knows no totals. */
   loadMore?: { hasMore: boolean; isLoading?: boolean; onLoadMore: () => void };
   className?: string;
 }
 
-const SKELETON_ROW_KEYS = ['first', 'second', 'third', 'fourth', 'fifth'];
+const SKELETON_ROW_KEYS = placeholderKeys(5, 'skeleton-row');
+const count = new Intl.NumberFormat();
 
 // A sticky cell needs separated borders to keep its own hairline while the rest of the row
 // scrolls under it, so the row border moves onto the cells.
@@ -80,11 +82,16 @@ export function DataTable<TRow>({
   });
 
   const rows = table.getRowModel().rows;
-  const span = columns.length + (rowActions ? 1 : 0);
-  const skeletonCellKeys = Array.from({ length: span }, (_, index) => `cell-${index}`);
+  const skeletonCellKeys = placeholderKeys(columns.length + (rowActions ? 1 : 0), 'cell');
 
   if (error && rows.length === 0) {
-    return <InlineError message={error.message} onRetry={error.onRetry} className={className} />;
+    return (
+      <ErrorNotice
+        error={error}
+        fallback="Couldn't load this list."
+        className={cn('rounded-lg border border-border px-6 py-8', className)}
+      />
+    );
   }
 
   if (!isLoading && rows.length === 0) {
@@ -170,7 +177,22 @@ export function DataTable<TRow>({
       </Table>
 
       {isLoading && rows.length === 0 ? null : (
-        <Footer shown={rows.length} error={error} loadMore={error ? undefined : loadMore} />
+        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <p className="text-meta tabular-nums text-muted-foreground">
+            {`${count.format(rows.length)} shown`}
+          </p>
+          {error ? <ErrorNotice error={error} fallback="Couldn't load more." /> : null}
+          {!error && loadMore?.hasMore ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loadMore.isLoading}
+              onClick={loadMore.onLoadMore}
+            >
+              {loadMore.isLoading ? 'Loading…' : 'Load more'}
+            </Button>
+          ) : null}
+        </div>
       )}
     </div>
   );
@@ -191,12 +213,7 @@ function RowActions({ label, actions }: { label: string; actions: DataTableRowAc
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         {actions.map((action) => (
-          <DropdownMenuItem
-            key={action.label}
-            variant={action.destructive ? 'destructive' : 'default'}
-            onClick={action.onSelect}
-          >
-            {action.icon ? <action.icon /> : null}
+          <DropdownMenuItem key={action.label} onClick={action.onSelect}>
             {action.label}
           </DropdownMenuItem>
         ))}
@@ -205,63 +222,22 @@ function RowActions({ label, actions }: { label: string; actions: DataTableRowAc
   );
 }
 
-function Footer({
-  shown,
+function ErrorNotice({
   error,
-  loadMore,
-}: {
-  shown: number;
-  error?: DataTableProps<never>['error'];
-  loadMore?: DataTableProps<never>['loadMore'];
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <p className="text-meta tabular-nums text-muted-foreground">{`${shown} shown`}</p>
-      {error ? (
-        <span role="alert" className="flex items-center gap-2 text-meta text-muted-foreground">
-          <CircleAlert aria-hidden="true" className="size-4" />
-          {error.message ?? "Couldn't load more."}
-          <Button variant="outline" size="sm" onClick={error.onRetry}>
-            Retry
-          </Button>
-        </span>
-      ) : null}
-      {loadMore?.hasMore ? (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={loadMore.isLoading}
-          onClick={loadMore.onLoadMore}
-        >
-          {loadMore.isLoading ? 'Loading…' : 'Load more'}
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function InlineError({
-  message,
-  onRetry,
+  fallback,
   className,
 }: {
-  message?: string;
-  onRetry: () => void;
+  error: DataTableError;
+  fallback: string;
   className?: string;
 }) {
   return (
-    <div
-      role="alert"
-      className={cn(
-        'flex flex-col items-start gap-3 rounded-lg border border-border px-6 py-8',
-        className,
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <CircleAlert aria-hidden="true" className="size-4.5 text-muted-foreground" />
-        <p className="text-dense text-foreground">{message ?? "Couldn't load this list."}</p>
-      </div>
-      <Button variant="outline" onClick={onRetry}>
+    <div role="alert" className={cn('flex flex-wrap items-center gap-3', className)}>
+      <span className="flex items-center gap-2 text-dense text-muted-foreground">
+        <CircleAlert aria-hidden="true" className="size-4" />
+        {error.message ?? fallback}
+      </span>
+      <Button variant="outline" size="sm" onClick={error.onRetry}>
         Retry
       </Button>
     </div>

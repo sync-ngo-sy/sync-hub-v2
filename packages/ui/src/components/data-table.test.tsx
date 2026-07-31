@@ -1,10 +1,9 @@
 import { Button } from '@sync/ui/components/ui/button';
-import type { ColumnDef } from '@tanstack/react-table';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Inbox } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
-import { DataTable, type DataTableProps } from './data-table';
+import { DataTable, type DataTableColumn, type DataTableProps } from './data-table';
 import { StatusChip } from './status-chip';
 
 interface Application {
@@ -13,7 +12,7 @@ interface Application {
   job: string;
 }
 
-const COLUMNS: ColumnDef<Application>[] = [
+const COLUMNS: DataTableColumn<Application>[] = [
   { accessorKey: 'candidate', header: 'Candidate' },
   { accessorKey: 'job', header: 'Job' },
   {
