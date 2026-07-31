@@ -1,6 +1,7 @@
+import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { STATUS_TONES, StatusChip, type StatusTone } from '@sync/ui/components/status-chip';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Avatar, AvatarFallback } from '@sync/ui/components/ui/avatar';
-import { Badge } from '@sync/ui/components/ui/badge';
 import { Button } from '@sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@sync/ui/components/ui/card';
 import { Checkbox } from '@sync/ui/components/ui/checkbox';
@@ -8,18 +9,10 @@ import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Switch } from '@sync/ui/components/ui/switch';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@sync/ui/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import { Info } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import { Inbox, Info, Trash2 } from 'lucide-react';
+import { type ReactNode, useId, useState } from 'react';
 import { PageHeader } from '@/features/shell/components/page-header';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
 
@@ -31,6 +24,111 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
         <CardContent className="flex flex-wrap items-center gap-3 py-5">{children}</CardContent>
       </Card>
     </section>
+  );
+}
+
+interface DemoApplication {
+  id: string;
+  candidate: string;
+  job: string;
+  screening: { tone: StatusTone; label: string };
+  stage: { tone: StatusTone; label: string };
+}
+
+const APPLICATIONS: DemoApplication[] = [
+  {
+    id: 'a1',
+    candidate: 'Lina Khoury',
+    job: 'Field Coordinator, Aleppo',
+    screening: { tone: 'positive', label: 'Qualified' },
+    stage: { tone: 'interview', label: 'Interview' },
+  },
+  {
+    id: 'a2',
+    candidate: 'Yara Salloum',
+    job: 'Logistics Assistant',
+    screening: { tone: 'negative', label: 'Disqualified' },
+    stage: { tone: 'negative', label: 'Rejected' },
+  },
+  {
+    id: 'a3',
+    candidate: 'Omar Haddad',
+    job: 'MEAL Officer, Idlib',
+    screening: { tone: 'review-required', label: 'Review required' },
+    stage: { tone: 'neutral', label: 'New' },
+  },
+  {
+    id: 'a4',
+    candidate: 'Rana Deeb',
+    job: 'Programme Manager',
+    screening: { tone: 'positive', label: 'Qualified' },
+    stage: { tone: 'hired', label: 'Hired' },
+  },
+];
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('');
+}
+
+const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
+  {
+    accessorKey: 'candidate',
+    header: 'Candidate',
+    cell: ({ row }) => (
+      <span className="flex items-center gap-2">
+        <Avatar size="sm">
+          <AvatarFallback>{initials(row.original.candidate)}</AvatarFallback>
+        </Avatar>
+        {row.original.candidate}
+      </span>
+    ),
+  },
+  { accessorKey: 'job', header: 'Job' },
+  {
+    id: 'screening',
+    header: 'Screening',
+    cell: ({ row }) => <StatusChip {...row.original.screening} />,
+  },
+  {
+    id: 'stage',
+    header: 'Status',
+    cell: ({ row }) => <StatusChip {...row.original.stage} />,
+  },
+];
+
+function ApplicationsTable() {
+  const [shown, setShown] = useState(2);
+
+  return (
+    <DataTable
+      label="Applications"
+      columns={APPLICATION_COLUMNS}
+      data={APPLICATIONS.slice(0, shown)}
+      getRowId={(application) => application.id}
+      rowLabel={(application) => application.candidate}
+      onRowOpen={(application) => console.info('open', application.id)}
+      rowActions={(application) => [
+        { label: 'Move to shortlist', onSelect: () => console.info('shortlist', application.id) },
+        {
+          label: 'Reject',
+          icon: Trash2,
+          destructive: true,
+          onSelect: () => console.info('reject', application.id),
+        },
+      ]}
+      empty={{
+        icon: Inbox,
+        message: 'No applications yet — publish a job and they will land here.',
+        action: <Button>Create job</Button>,
+      }}
+      loadMore={{
+        hasMore: shown < APPLICATIONS.length,
+        onLoadMore: () => setShown(APPLICATIONS.length),
+      }}
+    />
   );
 }
 
@@ -118,6 +216,12 @@ export default function KitchenSink() {
         </div>
       </Section>
 
+      <Section title="Status chips">
+        {STATUS_TONES.map((tone) => (
+          <StatusChip key={tone} tone={tone} label={tone} />
+        ))}
+      </Section>
+
       <Section title="Lists">
         <Tabs defaultValue="applications" className="w-full">
           <TabsList>
@@ -130,52 +234,7 @@ export default function KitchenSink() {
                 <CardTitle>Recent applications</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Candidate</TableHead>
-                      <TableHead>Job</TableHead>
-                      <TableHead>Screening</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>
-                        <span className="flex items-center gap-2">
-                          <Avatar size="sm">
-                            <AvatarFallback>LK</AvatarFallback>
-                          </Avatar>
-                          Lina Khoury
-                        </span>
-                      </TableCell>
-                      <TableCell>Field Coordinator, Aleppo</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Qualified</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">New</Badge>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>
-                        <span className="flex items-center gap-2">
-                          <Avatar size="sm">
-                            <AvatarFallback>YS</AvatarFallback>
-                          </Avatar>
-                          Yara Salloum
-                        </span>
-                      </TableCell>
-                      <TableCell>Logistics Assistant</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Disqualified</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">Rejected</Badge>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                <ApplicationsTable />
               </CardContent>
             </Card>
           </TabsContent>
