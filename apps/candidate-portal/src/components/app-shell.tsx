@@ -7,7 +7,7 @@ import {
 } from '@sync/ui/components/ui/dropdown-menu';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Link } from '@tanstack/react-router';
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { LogOut, Moon, Sun, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useLogout } from '../features/auth/hooks/use-logout';
 import { useProfile } from '../features/auth/hooks/use-profile';
@@ -56,6 +56,10 @@ function AccountMenu() {
         }
       />
       <DropdownMenuContent align="end">
+        <DropdownMenuItem render={<Link to="/profile" />}>
+          <UserRound aria-hidden />
+          Profile
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => void logout()}>
           <LogOut aria-hidden />
           Log out
