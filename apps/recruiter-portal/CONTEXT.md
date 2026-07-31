@@ -13,8 +13,15 @@ contact (WhatsApp, email) and workspace sign-up. One of the two surfaces where a
 is allowed (the other is the Candidate Portal's landing page).
 _Avoid_: Home page, marketing site.
 
+**Workspace**:
+Everything behind the sign-in guard — the Tenant's own Sync, reached through the
+sidebar. Routes live under the `_workspace` layout, whose guard is the single place a
+Profile is checked before any of its loaders run.
+_Avoid_: App, dashboard area, admin.
+
 **Dashboard**:
-The signed-in Recruiter's home: an overview of the Tenant's hiring activity.
+The signed-in Recruiter's home: an overview of the Tenant's hiring activity. One
+destination inside the Workspace, not a name for the Workspace itself.
 _Avoid_: Home, overview page.
 
 **Pipeline**:
