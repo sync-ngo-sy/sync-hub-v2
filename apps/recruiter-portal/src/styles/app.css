@@ -1,0 +1,14 @@
+@import "@sync/ui/globals.css";
+
+/* The mockup's register: a dense workspace body at the weights the Dashboard page fixes. */
+@theme {
+  --font-weight-normal: 450;
+  --font-weight-medium: 560;
+  --font-weight-semibold: 640;
+}
+
+@layer base {
+  body {
+    @apply text-dense;
+  }
+}
