@@ -15,6 +15,7 @@ import { Route as DevKitchenSinkRouteImport } from './routes/dev-kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AuthedApplicationsRouteImport } from './routes/_authed.applications'
+import { Route as AuthedCvsRouteImport } from './routes/_authed.cvs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +46,11 @@ const AuthedApplicationsRoute = AuthedApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedCvsRoute = AuthedCvsRouteImport.update({
+  id: '/cvs',
+  path: '/cvs',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/cvs': typeof AuthedCvsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AuthedApplicationsRoute
+  '/cvs': typeof AuthedCvsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,13 +76,25 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_authed/applications': typeof AuthedApplicationsRoute
+  '/_authed/cvs': typeof AuthedCvsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/cvs'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev-kitchen-sink' | '/login' | '/wrong-portal' | '/applications'
+  to:
+    | '/'
+    | '/dev-kitchen-sink'
+    | '/login'
+    | '/wrong-portal'
+    | '/applications'
+    | '/cvs'
   id:
     | '__root__'
     | '/'
@@ -83,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/wrong-portal'
     | '/_authed/applications'
+    | '/_authed/cvs'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,15 +158,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedApplicationsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/cvs': {
+      id: '/_authed/cvs'
+      path: '/cvs'
+      fullPath: '/cvs'
+      preLoaderRoute: typeof AuthedCvsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
   AuthedApplicationsRoute: typeof AuthedApplicationsRoute
+  AuthedCvsRoute: typeof AuthedCvsRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedApplicationsRoute: AuthedApplicationsRoute,
+  AuthedCvsRoute: AuthedCvsRoute,
 }
 
 const AuthedRouteWithChildren =
