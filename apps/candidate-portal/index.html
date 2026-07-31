@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Candidate Portal</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="description" content="Syria's jobs, in one clear place. Find work and apply on Sync." />
+    <title>Sync</title>
+    <script>
+      // Paints the theme before first paint, so a dark-theme reader never sees a light flash.
+      // The key is shared with src/lib/theme.tsx.
+      (() => {
+        const stored = localStorage.getItem('sync-candidate-theme');
+        const theme =
+          stored === 'light' || stored === 'dark'
+            ? stored
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
