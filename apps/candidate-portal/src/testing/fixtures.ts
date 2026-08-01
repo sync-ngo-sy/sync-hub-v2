@@ -198,6 +198,53 @@ export const CV_NOT_READY_FOR_CURRENT: components['schemas']['ProblemDetail'] = 
     'This CV has not been read yet, so it cannot be the current one. Wait for it to be processed, or pick one that already has been.',
 };
 
+/** A profile with something in every section, so a test can see all of them load. */
+export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
+  full_name: CANDIDATE.full_name,
+  phone: '+963 11 555 0100',
+  headline: 'Field coordinator, 6 years',
+  summary: 'Six years of coordination work across Idlib and Aleppo.',
+  location: 'Aleppo, Syria',
+  preferred_language_code: 'ar',
+  is_searchable: false,
+  experiences: [
+    {
+      job_title: 'Field Coordinator',
+      company_name: 'Aman Relief',
+      start_year: 2020,
+      start_month: 3,
+      end_year: null,
+      end_month: null,
+      is_current: true,
+      description: 'Ran distributions across three governorates.',
+    },
+  ],
+  educations: [
+    {
+      institution: 'University of Aleppo',
+      degree: 'BSc',
+      field_of_study: 'Public Health',
+      graduation_year: 2018,
+      description: null,
+    },
+  ],
+  skills: [{ name: 'Python', years_experience: 3.5 }],
+  languages: [{ code: 'ar', proficiency: 'native' }],
+  projects: [
+    {
+      name: 'Distribution tracker',
+      description: null,
+      project_url: 'https://tracker.example.test',
+      repository_url: null,
+      start_year: 2023,
+      start_month: null,
+      end_year: null,
+      end_month: null,
+    },
+  ],
+  unmapped_skills: ['Kobo Toolbox'],
+};
+
 export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
   full_name: 'Lina Khoury',
   is_searchable: false,
@@ -221,6 +268,27 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
     { name: 'Python', years_experience: 3 },
     { name: 'Kubernetes', years_experience: null },
   ],
+};
+
+export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {
+  type: 'urn:sync:problem:unknown-canonical-skill',
+  title: 'Unprocessable Entity',
+  status: 422,
+  detail: "Every skill has to be one of the platform's Canonical skills.",
+  errors: [
+    {
+      location: 'body.skills.0.name',
+      message: '“Pythonn” is not a Canonical skill.',
+      type: 'unknown_canonical_skill',
+    },
+  ],
+};
+
+export const SEARCHABLE_NEEDS_CV: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:searchable-needs-cv',
+  title: 'Conflict',
+  status: 409,
+  detail: 'Upload a CV and wait for it to be processed before making your profile searchable.',
 };
 
 export const NO_SESSION: components['schemas']['ProblemDetail'] = {
