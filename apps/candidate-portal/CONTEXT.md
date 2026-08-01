@@ -12,9 +12,24 @@ The public page at the portal's root that introduces the platform to visitors. T
 surface where animation is allowed.
 _Avoid_: Home page, intro page, splash.
 
+**Browse**:
+The public list of published Jobs at `/jobs`, newest first, extended a page at a time by
+Load more. The API's order is fixed and its pages are cursor-keyed, so there are no page
+numbers, no totals and no sorting — only "the newest page, then the next one".
+_Avoid_: Search (nothing is being searched yet), job board, listings, feed.
+
+**Job detail**:
+The public page for one Job at `/jobs/:jobId` — the description, what the role asks for,
+the questions an applicant will meet, and the way into applying. Reading it counts a view,
+which is why nothing in the portal opens it speculatively on hover.
+_Avoid_: Job page, posting, vacancy, advert.
+
 **Tracked-link landing**:
 The public page a Tracked link opens. It counts the view against the link's name and
-shows the Job — the visitor sees no tracking UI at all.
+shows the Job — the visitor sees no tracking UI at all. It is Job detail in everything a
+visitor can see, at `/l/:token`: resolving the token is what counts the view, and the
+address stays the link's so signing in to apply comes back to it and keeps its
+attribution.
 _Avoid_: Campaign page, referral page.
 
 **My Applications**:
@@ -52,7 +67,9 @@ _Avoid_: Forgot password (that is only the request leg's route), password recove
 **Dead link**:
 A `token_hash` that is spent, expired or malformed. Both token routes answer with the same
 screen — what happened, and the one action that gets the reader moving again — never a
-problem document on screen.
+problem document on screen. A Tracked link that no longer resolves is the same idea a
+different way: a closed Job and a switched-off link are one dead end, and both answer with
+Browse as the way out.
 _Avoid_: Invalid token error, 400 page.
 
 **Wrong-portal screen**:

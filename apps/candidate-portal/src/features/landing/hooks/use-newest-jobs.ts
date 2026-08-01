@@ -1,9 +1,6 @@
-import type { components } from '@sync/api-client';
 import { useEffect } from 'react';
 import { api } from '@/lib/api';
 import { reportError } from '@/lib/report-error';
-
-export type PublicJob = components['schemas']['PublicJobSummary'];
 
 export const NEWEST_JOBS_LIMIT = 5;
 
