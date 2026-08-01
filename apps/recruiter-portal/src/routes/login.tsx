@@ -1,8 +1,8 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
+import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
 import { LogInForm } from '@/features/auth/components/log-in-form';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
-import { PublicHeader } from '@/features/shell/components/public-header';
 import { pageTitle } from '@/lib/page-title';
 import { resolveReturnTo } from '@/lib/return-to';
 
@@ -25,21 +25,25 @@ function LogInPage() {
   const destination = resolveReturnTo(returnTo);
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <PublicHeader />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-5 py-12">
-        <div className="space-y-1.5">
-          <h1 className="font-heading text-h3 text-foreground">Sign in</h1>
-          <p className="text-dense text-muted-foreground">
-            Manage your workspace's jobs, applications and team.
-          </p>
-        </div>
-        <LogInForm
-          onSignedIn={() => {
-            void (destination ? navigate({ href: destination }) : navigate({ to: '/dashboard' }));
-          }}
-        />
-      </main>
-    </div>
+    <AuthScreen title="Sign in" description="Manage your workspace's jobs, applications and team.">
+      <LogInForm
+        onSignedIn={() => {
+          void (destination ? navigate({ href: destination }) : navigate({ to: '/dashboard' }));
+        }}
+      />
+      <div className="space-y-2 text-center text-dense text-muted-foreground">
+        <p>
+          <Link to="/forgot-password" className={AUTH_LINK}>
+            Forgot your password?
+          </Link>
+        </p>
+        <p>
+          New to Sync?{' '}
+          <Link to="/signup" className={AUTH_LINK}>
+            Create a workspace
+          </Link>
+        </p>
+      </div>
+    </AuthScreen>
   );
 }

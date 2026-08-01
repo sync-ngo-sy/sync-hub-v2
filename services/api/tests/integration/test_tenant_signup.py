@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.auth import ACCESS_TOKEN_COOKIE
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant
+from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import a_tenant_signup, sign_up_tenant
 
@@ -56,6 +57,17 @@ async def test_signup_sends_a_confirmation_email(browser: AsyncClient, mailbox: 
     await sign_up_tenant(browser, signup)
 
     assert await mailbox.confirmation_token(signup.email)
+
+
+async def test_the_confirmation_lands_in_the_recruiter_portal(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    signup = a_tenant_signup()
+
+    await sign_up_tenant(browser, signup)
+
+    body = await mailbox.newest_body(signup.email)
+    assert f"{RECRUITER_PORTAL_URL}/auth/confirm" in body, body
 
 
 async def test_the_confirmed_admin_can_sign_in_and_reach_their_tenant(

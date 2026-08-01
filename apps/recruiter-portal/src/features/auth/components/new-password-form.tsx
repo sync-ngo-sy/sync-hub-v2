@@ -30,8 +30,6 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
       await resetPassword.mutateAsync({ body: { token_hash: tokenHash, password } });
       onReset();
     } catch (error) {
-      // Both arrive as a 400: a link nothing can fix belongs on its own screen, a refused
-      // password belongs beside the field the reader can still edit.
       if (isProblem(error, DEAD_LINK_PROBLEM)) {
         onDeadLink();
         return;

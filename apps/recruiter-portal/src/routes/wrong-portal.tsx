@@ -4,6 +4,7 @@ import { ensureCurrentProfile } from '@/features/auth/current-profile';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/wrong-portal')({
+  staticData: { requiresSession: true },
   beforeLoad: async ({ context }) => {
     const profile = await ensureCurrentProfile(context.queryClient);
     if (!profile) throw redirect({ to: '/login' });

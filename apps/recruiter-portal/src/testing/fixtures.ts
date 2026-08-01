@@ -31,3 +31,53 @@ export const WRONG_PASSWORD: components['schemas']['ProblemDetail'] = {
   status: 401,
   detail: 'That email and password do not match an account.',
 };
+
+export const TENANT_SIGNUP: components['schemas']['NewTenantView'] = {
+  tenant: {
+    id: '00000000-0000-4000-8000-000000000033',
+    name: 'Aman Relief',
+    slug: 'aman-relief',
+  },
+  admin: {
+    id: RECRUITER.id,
+    email: RECRUITER.email,
+    full_name: RECRUITER.full_name,
+    role: 'admin',
+    is_active: true,
+  },
+};
+
+export const EMAIL_TAKEN: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:email-already-registered',
+  title: 'Conflict',
+  status: 409,
+  detail: 'An account already exists for this email address.',
+};
+
+export const SLUG_TAKEN: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:tenant-slug-taken',
+  title: 'Conflict',
+  status: 409,
+  detail: 'The address “aman-relief” is already taken. Choose another.',
+};
+
+export const WEAK_PASSWORD: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:weak-password',
+  title: 'Bad Request',
+  status: 400,
+  detail: "That password does not meet the identity provider's requirements.",
+};
+
+export const DEAD_LINK: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:invalid-email-token',
+  title: 'Bad Request',
+  status: 400,
+  detail: 'That link is invalid or has expired. Ask for a new one.',
+};
+
+export const SERVER_FAULT: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:internal-error',
+  title: 'Internal Server Error',
+  status: 500,
+  detail: 'Something went wrong on our side.',
+};

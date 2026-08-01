@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from sync_api.auth.gotrue import (
     EmailNotConfirmedError,
@@ -64,10 +64,18 @@ class SignedIn:
 
 
 class AuthService:
-    def __init__(self, session: AsyncSession, gotrue: GoTrue, verifier: JwtVerifier) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        gotrue: GoTrue,
+        verifier: JwtVerifier,
+        *,
+        recruiter_portal_url: str | None = None,
+    ) -> None:
         self._db = session
         self._gotrue = gotrue
         self._verifier = verifier
+        self._recruiter_portal_url = recruiter_portal_url
 
     async def register_candidate(
         self, *, email: str, password: str, full_name: str
@@ -145,7 +153,15 @@ class AuthService:
             logger.warning("auth.logout_not_revoked")
 
     async def request_password_reset(self, email: str) -> None:
-        await self._gotrue.send_password_reset_email(email)
+        account_type = await self._db.scalar(
+            select(Profile.account_type)
+            .join(User, User.id == Profile.id)
+            .where(func.lower(User.email) == email.lower())
+        )
+        redirect_to = (
+            self._recruiter_portal_url if account_type == AccountType.RECRUITER else None
+        )
+        await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 
     async def reset_password(self, *, token_hash: str, password: str) -> None:
         session = await self._redeem(token_hash, EmailTokenType.RECOVERY)
