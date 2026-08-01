@@ -11,6 +11,10 @@ export const NOTIFICATIONS_PAGE_SIZE = 20;
 /** The dropdown is a glance, not the page: five rows fit a phone without becoming a list. */
 export const RECENT_NOTIFICATIONS = 5;
 
+/** One sentence for one emptiness, wherever the reader meets it. */
+export const NOTHING_YET =
+  "Nothing yet. When one of your applications moves, or a CV can't be read, you'll hear about it here.";
+
 export function isUnread(notification: Notification): boolean {
   return notification.read_at == null;
 }
@@ -52,6 +56,8 @@ export function notificationCopy({ payload }: Notification): NotificationCopy {
         headline: `${payload.job_title} at ${payload.tenant_name}`,
         detail: `Moved from ${STATUS_WORDS[payload.previous_status]} to ${STATUS_WORDS[payload.status]}.`,
         icon: Send,
+        // My Applications is where a Candidate follows an Application — there is no page for one
+        // on its own, which is why `payload.application_id` has nowhere to point.
         to: '/applications',
       };
   }

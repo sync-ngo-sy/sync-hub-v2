@@ -5,6 +5,7 @@ import { listsCvs } from '@/features/cvs/testing/handlers';
 import {
   faultsOnListingNotifications,
   faultsOnMarkingRead,
+  faultsOnTheNextPage,
   listsNotificationPages,
   listsNotifications,
   marksRead,
@@ -129,6 +130,18 @@ describe('the notifications page', () => {
     await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(4));
     expect(screen.getByText('Pharmacist at Sham Care')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+  });
+
+  it('blames the next page alone when Load more fails, keeping the list it has', async () => {
+    server.use(...signedInAs(CANDIDATE), ...faultsOnTheNextPage(NOTIFICATIONS, SERVER_FAULT));
+
+    const { user } = await renderApp('/notifications');
+    await user.click(await screen.findByRole('button', { name: 'Load more' }));
+
+    expect(await screen.findByText(/Couldn't load the next page/)).toBeVisible();
+    expect(screen.queryByText("Couldn't load your notifications")).toBeNull();
+    const list = screen.getByRole('list', { name: 'Notifications' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(3);
   });
 
   it('says what will land here when nothing has yet', async () => {

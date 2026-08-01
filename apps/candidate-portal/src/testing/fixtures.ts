@@ -338,13 +338,6 @@ export const MORE_NOTIFICATIONS: Notification[] = [
   }),
 ];
 
-export const NO_SUCH_NOTIFICATION: components['schemas']['ProblemDetail'] = {
-  type: 'urn:sync:problem:notification-not-found',
-  title: 'Not Found',
-  status: 404,
-  detail: 'You have no notification with that id.',
-};
-
 export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {
   type: 'urn:sync:problem:unknown-canonical-skill',
   title: 'Unprocessable Entity',

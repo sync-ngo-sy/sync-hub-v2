@@ -1,8 +1,8 @@
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
-import { useOpenNotification } from '../hooks/use-mark-read';
+import { useOpenNotification } from '../hooks/use-open-notification';
 import { type Notification, notificationCopy } from '../notification';
-import { NotificationItem } from './notification-item';
+import { NOTIFICATION_ROW, NotificationItem } from './notification-item';
 
 export function NotificationList({ notifications }: { notifications: Notification[] }) {
   const open = useOpenNotification();
@@ -15,7 +15,8 @@ export function NotificationList({ notifications }: { notifications: Notificatio
             to={notificationCopy(notification).to}
             onClick={() => open(notification)}
             className={cn(
-              'flex items-start gap-3 py-5 hover:text-accent-foreground',
+              NOTIFICATION_ROW,
+              'py-5 hover:text-accent-foreground',
               'focus-visible:rounded-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
             )}
           >

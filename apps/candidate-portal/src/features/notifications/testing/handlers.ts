@@ -1,9 +1,15 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
-import { NO_SUCH_NOTIFICATION } from '@/testing/fixtures';
 import type { Notification } from '../notification';
 
 type Problem = components['schemas']['ProblemDetail'];
+
+const NO_SUCH_NOTIFICATION: Problem = {
+  type: 'urn:sync:problem:notification-not-found',
+  title: 'Not Found',
+  status: 404,
+  detail: 'You have no notification with that id.',
+};
 
 export function countsUnread(unread: number) {
   return [
@@ -34,6 +40,30 @@ export function listsNotifications(items: Notification[]) {
   return [
     http.get('/v1/notifications', ({ response }) =>
       response(200).json({ items, next_cursor: null }),
+    ),
+  ];
+}
+
+/** Successive answers to the same list request: the last one is repeated once the batches run
+ * out, which is how a test sees what an invalidation went and fetched. */
+export function listsNotificationsInTurn(...batches: Notification[][]) {
+  let call = 0;
+  return [
+    http.get('/v1/notifications', ({ response }) => {
+      const items = batches[Math.min(call, batches.length - 1)] ?? [];
+      call += 1;
+      return response(200).json({ items, next_cursor: null });
+    }),
+  ];
+}
+
+/** The newest page arrives, the one after it faults: what a failed Load more actually looks like. */
+export function faultsOnTheNextPage(items: Notification[], problem: Problem) {
+  return [
+    http.get('/v1/notifications', ({ query, response }) =>
+      query.get('cursor')
+        ? response(500).json(problem)
+        : response(200).json({ items, next_cursor: 'more' }),
     ),
   ];
 }

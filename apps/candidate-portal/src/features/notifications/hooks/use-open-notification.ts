@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { api } from '@/lib/api';
 import { reportError } from '@/lib/report-error';
 import { isUnread, type Notification } from '../notification';
-import { myNotificationsKey } from './use-my-notifications';
+import { myNotificationsQuery } from './use-my-notifications';
 import { unreadCountQuery } from './use-unread-count';
 
 /**
@@ -18,7 +18,7 @@ export function useOpenNotification() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: unreadCountQuery.queryKey }),
-        queryClient.invalidateQueries({ queryKey: myNotificationsKey }),
+        queryClient.invalidateQueries({ queryKey: myNotificationsQuery.queryKey }),
       ]);
     },
     onError: (error) => reportError(error, { boundary: 'widget', source: 'Notifications' }),

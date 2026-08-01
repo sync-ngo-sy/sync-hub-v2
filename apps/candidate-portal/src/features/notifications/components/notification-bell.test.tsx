@@ -9,6 +9,7 @@ import {
   faultsOnCountingUnread,
   faultsOnListingNotifications,
   listsNotifications,
+  listsNotificationsInTurn,
   marksRead,
 } from '@/features/notifications/testing/handlers';
 import {
@@ -126,7 +127,7 @@ describe('the bell dropdown', () => {
     expect(await screen.findByText(/Nothing yet\./)).toBeVisible();
   });
 
-  it('offers a retry when the recent list will not load', async () => {
+  it('offers a retry the keyboard can reach when the recent list will not load', async () => {
     server.use(
       ...signedInAs(CANDIDATE),
       ...countsUnread(2),
@@ -136,17 +137,22 @@ describe('the bell dropdown', () => {
     const { user } = await renderApp('/applications');
     await user.click(bell(2));
 
-    expect(await screen.findByText("Couldn't load these.")).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
+    const retry = await screen.findByRole('menuitem', {
+      name: "Couldn't load these. Try again",
+    });
+    // Reached by keyboard, not just visible: a plain button inside a menu is unreachable (§7.9).
+    await user.keyboard('{ArrowDown}');
+    expect(retry).toHaveFocus();
   });
 
   it('opens one on its deep link, marking it read and dropping the badge', async () => {
     const read = vi.fn();
+    const opened = { ...CV_FAILURE_NOTIFICATION, read_at: '2026-08-01T09:00:00Z' };
     server.use(
       ...signedInAs(CANDIDATE),
       ...countsUnreadInTurn(3, 2),
-      ...listsNotifications(NOTIFICATIONS),
-      ...marksRead(NOTIFICATIONS, read),
+      ...listsNotificationsInTurn([CV_FAILURE_NOTIFICATION], [opened]),
+      ...marksRead([CV_FAILURE_NOTIFICATION], read),
       ...listsCvs([FAILED_CV]),
     );
 
@@ -157,6 +163,14 @@ describe('the bell dropdown', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/cvs'));
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_FAILURE_NOTIFICATION.id));
     await waitFor(() => expect(bell(2)).toBeVisible());
+
+    // The list was marked stale too, so reopening the dropdown refetches it and the one just
+    // opened stops reading as unread — where a list nobody invalidated would still be cached.
+    await user.click(bell(2));
+    await waitFor(() => {
+      const item = screen.getByRole('menuitem', { name: /Couldn't read/ });
+      expect(within(item).queryByText('Unread.')).toBeNull();
+    });
   });
 
   it('leads to the whole list', async () => {

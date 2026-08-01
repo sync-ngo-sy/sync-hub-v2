@@ -2,6 +2,9 @@ import { cn } from '@sync/ui/lib/utils';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { isUnread, type Notification, notificationCopy } from '../notification';
 
+/** The layout the insides below expect of whatever wraps them. */
+export const NOTIFICATION_ROW = 'flex items-start gap-3';
+
 /**
  * A row's insides, shared by the bell's dropdown and the page: the two differ in what wraps them,
  * never in what a notification reads like. Unread is said twice — a dot for the eye and a word for

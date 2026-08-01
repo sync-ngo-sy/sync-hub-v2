@@ -22,7 +22,9 @@ export function NotificationsPage() {
         </div>
       ) : null}
 
-      {notifications.isError ? (
+      {/* Only when there is nothing on screen: a page already holding notifications answers a
+          failed Load more at the button, not with a panel that disowns the list above it. */}
+      {notifications.isError && !notifications.data ? (
         <ErrorCard
           title="Couldn't load your notifications"
           description="The list didn't load. Nothing has been lost."
@@ -34,7 +36,12 @@ export function NotificationsPage() {
       {notifications.data?.length === 0 ? <NothingYet /> : null}
 
       {notifications.hasNextPage ? (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
+          {notifications.isFetchNextPageError ? (
+            <p className="text-meta text-muted-foreground">
+              Couldn't load the next page. The list above is fine.
+            </p>
+          ) : null}
           <Button
             variant="outline"
             onClick={() => void notifications.fetchNextPage()}

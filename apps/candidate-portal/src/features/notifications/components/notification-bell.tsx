@@ -7,13 +7,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@sync/ui/components/ui/dropdown-menu';
+import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
-import { useOpenNotification } from '../hooks/use-mark-read';
 import { useMyNotifications } from '../hooks/use-my-notifications';
+import { useOpenNotification } from '../hooks/use-open-notification';
 import { useUnreadCount } from '../hooks/use-unread-count';
-import { notificationCopy, RECENT_NOTIFICATIONS } from '../notification';
-import { NotificationItem } from './notification-item';
+import { NOTHING_YET, notificationCopy, RECENT_NOTIFICATIONS } from '../notification';
+import { NOTIFICATION_ROW, NotificationItem } from './notification-item';
 
 export function NotificationBell() {
   const unread = useUnreadCount();
@@ -58,19 +59,16 @@ function Recent() {
         </div>
       ) : null}
 
-      {notifications.isError ? (
-        <div className="flex flex-col items-start gap-2 px-1.5 py-2">
-          <p className="text-dense text-muted-foreground">Couldn't load these.</p>
-          <Button variant="outline" size="sm" onClick={() => void notifications.refetch()}>
-            Retry
-          </Button>
-        </div>
+      {/* A menu item rather than a button in a panel: anything a keyboard has to reach inside a
+          menu has to be one of its items. */}
+      {notifications.isError && !notifications.data ? (
+        <DropdownMenuItem closeOnClick={false} onClick={() => void notifications.refetch()}>
+          Couldn't load these. Try again
+        </DropdownMenuItem>
       ) : null}
 
       {notifications.data?.length === 0 ? (
-        <p className="px-1.5 py-2 text-dense text-muted-foreground">
-          Nothing yet. Applications and CVs report in here.
-        </p>
+        <p className="px-1.5 py-2 text-dense text-muted-foreground">{NOTHING_YET}</p>
       ) : null}
 
       {recent.map((notification) => (
@@ -78,7 +76,7 @@ function Recent() {
           key={notification.id}
           render={<Link to={notificationCopy(notification).to} />}
           onClick={() => open(notification)}
-          className="items-start gap-3 py-2"
+          className={cn(NOTIFICATION_ROW, 'py-2')}
         >
           <NotificationItem notification={notification} />
         </DropdownMenuItem>
