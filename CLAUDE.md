@@ -16,11 +16,7 @@ Multi-context — root `CONTEXT-MAP.md` pointing to a `CONTEXT.md` per workspace
 
 ### Reach for an established dependency
 
-If a well-known library already does it, add it.
-
-If the only library that does it is somebody's weekend project, do not add it.
-
-You are allowed to add dependencies.
+If a well-known library already does it, add it, If the only library that does it is somebody's weekend project, do not add it. You are allowed to add dependencies.
 
 ### Don't comment
 
