@@ -14,6 +14,7 @@ import { Route as AccountRouteImport } from './routes/_account'
 import { Route as BrowseRouteImport } from './routes/_browse'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as AccountApplicationsRouteImport } from './routes/_account/applications'
 import { Route as AccountCvsRouteImport } from './routes/_account/cvs'
@@ -21,6 +22,7 @@ import { Route as AccountNotificationsRouteImport } from './routes/_account/noti
 import { Route as AccountProfileRouteImport } from './routes/_account/profile'
 import { Route as AccountSettingsRouteImport } from './routes/_account/settings'
 import { Route as BrowseJobsRouteImport } from './routes/_browse/jobs'
+import { Route as BrowseJobsJobIdRouteImport } from './routes/_browse/jobs_.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -43,6 +45,11 @@ const KitchenSinkRoute = KitchenSinkRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WrongPortalRoute = WrongPortalRouteImport.update({
@@ -80,11 +87,17 @@ const BrowseJobsRoute = BrowseJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => BrowseRoute,
 } as any)
+const BrowseJobsJobIdRoute = BrowseJobsJobIdRouteImport.update({
+  id: '/jobs_/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => BrowseRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AccountApplicationsRoute
   '/cvs': typeof AccountCvsRoute
@@ -92,11 +105,13 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AccountProfileRoute
   '/settings': typeof AccountSettingsRoute
   '/jobs': typeof BrowseJobsRoute
+  '/jobs/$jobId': typeof BrowseJobsJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof AccountApplicationsRoute
   '/cvs': typeof AccountCvsRoute
@@ -104,6 +119,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AccountProfileRoute
   '/settings': typeof AccountSettingsRoute
   '/jobs': typeof BrowseJobsRoute
+  '/jobs/$jobId': typeof BrowseJobsJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -112,6 +128,7 @@ export interface FileRoutesById {
   '/_browse': typeof BrowseRouteWithChildren
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_account/applications': typeof AccountApplicationsRoute
   '/_account/cvs': typeof AccountCvsRoute
@@ -119,6 +136,7 @@ export interface FileRoutesById {
   '/_account/profile': typeof AccountProfileRoute
   '/_account/settings': typeof AccountSettingsRoute
   '/_browse/jobs': typeof BrowseJobsRoute
+  '/_browse/jobs_/$jobId': typeof BrowseJobsJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -126,6 +144,7 @@ export interface FileRouteTypes {
     | '/'
     | '/kitchen-sink'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/applications'
     | '/cvs'
@@ -133,11 +152,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/jobs'
+    | '/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/kitchen-sink'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/applications'
     | '/cvs'
@@ -145,6 +166,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/jobs'
+    | '/jobs/$jobId'
   id:
     | '__root__'
     | '/'
@@ -152,6 +174,7 @@ export interface FileRouteTypes {
     | '/_browse'
     | '/kitchen-sink'
     | '/login'
+    | '/signup'
     | '/wrong-portal'
     | '/_account/applications'
     | '/_account/cvs'
@@ -159,6 +182,7 @@ export interface FileRouteTypes {
     | '/_account/profile'
     | '/_account/settings'
     | '/_browse/jobs'
+    | '/_browse/jobs_/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -167,6 +191,7 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRouteWithChildren
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
   WrongPortalRoute: typeof WrongPortalRoute
 }
 
@@ -205,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wrong-portal': {
@@ -256,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseJobsRouteImport
       parentRoute: typeof BrowseRoute
     }
+    '/_browse/jobs_/$jobId': {
+      id: '/_browse/jobs_/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof BrowseJobsJobIdRouteImport
+      parentRoute: typeof BrowseRoute
+    }
   }
 }
 
@@ -280,10 +319,12 @@ const AccountRouteWithChildren =
 
 interface BrowseRouteChildren {
   BrowseJobsRoute: typeof BrowseJobsRoute
+  BrowseJobsJobIdRoute: typeof BrowseJobsJobIdRoute
 }
 
 const BrowseRouteChildren: BrowseRouteChildren = {
   BrowseJobsRoute: BrowseJobsRoute,
+  BrowseJobsJobIdRoute: BrowseJobsJobIdRoute,
 }
 
 const BrowseRouteWithChildren =
@@ -295,6 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRouteWithChildren,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   WrongPortalRoute: WrongPortalRoute,
 }
 export const routeTree = rootRouteImport
