@@ -1,6 +1,10 @@
 project = "sync-ngo-staging"
 region  = "europe-west3"
 
-# The project itself is created in #84; nothing here plans against it until then.
-secret_ids = []
-services   = {}
+# Services are filled by #88.
+secret_ids = [
+  "SYNC_DATABASE_URL",
+  "SYNC_SUPABASE_SERVICE_ROLE_KEY",
+  "SYNC_OPENAI_API_KEY",
+]
+services = {}
