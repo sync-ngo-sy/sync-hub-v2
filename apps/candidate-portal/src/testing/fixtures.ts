@@ -1,4 +1,5 @@
 import type { components } from '@sync/api-client';
+import type { Cv } from '@/features/cvs/cv';
 
 export const CANDIDATE: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000022',
@@ -106,6 +107,120 @@ export const BARE_PUBLIC_JOB: components['schemas']['PublicJob'] = {
   skills: [],
   languages: [],
   questions: [],
+};
+
+function aCv(over: Partial<Cv> & Pick<Cv, 'id' | 'display_name' | 'parsing_status'>): Cv {
+  return {
+    parsing_error: null,
+    detected_language: null,
+    is_current: false,
+    created_at: '2026-07-30T09:00:00Z',
+    parsed_at: null,
+    ...over,
+  };
+}
+
+export const CURRENT_CV = aCv({
+  id: '00000000-0000-4000-8000-000000000201',
+  display_name: 'lina-khoury-cv.pdf',
+  parsing_status: 'ready',
+  detected_language: 'en',
+  is_current: true,
+  parsed_at: '2026-07-30T09:01:00Z',
+});
+
+export const READY_CV = aCv({
+  id: '00000000-0000-4000-8000-000000000202',
+  display_name: 'lina-khoury-2024.docx',
+  parsing_status: 'ready',
+  detected_language: 'ar',
+  created_at: '2026-07-29T09:00:00Z',
+  parsed_at: '2026-07-29T09:01:00Z',
+});
+
+export const PROCESSING_CV = aCv({
+  id: '00000000-0000-4000-8000-000000000203',
+  display_name: 'lina-khoury-new.pdf',
+  parsing_status: 'processing',
+  created_at: '2026-07-31T09:00:00Z',
+});
+
+export const FAILED_CV = aCv({
+  id: '00000000-0000-4000-8000-000000000204',
+  display_name: 'scan.pdf',
+  parsing_status: 'failed',
+  parsing_error: 'This file is a scan with no text in it, so there was nothing to read.',
+  created_at: '2026-07-28T09:00:00Z',
+});
+
+export const FIVE_CVS: Cv[] = [
+  CURRENT_CV,
+  READY_CV,
+  PROCESSING_CV,
+  FAILED_CV,
+  aCv({
+    id: '00000000-0000-4000-8000-000000000205',
+    display_name: 'older.doc',
+    parsing_status: 'ready',
+    created_at: '2026-07-27T09:00:00Z',
+    parsed_at: '2026-07-27T09:01:00Z',
+  }),
+];
+
+export const DUPLICATE_CV: components['schemas']['CvConflictProblemDetail'] = {
+  type: 'urn:sync:problem:duplicate-cv',
+  title: 'Conflict',
+  status: 409,
+  detail: 'You have already uploaded this file.',
+  cv_id: CURRENT_CV.id,
+};
+
+export const CV_LIMIT_REACHED: components['schemas']['CvConflictProblemDetail'] = {
+  type: 'urn:sync:problem:cv-limit-reached',
+  title: 'Conflict',
+  status: 409,
+  detail: 'You can keep 5 CVs at a time. Delete one you no longer need first.',
+};
+
+/** The API says the same thing two ways, depending on what the unread CV was asked to do. */
+export const CV_NOT_READY_FOR_DRAFT: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:cv-not-ready',
+  title: 'Conflict',
+  status: 409,
+  detail: 'This CV has not been read yet, so there is nothing to fill a profile from.',
+};
+
+export const CV_NOT_READY_FOR_CURRENT: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:cv-not-ready',
+  title: 'Conflict',
+  status: 409,
+  detail:
+    'This CV has not been read yet, so it cannot be the current one. Wait for it to be processed, or pick one that already has been.',
+};
+
+export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
+  full_name: 'Lina Khoury',
+  is_searchable: false,
+};
+
+/** Already carries one of the skills {@link CV_DRAFT} names, so the merge case is exercised. */
+export const PROFILE_WITH_SKILL: components['schemas']['CandidateProfile'] = {
+  ...EMPTY_PROFILE,
+  skills: [{ name: 'Python', years_experience: 3 }],
+};
+
+export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
+  full_name: 'Lina Khoury',
+  is_searchable: false,
+  headline: 'Backend engineer, 8 years',
+  location: 'Aleppo, Syria',
+  experiences: [
+    { job_title: 'Backend engineer', company_name: 'Levant Digital', is_current: true },
+  ],
+  skills: [
+    { name: 'Python', years_experience: 3 },
+    { name: 'Kubernetes', years_experience: null },
+  ],
 };
 
 export const NO_SESSION: components['schemas']['ProblemDetail'] = {
