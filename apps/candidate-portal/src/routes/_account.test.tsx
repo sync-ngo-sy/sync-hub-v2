@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
-import { listsJobs } from '@/features/landing/testing/handlers';
+import { listsJobs } from '@/features/jobs/testing/handlers';
 import { client } from '@/lib/api';
 import { CANDIDATE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';

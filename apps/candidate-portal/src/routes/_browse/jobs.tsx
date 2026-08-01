@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { PlaceholderPage } from '@/features/shell/components/placeholder-page';
+import { BrowseJobs } from '@/features/jobs/components/browse-jobs';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_browse/jobs')({
@@ -8,5 +8,6 @@ export const Route = createFileRoute('/_browse/jobs')({
 });
 
 function JobsPage() {
-  return <PlaceholderPage title="Jobs" description="Open roles across Syria." />;
+  const { profile } = Route.useRouteContext();
+  return <BrowseJobs signedIn={profile !== null} />;
 }

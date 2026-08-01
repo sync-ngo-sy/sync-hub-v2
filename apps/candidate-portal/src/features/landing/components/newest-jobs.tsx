@@ -5,8 +5,9 @@ import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Briefcase } from 'lucide-react';
+import { type JobSummary, jobMeta } from '@/features/jobs/job';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
-import { NEWEST_JOBS_LIMIT, type PublicJob, useNewestJobs } from '../hooks/use-newest-jobs';
+import { NEWEST_JOBS_LIMIT, useNewestJobs } from '../hooks/use-newest-jobs';
 import { HERO_BUTTON, INDEX_ROW, Wrap } from './editorial';
 
 const TITLE = 'text-[1.0625rem] font-semibold';
@@ -36,7 +37,7 @@ export function NewestJobs() {
   );
 }
 
-function JobIndex({ jobs }: { jobs: PublicJob[] }) {
+function JobIndex({ jobs }: { jobs: JobSummary[] }) {
   if (jobs.length === 0) return <NothingPublished />;
 
   return (
@@ -55,20 +56,20 @@ function JobIndex({ jobs }: { jobs: PublicJob[] }) {
   );
 }
 
-function JobRow({ job }: { job: PublicJob }) {
-  const meta = [job.tenant.name, job.location, job.employment_type].filter(Boolean).join(' · ');
-
+function JobRow({ job }: { job: JobSummary }) {
   return (
     <Link
       to="/jobs/$jobId"
       params={{ jobId: job.id }}
+      // A hover is not a read, and reading a Job counts a view against the employer's numbers.
+      preload={false}
       className={cn(INDEX_ROW, 'group justify-between')}
     >
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className={cn(TITLE, 'text-foreground group-hover:text-accent-foreground')}>
           {job.title}
         </span>
-        <span className="text-dense text-muted-foreground">{meta}</span>
+        <span className="text-dense text-muted-foreground">{jobMeta(job)}</span>
       </span>
       <time
         dateTime={job.created_at}

@@ -27,6 +27,7 @@ import { Route as BrowseJobsRouteImport } from './routes/_browse/jobs'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as BrowseJobsJobIdRouteImport } from './routes/_browse/jobs_.$jobId'
+import { Route as BrowseLTokenRouteImport } from './routes/_browse/l.$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -116,6 +117,11 @@ const BrowseJobsJobIdRoute = BrowseJobsJobIdRouteImport.update({
   path: '/jobs/$jobId',
   getParentRoute: () => BrowseRoute,
 } as any)
+const BrowseLTokenRoute = BrowseLTokenRouteImport.update({
+  id: '/l/$token',
+  path: '/l/$token',
+  getParentRoute: () => BrowseRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/jobs/$jobId': typeof BrowseJobsJobIdRoute
+  '/l/$token': typeof BrowseLTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/jobs/$jobId': typeof BrowseJobsJobIdRoute
+  '/l/$token': typeof BrowseLTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_browse/jobs_/$jobId': typeof BrowseJobsJobIdRoute
+  '/_browse/l/$token': typeof BrowseLTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/auth/reset-password'
     | '/jobs/$jobId'
+    | '/l/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/auth/reset-password'
     | '/jobs/$jobId'
+    | '/l/$token'
   id:
     | '__root__'
     | '/'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/auth/reset-password'
     | '/_browse/jobs_/$jobId'
+    | '/_browse/l/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -375,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseJobsJobIdRouteImport
       parentRoute: typeof BrowseRoute
     }
+    '/_browse/l/$token': {
+      id: '/_browse/l/$token'
+      path: '/l/$token'
+      fullPath: '/l/$token'
+      preLoaderRoute: typeof BrowseLTokenRouteImport
+      parentRoute: typeof BrowseRoute
+    }
   }
 }
 
@@ -400,11 +419,13 @@ const AccountRouteWithChildren =
 interface BrowseRouteChildren {
   BrowseJobsRoute: typeof BrowseJobsRoute
   BrowseJobsJobIdRoute: typeof BrowseJobsJobIdRoute
+  BrowseLTokenRoute: typeof BrowseLTokenRoute
 }
 
 const BrowseRouteChildren: BrowseRouteChildren = {
   BrowseJobsRoute: BrowseJobsRoute,
   BrowseJobsJobIdRoute: BrowseJobsJobIdRoute,
+  BrowseLTokenRoute: BrowseLTokenRoute,
 }
 
 const BrowseRouteWithChildren =
