@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Profile } from '@/features/auth/current-profile';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { AccountMenu } from './account-menu';
 import { Brand } from './brand';
 import { PrimaryNav } from './primary-nav';
@@ -13,6 +14,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
           <Brand />
           <PrimaryNav />
           <div className="ml-auto flex items-center gap-1">
+            <NotificationBell />
             <ThemeToggle />
             <AccountMenu profile={profile} />
           </div>
