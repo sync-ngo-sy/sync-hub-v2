@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isClientError, problemMessage, problemStatus } from './api-problem';
+import { isClientError, isProblem, problemMessage, problemStatus } from './api-problem';
 
 const NOT_AUTHENTICATED = {
   type: 'urn:sync:problem:not-authenticated',
@@ -30,6 +30,19 @@ describe('isClientError', () => {
     expect(isClientError({ ...NOT_AUTHENTICATED, status: 500 })).toBe(false);
     expect(isClientError({ ...NOT_AUTHENTICATED, status: 502 })).toBe(false);
     expect(isClientError(new TypeError('Failed to fetch'))).toBe(false);
+  });
+});
+
+describe('isProblem', () => {
+  it('recognises the problem type the caller is looking for', () => {
+    expect(isProblem(NOT_AUTHENTICATED, 'urn:sync:problem:not-authenticated')).toBe(true);
+  });
+
+  it('does not confuse it with another problem, or with a transport failure', () => {
+    expect(isProblem(NOT_AUTHENTICATED, 'urn:sync:problem:invalid-email-token')).toBe(false);
+    expect(isProblem(new TypeError('Failed to fetch'), 'urn:sync:problem:not-authenticated')).toBe(
+      false,
+    );
   });
 });
 
