@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { PlaceholderPage } from '@/features/shell/components/placeholder-page';
+import { AccountSettingsPage } from '@/features/settings/components/account-settings-page';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_account/settings')({
@@ -8,5 +8,6 @@ export const Route = createFileRoute('/_account/settings')({
 });
 
 function SettingsPage() {
-  return <PlaceholderPage title="Account settings" />;
+  const { profile } = Route.useRouteContext();
+  return <AccountSettingsPage profile={profile} />;
 }
