@@ -17,6 +17,10 @@ export function problemStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null;
 }
 
+export function isProblem(error: unknown, type: string): boolean {
+  return problemBody(error)?.type === type;
+}
+
 export function isClientError(error: unknown): boolean {
   const status = problemStatus(error);
   return status !== null && status >= 400 && status < 500;

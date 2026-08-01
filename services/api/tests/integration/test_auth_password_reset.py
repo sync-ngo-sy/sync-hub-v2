@@ -3,9 +3,11 @@ from __future__ import annotations
 from httpx import AsyncClient, Response
 
 from sync_api.auth import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
+from tests.conftest import CANDIDATE_PORTAL_URL, RECRUITER_PORTAL_URL
 from tests.support.candidates import a_confirmed_candidate, a_signup, sign_in
 from tests.support.harness import present_only
 from tests.support.mailbox import Mailbox
+from tests.support.tenants import an_admin
 
 A_NEW_PASSWORD = "a-brand-new-passphrase"
 
@@ -34,6 +36,28 @@ async def test_a_forgotten_password_can_be_replaced(browser: AsyncClient, mailbo
     assert (await sign_in(browser, signup, password=A_NEW_PASSWORD)).status_code == 200
     browser.cookies.clear()
     assert (await sign_in(browser, signup)).status_code == 401
+
+
+async def test_a_candidates_reset_link_lands_in_the_candidate_portal(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    signup = await a_confirmed_candidate(browser, mailbox)
+
+    await ask_to_reset(browser, signup.email)
+
+    body = await mailbox.newest_body(signup.email)
+    assert f"{CANDIDATE_PORTAL_URL}/auth/reset-password" in body, body
+
+
+async def test_a_recruiters_reset_link_lands_in_the_recruiter_portal(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    signup = await an_admin(browser, mailbox)
+
+    await ask_to_reset(browser, signup.email)
+
+    body = await mailbox.newest_body(signup.email)
+    assert f"{RECRUITER_PORTAL_URL}/auth/reset-password" in body, body
 
 
 async def test_resetting_ends_the_sessions_that_were_already_open(

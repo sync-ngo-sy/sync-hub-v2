@@ -1,14 +1,14 @@
 <!--
-  Signup confirmation. The link points at the candidate portal, never at GoTrue: ADR-0005
-  keeps every auth hop behind the API, so the SPA takes the `token_hash` from this URL and
-  posts it to `POST /v1/auth/confirm-email`, which is what actually redeems it.
+  Signup confirmation. The API chooses the portal through `{{ .RedirectTo }}`; the SPA takes
+  the `token_hash` from this URL and posts it to `POST /v1/auth/confirm-email`, which is what
+  actually redeems it behind the API per ADR-0005.
 -->
 <h2>Confirm your email</h2>
 
 <p>Welcome to Sync. Confirm this address to activate your account and sign in.</p>
 
 <p>
-  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">
+  <a href="{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">
     Confirm my email
   </a>
 </p>

@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
+import { Route as CheckEmailRouteImport } from './routes/check-email'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -22,6 +24,9 @@ import { Route as WorkspaceJobsRouteImport } from './routes/_workspace/jobs'
 import { Route as WorkspaceSettingsRouteImport } from './routes/_workspace/settings'
 import { Route as WorkspaceTalentPoolRouteImport } from './routes/_workspace/talent-pool'
 import { Route as WorkspaceTemplatesRouteImport } from './routes/_workspace/templates'
+import { Route as AuthAcceptInviteRouteImport } from './routes/auth.accept-invite'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +35,16 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/_workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckEmailRoute = CheckEmailRouteImport.update({
+  id: '/check-email',
+  path: '/check-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KitchenSinkRoute = KitchenSinkRouteImport.update({
@@ -87,9 +102,26 @@ const WorkspaceTemplatesRoute = WorkspaceTemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const AuthAcceptInviteRoute = AuthAcceptInviteRouteImport.update({
+  id: '/auth/accept-invite',
+  path: '/auth/accept-invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/check-email': typeof CheckEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -101,9 +133,14 @@ export interface FileRoutesByFullPath {
   '/settings': typeof WorkspaceSettingsRoute
   '/talent-pool': typeof WorkspaceTalentPoolRoute
   '/templates': typeof WorkspaceTemplatesRoute
+  '/auth/accept-invite': typeof AuthAcceptInviteRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/check-email': typeof CheckEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -115,11 +152,16 @@ export interface FileRoutesByTo {
   '/settings': typeof WorkspaceSettingsRoute
   '/talent-pool': typeof WorkspaceTalentPoolRoute
   '/templates': typeof WorkspaceTemplatesRoute
+  '/auth/accept-invite': typeof AuthAcceptInviteRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_workspace': typeof WorkspaceRouteWithChildren
+  '/check-email': typeof CheckEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -131,11 +173,16 @@ export interface FileRoutesById {
   '/_workspace/settings': typeof WorkspaceSettingsRoute
   '/_workspace/talent-pool': typeof WorkspaceTalentPoolRoute
   '/_workspace/templates': typeof WorkspaceTemplatesRoute
+  '/auth/accept-invite': typeof AuthAcceptInviteRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/check-email'
+    | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
     | '/signup'
@@ -147,9 +194,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/talent-pool'
     | '/templates'
+    | '/auth/accept-invite'
+    | '/auth/confirm'
+    | '/auth/reset-password'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/check-email'
+    | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
     | '/signup'
@@ -161,10 +213,15 @@ export interface FileRouteTypes {
     | '/settings'
     | '/talent-pool'
     | '/templates'
+    | '/auth/accept-invite'
+    | '/auth/confirm'
+    | '/auth/reset-password'
   id:
     | '__root__'
     | '/'
     | '/_workspace'
+    | '/check-email'
+    | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
     | '/signup'
@@ -176,15 +233,23 @@ export interface FileRouteTypes {
     | '/_workspace/settings'
     | '/_workspace/talent-pool'
     | '/_workspace/templates'
+    | '/auth/accept-invite'
+    | '/auth/confirm'
+    | '/auth/reset-password'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
+  CheckEmailRoute: typeof CheckEmailRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   WrongPortalRoute: typeof WrongPortalRoute
+  AuthAcceptInviteRoute: typeof AuthAcceptInviteRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -201,6 +266,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check-email': {
+      id: '/check-email'
+      path: '/check-email'
+      fullPath: '/check-email'
+      preLoaderRoute: typeof CheckEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kitchen-sink': {
@@ -280,6 +359,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceTemplatesRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/auth/accept-invite': {
+      id: '/auth/accept-invite'
+      path: '/auth/accept-invite'
+      fullPath: '/auth/accept-invite'
+      preLoaderRoute: typeof AuthAcceptInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -310,10 +410,15 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   WorkspaceRoute: WorkspaceRouteWithChildren,
+  CheckEmailRoute: CheckEmailRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   WrongPortalRoute: WrongPortalRoute,
+  AuthAcceptInviteRoute: AuthAcceptInviteRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
