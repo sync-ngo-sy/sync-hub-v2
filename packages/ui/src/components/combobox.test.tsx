@@ -32,6 +32,12 @@ describe('Combobox', () => {
     expect(screen.getAllByRole('option')).toHaveLength(SKILLS.length);
   });
 
+  it('names the button that opens the list', () => {
+    render(<Combobox aria-label="Skill" options={SKILLS} />);
+
+    expect(screen.getByRole('button', { name: 'Show options' })).toBeInTheDocument();
+  });
+
   it('narrows the list to what was typed', async () => {
     const user = userEvent.setup();
     render(<Combobox aria-label="Skill" options={SKILLS} />);
@@ -88,10 +94,8 @@ describe('Combobox', () => {
 
     // Base UI appends an invisible character to live regions to force the announcement,
     // so both messages are matched loosely.
-    expect(screen.getByText('Loading skills…', { exact: false })).toHaveAttribute(
-      'aria-live',
-      'polite',
-    );
+    const message = screen.getByText('Loading skills…', { exact: false });
+    expect(message.closest('[aria-live="polite"]')).toBeInTheDocument();
     expect(screen.queryByText('No skill by that name.', { exact: false })).not.toBeInTheDocument();
   });
 
@@ -163,6 +167,54 @@ describe('Combobox', () => {
       'aria-selected',
       'false',
     );
+  });
+
+  it('keeps a value whose option has not arrived yet', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <Combobox
+        multiple
+        aria-label="Skills"
+        options={SKILLS}
+        value={['logistics', 'nutrition']}
+        onValueChange={onValueChange}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Remove nutrition' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'Skills' }));
+    await user.click(screen.getByRole('option', { name: 'Protection' }));
+
+    expect(onValueChange).toHaveBeenLastCalledWith(['logistics', 'nutrition', 'protection']);
+  });
+
+  it('selects across groups when multiple', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <Combobox
+        multiple
+        aria-label="Skills"
+        options={GROUPED_SKILLS}
+        onValueChange={onValueChange}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Skills' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Programme' })).getByRole('option', {
+        name: 'Protection',
+      }),
+    );
+    await user.click(
+      within(screen.getByRole('group', { name: 'Operations' })).getByRole('option', {
+        name: 'Fleet management',
+      }),
+    );
+
+    expect(onValueChange).toHaveBeenLastCalledWith(['protection', 'fleet']);
   });
 
   it('drops one chip at a time', async () => {

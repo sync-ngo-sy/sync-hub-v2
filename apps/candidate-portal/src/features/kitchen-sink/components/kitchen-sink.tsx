@@ -117,55 +117,47 @@ const LOCATIONS: ComboboxOptionGroup[] = [
   },
 ];
 
-function Picker({ label, children }: { label: string; children: (id: string) => ReactNode }) {
-  const id = useId();
-
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children(id)}
-    </div>
-  );
-}
-
 function Pickers() {
+  const skillId = useId();
+  const languagesId = useId();
+  const locationId = useId();
+  const arrivingId = useId();
+
   return (
     <div className="grid w-full gap-4 sm:grid-cols-2">
-      <Picker label="Main skill">
-        {(id) => (
-          <Combobox
-            id={id}
-            options={SKILLS}
-            placeholder="Search skills"
-            emptyMessage="No skill by that name."
-          />
-        )}
-      </Picker>
-      <Picker label="Languages you speak">
-        {(id) => (
-          <Combobox
-            multiple
-            id={id}
-            options={LANGUAGES}
-            defaultValue={['ar', 'en']}
-            placeholder="Add a language"
-            emptyMessage="No language by that name."
-          />
-        )}
-      </Picker>
-      <Picker label="Where you can work">
-        {(id) => (
-          <Combobox
-            id={id}
-            options={LOCATIONS}
-            placeholder="Search locations"
-            emptyMessage="No location by that name."
-          />
-        )}
-      </Picker>
-      <Picker label="Still arriving">
-        {(id) => <Combobox id={id} options={[]} loading loadingMessage="Loading skills…" />}
-      </Picker>
+      <div className="space-y-1.5">
+        <Label htmlFor={skillId}>Main skill</Label>
+        <Combobox
+          id={skillId}
+          options={SKILLS}
+          placeholder="Search skills"
+          emptyMessage="No skill by that name."
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={languagesId}>Languages you speak</Label>
+        <Combobox
+          multiple
+          id={languagesId}
+          options={LANGUAGES}
+          defaultValue={['ar', 'en']}
+          placeholder="Add a language"
+          emptyMessage="No language by that name."
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={locationId}>Where you can work</Label>
+        <Combobox
+          id={locationId}
+          options={LOCATIONS}
+          placeholder="Search locations"
+          emptyMessage="No location by that name."
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={arrivingId}>Still arriving</Label>
+        <Combobox id={arrivingId} options={[]} loading loadingMessage="Loading skills…" />
+      </div>
     </div>
   );
 }
