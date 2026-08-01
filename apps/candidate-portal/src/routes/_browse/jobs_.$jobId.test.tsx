@@ -1,8 +1,22 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  acceptsApplication,
+  refusesApplication,
+  refusesApplicationAnswers,
+  withholdsApplication,
+} from '@/features/applications/testing/handlers';
 import { signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { faultsOnJob, hasNoSuchJob, showsJob } from '@/features/jobs/testing/handlers';
-import { BARE_PUBLIC_JOB, CANDIDATE, PUBLIC_JOB, SERVER_FAULT } from '@/testing/fixtures';
+import {
+  APPLICATION,
+  APPLICATION_ANSWER_REFUSED,
+  BARE_PUBLIC_JOB,
+  CANDIDATE,
+  DUPLICATE_APPLICATION,
+  PUBLIC_JOB,
+  SERVER_FAULT,
+} from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -89,10 +103,96 @@ describe('a Job detail page', () => {
   it('offers a signed-in candidate the apply action itself', async () => {
     server.use(...signedInAs(CANDIDATE), ...showsJob(PUBLIC_JOB));
 
-    await renderApp(`/jobs/${PUBLIC_JOB.id}`);
+    const { user } = await renderApp(`/jobs/${PUBLIC_JOB.id}`);
 
-    expect(await screen.findByRole('button', { name: 'Apply' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Apply' }));
+    expect(
+      screen.getByRole('radiogroup', { name: PUBLIC_JOB.questions[0]?.question_text }),
+    ).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Sign in to apply' })).toBeNull();
+  });
+
+  it('submits the answers and confirms the Application at the point of action', async () => {
+    const submitted = vi.fn();
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...showsJob(PUBLIC_JOB),
+      ...acceptsApplication(APPLICATION, submitted),
+    );
+
+    const { user } = await renderApp(`/jobs/${PUBLIC_JOB.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('radio', { name: 'Yes' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'What is your notice period?' }),
+      'Two weeks',
+    );
+    await user.click(screen.getByRole('button', { name: 'Submit application' }));
+
+    await waitFor(() =>
+      expect(submitted).toHaveBeenCalledWith({
+        job_id: PUBLIC_JOB.id,
+        answers: [
+          { question_id: PUBLIC_JOB.questions[0]?.id, answer_boolean: true },
+          { question_id: PUBLIC_JOB.questions[1]?.id, answer_text: 'Two weeks' },
+        ],
+      }),
+    );
+    expect(await screen.findByText('Application sent')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'View My Applications' })).toHaveAttribute(
+      'href',
+      '/applications',
+    );
+  });
+
+  it('keeps a duplicate verdict beside the apply action', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...showsJob(PUBLIC_JOB),
+      ...refusesApplication(DUPLICATE_APPLICATION),
+    );
+
+    const { user } = await renderApp(`/jobs/${PUBLIC_JOB.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('radio', { name: 'Yes' }));
+    await user.click(screen.getByRole('button', { name: 'Submit application' }));
+
+    expect(await screen.findByText(DUPLICATE_APPLICATION.detail as string)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Submit application' })).toBeVisible();
+    expect(screen.queryByText('Application sent')).toBeNull();
+  });
+
+  it('puts a refused answer beside the question the server rejected', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...showsJob(PUBLIC_JOB),
+      ...refusesApplicationAnswers(APPLICATION_ANSWER_REFUSED),
+    );
+
+    const { user } = await renderApp(`/jobs/${PUBLIC_JOB.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('radio', { name: 'Yes' }));
+    await user.click(screen.getByRole('button', { name: 'Submit application' }));
+
+    const answerError = await screen.findByText(
+      APPLICATION_ANSWER_REFUSED.errors?.[0]?.message as string,
+    );
+    expect(screen.getByRole('radiogroup')).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining(answerError.id),
+    );
+    expect(screen.queryByText(APPLICATION_ANSWER_REFUSED.detail as string)).toBeNull();
+  });
+
+  it('names the pending apply state and prevents a second submission', async () => {
+    server.use(...signedInAs(CANDIDATE), ...showsJob(PUBLIC_JOB), ...withholdsApplication());
+
+    const { user } = await renderApp(`/jobs/${PUBLIC_JOB.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('radio', { name: 'Yes' }));
+    await user.click(screen.getByRole('button', { name: 'Submit application' }));
+
+    expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled();
   });
 
   it('keeps a server fault inside the page, with the shell still standing', async () => {
