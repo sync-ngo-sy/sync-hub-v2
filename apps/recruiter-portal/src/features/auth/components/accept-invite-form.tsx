@@ -3,18 +3,18 @@ import { PasswordForm } from '@sync/ui/components/auth-form';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { isProblem, problemMessage } from '@/lib/api-problem';
-import { useResetPassword } from '../hooks/use-reset-password';
-import { DEAD_LINK_PROBLEM, PASSWORD_UNCHANGED_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
+import { useAcceptInvite } from '../hooks/use-accept-invite';
+import { DEAD_LINK_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type NewPasswordValues, newPasswordSchema } from '../schemas/new-password';
 
-interface NewPasswordFormProps {
+interface AcceptInviteFormProps {
   tokenHash: string;
-  onReset: () => void;
+  onAccepted: () => void;
   onDeadLink: () => void;
 }
 
-export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordFormProps) {
-  const resetPassword = useResetPassword();
+export function AcceptInviteForm({ tokenHash, onAccepted, onDeadLink }: AcceptInviteFormProps) {
+  const acceptInvite = useAcceptInvite();
   const {
     control,
     handleSubmit,
@@ -27,17 +27,15 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
 
   const submit = handleSubmit(async ({ password }) => {
     try {
-      await resetPassword.mutateAsync({ body: { token_hash: tokenHash, password } });
-      onReset();
+      await acceptInvite.mutateAsync({ body: { token_hash: tokenHash, password } });
+      onAccepted();
     } catch (error) {
-      // Both arrive as a 400: a link nothing can fix belongs on its own screen, a refused
-      // password belongs beside the field the reader can still edit.
       if (isProblem(error, DEAD_LINK_PROBLEM)) {
         onDeadLink();
         return;
       }
-      const message = problemMessage(error, "Couldn't set your password. Try again.");
-      if (isProblem(error, WEAK_PASSWORD_PROBLEM) || isProblem(error, PASSWORD_UNCHANGED_PROBLEM)) {
+      const message = problemMessage(error, "Couldn't accept your invitation. Try again.");
+      if (isProblem(error, WEAK_PASSWORD_PROBLEM)) {
         setError('password', { message });
         return;
       }
@@ -50,9 +48,9 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
       control={control}
       onSubmit={submit}
       isSubmitting={isSubmitting}
-      label="New password"
-      pendingLabel="Saving…"
-      submitLabel="Save new password"
+      label="Choose a password"
+      pendingLabel="Joining workspace…"
+      submitLabel="Join workspace"
     />
   );
 }
