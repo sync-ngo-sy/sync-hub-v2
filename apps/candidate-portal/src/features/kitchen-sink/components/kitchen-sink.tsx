@@ -1,4 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Combobox,
+  type ComboboxOption,
+  type ComboboxOptionGroup,
+} from '@sync/ui/components/combobox';
 import { EmptyState } from '@sync/ui/components/empty-state';
 import { FormField } from '@sync/ui/components/form-field';
 import { PageHeader } from '@sync/ui/components/page-header';
@@ -9,9 +14,10 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
+import { Label } from '@sync/ui/components/ui/label';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { Info, Search } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
@@ -68,6 +74,99 @@ function ApplicationForm() {
       </FormField>
       <Button type="submit">Submit application</Button>
     </form>
+  );
+}
+
+const SKILLS: ComboboxOption[] = [
+  { value: 'meal', label: 'Monitoring, Evaluation, Accountability and Learning' },
+  { value: 'logistics', label: 'Logistics' },
+  { value: 'protection', label: 'Protection' },
+  { value: 'wash', label: 'Water, Sanitation and Hygiene' },
+  { value: 'health', label: 'Health' },
+];
+
+const LANGUAGES: ComboboxOption[] = [
+  { value: 'ar', label: 'Arabic' },
+  { value: 'en', label: 'English' },
+  { value: 'fr', label: 'French' },
+  { value: 'ku', label: 'Kurdish' },
+  { value: 'tr', label: 'Turkish' },
+];
+
+const LOCATIONS: ComboboxOptionGroup[] = [
+  {
+    label: 'North-west',
+    options: [
+      { value: 'idlib', label: 'Idlib' },
+      { value: 'aleppo', label: 'Aleppo' },
+    ],
+  },
+  {
+    label: 'Coast',
+    options: [
+      { value: 'latakia', label: 'Latakia' },
+      { value: 'tartus', label: 'Tartus' },
+    ],
+  },
+  {
+    label: 'South',
+    options: [
+      { value: 'damascus', label: 'Damascus' },
+      { value: 'daraa', label: 'Daraa' },
+    ],
+  },
+];
+
+function Picker({ label, children }: { label: string; children: (id: string) => ReactNode }) {
+  const id = useId();
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children(id)}
+    </div>
+  );
+}
+
+function Pickers() {
+  return (
+    <div className="grid w-full gap-4 sm:grid-cols-2">
+      <Picker label="Main skill">
+        {(id) => (
+          <Combobox
+            id={id}
+            options={SKILLS}
+            placeholder="Search skills"
+            emptyMessage="No skill by that name."
+          />
+        )}
+      </Picker>
+      <Picker label="Languages you speak">
+        {(id) => (
+          <Combobox
+            multiple
+            id={id}
+            options={LANGUAGES}
+            defaultValue={['ar', 'en']}
+            placeholder="Add a language"
+            emptyMessage="No language by that name."
+          />
+        )}
+      </Picker>
+      <Picker label="Where you can work">
+        {(id) => (
+          <Combobox
+            id={id}
+            options={LOCATIONS}
+            placeholder="Search locations"
+            emptyMessage="No location by that name."
+          />
+        )}
+      </Picker>
+      <Picker label="Still arriving">
+        {(id) => <Combobox id={id} options={[]} loading loadingMessage="Loading skills…" />}
+      </Picker>
+    </div>
   );
 }
 
@@ -143,6 +242,10 @@ export default function KitchenSink() {
 
       <Section title="Forms">
         <ApplicationForm />
+      </Section>
+
+      <Section title="Pickers">
+        <Pickers />
       </Section>
 
       <Section title="Feedback">

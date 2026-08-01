@@ -1,3 +1,8 @@
+import {
+  Combobox,
+  type ComboboxOption,
+  type ComboboxOptionGroup,
+} from '@sync/ui/components/combobox';
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { STATUS_TONES, StatusChip, type StatusTone } from '@sync/ui/components/status-chip';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
@@ -127,6 +132,99 @@ function ApplicationsTable() {
   );
 }
 
+const FUNCTIONS: ComboboxOption[] = [
+  { value: 'meal', label: 'Monitoring, Evaluation, Accountability and Learning' },
+  { value: 'logistics', label: 'Logistics' },
+  { value: 'protection', label: 'Protection' },
+  { value: 'wash', label: 'Water, Sanitation and Hygiene' },
+  { value: 'finance', label: 'Finance' },
+];
+
+const LANGUAGES: ComboboxOption[] = [
+  { value: 'ar', label: 'Arabic' },
+  { value: 'en', label: 'English' },
+  { value: 'fr', label: 'French' },
+  { value: 'ku', label: 'Kurdish' },
+  { value: 'tr', label: 'Turkish' },
+];
+
+const LOCATIONS: ComboboxOptionGroup[] = [
+  {
+    label: 'North-west',
+    options: [
+      { value: 'idlib', label: 'Idlib' },
+      { value: 'aleppo', label: 'Aleppo' },
+    ],
+  },
+  {
+    label: 'Coast',
+    options: [
+      { value: 'latakia', label: 'Latakia' },
+      { value: 'tartus', label: 'Tartus' },
+    ],
+  },
+  {
+    label: 'South',
+    options: [
+      { value: 'damascus', label: 'Damascus' },
+      { value: 'daraa', label: 'Daraa' },
+    ],
+  },
+];
+
+function Picker({ label, children }: { label: string; children: (id: string) => ReactNode }) {
+  const id = useId();
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children(id)}
+    </div>
+  );
+}
+
+function Pickers() {
+  return (
+    <div className="grid w-full gap-4 sm:grid-cols-2">
+      <Picker label="Job function">
+        {(id) => (
+          <Combobox
+            id={id}
+            options={FUNCTIONS}
+            placeholder="Search functions"
+            emptyMessage="No function by that name."
+          />
+        )}
+      </Picker>
+      <Picker label="Languages required">
+        {(id) => (
+          <Combobox
+            multiple
+            id={id}
+            options={LANGUAGES}
+            defaultValue={['ar', 'en']}
+            placeholder="Add a language"
+            emptyMessage="No language by that name."
+          />
+        )}
+      </Picker>
+      <Picker label="Duty station">
+        {(id) => (
+          <Combobox
+            id={id}
+            options={LOCATIONS}
+            placeholder="Search locations"
+            emptyMessage="No location by that name."
+          />
+        )}
+      </Picker>
+      <Picker label="Still arriving">
+        {(id) => <Combobox id={id} options={[]} loading loadingMessage="Loading functions…" />}
+      </Picker>
+    </div>
+  );
+}
+
 /** Spelled out rather than interpolated, so Tailwind's scanner can see every class. */
 const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
@@ -192,6 +290,10 @@ export default function KitchenSink() {
             <Label htmlFor={searchableId}>Searchable</Label>
           </div>
         </div>
+      </Section>
+
+      <Section title="Pickers">
+        <Pickers />
       </Section>
 
       <Section title="Feedback">
