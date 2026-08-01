@@ -1,24 +1,9 @@
-import { Button } from '@sync/ui/components/ui/button';
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { PublicHeader } from '@/features/shell/components/public-header';
+import { createFileRoute } from '@tanstack/react-router';
+import { LandingPage } from '@/features/landing/components/landing-page';
+import { HEADLINE_TEXT } from '@/features/landing/headline';
+import { landingTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/')({
+  head: () => ({ meta: [{ title: landingTitle(HEADLINE_TEXT) }] }),
   component: LandingPage,
 });
-
-/** Provisional: #60 designs the real landing. */
-function LandingPage() {
-  return (
-    <div className="flex min-h-dvh flex-col">
-      <PublicHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-5 py-16 text-center">
-        <p className="text-muted-foreground">Sync Recruiter is where companies hire on Sync.</p>
-        <div>
-          <Button size="lg" render={<Link to="/login" />}>
-            Sign in
-          </Button>
-        </div>
-      </main>
-    </div>
-  );
-}

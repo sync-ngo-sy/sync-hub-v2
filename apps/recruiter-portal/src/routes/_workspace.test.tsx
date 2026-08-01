@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { HEADLINE_TEXT } from '@/features/landing/headline';
 import { client } from '@/lib/api';
 import { CANDIDATE, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -76,7 +77,12 @@ describe('the workspace chrome', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
-    expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toBeUndefined();
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
+    // The cache is emptied once the landing has actually taken over, a chunk-load after the
+    // address changes.
+    await waitFor(() =>
+      expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toBeUndefined(),
+    );
   });
 });
 

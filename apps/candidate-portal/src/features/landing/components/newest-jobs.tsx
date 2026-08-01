@@ -1,4 +1,5 @@
 import { EmptyState } from '@sync/ui/components/empty-state';
+import { HERO_BUTTON } from '@sync/ui/components/landing';
 import { placeholderKeys } from '@sync/ui/components/skeletons';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
@@ -8,7 +9,7 @@ import { Briefcase } from 'lucide-react';
 import { type JobSummary, jobMeta, NOTHING_PUBLISHED } from '@/features/jobs/job';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { NEWEST_JOBS_LIMIT, useNewestJobs } from '../hooks/use-newest-jobs';
-import { HERO_BUTTON, INDEX_ROW, Wrap } from './editorial';
+import { INDEX_ROW, Wrap } from './editorial';
 
 const TITLE = 'text-[1.0625rem] font-semibold';
 
