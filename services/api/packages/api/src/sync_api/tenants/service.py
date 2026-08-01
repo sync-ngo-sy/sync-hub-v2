@@ -52,10 +52,10 @@ class NewTenant:
 
 
 class TenantService:
-    def __init__(self, session: AsyncSession, gotrue: GoTrue, *, invite_redirect_url: str) -> None:
+    def __init__(self, session: AsyncSession, gotrue: GoTrue, *, recruiter_portal_url: str) -> None:
         self._db = session
         self._gotrue = gotrue
-        self._invite_redirect_url = invite_redirect_url
+        self._recruiter_portal_url = recruiter_portal_url
 
     async def sign_up(
         self, *, tenant_name: str, slug: str, email: str, password: str, full_name: str
@@ -65,7 +65,9 @@ class TenantService:
             tenant = await self._provision_tenant(
                 user, tenant_name=tenant_name, slug=slug, full_name=full_name
             )
-            await self._gotrue.send_confirmation_email(email)
+            await self._gotrue.send_confirmation_email(
+                email, redirect_to=self._recruiter_portal_url
+            )
 
         logger.info("tenants.signed_up", tenant_id=str(tenant.id), profile_id=str(user.id))
         return NewTenant(
@@ -93,7 +95,7 @@ class TenantService:
 
         try:
             user = await self._gotrue.invite_user(
-                email=email, redirect_to=self._invite_redirect_url
+                email=email, redirect_to=self._recruiter_portal_url
             )
         except EmailAlreadyRegisteredError as exc:
             raise email_already_registered() from exc

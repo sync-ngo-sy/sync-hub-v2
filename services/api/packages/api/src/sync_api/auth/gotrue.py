@@ -113,9 +113,18 @@ class GoTrue:
         with refusals({}):
             await self._as_admin().admin.delete_user(str(user_id))
 
-    async def send_confirmation_email(self, email: str) -> None:
+    async def send_confirmation_email(self, email: str, *, redirect_to: str | None = None) -> None:
         with refusals({}):
-            await self._as_caller().resend({"type": "signup", "email": email})
+            if redirect_to is None:
+                await self._as_caller().resend({"type": "signup", "email": email})
+            else:
+                await self._as_caller().resend(
+                    {
+                        "type": "signup",
+                        "email": email,
+                        "options": {"email_redirect_to": redirect_to},
+                    }
+                )
 
     async def invite_user(self, *, email: str, redirect_to: str) -> GoTrueUser:
         with refusals(
@@ -129,9 +138,13 @@ class GoTrue:
             )
         return _user_from(answered.user)
 
-    async def send_password_reset_email(self, email: str) -> None:
+    async def send_password_reset_email(
+        self, email: str, *, redirect_to: str | None = None
+    ) -> None:
         with refusals({}):
-            await self._as_caller().reset_password_for_email(email)
+            await self._as_caller().reset_password_for_email(
+                email, {"redirect_to": redirect_to} if redirect_to is not None else None
+            )
 
     async def sign_in_with_password(self, *, email: str, password: str) -> GoTrueSession:
         with refusals(

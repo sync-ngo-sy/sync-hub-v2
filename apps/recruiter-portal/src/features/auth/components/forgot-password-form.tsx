@@ -25,8 +25,6 @@ export function ForgotPasswordForm({ onSent }: { onSent: (email: string) => void
       await requestReset.mutateAsync({ body: values });
       onSent(values.email);
     } catch (error) {
-      // Nothing here is the field's fault: the API accepts any address it can parse, and Zod
-      // has already parsed this one. What is left — rate limiting, a fault — is homeless.
       toast.error(problemMessage(error, "Couldn't send the email. Try again."));
     }
   });
