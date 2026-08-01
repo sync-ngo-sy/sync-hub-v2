@@ -1,3 +1,4 @@
+import { NAV_BUTTON } from '@sync/ui/components/landing';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import {
   Sheet,
@@ -12,12 +13,13 @@ import { Menu } from 'lucide-react';
 import { useState } from 'react';
 import { Brand } from '@/features/shell/components/brand';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
-import { NAV_BUTTON, Wrap } from './page-parts';
+import { hasContact } from './contact-links';
+import { Wrap } from './page-parts';
 
 const SECTIONS = [
   { href: '#what-you-get', label: 'What you get' },
   { href: '#how-it-works', label: 'How it works' },
-  { href: '#contact', label: 'Contact' },
+  ...(hasContact ? [{ href: '#contact', label: 'Contact' }] : []),
 ];
 
 export function LandingHeader() {

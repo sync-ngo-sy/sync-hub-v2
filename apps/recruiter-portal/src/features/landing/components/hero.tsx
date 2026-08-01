@@ -1,8 +1,9 @@
+import { Eyebrow, HERO_BUTTON, UNDERLINE_LINK } from '@sync/ui/components/landing';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { HEADLINE } from '../headline';
-import { Eyebrow, HERO_BUTTON, RISE, UNDERLINE_LINK, Wrap } from './page-parts';
+import { RISE, Wrap } from './page-parts';
 
 export function Hero() {
   return (

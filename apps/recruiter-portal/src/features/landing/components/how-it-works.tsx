@@ -1,4 +1,5 @@
-import { Eyebrow, Wrap } from './page-parts';
+import { Eyebrow } from '@sync/ui/components/landing';
+import { Wrap } from './page-parts';
 
 const STEPS = [
   {

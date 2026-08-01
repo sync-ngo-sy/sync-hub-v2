@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Brand } from '@/features/shell/components/brand';
-import { ContactLinks } from './contact-links';
+import { ContactLinks, hasContact } from './contact-links';
 import { Wrap } from './page-parts';
 
 const LINK = 'block text-dense text-secondary-foreground hover:text-foreground';
@@ -29,9 +29,11 @@ export function LandingFooter() {
             </Link>
           </Column>
 
-          <Column title="Contact">
-            <ContactLinks className="gap-2.5" />
-          </Column>
+          {hasContact ? (
+            <Column title="Contact">
+              <ContactLinks className="gap-2.5" />
+            </Column>
+          ) : null}
         </div>
 
         <p className="border-t border-border pt-6 text-meta text-muted-foreground">

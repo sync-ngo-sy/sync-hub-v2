@@ -1,3 +1,4 @@
+import { NAV_BUTTON } from '@sync/ui/components/landing';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import {
   Sheet,
@@ -13,7 +14,7 @@ import { useState } from 'react';
 import { Brand } from '@/features/shell/components/brand';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
 import { env } from '@/lib/env';
-import { NAV_BUTTON, Wrap } from './editorial';
+import { Wrap } from './editorial';
 
 export function LandingHeader() {
   const [menuOpen, setMenuOpen] = useState(false);

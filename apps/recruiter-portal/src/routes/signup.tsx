@@ -18,7 +18,8 @@ function SignUpPage() {
         <div className="space-y-1.5">
           <h1 className="font-heading text-h3 text-foreground">Create your workspace</h1>
           <p className="text-dense text-muted-foreground">
-            Workspace sign-up arrives with its own ticket.
+            Signing up for a workspace opens soon. Talk to us in the meantime — the landing page has
+            our WhatsApp and email.
           </p>
         </div>
         <div>

@@ -1,8 +1,9 @@
+import { HERO_BUTTON, UNDERLINE_LINK } from '@sync/ui/components/landing';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
-import { ContactLinks } from './contact-links';
-import { HERO_BUTTON, UNDERLINE_LINK, Wrap } from './page-parts';
+import { ContactLinks, hasContact } from './contact-links';
+import { Wrap } from './page-parts';
 
 export function GetStarted() {
   return (
@@ -31,14 +32,16 @@ export function GetStarted() {
             </div>
           </div>
 
-          <div className="lg:w-[300px] lg:shrink-0">
-            <h3 className="text-title text-foreground">Talk to the Sync team</h3>
-            <p className="mt-2 mb-5 max-w-[38ch] text-dense text-muted-foreground">
-              Questions about screening, or want a walkthrough before you sign up? Reach us
-              directly.
-            </p>
-            <ContactLinks />
-          </div>
+          {hasContact ? (
+            <div className="lg:w-[300px] lg:shrink-0">
+              <h3 className="text-title text-foreground">Talk to the Sync team</h3>
+              <p className="mt-2 mb-5 max-w-[38ch] text-dense text-muted-foreground">
+                Questions about screening, or want a walkthrough before you sign up? Reach us
+                directly.
+              </p>
+              <ContactLinks />
+            </div>
+          ) : null}
         </div>
       </Wrap>
     </section>

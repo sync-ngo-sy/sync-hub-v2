@@ -1,7 +1,8 @@
+import { Eyebrow } from '@sync/ui/components/landing';
 import { Card, CardContent, CardHeader } from '@sync/ui/components/ui/card';
 import { ListChecks, MessageSquareText, Star, Workflow } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { Eyebrow, Wrap } from './page-parts';
+import { Wrap } from './page-parts';
 
 interface Capability {
   icon: ComponentType<{ className?: string }>;
