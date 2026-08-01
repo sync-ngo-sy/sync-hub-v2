@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/_account'
 import { Route as BrowseRouteImport } from './routes/_browse'
+import { Route as CheckEmailRouteImport } from './routes/check-email'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -22,6 +24,8 @@ import { Route as AccountNotificationsRouteImport } from './routes/_account/noti
 import { Route as AccountProfileRouteImport } from './routes/_account/profile'
 import { Route as AccountSettingsRouteImport } from './routes/_account/settings'
 import { Route as BrowseJobsRouteImport } from './routes/_browse/jobs'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as BrowseJobsJobIdRouteImport } from './routes/_browse/jobs_.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +39,16 @@ const AccountRoute = AccountRouteImport.update({
 } as any)
 const BrowseRoute = BrowseRouteImport.update({
   id: '/_browse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckEmailRoute = CheckEmailRouteImport.update({
+  id: '/check-email',
+  path: '/check-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KitchenSinkRoute = KitchenSinkRouteImport.update({
@@ -87,6 +101,16 @@ const BrowseJobsRoute = BrowseJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => BrowseRoute,
 } as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseJobsJobIdRoute = BrowseJobsJobIdRouteImport.update({
   id: '/jobs_/$jobId',
   path: '/jobs/$jobId',
@@ -95,6 +119,8 @@ const BrowseJobsJobIdRoute = BrowseJobsJobIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/check-email': typeof CheckEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -105,10 +131,14 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AccountProfileRoute
   '/settings': typeof AccountSettingsRoute
   '/jobs': typeof BrowseJobsRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/jobs/$jobId': typeof BrowseJobsJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/check-email': typeof CheckEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -119,6 +149,8 @@ export interface FileRoutesByTo {
   '/profile': typeof AccountProfileRoute
   '/settings': typeof AccountSettingsRoute
   '/jobs': typeof BrowseJobsRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/jobs/$jobId': typeof BrowseJobsJobIdRoute
 }
 export interface FileRoutesById {
@@ -126,6 +158,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_account': typeof AccountRouteWithChildren
   '/_browse': typeof BrowseRouteWithChildren
+  '/check-email': typeof CheckEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -136,12 +170,16 @@ export interface FileRoutesById {
   '/_account/profile': typeof AccountProfileRoute
   '/_account/settings': typeof AccountSettingsRoute
   '/_browse/jobs': typeof BrowseJobsRoute
+  '/auth/confirm': typeof AuthConfirmRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_browse/jobs_/$jobId': typeof BrowseJobsJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/check-email'
+    | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
     | '/signup'
@@ -152,10 +190,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/jobs'
+    | '/auth/confirm'
+    | '/auth/reset-password'
     | '/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/check-email'
+    | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
     | '/signup'
@@ -166,12 +208,16 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/jobs'
+    | '/auth/confirm'
+    | '/auth/reset-password'
     | '/jobs/$jobId'
   id:
     | '__root__'
     | '/'
     | '/_account'
     | '/_browse'
+    | '/check-email'
+    | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
     | '/signup'
@@ -182,6 +228,8 @@ export interface FileRouteTypes {
     | '/_account/profile'
     | '/_account/settings'
     | '/_browse/jobs'
+    | '/auth/confirm'
+    | '/auth/reset-password'
     | '/_browse/jobs_/$jobId'
   fileRoutesById: FileRoutesById
 }
@@ -189,10 +237,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRouteWithChildren
   BrowseRoute: typeof BrowseRouteWithChildren
+  CheckEmailRoute: typeof CheckEmailRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   WrongPortalRoute: typeof WrongPortalRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -216,6 +268,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof BrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check-email': {
+      id: '/check-email'
+      path: '/check-email'
+      fullPath: '/check-email'
+      preLoaderRoute: typeof CheckEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kitchen-sink': {
@@ -288,6 +354,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseJobsRouteImport
       parentRoute: typeof BrowseRoute
     }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_browse/jobs_/$jobId': {
       id: '/_browse/jobs_/$jobId'
       path: '/jobs/$jobId'
@@ -334,10 +414,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRouteWithChildren,
   BrowseRoute: BrowseRouteWithChildren,
+  CheckEmailRoute: CheckEmailRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   WrongPortalRoute: WrongPortalRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
