@@ -20,17 +20,19 @@ describe('readClientEnv', () => {
     expect(readClientEnv({ VITE_API_BASE_URL: value })).toEqual({ apiBaseUrl: value });
   });
 
-  it.each(['not-a-url', 'ftp://api.sync.test', '//evil.test'])(
-    'rejects %j, which is neither a root-relative path nor an http(s) URL',
-    (value) => {
-      expect(() => readClientEnv({ VITE_API_BASE_URL: value })).toThrow(/VITE_API_BASE_URL/);
-    },
-  );
+  it.each([
+    'not-a-url',
+    'ftp://api.sync.test',
+    '//evil.test',
+  ])('rejects %j, which is neither a root-relative path nor an http(s) URL', (value) => {
+    expect(() => readClientEnv({ VITE_API_BASE_URL: value })).toThrow(/VITE_API_BASE_URL/);
+  });
 
-  it.each(['https://api.sync.test/v1', 'https://api.sync.test/v1/', '/api/v1'])(
-    'rejects %s, whose path already carries the /v1 the generated paths add',
-    (value) => {
-      expect(() => readClientEnv({ VITE_API_BASE_URL: value })).toThrow(/\/v1/);
-    },
-  );
+  it.each([
+    'https://api.sync.test/v1',
+    'https://api.sync.test/v1/',
+    '/api/v1',
+  ])('rejects %s, whose path already carries the /v1 the generated paths add', (value) => {
+    expect(() => readClientEnv({ VITE_API_BASE_URL: value })).toThrow(/\/v1/);
+  });
 });
