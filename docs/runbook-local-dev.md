@@ -109,8 +109,13 @@ gets as far as the OpenAI client, which rejects it, instead of reading as "no ke
 
 ```bash
 pnpm install
+cp apps/recruiter-portal/.env.example apps/recruiter-portal/.env.local
 pnpm dev
 ```
+
+The recruiter portal reads the Sync team's WhatsApp number and email address from its environment
+— its landing page offers them as the only way to reach us — and refuses to start without them, so
+the copy above is not optional. The candidate portal has no required variables.
 
 `turbo run dev` starts the `dev` script of every workspace that has one: the candidate portal on
 `127.0.0.1:5173`, the recruiter portal on `127.0.0.1:5174`, and — through the shim in
