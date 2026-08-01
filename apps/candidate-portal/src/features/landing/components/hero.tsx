@@ -1,12 +1,10 @@
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
 import { usePrefersReducedMotion } from '../hooks/use-prefers-reduced-motion';
 import { Eyebrow, HERO_BUTTON, UNDERLINE_LINK, Wrap } from './editorial';
 import { StaticHeadline } from './headline';
-
-const TypewriterHeadline = lazy(() => import('./typewriter-headline'));
+import TypewriterHeadline from './typewriter-headline';
 
 export function Hero() {
   const reducedMotion = usePrefersReducedMotion();
@@ -19,13 +17,7 @@ export function Hero() {
           <span aria-hidden="true" className="hidden h-px flex-1 bg-border sm:block" />
         </div>
 
-        {reducedMotion ? (
-          <StaticHeadline />
-        ) : (
-          <Suspense fallback={<StaticHeadline />}>
-            <TypewriterHeadline />
-          </Suspense>
-        )}
+        {reducedMotion ? <StaticHeadline /> : <TypewriterHeadline />}
 
         <div className="mt-[clamp(2rem,6vw,3.5rem)]">
           <div className="border-t border-border pt-6 sm:ml-auto sm:max-w-[380px]">

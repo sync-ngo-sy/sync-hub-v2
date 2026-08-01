@@ -11,7 +11,7 @@ export const HEADLINE_TEXT = `${HEADLINE.before}${HEADLINE.accent}${HEADLINE.aft
 export const ACCENT = 'border-b-4 border-primary pb-[0.03em] text-primary';
 
 export function HeadlineFrame({ children }: { children: ReactNode }) {
-  return <h1 className="max-w-[17ch] font-heading text-display text-foreground">{children}</h1>;
+  return <h1 className="max-w-[15ch] font-heading text-display text-foreground">{children}</h1>;
 }
 
 export function StaticHeadline() {

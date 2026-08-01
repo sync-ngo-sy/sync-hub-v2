@@ -47,6 +47,27 @@ describe('the candidate landing', () => {
     ).toHaveAttribute('href', env.recruiterPortalUrl);
   });
 
+  it('holds the site links and sign-up behind the menu button a phone header shows', async () => {
+    server.use(...listsJobs(PUBLIC_JOBS));
+
+    const { user } = await renderApp('/');
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    const menu = await screen.findByRole('dialog');
+    expect(within(menu).getByRole('link', { name: 'Browse jobs' })).toHaveAttribute(
+      'href',
+      '/jobs',
+    );
+    expect(within(menu).getByRole('link', { name: 'For employers' })).toHaveAttribute(
+      'href',
+      env.recruiterPortalUrl,
+    );
+    expect(within(menu).getByRole('link', { name: 'Create account' })).toHaveAttribute(
+      'href',
+      '/signup',
+    );
+  });
+
   it('shows the newest published jobs, each linking to its own page', async () => {
     server.use(...listsJobs(PUBLIC_JOBS));
 

@@ -18,7 +18,6 @@ export function Eyebrow({ className, children }: { className?: string; children:
   );
 }
 
-/** A marketing CTA has to invite; the app chrome's dense buttons read as controls. */
 export const HERO_BUTTON = 'h-11 px-5.5 text-[0.9375rem]';
 
 export const NAV_BUTTON = 'h-10 px-4 text-dense';
