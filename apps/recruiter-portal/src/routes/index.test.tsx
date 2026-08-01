@@ -1,0 +1,114 @@
+import { screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { CONTACT_SUBJECT } from '@/features/landing/contact';
+import { HEADLINE_TEXT } from '@/features/landing/headline';
+import { env } from '@/lib/env';
+import { renderApp } from '@/testing/render-app';
+
+const whatsApp = `https://wa.me/963944123456?text=${encodeURIComponent(CONTACT_SUBJECT)}`;
+const email = `mailto:${env.contact.email}?subject=${encodeURIComponent(CONTACT_SUBJECT)}`;
+
+function hrefsOf(links: HTMLElement[]): (string | null)[] {
+  return links.map((link) => link.getAttribute('href'));
+}
+
+describe('the recruiter landing', () => {
+  it('explains Sync to a company and sends both CTAs to sign-up and sign-in', async () => {
+    await renderApp('/');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT }),
+    ).toBeInTheDocument();
+
+    const page = screen.getByRole('main');
+    expect(hrefsOf(within(page).getAllByRole('link', { name: /Create your workspace/ }))).toEqual([
+      '/signup',
+      '/signup',
+    ]);
+    expect(hrefsOf(within(page).getAllByRole('link', { name: 'Sign in' }))).toEqual([
+      '/login',
+      '/login',
+    ]);
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByRole('link', { name: 'Create workspace' })).toHaveAttribute(
+      'href',
+      '/signup',
+    );
+    expect(within(header).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+  });
+
+  it('names what a workspace does for an employer, and how hiring on it goes', async () => {
+    await renderApp('/');
+
+    const capabilities = await screen.findByRole('region', {
+      name: 'A hiring workspace, not another inbox.',
+    });
+    expect(within(capabilities).getAllByRole('heading', { level: 3 })).toHaveLength(4);
+
+    const steps = screen.getByRole('region', { name: 'Three steps to your first hire.' });
+    expect(
+      within(steps)
+        .getAllByRole('listitem')
+        .map((step) => within(step).getByRole('heading', { level: 3 }).textContent),
+    ).toEqual(['Create your workspace', 'Publish a job with its criteria', 'Work the pipeline']);
+  });
+
+  it('reaches the Sync team on the one WhatsApp number and address it is configured with', async () => {
+    await renderApp('/');
+
+    const band = await screen.findByRole('region', { name: 'Start hiring on Sync.' });
+
+    const whatsAppLink = within(band).getByRole('link', { name: /^WhatsApp/ });
+    expect(whatsAppLink).toHaveAttribute('href', whatsApp);
+    expect(whatsAppLink).toHaveAccessibleName(`WhatsApp ${env.contact.whatsapp}`);
+    expect(whatsAppLink).toHaveAttribute('target', '_blank');
+
+    const emailLink = within(band).getByRole('link', { name: /^Email/ });
+    expect(emailLink).toHaveAttribute('href', email);
+    expect(emailLink).toHaveAccessibleName(`Email ${env.contact.email}`);
+  });
+
+  it('repeats the workspace and contact links in the footer', async () => {
+    await renderApp('/');
+
+    const footer = await screen.findByRole('contentinfo');
+
+    expect(within(footer).getByRole('link', { name: 'Create your workspace' })).toHaveAttribute(
+      'href',
+      '/signup',
+    );
+    expect(within(footer).getByRole('link', { name: /^WhatsApp/ })).toHaveAttribute(
+      'href',
+      whatsApp,
+    );
+    expect(within(footer).getByRole('link', { name: /^Email/ })).toHaveAttribute('href', email);
+  });
+
+  it('holds the page sections and sign-up behind the menu button a phone header shows', async () => {
+    const { user } = await renderApp('/');
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    const menu = await screen.findByRole('dialog');
+    expect(within(menu).getByRole('link', { name: 'What you get' })).toHaveAttribute(
+      'href',
+      '#what-you-get',
+    );
+    expect(within(menu).getByRole('link', { name: 'How it works' })).toHaveAttribute(
+      'href',
+      '#how-it-works',
+    );
+    expect(within(menu).getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '#contact');
+    expect(within(menu).getByRole('link', { name: 'Create workspace' })).toHaveAttribute(
+      'href',
+      '/signup',
+    );
+  });
+
+  it('titles itself for a search result rather than for the app chrome', async () => {
+    await renderApp('/');
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(document.title).toBe(`Sync Recruiter — ${HEADLINE_TEXT}`);
+  });
+});

@@ -112,6 +112,11 @@ pnpm install
 pnpm dev
 ```
 
+Neither portal has a required variable. The recruiter landing offers the Sync team's WhatsApp
+number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to see those links, copy
+`apps/recruiter-portal/.env.example` to `.env.local`. Left unset, the landing just offers no
+contact — nothing else changes.
+
 `turbo run dev` starts the `dev` script of every workspace that has one: the candidate portal on
 `127.0.0.1:5173`, the recruiter portal on `127.0.0.1:5174`, and — through the shim in
 `services/api/package.json` — `uvicorn` on `8000`. So this covers 2a as well; the worker is the one

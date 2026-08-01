@@ -30,7 +30,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     // Point the real client at the origin `@sync/api-client/testing` binds its handlers to.
-    env: { VITE_API_BASE_URL: 'http://sync.test' },
+    env: {
+      VITE_API_BASE_URL: 'http://sync.test',
+      VITE_CONTACT_WHATSAPP: '+963944123456',
+      VITE_CONTACT_EMAIL: 'hello@sync.test',
+    },
     setupFiles: ['./src/testing/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,

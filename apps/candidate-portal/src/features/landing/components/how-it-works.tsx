@@ -1,4 +1,5 @@
-import { Eyebrow, Wrap } from './editorial';
+import { Eyebrow } from '@sync/ui/components/landing';
+import { Wrap } from './editorial';
 
 const STEPS = [
   'Create your profile.',
