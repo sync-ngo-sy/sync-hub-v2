@@ -15,6 +15,7 @@
       "!**/*.gen.ts",
       "!**/routeTree.gen.ts",
       "!**/*.css",
+      "!docs",
       "!packages/ui/src/components/ui"
     ]
   },
