@@ -80,7 +80,7 @@
   --font-weight-medium: 560;
   --font-weight-semibold: 640;
 
-  --text-display: clamp(3.5rem, 2.3rem + 5vw, 6rem);
+  --text-display: clamp(3.75rem, 2.5rem + 5.2vw, 6.5rem);
   --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.02em;
   --text-display--font-weight: 640;
@@ -143,9 +143,7 @@
   --card-foreground: #1C1917;
   --popover: #FFFFFF;
   --popover-foreground: #1C1917;
-  /* --primary as sub-18px text on white is ~3.4:1: reserve it for buttons, icons and
-     large text, and use --accent-foreground for small teal text. */
-  --primary: #1D867E;
+  --primary: #1B7F77;
   --primary-foreground: #FFFFFF;
   --secondary: #F5F5F4;
   --secondary-foreground: #44403C;
@@ -193,7 +191,7 @@
   --card-foreground: #F5F5F4;
   --popover: #1C1A19;
   --popover-foreground: #F5F5F4;
-  --primary: #23968D;
+  --primary: #0E8177;
   --primary-foreground: #FFFFFF;
   --secondary: #211E1C;
   --secondary-foreground: #D6D3D1;
