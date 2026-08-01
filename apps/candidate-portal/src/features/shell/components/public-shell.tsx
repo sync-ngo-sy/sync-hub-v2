@@ -10,8 +10,11 @@ export function PublicShell({ children }: { children: ReactNode }) {
       <PublicHeader>
         {/* buttonVariants on a real Link, not `Button render=`: Base UI's button either warns
             about the non-native element or stamps role="button" over the link. */}
-        <Link to="/login" className={buttonVariants({ size: 'sm' })}>
+        <Link to="/login" className={buttonVariants({ size: 'sm', variant: 'ghost' })}>
           Sign in
+        </Link>
+        <Link to="/signup" className={buttonVariants({ size: 'sm' })}>
+          Create account
         </Link>
       </PublicHeader>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:max-w-5xl md:px-6 md:py-10">

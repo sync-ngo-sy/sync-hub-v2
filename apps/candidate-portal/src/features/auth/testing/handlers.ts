@@ -34,3 +34,71 @@ export function faultsOnSignIn(problem: components['schemas']['ProblemDetail']) 
 export function logsOut() {
   return [http.post('/v1/auth/logout', ({ response }) => response(204).empty())];
 }
+
+/** `onRequest` is how a test proves local validation never got as far as the API. */
+export function signsUp(profile: Profile, onRequest?: () => void) {
+  return [
+    http.post('/v1/auth/signup', ({ response }) => {
+      onRequest?.();
+      return response(201).json(profile);
+    }),
+  ];
+}
+
+export function refusesEmail(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/signup', ({ response }) => response(409).json(problem))];
+}
+
+export function refusesPassword(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/signup', ({ response }) => response(400).json(problem))];
+}
+
+export function refusesSignUpShape(problem: components['schemas']['ValidationProblemDetail']) {
+  return [http.post('/v1/auth/signup', ({ response }) => response(422).json(problem))];
+}
+
+export function faultsOnSignUp(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/signup', ({ response }) => response(500).json(problem))];
+}
+
+export function confirmsEmail(profile: Profile) {
+  return [http.post('/v1/auth/confirm-email', ({ response }) => response(200).json(profile))];
+}
+
+export function refusesConfirmation(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/confirm-email', ({ response }) => response(400).json(problem))];
+}
+
+export function faultsOnConfirmation(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/confirm-email', ({ response }) => response(500).json(problem))];
+}
+
+export function refusesConfirmationShape(
+  problem: components['schemas']['ValidationProblemDetail'],
+) {
+  return [http.post('/v1/auth/confirm-email', ({ response }) => response(422).json(problem))];
+}
+
+export function sendsResetEmail() {
+  return [http.post('/v1/auth/password-reset', ({ response }) => response(202).empty())];
+}
+
+export function faultsOnResetRequest(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/password-reset', ({ response }) => response(500).json(problem))];
+}
+
+export function resetsPassword() {
+  return [http.post('/v1/auth/password-reset/confirm', ({ response }) => response(204).empty())];
+}
+
+export function refusesReset(problem: components['schemas']['ProblemDetail']) {
+  return [
+    http.post('/v1/auth/password-reset/confirm', ({ response }) => response(400).json(problem)),
+  ];
+}
+
+export function faultsOnReset(problem: components['schemas']['ProblemDetail']) {
+  return [
+    http.post('/v1/auth/password-reset/confirm', ({ response }) => response(500).json(problem)),
+  ];
+}

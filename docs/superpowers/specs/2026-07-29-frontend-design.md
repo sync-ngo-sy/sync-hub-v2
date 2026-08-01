@@ -118,8 +118,11 @@ same-site with the API.
 Auth state is the `getCurrentProfile` query, nothing else. Protected routes await it
 in `beforeLoad`; unauthenticated → `/login?returnTo=…`, honored after login.
 Public-only routes bounce authed users home. Sign-up → "check your email" screen;
-`confirmEmail` / `acceptInvite` / password-reset routes consume emailed tokens and
-land signed in. Log out revokes all sessions, clears the query cache, returns to the
+`confirmEmail` / `acceptInvite` / password-reset routes consume emailed tokens.
+`confirmEmail` and `acceptInvite` land signed in; the password-reset confirm leg cannot
+and does not — corrected during #53, against the API: it answers 204 with no cookies and
+`AuthService.reset_password` revokes every session, so that leg finishes at sign-in with
+the new password. Log out revokes all sessions, clears the query cache, returns to the
 landing page.
 
 ## 7. UX conventions (binding)

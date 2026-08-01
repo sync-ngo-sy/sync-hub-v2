@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { email } from './fields';
 
 export const logInSchema = z.object({
-  email: z.string().min(1, 'Enter your email.').pipe(z.email('Enter a valid email address.')),
+  email,
   password: z.string().min(1, 'Enter your password.'),
 });
 
