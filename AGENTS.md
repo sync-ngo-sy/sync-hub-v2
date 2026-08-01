@@ -16,7 +16,7 @@ Default five-role vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`
 
 Multi-context — root `CONTEXT-MAP.md` pointing to a `CONTEXT.md` per workspace package. See `docs/agents/domain.md`.
 
-### Reach for an established dependency — and only an established one
+### Reach for an established dependency
 
 If a well-known library already does it, add it.
 
@@ -24,14 +24,12 @@ If the only library that does it is somebody's weekend project, do not add it.
 
 You are allowed to add dependencies.
 
-### Don't over-comment
+### Don't comment
 
-Only reach for a comment when it's impossible to infer or understand without code.
+Comments inside the frontend should be scarce.
 
-Comments inside the frontend should be very few, almost zero.
+refrain from editing the readme.md file unless instructed to.
 
-Please refrain from editing the readme.md file unless instructed to do so.
+### PR
 
-### Commiting
-
-Don't include the `co-authored-by` line at the end of commits.
+When you open a PR, talk in plain English and include the AI model name and the effort selected in a new line at the end.
