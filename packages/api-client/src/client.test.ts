@@ -50,12 +50,12 @@ describe('the assembled client', () => {
 });
 
 describe('an unusable API base', () => {
-  it.each(['https://api.sync.test/v1', 'not-a-url'])(
-    'is refused at construction rather than at the first request: %j',
-    (baseUrl) => {
-      expect(() => createApiClient({ baseUrl })).toThrow(/api-client/);
-    },
-  );
+  it.each([
+    'https://api.sync.test/v1',
+    'not-a-url',
+  ])('is refused at construction rather than at the first request: %j', (baseUrl) => {
+    expect(() => createApiClient({ baseUrl })).toThrow(/api-client/);
+  });
 });
 
 describe('an expired access token', () => {
