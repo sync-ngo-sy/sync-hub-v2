@@ -143,5 +143,6 @@ describe('signing up', () => {
     await user.click(screen.getByRole('link', { name: 'Sign in' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeVisible();
   });
 });
