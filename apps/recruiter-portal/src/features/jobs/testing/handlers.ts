@@ -6,6 +6,8 @@ type JobView = components['schemas']['JobView'];
 type NewJob = components['schemas']['NewJob'];
 type ValidationProblem = components['schemas']['ValidationProblemDetail'];
 type JobChanges = components['schemas']['JobChanges'];
+type JobCriteria = components['schemas']['JobCriteria'];
+type JobCriteriaView = components['schemas']['JobCriteriaView'];
 type Problem = components['schemas']['ProblemDetail'];
 
 export function listsJobs(items: JobSummary[]) {
@@ -72,6 +74,18 @@ export function changesJob(job: JobView, onChange?: (body: JobChanges) => void) 
     http.patch('/v1/tenants/me/jobs/{job_id}', async ({ request, response }) => {
       onChange?.((await request.json()) as JobChanges);
       return response(200).json(job);
+    }),
+  ];
+}
+
+export function replacesJobCriteria(
+  criteria: JobCriteriaView,
+  onReplace?: (body: JobCriteria) => void,
+) {
+  return [
+    http.put('/v1/tenants/me/jobs/{job_id}/criteria', async ({ request, response }) => {
+      onReplace?.((await request.json()) as JobCriteria);
+      return response(200).json(criteria);
     }),
   ];
 }
