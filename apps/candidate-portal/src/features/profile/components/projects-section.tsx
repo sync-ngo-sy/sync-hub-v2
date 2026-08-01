@@ -1,6 +1,7 @@
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
+import { FolderGit2 } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
 import { BLANK_PROJECT, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
@@ -15,8 +16,9 @@ export function ProjectsSection({ control }: { control: Control<ProfileFormValue
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Project ${index + 1}`}
+        icon={FolderGit2}
         addLabel="Add a project"
-        empty="No projects listed yet."
+        empty="No projects listed yet — add something you built or ran."
         onAdd={() => append(BLANK_PROJECT)}
         onRemove={remove}
       >

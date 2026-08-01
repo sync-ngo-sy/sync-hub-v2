@@ -1,6 +1,7 @@
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
+import { GraduationCap } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
 import { BLANK_EDUCATION, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
@@ -14,8 +15,9 @@ export function EducationsSection({ control }: { control: Control<ProfileFormVal
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Qualification ${index + 1}`}
+        icon={GraduationCap}
         addLabel="Add a qualification"
-        empty="No qualifications listed yet."
+        empty="No qualifications listed yet — add a degree, diploma or course."
         onAdd={() => append(BLANK_EDUCATION)}
         onRemove={remove}
       >

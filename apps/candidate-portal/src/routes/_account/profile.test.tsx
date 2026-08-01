@@ -85,6 +85,16 @@ describe('the profile editor', () => {
     expect(screen.getByText('Unsaved changes.')).toBeVisible();
   });
 
+  it('answers a field as soon as it is left, without waiting for Save', async () => {
+    const { user } = await openProfile();
+
+    await user.clear(entry('Job 1').getByLabelText('Start year'));
+    await user.type(entry('Job 1').getByLabelText('Start year'), '1899');
+    await user.tab();
+
+    expect(await screen.findByText('Enter a year between 1900 and 2100.')).toBeVisible();
+  });
+
   it('says what is wrong without asking the API', async () => {
     const unexpected = vi.fn();
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
@@ -140,6 +150,12 @@ describe('the profile editor', () => {
 
     const { user } = await renderApp('/profile');
     await user.click(screen.getByRole('button', { name: 'Remove Project 1' }));
+
+    expect(
+      screen.getByText('No projects listed yet — add something you built or ran.'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add a project' })).toBeVisible();
+
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();

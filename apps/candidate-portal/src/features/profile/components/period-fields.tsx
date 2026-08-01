@@ -9,8 +9,7 @@ interface PeriodFieldsProps {
   index: number;
 }
 
-/** Year and month apart, because that is how the API stores a period and how a CV states one:
- * a month nobody knows stays empty instead of being guessed. */
+/** Year and month apart, as the API stores them: a month nobody knows stays empty. */
 export function PeriodFields({ control, section, index }: PeriodFieldsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">

@@ -13,15 +13,20 @@ const MAX_LINK = 2000;
 const EARLIEST_YEAR = 1900;
 const LATEST_YEAR = 2100;
 const MAX_YEARS_EXPERIENCE = 999.9;
-const LANGUAGE_CODE_MESSAGE = 'A language code is 2 to 8 characters.';
+const MIN_LANGUAGE_CODE = 2;
+const MAX_LANGUAGE_CODE = 8;
 
-export const PROFICIENCIES: readonly Proficiency[] = [
-  'beginner',
-  'intermediate',
-  'advanced',
-  'fluent',
-  'native',
-];
+/** Every proficiency the API has — the type makes sure of that — in the order the editor
+ * offers them, and what to call each on screen. */
+export const PROFICIENCY_LABELS: Record<Proficiency, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+  fluent: 'Fluent',
+  native: 'Native',
+};
+
+const PROFICIENCIES = Object.keys(PROFICIENCY_LABELS) as [Proficiency, ...Proficiency[]];
 
 const line = (missing: string) =>
   z.string().trim().min(1, missing).max(MAX_LINE, `Use ${MAX_LINE} characters or fewer.`);
@@ -29,30 +34,21 @@ const line = (missing: string) =>
 /** Blank means "not set", never "set to nothing" — the API's `_blank_as_unset`. */
 const blankAsUnset = (raw: string) => (raw.trim() === '' ? null : raw.trim());
 
-const optionalLine = z
-  .string()
-  .trim()
-  .max(MAX_LINE, `Use ${MAX_LINE} characters or fewer.`)
-  .transform(blankAsUnset);
-const optionalParagraph = z
-  .string()
-  .trim()
-  .max(MAX_PARAGRAPH, `Use ${MAX_PARAGRAPH} characters or fewer.`)
-  .transform(blankAsUnset);
-const optionalLink = z
-  .string()
-  .trim()
-  .max(MAX_LINK, `Use ${MAX_LINK} characters or fewer.`)
-  .transform(blankAsUnset);
+const optionalText = (limit: number) =>
+  z.string().trim().max(limit, `Use ${limit} characters or fewer.`).transform(blankAsUnset);
 
-const wholeNumberIn = (raw: string, low: number, high: number) =>
-  /^\d+$/.test(raw) && Number(raw) >= low && Number(raw) <= high;
+const optionalLine = optionalText(MAX_LINE);
+const optionalParagraph = optionalText(MAX_PARAGRAPH);
+const optionalLink = optionalText(MAX_LINK);
 
 const optionalNumber = (low: number, high: number, message: string) =>
   z
     .string()
     .trim()
-    .refine((raw) => raw === '' || wholeNumberIn(raw, low, high), message)
+    .refine(
+      (raw) => raw === '' || (/^\d+$/.test(raw) && Number(raw) >= low && Number(raw) <= high),
+      message,
+    )
     .transform((raw) => (raw === '' ? null : Number(raw)));
 
 const optionalYear = optionalNumber(
@@ -62,24 +58,30 @@ const optionalYear = optionalNumber(
 );
 const optionalMonth = optionalNumber(1, 12, 'Enter a month between 1 and 12.');
 
+const LANGUAGE_CODE_MESSAGE = `A language code is ${MIN_LANGUAGE_CODE} to ${MAX_LANGUAGE_CODE} characters.`;
+const isLanguageCode = (raw: string) =>
+  raw.length >= MIN_LANGUAGE_CODE && raw.length <= MAX_LANGUAGE_CODE;
+
 const languageCode = z
   .string()
   .trim()
   .min(1, 'Enter a language code.')
-  .min(2, LANGUAGE_CODE_MESSAGE)
-  .max(8, LANGUAGE_CODE_MESSAGE);
+  .refine(isLanguageCode, LANGUAGE_CODE_MESSAGE);
 
 const optionalLanguageCode = z
   .string()
   .trim()
-  .refine((raw) => raw === '' || (raw.length >= 2 && raw.length <= 8), LANGUAGE_CODE_MESSAGE)
+  .refine((raw) => raw === '' || isLanguageCode(raw), LANGUAGE_CODE_MESSAGE)
   .transform(blankAsUnset);
 
 const yearsOfExperience = z
   .string()
   .trim()
   .min(1, 'Enter years of experience.')
-  .refine((raw) => /^\d+(\.\d)?$/.test(raw), 'Enter years as a number, like 3 or 3.5.')
+  .refine((raw) => /^\d*\.?\d+$/.test(raw), 'Enter years as a number.')
+  // `candidate_skills.years_experience` is `numeric(4,1)`, which would round a second decimal
+  // place away without saying so.
+  .refine((raw) => /^\d*(\.\d)?$/.test(raw), 'Years go to one decimal place, like 3 or 3.5.')
   .refine(
     (raw) => Number(raw) <= MAX_YEARS_EXPERIENCE,
     `Enter ${MAX_YEARS_EXPERIENCE} years or fewer.`,
@@ -100,12 +102,21 @@ interface Period {
   end_month: number | null;
 }
 
+/** Where a complaint about an end date belongs: on whichever half of it was filled in. */
+const endOf = (entry: Period) => (entry.end_year !== null ? 'end_year' : 'end_month');
+
 /** The `*_ordered` CHECK, restated: comparable only once both years are known. */
-function endsBeforeItStarts(entry: Period): boolean {
-  if (entry.start_year === null || entry.end_year === null) return false;
+function refuseAnEndBeforeItsStart(entry: Period, ctx: z.RefinementCtx): void {
+  if (entry.start_year === null || entry.end_year === null) return;
   const start = entry.start_year * 100 + (entry.start_month ?? 1);
   const end = entry.end_year * 100 + (entry.end_month ?? 12);
-  return end < start;
+  if (end < start) {
+    ctx.addIssue({
+      code: 'custom',
+      path: [endOf(entry)],
+      message: 'The end cannot come before the start.',
+    });
+  }
 }
 
 const experience = z
@@ -117,21 +128,16 @@ const experience = z
     description: optionalParagraph,
   })
   .superRefine((entry, ctx) => {
+    // The `cexp_current_has_no_end` CHECK, restated.
     if (entry.is_current && (entry.end_year !== null || entry.end_month !== null)) {
       ctx.addIssue({
         code: 'custom',
-        path: ['end_year'],
+        path: [endOf(entry)],
         message: 'A current job has no end date.',
       });
       return;
     }
-    if (endsBeforeItStarts(entry)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['end_year'],
-        message: 'The end cannot come before the start.',
-      });
-    }
+    refuseAnEndBeforeItsStart(entry, ctx);
   });
 
 const education = z.object({
@@ -149,7 +155,7 @@ const skill = z.object({
 
 const language = z.object({
   code: languageCode,
-  proficiency: z.enum(['beginner', 'intermediate', 'advanced', 'fluent', 'native']),
+  proficiency: z.enum(PROFICIENCIES),
 });
 
 const project = z
@@ -160,15 +166,7 @@ const project = z
     repository_url: optionalLink,
     ...period,
   })
-  .superRefine((entry, ctx) => {
-    if (endsBeforeItStarts(entry)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['end_year'],
-        message: 'The end cannot come before the start.',
-      });
-    }
-  });
+  .superRefine(refuseAnEndBeforeItsStart);
 
 const unmappedSkill = z.object({ value: line('Enter the skill.') });
 
@@ -178,14 +176,13 @@ const section = <Entry extends z.ZodType>(entry: Entry, plural: string) =>
 /** One entry per skill and per language, as `_refuse_repeats` does it — flagged on the repeat,
  * so the entry the candidate meant to keep is left alone. */
 function refuseRepeats(
-  keys: (string | null)[],
+  keys: string[],
   ctx: z.RefinementCtx,
   path: (index: number) => (string | number)[],
   message: string,
 ): void {
   const seen = new Set<string>();
   keys.forEach((key, index) => {
-    if (key === null) return;
     if (seen.has(key)) ctx.addIssue({ code: 'custom', path: path(index), message });
     else seen.add(key);
   });
@@ -284,40 +281,40 @@ export const BLANK_PROJECT: Entry<'projects'> = {
 
 export const BLANK_UNMAPPED_SKILL: Entry<'unmapped_skills'> = { value: '' };
 
-const text = (value: string | null | undefined) => value ?? '';
-const digits = (value: number | null | undefined) =>
+/** An absent value is an empty field, whatever it was on the wire. */
+const orEmpty = (value: string | number | null | undefined) =>
   value === null || value === undefined ? '' : String(value);
 
 /** The profile the API answered with, as the fully-controlled value tree the form edits. */
 export function toFormValues(profile: CandidateProfile): ProfileFormValues {
   return {
     full_name: profile.full_name,
-    phone: text(profile.phone),
-    headline: text(profile.headline),
-    summary: text(profile.summary),
-    location: text(profile.location),
-    preferred_language_code: text(profile.preferred_language_code),
+    phone: orEmpty(profile.phone),
+    headline: orEmpty(profile.headline),
+    summary: orEmpty(profile.summary),
+    location: orEmpty(profile.location),
+    preferred_language_code: orEmpty(profile.preferred_language_code),
     is_searchable: profile.is_searchable,
     experiences: (profile.experiences ?? []).map((entry) => ({
       job_title: entry.job_title,
-      company_name: text(entry.company_name),
-      start_year: digits(entry.start_year),
-      start_month: digits(entry.start_month),
-      end_year: digits(entry.end_year),
-      end_month: digits(entry.end_month),
+      company_name: orEmpty(entry.company_name),
+      start_year: orEmpty(entry.start_year),
+      start_month: orEmpty(entry.start_month),
+      end_year: orEmpty(entry.end_year),
+      end_month: orEmpty(entry.end_month),
       is_current: entry.is_current,
-      description: text(entry.description),
+      description: orEmpty(entry.description),
     })),
     educations: (profile.educations ?? []).map((entry) => ({
       institution: entry.institution,
-      degree: text(entry.degree),
-      field_of_study: text(entry.field_of_study),
-      graduation_year: digits(entry.graduation_year),
-      description: text(entry.description),
+      degree: orEmpty(entry.degree),
+      field_of_study: orEmpty(entry.field_of_study),
+      graduation_year: orEmpty(entry.graduation_year),
+      description: orEmpty(entry.description),
     })),
     skills: (profile.skills ?? []).map((entry) => ({
       name: entry.name,
-      years_experience: String(entry.years_experience),
+      years_experience: orEmpty(entry.years_experience),
     })),
     languages: (profile.languages ?? []).map((entry) => ({
       code: entry.code,
@@ -325,13 +322,13 @@ export function toFormValues(profile: CandidateProfile): ProfileFormValues {
     })),
     projects: (profile.projects ?? []).map((entry) => ({
       name: entry.name,
-      description: text(entry.description),
-      project_url: text(entry.project_url),
-      repository_url: text(entry.repository_url),
-      start_year: digits(entry.start_year),
-      start_month: digits(entry.start_month),
-      end_year: digits(entry.end_year),
-      end_month: digits(entry.end_month),
+      description: orEmpty(entry.description),
+      project_url: orEmpty(entry.project_url),
+      repository_url: orEmpty(entry.repository_url),
+      start_year: orEmpty(entry.start_year),
+      start_month: orEmpty(entry.start_month),
+      end_year: orEmpty(entry.end_year),
+      end_month: orEmpty(entry.end_month),
     })),
     unmapped_skills: (profile.unmapped_skills ?? []).map((value) => ({ value })),
   };

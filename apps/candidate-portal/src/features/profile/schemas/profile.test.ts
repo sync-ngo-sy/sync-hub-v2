@@ -168,31 +168,38 @@ describe('the profile schema', () => {
     ).toBe(true);
   });
 
-  it('refuses an end date on a job that is still going', () => {
+  it('refuses an end date on a job that is still going, on the half that was filled', () => {
     expect(
       errorAt('experiences.0.end_year', withExperience({ is_current: true, end_year: '2024' })),
     ).toBe('A current job has no end date.');
+    expect(
+      errorAt('experiences.0.end_month', withExperience({ is_current: true, end_month: '6' })),
+    ).toBe('A current job has no end date.');
   });
 
-  it('asks how long a skill has been practised, and to one decimal place', () => {
-    expect(
+  it('asks how long a skill has been practised', () => {
+    const years = (years_experience: string) =>
       errorAt('skills.0.years_experience', {
         ...FILLED,
-        skills: [{ name: 'SQL', years_experience: '' }],
-      }),
-    ).toBe('Enter years of experience.');
-    expect(
-      errorAt('skills.0.years_experience', {
-        ...FILLED,
-        skills: [{ name: 'SQL', years_experience: '3.55' }],
-      }),
-    ).toBe('Enter years as a number, like 3 or 3.5.');
-    expect(
-      errorAt('skills.0.years_experience', {
-        ...FILLED,
-        skills: [{ name: 'SQL', years_experience: '1000' }],
-      }),
-    ).toBe('Enter 999.9 years or fewer.');
+        skills: [{ name: 'SQL', years_experience }],
+      });
+
+    expect(years('')).toBe('Enter years of experience.');
+    expect(years('a while')).toBe('Enter years as a number.');
+    expect(years('1000')).toBe('Enter 999.9 years or fewer.');
+  });
+
+  it('holds years to the one decimal place the column stores, and takes a bare half', () => {
+    const skills = (years_experience: string) => ({
+      ...FILLED,
+      skills: [{ name: 'SQL', years_experience }],
+    });
+
+    expect(errorAt('skills.0.years_experience', skills('3.55'))).toBe(
+      'Years go to one decimal place, like 3 or 3.5.',
+    );
+    expect(parsed(skills('.5')).skills).toEqual([{ name: 'SQL', years_experience: 0.5 }]);
+    expect(parsed(skills('999.9')).skills).toEqual([{ name: 'SQL', years_experience: 999.9 }]);
   });
 
   it('refuses a second entry for the same skill, on the repeat', () => {

@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import { describe, expect, it } from 'vitest';
+import { SEARCHABLE_NEEDS_CV } from '@/testing/fixtures';
 import { profileRejection } from './rejection';
 
 type ValidationProblem = components['schemas']['ValidationProblemDetail'];
@@ -13,13 +14,6 @@ function refused(errors: ValidationProblem['errors'], type = 'urn:sync:problem:v
     errors,
   } satisfies ValidationProblem;
 }
-
-const NEEDS_A_CV: components['schemas']['ProblemDetail'] = {
-  type: 'urn:sync:problem:searchable-needs-cv',
-  title: 'Conflict',
-  status: 409,
-  detail: 'Upload a CV and wait for it to be processed before making your profile searchable.',
-};
 
 describe('a rejected profile', () => {
   it('puts an identity field back where the candidate typed it', () => {
@@ -112,9 +106,11 @@ describe('a rejected profile', () => {
   });
 
   it('blames the searchable switch when Global search needs a CV first', () => {
-    const rejection = profileRejection(NEEDS_A_CV);
+    const rejection = profileRejection(SEARCHABLE_NEEDS_CV);
 
-    expect(rejection?.fields).toEqual([{ name: 'is_searchable', message: NEEDS_A_CV.detail }]);
+    expect(rejection?.fields).toEqual([
+      { name: 'is_searchable', message: SEARCHABLE_NEEDS_CV.detail },
+    ]);
     expect(rejection?.root).toBeNull();
   });
 

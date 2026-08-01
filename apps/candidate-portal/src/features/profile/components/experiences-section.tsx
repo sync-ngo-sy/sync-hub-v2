@@ -2,6 +2,7 @@ import { FormField } from '@sync/ui/components/form-field';
 import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
+import { Briefcase } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
 import { BLANK_EXPERIENCE, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
@@ -16,8 +17,9 @@ export function ExperiencesSection({ control }: { control: Control<ProfileFormVa
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Job ${index + 1}`}
+        icon={Briefcase}
         addLabel="Add a job"
-        empty="No jobs listed yet."
+        empty="No jobs listed yet — add the roles you want recruiters to see."
         onAdd={() => append(BLANK_EXPERIENCE)}
         onRemove={remove}
       >

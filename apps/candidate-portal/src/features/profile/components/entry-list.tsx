@@ -1,5 +1,6 @@
+import { EmptyState } from '@sync/ui/components/empty-state';
 import { Button } from '@sync/ui/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { type LucideIcon, Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { MAX_ENTRIES } from '../schemas/profile';
 
@@ -8,6 +9,7 @@ interface EntryListProps {
   ids: string[];
   /** Names one entry — "Job 2" — for its heading and for its Remove button. */
   label: (index: number) => string;
+  icon: LucideIcon;
   addLabel: string;
   empty: string;
   onAdd: () => void;
@@ -18,16 +20,30 @@ interface EntryListProps {
 export function EntryList({
   ids,
   label,
+  icon,
   addLabel,
   empty,
   onAdd,
   onRemove,
   children,
 }: EntryListProps) {
+  const add = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={onAdd}
+      disabled={ids.length >= MAX_ENTRIES}
+    >
+      <Plus data-icon="inline-start" />
+      {addLabel}
+    </Button>
+  );
+
+  if (ids.length === 0) return <EmptyState icon={icon} message={empty} action={add} />;
+
   return (
     <div className="space-y-4">
-      {ids.length === 0 ? <p className="text-dense text-muted-foreground">{empty}</p> : null}
-
       {ids.map((id, index) => (
         <fieldset
           key={id}
@@ -50,17 +66,7 @@ export function EntryList({
           {children(index)}
         </fieldset>
       ))}
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onAdd}
-        disabled={ids.length >= MAX_ENTRIES}
-      >
-        <Plus data-icon="inline-start" />
-        {addLabel}
-      </Button>
+      {add}
     </div>
   );
 }

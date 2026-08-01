@@ -1,4 +1,3 @@
-import type { components } from '@sync/api-client';
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import {
@@ -8,18 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@sync/ui/components/ui/select';
+import { Languages } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
-import { BLANK_LANGUAGE, PROFICIENCIES, type ProfileFormValues } from '../schemas/profile';
+import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-
-const LABELS: Record<components['schemas']['LanguageProficiency'], string> = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-  fluent: 'Fluent',
-  native: 'Native',
-};
 
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
@@ -29,8 +21,9 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Language ${index + 1}`}
+        icon={Languages}
         addLabel="Add a language"
-        empty="No languages listed yet."
+        empty="No languages listed yet — add the ones you speak."
         onAdd={() => append(BLANK_LANGUAGE)}
         onRemove={remove}
       >
@@ -45,14 +38,19 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
               label="Proficiency"
             >
               {({ value, onChange, onBlur, name, id, ...aria }) => (
-                <Select items={LABELS} name={name} value={value} onValueChange={onChange}>
+                <Select
+                  items={PROFICIENCY_LABELS}
+                  name={name}
+                  value={value}
+                  onValueChange={onChange}
+                >
                   <SelectTrigger id={id} onBlur={onBlur} className="w-full" {...aria}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {PROFICIENCIES.map((proficiency) => (
+                    {Object.entries(PROFICIENCY_LABELS).map(([proficiency, label]) => (
                       <SelectItem key={proficiency} value={proficiency}>
-                        {LABELS[proficiency]}
+                        {label}
                       </SelectItem>
                     ))}
                   </SelectContent>

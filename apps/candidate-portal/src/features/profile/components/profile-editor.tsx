@@ -31,6 +31,9 @@ export function ProfileEditor() {
     // `raw` keeps the form's own string values coming back from the resolver; the schema's
     // parsed shape is the request body, and `toProfile` is where it is asked for.
     resolver: zodResolver(profileSchema, undefined, { raw: true }),
+    // A field answers as soon as it has been left, not only when Save is pressed — but never
+    // while it is still being typed into for the first time.
+    mode: 'onTouched',
     defaultValues: toFormValues(profile),
   });
 

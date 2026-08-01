@@ -19,9 +19,20 @@ const IDENTITY_FIELDS = [
   'location',
   'preferred_language_code',
   'is_searchable',
-] as const;
+] as const satisfies readonly (keyof ProfileFormValues)[];
 
-const SECTION_FIELDS: Record<string, readonly string[]> = {
+/** Every section of repeated entries the form renders, `unmapped_skills` aside — it is the one
+ * whose entries are bare strings on the wire. */
+type Section = Exclude<
+  {
+    [Name in keyof ProfileFormValues]-?: ProfileFormValues[Name] extends readonly unknown[]
+      ? Name
+      : never;
+  }[keyof ProfileFormValues],
+  'unmapped_skills'
+>;
+
+const SECTION_FIELDS: Record<Section, readonly string[]> = {
   experiences: [
     'job_title',
     'company_name',
@@ -65,10 +76,13 @@ function fieldFor(location: string): ProfileField | null {
   if (section === 'unmapped_skills' && field === undefined) {
     return `unmapped_skills.${Number(index)}.value`;
   }
-  return field !== undefined && SECTION_FIELDS[section]?.includes(field)
+  if (!isSection(section) || field === undefined) return null;
+  return SECTION_FIELDS[section].includes(field)
     ? (`${section}.${index}.${field}` as ProfileField)
     : null;
 }
+
+const isSection = (name: string): name is Section => name in SECTION_FIELDS;
 
 /**
  * A refused save as the form can show it: at the fields the API named, at the form root, or —

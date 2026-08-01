@@ -1,5 +1,6 @@
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
+import { Sparkles, Wrench } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
 import { BLANK_SKILL, BLANK_UNMAPPED_SKILL, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
@@ -18,8 +19,9 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
         <EntryList
           ids={skills.fields.map((field) => field.id)}
           label={(index) => `Skill ${index + 1}`}
+          icon={Wrench}
           addLabel="Add a skill"
-          empty="No skills listed yet."
+          empty="No skills listed yet — Screening reads these, so start here."
           onAdd={() => skills.append(BLANK_SKILL)}
           onRemove={skills.remove}
         >
@@ -48,8 +50,9 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
         <EntryList
           ids={others.fields.map((field) => field.id)}
           label={(index) => `Other skill ${index + 1}`}
+          icon={Sparkles}
           addLabel="Add another skill"
-          empty="No other skills listed yet."
+          empty="Nothing here yet — add anything the platform has no name for."
           onAdd={() => others.append(BLANK_UNMAPPED_SKILL)}
           onRemove={others.remove}
         >
