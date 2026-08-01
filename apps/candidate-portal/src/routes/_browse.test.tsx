@@ -16,6 +16,7 @@ describe('browsing jobs', () => {
     expect(router.state.location.pathname).toBe('/jobs');
     expect(await screen.findByRole('heading', { name: 'Jobs' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Create account' })).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'Sections' })).not.toBeInTheDocument();
   });
 

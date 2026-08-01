@@ -63,6 +63,37 @@ export const WRONG_PASSWORD: components['schemas']['ProblemDetail'] = {
   detail: 'That email and password do not match an account.',
 };
 
+export const EMAIL_TAKEN: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:email-already-registered',
+  title: 'Conflict',
+  status: 409,
+  detail: 'An account already exists for this email address.',
+};
+
+export const DEAD_LINK: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:invalid-email-token',
+  title: 'Bad Request',
+  status: 400,
+  detail: 'That link is invalid or has expired. Ask for a new one.',
+};
+
+export const WEAK_PASSWORD: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:weak-password',
+  title: 'Bad Request',
+  status: 400,
+  detail: "That password does not meet the identity provider's requirements.",
+};
+
+/** The shape of a rejection that belongs to no field the reader can see. */
+export const MALFORMED_REQUEST: components['schemas']['ValidationProblemDetail'] = {
+  type: 'urn:sync:problem:validation-error',
+  title: 'Unprocessable Entity',
+  status: 422,
+  detail: 'The request did not match the expected shape.',
+  errors: [
+    { location: 'body.email', message: 'value is not a valid email address', type: 'value_error' },
+  ],
+};
 export const TOO_MANY_REQUESTS: components['schemas']['ProblemDetail'] = {
   type: 'urn:sync:problem:rate-limited',
   title: 'Too Many Requests',

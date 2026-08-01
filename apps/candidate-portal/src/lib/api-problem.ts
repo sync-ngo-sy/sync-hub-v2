@@ -22,6 +22,10 @@ export function isClientError(error: unknown): boolean {
   return status !== null && status >= 400 && status < 500;
 }
 
+export function isProblem(error: unknown, type: string): boolean {
+  return problemBody(error)?.type === type;
+}
+
 export function problemMessage(error: unknown, fallback: string): string {
   const body = problemBody(error);
   if (typeof body?.detail === 'string' && body.detail !== '') return body.detail;

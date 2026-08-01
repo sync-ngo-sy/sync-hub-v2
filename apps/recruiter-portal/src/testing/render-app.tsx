@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect } from 'vitest';
 import { createQueryClient } from '@/lib/query-client';
@@ -16,7 +16,10 @@ export async function renderApp(path = '/') {
     </QueryClientProvider>,
   );
 
+  // Two waits, because a route reaches `idle` while its lazily-imported component is still on
+  // the wire — leaving the skeleton on screen for a caller that asked for the page.
   await waitFor(() => expect(router.state.status).toBe('idle'));
+  await waitFor(() => expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull());
 
   return { router, queryClient, user: userEvent.setup() };
 }
