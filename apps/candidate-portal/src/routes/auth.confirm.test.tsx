@@ -5,9 +5,10 @@ import {
   confirmsEmail,
   faultsOnConfirmation,
   refusesConfirmation,
+  refusesConfirmationShape,
   signedOut,
 } from '@/features/auth/testing/handlers';
-import { CANDIDATE, DEAD_LINK, SERVER_FAULT } from '@/testing/fixtures';
+import { CANDIDATE, DEAD_LINK, MALFORMED_REQUEST, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -49,6 +50,17 @@ describe('confirming an email address', () => {
 
     expect(await screen.findByText("This page didn't load")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: "This link didn't work" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('only calls the link dead when the API says the token is', async () => {
+    server.use(...signedOut(), ...refusesConfirmationShape(MALFORMED_REQUEST));
+
+    await renderApp(CONFIRM_LINK);
+
+    expect(await screen.findByText("This page didn't load")).toBeVisible();
     expect(
       screen.queryByRole('heading', { name: "This link didn't work" }),
     ).not.toBeInTheDocument();

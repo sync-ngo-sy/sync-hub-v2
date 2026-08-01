@@ -4,11 +4,20 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   faultsOnSignUp,
   refusesEmail,
+  refusesPassword,
+  refusesSignUpShape,
   signedInAs,
   signedOut,
   signsUp,
 } from '@/features/auth/testing/handlers';
-import { CANDIDATE, EMAIL_TAKEN, RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
+import {
+  CANDIDATE,
+  EMAIL_TAKEN,
+  MALFORMED_REQUEST,
+  RECRUITER,
+  SERVER_FAULT,
+  WEAK_PASSWORD,
+} from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -68,6 +77,30 @@ describe('signing up', () => {
     expect(router.state.location.pathname).toBe('/signup');
   });
 
+  it('puts a password the identity provider refuses beside the password field', async () => {
+    server.use(...signedOut(), ...refusesPassword(WEAK_PASSWORD));
+
+    const { user } = await renderApp('/signup');
+    await signUp(user);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "That password does not meet the identity provider's requirements.",
+    );
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('Email')).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('does not blame a field for a rejection that names none', async () => {
+    server.use(...signedOut(), ...refusesSignUpShape(MALFORMED_REQUEST));
+
+    const { user } = await renderApp('/signup');
+    await signUp(user);
+
+    expect(await screen.findByText('The request did not match the expected shape.')).toBeVisible();
+    expect(screen.getByLabelText('Email')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
+  });
+
   it('sends a server fault to a toast, not to a field', async () => {
     server.use(...signedOut(), ...faultsOnSignUp(SERVER_FAULT));
 
@@ -93,6 +126,14 @@ describe('signing up', () => {
     const { router } = await renderApp('/signup');
 
     expect(router.state.location.pathname).toBe('/wrong-portal');
+  });
+
+  it('bounces a signed-in candidate off check-your-email too', async () => {
+    server.use(...signedInAs(CANDIDATE));
+
+    const { router } = await renderApp('/check-email');
+
+    expect(router.state.location.pathname).toBe('/applications');
   });
 
   it('offers the way back to signing in', async () => {

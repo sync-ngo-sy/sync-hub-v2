@@ -1,10 +1,11 @@
-import { buttonVariants } from '@sync/ui/components/ui/button';
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
 import { AuthScreen } from '@/features/auth/components/auth-screen';
+import { DeadLinkScreen } from '@/features/auth/components/dead-link-screen';
 import { rememberCurrentProfile } from '@/features/auth/current-profile';
+import { DEAD_LINK_PROBLEM } from '@/features/auth/problems';
 import { client } from '@/lib/api';
-import { isClientError } from '@/lib/api-problem';
+import { isProblem } from '@/lib/api-problem';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/auth/confirm')({
@@ -21,24 +22,16 @@ export const Route = createFileRoute('/auth/confirm')({
       rememberCurrentProfile(context.queryClient, data);
       throw redirect({ to: '/applications' });
     }
-    if (!isClientError(error)) throw error;
+    // Only the API saying so makes this a dead link. Anything else — a fault, rate limiting —
+    // is the error boundary's retry, not an invitation to sign in.
+    if (!isProblem(error, DEAD_LINK_PROBLEM)) throw error;
   },
   pendingComponent: () => <AuthScreen title="Confirming your email…" />,
   head: () => ({ meta: [{ title: pageTitle('Confirm your email') }] }),
-  component: DeadLinkPage,
-});
-
-function DeadLinkPage() {
-  return (
-    <AuthScreen
-      title="This link didn't work"
+  component: () => (
+    <DeadLinkScreen
       description="Confirmation links expire, and each one works only once. If you have already confirmed this address, sign in — your account is ready."
-    >
-      <div>
-        <Link to="/login" className={buttonVariants({ variant: 'outline' })}>
-          Go to sign in
-        </Link>
-      </div>
-    </AuthScreen>
-  );
-}
+      action={{ to: '/login', label: 'Go to sign in' }}
+    />
+  ),
+});

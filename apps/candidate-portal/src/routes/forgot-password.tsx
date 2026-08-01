@@ -1,11 +1,13 @@
-import { buttonVariants } from '@sync/ui/components/ui/button';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
+import { CheckEmailScreen, SentTo } from '@/features/auth/components/check-email-screen';
 import { ForgotPasswordForm } from '@/features/auth/components/forgot-password-form';
 import { pageTitle } from '@/lib/page-title';
+import { bounceSignedIn } from './-public-only';
 
 export const Route = createFileRoute('/forgot-password')({
+  beforeLoad: bounceSignedIn,
   head: () => ({ meta: [{ title: pageTitle('Reset your password') }] }),
   component: ForgotPasswordPage,
 });
@@ -15,22 +17,10 @@ function ForgotPasswordPage() {
 
   if (sentTo !== null) {
     return (
-      <AuthScreen
-        title="Check your email"
-        description={
-          <>
-            If an account exists for{' '}
-            <strong className="font-medium text-foreground">{sentTo}</strong>, a link to choose a
-            new password is on its way. It can take a minute to arrive — check your spam folder too.
-          </>
-        }
-      >
-        <div>
-          <Link to="/login" className={buttonVariants({ variant: 'outline' })}>
-            Back to sign in
-          </Link>
-        </div>
-      </AuthScreen>
+      <CheckEmailScreen>
+        If an account exists for <SentTo email={sentTo} />, a link to choose a new password is on
+        its way. It can take a minute to arrive — check your spam folder too.
+      </CheckEmailScreen>
     );
   }
 

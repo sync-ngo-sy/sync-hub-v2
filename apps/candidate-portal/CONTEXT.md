@@ -31,8 +31,10 @@ _Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
 
 **Check-your-email screen**:
 Where a flow that finishes in the inbox stops: after sign-up, and after asking for a
-password reset. It names the address the email went to, and — on the reset leg — never
-reveals whether that address has an account.
+password reset. Both legs render the same screen with their own sentence; sign-up gets a
+route of its own (`/check-email`) because it is a destination, while the reset leg is
+where its form ends. It names the address the email went to, and — on the reset leg —
+never reveals whether that address has an account.
 _Avoid_: Verification page, confirmation page, "we sent you an email" page.
 
 **Confirmation link**:

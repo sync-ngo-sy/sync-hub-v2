@@ -53,6 +53,17 @@ export const WEAK_PASSWORD: components['schemas']['ProblemDetail'] = {
   detail: "That password does not meet the identity provider's requirements.",
 };
 
+/** The shape of a rejection that belongs to no field the reader can see. */
+export const MALFORMED_REQUEST: components['schemas']['ValidationProblemDetail'] = {
+  type: 'urn:sync:problem:validation-error',
+  title: 'Unprocessable Entity',
+  status: 422,
+  detail: 'The request did not match the expected shape.',
+  errors: [
+    { location: 'body.email', message: 'value is not a valid email address', type: 'value_error' },
+  ],
+};
+
 export const SERVER_FAULT: components['schemas']['ProblemDetail'] = {
   type: 'about:blank',
   title: 'Internal Server Error',

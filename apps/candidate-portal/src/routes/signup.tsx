@@ -1,17 +1,11 @@
-import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
 import { SignUpForm } from '@/features/auth/components/sign-up-form';
-import { ensureCurrentProfile, isCandidate } from '@/features/auth/current-profile';
 import { pageTitle } from '@/lib/page-title';
+import { bounceSignedIn } from './-public-only';
 
 export const Route = createFileRoute('/signup')({
-  beforeLoad: async ({ context }) => {
-    const profile = await ensureCurrentProfile(context.queryClient);
-    if (!profile) return;
-    throw isCandidate(profile)
-      ? redirect({ to: '/applications' })
-      : redirect({ to: '/wrong-portal' });
-  },
+  beforeLoad: bounceSignedIn,
   head: () => ({ meta: [{ title: pageTitle('Create your account') }] }),
   component: SignUpPage,
 });

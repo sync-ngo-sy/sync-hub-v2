@@ -4,7 +4,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { isClientError, problemMessage } from '@/lib/api-problem';
+import { problemMessage } from '@/lib/api-problem';
 import { useRequestPasswordReset } from '../hooks/use-request-password-reset';
 import {
   type PasswordResetRequestValues,
@@ -16,7 +16,6 @@ export function ForgotPasswordForm({ onSent }: { onSent: (email: string) => void
   const {
     control,
     handleSubmit,
-    setError,
     formState: { isSubmitting },
   } = useForm<PasswordResetRequestValues>({
     resolver: zodResolver(passwordResetRequestSchema),
@@ -28,12 +27,9 @@ export function ForgotPasswordForm({ onSent }: { onSent: (email: string) => void
       await requestReset.mutateAsync({ body: values });
       onSent(values.email);
     } catch (error) {
-      const message = problemMessage(error, "Couldn't send the email. Try again.");
-      if (isClientError(error)) {
-        setError('email', { message });
-        return;
-      }
-      toast.error(message);
+      // Nothing here is the field's fault: the API accepts any address it can parse, and Zod
+      // has already parsed this one. What is left — rate limiting, a fault — is homeless.
+      toast.error(problemMessage(error, "Couldn't send the email. Try again."));
     }
   });
 

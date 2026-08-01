@@ -4,8 +4,9 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { isClientError, problemMessage, problemStatus } from '@/lib/api-problem';
+import { isProblem, problemMessage } from '@/lib/api-problem';
 import { useSignUp } from '../hooks/use-sign-up';
+import { EMAIL_TAKEN_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type SignUpValues, signUpSchema } from '../schemas/sign-up';
 
 export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void }) {
@@ -26,10 +27,13 @@ export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void
       onSignedUp(values.email);
     } catch (error) {
       const message = problemMessage(error, "Couldn't create your account. Try again.");
-      // The only two rejections this route has: 400 is the identity provider refusing the
-      // password, and 409 is the address already having an account (§7.2).
-      if (isClientError(error)) {
-        setError(problemStatus(error) === 400 ? 'password' : 'email', { message });
+      // Named rejections only. Rate limiting is a 4xx too, and it belongs to nobody's field.
+      if (isProblem(error, EMAIL_TAKEN_PROBLEM)) {
+        setError('email', { message });
+        return;
+      }
+      if (isProblem(error, WEAK_PASSWORD_PROBLEM)) {
+        setError('password', { message });
         return;
       }
       toast.error(message);

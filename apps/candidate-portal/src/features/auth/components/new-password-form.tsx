@@ -4,11 +4,10 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { isClientError, isProblem, problemMessage } from '@/lib/api-problem';
+import { isProblem, problemMessage } from '@/lib/api-problem';
 import { useResetPassword } from '../hooks/use-reset-password';
+import { DEAD_LINK_PROBLEM, PASSWORD_UNCHANGED_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type NewPasswordValues, newPasswordSchema } from '../schemas/new-password';
-
-const DEAD_LINK = 'urn:sync:problem:invalid-email-token';
 
 interface NewPasswordFormProps {
   tokenHash: string;
@@ -35,12 +34,12 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
     } catch (error) {
       // Both arrive as a 400: a link nothing can fix belongs on its own screen, a refused
       // password belongs beside the field the reader can still edit.
-      if (isProblem(error, DEAD_LINK)) {
+      if (isProblem(error, DEAD_LINK_PROBLEM)) {
         onDeadLink();
         return;
       }
       const message = problemMessage(error, "Couldn't set your password. Try again.");
-      if (isClientError(error)) {
+      if (isProblem(error, WEAK_PASSWORD_PROBLEM) || isProblem(error, PASSWORD_UNCHANGED_PROBLEM)) {
         setError('password', { message });
         return;
       }

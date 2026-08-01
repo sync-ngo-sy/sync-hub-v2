@@ -1,7 +1,12 @@
 import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { faultsOnResetRequest, sendsResetEmail, signedOut } from '@/features/auth/testing/handlers';
+import {
+  faultsOnResetRequest,
+  sendsResetEmail,
+  signedInAs,
+  signedOut,
+} from '@/features/auth/testing/handlers';
 import { CANDIDATE, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
@@ -41,6 +46,14 @@ describe('asking for a password-reset link', () => {
 
     expect(await screen.findByText('Something went wrong on our side.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Send reset link' })).toBeVisible();
+  });
+
+  it('bounces a candidate who is already signed in', async () => {
+    server.use(...signedInAs(CANDIDATE));
+
+    const { router } = await renderApp('/forgot-password');
+
+    expect(router.state.location.pathname).toBe('/applications');
   });
 
   it('is reachable from the sign-in page', async () => {

@@ -49,6 +49,14 @@ export function refusesEmail(problem: components['schemas']['ProblemDetail']) {
   return [http.post('/v1/auth/signup', ({ response }) => response(409).json(problem))];
 }
 
+export function refusesPassword(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/signup', ({ response }) => response(400).json(problem))];
+}
+
+export function refusesSignUpShape(problem: components['schemas']['ValidationProblemDetail']) {
+  return [http.post('/v1/auth/signup', ({ response }) => response(422).json(problem))];
+}
+
 export function faultsOnSignUp(problem: components['schemas']['ProblemDetail']) {
   return [http.post('/v1/auth/signup', ({ response }) => response(500).json(problem))];
 }
@@ -63,6 +71,12 @@ export function refusesConfirmation(problem: components['schemas']['ProblemDetai
 
 export function faultsOnConfirmation(problem: components['schemas']['ProblemDetail']) {
   return [http.post('/v1/auth/confirm-email', ({ response }) => response(500).json(problem))];
+}
+
+export function refusesConfirmationShape(
+  problem: components['schemas']['ValidationProblemDetail'],
+) {
+  return [http.post('/v1/auth/confirm-email', ({ response }) => response(422).json(problem))];
 }
 
 export function sendsResetEmail() {

@@ -1,9 +1,9 @@
-import { buttonVariants } from '@sync/ui/components/ui/button';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { AuthScreen } from '@/features/auth/components/auth-screen';
+import { DeadLinkScreen } from '@/features/auth/components/dead-link-screen';
 import { NewPasswordForm } from '@/features/auth/components/new-password-form';
 import { pageTitle } from '@/lib/page-title';
 
@@ -20,16 +20,10 @@ function ResetPasswordPage() {
 
   if (!tokenHash || deadLink) {
     return (
-      <AuthScreen
-        title="This link didn't work"
+      <DeadLinkScreen
         description="Password-reset links expire, and each one works only once. Ask for a new one and we'll email it."
-      >
-        <div>
-          <Link to="/forgot-password" className={buttonVariants({ variant: 'outline' })}>
-            Send a new link
-          </Link>
-        </div>
-      </AuthScreen>
+        action={{ to: '/forgot-password', label: 'Send a new link' }}
+      />
     );
   }
 

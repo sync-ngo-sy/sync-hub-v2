@@ -42,3 +42,4 @@ supabase/.temp/
 # Note: generated types (api-client schema, db-types) are committed on purpose
 # so the repo type-checks without a running backend. Regenerate with `pnpm gen:*`.
 .superpowers/
+.omo/
