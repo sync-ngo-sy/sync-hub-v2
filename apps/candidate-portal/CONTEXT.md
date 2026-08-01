@@ -57,6 +57,24 @@ the wire. Recruiters read them; Screening never does, which is why the editor ke
 section of their own rather than mixed in with Skills.
 _Avoid_: Unmapped skills (the wire's word, not the reader's), custom skills, free-text skills.
 
+**Notifications**:
+Everything the platform has told the signed-in Candidate, newest first: a CV it could not read, an
+Application that moved. Two surfaces over one list — the Bell's dropdown for the newest few, and the
+page at `/notifications` for all of them, a cursor at a time. Candidate-only in v1, because both
+payload types are candidate-facing and a recruiter bell would be permanently empty.
+_Avoid_: Alerts, activity feed, inbox, messages (a Message is a Tenant writing to an applicant).
+
+**Bell**:
+The header's way of saying something moved: the icon, and the count of Unread notifications on it.
+The count is polled every minute and refetched whenever the window comes back, because coming back
+is the moment a stale number gets believed. Its dropdown is a glance, and the way to the page.
+_Avoid_: Notification icon, badge (the badge is the number on the Bell, not the Bell), toast.
+
+**Unread**:
+A notification nobody has opened yet. Opening one is what marks it read — the only affordance there
+is, since the API cannot mark a whole list read atomically. Read ones stay in the list, quieter.
+_Avoid_: New, unseen, dismissed (nothing here is ever dismissed).
+
 **Check-your-email screen**:
 Where a flow that finishes in the inbox stops: after sign-up, and after asking for a
 password reset. Both legs render the same screen with their own sentence; sign-up gets a
