@@ -1,21 +1,54 @@
+import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import type { PublicJobQuestion } from '@/features/applications/application';
+import { ApplicationForm } from '@/features/applications/components/application-form';
 
 const INLINE_LINK = 'font-medium text-accent-foreground underline underline-offset-4';
 
-/**
- * The way into applying. Submitting an Application is the next ticket's; what a Job page owes a
- * reader today is the door — and for anyone signed out that door is sign-in, which returns here.
- */
-export function ApplyCta({ signedIn, returnTo }: { signedIn: boolean; returnTo: string }) {
+interface ApplyCtaProps {
+  signedIn: boolean;
+  returnTo: string;
+  jobId: string;
+  questions: PublicJobQuestion[];
+}
+
+export function ApplyCta({ signedIn, returnTo, jobId, questions }: ApplyCtaProps) {
+  const [started, setStarted] = useState(false);
+  const [applied, setApplied] = useState(false);
+
   if (signedIn) {
+    if (applied) {
+      return (
+        <Alert className="max-w-xl">
+          <AlertTitle>Application sent</AlertTitle>
+          <AlertDescription>
+            You can follow its progress in{' '}
+            <Link to="/applications" className={INLINE_LINK}>
+              View My Applications
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (started) {
+      return (
+        <ApplicationForm
+          jobId={jobId}
+          questions={questions}
+          onApplied={() => setApplied(true)}
+          onCancel={() => setStarted(false)}
+        />
+      );
+    }
+
     return (
-      <div className="space-y-2.5">
-        <Button size="lg" disabled>
-          Apply
-        </Button>
-        <p className="text-meta text-muted-foreground">Applying opens here soon.</p>
-      </div>
+      <Button size="lg" onClick={() => setStarted(true)}>
+        Apply
+      </Button>
     );
   }
 
@@ -24,8 +57,6 @@ export function ApplyCta({ signedIn, returnTo }: { signedIn: boolean; returnTo: 
       <Link to="/login" search={{ returnTo }} className={buttonVariants({ size: 'lg' })}>
         Sign in to apply
       </Link>
-      {/* Sign-up finishes in the inbox and lands on My Applications, so it cannot promise a
-          return here — only signing in can. */}
       <p className="text-meta text-muted-foreground">
         New to Sync?{' '}
         <Link to="/signup" className={INLINE_LINK}>

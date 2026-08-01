@@ -40,7 +40,12 @@ export function JobDetail({ job, signedIn, returnTo }: JobDetailProps) {
             </>
           ) : null}
         </p>
-        <ApplyCta signedIn={signedIn} returnTo={returnTo} />
+        <ApplyCta
+          signedIn={signedIn}
+          returnTo={returnTo}
+          jobId={job.id}
+          questions={job.questions}
+        />
       </header>
 
       <Separator />
