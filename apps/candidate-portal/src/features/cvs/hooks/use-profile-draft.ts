@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { api } from '@/lib/api';
+import { reportError } from '@/lib/report-error';
 
 export const myProfileQuery = api.queryOptions('get', '/v1/candidates/me/profile');
 
-/** Both halves of the review: what the CV says, and what the profile says today. Neither is
- * fetched until the reader opens the review. */
+/** Neither half is fetched until the reader opens the review. */
 export function useProfileDraft(cvId: string | null) {
   const draft = api.useQuery(
     'get',
@@ -15,6 +16,12 @@ export function useProfileDraft(cvId: string | null) {
   const profile = api.useQuery('get', '/v1/candidates/me/profile', undefined, {
     enabled: cvId !== null,
   });
+
+  // Handled inline in the dialog rather than by a boundary, so it reaches the seam here (§7.2).
+  const error = draft.error ?? profile.error;
+  useEffect(() => {
+    if (error) reportError(error, { boundary: 'widget', source: 'Profile draft' });
+  }, [error]);
 
   return { draft, profile };
 }

@@ -7,6 +7,12 @@ export interface DraftChange {
   label: string;
   before: string;
   after: string;
+  /**
+   * Skills are the one section the API merges rather than replaces: `_merged_skills` returns
+   * every saved skill with the years the candidate typed, then adds the ones this CV names.
+   * Nothing already on the profile is lost, so this row must not read as an overwrite.
+   */
+  merges?: boolean;
 }
 
 const NOTHING = '—';
@@ -33,15 +39,13 @@ function text(value: string | null | undefined): string {
   return value?.trim() ? value : '';
 }
 
-function entries(count: number): string {
+function counted(count: number, singular: string, plural: string): string {
   if (count === 0) return 'Nothing';
-  return count === 1 ? '1 entry' : `${count} entries`;
+  return count === 1 ? `1 ${singular}` : `${count} ${plural}`;
 }
 
-function skillCount(count: number): string {
-  if (count === 0) return 'Nothing';
-  return count === 1 ? '1 skill' : `${count} skills`;
-}
+const entries = (count: number) => counted(count, 'entry', 'entries');
+const skillCount = (count: number) => counted(count, 'skill', 'skills');
 
 function sameShape(before: unknown, after: unknown): boolean {
   return JSON.stringify(before ?? []) === JSON.stringify(after ?? []);
@@ -77,6 +81,7 @@ export function draftChanges(current: CandidateProfile, draft: ProfileDraft): Dr
       label: 'Skills',
       before: skillCount(current.skills?.length ?? 0),
       after: skillCount(draft.skills?.length ?? 0),
+      merges: true,
     });
   }
 
@@ -107,9 +112,12 @@ export function profileFromDraft(
 
   return {
     ...rest,
-    skills: skills.map((skill) => ({
-      name: skill.name,
-      years_experience: skill.years_experience ?? years[skill.name] ?? 0,
-    })),
+    skills: skills.map((skill) => {
+      const filled = skill.years_experience ?? years[skill.name];
+      // Never defaulted to zero: blank and 0 are opposite answers, and only the candidate can
+      // say which. Reaching this means the form and the draft disagreed about the skills.
+      if (filled === undefined) throw new Error(`no years given for the skill "${skill.name}"`);
+      return { name: skill.name, years_experience: filled };
+    }),
   };
 }

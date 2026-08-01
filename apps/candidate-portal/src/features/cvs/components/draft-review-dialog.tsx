@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@sync/ui/components/ui/dialog';
 import { Input } from '@sync/ui/components/ui/input';
+import { cn } from '@sync/ui/lib/utils';
 import { CircleAlert } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -48,7 +49,7 @@ export function DraftReviewDialog({ cv, onClose }: DraftReviewDialogProps) {
         {draft.isPending || profile.isPending ? <SkeletonText lines={4} /> : null}
 
         {draft.error || profile.error ? (
-          <Alert variant="destructive">
+          <Alert className="bg-muted">
             <CircleAlert aria-hidden="true" />
             <AlertTitle>Couldn't read this CV's draft</AlertTitle>
             <AlertDescription>
@@ -109,16 +110,30 @@ function DraftReview({
             {changes.map((change) => (
               <li key={change.label} className="grid grid-cols-3 items-baseline gap-3 py-2.5">
                 <span className="text-dense font-medium text-foreground">{change.label}</span>
-                <span className="text-dense text-muted-foreground line-through">
+                <span
+                  className={cn(
+                    'text-dense text-muted-foreground',
+                    // Struck through only where the CV really does take the old value's place.
+                    change.merges ? null : 'line-through',
+                  )}
+                >
                   {change.before}
                 </span>
                 <span className="text-dense text-foreground">{change.after}</span>
               </li>
             ))}
           </ul>
-          <p className="text-meta text-muted-foreground">
-            Every section listed is replaced by what the CV says, not merged with it.
-          </p>
+          {changes.some((change) => !change.merges) ? (
+            <p className="text-meta text-muted-foreground">
+              Sections above are replaced by what the CV says, not merged with it.
+            </p>
+          ) : null}
+          {changes.some((change) => change.merges) ? (
+            <p className="text-meta text-muted-foreground">
+              Skills are the exception: the ones already on your profile stay, with the years you
+              typed, and this CV only adds to them.
+            </p>
+          ) : null}
         </div>
       )}
 

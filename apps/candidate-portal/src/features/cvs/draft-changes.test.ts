@@ -100,12 +100,36 @@ describe('what applying a draft would change', () => {
     ]);
   });
 
-  it('counts skills in skills, not entries', () => {
+  it('counts skills in skills, not entries, and marks the row as merging', () => {
     const draft = aDraft({ skills: [{ name: 'Python', years_experience: 3 }] });
 
     expect(draftChanges(aProfile(), draft)).toEqual([
-      { label: 'Skills', before: 'Nothing', after: '1 skill' },
+      { label: 'Skills', before: 'Nothing', after: '1 skill', merges: true },
     ]);
+  });
+
+  // The API merges skills alone — `_merged_skills` hands back every saved skill with the years
+  // the candidate typed, then adds the CV's. Nothing on the profile is lost, and the review
+  // must not claim otherwise.
+  it('keeps the saved skill and adds the CV’s, rather than replacing', () => {
+    const current = aProfile({ skills: [{ name: 'Python', years_experience: 3 }] });
+    const draft = aDraft({
+      skills: [
+        { name: 'Python', years_experience: 3 },
+        { name: 'Kubernetes', years_experience: null },
+      ],
+    });
+
+    expect(draftChanges(current, draft)).toEqual([
+      { label: 'Skills', before: '1 skill', after: '2 skills', merges: true },
+    ]);
+  });
+
+  it('marks no other section as merging, because none of them do', () => {
+    const current = aProfile({ educations: [{ institution: 'Damascus University' }] });
+    const draft = aDraft({ headline: 'Nurse', unmapped_skills: ['Triage'] });
+
+    expect(draftChanges(current, draft).every((change) => !change.merges)).toBe(true);
   });
 
   it('treats an empty string on the CV as nothing to say', () => {
@@ -162,5 +186,13 @@ describe('turning a reviewed draft into the profile to save', () => {
     const draft = aDraft({ location: 'Aleppo' });
 
     expect(profileFromDraft(draft, {})).toEqual(draft);
+  });
+
+  // Zero is an answer, not a default — recording it for a skill nobody spoke for would put a
+  // claim on the profile the candidate never made.
+  it('refuses to invent zero years for a skill left unanswered', () => {
+    const draft = aDraft({ skills: [{ name: 'Kubernetes', years_experience: null }] });
+
+    expect(() => profileFromDraft(draft, {})).toThrow(/Kubernetes/);
   });
 });

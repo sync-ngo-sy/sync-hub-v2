@@ -5,8 +5,8 @@ import type { Cv } from '../cv';
 
 type Problem = components['schemas']['ProblemDetail'];
 type CvProblem = components['schemas']['CvConflictProblemDetail'];
-type Draft = components['schemas']['ProfileDraft'];
-type Profile = components['schemas']['CandidateProfile'];
+type ProfileDraft = components['schemas']['ProfileDraft'];
+type CandidateProfile = components['schemas']['CandidateProfile'];
 
 export function listsCvs(cvs: Cv[]) {
   return [http.get('/v1/candidates/me/cvs', ({ response }) => response(200).json(cvs))];
@@ -103,7 +103,7 @@ export function linksDownloadInTurn(...urls: string[]) {
   ];
 }
 
-export function drafts(draft: Draft) {
+export function drafts(draft: ProfileDraft) {
   return [
     http.get('/v1/candidates/me/cvs/{cv_id}/profile-draft', ({ response }) =>
       response(200).json(draft),
@@ -119,14 +119,14 @@ export function refusesDraft(problem: Problem) {
   ];
 }
 
-export function hasProfile(profile: Profile) {
+export function hasProfile(profile: CandidateProfile) {
   return [http.get('/v1/candidates/me/profile', ({ response }) => response(200).json(profile))];
 }
 
-export function savesProfile(onRequest?: (body: Profile) => void) {
+export function savesProfile(onRequest?: (body: CandidateProfile) => void) {
   return [
     http.put('/v1/candidates/me/profile', async ({ request, response }) => {
-      const body = (await request.json()) as Profile;
+      const body = (await request.json()) as CandidateProfile;
       onRequest?.(body);
       return response(200).json(body);
     }),

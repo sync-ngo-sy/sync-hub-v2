@@ -13,6 +13,10 @@ export function isReady(cv: Cv): boolean {
   return cv.parsing_status === 'ready';
 }
 
+export function hasFailed(cv: Cv): boolean {
+  return cv.parsing_status === 'failed';
+}
+
 export function slotsLeft(cvs: Cv[]): number {
   return Math.max(MAX_CVS - cvs.length, 0);
 }
@@ -30,7 +34,6 @@ export function languageName(code: string): string {
 interface ParseState {
   label: string;
   tone: StatusTone;
-  /** What the state means for the reader, said before they have to ask. */
   sentence: string;
 }
 

@@ -1,4 +1,5 @@
 import type { components } from '@sync/api-client';
+import type { Cv } from '@/features/cvs/cv';
 
 export const CANDIDATE: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000022',
@@ -108,8 +109,6 @@ export const BARE_PUBLIC_JOB: components['schemas']['PublicJob'] = {
   questions: [],
 };
 
-type Cv = components['schemas']['Cv'];
-
 function aCv(over: Partial<Cv> & Pick<Cv, 'id' | 'display_name' | 'parsing_status'>): Cv {
   return {
     parsing_error: null,
@@ -183,13 +182,6 @@ export const CV_LIMIT_REACHED: components['schemas']['CvConflictProblemDetail'] 
   detail: 'You can keep 5 CVs at a time. Delete one you no longer need first.',
 };
 
-export const CV_IS_CURRENT: components['schemas']['ProblemDetail'] = {
-  type: 'urn:sync:problem:cv-is-current',
-  title: 'Conflict',
-  status: 409,
-  detail: 'This is your current CV. Make another CV current first, then delete this one.',
-};
-
 /** The API says the same thing two ways, depending on what the unread CV was asked to do. */
 export const CV_NOT_READY_FOR_DRAFT: components['schemas']['ProblemDetail'] = {
   type: 'urn:sync:problem:cv-not-ready',
@@ -209,6 +201,12 @@ export const CV_NOT_READY_FOR_CURRENT: components['schemas']['ProblemDetail'] = 
 export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
   full_name: 'Lina Khoury',
   is_searchable: false,
+};
+
+/** Already carries one of the skills {@link CV_DRAFT} names, so the merge case is exercised. */
+export const PROFILE_WITH_SKILL: components['schemas']['CandidateProfile'] = {
+  ...EMPTY_PROFILE,
+  skills: [{ name: 'Python', years_experience: 3 }],
 };
 
 export const CV_DRAFT: components['schemas']['ProfileDraft'] = {

@@ -3,11 +3,11 @@ import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/aler
 import { Button } from '@sync/ui/components/ui/button';
 import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { CircleX, Download, Star, Trash2, Wand2 } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
-import { type Cv, isReady, languageName, PARSE_STATES } from '../cv';
+import { type Cv, hasFailed, isReady, languageName, PARSE_STATES } from '../cv';
 import { useCvDownloadLink, useDeleteCv, useMakeCvCurrent } from '../hooks/use-cv-actions';
 import { ConfirmDialog } from './confirm-dialog';
 
@@ -19,12 +19,19 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
 
   const state = PARSE_STATES[cv.parsing_status];
   const ready = isReady(cv);
+  const undeletableId = useId();
 
   async function download() {
+    // Opened on the click itself: asking for the link takes a round trip, and by the time it
+    // lands the user gesture has expired and Safari blocks the window.
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
     try {
       const link = await downloadLink.mutateAsync(cv.id);
-      window.open(link.url, '_blank', 'noopener,noreferrer');
+      if (tab) tab.location.href = link.url;
+      else window.location.href = link.url;
     } catch (error) {
+      tab?.close();
       toast.error(problemMessage(error, "Couldn't get a link to that file. Try again."));
     }
   }
@@ -72,8 +79,10 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
           <p className="text-dense text-muted-foreground">{state.sentence}</p>
         </div>
 
-        {cv.parsing_status === 'failed' && cv.parsing_error ? (
-          <Alert variant="destructive">
+        {hasFailed(cv) && cv.parsing_error ? (
+          // Gray, not red: `--destructive` is reserved for irreversible actions, and the icon
+          // is what carries the signal (§8).
+          <Alert className="bg-muted">
             <CircleX aria-hidden="true" />
             <AlertTitle>Why it could not be read</AlertTitle>
             <AlertDescription>{cv.parsing_error}</AlertDescription>
@@ -119,6 +128,10 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
           <Button
             variant="ghost"
             size="sm"
+            // The API refuses outright, so the reason is on screen before the click rather
+            // than in a toast after it.
+            disabled={cv.is_current}
+            aria-describedby={cv.is_current ? undeletableId : undefined}
             aria-label={`Delete “${cv.display_name}”`}
             onClick={() => setConfirming('delete')}
           >
@@ -126,6 +139,12 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
             Delete
           </Button>
         </div>
+
+        {cv.is_current ? (
+          <p id={undeletableId} className="text-meta text-muted-foreground">
+            The current CV cannot be deleted. Make another one current first.
+          </p>
+        ) : null}
       </CardContent>
 
       <ConfirmDialog

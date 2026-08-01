@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-const MAX_YEARS = 70;
+/** What the profile column actually holds — `sync_core.profile.MAX_YEARS_EXPERIENCE`. */
+const MAX_YEARS = 999.9;
 
 /** Indexed rather than keyed by skill name: "Node.js" would read as a path to React Hook Form. */
 export const reviewSchema = z.object({

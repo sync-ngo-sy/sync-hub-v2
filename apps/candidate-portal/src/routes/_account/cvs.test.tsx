@@ -13,7 +13,6 @@ import {
   listsCvs,
   listsCvsInTurn,
   makesCurrent,
-  refusesDelete,
   refusesDraft,
   refusesMakeCurrent,
   refusesProfile,
@@ -25,7 +24,6 @@ import {
   CANDIDATE,
   CURRENT_CV,
   CV_DRAFT,
-  CV_IS_CURRENT,
   CV_LIMIT_REACHED,
   CV_NOT_READY_FOR_CURRENT,
   CV_NOT_READY_FOR_DRAFT,
@@ -34,6 +32,7 @@ import {
   FAILED_CV,
   FIVE_CVS,
   PROCESSING_CV,
+  PROFILE_WITH_SKILL,
   READY_CV,
   SERVER_FAULT,
 } from '@/testing/fixtures';
@@ -168,12 +167,13 @@ describe('uploading a CV', () => {
 });
 
 describe('the cap of five', () => {
-  it('explains the cap and takes the picker away once it is reached', async () => {
+  it('disables uploading once the cap is reached, and explains why', async () => {
     server.use(...signedInAs(CANDIDATE), ...listsCvs(FIVE_CVS));
 
     await renderApp('/cvs');
 
     expect(await screen.findByText('You are keeping all 5 CVs we hold')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Upload a CV' })).toBeDisabled();
     expect(screen.queryByLabelText('Choose a CV file')).toBeNull();
   });
 
@@ -360,30 +360,43 @@ describe('deleting a CV', () => {
     );
   });
 
-  it('explains why the current CV cannot go yet', async () => {
-    server.use(
-      ...signedInAs(CANDIDATE),
-      ...listsCvs([CURRENT_CV]),
-      ...refusesDelete(CV_IS_CURRENT),
-    );
+  // The API refuses this outright, so the reader is told before they act, not after (§ "every
+  // state are communicated before the user hits them").
+  it('says why the current CV cannot go, before offering to delete it', async () => {
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([CURRENT_CV, READY_CV]));
 
-    const { user } = await renderApp('/cvs');
-    await user.click(
-      await screen.findByRole('button', { name: `Delete “${CURRENT_CV.display_name}”` }),
-    );
-    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await renderApp('/cvs');
+
+    const card = cardFor(CURRENT_CV.display_name);
+    expect(
+      within(card).getByRole('button', { name: `Delete “${CURRENT_CV.display_name}”` }),
+    ).toBeDisabled();
+    expect(
+      within(card).getByText('The current CV cannot be deleted. Make another one current first.'),
+    ).toBeVisible();
+  });
+
+  it('leaves delete open on every CV that is not the current one', async () => {
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([CURRENT_CV, READY_CV]));
+
+    await renderApp('/cvs');
 
     expect(
-      await screen.findByText(
-        'This is your current CV. Make another CV current first, then delete this one.',
-      ),
-    ).toBeVisible();
+      within(cardFor(READY_CV.display_name)).getByRole('button', {
+        name: `Delete “${READY_CV.display_name}”`,
+      }),
+    ).toBeEnabled();
   });
 });
 
 describe('downloading the original file', () => {
   it('asks for a fresh link on every click rather than reusing one', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const tabs: { location: { href: string } }[] = [];
+    vi.spyOn(window, 'open').mockImplementation(() => {
+      const tab = { location: { href: '' }, opener: {}, close: vi.fn() };
+      tabs.push(tab);
+      return tab as unknown as Window;
+    });
     server.use(
       ...signedInAs(CANDIDATE),
       ...listsCvs([READY_CV]),
@@ -396,12 +409,26 @@ describe('downloading the original file', () => {
     });
 
     await user.click(button);
-    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(tabs[0]?.location.href).toBe('https://files.test/first'));
     await user.click(button);
-    await waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(tabs[1]?.location.href).toBe('https://files.test/second'));
+  });
 
-    expect(open.mock.calls[0]?.[0]).toBe('https://files.test/first');
-    expect(open.mock.calls[1]?.[0]).toBe('https://files.test/second');
+  // Opened on the click, not after the link lands, or Safari treats it as an unrequested popup.
+  it('opens the tab while the click is still the reason for it', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsCvs([READY_CV]),
+      ...linksDownloadInTurn('https://files.test/first'),
+    );
+
+    const { user } = await renderApp('/cvs');
+    await user.click(
+      await screen.findByRole('button', { name: `Download “${READY_CV.display_name}”` }),
+    );
+
+    expect(open).toHaveBeenCalledWith('', '_blank');
   });
 });
 
@@ -444,6 +471,26 @@ describe('filling the profile from a CV', () => {
 
     expect(
       await screen.findByText(/replaced by what the CV says, not merged with it/),
+    ).toBeVisible();
+  });
+
+  // Skills are the one section the API merges. Telling the candidate their saved skills would
+  // be overwritten would be false, and would talk them out of a safe change.
+  it('does not claim saved skills are overwritten, because the API keeps them', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsCvs([READY_CV]),
+      ...drafts(CV_DRAFT),
+      ...hasProfile(PROFILE_WITH_SKILL),
+    );
+
+    const { user } = await renderApp('/cvs');
+    await user.click(
+      await screen.findByRole('button', { name: `Fill profile from “${READY_CV.display_name}”` }),
+    );
+
+    expect(
+      await screen.findByText(/Skills are the exception: the ones already on your profile stay/),
     ).toBeVisible();
   });
 

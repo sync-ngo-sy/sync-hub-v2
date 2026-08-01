@@ -35,8 +35,12 @@ describe('the years a new skill needs before the profile will save', () => {
     expect(errorFor('4.55')).toBe('Use a number of years, like 3 or 4.5.');
   });
 
-  it('rejects a lifetime nobody has worked', () => {
-    expect(errorFor('90')).toBe('That is more years than the platform records.');
+  it('accepts a long career the platform can still record', () => {
+    expect(errorFor('90')).toBeUndefined();
+  });
+
+  it('rejects more years than the profile column holds', () => {
+    expect(errorFor('1000')).toBe('That is more years than the platform records.');
   });
 
   it('accepts a draft that introduced no new skills', () => {

@@ -2,7 +2,7 @@ import { EmptyState } from '@sync/ui/components/empty-state';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, FileText, Upload } from 'lucide-react';
-import { type ChangeEvent, type ReactNode, useRef, useState } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { isClientError, problemMessage } from '@/lib/api-problem';
 import { MAX_CVS } from '../cv';
@@ -48,24 +48,15 @@ export function CvUploader({ slotsLeft, hasCvs }: CvUploaderProps) {
     if (!rejected) await send(file);
   }
 
-  if (slotsLeft === 0) {
-    return (
-      <Alert>
-        <CircleAlert aria-hidden="true" />
-        <AlertTitle>You are keeping all {MAX_CVS} CVs we hold</AlertTitle>
-        <AlertDescription>
-          Delete one you no longer need and the slot comes back, along with the ability to upload
-          again.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  const atCap = slotsLeft === 0;
+  const capId = 'cv-cap-explanation';
 
   const trigger = (
     <Button
       type="button"
       size="lg"
-      disabled={uploading !== null}
+      disabled={atCap || uploading !== null}
+      aria-describedby={atCap ? capId : undefined}
       onClick={() => input.current?.click()}
     >
       <Upload aria-hidden="true" />
@@ -73,74 +64,60 @@ export function CvUploader({ slotsLeft, hasCvs }: CvUploaderProps) {
     </Button>
   );
 
-  const constraints = `${CV_FORMATS}, up to ${MAX_CV_MB} MB. ${slotsLeft} of ${MAX_CVS} slots free.`;
-
-  return (
-    <Shell
-      hasCvs={hasCvs}
-      trigger={trigger}
-      constraints={constraints}
-      notices={
-        <>
-          {uploading ? <UploadProgress name={uploading} /> : null}
-          {refusal ? (
-            <Alert variant="destructive">
-              <CircleAlert aria-hidden="true" />
-              <AlertTitle>That file did not go through</AlertTitle>
-              <AlertDescription>{refusal}</AlertDescription>
-            </Alert>
-          ) : null}
-        </>
-      }
-    >
-      <input
-        ref={input}
-        type="file"
-        accept={CV_FILE_ACCEPT}
-        aria-label="Choose a CV file"
-        className="sr-only"
-        onChange={choose}
-      />
-    </Shell>
-  );
-}
-
-function Shell({
-  hasCvs,
-  trigger,
-  constraints,
-  notices,
-  children,
-}: {
-  hasCvs: boolean;
-  trigger: ReactNode;
-  constraints: string;
-  notices: ReactNode;
-  children: ReactNode;
-}) {
-  if (!hasCvs) {
-    return (
-      <div aria-live="polite" className="space-y-3">
-        <EmptyState
-          icon={FileText}
-          message="No CVs yet. Upload one and we'll read it, fill your profile from it, and send it with the applications you make."
-          action={trigger}
-        />
-        <p className="text-center text-meta text-muted-foreground">{constraints}</p>
-        {notices}
-        {children}
-      </div>
-    );
-  }
+  const constraints = atCap
+    ? `${CV_FORMATS}, up to ${MAX_CV_MB} MB. No slots free.`
+    : `${CV_FORMATS}, up to ${MAX_CV_MB} MB. ${slotsLeft} of ${MAX_CVS} slots free.`;
 
   return (
     <div aria-live="polite" className="space-y-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {trigger}
-        <p className="text-meta text-muted-foreground">{constraints}</p>
-      </div>
-      {notices}
-      {children}
+      {hasCvs ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {trigger}
+          <p className="text-meta text-muted-foreground">{constraints}</p>
+        </div>
+      ) : (
+        <>
+          <EmptyState
+            icon={FileText}
+            message="No CVs yet. Upload one and we'll read it, fill your profile from it, and send it with the applications you make."
+            action={trigger}
+          />
+          <p className="text-center text-meta text-muted-foreground">{constraints}</p>
+        </>
+      )}
+
+      {atCap ? (
+        <Alert id={capId}>
+          <CircleAlert aria-hidden="true" />
+          <AlertTitle>You are keeping all {MAX_CVS} CVs we hold</AlertTitle>
+          <AlertDescription>
+            Delete one you no longer need and the slot comes back, along with the ability to upload
+            again.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {uploading ? <UploadProgress name={uploading} /> : null}
+
+      {refusal ? (
+        // Gray rather than red: `--destructive` is reserved for irreversible actions (§8).
+        <Alert className="bg-muted">
+          <CircleAlert aria-hidden="true" />
+          <AlertTitle>That file did not go through</AlertTitle>
+          <AlertDescription>{refusal}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {atCap ? null : (
+        <input
+          ref={input}
+          type="file"
+          accept={CV_FILE_ACCEPT}
+          aria-label="Choose a CV file"
+          className="sr-only"
+          onChange={choose}
+        />
+      )}
     </div>
   );
 }
