@@ -27,6 +27,7 @@ import { Route as WorkspaceTemplatesRouteImport } from './routes/_workspace/temp
 import { Route as AuthAcceptInviteRouteImport } from './routes/auth.accept-invite'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as WorkspaceJobsJobIdRouteImport } from './routes/_workspace/jobs_.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -117,6 +118,11 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkspaceJobsJobIdRoute = WorkspaceJobsJobIdRouteImport.update({
+  id: '/jobs_/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/_workspace/jobs_/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
+    | '/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
+    | '/jobs/$jobId'
   id:
     | '__root__'
     | '/'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
+    | '/_workspace/jobs_/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -380,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_workspace/jobs_/$jobId': {
+      id: '/_workspace/jobs_/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof WorkspaceJobsJobIdRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
   }
 }
 
@@ -391,6 +410,7 @@ interface WorkspaceRouteChildren {
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
   WorkspaceTalentPoolRoute: typeof WorkspaceTalentPoolRoute
   WorkspaceTemplatesRoute: typeof WorkspaceTemplatesRoute
+  WorkspaceJobsJobIdRoute: typeof WorkspaceJobsJobIdRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
@@ -401,6 +421,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,
   WorkspaceTalentPoolRoute: WorkspaceTalentPoolRoute,
   WorkspaceTemplatesRoute: WorkspaceTemplatesRoute,
+  WorkspaceJobsJobIdRoute: WorkspaceJobsJobIdRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(

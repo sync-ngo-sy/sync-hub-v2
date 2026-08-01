@@ -24,6 +24,9 @@ function JobsPage() {
     <WidgetBoundary name="Jobs">
       <JobsFeaturePage
         status={status}
+        onJobOpen={(job) =>
+          void navigate({ to: '/jobs/$jobId', params: { jobId: job.id }, search: {} })
+        }
         onStatusChange={(nextStatus) =>
           void navigate({ search: nextStatus ? { status: nextStatus } : {}, replace: true })
         }

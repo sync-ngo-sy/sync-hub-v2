@@ -57,9 +57,10 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
 interface JobsPageProps {
   status?: JobStatus;
   onStatusChange: (status?: JobStatus) => void;
+  onJobOpen: (job: JobSummary) => void;
 }
 
-export function JobsPage({ status, onStatusChange }: JobsPageProps) {
+export function JobsPage({ status, onStatusChange, onJobOpen }: JobsPageProps) {
   const jobs = useJobs(status);
   const change = useChangeJob();
   const [creating, setCreating] = useState(false);
@@ -123,7 +124,7 @@ export function JobsPage({ status, onStatusChange }: JobsPageProps) {
         data={jobs.data ?? []}
         getRowId={(job) => job.id}
         rowLabel={(job) => job.title}
-        onRowOpen={setEditing}
+        onRowOpen={onJobOpen}
         rowActions={(job) => [
           { label: 'Edit job', onSelect: () => setEditing(job) },
           ...jobLifecycleActions(job.status).map((action) => ({
