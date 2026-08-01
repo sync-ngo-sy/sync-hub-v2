@@ -76,8 +76,14 @@ SessionCookiesDep = Annotated[SessionCookies, Depends(get_session_cookies)]
 def get_auth_service(
     session: SessionDep,
     authentication: Annotated[Authentication, Depends(get_authentication)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> AuthService:
-    return AuthService(session, authentication.gotrue, authentication.verifier)
+    return AuthService(
+        session,
+        authentication.gotrue,
+        authentication.verifier,
+        recruiter_portal_url=str(settings.recruiter_portal_url).rstrip("/"),
+    )
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
@@ -150,7 +156,7 @@ def get_tenant_service(
     return TenantService(
         session,
         authentication.gotrue,
-        invite_redirect_url=str(settings.recruiter_portal_url).rstrip("/"),
+        recruiter_portal_url=str(settings.recruiter_portal_url).rstrip("/"),
     )
 
 

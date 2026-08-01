@@ -6,6 +6,7 @@ import { PageSkeleton } from '@/features/shell/components/page-skeleton';
 import { AppCrash } from '@/features/shell/components/route-error';
 
 export const Route = createFileRoute('/_workspace')({
+  staticData: { requiresSession: true },
   beforeLoad: async ({ context, location }) => {
     const profile = await ensureCurrentProfile(context.queryClient);
     if (!profile) {

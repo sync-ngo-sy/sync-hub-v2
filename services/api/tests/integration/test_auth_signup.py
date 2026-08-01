@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_api.auth import ACCESS_TOKEN_COOKIE
 from sync_core import Settings
 from sync_core.models import AccountType, Candidate, Profile
+from tests.conftest import CANDIDATE_PORTAL_URL
 from tests.support.candidates import a_signup, sign_up
 from tests.support.harness import spa_onto
 from tests.support.mailbox import Mailbox
@@ -57,6 +58,8 @@ async def test_signup_sends_a_confirmation_email(browser: AsyncClient, mailbox: 
     await sign_up(browser, signup)
 
     assert await mailbox.confirmation_token(signup.email)
+    body = await mailbox.newest_body(signup.email)
+    assert f"{CANDIDATE_PORTAL_URL}/auth/confirm" in body, body
 
 
 async def test_signup_starts_no_session(browser: AsyncClient) -> None:
