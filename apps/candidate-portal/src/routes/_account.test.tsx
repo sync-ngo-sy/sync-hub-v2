@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { listsCvs } from '@/features/cvs/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { client } from '@/lib/api';
@@ -33,7 +34,7 @@ describe('the account guard', () => {
   });
 
   it('redirects to sign in when the client reports the session is over', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([]));
     const { router } = await renderApp('/cvs');
 
     server.use(...signedOut());
@@ -46,7 +47,7 @@ describe('the account guard', () => {
 
 describe('the account chrome', () => {
   it('marks the destination the candidate is on', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([]));
 
     await renderApp('/cvs');
 
