@@ -42,6 +42,7 @@ export function CriteriaForm({ job }: { job: Job }) {
   const skills = useFieldArray({ control: form.control, name: 'skills' });
   const languages = useFieldArray({ control: form.control, name: 'languages' });
   const questions = useFieldArray({ control: form.control, name: 'questions' });
+  const questionValues = form.watch('questions');
 
   const save = form.handleSubmit(async (values) => {
     try {
@@ -125,25 +126,7 @@ export function CriteriaForm({ job }: { job: Job }) {
                 name={`skills.${index}.importance`}
                 label="Importance"
               >
-                {({ value, onChange, onBlur, name, id, ...aria }) => (
-                  <Select
-                    items={IMPORTANCE_LABELS}
-                    name={name}
-                    value={value}
-                    onValueChange={onChange}
-                  >
-                    <SelectTrigger id={id} onBlur={onBlur} className="w-full" {...aria}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(IMPORTANCE_LABELS).map(([importance, label]) => (
-                        <SelectItem key={importance} value={importance}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                {(field) => <ChoiceSelect field={field} items={IMPORTANCE_LABELS} />}
               </FormField>
               <FormField
                 control={form.control}
@@ -189,25 +172,7 @@ export function CriteriaForm({ job }: { job: Job }) {
                 name={`languages.${index}.minimumProficiency`}
                 label="Minimum proficiency"
               >
-                {({ value, onChange, onBlur, name, id, ...aria }) => (
-                  <Select
-                    items={PROFICIENCY_LABELS}
-                    name={name}
-                    value={value}
-                    onValueChange={onChange}
-                  >
-                    <SelectTrigger id={id} onBlur={onBlur} className="w-full" {...aria}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROFICIENCY_LABELS).map(([proficiency, label]) => (
-                        <SelectItem key={proficiency} value={proficiency}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                {(field) => <ChoiceSelect field={field} items={PROFICIENCY_LABELS} />}
               </FormField>
             </div>
           )}
@@ -243,50 +208,35 @@ export function CriteriaForm({ job }: { job: Job }) {
                   name={`questions.${index}.questionType`}
                   label="Answer type"
                 >
-                  {({ value, onChange, onBlur, name, id, ...aria }) => (
-                    <Select
+                  {(field) => (
+                    <ChoiceSelect
+                      field={field}
                       items={QUESTION_TYPE_LABELS}
-                      name={name}
-                      value={value}
-                      onValueChange={onChange}
-                    >
-                      <SelectTrigger id={id} onBlur={onBlur} className="w-full" {...aria}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(QUESTION_TYPE_LABELS).map(([type, label]) => (
-                          <SelectItem key={type} value={type}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onValueChange={(value) => {
+                        if (value === null) return;
+                        field.onChange(value);
+                        if (value !== 'yes_no') {
+                          form.setValue(`questions.${index}.acceptedAnswer`, 'none');
+                        }
+                      }}
+                    />
                   )}
                 </FormField>
-                <FormField
-                  control={form.control}
-                  name={`questions.${index}.acceptedAnswer`}
-                  label="Passing answer"
-                  description="For yes-or-no questions. No selection means it does not screen."
-                >
-                  {({ value, onChange, onBlur, name, id, ...aria }) => (
-                    <Select
-                      items={{ '': 'Does not screen', yes: 'Yes', no: 'No' }}
-                      name={name}
-                      value={value}
-                      onValueChange={onChange}
-                    >
-                      <SelectTrigger id={id} onBlur={onBlur} className="w-full" {...aria}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Does not screen</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </FormField>
+                {questionValues[index]?.questionType === 'yes_no' ? (
+                  <FormField
+                    control={form.control}
+                    name={`questions.${index}.acceptedAnswer`}
+                    label="Passing answer"
+                    description="No selection means this question does not screen."
+                  >
+                    {(field) => (
+                      <ChoiceSelect
+                        field={field}
+                        items={{ none: 'Does not screen', yes: 'Yes', no: 'No' }}
+                      />
+                    )}
+                  </FormField>
+                ) : null}
               </div>
               <FormField
                 control={form.control}
@@ -319,6 +269,56 @@ export function CriteriaForm({ job }: { job: Job }) {
         </div>
       )}
     </form>
+  );
+}
+
+interface ChoiceField<Value extends string> {
+  value: Value;
+  onChange: (value: Value) => void;
+  onBlur: () => void;
+  name: string;
+  id: string;
+  disabled?: boolean;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
+}
+
+function ChoiceSelect<Value extends string>({
+  field,
+  items,
+  onValueChange = (value) => {
+    if (value !== null) field.onChange(value);
+  },
+}: {
+  field: ChoiceField<Value>;
+  items: Record<Value, string>;
+  onValueChange?: (value: Value | null) => void;
+}) {
+  return (
+    <Select
+      items={items}
+      name={field.name}
+      value={field.value}
+      disabled={field.disabled}
+      onValueChange={onValueChange}
+    >
+      <SelectTrigger
+        id={field.id}
+        onBlur={field.onBlur}
+        className="w-full"
+        aria-describedby={field['aria-describedby']}
+        aria-invalid={field['aria-invalid']}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.entries(items) as [Value, string][]).map(([value, label]) => (
+          <SelectItem key={value} value={value}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

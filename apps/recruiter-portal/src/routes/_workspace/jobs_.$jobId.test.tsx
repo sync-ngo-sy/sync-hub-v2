@@ -97,4 +97,62 @@ describe('a recruiter Job detail page', () => {
     expect(screen.getByRole('link', { name: 'Back to Jobs' })).toHaveAttribute('href', '/jobs');
     expect(screen.getByRole('banner')).toBeVisible();
   });
+
+  it('removes passing-answer screening when a question becomes short text', async () => {
+    const onReplace = vi.fn();
+    const job = {
+      ...FIELD_COORDINATOR_VIEW,
+      criteria: {
+        ...FIELD_COORDINATOR_VIEW.criteria,
+        questions: [
+          {
+            id: '00000000-0000-4000-8000-000000000202',
+            question_text: 'Can you start next month?',
+            question_type: 'yes_no' as const,
+            is_required: true,
+            accepted_boolean_answer: true,
+          },
+        ],
+      },
+    };
+    const replaced = {
+      ...job.criteria,
+      questions: [
+        {
+          id: '00000000-0000-4000-8000-000000000202',
+          question_text: 'Can you start next month?',
+          question_type: 'short_text' as const,
+          is_required: true,
+          accepted_boolean_answer: null,
+        },
+      ],
+    };
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(job),
+      ...replacesJobCriteria(replaced, onReplace),
+    );
+
+    const { user } = await renderApp(`/jobs/${job.id}?tab=criteria`);
+    await user.click(await screen.findByLabelText('Answer type'));
+    await user.click(screen.getByRole('option', { name: 'Short answer' }));
+
+    expect(screen.queryByLabelText('Passing answer')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save screening criteria' }));
+
+    await waitFor(() =>
+      expect(onReplace).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questions: [
+            {
+              question_text: 'Can you start next month?',
+              question_type: 'short_text',
+              is_required: true,
+              accepted_boolean_answer: null,
+            },
+          ],
+        }),
+      ),
+    );
+  });
 });

@@ -35,7 +35,7 @@ const proficiency = Object.keys(PROFICIENCY_LABELS) as [
 ];
 const questionType = Object.keys(QUESTION_TYPE_LABELS) as [QuestionType, ...QuestionType[]];
 
-const line = (message: string) =>
+const requiredShortText = (message: string) =>
   z.string().trim().min(1, message).max(200, 'Use 200 characters or fewer.');
 
 const optionalDecimal = (maximum: number) =>
@@ -55,7 +55,7 @@ const optionalInteger = z
   .refine((value) => value === '' || Number(value) <= 99, 'Enter 99 or less.');
 
 const skill = z.object({
-  name: line('Enter the skill.'),
+  name: requiredShortText('Enter the skill.'),
   importance: z.enum(importance),
   minimumYears: optionalInteger,
 });
@@ -66,10 +66,10 @@ const language = z.object({
 });
 
 const question = z.object({
-  questionText: line('Enter the question.'),
+  questionText: requiredShortText('Enter the question.'),
   questionType: z.enum(questionType),
   isRequired: z.boolean(),
-  acceptedAnswer: z.enum(['', 'yes', 'no']),
+  acceptedAnswer: z.enum(['none', 'yes', 'no']),
 });
 
 export const criteriaFormSchema = z
@@ -133,7 +133,7 @@ export const BLANK_QUESTION: Entry<'questions'> = {
   questionText: '',
   questionType: 'yes_no',
   isRequired: true,
-  acceptedAnswer: '',
+  acceptedAnswer: 'none',
 };
 
 const fieldValue = (value: number | null | undefined) =>
@@ -157,7 +157,7 @@ export function toCriteriaFormValues(criteria: JobCriteriaView): CriteriaFormVal
       isRequired: entry.is_required,
       acceptedAnswer:
         entry.accepted_boolean_answer === null || entry.accepted_boolean_answer === undefined
-          ? ''
+          ? 'none'
           : entry.accepted_boolean_answer
             ? 'yes'
             : 'no',
@@ -184,7 +184,7 @@ export function toCriteria(values: CriteriaFormValues): JobCriteria {
       question_type: entry.questionType,
       is_required: entry.isRequired,
       accepted_boolean_answer:
-        entry.questionType !== 'yes_no' || entry.acceptedAnswer === ''
+        entry.questionType !== 'yes_no' || entry.acceptedAnswer === 'none'
           ? null
           : entry.acceptedAnswer === 'yes',
     })),
