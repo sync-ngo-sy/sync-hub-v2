@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { listsCvs } from '@/features/cvs/testing/handlers';
-import { listsJobs } from '@/features/landing/testing/handlers';
+import { listsJobs } from '@/features/jobs/testing/handlers';
+import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { client } from '@/lib/api';
 import { CANDIDATE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -74,6 +75,7 @@ describe('the account chrome', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Notifications' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/notifications'));
+    expect(await screen.findByRole('heading', { name: 'Notifications' })).toBeVisible();
   });
 
   it('signs the candidate out, landing on the landing page with an empty cache', async () => {
@@ -84,6 +86,7 @@ describe('the account chrome', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
     expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toBeUndefined();
   });
 });

@@ -63,5 +63,6 @@ describe('asking for a password-reset link', () => {
     await user.click(screen.getByRole('link', { name: 'Forgot your password?' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/forgot-password'));
+    expect(await screen.findByRole('heading', { name: 'Reset your password' })).toBeVisible();
   });
 });
