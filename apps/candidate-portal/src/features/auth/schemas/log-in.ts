@@ -1,7 +1,9 @@
 import { z } from 'zod';
+import { email } from './fields';
 
 export const logInSchema = z.object({
-  email: z.string().min(1, 'Enter your email.').pipe(z.email('Enter a valid email address.')),
+  email,
+  // Not the sign-up rule: an account made before that rule existed still has to get in.
   password: z.string().min(1, 'Enter your password.'),
 });
 

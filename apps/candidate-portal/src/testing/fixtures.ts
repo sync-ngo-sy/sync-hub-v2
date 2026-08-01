@@ -32,6 +32,27 @@ export const WRONG_PASSWORD: components['schemas']['ProblemDetail'] = {
   detail: 'That email and password do not match an account.',
 };
 
+export const EMAIL_TAKEN: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:email-already-registered',
+  title: 'Conflict',
+  status: 409,
+  detail: 'An account already exists for this email address.',
+};
+
+export const DEAD_LINK: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:invalid-email-token',
+  title: 'Bad Request',
+  status: 400,
+  detail: 'That link is invalid or has expired. Ask for a new one.',
+};
+
+export const WEAK_PASSWORD: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:weak-password',
+  title: 'Bad Request',
+  status: 400,
+  detail: "That password does not meet the identity provider's requirements.",
+};
+
 export const SERVER_FAULT: components['schemas']['ProblemDetail'] = {
   type: 'about:blank',
   title: 'Internal Server Error',
