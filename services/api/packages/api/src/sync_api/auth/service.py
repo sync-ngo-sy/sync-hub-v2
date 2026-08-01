@@ -158,9 +158,7 @@ class AuthService:
             .join(User, User.id == Profile.id)
             .where(func.lower(User.email) == email.lower())
         )
-        redirect_to = (
-            self._recruiter_portal_url if account_type == AccountType.RECRUITER else None
-        )
+        redirect_to = self._recruiter_portal_url if account_type == AccountType.RECRUITER else None
         await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 
     async def reset_password(self, *, token_hash: str, password: str) -> None:
