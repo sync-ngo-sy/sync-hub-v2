@@ -1,7 +1,9 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import { server } from './server';
+
+configure({ asyncUtilTimeout: 5_000 });
 
 // jsdom ships neither, and the theme and the responsive chrome both read them.
 window.matchMedia ??= (query: string) =>
