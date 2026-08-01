@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import type { Cv } from '@/features/cvs/cv';
+import type { Notification } from '@/features/notifications/notification';
 
 export const CANDIDATE: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000022',
@@ -345,6 +346,73 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
     { name: 'Kubernetes', years_experience: null },
   ],
 };
+
+function aNotification(
+  over: Partial<Notification> & Pick<Notification, 'id' | 'payload'>,
+): Notification {
+  return { read_at: null, created_at: '2026-07-31T09:00:00Z', ...over };
+}
+
+/** About {@link FAILED_CV}, so the deep link lands on a CV the CVs page can actually show. */
+export const CV_FAILURE_NOTIFICATION = aNotification({
+  id: '00000000-0000-4000-8000-000000000301',
+  payload: {
+    type: 'cv_parse_failed',
+    cv_id: FAILED_CV.id,
+    display_name: FAILED_CV.display_name,
+  },
+});
+
+export const MOVED_NOTIFICATION = aNotification({
+  id: '00000000-0000-4000-8000-000000000302',
+  created_at: '2026-07-30T09:00:00Z',
+  payload: {
+    type: 'application_status_changed',
+    application_id: '00000000-0000-4000-8000-000000000401',
+    job_title: FRONTEND_DEVELOPER.title,
+    tenant_name: FRONTEND_DEVELOPER.tenant.name,
+    status: 'shortlisted',
+    previous_status: 'reviewing',
+  },
+});
+
+/** The one already opened, so read and unread can be told apart on screen. */
+export const READ_NOTIFICATION = aNotification({
+  id: '00000000-0000-4000-8000-000000000303',
+  created_at: '2026-07-29T09:00:00Z',
+  read_at: '2026-07-29T10:00:00Z',
+  payload: {
+    type: 'application_status_changed',
+    application_id: '00000000-0000-4000-8000-000000000402',
+    job_title: FIELD_COORDINATOR.title,
+    tenant_name: FIELD_COORDINATOR.tenant.name,
+    status: 'rejected',
+    previous_status: 'interview',
+  },
+});
+
+/** Newest first, as the API returns them: both payload types, one of them already read. */
+export const NOTIFICATIONS: Notification[] = [
+  CV_FAILURE_NOTIFICATION,
+  MOVED_NOTIFICATION,
+  READ_NOTIFICATION,
+];
+
+/** The next page the API would hand back, so Load-more has somewhere to go. */
+export const MORE_NOTIFICATIONS: Notification[] = [
+  aNotification({
+    id: '00000000-0000-4000-8000-000000000304',
+    created_at: '2026-07-28T09:00:00Z',
+    payload: {
+      type: 'application_status_changed',
+      application_id: '00000000-0000-4000-8000-000000000403',
+      job_title: PHARMACIST.title,
+      tenant_name: PHARMACIST.tenant.name,
+      status: 'hired',
+      previous_status: 'offer',
+    },
+  }),
+];
 
 export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {
   type: 'urn:sync:problem:unknown-canonical-skill',
