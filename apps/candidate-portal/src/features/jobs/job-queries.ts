@@ -11,7 +11,7 @@ const trackedLinkQuery = (token: string) =>
 
 /** `null` is an answer, not a failure: no published Job has that id. */
 export function ensureJob(queryClient: QueryClient, jobId: string): Promise<Job | null> {
-  return orNothing(queryClient.ensureQueryData(jobQuery(jobId)));
+  return nullIfNotFound(queryClient.ensureQueryData(jobQuery(jobId)));
 }
 
 /**
@@ -22,10 +22,10 @@ export function ensureJobByTrackedLink(
   queryClient: QueryClient,
   token: string,
 ): Promise<Job | null> {
-  return orNothing(queryClient.ensureQueryData(trackedLinkQuery(token)));
+  return nullIfNotFound(queryClient.ensureQueryData(trackedLinkQuery(token)));
 }
 
-async function orNothing(pending: Promise<Job>): Promise<Job | null> {
+async function nullIfNotFound(pending: Promise<Job>): Promise<Job | null> {
   try {
     return await pending;
   } catch (error) {

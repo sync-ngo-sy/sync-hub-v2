@@ -1,10 +1,6 @@
-import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { type JobSummary, jobMeta } from '../job';
-
-/** Kept in step with `ListSkeleton`, so swapping one for the other moves nothing. */
-export const JOB_ROW = 'flex items-center justify-between gap-6 py-5';
 
 export function JobList({ jobs }: { jobs: JobSummary[] }) {
   return (
@@ -26,7 +22,7 @@ function JobRow({ job }: { job: JobSummary }) {
       // Reading a Job counts a view, and a hover is not a read: preloading here would bill
       // every row a passing cursor crossed to the employer's view count.
       preload={false}
-      className={cn(JOB_ROW, 'group')}
+      className="group flex items-center justify-between gap-6 py-5"
     >
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="text-title text-foreground group-hover:text-accent-foreground">

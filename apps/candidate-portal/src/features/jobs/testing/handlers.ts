@@ -70,7 +70,3 @@ export function followsNoLink() {
     http.get('/v1/jobs/by-link/{token}', ({ response }) => response(404).json(DEAD_TRACKED_LINK)),
   ];
 }
-
-export function faultsOnTrackedLink(problem: Problem) {
-  return [http.get('/v1/jobs/by-link/{token}', ({ response }) => response(500).json(problem))];
-}

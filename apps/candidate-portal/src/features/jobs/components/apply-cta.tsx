@@ -4,8 +4,8 @@ import { Link } from '@tanstack/react-router';
 const INLINE_LINK = 'font-medium text-accent-foreground underline underline-offset-4';
 
 /**
- * The way into applying. Submitting itself is #55's; what a Job page owes a visitor today is the
- * door — and for anyone signed out that door is sign-in, which brings them back here after.
+ * The way into applying. Submitting an Application is the next ticket's; what a Job page owes a
+ * reader today is the door — and for anyone signed out that door is sign-in, which returns here.
  */
 export function ApplyCta({ signedIn, returnTo }: { signedIn: boolean; returnTo: string }) {
   if (signedIn) {
@@ -14,9 +14,7 @@ export function ApplyCta({ signedIn, returnTo }: { signedIn: boolean; returnTo: 
         <Button size="lg" disabled>
           Apply
         </Button>
-        <p className="text-meta text-muted-foreground">
-          The application form arrives with its own ticket.
-        </p>
+        <p className="text-meta text-muted-foreground">Applying opens here soon.</p>
       </div>
     );
   }
@@ -26,12 +24,14 @@ export function ApplyCta({ signedIn, returnTo }: { signedIn: boolean; returnTo: 
       <Link to="/login" search={{ returnTo }} className={buttonVariants({ size: 'lg' })}>
         Sign in to apply
       </Link>
+      {/* Sign-up finishes in the inbox and lands on My Applications, so it cannot promise a
+          return here — only signing in can. */}
       <p className="text-meta text-muted-foreground">
         New to Sync?{' '}
         <Link to="/signup" className={INLINE_LINK}>
           Create an account
-        </Link>{' '}
-        — you come straight back to this role.
+        </Link>
+        .
       </p>
     </div>
   );

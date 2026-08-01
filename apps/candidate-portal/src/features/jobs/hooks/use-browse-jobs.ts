@@ -22,11 +22,11 @@ export function useBrowseJobs() {
     },
   );
 
-  // The list is the whole page, so its failure is handled in place rather than by a boundary —
-  // which leaves this as the one path to the reporting seam every other tier goes through (§7.2).
+  // Handled in place rather than by a boundary, so this is the one path to the reporting seam
+  // (§7.2). `route` is reserved for the router's own errorComponent, as the landing's index does.
   const { error } = jobs;
   useEffect(() => {
-    if (error) reportError(error, { boundary: 'route', source: 'Jobs' });
+    if (error) reportError(error, { boundary: 'widget', source: 'Jobs' });
   }, [error]);
 
   return jobs;

@@ -98,7 +98,7 @@ describe('browsing jobs', () => {
     expect(screen.getByText(TOO_MANY_REQUESTS.detail as string)).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Jobs' })).toBeVisible();
     expect(consoleError).toHaveBeenCalledWith(
-      '[route: Jobs]',
+      '[widget: Jobs]',
       expect.objectContaining({ status: 429 }),
     );
 

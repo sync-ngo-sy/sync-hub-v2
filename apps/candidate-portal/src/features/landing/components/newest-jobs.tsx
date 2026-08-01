@@ -5,7 +5,7 @@ import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Briefcase } from 'lucide-react';
-import { type JobSummary, jobMeta } from '@/features/jobs/job';
+import { type JobSummary, jobMeta, NOTHING_PUBLISHED } from '@/features/jobs/job';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { NEWEST_JOBS_LIMIT, useNewestJobs } from '../hooks/use-newest-jobs';
 import { HERO_BUTTON, INDEX_ROW, Wrap } from './editorial';
@@ -114,7 +114,7 @@ function NothingPublished() {
   return (
     <EmptyState
       icon={Briefcase}
-      message="No roles are open right now. New ones appear here the moment an employer publishes them."
+      message={NOTHING_PUBLISHED}
       action={
         <Link to="/signup" className={cn(buttonVariants({ size: 'lg' }), HERO_BUTTON)}>
           Create your profile

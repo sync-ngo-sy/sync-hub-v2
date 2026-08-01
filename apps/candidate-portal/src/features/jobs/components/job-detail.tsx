@@ -1,5 +1,5 @@
 import { Separator } from '@sync/ui/components/ui/separator';
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { absoluteDateTime } from '@/lib/dates';
 import {
   experienceLabel,
@@ -7,7 +7,9 @@ import {
   jobMeta,
   languageName,
   proficiencyLabel,
+  questionShape,
   skillDemand,
+  yearsAsked,
 } from '../job';
 import { ApplyCta } from './apply-cta';
 
@@ -19,7 +21,7 @@ interface JobDetailProps {
 }
 
 export function JobDetail({ job, signedIn, returnTo }: JobDetailProps) {
-  const experience = job.minimum_total_experience_years ?? null;
+  const experience = yearsAsked(job.minimum_total_experience_years);
   const asksForSomething = experience !== null || job.skills.length > 0 || job.languages.length > 0;
 
   return (
@@ -81,9 +83,7 @@ export function JobDetail({ job, signedIn, returnTo }: JobDetailProps) {
             {job.questions.map((question) => (
               <li key={question.id} className="flex flex-col gap-1">
                 <span className="text-dense text-foreground">{question.question_text}</span>
-                <span className="text-meta text-muted-foreground">
-                  {question.is_required ? 'Required' : 'Optional'}
-                </span>
+                <span className="text-meta text-muted-foreground">{questionShape(question)}</span>
               </li>
             ))}
           </ol>
@@ -94,18 +94,16 @@ export function JobDetail({ job, signedIn, returnTo }: JobDetailProps) {
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  const headingId = useId();
+
   return (
-    <section aria-labelledby={sectionId(title)} className="space-y-4">
-      <h2 id={sectionId(title)} className="font-heading text-h3 text-foreground">
+    <section aria-labelledby={headingId} className="space-y-4">
+      <h2 id={headingId} className="font-heading text-h3 text-foreground">
         {title}
       </h2>
       {children}
     </section>
   );
-}
-
-function sectionId(title: string): string {
-  return title.toLowerCase().replace(/[^a-z]+/g, '-');
 }
 
 function Criteria({ label, children }: { label: string; children: ReactNode }) {

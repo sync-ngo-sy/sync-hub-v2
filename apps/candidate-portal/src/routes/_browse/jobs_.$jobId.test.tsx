@@ -34,6 +34,23 @@ describe('a Job detail page', () => {
     for (const question of PUBLIC_JOB.questions) {
       expect(within(questions).getByText(question.question_text)).toBeVisible();
     }
+    // The shape of the answer, so a reader knows a yes/no from a paragraph before starting.
+    expect(within(questions).getByText('Yes or no · Required')).toBeVisible();
+    expect(within(questions).getByText('Short answer · Optional')).toBeVisible();
+  });
+
+  it('reads a Job that asks for no experience as asking for nothing', async () => {
+    server.use(
+      ...signedOut(),
+      ...showsJob({ ...BARE_PUBLIC_JOB, minimum_total_experience_years: 0 }),
+    );
+
+    await renderApp(`/jobs/${BARE_PUBLIC_JOB.id}`);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pharmacist' })).toBeVisible();
+    // Zero years is no requirement at all, so neither the line nor the section it would open shows.
+    expect(screen.queryByText(/years total experience/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'What this role asks for' })).toBeNull();
   });
 
   it('leaves out the criteria a Job carries none of', async () => {

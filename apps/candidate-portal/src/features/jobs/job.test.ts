@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { BARE_PUBLIC_JOB, PUBLIC_JOB, PUBLIC_JOBS } from '@/testing/fixtures';
-import { experienceLabel, jobMeta, languageName, proficiencyLabel, skillDemand } from './job';
+import {
+  experienceLabel,
+  jobMeta,
+  languageName,
+  proficiencyLabel,
+  questionShape,
+  skillDemand,
+  yearsAsked,
+} from './job';
 
 describe('a Job meta line', () => {
   it('reads employer, place and shape, in that order', () => {
@@ -36,6 +44,23 @@ describe('what a Job asks for', () => {
       'Preferred',
     );
     expect(skillDemand({ name: 'Figma', importance: 'optional' })).toBe('Optional');
+  });
+
+  it('treats a zero-year ask as no ask at all, rather than "0+ years"', () => {
+    expect(yearsAsked(0)).toBeNull();
+    expect(yearsAsked(null)).toBeNull();
+    expect(yearsAsked(undefined)).toBeNull();
+    expect(yearsAsked(3)).toBe(3);
+    expect(skillDemand({ name: 'Excel', importance: 'required', minimum_years: 0 })).toBe(
+      'Required',
+    );
+  });
+
+  it('says what answering a question takes, and whether it can be skipped', () => {
+    expect(PUBLIC_JOB.questions.map(questionShape)).toEqual([
+      'Yes or no · Required',
+      'Short answer · Optional',
+    ]);
   });
 
   it('spells a language code out in English, whatever the reader’s own locale', () => {
