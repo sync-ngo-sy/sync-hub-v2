@@ -14,8 +14,32 @@ permissions:
   contents: read
 
 jobs:
+  format:
+    name: Repository format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `biome ci` rather than the root `check` script, which passes --write and would
+      # report success after rewriting the tree.
+      - name: Biome
+        run: pnpm exec biome ci .
+
   web:
-    name: Web (lint, typecheck, build, test)
+    name: Frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -95,10 +119,39 @@ jobs:
         working-directory: .
         run: supabase stop --no-backup
 
+  migrations:
+    name: Supabase migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,realtime,vector,analytics,meta
+
+      # `start` already applies the set; the reset proves it applies from an empty database
+      # rather than from whatever the previous state happened to be. --no-seed because
+      # supabase/seed.sql is local fixtures and reference data ships as a migration.
+      - name: Replay from a standing start
+        run: supabase db reset --local --no-seed
+
+      - name: Applied versions
+        run: supabase migration list --local
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
+
   images:
-    # Named after the matrix value, not both targets: GitHub appends it in parentheses, so
-    # "Images (api, worker)" rendered as "Images (api, worker) (api)".
-    name: Image (${{ matrix.target }})
+    # Named per matrix value, not both targets: GitHub appends it in parentheses, so
+    # "Images (api, worker)" rendered as "Images (api, worker) (api)". The worker leg is
+    # named for the check the branch ruleset requires.
+    name: ${{ matrix.target == 'worker' && 'Worker' || 'Image (api)' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
