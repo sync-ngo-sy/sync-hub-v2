@@ -8,6 +8,7 @@ import {
   signedInAs,
   signedOut,
 } from '@/features/auth/testing/handlers';
+import { listsCvs } from '@/features/cvs/testing/handlers';
 import { CANDIDATE, RECRUITER, SERVER_FAULT, WRONG_PASSWORD } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
@@ -20,7 +21,7 @@ async function signIn(user: UserEvent) {
 
 describe('signing in', () => {
   it('lands the candidate where the guard turned them away from', async () => {
-    server.use(...signedOut(), ...logsIn(CANDIDATE));
+    server.use(...signedOut(), ...logsIn(CANDIDATE), ...listsCvs([]));
 
     const { router, user } = await renderApp('/login?returnTo=%2Fcvs');
     await signIn(user);
@@ -70,6 +71,7 @@ describe('signing in', () => {
     await signIn(user);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/applications'));
+    expect(await screen.findByRole('heading', { name: 'My Applications' })).toBeVisible();
   });
 
   it('bounces a candidate who is already signed in off the sign-in page', async () => {

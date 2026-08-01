@@ -2,14 +2,15 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { listsJobs } from '@/features/jobs/testing/handlers';
 import { client } from '@/lib/api';
-import { CANDIDATE, RECRUITER } from '@/testing/fixtures';
+import { CANDIDATE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
-describe('browsing jobs', () => {
+describe('the browse layout', () => {
   it('is open to a visitor with no session, who is offered a way in', async () => {
-    server.use(...signedOut());
+    server.use(...signedOut(), ...listsJobs(PUBLIC_JOBS));
 
     const { router } = await renderApp('/jobs');
 
@@ -21,7 +22,7 @@ describe('browsing jobs', () => {
   });
 
   it('carries the full chrome once the candidate is signed in', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...listsJobs(PUBLIC_JOBS));
 
     await renderApp('/jobs');
 
@@ -33,7 +34,7 @@ describe('browsing jobs', () => {
   });
 
   it('tells a signed-in recruiter they are in the wrong portal', async () => {
-    server.use(...signedInAs(RECRUITER));
+    server.use(...signedInAs(RECRUITER), ...listsJobs(PUBLIC_JOBS));
 
     const { router } = await renderApp('/jobs');
 
@@ -41,10 +42,10 @@ describe('browsing jobs', () => {
   });
 
   it('keeps a reader on the page when their session dies, but forgets the account', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...listsJobs(PUBLIC_JOBS));
     const { router, queryClient } = await renderApp('/jobs');
 
-    server.use(...signedOut());
+    server.use(...signedOut(), ...listsJobs(PUBLIC_JOBS));
     await client.GET('/v1/auth/me');
 
     await waitFor(() =>

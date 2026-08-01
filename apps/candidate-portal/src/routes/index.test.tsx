@@ -1,12 +1,12 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import {
   listsJobs,
   publishesNothing,
   ratelimitsJobs,
   withholdsJobs,
-} from '@/features/landing/testing/handlers';
+} from '@/features/jobs/testing/handlers';
+import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { env } from '@/lib/env';
 import { PUBLIC_JOBS } from '@/testing/fixtures';
 import { stubMatchMedia } from '@/testing/media-query';

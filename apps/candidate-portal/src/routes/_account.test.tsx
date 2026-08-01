@@ -2,7 +2,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
-import { listsJobs } from '@/features/landing/testing/handlers';
+import { listsCvs } from '@/features/cvs/testing/handlers';
+import { listsJobs } from '@/features/jobs/testing/handlers';
+import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { hasProfile } from '@/features/profile/testing/handlers';
 import { client } from '@/lib/api';
 import { CANDIDATE, CANDIDATE_PROFILE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
@@ -33,7 +35,7 @@ describe('the account guard', () => {
   });
 
   it('redirects to sign in when the client reports the session is over', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([]));
     const { router } = await renderApp('/cvs');
 
     server.use(...signedOut());
@@ -46,7 +48,7 @@ describe('the account guard', () => {
 
 describe('the account chrome', () => {
   it('marks the destination the candidate is on', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([]));
 
     await renderApp('/cvs');
 
@@ -74,6 +76,7 @@ describe('the account chrome', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Notifications' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/notifications'));
+    expect(await screen.findByRole('heading', { name: 'Notifications' })).toBeVisible();
   });
 
   it('signs the candidate out, landing on the landing page with an empty cache', async () => {
@@ -84,6 +87,7 @@ describe('the account chrome', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
     expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toBeUndefined();
   });
 });
