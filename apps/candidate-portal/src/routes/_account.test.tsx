@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { listsJobs } from '@/features/landing/testing/handlers';
+import { hasProfile } from '@/features/profile/testing/handlers';
 import { client } from '@/lib/api';
-import { CANDIDATE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
+import { CANDIDATE, CANDIDATE_PROFILE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -55,7 +56,7 @@ describe('the account chrome', () => {
   });
 
   it('moves between destinations from the tab bar', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
     const { router, user } = await renderApp('/applications');
 
     const nav = screen.getByRole('navigation', { name: 'Sections' });

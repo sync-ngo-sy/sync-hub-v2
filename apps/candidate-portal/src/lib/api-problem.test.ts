@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isClientError, isProblem, problemMessage, problemStatus } from './api-problem';
+import {
+  isClientError,
+  isProblem,
+  problemFields,
+  problemMessage,
+  problemStatus,
+} from './api-problem';
 
 const NOT_AUTHENTICATED = {
   type: 'urn:sync:problem:not-authenticated',
@@ -43,6 +49,31 @@ describe('isProblem', () => {
     expect(isProblem(new TypeError('Failed to fetch'), 'urn:sync:problem:not-authenticated')).toBe(
       false,
     );
+  });
+});
+
+describe('problemFields', () => {
+  it('reads the fields a validation problem blames', () => {
+    const problem = {
+      ...NOT_AUTHENTICATED,
+      status: 422,
+      errors: [{ location: 'body.email', message: 'not an email address', type: 'value_error' }],
+    };
+
+    expect(problemFields(problem)).toEqual([
+      { location: 'body.email', message: 'not an email address', type: 'value_error' },
+    ]);
+  });
+
+  it('has no fields to report for a problem that blames none', () => {
+    expect(problemFields(NOT_AUTHENTICATED)).toEqual([]);
+    expect(problemFields(new TypeError('Failed to fetch'))).toEqual([]);
+  });
+
+  it('ignores an entry that is not a located message', () => {
+    expect(
+      problemFields({ ...NOT_AUTHENTICATED, errors: ['nope', { location: 'body.email' }] }),
+    ).toEqual([]);
   });
 });
 

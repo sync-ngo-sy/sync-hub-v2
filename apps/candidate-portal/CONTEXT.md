@@ -29,6 +29,19 @@ deliberately outside it: a Job is public, and the `_browse` layout renders the s
 chrome with or without a session.
 _Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
 
+**Profile editor**:
+The one page the whole professional profile is edited on, and saved from, in a single action:
+identity, Experience, Education, Skills, Other skills, Languages and Projects together. A save
+replaces the profile whole, so a section left empty is an emptied section — which is why leaving
+with unsaved changes asks first rather than losing them quietly.
+_Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
+
+**Other skills**:
+The skills a Candidate claims that the platform has no Canonical name for — `unmapped_skills` on
+the wire. Recruiters read them; Screening never does, which is why the editor keeps them in a
+section of their own rather than mixed in with Skills.
+_Avoid_: Unmapped skills (the wire's word, not the reader's), custom skills, free-text skills.
+
 **Check-your-email screen**:
 Where a flow that finishes in the inbox stops: after sign-up, and after asking for a
 password reset. Both legs render the same screen with their own sentence; sign-up gets a
