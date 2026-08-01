@@ -46,6 +46,12 @@ export function refusesJobCreation(problem: ValidationProblem) {
   return [http.post('/v1/tenants/me/jobs', ({ response }) => response(422).json(problem))];
 }
 
+export function refusesJobEdit(problem: ValidationProblem) {
+  return [
+    http.patch('/v1/tenants/me/jobs/{job_id}', ({ response }) => response(422).json(problem)),
+  ];
+}
+
 export function getsJob(job: JobView) {
   return [
     http.get('/v1/tenants/me/jobs/{job_id}', ({ params, response }) => {
@@ -73,5 +79,33 @@ export function changesJob(job: JobView, onChange?: (body: JobChanges) => void) 
 export function refusesJobChange(problem: Problem) {
   return [
     http.patch('/v1/tenants/me/jobs/{job_id}', ({ response }) => response(409).json(problem)),
+  ];
+}
+
+export function managesJobs(initial: JobView[], onChange?: (body: JobChanges) => void) {
+  let jobs = initial;
+  return [
+    http.get('/v1/tenants/me/jobs', ({ query, response }) => {
+      const status = query.get('status');
+      return response(200).json({
+        items: status ? jobs.filter((job) => job.status === status) : jobs,
+        next_cursor: null,
+      });
+    }),
+    http.patch('/v1/tenants/me/jobs/{job_id}', async ({ params, request, response }) => {
+      const changes = (await request.json()) as JobChanges;
+      onChange?.(changes);
+      const current = jobs.find((job) => job.id === params.job_id);
+      if (!current)
+        return response(404).json({
+          type: 'urn:sync:problem:not-found',
+          title: 'Not found',
+          status: 404,
+          detail: 'This Job does not exist.',
+        });
+      const changed = { ...current, ...changes, updated_at: '2026-08-01T12:00:00Z' } as JobView;
+      jobs = jobs.map((job) => (job.id === changed.id ? changed : job));
+      return response(200).json(changed);
+    }),
   ];
 }

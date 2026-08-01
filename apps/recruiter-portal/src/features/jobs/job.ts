@@ -27,10 +27,31 @@ export function jobMeta(job: JobSummary): string {
   return [job.location, job.employment_type].filter(Boolean).join(' · ') || 'Details not set';
 }
 
-const DATES = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
+const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'always' });
+const ABSOLUTE = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
+const RELATIVE_UNITS: [limit: number, unit: Intl.RelativeTimeFormatUnit][] = [
+  [60, 'second'],
+  [60, 'minute'],
+  [24, 'hour'],
+  [30, 'day'],
+  [12, 'month'],
+  [Number.POSITIVE_INFINITY, 'year'],
+];
 
-export function jobDate(value: string): string {
-  return DATES.format(new Date(value));
+export function jobRelativeDate(value: string, now: Date = new Date()): string {
+  let amount = (new Date(value).getTime() - now.getTime()) / 1_000;
+  if (Math.abs(amount) < 60) return 'just now';
+
+  const round = (part: number) => Math.sign(part) * Math.round(Math.abs(part));
+  for (const [limit, unit] of RELATIVE_UNITS) {
+    if (Math.abs(amount) < limit) return RELATIVE.format(round(amount), unit);
+    amount /= limit;
+  }
+  return RELATIVE.format(round(amount), 'year');
+}
+
+export function jobAbsoluteDate(value: string): string {
+  return ABSOLUTE.format(new Date(value));
 }
 
 export interface JobLifecycleAction {

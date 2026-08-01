@@ -8,7 +8,7 @@ import { CircleAlert } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useChangeJob, useCreateJob } from '../hooks/use-job-actions';
-import type { Job, JobChanges, JobStatus, NewJob } from '../job';
+import type { Job, JobChanges, NewJob } from '../job';
 import { jobFormRejection } from '../rejection';
 import { type JobFormValues, jobFormSchema } from '../schemas/job';
 
@@ -50,20 +50,15 @@ function editValues(job: Job): JobFormValues {
   };
 }
 
-function jobChanges(values: JobFormValues): JobChanges {
-  return newJob(values);
-}
-
 interface JobFormProps {
-  status?: JobStatus;
   job?: Job;
   onSaved: () => void;
   onCancel: () => void;
 }
 
-export function JobForm({ status, job, onSaved, onCancel }: JobFormProps) {
-  const create = useCreateJob(status);
-  const change = useChangeJob(status);
+export function JobForm({ job, onSaved, onCancel }: JobFormProps) {
+  const create = useCreateJob();
+  const change = useChangeJob();
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobFormSchema),
     defaultValues: job ? editValues(job) : EMPTY_JOB,
@@ -74,7 +69,7 @@ export function JobForm({ status, job, onSaved, onCancel }: JobFormProps) {
       if (job) {
         await change.mutateAsync({
           params: { path: { job_id: job.id } },
-          body: jobChanges(values),
+          body: newJob(values) satisfies JobChanges,
         });
         toast.success('Job updated');
       } else {
@@ -119,7 +114,7 @@ export function JobForm({ status, job, onSaved, onCancel }: JobFormProps) {
       </FormField>
 
       {form.formState.errors.root?.message ? (
-        <Alert variant="destructive">
+        <Alert>
           <CircleAlert aria-hidden="true" />
           <AlertTitle>Job not saved</AlertTitle>
           <AlertDescription>{form.formState.errors.root.message}</AlertDescription>

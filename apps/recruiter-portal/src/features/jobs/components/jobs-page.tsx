@@ -3,10 +3,11 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { Label } from '@sync/ui/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { BriefcaseBusiness, CircleAlert, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { problemMessage } from '@/lib/api-problem';
 import { useChangeJob } from '../hooks/use-job-actions';
 import { useJobs } from '../hooks/use-jobs';
@@ -14,9 +15,10 @@ import {
   type JobLifecycleAction,
   type JobStatus,
   type JobSummary,
-  jobDate,
+  jobAbsoluteDate,
   jobLifecycleActions,
   jobMeta,
+  jobRelativeDate,
   jobState,
 } from '../job';
 import { CreateJobDialog } from './create-job-dialog';
@@ -45,7 +47,9 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
     accessorKey: 'updated_at',
     header: 'Updated',
     cell: ({ row }) => (
-      <time dateTime={row.original.updated_at}>{jobDate(row.original.updated_at)}</time>
+      <time dateTime={row.original.updated_at} title={jobAbsoluteDate(row.original.updated_at)}>
+        {jobRelativeDate(row.original.updated_at)}
+      </time>
     ),
   },
 ];
@@ -57,7 +61,7 @@ interface JobsPageProps {
 
 export function JobsPage({ status, onStatusChange }: JobsPageProps) {
   const jobs = useJobs(status);
-  const change = useChangeJob(status);
+  const change = useChangeJob();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<JobSummary | null>(null);
   const [lifecycleFailure, setLifecycleFailure] = useState<string | null>(null);
@@ -90,26 +94,23 @@ export function JobsPage({ status, onStatusChange }: JobsPageProps) {
         }
       />
 
-      <div className="flex items-center gap-3">
-        <Label htmlFor="jobs-status">Status</Label>
-        <select
-          id="jobs-status"
-          value={status ?? ''}
-          onChange={(event) =>
-            onStatusChange((event.target.value || undefined) as JobStatus | undefined)
-          }
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-dense outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="published">Published</option>
-          <option value="closed">Closed</option>
-          <option value="archived">Archived</option>
-        </select>
-      </div>
+      <Tabs
+        value={status ?? 'all'}
+        onValueChange={(value) =>
+          onStatusChange(value === 'all' ? undefined : (value as JobStatus))
+        }
+      >
+        <TabsList aria-label="Status">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="draft">Draft</TabsTrigger>
+          <TabsTrigger value="published">Published</TabsTrigger>
+          <TabsTrigger value="closed">Closed</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {lifecycleFailure ? (
-        <Alert variant="destructive">
+        <Alert>
           <CircleAlert aria-hidden="true" />
           <AlertTitle>Lifecycle move refused</AlertTitle>
           <AlertDescription>{lifecycleFailure}</AlertDescription>
@@ -131,20 +132,16 @@ export function JobsPage({ status, onStatusChange }: JobsPageProps) {
           })),
         ]}
         isLoading={jobs.isPending}
-        error={
-          jobs.isError
-            ? {
-                message: problemMessage(jobs.error, "Couldn't load your Jobs."),
-                onRetry: () => void jobs.refetch(),
-              }
-            : undefined
-        }
         empty={{
           icon: BriefcaseBusiness,
           message: status
             ? `No ${jobState(status).label.toLowerCase()} Jobs match this view.`
             : 'No Jobs yet — write the first role your Tenant is hiring for.',
-          action: <Button onClick={() => setCreating(true)}>Create your first job</Button>,
+          action: (
+            <Button onClick={() => setCreating(true)}>
+              {status ? 'Create job' : 'Create your first job'}
+            </Button>
+          ),
         }}
         loadMore={{
           hasMore: jobs.hasNextPage,
@@ -153,16 +150,17 @@ export function JobsPage({ status, onStatusChange }: JobsPageProps) {
         }}
       />
 
-      <CreateJobDialog open={creating} onOpenChange={setCreating} status={status} />
+      <CreateJobDialog open={creating} onOpenChange={setCreating} />
       {editing ? (
-        <EditJobDialog
-          jobId={editing.id}
-          open
-          onOpenChange={(open) => {
-            if (!open) setEditing(null);
-          }}
-          status={status}
-        />
+        <WidgetBoundary name="Edit Job">
+          <EditJobDialog
+            jobId={editing.id}
+            open
+            onOpenChange={(open) => {
+              if (!open) setEditing(null);
+            }}
+          />
+        </WidgetBoundary>
       ) : null}
     </div>
   );

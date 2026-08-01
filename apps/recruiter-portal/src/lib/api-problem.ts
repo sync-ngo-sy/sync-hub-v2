@@ -2,14 +2,15 @@ import type { components } from '@sync/api-client';
 
 type ProblemDetail = components['schemas']['ProblemDetail'];
 type InvalidField = components['schemas']['InvalidField'];
+type ApiProblem = Partial<ProblemDetail & components['schemas']['ValidationProblemDetail']>;
 
 /**
  * `openapi-react-query` rejects with the parsed body, so a failed call arrives as the API's
  * problem document — or, when the request never reached the API, as whatever `fetch` threw.
  */
-function problemBody(error: unknown): Partial<ProblemDetail> | null {
+function problemBody(error: unknown): ApiProblem | null {
   return typeof error === 'object' && error !== null && !(error instanceof Error)
-    ? (error as Partial<ProblemDetail>)
+    ? (error as ApiProblem)
     : null;
 }
 
@@ -24,15 +25,7 @@ export function isClientError(error: unknown): boolean {
 }
 
 export function problemFields(error: unknown): InvalidField[] {
-  const errors = (problemBody(error) as { errors?: unknown } | null)?.errors;
-  if (!Array.isArray(errors)) return [];
-  return errors.filter(
-    (entry): entry is InvalidField =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      typeof entry.location === 'string' &&
-      typeof entry.message === 'string',
-  );
+  return problemBody(error)?.errors ?? [];
 }
 
 export function problemMessage(error: unknown, fallback: string): string {
