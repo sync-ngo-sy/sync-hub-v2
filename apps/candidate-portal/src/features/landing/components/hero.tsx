@@ -1,8 +1,9 @@
+import { Eyebrow, HERO_BUTTON, UNDERLINE_LINK } from '@sync/ui/components/landing';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { usePrefersReducedMotion } from '../hooks/use-prefers-reduced-motion';
-import { Eyebrow, HERO_BUTTON, UNDERLINE_LINK, Wrap } from './editorial';
+import { Wrap } from './editorial';
 import { StaticHeadline } from './headline';
 import TypewriterHeadline from './typewriter-headline';
 
