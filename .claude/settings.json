@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "attribution": {
+    "commit": "",
+    "pr": "include the AI model name and effortLevel that was used during the session in a new line at the end"
+  },
+  "model": "opus",
+  "effortLevel": "xhigh"
+}

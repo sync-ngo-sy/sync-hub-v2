@@ -28,4 +28,4 @@ refrain from editing the readme.md file unless instructed to.
 
 ### PR
 
-When you open a PR, talk in plain English and include the AI model name and the effort selected in a new line at the end.
+When you open a PR, talk in plain English.
