@@ -24,6 +24,24 @@ import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
 describe('Jobs', () => {
+  it('opens a Job detail from the list', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsJobs([FIELD_COORDINATOR]),
+      ...getsJob(FIELD_COORDINATOR_VIEW),
+    );
+
+    const { router, user } = await renderApp('/jobs');
+    await user.click(await screen.findByRole('button', { name: 'Open Field Coordinator' }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/jobs/${FIELD_COORDINATOR.id}`),
+    );
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Field Coordinator' }),
+    ).toBeVisible();
+  });
+
   it('keeps the status filter in the URL and sends it to the Jobs API', async () => {
     server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
 

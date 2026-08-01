@@ -21,3 +21,15 @@ export function useChangeJob() {
     },
   });
 }
+
+export function useReplaceJobCriteria(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return api.useMutation('put', '/v1/tenants/me/jobs/{job_id}/criteria', {
+    onSuccess: (criteria) => {
+      queryClient.setQueryData(jobQuery(jobId).queryKey, (job) =>
+        job ? { ...job, criteria } : job,
+      );
+    },
+  });
+}
