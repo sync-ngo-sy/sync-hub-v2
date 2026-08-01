@@ -1,6 +1,7 @@
 import type { components } from '@sync/api-client';
 
 type ProblemDetail = components['schemas']['ProblemDetail'];
+type InvalidField = components['schemas']['InvalidField'];
 
 /**
  * `openapi-react-query` rejects with the parsed body, so a failed call arrives as the API's
@@ -20,6 +21,18 @@ export function problemStatus(error: unknown): number | null {
 export function isClientError(error: unknown): boolean {
   const status = problemStatus(error);
   return status !== null && status >= 400 && status < 500;
+}
+
+export function problemFields(error: unknown): InvalidField[] {
+  const errors = (problemBody(error) as { errors?: unknown } | null)?.errors;
+  if (!Array.isArray(errors)) return [];
+  return errors.filter(
+    (entry): entry is InvalidField =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      typeof entry.location === 'string' &&
+      typeof entry.message === 'string',
+  );
 }
 
 export function problemMessage(error: unknown, fallback: string): string {
