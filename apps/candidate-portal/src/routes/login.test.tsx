@@ -70,6 +70,7 @@ describe('signing in', () => {
     await signIn(user);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/applications'));
+    expect(await screen.findByRole('heading', { name: 'My Applications' })).toBeVisible();
   });
 
   it('bounces a candidate who is already signed in off the sign-in page', async () => {
