@@ -1,10 +1,23 @@
 # Terraform
 
 ```
+projects/             both projects, APIs, registry, identities, budgets — state prefix projects
 modules/service/      one Cloud Run service, reused by both environments
 envs/staging/         staging root module   — state prefix envs/staging
 envs/production/      production root module — state prefix envs/production
 ```
+
+`projects/` applies first: the environment roots manage resources *inside* projects that it
+creates. Production already exists and is adopted rather than created:
+
+```bash
+cd infra/terraform/projects && tofu import google_project.production sync-ngo-prod
+```
+
+Applying it needs, on the billing account `0146E0-8E025A-3D8296`, permission to attach
+billing to a new project and to manage budgets — `roles/billing.user` and
+`roles/billing.costsManager`, or `roles/billing.admin` for both. Budget alerts go to the
+billing account's IAM recipients, so no notification channel has to exist.
 
 State lives in `gs://sync-ngo-tfstate` (europe-west3, versioned, public access prevented),
 one prefix per environment. The bucket cannot be managed by the state it holds, so it is
