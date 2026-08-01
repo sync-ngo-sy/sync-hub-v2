@@ -1,12 +1,23 @@
+import { PageHeader } from '@sync/ui/components/page-header';
 import { createFileRoute } from '@tanstack/react-router';
-import { PlaceholderPage } from '@/features/shell/components/placeholder-page';
+import { ProfileEditor } from '@/features/profile/components/profile-editor';
+import { myProfileQuery } from '@/features/profile/hooks/use-my-profile';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_account/profile')({
   head: () => ({ meta: [{ title: pageTitle('Profile') }] }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(myProfileQuery),
   component: ProfilePage,
 });
 
 function ProfilePage() {
-  return <PlaceholderPage title="Profile" description="What recruiters see when you apply." />;
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        title="Profile"
+        description="What recruiters see when you apply. Saved all at once."
+      />
+      <ProfileEditor />
+    </div>
+  );
 }
