@@ -1,17 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { PlaceholderPage } from '@/features/shell/components/placeholder-page';
+import { ApplicationsPage } from '@/features/applications/components/applications-page';
+import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_account/applications')({
   head: () => ({ meta: [{ title: pageTitle('My Applications') }] }),
-  component: ApplicationsPage,
+  component: ApplicationsRoute,
 });
 
-function ApplicationsPage() {
+function ApplicationsRoute() {
   return (
-    <PlaceholderPage
-      title="My Applications"
-      description="Everywhere you've applied, newest first."
-    />
+    <WidgetBoundary name="Applications">
+      <ApplicationsPage />
+    </WidgetBoundary>
   );
 }

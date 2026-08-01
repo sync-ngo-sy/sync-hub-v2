@@ -110,6 +110,82 @@ export const BARE_PUBLIC_JOB: components['schemas']['PublicJob'] = {
   questions: [],
 };
 
+export const APPLICATION: components['schemas']['Application'] = {
+  id: '00000000-0000-4000-8000-000000000301',
+  job: {
+    id: PUBLIC_JOB.id,
+    title: PUBLIC_JOB.title,
+    tenant: PUBLIC_JOB.tenant,
+    location: PUBLIC_JOB.location,
+    employment_type: PUBLIC_JOB.employment_type,
+  },
+  cv_id: '00000000-0000-4000-8000-000000000201',
+  status: 'new',
+  applied_at: '2026-07-01T12:00:00Z',
+  updated_at: '2026-07-01T12:00:00Z',
+};
+
+export const INTERVIEW_APPLICATION: components['schemas']['Application'] = {
+  ...APPLICATION,
+  id: '00000000-0000-4000-8000-000000000302',
+  job: {
+    id: FIELD_COORDINATOR.id,
+    title: FIELD_COORDINATOR.title,
+    tenant: FIELD_COORDINATOR.tenant,
+    location: FIELD_COORDINATOR.location,
+    employment_type: FIELD_COORDINATOR.employment_type,
+  },
+  status: 'interview',
+  applied_at: '2026-06-01T12:00:00Z',
+  updated_at: '2026-07-15T12:00:00Z',
+};
+
+export const MORE_APPLICATIONS: components['schemas']['Application'][] = [
+  {
+    ...APPLICATION,
+    id: '00000000-0000-4000-8000-000000000303',
+    job: {
+      id: PHARMACIST.id,
+      title: PHARMACIST.title,
+      tenant: PHARMACIST.tenant,
+      location: PHARMACIST.location,
+      employment_type: PHARMACIST.employment_type,
+    },
+    status: 'rejected',
+    applied_at: '2026-05-01T12:00:00Z',
+    updated_at: '2026-05-03T12:00:00Z',
+  },
+];
+
+export const DUPLICATE_APPLICATION: components['schemas']['ApplicationConflictProblemDetail'] = {
+  type: 'urn:sync:problem:application-already-exists',
+  title: 'Conflict',
+  status: 409,
+  detail: 'You have already applied to this job.',
+  application_id: APPLICATION.id,
+};
+
+export const APPLICATION_ANSWER_REFUSED: components['schemas']['SubmissionRefusedProblemDetail'] = {
+  type: 'urn:sync:problem:invalid-application-answers',
+  title: 'Unprocessable Entity',
+  status: 422,
+  detail: 'The answers do not match the questions this job asks.',
+  errors: [
+    {
+      location: 'body.answers.0.answer_boolean',
+      message: 'This answer no longer matches the question.',
+      type: 'answer_type_mismatch',
+    },
+  ],
+};
+
+export const WITHDRAWAL_REFUSED: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:application-transition-not-allowed',
+  title: 'Conflict',
+  status: 409,
+  detail: 'This application has already been decided and can no longer be withdrawn.',
+};
+
 function aCv(over: Partial<Cv> & Pick<Cv, 'id' | 'display_name' | 'parsing_status'>): Cv {
   return {
     parsing_error: null,
