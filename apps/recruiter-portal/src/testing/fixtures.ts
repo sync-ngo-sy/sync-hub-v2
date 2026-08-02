@@ -18,6 +18,15 @@ export const CANDIDATE: components['schemas']['ProfileView'] = {
   phone: null,
 };
 
+export const PLATFORM_ADMIN: components['schemas']['ProfileView'] = {
+  id: '00000000-0000-4000-8000-000000000044',
+  email: 'nour@sync.test',
+  full_name: 'Nour Sabbagh',
+  account_type: 'platform_admin',
+  avatar_url: null,
+  phone: null,
+};
+
 export const NO_SESSION: components['schemas']['ProblemDetail'] = {
   type: 'urn:sync:problem:not-authenticated',
   title: 'Unauthorized',

@@ -7,7 +7,13 @@ import { listsJobs } from '@/features/jobs/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { hasProfile } from '@/features/profile/testing/handlers';
 import { client } from '@/lib/api';
-import { CANDIDATE, CANDIDATE_PROFILE, PUBLIC_JOBS, RECRUITER } from '@/testing/fixtures';
+import {
+  CANDIDATE,
+  CANDIDATE_PROFILE,
+  PLATFORM_ADMIN,
+  PUBLIC_JOBS,
+  RECRUITER,
+} from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -32,6 +38,19 @@ describe('the account guard', () => {
       await screen.findByRole('heading', { name: 'This is the Candidate Portal' }),
     ).toBeVisible();
     expect(screen.getByText(/Sync\s+Recruiter Portal/)).toBeVisible();
+  });
+
+  it('shows a platform admin the same notice, in words that fit their account', async () => {
+    server.use(...signedInAs(PLATFORM_ADMIN));
+
+    const { router } = await renderApp('/cvs');
+
+    expect(router.state.location.pathname).toBe('/wrong-portal');
+    expect(
+      await screen.findByRole('heading', { name: 'This is the Candidate Portal' }),
+    ).toBeVisible();
+    expect(screen.getByText(/platform admin account/)).toBeVisible();
+    expect(screen.queryByText(/Sync\s+Recruiter Portal/)).not.toBeInTheDocument();
   });
 
   it('redirects to sign in when the client reports the session is over', async () => {

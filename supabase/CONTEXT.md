@@ -15,19 +15,30 @@ _Avoid_: Company, Org, Workspace, Account.
 
 **Profile**:
 The identity of one human, sharing its id with a Supabase Auth user. Holds the live
-contact identity — name, avatar, phone. Every Candidate and every Recruiter *is* a
-Profile.
+contact identity — name, avatar, phone. Every Candidate, every Recruiter and every Platform
+admin *is* a Profile, and is exactly one of the three — the `account_type` discriminator and
+each child table's composite foreign key make the other two physically unreferenceable.
 _Avoid_: User, Account.
 
 **Candidate**:
-A Profile in the job-seeker role: owns a professional profile and applies to Jobs. A
-Profile is a Candidate or a Recruiter, never both.
+A Profile in the job-seeker role: owns a professional profile and applies to Jobs. One of
+the three kinds a Profile can be, and never a second one as well.
 _Avoid_: Job-seeker, User. (Reserve "Applicant" for the act of applying, not the person.)
 
 **Recruiter**:
-A Profile in the staff role, belonging to exactly one Tenant. A Profile is a Candidate or
-a Recruiter, never both. `admin` is a Recruiter *role*, not a separate concept.
+A Profile in the staff role, belonging to exactly one Tenant. One of the three kinds a
+Profile can be, and never a second one as well. `admin` is a Recruiter *role* — authority
+inside their own Tenant — and has nothing to do with a Platform admin.
 _Avoid_: Agent, Hiring manager.
+
+**Platform admin**:
+A Profile that operates Sync itself and belongs to no Tenant: the account a Tenant is
+created from, its founding admin invited from, and a Tenant suspended or restored from.
+Neither portal serves the account type, and it reaches nothing a Candidate or a Recruiter
+reaches. Created out of band by a script run against an environment — never by signing up,
+because the first one has nobody to authorise them. Distinct from a Recruiter whose role is
+`admin`.
+_Avoid_: Superuser, Staff, Sync admin, Operator, Owner.
 
 ### Applications
 

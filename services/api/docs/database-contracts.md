@@ -22,8 +22,9 @@ access / RLS deny-by-default), root ADR-0003 (Postgres-table queues), supabase A
 
 ## Provisioning identity
 
-A `profiles` row must exist before its `candidates`/`recruiters` row, and `account_type` is
-fixed at creation (candidate XOR recruiter, enforced by composite FK).
+A `profiles` row must exist before its `candidates`/`recruiters`/`platform_admins` row, and
+`account_type` is fixed at creation. A Profile is exactly one of the three, enforced by the
+composite FK (supabase ADR-0001, amended by supabase ADR-0003).
 
 - **Candidate signup**: in one tx → `insert profiles(id=auth.uid(), account_type='candidate',
   full_name, …)` then `insert candidates(id=auth.uid())`. The candidate insert enqueues an
@@ -33,6 +34,11 @@ fixed at creation (candidate XOR recruiter, enforced by composite FK).
   everything, leaving the address free to sign up again.
 - **Recruiter invite**: `insert profiles(id, account_type='recruiter', …)` then
   `insert recruiters(id, tenant_id, role)`.
+- **Platform admin bootstrap**: `insert profiles(id, account_type='platform_admin', …)` then
+  `insert platform_admins(id)`, in one tx, with the identity deleted again if it fails — the
+  same undo candidate signup uses. No endpoint does this: the first Platform admin has nobody
+  to authorise them, so `scripts/create_platform_admin.py` is run against a target environment
+  and the address is confirmed on the spot, there being no portal to send a link to.
 - Do **not** rely on an `auth.users` trigger; the flow decides the role, so the backend writes
   both rows.
 
@@ -650,5 +656,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| Candidate XOR recruiter; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| A Profile is exactly one of candidate, recruiter, platform admin; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
 | Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |

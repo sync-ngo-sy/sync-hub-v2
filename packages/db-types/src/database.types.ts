@@ -1741,6 +1741,32 @@ export type Database = {
           },
         ];
       };
+      platform_admins: {
+        Row: {
+          account_type: Database['public']['Enums']['account_type'];
+          created_at: string;
+          id: string;
+        };
+        Insert: {
+          account_type?: Database['public']['Enums']['account_type'];
+          created_at?: string;
+          id: string;
+        };
+        Update: {
+          account_type?: Database['public']['Enums']['account_type'];
+          created_at?: string;
+          id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'platform_admins_id_account_type_fkey';
+            columns: ['id', 'account_type'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id', 'account_type'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           account_type: Database['public']['Enums']['account_type'];
@@ -2058,7 +2084,7 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
-      account_type: 'candidate' | 'recruiter';
+      account_type: 'candidate' | 'recruiter' | 'platform_admin';
       application_question_type: 'yes_no' | 'short_text';
       application_status:
         | 'new'
@@ -2215,7 +2241,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      account_type: ['candidate', 'recruiter'],
+      account_type: ['candidate', 'recruiter', 'platform_admin'],
       application_question_type: ['yes_no', 'short_text'],
       application_status: [
         'new',

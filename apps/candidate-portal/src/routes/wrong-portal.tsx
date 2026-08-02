@@ -9,7 +9,13 @@ export const Route = createFileRoute('/wrong-portal')({
     const profile = await ensureCurrentProfile(context.queryClient);
     if (!profile) throw redirect({ to: '/login' });
     if (isCandidate(profile)) throw redirect({ to: '/applications' });
+    return { profile };
   },
   head: () => ({ meta: [{ title: pageTitle('Wrong portal') }] }),
-  component: WrongPortalScreen,
+  component: WrongPortalPage,
 });
+
+function WrongPortalPage() {
+  const { profile } = Route.useRouteContext();
+  return <WrongPortalScreen accountType={profile.account_type} />;
+}
