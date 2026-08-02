@@ -26,8 +26,7 @@ explicit fast-follow bucket (§13) and never blocks v1.
 | Sign up → confirm email → log in → password reset | auth ops |
 | My Applications (authed home; list, withdraw) | application ops |
 | Apply flow (from job detail) | `submitApplication` |
-| Profile editor | `getMyProfile`, `replaceMyProfile` |
-| CVs (upload, parse progress, profile draft review, set current, cap 5) | the 7 CV ops |
+| Profile editor — CVs first (upload, parse progress, set current, cap 5), then the fields a finished parse fills, saved together. `/cvs` redirects here | `getMyProfile`, `replaceMyProfile`, the 7 CV ops |
 | Notifications (bell + page) | 3 notification ops |
 | Account settings (danger zone: delete account) | `deleteMyAccount` |
 
@@ -279,8 +278,8 @@ fast-follow analytics endpoints land.
 Candidate portal only in v1 (the only two payload types are candidate-facing; a
 recruiter bell would be eternally empty). Bell + unread badge (poll 60s + window
 focus) → dropdown → "View all" page (cursor-paged). Items render per discriminated
-`type` and deep-link (`cv_parse_failed` → CVs; `application_status_changed` → the
-application). Click marks read (single-item endpoint). No "mark all as read" — the
+`type` and deep-link (`cv_parse_failed` → the profile, where the CVs are;
+`application_status_changed` → the application). Click marks read (single-item endpoint). No "mark all as read" — the
 API cannot do it atomically.
 
 ## 12. Testing
@@ -323,7 +322,7 @@ usable".
 
 **Then two independent tracks (one ticket per feature-page):**
 candidate: landing (+typewriter) → auth flows → browse/detail/`/l/:token`/apply →
-My Applications → CVs → profile editor → notifications → account settings.
+My Applications → profile editor, CVs included → notifications → account settings.
 recruiter: landing → auth → dashboard → jobs → job detail tabs → application detail →
 candidate search + view → talent pool → templates → settings.
 

@@ -350,17 +350,17 @@ export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
   is_searchable: false,
 };
 
-/** Already carries one of the skills {@link CV_DRAFT} names, so the merge case is exercised. */
-export const PROFILE_WITH_SKILL: components['schemas']['CandidateProfile'] = {
-  ...EMPTY_PROFILE,
-  skills: [{ name: 'Python', years_experience: 3 }],
-};
-
+/**
+ * What one CV says. `location_key`, `preferred_language_code` and `is_searchable` come from the
+ * candidate rather than the CV, which is why the draft carries the empty ones — the API never
+ * reads a place or a setting off a document.
+ */
 export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   full_name: 'Lina Khoury',
   is_searchable: false,
   headline: 'Backend engineer, 8 years',
   location_key: null,
+  preferred_language_code: null,
   experiences: [
     { job_title: 'Backend engineer', company_name: 'Levant Digital', is_current: true },
   ],
@@ -368,6 +368,7 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
     { name: 'Python', years_experience: 3 },
     { name: 'Kubernetes', years_experience: null },
   ],
+  unmapped_skills: ['Sphere Standards'],
 };
 
 function aNotification(

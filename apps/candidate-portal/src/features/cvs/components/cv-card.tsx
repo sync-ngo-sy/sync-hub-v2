@@ -1,7 +1,6 @@
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { CircleX, Download, Star, Trash2, Wand2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
@@ -11,7 +10,13 @@ import { type Cv, hasFailed, isReady, languageName, PARSE_STATES } from '../cv';
 import { useCvDownloadLink, useDeleteCv, useMakeCvCurrent } from '../hooks/use-cv-actions';
 import { ConfirmDialog } from './confirm-dialog';
 
-export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void }) {
+interface CvCardProps {
+  cv: Cv;
+  onFill: (cv: Cv) => void;
+  filling: boolean;
+}
+
+export function CvCard({ cv, onFill, filling }: CvCardProps) {
   const makeCurrent = useMakeCvCurrent();
   const remove = useDeleteCv();
   const downloadLink = useCvDownloadLink();
@@ -57,8 +62,10 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4 py-5">
+    // Framed like the entries in every other section rather than as a card of its own: the CVs
+    // are a section of the profile now, and a card inside a card reads as a page inside a page.
+    <div className="min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4">
+      <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-heading text-base font-medium text-foreground">
@@ -92,6 +99,7 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
         <div className="flex flex-wrap gap-2">
           {ready && !cv.is_current ? (
             <Button
+              type="button"
               variant="outline"
               size="sm"
               aria-label={`Make “${cv.display_name}” current`}
@@ -104,17 +112,20 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
 
           {ready ? (
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              aria-label={`Fill profile from “${cv.display_name}”`}
-              onClick={() => onReview(cv)}
+              disabled={filling}
+              aria-label={`Fill the form from “${cv.display_name}”`}
+              onClick={() => onFill(cv)}
             >
               <Wand2 aria-hidden="true" />
-              Fill profile from this CV
+              {filling ? 'Filling…' : 'Fill the form from this CV'}
             </Button>
           ) : null}
 
           <Button
+            type="button"
             variant="outline"
             size="sm"
             disabled={downloadLink.isPending}
@@ -126,6 +137,7 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
           </Button>
 
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             // The API refuses outright, so the reason is on screen before the click rather
@@ -145,7 +157,7 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
             The current CV cannot be deleted. Make another one current first.
           </p>
         ) : null}
-      </CardContent>
+      </div>
 
       <ConfirmDialog
         open={confirming === 'current'}
@@ -169,6 +181,6 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
         destructive
         onConfirm={destroy}
       />
-    </Card>
+    </div>
   );
 }

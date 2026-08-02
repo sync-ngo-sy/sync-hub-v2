@@ -3,12 +3,12 @@ import { CV_FAILURE_NOTIFICATION, MOVED_NOTIFICATION, READ_NOTIFICATION } from '
 import { isUnread, notificationCopy } from './notification';
 
 describe('what a notification says', () => {
-  it('names the file the platform could not read, and leads to the CVs', () => {
+  it('names the file the platform could not read, and leads to the profile it sits on', () => {
     const copy = notificationCopy(CV_FAILURE_NOTIFICATION);
 
     expect(copy.headline).toBe("Couldn't read “scan.pdf”");
-    expect(copy.detail).toBe('Open your CVs to see why, and upload another file.');
-    expect(copy.to).toBe('/cvs');
+    expect(copy.detail).toBe('Open your profile to see why, and upload another file.');
+    expect(copy.to).toBe('/profile');
   });
 
   it('names the Job, the employer and the move, and leads to the Application', () => {

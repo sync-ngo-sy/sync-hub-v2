@@ -7,7 +7,7 @@ export function PrimaryNav() {
   return (
     <nav
       aria-label="Sections"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:static md:z-auto md:ml-2 md:flex md:border-t-0 md:bg-transparent md:pb-0"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:static md:z-auto md:ml-2 md:flex md:border-t-0 md:bg-transparent md:pb-0"
     >
       {DESTINATIONS.map(({ to, label, icon: Icon }) => (
         <Link

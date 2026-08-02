@@ -1,8 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { CvsPage } from '@/features/cvs/components/cvs-page';
-import { pageTitle } from '@/lib/page-title';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
+/**
+ * CVs are the profile's first section now, not a page. The address stays so that a bookmark, an
+ * old notification email or a link somebody shared still arrives somewhere.
+ */
 export const Route = createFileRoute('/_account/cvs')({
-  head: () => ({ meta: [{ title: pageTitle('CVs') }] }),
-  component: CvsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/profile', replace: true });
+  },
 });

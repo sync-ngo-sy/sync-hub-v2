@@ -12,7 +12,7 @@ export function NothingPublished({ signedIn }: { signedIn: boolean }) {
       message={NOTHING_PUBLISHED}
       action={
         signedIn ? (
-          <Link to="/cvs" className={buttonVariants({ variant: 'outline' })}>
+          <Link to="/profile" className={buttonVariants({ variant: 'outline' })}>
             Keep your CV ready
           </Link>
         ) : (
