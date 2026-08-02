@@ -153,7 +153,7 @@ describe('filtering jobs', () => {
     await screen.findByRole('list', { name: 'Jobs' });
 
     await user.click(screen.getByLabelText('Employment type'));
-    await user.click(screen.getByRole('option', { name: 'Full time' }));
+    await user.click(await screen.findByRole('option', { name: 'Full time' }));
 
     await waitFor(() => expect(router.state.location.searchStr).toBe('?type=full_time'));
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Frontend Developer')]));
@@ -183,7 +183,7 @@ describe('filtering jobs', () => {
     await user.click(screen.getByRole('combobox', { name: 'Location' }));
     await user.click(await screen.findByRole('option', { name: 'Aleppo' }));
     await user.click(screen.getByLabelText('Employment type'));
-    await user.click(screen.getByRole('option', { name: 'Contract' }));
+    await user.click(await screen.findByRole('option', { name: 'Contract' }));
 
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
@@ -294,7 +294,7 @@ describe('filtering jobs', () => {
     await screen.findByRole('list', { name: 'Jobs' });
 
     await user.click(screen.getByLabelText('Employment type'));
-    await user.click(screen.getByRole('option', { name: 'Contract' }));
+    await user.click(await screen.findByRole('option', { name: 'Contract' }));
     await waitFor(() => expect(asked.at(-1)?.get('employment_type')).toBe('contract'));
 
     await user.click(await screen.findByRole('button', { name: 'Load more jobs' }));
