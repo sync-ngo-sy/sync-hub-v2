@@ -21,12 +21,15 @@ import sys
 from getpass import getpass
 from typing import TYPE_CHECKING
 
+from dotenv import load_dotenv
 from httpx import AsyncClient
 
 from sync_api.auth import GoTrue
 from sync_api.auth.gotrue import EmailAlreadyRegisteredError, GoTrueError, WeakPasswordError
 from sync_api.platform import create_platform_admin
 from sync_core import Database, get_settings
+
+load_dotenv("./../.env")
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
