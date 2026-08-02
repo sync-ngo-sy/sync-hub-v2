@@ -20,7 +20,7 @@ If a well-known library already does it, add it, If the only library that does i
 
 ### Don't comment
 
-Comments inside the frontend should be scarce.
+Comments inside the frontend should be zero.
 
 refrain from editing the readme.md file unless instructed to.
 

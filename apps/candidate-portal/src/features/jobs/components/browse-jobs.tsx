@@ -3,16 +3,28 @@ import { ListSkeleton } from '@sync/ui/components/skeletons';
 import { Button } from '@sync/ui/components/ui/button';
 import { ErrorCard } from '@/features/shell/components/error-card';
 import { problemMessage } from '@/lib/api-problem';
+import { isFiltered, type JobFilters, NO_FILTERS } from '../filters';
 import { useBrowseJobs } from '../hooks/use-browse-jobs';
+import { JobFilterBar } from './job-filter-bar';
 import { JobList } from './job-list';
+import { NothingMatches } from './nothing-matches';
 import { NothingPublished } from './nothing-published';
 
-export function BrowseJobs({ signedIn }: { signedIn: boolean }) {
-  const jobs = useBrowseJobs();
+interface BrowseJobsProps {
+  signedIn: boolean;
+  filters: JobFilters;
+  onFiltersChange: (filters: JobFilters) => void;
+}
+
+export function BrowseJobs({ signedIn, filters, onFiltersChange }: BrowseJobsProps) {
+  const jobs = useBrowseJobs(filters);
+  const filtered = isFiltered(filters);
 
   return (
     <div className="space-y-8">
       <PageHeader title="Jobs" description="Open roles across Syria, newest first." />
+
+      <JobFilterBar filters={filters} onChange={onFiltersChange} />
 
       {jobs.isPending ? (
         <div role="status" aria-label="Loading jobs">
@@ -32,7 +44,13 @@ export function BrowseJobs({ signedIn }: { signedIn: boolean }) {
       ) : null}
 
       {jobs.data?.length ? <JobList jobs={jobs.data} /> : null}
-      {jobs.data?.length === 0 ? <NothingPublished signedIn={signedIn} /> : null}
+      {jobs.data?.length === 0 ? (
+        filtered ? (
+          <NothingMatches onClear={() => onFiltersChange(NO_FILTERS)} />
+        ) : (
+          <NothingPublished signedIn={signedIn} />
+        )
+      ) : null}
 
       {jobs.hasNextPage ? (
         <div className="flex justify-center">

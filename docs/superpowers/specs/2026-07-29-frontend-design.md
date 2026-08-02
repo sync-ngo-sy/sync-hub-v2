@@ -21,7 +21,7 @@ explicit fast-follow bucket (§13) and never blocks v1.
 | Page | Backed by |
 | -------------------------------- | ------------------------------------- |
 | Landing (public, the one animated surface) | — |
-| Browse jobs, job detail | `browseJobs`, `getPublicJob` |
+| Browse jobs (filter bar: keyword + Location + employment type, held in the URL), job detail | `browseJobs`, `getPublicJob` |
 | Tracked-link landing `/l/:token` (silent; no tracking UI) | `getJobByTrackedLink` |
 | Sign up → confirm email → log in → password reset | auth ops |
 | My Applications (authed home; list, withdraw) | application ops |
@@ -263,9 +263,13 @@ of it to static. Everywhere else: shadcn's stock ~150ms CSS transitions only.
 The API paginates by cursor (no totals, no offsets, fixed newest-first order, hard
 server-side filters). Therefore, honestly: "Load more" via `useInfiniteQuery` (no
 page numbers), **no sortable column headers in v1**, filters as Zod-validated URL
-search params (segmented tabs above tables). One `DataTable` molecule serves all
-recruiter lists; the candidate portal uses cards/lists, never TanStack Table. Row
-actions: row click opens detail; named actions in a trailing overflow menu.
+search params — segmented tabs above the recruiter's tables, a stacked filter bar over
+the candidate's Browse (keyword, Location, employment type). Either way the address bar
+holds them, so a reload keeps them, Back takes the last one off, and a link reproduces
+the list; changing one starts a fresh first page and every later page carries it. One
+`DataTable` molecule serves all recruiter lists; the candidate portal uses cards/lists,
+never TanStack Table. Row actions: row click opens detail; named actions in a trailing
+overflow menu.
 
 Charts (v1) are limited to data that exists: the tracked-links horizontal bar chart
 (`view_count` per link) on the job's Tracked links tab. The Dashboard shows real
