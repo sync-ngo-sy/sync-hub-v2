@@ -104,14 +104,33 @@ def pooler_url_from_status_text() -> str | None:
     return match.group(0) if match else None
 
 
-def pooler_url_from_direct_url() -> str | None:
-    """Last resort: the direct URL with Supavisor's port and tenant-qualified user."""
+def pooler_url_candidates() -> list[str]:
+    """Supavisor usernames to try, best guess first.
+
+    The CLI does not publish the local tenant name anywhere -- not in `supabase status`,
+    not in the config reference -- so the tenant is found by connecting rather than by
+    being told. Each candidate is a complete URL built from the direct one.
+    """
     port, project = _pooler_config()
     direct = stack_config().get("DB_URL")
-    if not (port and project and direct):
-        return None
+    if not (port and direct):
+        return []
+
     parsed = urlsplit(direct)
-    user = (parsed.username or "postgres").split(".", 1)[0]
+    base_user = (parsed.username or "postgres").split(".", 1)[0]
     password = parsed.password or "postgres"
-    netloc = f"{user}.{project}:{password}@{parsed.hostname}:{port}"
-    return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+
+    users = [base_user, f"{base_user}.{project}" if project else "", f"{base_user}.pooler-dev"]
+    return [
+        urlunsplit(
+            (
+                parsed.scheme,
+                f"{user}:{password}@{parsed.hostname}:{port}",
+                parsed.path,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
+        for user in users
+        if user
+    ]

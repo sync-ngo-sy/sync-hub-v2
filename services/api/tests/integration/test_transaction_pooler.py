@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+import asyncpg
 import pytest
 from sqlalchemy import text
 
@@ -27,23 +28,30 @@ CONCURRENT_SESSIONS = 24
 QUERIES_PER_SESSION = 6
 
 
-def _pooler_url() -> str:
-    for candidate in (
-        stack.pooler_url_from_status_json(),
-        stack.pooler_url_from_status_text(),
-        stack.pooler_url_from_direct_url(),
-    ):
-        if candidate:
-            return candidate.replace("postgresql://", "postgresql+asyncpg://", 1)
+async def _pooler_url() -> str:
+    published = stack.pooler_url_from_status_json() or stack.pooler_url_from_status_text()
+    candidates = [published] if published else stack.pooler_url_candidates()
+
+    tried: list[str] = []
+    for candidate in candidates:
+        try:
+            connection = await asyncpg.connect(candidate, timeout=10)
+        except (asyncpg.PostgresError, OSError) as error:
+            user = candidate.split("//", 1)[1].split(":", 1)[0]
+            tried.append(f"{user}@{candidate.rsplit('@', 1)[-1]}: {error}")
+            continue
+        await connection.close()
+        return candidate.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     # Skipping when the pooler is switched off is fine. Skipping when it is switched on
     # would mean this file quietly stops testing anything, which is the failure mode worth
     # guarding: the whole point is that the deployed path is exercised somewhere.
     if stack.pooler_enabled():
+        detail = "\n  ".join(tried) or "no candidates could be built"
         message = (
-            "[db.pooler] is enabled in supabase/config.toml but `supabase status` reports no "
-            "pooler URL. The stack is out of date, or the CLI renamed the key and this test "
-            "needs updating -- it must not silently skip."
+            "[db.pooler] is enabled in supabase/config.toml but nothing could connect to the "
+            f"pooler. Tried:\n  {detail}\nThis must fail rather than skip -- a silently "
+            "skipped pooler test stops guarding the deployed path."
         )
         raise AssertionError(message)
 
@@ -52,7 +60,7 @@ def _pooler_url() -> str:
 
 @pytest.fixture(scope="session")
 async def pooled_database(settings: Settings, _migrated_database: None) -> AsyncIterator[Database]:
-    pooled = settings.model_copy(update={"database_url": _pooler_url()})
+    pooled = settings.model_copy(update={"database_url": await _pooler_url()})
     db = Database(pooled)
     yield db
     await db.dispose()
