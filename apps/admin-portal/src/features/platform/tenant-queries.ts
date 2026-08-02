@@ -8,11 +8,15 @@ export function useCreatePlatformTenant() {
   const queryClient = useQueryClient();
 
   return api.useMutation('post', '/v1/platform/tenants', {
-    onSuccess: ({ tenant }) => {
-      queryClient.setQueryData<PlatformTenant[]>(platformTenantsQuery.queryKey, (current = []) => [
-        ...current.filter(({ id }) => id !== tenant.id),
-        tenant,
-      ]);
+    onSuccess: async ({ tenant }) => {
+      queryClient.setQueryData<PlatformTenant[]>(platformTenantsQuery.queryKey, (current) => {
+        if (!current) return current;
+        return [...current.filter(({ id }) => id !== tenant.id), tenant].sort(
+          (left, right) =>
+            left.name.localeCompare(right.name) || left.slug.localeCompare(right.slug),
+        );
+      });
+      await queryClient.invalidateQueries({ queryKey: platformTenantsQuery.queryKey });
     },
   });
 }

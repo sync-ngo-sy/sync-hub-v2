@@ -4,7 +4,7 @@ import { StatusChip } from '@sync/ui/components/status-chip';
 import { Button } from '@sync/ui/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import { CreateTenantDialog } from './create-tenant-dialog';
@@ -42,16 +42,21 @@ const tenantColumns: DataTableColumn<PlatformTenant>[] = [
 export function PlatformTenants() {
   const tenants = useQuery(platformTenantsQuery);
   const resendInvite = useResendFoundingAdminInvite();
+  const resendInFlight = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [statusTenant, setStatusTenant] = useState<PlatformTenant | null>(null);
   const createButton = <Button onClick={() => setCreateOpen(true)}>Create tenant</Button>;
 
   async function resend(tenant: PlatformTenant) {
+    if (resendInFlight.current || resendInvite.isPending) return;
+    resendInFlight.current = true;
     try {
       await resendInvite.mutateAsync({ params: { path: { tenant_id: tenant.id } } });
       toast.success(`Invitation resent for ${tenant.name}.`);
     } catch (error) {
       toast.error(problemMessage(error, `The invitation for ${tenant.name} couldn't be resent.`));
+    } finally {
+      resendInFlight.current = false;
     }
   }
 
@@ -69,7 +74,7 @@ export function PlatformTenants() {
         getRowId={(tenant) => tenant.id}
         rowLabel={(tenant) => tenant.name}
         rowActions={(tenant) => [
-          ...(tenant.invite_pending
+          ...(tenant.invite_pending && !resendInvite.isPending
             ? [{ label: 'Resend invite', onSelect: () => void resend(tenant) }]
             : []),
           {

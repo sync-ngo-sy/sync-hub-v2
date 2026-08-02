@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet } from '@tanstack/react-router';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/features/shell/components/toaster';
 import { ThemeProvider } from '@/lib/theme';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -9,7 +9,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     <ThemeProvider>
       <HeadContent />
       <Outlet />
-      <Toaster position="bottom-right" />
+      <Toaster />
     </ThemeProvider>
   ),
 });
