@@ -42,7 +42,10 @@ health_timeout = "2m"
 major_version = 17
 
 [db.pooler]
-enabled = false
+# On, so the pooler the deployed services connect through is also the one the tests run
+# against. Transaction-mode pooling is the reason the engine disables prepared-statement
+# caching — see ADR-0004 and tests/integration/test_transaction_pooler.py.
+enabled = true
 # Port to use for the local connection pooler.
 port = 54329
 # Specifies when a server connection can be reused by other clients.
