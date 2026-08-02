@@ -164,10 +164,10 @@ site_url = "http://127.0.0.1:5173"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# The recruiter portal, which is where a teammate invite has to land: the API passes it as the
-# invite's `redirect_to`, and GoTrue drops any `redirect_to` that is not named here — silently,
-# falling back to `site_url`, so an invite would arrive pointing at the candidate portal.
-additional_redirect_urls = ["http://127.0.0.1:5174"]
+# The recruiter and admin portals receive account-specific auth emails. The API passes each as
+# `redirect_to`, and GoTrue silently drops any destination not named here, falling back to
+# `site_url` and sending the user to the candidate portal instead.
+additional_redirect_urls = ["http://127.0.0.1:5174", "http://127.0.0.1:5175"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

@@ -43,3 +43,4 @@ supabase/.temp/
 # so the repo type-checks without a running backend. Regenerate with `pnpm gen:*`.
 .superpowers/
 .omo/
+.worktrees/

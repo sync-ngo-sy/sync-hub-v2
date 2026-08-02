@@ -13,7 +13,9 @@ most contexts below don't have one yet.
   app: browsing and applying to Jobs, CVs, the professional profile, Applications.
 - [Recruiter Portal](./apps/recruiter-portal/CONTEXT.md) — the tenant-facing web app:
   Jobs, the application Pipeline, the tenant CRM, and team management.
-- [Design System](./packages/ui/CONTEXT.md) — the shared visual language of both
+- [Platform Portal](./apps/admin-portal/CONTEXT.md) — the Platform-admin web app:
+  platform counts and Tenant operations.
+- [Design System](./packages/ui/CONTEXT.md) — the shared visual language of all three
   portals: tokens, primitives, and molecules that render purely from props.
 
 Not yet modelled (no `CONTEXT.md` until their terms are resolved):
@@ -29,7 +31,7 @@ Not yet modelled (no `CONTEXT.md` until their terms are resolved):
   database is the source of truth.
 - **services/api → packages/api-client**: the client is generated from the API's
   OpenAPI schema; the API is the source of truth (see ADR-0008).
-- **Portals → services/api**: both portals speak to the backend only through
+- **Portals → services/api**: all three portals speak to the backend only through
   `packages/api-client` — never raw HTTP (ADR-0008).
-- **Design System → Portals**: both portals render from the shared design system;
+- **Design System → Portals**: all three portals render from the shared design system;
   the design system itself never fetches data (ADR-0009).

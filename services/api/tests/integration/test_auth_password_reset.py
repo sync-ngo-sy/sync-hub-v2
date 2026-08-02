@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from httpx import AsyncClient, Response
 
 from sync_api.auth import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
-from tests.conftest import CANDIDATE_PORTAL_URL, RECRUITER_PORTAL_URL
+from tests.conftest import ADMIN_PORTAL_URL, CANDIDATE_PORTAL_URL, RECRUITER_PORTAL_URL
 from tests.support.candidates import a_confirmed_candidate, a_signup, sign_in
 from tests.support.harness import present_only
 from tests.support.mailbox import Mailbox
+from tests.support.platform_admins import a_platform_admin
 from tests.support.tenants import an_admin
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 A_NEW_PASSWORD = "a-brand-new-passphrase"
 
@@ -58,6 +65,17 @@ async def test_a_recruiters_reset_link_lands_in_the_recruiter_portal(
 
     body = await mailbox.newest_body(signup.email)
     assert f"{RECRUITER_PORTAL_URL}/auth/reset-password" in body, body
+
+
+async def test_a_platform_admins_reset_link_lands_in_the_admin_portal(
+    app: FastAPI, browser: AsyncClient, db_session: AsyncSession, mailbox: Mailbox
+) -> None:
+    signup = await a_platform_admin(app, db_session)
+
+    await ask_to_reset(browser, signup.email)
+
+    body = await mailbox.newest_body(signup.email)
+    assert f"{ADMIN_PORTAL_URL}/auth/reset-password" in body, body
 
 
 async def test_resetting_ends_the_sessions_that_were_already_open(

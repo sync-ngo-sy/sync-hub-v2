@@ -33,9 +33,9 @@ _Avoid_: Agent, Hiring manager.
 
 **Platform admin**:
 A Profile that operates Sync itself and belongs to no Tenant: the account a Tenant is
-created from, its founding admin invited from, and a Tenant suspended or restored from.
-Neither portal serves the account type, and it reaches nothing a Candidate or a Recruiter
-reaches. Created out of band by a script run against an environment — never by signing up,
+created from, its founding admin invited from, and a Tenant suspended or restored from. The
+Platform Portal serves the account type; the Candidate and Recruiter Portals do not. Created
+out of band by a script run against an environment — never by signing up,
 because the first one has nobody to authorise them. Distinct from a Recruiter whose role is
 `admin`.
 _Avoid_: Superuser, Staff, Sync admin, Operator, Owner.
