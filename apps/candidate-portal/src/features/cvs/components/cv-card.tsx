@@ -1,7 +1,6 @@
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { CircleX, Download, Star, Trash2, Wand2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
@@ -11,7 +10,13 @@ import { type Cv, hasFailed, isReady, languageName, PARSE_STATES } from '../cv';
 import { useCvDownloadLink, useDeleteCv, useMakeCvCurrent } from '../hooks/use-cv-actions';
 import { ConfirmDialog } from './confirm-dialog';
 
-export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void }) {
+interface CvCardProps {
+  cv: Cv;
+  onFill: (cv: Cv) => void;
+  filling: boolean;
+}
+
+export function CvCard({ cv, onFill, filling }: CvCardProps) {
   const makeCurrent = useMakeCvCurrent();
   const remove = useDeleteCv();
   const downloadLink = useCvDownloadLink();
@@ -57,95 +62,98 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4 py-5">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-heading text-base font-medium text-foreground">
-              {cv.display_name}
-            </h3>
-            {cv.is_current ? <StatusChip tone="positive" label="Current" /> : null}
-            <StatusChip tone={state.tone} label={state.label} />
-          </div>
-
-          <p className="text-meta text-muted-foreground">
-            Uploaded{' '}
-            <time dateTime={cv.created_at} title={absoluteDateTime(cv.created_at)}>
-              {relativeTime(cv.created_at)}
-            </time>
-            {cv.detected_language ? ` · Written in ${languageName(cv.detected_language)}` : ''}
-          </p>
-
-          <p className="text-dense text-muted-foreground">{state.sentence}</p>
+    // Framed like the entries in every other section: a card inside a card reads as a page
+    // inside a page.
+    <div className="min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-heading text-base font-medium text-foreground">{cv.display_name}</h3>
+          {cv.is_current ? <StatusChip tone="positive" label="Current" /> : null}
+          <StatusChip tone={state.tone} label={state.label} />
         </div>
 
-        {hasFailed(cv) && cv.parsing_error ? (
-          // Gray, not red: `--destructive` is reserved for irreversible actions, and the icon
-          // is what carries the signal (§8).
-          <Alert className="bg-muted">
-            <CircleX aria-hidden="true" />
-            <AlertTitle>Why it could not be read</AlertTitle>
-            <AlertDescription>{cv.parsing_error}</AlertDescription>
-          </Alert>
-        ) : null}
+        <p className="text-meta text-muted-foreground">
+          Uploaded{' '}
+          <time dateTime={cv.created_at} title={absoluteDateTime(cv.created_at)}>
+            {relativeTime(cv.created_at)}
+          </time>
+          {cv.detected_language ? ` · Written in ${languageName(cv.detected_language)}` : ''}
+        </p>
 
-        <div className="flex flex-wrap gap-2">
-          {ready && !cv.is_current ? (
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={`Make “${cv.display_name}” current`}
-              onClick={() => setConfirming('current')}
-            >
-              <Star aria-hidden="true" />
-              Make current
-            </Button>
-          ) : null}
+        <p className="text-dense text-muted-foreground">{state.sentence}</p>
+      </div>
 
-          {ready ? (
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={`Fill profile from “${cv.display_name}”`}
-              onClick={() => onReview(cv)}
-            >
-              <Wand2 aria-hidden="true" />
-              Fill profile from this CV
-            </Button>
-          ) : null}
+      {hasFailed(cv) && cv.parsing_error ? (
+        // Gray, not red: `--destructive` is reserved for irreversible actions, and the icon
+        // is what carries the signal (§8).
+        <Alert className="bg-muted">
+          <CircleX aria-hidden="true" />
+          <AlertTitle>Why it could not be read</AlertTitle>
+          <AlertDescription>{cv.parsing_error}</AlertDescription>
+        </Alert>
+      ) : null}
 
+      <div className="flex flex-wrap gap-2">
+        {ready && !cv.is_current ? (
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            disabled={downloadLink.isPending}
-            aria-label={`Download “${cv.display_name}”`}
-            onClick={download}
+            aria-label={`Make “${cv.display_name}” current`}
+            onClick={() => setConfirming('current')}
           >
-            <Download aria-hidden="true" />
-            {downloadLink.isPending ? 'Preparing…' : 'Download'}
+            <Star aria-hidden="true" />
+            Make current
           </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            // The API refuses outright, so the reason is on screen before the click rather
-            // than in a toast after it.
-            disabled={cv.is_current}
-            aria-describedby={cv.is_current ? undeletableId : undefined}
-            aria-label={`Delete “${cv.display_name}”`}
-            onClick={() => setConfirming('delete')}
-          >
-            <Trash2 aria-hidden="true" />
-            Delete
-          </Button>
-        </div>
-
-        {cv.is_current ? (
-          <p id={undeletableId} className="text-meta text-muted-foreground">
-            The current CV cannot be deleted. Make another one current first.
-          </p>
         ) : null}
-      </CardContent>
+
+        {ready ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filling}
+            aria-label={`Fill the form from “${cv.display_name}”`}
+            onClick={() => onFill(cv)}
+          >
+            <Wand2 aria-hidden="true" />
+            {filling ? 'Filling…' : 'Fill the form from this CV'}
+          </Button>
+        ) : null}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={downloadLink.isPending}
+          aria-label={`Download “${cv.display_name}”`}
+          onClick={download}
+        >
+          <Download aria-hidden="true" />
+          {downloadLink.isPending ? 'Preparing…' : 'Download'}
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          // The API refuses outright, so the reason is on screen before the click rather
+          // than in a toast after it.
+          disabled={cv.is_current}
+          aria-describedby={cv.is_current ? undeletableId : undefined}
+          aria-label={`Delete “${cv.display_name}”`}
+          onClick={() => setConfirming('delete')}
+        >
+          <Trash2 aria-hidden="true" />
+          Delete
+        </Button>
+      </div>
+
+      {cv.is_current ? (
+        <p id={undeletableId} className="text-meta text-muted-foreground">
+          The current CV cannot be deleted. Make another one current first.
+        </p>
+      ) : null}
 
       <ConfirmDialog
         open={confirming === 'current'}
@@ -169,6 +177,6 @@ export function CvCard({ cv, onReview }: { cv: Cv; onReview: (cv: Cv) => void })
         destructive
         onConfirm={destroy}
       />
-    </Card>
+    </div>
   );
 }

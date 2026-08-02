@@ -1,0 +1,149 @@
+import { describe, expect, it } from 'vitest';
+import { filledFromCv, type ProfileDraft } from './fill';
+import { type ProfileFormValues, toFormValues } from './schemas/profile';
+
+function aForm(over: Partial<ProfileFormValues> = {}): ProfileFormValues {
+  return { ...toFormValues({ full_name: 'Lina Khoury', is_searchable: false }), ...over };
+}
+
+function aDraft(over: Partial<ProfileDraft> = {}): ProfileDraft {
+  return { full_name: 'Lina Khoury', is_searchable: false, ...over };
+}
+
+describe('filling the form from a CV', () => {
+  it('brings what the CV says into the fields, as the fields hold values', () => {
+    const filled = filledFromCv(
+      aForm(),
+      aDraft({
+        full_name: 'Lina H. Khoury',
+        headline: 'Backend engineer, 8 years',
+        phone: null,
+        experiences: [
+          {
+            job_title: 'Backend engineer',
+            company_name: 'Levant Digital',
+            start_year: 2019,
+            is_current: false,
+          },
+        ],
+      }),
+    );
+
+    expect(filled.full_name).toBe('Lina H. Khoury');
+    expect(filled.headline).toBe('Backend engineer, 8 years');
+    // Empty rather than null: the form is fully controlled, and null would uncontrol an input.
+    expect(filled.phone).toBe('');
+    expect(filled.experiences).toEqual([
+      {
+        job_title: 'Backend engineer',
+        company_name: 'Levant Digital',
+        start_year: '2019',
+        start_month: '',
+        end_year: '',
+        end_month: '',
+        is_current: false,
+        description: '',
+      },
+    ]);
+  });
+
+  it('replaces a section the candidate had written by hand', () => {
+    const current = aForm({
+      educations: [
+        {
+          institution: 'University of Aleppo',
+          degree: 'BSc',
+          field_of_study: '',
+          graduation_year: '',
+          description: '',
+        },
+      ],
+    });
+    const filled = filledFromCv(
+      current,
+      aDraft({ educations: [{ institution: 'Damascus University' }] }),
+    );
+
+    expect(filled.educations.map((entry) => entry.institution)).toEqual(['Damascus University']);
+  });
+
+  it('empties a section the CV is silent about', () => {
+    const current = aForm({
+      projects: [
+        {
+          name: 'Distribution tracker',
+          description: '',
+          project_url: '',
+          repository_url: '',
+          start_year: '',
+          start_month: '',
+          end_year: '',
+          end_month: '',
+        },
+      ],
+    });
+
+    expect(filledFromCv(current, aDraft()).projects).toEqual([]);
+  });
+
+  it('keeps the skills already in the form, with the years typed into them', () => {
+    const current = aForm({ skills: [{ name: 'Python', years_experience: '3.5' }] });
+    const filled = filledFromCv(
+      current,
+      // The API's draft carries the saved years, which are not the ones the form now holds.
+      aDraft({ skills: [{ name: 'Python', years_experience: 3 }] }),
+    );
+
+    expect(filled.skills).toEqual([{ name: 'Python', years_experience: '3.5' }]);
+  });
+
+  it('adds a skill the CV names with its years left for the candidate to fill', () => {
+    const current = aForm({ skills: [{ name: 'Python', years_experience: '3.5' }] });
+    const filled = filledFromCv(
+      current,
+      aDraft({
+        skills: [
+          { name: 'Python', years_experience: 3 },
+          { name: 'Kubernetes', years_experience: null },
+        ],
+      }),
+    );
+
+    expect(filled.skills).toEqual([
+      { name: 'Python', years_experience: '3.5' },
+      { name: 'Kubernetes', years_experience: '' },
+    ]);
+  });
+
+  it('never drops a skill the form holds that the CV does not mention', () => {
+    const current = aForm({ skills: [{ name: 'PostgreSQL', years_experience: '2' }] });
+    const filled = filledFromCv(current, aDraft({ skills: [{ name: 'Python' }] }));
+
+    expect(filled.skills.map((skill) => skill.name)).toEqual(['PostgreSQL', 'Python']);
+  });
+
+  it('surfaces the skills the platform has no name for instead of dropping them', () => {
+    const filled = filledFromCv(aForm(), aDraft({ unmapped_skills: ['Kobo Toolbox'] }));
+
+    expect(filled.unmapped_skills).toEqual([{ value: 'Kobo Toolbox' }]);
+  });
+
+  // A CV says nothing about any of the three: where a Candidate is, is a Location they picked
+  // from a list; the language they want to be written to in is a setting; and Global search is
+  // an opt-in. Taking the draft's copies would quietly revert edits the form has not saved.
+  it('leaves the settings a CV cannot speak for exactly as the form holds them', () => {
+    const current = aForm({
+      location_key: 'sy-rif-dimashq',
+      preferred_language_code: 'fr',
+      is_searchable: true,
+    });
+    const filled = filledFromCv(
+      current,
+      aDraft({ location_key: 'sy-aleppo', preferred_language_code: 'ar', is_searchable: false }),
+    );
+
+    expect(filled.location_key).toBe('sy-rif-dimashq');
+    expect(filled.preferred_language_code).toBe('fr');
+    expect(filled.is_searchable).toBe(true);
+  });
+});

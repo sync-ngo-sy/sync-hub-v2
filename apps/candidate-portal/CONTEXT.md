@@ -37,19 +37,36 @@ The signed-in Candidate's home: their Applications, newest first.
 _Avoid_: Dashboard (reserved for the Recruiter Portal's home).
 
 **Account area**:
-Everything behind the sign-in guard — My Applications, CVs, the profile editor,
-Notifications, Account settings. Routes live under the `_account` layout, whose guard is
-the single place a Profile is checked before any of its loaders run. Browsing is
-deliberately outside it: a Job is public, and the `_browse` layout renders the same
-chrome with or without a session.
+Everything behind the sign-in guard — My Applications, the profile editor, Notifications,
+Account settings. Routes live under the `_account` layout, whose guard is the single place a
+Profile is checked before any of its loaders run. Browsing is deliberately outside it: a Job is
+public, and the `_browse` layout renders the same chrome with or without a session.
 _Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
 
 **Profile editor**:
 The one page the whole professional profile is edited on, and saved from, in a single action:
-identity, Experience, Education, Skills, Other skills, Languages and Projects together. A save
-replaces the profile whole, so a section left empty is an emptied section — which is why leaving
-with unsaved changes asks first rather than losing them quietly.
+the CVs, identity, Experience, Education, Skills, Other skills, Languages and Projects together.
+A save replaces the profile whole, so a section left empty is an emptied section — which is why
+leaving with unsaved changes asks first rather than losing them quietly. The CVs come first,
+because an upload is what fills everything under it; `/cvs`, where they used to live on their
+own, redirects here.
 _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
+
+**Fill from a CV**:
+Taking what the platform read off a CV into the editor's fields, where the Candidate reads every
+value in context and saves — or does not. It writes nothing: a raw parse is never the
+authoritative profile, so the draft the API computes lands in the form and the Candidate's Save
+is still the only thing that replaces anything. A parse finishing fills on its own, and a CV
+already read fills on demand. Skills merge, keeping the years already typed against them; every
+other section is replaced, which is safe only because of the Undo beside it.
+_Avoid_: Import, apply the draft, review (the dialog that reviewed it is gone), auto-fill.
+
+**Fill notice**:
+The line that appears where a fill happened, naming the CV that spoke and offering Undo, which
+puts back exactly what the fields held a moment before. For a first upload into an empty profile
+there is nothing to put back and it costs nothing; for a profile written by hand it is the whole
+safety net.
+_Avoid_: Toast (this outlives one), banner, undo bar.
 
 **Other skills**:
 The skills a Candidate claims that the platform has no Canonical name for — `unmapped_skills` on

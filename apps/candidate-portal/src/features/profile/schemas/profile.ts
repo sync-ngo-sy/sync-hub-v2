@@ -2,6 +2,7 @@ import type { components } from '@sync/api-client';
 import { z } from 'zod';
 
 type CandidateProfile = components['schemas']['CandidateProfile'];
+type ProfileDraft = components['schemas']['ProfileDraft'];
 type Proficiency = components['schemas']['LanguageProficiency'];
 
 /** The bounds `sync_core.profile` and `sync_api.text` enforce, restated so a rejection can
@@ -285,8 +286,12 @@ export const BLANK_UNMAPPED_SKILL: Entry<'unmapped_skills'> = { value: '' };
 const orEmpty = (value: string | number | null | undefined) =>
   value === null || value === undefined ? '' : String(value);
 
-/** The profile the API answered with, as the fully-controlled value tree the form edits. */
-export function toFormValues(profile: CandidateProfile): ProfileFormValues {
+/**
+ * The profile the API answered with, as the fully-controlled value tree the form edits. A CV's
+ * draft goes through here too: it is a profile whose skills may not know their years yet, and an
+ * unknown number is an empty field like any other.
+ */
+export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileFormValues {
   return {
     full_name: profile.full_name,
     phone: orEmpty(profile.phone),

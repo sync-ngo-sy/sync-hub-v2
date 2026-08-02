@@ -1,0 +1,740 @@
+import type { components } from '@sync/api-client';
+import { screen, waitFor, within } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
+import type { HttpHandler } from 'msw';
+import { describe, expect, it, vi } from 'vitest';
+import { signedInAs } from '@/features/auth/testing/handlers';
+import {
+  acceptsUpload,
+  deletesCv,
+  drafts,
+  faultsOnDraft,
+  faultsOnListingCvs,
+  faultsOnUpload,
+  linksDownloadInTurn,
+  listsCvs,
+  listsCvsInTurn,
+  makesCurrent,
+  refusesDraft,
+  refusesMakeCurrent,
+  refusesUpload,
+  withholdsUpload,
+} from '@/features/cvs/testing/handlers';
+import { echoesProfile, hasProfile, savesProfile } from '@/features/profile/testing/handlers';
+import {
+  CANDIDATE,
+  CANDIDATE_PROFILE,
+  CURRENT_CV,
+  CV_DRAFT,
+  CV_LIMIT_REACHED,
+  CV_NOT_READY_FOR_CURRENT,
+  CV_NOT_READY_FOR_DRAFT,
+  DUPLICATE_CV,
+  EMPTY_PROFILE,
+  FAILED_CV,
+  FIVE_CVS,
+  PROCESSING_CV,
+  READY_CV,
+  SERVER_FAULT,
+} from '@/testing/fixtures';
+import { renderApp } from '@/testing/render-app';
+import { server } from '@/testing/server';
+
+type CandidateProfile = components['schemas']['CandidateProfile'];
+
+/** The CV that {@link PROCESSING_CV} becomes once the platform has read it. */
+const PARSED_CV = { ...PROCESSING_CV, parsing_status: 'ready' as const, detected_language: 'en' };
+
+const FILLED_HEADLINE = CV_DRAFT.headline as string;
+const OWN_HEADLINE = CANDIDATE_PROFILE.headline as string;
+
+/** The profile, with whatever the test needs the CVs and the draft endpoint to say. */
+async function openProfile(handlers: HttpHandler[] = [], profile = CANDIDATE_PROFILE) {
+  server.use(...signedInAs(CANDIDATE), ...hasProfile(profile), ...handlers);
+  return renderApp('/profile');
+}
+
+function aPdf(name = 'lina-khoury-cv.pdf'): File {
+  return new File([new Uint8Array(2048)], name, { type: 'application/pdf' });
+}
+
+async function pick(user: UserEvent, file: File) {
+  await user.upload(screen.getByLabelText('Choose a CV file'), file);
+}
+
+function cardFor(displayName: string): HTMLElement {
+  const heading = screen.getByRole('heading', { name: displayName });
+  const card = heading.closest('li');
+  if (!card) throw new Error(`no card for ${displayName}`);
+  return card;
+}
+
+function entry(label: string) {
+  return within(screen.getByRole('group', { name: label }));
+}
+
+function headline() {
+  return screen.getByLabelText('Headline');
+}
+
+function save(user: UserEvent) {
+  return user.click(screen.getByRole('button', { name: 'Save profile' }));
+}
+
+async function fillFrom(user: UserEvent, cv: { display_name: string }) {
+  await user.click(
+    await screen.findByRole('button', { name: `Fill the form from “${cv.display_name}”` }),
+  );
+  await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+}
+
+describe('the CVs on the profile', () => {
+  // Upload first, everything below fills in — so the reading order is the order of events.
+  it('is the page’s first section, above the fields it fills', async () => {
+    await openProfile([...listsCvs([READY_CV])]);
+
+    const sections = screen.getAllByRole('heading', { level: 2 }).map((node) => node.textContent);
+    expect(sections[0]).toBe('CVs');
+    expect(sections).toContain('About you');
+  });
+
+  it('lists what the candidate keeps, newest first, marking the current one', async () => {
+    await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
+
+    const list = await screen.findByRole('list', { name: 'Your CVs' });
+    const names = within(list)
+      .getAllByRole('heading')
+      .map((heading) => heading.textContent);
+    expect(names).toEqual([CURRENT_CV.display_name, READY_CV.display_name]);
+    expect(within(cardFor(CURRENT_CV.display_name)).getByText('Current')).toBeVisible();
+    expect(within(cardFor(READY_CV.display_name)).queryByText('Current')).toBeNull();
+  });
+
+  it('invites a first upload when there are none', async () => {
+    await openProfile([...listsCvs([])]);
+
+    expect(await screen.findByRole('button', { name: 'Upload your first CV' })).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Your CVs' })).toBeNull();
+  });
+
+  it('offers a retry rather than losing the whole page when the list will not load', async () => {
+    await openProfile([...faultsOnListingCvs(SERVER_FAULT)]);
+
+    expect(await screen.findByText("Couldn't load your CVs")).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
+    // The fields are still there to edit: one section failing is not the page failing.
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+  });
+});
+
+describe('uploading a CV from the profile', () => {
+  it('sends the file as multipart, and shows it once the list catches up', async () => {
+    const sent = vi.fn();
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV]),
+      ...acceptsUpload(PROCESSING_CV, sent),
+    ]);
+    await pick(user, aPdf());
+
+    await waitFor(() => expect(sent).toHaveBeenCalled());
+    expect(sent.mock.calls[0]?.[0]).toMatch(/^multipart\/form-data/);
+    expect(await screen.findByRole('heading', { name: PROCESSING_CV.display_name })).toBeVisible();
+  });
+
+  it('shows the upload running, naming the file', async () => {
+    const { user } = await openProfile([...listsCvs([]), ...withholdsUpload()]);
+    await pick(user, aPdf());
+
+    expect(
+      await screen.findByRole('progressbar', { name: 'Uploading “lina-khoury-cv.pdf”' }),
+    ).toBeVisible();
+  });
+
+  // The picker itself is the first constraint; `rejectionFor` is the second, and is unit-tested
+  // in `file-check.test.ts` — a browser file dialog can still be talked into "All files".
+  it('offers only the formats the platform reads', async () => {
+    await openProfile([...listsCvs([])]);
+
+    const accept = (await screen.findByLabelText('Choose a CV file')).getAttribute('accept') ?? '';
+    expect(accept).toContain('.pdf');
+    expect(accept).toContain('.doc');
+    expect(accept).toContain('.docx');
+    expect(accept).toContain('application/pdf');
+  });
+
+  it('says what the size limit is when a file is over it, without asking the API', async () => {
+    const uploaded = vi.fn();
+    const { user } = await openProfile([...listsCvs([]), ...acceptsUpload(READY_CV, uploaded)]);
+    const huge = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.pdf', {
+      type: 'application/pdf',
+    });
+    await pick(user, huge);
+
+    expect(
+      await screen.findByText('That file is larger than 10 MB. Try a smaller one.'),
+    ).toBeVisible();
+    expect(uploaded).not.toHaveBeenCalled();
+  });
+
+  it('says so when the file is one the candidate already keeps', async () => {
+    const { user } = await openProfile([...listsCvs([CURRENT_CV]), ...refusesUpload(DUPLICATE_CV)]);
+    await pick(user, aPdf());
+
+    expect(await screen.findByText('You have already uploaded this file.')).toBeVisible();
+  });
+
+  it('sends a fault on our side to a toast, not to the picker', async () => {
+    const { user } = await openProfile([...listsCvs([]), ...faultsOnUpload(SERVER_FAULT)]);
+    await pick(user, aPdf());
+
+    expect(await screen.findByText('Something went wrong on our side.')).toBeVisible();
+    expect(screen.queryByText('That file did not go through')).toBeNull();
+  });
+});
+
+describe('the cap of five', () => {
+  it('disables uploading once the cap is reached, and explains why', async () => {
+    await openProfile([...listsCvs(FIVE_CVS)]);
+
+    expect(await screen.findByText('You are keeping all 5 CVs we hold')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Upload a CV' })).toBeDisabled();
+    expect(screen.queryByLabelText('Choose a CV file')).toBeNull();
+  });
+
+  it('counts the free slots down before the cap is hit', async () => {
+    await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
+
+    expect(await screen.findByText(/3 of 5 slots free/)).toBeVisible();
+  });
+
+  it('repeats the API’s explanation if the cap is hit between the check and the upload', async () => {
+    const { user } = await openProfile([
+      ...listsCvs([CURRENT_CV]),
+      ...refusesUpload(CV_LIMIT_REACHED),
+    ]);
+    await pick(user, aPdf());
+
+    expect(
+      await screen.findByText('You can keep 5 CVs at a time. Delete one you no longer need first.'),
+    ).toBeVisible();
+  });
+});
+
+describe('waiting for a CV to be read', () => {
+  it('polls until the parse lands, then stops saying it is working', async () => {
+    await openProfile([...listsCvsInTurn([PROCESSING_CV], [PARSED_CV]), ...drafts(CV_DRAFT)]);
+
+    expect(await screen.findByText('Reading')).toBeVisible();
+    expect(await screen.findByText('Ready')).toBeVisible();
+    expect(screen.queryByText('Reading')).toBeNull();
+  });
+
+  it('explains a failed parse and invites another file', async () => {
+    await openProfile([...listsCvs([FAILED_CV])]);
+
+    const card = cardFor(FAILED_CV.display_name);
+    expect(within(card).getByText("Couldn't be read")).toBeVisible();
+    expect(within(card).getByText(FAILED_CV.parsing_error as string)).toBeVisible();
+    expect(
+      within(card).getByText(/It cannot fill the form below or be made current/),
+    ).toBeVisible();
+  });
+
+  it('offers neither current nor a fill on a CV that could not be read', async () => {
+    await openProfile([...listsCvs([FAILED_CV])]);
+
+    const card = cardFor(FAILED_CV.display_name);
+    expect(within(card).queryByRole('button', { name: /Make .* current/ })).toBeNull();
+    expect(within(card).queryByRole('button', { name: /Fill the form from/ })).toBeNull();
+  });
+});
+
+describe('switching the current CV', () => {
+  it('says what current means before making the change', async () => {
+    const { user } = await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
+    await user.click(
+      await screen.findByRole('button', { name: `Make “${READY_CV.display_name}” current` }),
+    );
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(/sent with every new application/)).toBeVisible();
+    expect(within(dialog).getByText(/recruiters searching the platform find you by/)).toBeVisible();
+    expect(
+      within(dialog).getByText(/Applications you have already sent keep the CV they went out with/),
+    ).toBeVisible();
+  });
+
+  it('switches only after the candidate confirms', async () => {
+    const { user } = await openProfile([
+      ...listsCvsInTurn(
+        [CURRENT_CV, READY_CV],
+        [
+          { ...CURRENT_CV, is_current: false },
+          { ...READY_CV, is_current: true },
+        ],
+      ),
+      ...makesCurrent({ ...READY_CV, is_current: true }),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Make “${READY_CV.display_name}” current` }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Make it current' }));
+
+    await waitFor(() =>
+      expect(within(cardFor(READY_CV.display_name)).getByText('Current')).toBeVisible(),
+    );
+    expect(within(cardFor(CURRENT_CV.display_name)).queryByText('Current')).toBeNull();
+  });
+
+  it('explains a CV the API will not take as current yet', async () => {
+    const { user } = await openProfile([
+      ...listsCvs([CURRENT_CV, READY_CV]),
+      ...refusesMakeCurrent(CV_NOT_READY_FOR_CURRENT),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Make “${READY_CV.display_name}” current` }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Make it current' }));
+
+    expect(await screen.findByText(/it cannot be the current one/)).toBeVisible();
+    // Still asking, rather than closing on a switch that did not happen.
+    expect(screen.getByRole('button', { name: 'Make it current' })).toBeVisible();
+  });
+
+  it('leaves the current CV alone when the candidate backs out', async () => {
+    const { user } = await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
+    await user.click(
+      await screen.findByRole('button', { name: `Make “${READY_CV.display_name}” current` }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(within(cardFor(CURRENT_CV.display_name)).getByText('Current')).toBeVisible();
+  });
+});
+
+describe('deleting a CV', () => {
+  it('asks first, and says what deleting does not undo', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV])]);
+    await user.click(
+      await screen.findByRole('button', { name: `Delete “${READY_CV.display_name}”` }),
+    );
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(/frees a slot/)).toBeVisible();
+    expect(within(dialog).getByText(/can still read it/)).toBeVisible();
+  });
+
+  it('deletes nothing until the candidate confirms', async () => {
+    const deleted = vi.fn();
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...deletesCv(deleted)]);
+    await user.click(
+      await screen.findByRole('button', { name: `Delete “${READY_CV.display_name}”` }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(deleted).not.toHaveBeenCalled();
+  });
+
+  it('deletes the CV the candidate confirmed, and drops it from the list', async () => {
+    const deleted = vi.fn();
+    const { user } = await openProfile([
+      ...listsCvsInTurn([CURRENT_CV, READY_CV], [CURRENT_CV]),
+      ...deletesCv(deleted),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Delete “${READY_CV.display_name}”` }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(deleted).toHaveBeenCalledWith(READY_CV.id));
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: READY_CV.display_name })).toBeNull(),
+    );
+  });
+
+  // The API refuses this outright, so the reader is told before they act, not after.
+  it('says why the current CV cannot go, before offering to delete it', async () => {
+    await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
+
+    const card = cardFor(CURRENT_CV.display_name);
+    expect(
+      within(card).getByRole('button', { name: `Delete “${CURRENT_CV.display_name}”` }),
+    ).toBeDisabled();
+    expect(
+      within(card).getByText('The current CV cannot be deleted. Make another one current first.'),
+    ).toBeVisible();
+  });
+
+  it('leaves delete open on every CV that is not the current one', async () => {
+    await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
+
+    expect(
+      within(cardFor(READY_CV.display_name)).getByRole('button', {
+        name: `Delete “${READY_CV.display_name}”`,
+      }),
+    ).toBeEnabled();
+  });
+});
+
+describe('downloading the original file', () => {
+  it('asks for a fresh link on every click rather than reusing one', async () => {
+    const tabs: { location: { href: string } }[] = [];
+    vi.spyOn(window, 'open').mockImplementation(() => {
+      const tab = { location: { href: '' }, opener: {}, close: vi.fn() };
+      tabs.push(tab);
+      return tab as unknown as Window;
+    });
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...linksDownloadInTurn('https://files.test/first', 'https://files.test/second'),
+    ]);
+    const button = await screen.findByRole('button', {
+      name: `Download “${READY_CV.display_name}”`,
+    });
+
+    await user.click(button);
+    await waitFor(() => expect(tabs[0]?.location.href).toBe('https://files.test/first'));
+    await user.click(button);
+    await waitFor(() => expect(tabs[1]?.location.href).toBe('https://files.test/second'));
+  });
+
+  // Opened on the click, not after the link lands, or Safari treats it as an unrequested popup.
+  it('opens the tab while the click is still the reason for it', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...linksDownloadInTurn('https://files.test/first'),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Download “${READY_CV.display_name}”` }),
+    );
+
+    expect(open).toHaveBeenCalledWith('', '_blank');
+  });
+});
+
+describe('a CV filling the form', () => {
+  it('fills the fields as soon as a newly uploaded CV has been read, saving nothing', async () => {
+    const saved = vi.fn();
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
+      ...acceptsUpload(PROCESSING_CV),
+      ...drafts(CV_DRAFT),
+      ...echoesProfile(saved),
+    ]);
+    await pick(user, aPdf());
+
+    // The parse is on screen before anything below it moves.
+    expect(await screen.findByText('Reading')).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(saved).not.toHaveBeenCalled();
+  });
+
+  // Twice would take the way back with it: the second fill's snapshot would be the form the
+  // first one had already filled.
+  it('fills once for one parse, however often the list is polled after it', async () => {
+    const asked = vi.fn();
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
+      ...acceptsUpload(PROCESSING_CV),
+      ...drafts(CV_DRAFT, asked),
+    ]);
+    await pick(user, aPdf());
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(asked).toHaveBeenCalledTimes(1);
+    expect(asked).toHaveBeenCalledWith(PROCESSING_CV.id);
+  });
+
+  it('leaves the fields alone while the CV is still being read', async () => {
+    // No draft handler: a fill attempted before the parse lands would be an unhandled request.
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV]),
+      ...acceptsUpload(PROCESSING_CV),
+    ]);
+    await pick(user, aPdf());
+
+    expect(await screen.findByText('Reading')).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+  });
+
+  it('fills nothing from a CV the platform could not read', async () => {
+    const failed = { ...PROCESSING_CV, parsing_status: 'failed' as const, parsing_error: 'Empty.' };
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV], [failed]),
+      ...acceptsUpload(PROCESSING_CV),
+    ]);
+    await pick(user, aPdf());
+
+    expect(await screen.findByText("Couldn't be read")).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+  });
+
+  it('fills from a CV that was already read, when asked', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
+    expect(entry('Job 1').getByLabelText('Employer')).toHaveValue('Levant Digital');
+  });
+
+  it('names the CV that filled the form, and says nothing has been saved', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    expect(
+      screen.getByText(`The fields below now say what “${READY_CV.display_name}” says`),
+    ).toBeVisible();
+    expect(screen.getByText(/Nothing has been saved/)).toBeVisible();
+    expect(screen.getByText('Unsaved changes.')).toBeVisible();
+  });
+
+  it('replaces the sections the CV speaks for, and empties the ones it is silent about', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    expect(screen.queryByRole('group', { name: 'Qualification 1' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Project 1' })).toBeNull();
+    expect(
+      screen.getByText('No projects listed yet — add something you built or ran.'),
+    ).toBeVisible();
+  });
+
+  it('keeps the skills already listed, with their years, and adds the CV’s', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    // 3.5 is what the candidate typed; the draft says 3. Theirs wins.
+    expect(entry('Skill 1').getByLabelText('Skill')).toHaveValue('Python');
+    expect(entry('Skill 1').getByLabelText('Years')).toHaveValue('3.5');
+    expect(entry('Skill 2').getByLabelText('Skill')).toHaveValue('Kubernetes');
+    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue('');
+  });
+
+  it('leaves a skill the CV introduced to ordinary validation rather than a step of its own', async () => {
+    const saved = vi.fn();
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...drafts(CV_DRAFT),
+      ...echoesProfile(saved),
+    ]);
+    await fillFrom(user, READY_CV);
+    await save(user);
+
+    expect(await screen.findByText('Enter years of experience.')).toBeVisible();
+    expect(saved).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a skill the platform has no name for instead of dropping it', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Sphere Standards');
+  });
+
+  // A CV names a place in prose and prints no settings; the profile holds a Location the
+  // candidate picked, and choices only they can make.
+  it('never moves the candidate or changes their settings', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
+    expect(screen.getByLabelText('Preferred language')).toHaveValue('Arabic');
+  });
+
+  it('saves what the CV filled, and what the candidate changed after it, on Save', async () => {
+    const sent: { body?: CandidateProfile } = {};
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...drafts(CV_DRAFT),
+      ...echoesProfile((body) => {
+        sent.body = body;
+      }),
+    ]);
+    await fillFrom(user, READY_CV);
+
+    await user.type(entry('Skill 2').getByLabelText('Years'), '2');
+    await user.clear(headline());
+    await user.type(headline(), 'Backend engineer and trainer');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body).toMatchObject({
+      full_name: CV_DRAFT.full_name,
+      headline: 'Backend engineer and trainer',
+      location_key: 'sy-aleppo',
+      experiences: [
+        { job_title: 'Backend engineer', company_name: 'Levant Digital', is_current: true },
+      ],
+      educations: [],
+      skills: [
+        { name: 'Python', years_experience: 3.5 },
+        { name: 'Kubernetes', years_experience: 2 },
+      ],
+      unmapped_skills: ['Sphere Standards'],
+    });
+    expect(headline()).toHaveValue('Backend engineer and trainer');
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
+
+  it('still asks before leaving with a fill nobody saved', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    const nav = screen.getByRole('navigation', { name: 'Sections' });
+    await user.click(within(nav).getByRole('link', { name: 'Jobs' }));
+
+    expect(await screen.findByRole('heading', { name: 'Leave without saving?' })).toBeVisible();
+  });
+
+  it('says beside the CV when the API will not draft from it, and changes nothing', async () => {
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...refusesDraft(CV_NOT_READY_FOR_DRAFT),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+    );
+
+    expect(await screen.findByText('That CV did not fill the form')).toBeVisible();
+    expect(screen.getByText(CV_NOT_READY_FOR_DRAFT.detail as string)).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
+
+  it('sends a fault on our side to a toast rather than blaming the CV', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...faultsOnDraft(SERVER_FAULT)]);
+    await user.click(
+      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+    );
+
+    expect(await screen.findByText('Something went wrong on our side.')).toBeVisible();
+    expect(screen.queryByText('That CV did not fill the form')).toBeNull();
+  });
+
+  // A refusal is about one attempt. Left up, it goes on accusing a CV of something that is no
+  // longer true of the profile in front of it.
+  it('drops a refusal once the profile has been saved', async () => {
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...refusesDraft(CV_NOT_READY_FOR_DRAFT),
+      ...echoesProfile(),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+    );
+    await screen.findByText('That CV did not fill the form');
+
+    await user.clear(headline());
+    await user.type(headline(), 'Coordinator and trainer');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(screen.queryByText('That CV did not fill the form')).toBeNull();
+  });
+});
+
+// The one run the ticket asks for end to end, rather than a link of it at a time.
+describe('uploading a CV and saving what it filled', () => {
+  it('reads the file, fills the fields, saves nothing until asked, and keeps what it saved', async () => {
+    const sent: { body?: CandidateProfile } = {};
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
+      ...acceptsUpload(PROCESSING_CV),
+      ...drafts(CV_DRAFT),
+      ...echoesProfile((body) => {
+        sent.body = body;
+      }),
+    ]);
+
+    await pick(user, aPdf());
+    expect(await screen.findByText('Reading')).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
+    expect(sent.body).toBeUndefined();
+
+    await user.type(entry('Skill 2').getByLabelText('Years'), '4');
+    await user.clear(headline());
+    await user.type(headline(), 'Backend engineer, Aleppo');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body).toMatchObject({
+      headline: 'Backend engineer, Aleppo',
+      skills: [
+        { name: 'Python', years_experience: 3.5 },
+        { name: 'Kubernetes', years_experience: 4 },
+      ],
+    });
+    expect(headline()).toHaveValue('Backend engineer, Aleppo');
+    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue('4');
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
+});
+
+describe('undoing a fill', () => {
+  it('puts back exactly what the form held, hand-written and unsaved included', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+
+    await user.clear(headline());
+    await user.type(headline(), 'Coordinator and trainer');
+    await fillFrom(user, READY_CV);
+
+    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+
+    expect(headline()).toHaveValue('Coordinator and trainer');
+    expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Field Coordinator');
+    expect(entry('Qualification 1').getByLabelText('Institution')).toHaveValue(
+      'University of Aleppo',
+    );
+    expect(entry('Skill 1').getByLabelText('Years')).toHaveValue('3.5');
+    expect(screen.queryByRole('group', { name: 'Skill 2' })).toBeNull();
+    expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Kobo Toolbox');
+    expect(entry('Project 1').getByLabelText('Project name')).toHaveValue('Distribution tracker');
+    expect(screen.queryByText(/The fields below now say/)).toBeNull();
+  });
+
+  // Nothing was written, so there is nothing to put back but the fields, and the form must not
+  // go on claiming changes the candidate has just taken back.
+  it('leaves a profile that was untouched before the fill reading as saved', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
+
+  it('keeps the fill, and drops the notice, when that is what the candidate meant', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    expect(screen.queryByText(/The fields below now say/)).toBeNull();
+    expect(headline()).toHaveValue(FILLED_HEADLINE);
+    expect(screen.getByText('Unsaved changes.')).toBeVisible();
+  });
+
+  it('fills an empty profile with nothing to undo, and says so all the same', async () => {
+    const { user } = await openProfile(
+      [...listsCvs([READY_CV]), ...drafts(CV_DRAFT), ...savesProfile(EMPTY_PROFILE)],
+      EMPTY_PROFILE,
+    );
+    await fillFrom(user, READY_CV);
+
+    expect(screen.getByRole('button', { name: 'Undo the fill' })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+
+    expect(headline()).toHaveValue('');
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
+});

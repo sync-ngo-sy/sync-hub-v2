@@ -41,21 +41,21 @@ export const PARSE_STATES: Record<Cv['parsing_status'], ParseState> = {
   uploaded: {
     label: 'Queued',
     tone: 'neutral',
-    sentence: 'Waiting to be read. This page updates on its own.',
+    sentence: 'Waiting to be read. The fields below fill in when it has been.',
   },
   processing: {
     label: 'Reading',
     tone: 'neutral',
-    sentence: 'Being read now. This page updates on its own.',
+    sentence: 'Being read now. The fields below fill in when it has been.',
   },
   ready: {
     label: 'Ready',
     tone: 'positive',
-    sentence: 'Read in full — it can fill your profile, and be the CV you apply with.',
+    sentence: 'Read in full — it can fill the form below, and be the CV you apply with.',
   },
   failed: {
     label: "Couldn't be read",
     tone: 'negative',
-    sentence: 'It cannot fill your profile or be made current. Upload another file instead.',
+    sentence: 'It cannot fill the form below or be made current. Upload another file instead.',
   },
 };

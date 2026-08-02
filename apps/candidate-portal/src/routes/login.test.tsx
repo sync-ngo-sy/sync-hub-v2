@@ -8,8 +8,14 @@ import {
   signedInAs,
   signedOut,
 } from '@/features/auth/testing/handlers';
-import { listsCvs } from '@/features/cvs/testing/handlers';
-import { CANDIDATE, RECRUITER, SERVER_FAULT, WRONG_PASSWORD } from '@/testing/fixtures';
+import { hasProfile } from '@/features/profile/testing/handlers';
+import {
+  CANDIDATE,
+  CANDIDATE_PROFILE,
+  RECRUITER,
+  SERVER_FAULT,
+  WRONG_PASSWORD,
+} from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -21,13 +27,13 @@ async function signIn(user: UserEvent) {
 
 describe('signing in', () => {
   it('lands the candidate where the guard turned them away from', async () => {
-    server.use(...signedOut(), ...logsIn(CANDIDATE), ...listsCvs([]));
+    server.use(...signedOut(), ...logsIn(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
 
-    const { router, user } = await renderApp('/login?returnTo=%2Fcvs');
+    const { router, user } = await renderApp('/login?returnTo=%2Fprofile');
     await signIn(user);
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/cvs'));
-    expect(await screen.findByRole('heading', { name: 'CVs' })).toBeVisible();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'));
+    expect(await screen.findByRole('heading', { name: 'Profile' })).toBeVisible();
   });
 
   it('sends a candidate with no destination to My Applications', async () => {
