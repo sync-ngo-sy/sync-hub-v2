@@ -1,5 +1,6 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { currentProfileQuery } from '@/features/auth/current-profile';
 import { signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { CANDIDATE, PLATFORM_ADMIN, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -47,5 +48,18 @@ describe('the admin access guard', () => {
       await screen.findByRole('heading', { name: 'This is the Sync Platform Portal' }),
     ).toBeVisible();
     expect(screen.getByText(/recruiter account/)).toBeVisible();
+  });
+
+  it('returns a platform admin to sign in when the session expires in the shell', async () => {
+    server.use(...signedInAs(PLATFORM_ADMIN));
+    const { queryClient, router } = await renderApp('/overview');
+
+    server.use(...signedOut());
+    await expect(
+      queryClient.fetchQuery({ ...currentProfileQuery, staleTime: 0 }),
+    ).rejects.toBeDefined();
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
+    expect(router.state.location.search).toEqual({ returnTo: '/overview' });
   });
 });

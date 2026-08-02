@@ -26,5 +26,8 @@ export function useRequestPasswordReset() {
 }
 
 export function useResetPassword() {
-  return api.useMutation('post', '/v1/auth/password-reset/confirm');
+  const queryClient = useQueryClient();
+  return api.useMutation('post', '/v1/auth/password-reset/confirm', {
+    onSuccess: () => queryClient.clear(),
+  });
 }

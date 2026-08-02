@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
 import { SignInScreen } from '@/features/auth/components';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
+import { resolveReturnTo } from '@/lib/return-to';
 
 export const Route = createFileRoute('/login')({
   validateSearch: z.object({ returnTo: z.string().optional() }),
@@ -18,15 +19,14 @@ export const Route = createFileRoute('/login')({
 function LoginPage() {
   const navigate = useNavigate();
   const { returnTo } = Route.useSearch();
+  const destination = resolveReturnTo(returnTo);
   return (
     <SignInScreen
       onSignedIn={(profile) => {
         void navigate({
           href:
-            profile.account_type === 'platform_admin' &&
-            returnTo?.startsWith('/') &&
-            !returnTo.startsWith('//')
-              ? returnTo
+            profile.account_type === 'platform_admin' && destination
+              ? destination
               : profile.account_type === 'platform_admin'
                 ? '/overview'
                 : '/wrong-portal',
