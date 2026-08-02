@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { EMPLOYMENT_TYPE_LABELS, type EmploymentType } from './job';
 
-/** The API refuses a longer `q` than a line, so the field never offers to send one. */
-export const MAX_KEYWORDS = 200;
+/** Characters, not words: the API refuses a `q` longer than a line (`MAX_LINE_LENGTH` in
+ * `sync_core.profile`), so the field never offers to send one. */
+export const MAX_KEYWORD_LENGTH = 200;
 
 const employmentTypes = Object.keys(EMPLOYMENT_TYPE_LABELS) as [
   EmploymentType,
@@ -11,7 +12,12 @@ const employmentTypes = Object.keys(EMPLOYMENT_TYPE_LABELS) as [
 
 /** A blank is not a filter: `?q=` in the address bar is a reader who cleared the box, not a
  * search for nothing. */
-const filled = z.string().trim().min(1).max(MAX_KEYWORDS).optional().catch(undefined);
+const filled = z.string().trim().min(1);
+
+/** Only the keyword carries the API's length cap. A Location is a taxonomy key, and one the
+ * taxonomy lacks answers with an empty list rather than a refusal, so its length is not ours to
+ * police. */
+const keyword = filled.max(MAX_KEYWORD_LENGTH);
 
 /**
  * The address bar is where the filters live, so this is both the route's search schema and the
@@ -20,8 +26,8 @@ const filled = z.string().trim().min(1).max(MAX_KEYWORDS).optional().catch(undef
  * it drops that one filter and shows the rest.
  */
 export const jobFiltersSchema = z.object({
-  q: filled,
-  location: filled,
+  q: keyword.optional().catch(undefined),
+  location: filled.optional().catch(undefined),
   type: z.enum(employmentTypes).optional().catch(undefined),
 });
 

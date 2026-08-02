@@ -266,6 +266,27 @@ describe('filtering jobs', () => {
     );
   });
 
+  it('clears a keyword typed but never applied, so nothing survives the one action', async () => {
+    server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
+
+    // No keyword in the address to begin with: the box holds a draft of nothing.
+    const { user, router } = await renderApp('/jobs?location=sy-aleppo');
+    await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
+    await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'nurse');
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    await waitFor(() => expect(router.state.location.searchStr).toBe(''));
+    expect(screen.getByRole('searchbox', { name: 'Search jobs' })).toHaveValue('');
+    expect(rows()).toHaveLength(PUBLIC_JOBS.length);
+
+    // And the word is gone for good: the next choice cannot bring it back.
+    await user.click(screen.getByLabelText('Employment type'));
+    await user.click(await screen.findByRole('option', { name: 'Contract' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ type: 'contract' }));
+  });
+
   it('says a combination matches nothing, not that the platform has nothing', async () => {
     server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
 
@@ -279,9 +300,14 @@ describe('filtering jobs', () => {
     expect(screen.queryByText(/No roles are open right now/)).toBeNull();
     expect(screen.queryByRole('list', { name: 'Jobs' })).toBeNull();
 
-    // The bar's clear leads; the empty state carries the same way out, where the eye already is.
-    const [, fromEmptyState] = screen.getAllByRole('button', { name: 'Clear filters' });
-    await user.click(fromEmptyState as HTMLElement);
+    // The bar carries a clear; so does the empty state, where the eye already is. This is the
+    // empty state's, found by being the one outside the bar rather than by its position.
+    const bar = screen.getByRole('searchbox', { name: 'Search jobs' }).closest('form');
+    const fromEmptyState = screen
+      .getAllByRole('button', { name: 'Clear filters' })
+      .filter((button) => bar?.contains(button) !== true);
+    expect(fromEmptyState).toHaveLength(1);
+    await user.click(fromEmptyState[0] as HTMLElement);
 
     await waitFor(() => expect(rows()).toHaveLength(PUBLIC_JOBS.length));
   });

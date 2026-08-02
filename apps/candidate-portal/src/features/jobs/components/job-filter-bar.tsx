@@ -15,7 +15,7 @@ import {
   asEmploymentType,
   isFiltered,
   type JobFilters,
-  MAX_KEYWORDS,
+  MAX_KEYWORD_LENGTH,
   NO_FILTERS,
 } from '../filters';
 import { EMPLOYMENT_TYPE_LABELS } from '../job';
@@ -23,6 +23,12 @@ import { EMPLOYMENT_TYPE_LABELS } from '../job';
 /** Filtering by nothing is a choice on the list rather than a blank the reader has to guess at,
  * and it leads: the whole set is what an unfiltered Browse shows. */
 const EMPLOYMENT_TYPES = { '': 'Any type', ...EMPLOYMENT_TYPE_LABELS };
+
+/** One value per set of filters, so a render can tell the address moved without comparing objects
+ * the router is free to hand back new each time. Encoded rather than joined, because a keyword can
+ * hold whatever a separator would be. */
+const appliedFilters = (filters: JobFilters) =>
+  JSON.stringify([filters.q, filters.location, filters.type]);
 
 interface JobFilterBarProps {
   filters: JobFilters;
@@ -40,12 +46,15 @@ interface JobFilterBarProps {
 export function JobFilterBar({ filters, onChange }: JobFilterBarProps) {
   const places = useLocations();
   const [typed, setTyped] = useState(filters.q ?? '');
-  const [applied, setApplied] = useState(filters.q);
+  const [applied, setApplied] = useState(() => appliedFilters(filters));
 
-  // The address can move without the box: filters cleared, a link pasted, the way back taken.
-  // When it does the box follows, rather than holding a word that is no longer being searched.
-  if (filters.q !== applied) {
-    setApplied(filters.q);
+  // The box holds a draft of the address bar's keyword, so any move of the address replaces it:
+  // filters cleared, a link pasted, the way back taken. Watching the whole set rather than the
+  // keyword alone is what makes Clear clear the box — clearing a Location leaves `q` untouched,
+  // and a word left in the box would be applied by the next control touched.
+  const current = appliedFilters(filters);
+  if (current !== applied) {
+    setApplied(current);
     setTyped(filters.q ?? '');
   }
 
@@ -68,7 +77,7 @@ export function JobFilterBar({ filters, onChange }: JobFilterBarProps) {
             <Input
               type="search"
               enterKeyHint="search"
-              maxLength={MAX_KEYWORDS}
+              maxLength={MAX_KEYWORD_LENGTH}
               aria-label="Search jobs"
               placeholder="Job title or keyword"
               value={typed}

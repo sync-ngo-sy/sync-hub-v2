@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { browseQuery, isFiltered, jobFiltersSchema, MAX_KEYWORDS } from './filters';
+import { browseQuery, isFiltered, jobFiltersSchema, MAX_KEYWORD_LENGTH } from './filters';
 
 describe('jobFiltersSchema', () => {
   it('reads the three filters a link can carry', () => {
@@ -27,7 +27,7 @@ describe('jobFiltersSchema', () => {
   });
 
   it('drops a keyword longer than the API would accept', () => {
-    expect(jobFiltersSchema.parse({ q: 'a'.repeat(MAX_KEYWORDS + 1) })).toEqual({});
+    expect(jobFiltersSchema.parse({ q: 'a'.repeat(MAX_KEYWORD_LENGTH + 1) })).toEqual({});
   });
 });
 
