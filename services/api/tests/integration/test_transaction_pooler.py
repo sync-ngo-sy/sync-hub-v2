@@ -27,21 +27,19 @@ CONCURRENT_SESSIONS = 24
 QUERIES_PER_SESSION = 6
 
 
-def _pooler_enabled_in_config() -> bool:
-    config = (stack.SUPABASE_DIR / "config.toml").read_text()
-    section = config.partition("[db.pooler]")[2].partition("\n[")[0]
-    return "enabled = true" in section
-
-
 def _pooler_url() -> str:
-    for key, value in stack.stack_config().items():
-        if "POOLER" in key.upper() and value:
-            return str(value).replace("postgresql://", "postgresql+asyncpg://", 1)
+    for candidate in (
+        stack.pooler_url_from_status_json(),
+        stack.pooler_url_from_status_text(),
+        stack.pooler_url_from_direct_url(),
+    ):
+        if candidate:
+            return candidate.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     # Skipping when the pooler is switched off is fine. Skipping when it is switched on
     # would mean this file quietly stops testing anything, which is the failure mode worth
     # guarding: the whole point is that the deployed path is exercised somewhere.
-    if _pooler_enabled_in_config():
+    if stack.pooler_enabled():
         message = (
             "[db.pooler] is enabled in supabase/config.toml but `supabase status` reports no "
             "pooler URL. The stack is out of date, or the CLI renamed the key and this test "
