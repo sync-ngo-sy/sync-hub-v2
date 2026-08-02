@@ -1,0 +1,35 @@
+import type { components } from '@sync/api-client';
+import type { ComboboxOption, ComboboxOptionGroup } from '@sync/ui/components/combobox';
+
+type CanonicalSkill = components['schemas']['CanonicalSkill'];
+type Language = components['schemas']['Language'];
+
+/** A Canonical skill is named by its name, so the value a form saves is the label on screen.
+ * The API answers in category then name order, which makes the grouping a fold rather than a
+ * sort — and a category all of whose skills are taken simply never opens. */
+export function skillGroups(
+  skills: CanonicalSkill[] | undefined,
+  taken: Iterable<string> = [],
+): ComboboxOptionGroup[] {
+  const already = new Set(taken);
+  const groups: ComboboxOptionGroup[] = [];
+  for (const skill of skills ?? []) {
+    if (already.has(skill.name)) continue;
+    const current = groups.at(-1);
+    const option = { value: skill.name, label: skill.name };
+    if (current?.label === skill.category) current.options.push(option);
+    else groups.push({ label: skill.category, options: [option] });
+  }
+  return groups;
+}
+
+/** A language reads as its name and saves as its code. */
+export function languageOptions(
+  languages: Language[] | undefined,
+  taken: Iterable<string> = [],
+): ComboboxOption[] {
+  const already = new Set(taken);
+  return (languages ?? [])
+    .filter((language) => !already.has(language.code))
+    .map((language) => ({ value: language.code, label: language.name }));
+}

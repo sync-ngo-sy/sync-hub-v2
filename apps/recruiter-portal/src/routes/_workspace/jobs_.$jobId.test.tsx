@@ -1,11 +1,33 @@
-import { screen, waitFor } from '@testing-library/react';
+import type { components } from '@sync/api-client';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { FIELD_COORDINATOR_VIEW } from '@/features/jobs/testing/fixtures';
 import { getsJob, replacesJobCriteria } from '@/features/jobs/testing/handlers';
-import { RECRUITER } from '@/testing/fixtures';
+import { failsToLoadCanonicalSkills } from '@/features/reference/testing/handlers';
+import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
+
+type JobView = components['schemas']['JobView'];
+type JobCriteria = components['schemas']['JobCriteria'];
+
+function entry(label: string) {
+  return within(screen.getByRole('group', { name: label }));
+}
+
+/** The criteria tab, open and saveable — `sent.body` is the whole set the form put back. */
+async function openCriteriaThatSaves(job: JobView) {
+  const sent: { body?: JobCriteria } = {};
+  server.use(
+    ...signedInAs(RECRUITER),
+    ...getsJob(job),
+    ...replacesJobCriteria(job.criteria, (body) => {
+      sent.body = body;
+    }),
+  );
+  return { ...(await renderApp(`/jobs/${job.id}?tab=criteria`)), sent };
+}
 
 describe('a recruiter Job detail page', () => {
   it('loads the whole Job and keeps tab navigation in the URL', async () => {
@@ -154,5 +176,107 @@ describe('a recruiter Job detail page', () => {
         }),
       ),
     );
+  });
+});
+
+const SCREENED_JOB: JobView = {
+  ...FIELD_COORDINATOR_VIEW,
+  criteria: {
+    minimum_total_experience_years: null,
+    skills: [{ name: 'Python', importance: 'required', minimum_years: 2 }],
+    languages: [{ code: 'ar', minimum_proficiency: 'fluent' }],
+    questions: [],
+  },
+};
+
+describe("a Job's screening criteria", () => {
+  it("offers the platform's skills by category, and saves the one chosen", async () => {
+    const { user, sent } = await openCriteriaThatSaves(SCREENED_JOB);
+
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    await user.click(entry('Skill 2').getByLabelText('Skill'));
+
+    expect(await screen.findByText('Databases')).toBeVisible();
+    expect(screen.getByText('Programming Languages')).toBeVisible();
+    await user.click(screen.getByRole('option', { name: 'PostgreSQL' }));
+    await user.click(screen.getByRole('button', { name: 'Save screening criteria' }));
+
+    await waitFor(() =>
+      expect(sent.body?.skills).toEqual([
+        { name: 'Python', importance: 'required', minimum_years: 2 },
+        { name: 'PostgreSQL', importance: 'preferred', minimum_years: null },
+      ]),
+    );
+  });
+
+  it("leaves the skills already on the Job's criteria out of the picker", async () => {
+    const { user } = await openCriteriaThatSaves(SCREENED_JOB);
+
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    await user.click(entry('Skill 2').getByLabelText('Skill'));
+
+    expect(await screen.findByRole('option', { name: 'Go' })).toBeVisible();
+    expect(screen.queryByRole('option', { name: 'Python' })).toBeNull();
+  });
+
+  it('reads a language by its name and saves it as its code', async () => {
+    const { user, sent } = await openCriteriaThatSaves(SCREENED_JOB);
+
+    expect(entry('Language 1').getByLabelText('Language')).toHaveValue('Arabic');
+
+    await user.click(screen.getByRole('button', { name: 'Add a language' }));
+    await user.click(entry('Language 2').getByLabelText('Language'));
+
+    expect(await screen.findByRole('option', { name: 'English' })).toBeVisible();
+    expect(screen.queryByRole('option', { name: 'Arabic' })).toBeNull();
+    await user.click(screen.getByRole('option', { name: 'English' }));
+    await user.click(screen.getByRole('button', { name: 'Save screening criteria' }));
+
+    await waitFor(() =>
+      expect(sent.body?.languages).toEqual([
+        { code: 'ar', minimum_proficiency: 'fluent' },
+        { code: 'en', minimum_proficiency: 'intermediate' },
+      ]),
+    );
+  });
+
+  it('will not let a skill or language the platform has no name for reach the API', async () => {
+    const { user, sent } = await openCriteriaThatSaves(SCREENED_JOB);
+
+    await user.type(entry('Skill 1').getByLabelText('Skill'), 'nn');
+    await user.keyboard('{Escape}');
+    await user.type(entry('Language 1').getByLabelText('Language'), 'bic');
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Save screening criteria' }));
+
+    await waitFor(() => expect(sent.body).toBeDefined());
+    expect(sent.body?.skills).toEqual([
+      { name: 'Python', importance: 'required', minimum_years: 2 },
+    ]);
+    expect(sent.body?.languages).toEqual([{ code: 'ar', minimum_proficiency: 'fluent' }]);
+  });
+
+  it('asks for a choice rather than a typed answer on an empty row', async () => {
+    const { user, sent } = await openCriteriaThatSaves(SCREENED_JOB);
+
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    await user.click(screen.getByRole('button', { name: 'Add a language' }));
+    await user.click(screen.getByRole('button', { name: 'Save screening criteria' }));
+
+    expect(await screen.findByText('Choose a skill.')).toBeVisible();
+    expect(screen.getByText('Choose a language.')).toBeVisible();
+    expect(sent.body).toBeUndefined();
+  });
+
+  it('says the skill list is missing rather than that there are no skills', async () => {
+    server.use(...failsToLoadCanonicalSkills(SERVER_FAULT));
+    const { user } = await openCriteriaThatSaves(SCREENED_JOB);
+
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    await user.click(entry('Skill 2').getByLabelText('Skill'));
+
+    expect(
+      await screen.findByText("The skill list couldn't be loaded.", { exact: false }),
+    ).toBeVisible();
   });
 });
