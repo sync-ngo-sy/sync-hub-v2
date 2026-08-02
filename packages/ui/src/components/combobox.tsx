@@ -1,6 +1,7 @@
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import { cn } from '@sync/ui/lib/utils';
 import { CheckIcon, ChevronDownIcon, XIcon } from 'lucide-react';
+import type { FocusEventHandler } from 'react';
 
 export interface ComboboxOption {
   value: string;
@@ -22,6 +23,8 @@ interface ComboboxBaseProps {
   loadingMessage?: string;
   disabled?: boolean;
   id?: string;
+  /** Fires when the field itself is left, so a form can answer it without waiting for submit. */
+  onBlur?: FocusEventHandler<HTMLInputElement>;
   className?: string;
   'aria-label'?: string;
   'aria-describedby'?: string;
@@ -93,6 +96,7 @@ export function Combobox(props: ComboboxProps) {
     loadingMessage = 'Loading…',
     disabled,
     id,
+    onBlur,
     className,
   } = props;
 
@@ -123,6 +127,7 @@ export function Combobox(props: ComboboxProps) {
     <ComboboxPrimitive.Input
       id={id}
       disabled={disabled}
+      onBlur={onBlur}
       placeholder={placeholder}
       aria-label={props['aria-label']}
       aria-describedby={props['aria-describedby']}
