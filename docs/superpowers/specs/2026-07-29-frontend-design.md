@@ -34,7 +34,8 @@ explicit fast-follow bucket (§13) and never blocks v1.
 
 | Page | Backed by |
 | -------------------------------- | ------------------------------------- |
-| Landing (public: what the platform is, WhatsApp + mailto contact, workspace sign-up) | `signUpTenant` |
+| Landing (public: what the platform is, WhatsApp + mailto contact, every CTA asking for access) | — |
+| Request access (public; `/signup` redirects here — there is no workspace sign-up) | `askForAccess` |
 | Log in, accept invite, password reset | auth ops |
 | Dashboard (authed home) | real data only, see §10 |
 | Jobs list → job detail tabs: Applications, Screening criteria, Tracked links | job + link ops |
@@ -116,8 +117,10 @@ same-site with the API.
 
 Auth state is the `getCurrentProfile` query, nothing else. Protected routes await it
 in `beforeLoad`; unauthenticated → `/login?returnTo=…`, honored after login.
-Public-only routes bounce authed users home. Sign-up → "check your email" screen;
-`confirmEmail` / `acceptInvite` / password-reset routes consume emailed tokens.
+Public-only routes bounce authed users home. Candidate sign-up → "check your email"
+screen; the recruiter portal has no sign-up at all, and its founding admins arrive
+through `acceptInvite`. `confirmEmail` / `acceptInvite` / password-reset routes consume
+emailed tokens.
 `confirmEmail` and `acceptInvite` land signed in; the password-reset confirm leg cannot
 and does not — corrected during #53, against the API: it answers 204 with no cookies and
 `AuthService.reset_password` revokes every session, so that leg finishes at sign-in with
@@ -251,7 +254,9 @@ Candidate landing = the **Editorial** concept: type-led hero ("Syria's jobs, in 
 *clear* place." — one word in teal), jobs as a hairline-ruled text index, zero
 product imagery, no stacked-card montages. Recruiter landing explains the platform to
 companies, with WhatsApp deep-link + `mailto:` contact (numbers/addresses from env;
-no contact-form endpoint exists) and workspace sign-up.
+no contact-form endpoint exists). Every call to action — hero, header, footer, closing
+band — asks for access rather than offering a workspace, and the "how it works" steps
+open with being set up rather than with signing up: Sync is sold, not self-served.
 
 `motion` appears only in the two landing features, lazy-loaded. Hero animation: a
 typewriter/cursor text reveal (implementation — `motion` vs. CSS vs. a vendored

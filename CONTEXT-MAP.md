@@ -14,7 +14,7 @@ most contexts below don't have one yet.
 - [Recruiter Portal](./apps/recruiter-portal/CONTEXT.md) — the tenant-facing web app:
   Jobs, the application Pipeline, the tenant CRM, and team management.
 - [Platform Portal](./apps/admin-portal/CONTEXT.md) — the Platform-admin web app:
-  platform counts and Tenant operations.
+  platform counts, the Access-request queue, and Tenant operations.
 - [Design System](./packages/ui/CONTEXT.md) — the shared visual language of all three
   portals: tokens, primitives, and molecules that render purely from props.
 

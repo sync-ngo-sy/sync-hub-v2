@@ -44,6 +44,13 @@ def build_public_rate_limiter(settings: Settings) -> RateLimiter:
     )
 
 
+def build_access_request_rate_limiter(settings: Settings) -> RateLimiter:
+    return RateLimiter(
+        max_requests=settings.access_request_rate_limit_max_requests,
+        window_seconds=settings.access_request_rate_limit_window_seconds,
+    )
+
+
 def build_assessment_rate_limiter(settings: Settings) -> RateLimiter:
     return RateLimiter(
         max_requests=settings.assessment_rate_limit_max_requests,
@@ -57,6 +64,10 @@ def get_auth_rate_limiter(request: Request) -> RateLimiter:
 
 def get_public_rate_limiter(request: Request) -> RateLimiter:
     return cast("RateLimiter", request.app.state.public_rate_limiter)
+
+
+def get_access_request_rate_limiter(request: Request) -> RateLimiter:
+    return cast("RateLimiter", request.app.state.access_request_rate_limiter)
 
 
 def get_assessment_rate_limiter(request: Request) -> RateLimiter:
@@ -73,6 +84,14 @@ async def enforce_public_rate_limit(
     request: Request, limiter: Annotated[RateLimiter, Depends(get_public_rate_limiter)]
 ) -> None:
     """Blunts scraping of the one surface with no account behind it."""
+    await _enforce(limiter, request)
+
+
+async def enforce_access_request_rate_limit(
+    request: Request, limiter: Annotated[RateLimiter, Depends(get_access_request_rate_limiter)]
+) -> None:
+    """The only unauthenticated write on the platform, and the only thing standing between the
+    Platform admin's queue and a script."""
     await _enforce(limiter, request)
 
 

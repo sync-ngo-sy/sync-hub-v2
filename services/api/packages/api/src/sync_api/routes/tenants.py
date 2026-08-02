@@ -13,8 +13,8 @@ from sync_api.dependencies import (
 )
 from sync_api.errors import openapi_problem
 from sync_api.rate_limit import enforce_auth_rate_limit
-from sync_api.routes.auth import IDENTITY_PROVIDER_UNAVAILABLE, Password
-from sync_api.tenants import Member, NewTenant, TenantSummary
+from sync_api.routes.auth import IDENTITY_PROVIDER_UNAVAILABLE
+from sync_api.tenants import Member, TenantSummary
 from sync_core.models import RecruiterRole
 
 ROUTER_PREFIX: Final = "/tenants"
@@ -76,25 +76,6 @@ class MemberView(BaseModel):
         )
 
 
-class NewTenantView(BaseModel):
-    """What self-serve signup produced."""
-
-    tenant: TenantView
-    admin: MemberView
-
-    @classmethod
-    def of(cls, created: NewTenant) -> NewTenantView:
-        return cls(tenant=TenantView.of(created.tenant), admin=MemberView.of(created.admin))
-
-
-class SignUpTenantRequest(BaseModel):
-    tenant_name: FullName = Field(description="The hiring company's display name.")
-    slug: Slug
-    email: EmailStr = Field(description="The founding admin's address.")
-    password: Password
-    full_name: FullName = Field(description="The founding admin's name.")
-
-
 class InviteMemberRequest(BaseModel):
     email: EmailStr
     full_name: FullName
@@ -106,31 +87,6 @@ class ChangeMemberRequest(BaseModel):
 
     role: RecruiterRole | None = None
     is_active: bool | None = None
-
-
-@router.post(
-    "",
-    operation_id="signUpTenant",
-    summary="Create a tenant and its founding admin",
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(enforce_auth_rate_limit)],
-    responses={
-        409: openapi_problem("The slug or the email address is already taken."),
-        400: openapi_problem("The identity provider rejected the password."),
-        **IDENTITY_PROVIDER_UNAVAILABLE,
-    },
-)
-async def sign_up_tenant(body: SignUpTenantRequest, tenants: TenantServiceDep) -> NewTenantView:
-    """Create the Tenant and the admin who runs it. No session yet: the founder confirms first."""
-    return NewTenantView.of(
-        await tenants.sign_up(
-            tenant_name=body.tenant_name,
-            slug=body.slug,
-            email=body.email,
-            password=body.password,
-            full_name=body.full_name,
-        )
-    )
 
 
 @router.get(

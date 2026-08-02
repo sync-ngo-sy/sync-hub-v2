@@ -11,10 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
-import { Route as CheckEmailRouteImport } from './routes/check-email'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
 import { Route as WorkspaceApplicationsRouteImport } from './routes/_workspace/applications'
@@ -38,11 +38,6 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/_workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckEmailRoute = CheckEmailRouteImport.update({
-  id: '/check-email',
-  path: '/check-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -56,6 +51,11 @@ const KitchenSinkRoute = KitchenSinkRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestAccessRoute = RequestAccessRouteImport.update({
+  id: '/request-access',
+  path: '/request-access',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -126,10 +126,10 @@ const WorkspaceJobsJobIdRoute = WorkspaceJobsJobIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/check-email': typeof CheckEmailRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/request-access': typeof RequestAccessRoute
   '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof WorkspaceApplicationsRoute
@@ -146,10 +146,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/check-email': typeof CheckEmailRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/request-access': typeof RequestAccessRoute
   '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/applications': typeof WorkspaceApplicationsRoute
@@ -168,10 +168,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_workspace': typeof WorkspaceRouteWithChildren
-  '/check-email': typeof CheckEmailRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
+  '/request-access': typeof RequestAccessRoute
   '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
   '/_workspace/applications': typeof WorkspaceApplicationsRoute
@@ -190,10 +190,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/check-email'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
+    | '/request-access'
     | '/signup'
     | '/wrong-portal'
     | '/applications'
@@ -210,10 +210,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/check-email'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
+    | '/request-access'
     | '/signup'
     | '/wrong-portal'
     | '/applications'
@@ -231,10 +231,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_workspace'
-    | '/check-email'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
+    | '/request-access'
     | '/signup'
     | '/wrong-portal'
     | '/_workspace/applications'
@@ -253,10 +253,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
-  CheckEmailRoute: typeof CheckEmailRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
+  RequestAccessRoute: typeof RequestAccessRoute
   SignupRoute: typeof SignupRoute
   WrongPortalRoute: typeof WrongPortalRoute
   AuthAcceptInviteRoute: typeof AuthAcceptInviteRoute
@@ -280,13 +280,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/check-email': {
-      id: '/check-email'
-      path: '/check-email'
-      fullPath: '/check-email'
-      preLoaderRoute: typeof CheckEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
@@ -306,6 +299,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/request-access': {
+      id: '/request-access'
+      path: '/request-access'
+      fullPath: '/request-access'
+      preLoaderRoute: typeof RequestAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -431,10 +431,10 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   WorkspaceRoute: WorkspaceRouteWithChildren,
-  CheckEmailRoute: CheckEmailRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
+  RequestAccessRoute: RequestAccessRoute,
   SignupRoute: SignupRoute,
   WrongPortalRoute: WrongPortalRoute,
   AuthAcceptInviteRoute: AuthAcceptInviteRoute,

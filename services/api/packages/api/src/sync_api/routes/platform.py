@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 
-from sync_api.dependencies import PlatformServiceDep, get_acting_platform_admin
+from sync_api.access_requests import AccessRequest
+from sync_api.dependencies import (
+    AccessRequestServiceDep,
+    PlatformServiceDep,
+    get_acting_platform_admin,
+)
 from sync_api.errors import openapi_problem
 from sync_api.platform import CreatedTenant, PlatformCounts, TenantRecord
 from sync_api.routes.auth import IDENTITY_PROVIDER_UNAVAILABLE
@@ -97,6 +103,39 @@ class SetTenantStatusRequest(BaseModel):
     is_active: bool = Field(description="False suspends the tenant; True restores it.")
 
 
+class AccessRequestView(BaseModel):
+    """A company waiting to be let onto Sync, exactly as its visitor typed it."""
+
+    id: str
+    company: str
+    full_name: str = Field(description="Who asked, and who the founding admin would be.")
+    email: EmailStr
+    created_at: datetime = Field(description="When they asked. The queue runs oldest first.")
+
+    @classmethod
+    def of(cls, request: AccessRequest) -> AccessRequestView:
+        return cls(
+            id=str(request.id),
+            company=request.company,
+            full_name=request.full_name,
+            email=request.email,
+            created_at=request.created_at,
+        )
+
+
+class ConvertAccessRequest(BaseModel):
+    """The tenant's address — the one thing the visitor could not tell us, because it is ours
+    to hand out. Everything else the Tenant is made of comes off the request itself."""
+
+    slug: Slug
+
+
+ACCESS_REQUEST_UNDECIDABLE: Final[dict[int | str, dict[str, Any]]] = {
+    404: openapi_problem("No access request with that id."),
+    409: openapi_problem("That access request has already been converted or dismissed."),
+}
+
+
 @router.get(
     "/tenants",
     operation_id="listPlatformTenants",
@@ -164,6 +203,57 @@ async def set_platform_tenant_status(
     return PlatformTenantView.of(
         await platform.set_tenant_status(tenant_id, is_active=body.is_active)
     )
+
+
+@router.get(
+    "/access-requests",
+    operation_id="listAccessRequests",
+    summary="Companies waiting to be let onto Sync",
+    responses=PLATFORM_ACCESS_REFUSED,
+)
+async def list_access_requests(
+    access_requests: AccessRequestServiceDep,
+) -> list[AccessRequestView]:
+    """The queue, oldest first. A request leaves it the moment it is converted or dismissed."""
+    pending = await access_requests.pending()
+    return [AccessRequestView.of(request) for request in pending]
+
+
+@router.post(
+    "/access-requests/{request_id}/tenant",
+    operation_id="convertAccessRequest",
+    summary="Turn a request into a tenant",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        **PLATFORM_ACCESS_REFUSED,
+        **ACCESS_REQUEST_UNDECIDABLE,
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def convert_access_request(
+    request_id: UUID, body: ConvertAccessRequest, access_requests: AccessRequestServiceDep
+) -> CreatedTenantView:
+    """Same operation as opening a tenant by hand, with nothing retyped: the company, the
+    founding admin and their address all come off the request, which then leaves the queue.
+
+    A taken slug or an address that already has an account is refused the way it always is, and
+    the request stays pending — so a mistyped address is one correction away, not a lost ask.
+    """
+    return CreatedTenantView.of(await access_requests.convert(request_id, slug=body.slug))
+
+
+@router.post(
+    "/access-requests/{request_id}/dismissal",
+    operation_id="dismissAccessRequest",
+    summary="Take a request off the queue",
+    responses={**PLATFORM_ACCESS_REFUSED, **ACCESS_REQUEST_UNDECIDABLE},
+)
+async def dismiss_access_request(
+    request_id: UUID, access_requests: AccessRequestServiceDep
+) -> AccessRequestView:
+    """Nothing is opened and nothing is emailed. The row stays, so the same company asking
+    again reads as a second ask rather than a first one."""
+    return AccessRequestView.of(await access_requests.dismiss(request_id))
 
 
 @router.get(

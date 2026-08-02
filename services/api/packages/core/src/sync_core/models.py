@@ -35,6 +35,12 @@ class Base(DeclarativeBase):
     pass
 
 
+class AccessRequestStatus(enum.StrEnum):
+    PENDING = "pending"
+    CONVERTED = "converted"
+    DISMISSED = "dismissed"
+
+
 class AccountType(enum.StrEnum):
     CANDIDATE = "candidate"
     RECRUITER = "recruiter"
@@ -494,6 +500,58 @@ class Tenant(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
+
+
+class AccessRequest(Base):
+    __tablename__ = "access_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "\nCASE status\n    WHEN 'pending'::access_request_status THEN decided_at IS NULL AND tenant_id IS NULL\n    WHEN 'dismissed'::access_request_status THEN decided_at IS NOT NULL AND tenant_id IS NULL\n    WHEN 'converted'::access_request_status THEN decided_at IS NOT NULL AND tenant_id IS NOT NULL\n    ELSE NULL::boolean\nEND",
+            name="access_requests_decision",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id"],
+            ["public.tenants.id"],
+            ondelete="SET NULL",
+            name="access_requests_tenant_id_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="access_requests_pkey"),
+        Index(
+            "access_requests_one_pending_per_email_idx",
+            "email",
+            postgresql_where="(status = 'pending'::access_request_status)",
+            unique=True,
+        ),
+        Index(
+            "access_requests_pending_idx",
+            "created_at",
+            postgresql_where="(status = 'pending'::access_request_status)",
+        ),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    company: Mapped[str] = mapped_column(Text, nullable=False)
+    full_name: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[AccessRequestStatus] = mapped_column(
+        Enum(
+            AccessRequestStatus,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="access_request_status",
+        ),
+        nullable=False,
+        server_default=text("'pending'::access_request_status"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    tenant: Mapped[Optional["Tenant"]] = relationship("Tenant", viewonly=True)
 
 
 class CandidateEducation(Base):

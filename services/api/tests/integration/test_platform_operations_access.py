@@ -5,6 +5,7 @@ from typing import Any, Final
 import pytest
 from httpx import AsyncClient
 
+from tests.support.access_requests import QUEUE
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.mailbox import Mailbox
 from tests.support.platform_admins import (
@@ -19,17 +20,32 @@ PLATFORM_ADMIN_ONLY: Final = "urn:sync:problem:platform-admin-only"
 
 SOME_TENANT: Final = "00000000-0000-0000-0000-000000000000"
 
-#: Every operation this ticket adds, with a body that would otherwise be accepted — so a refusal
-#: here is the guard talking, not validation.
+SOME_REQUEST: Final = "00000000-0000-0000-0000-000000000000"
+
+#: Every platform operation there is, with a body that would otherwise be accepted — so a refusal
+#: here is the guard talking, not validation. Asking for access is deliberately absent: that one
+#: stays public, and its own tests say so.
 OPERATIONS: Final[tuple[tuple[str, str, dict[str, Any] | None], ...]] = (
     ("GET", TENANTS, None),
     ("POST", TENANTS, a_new_tenant_body(a_new_tenant())),
     ("POST", f"{TENANTS}/{SOME_TENANT}/invite", None),
     ("PATCH", f"{TENANTS}/{SOME_TENANT}", {"is_active": False}),
     ("GET", OVERVIEW, None),
+    ("GET", QUEUE, None),
+    ("POST", f"{QUEUE}/{SOME_REQUEST}/tenant", {"slug": "acme-recruiting"}),
+    ("POST", f"{QUEUE}/{SOME_REQUEST}/dismissal", None),
 )
 
-OPERATION_IDS: Final = ("list", "create", "resend-invite", "set-status", "overview")
+OPERATION_IDS: Final = (
+    "list",
+    "create",
+    "resend-invite",
+    "set-status",
+    "overview",
+    "read-queue",
+    "convert-request",
+    "dismiss-request",
+)
 
 
 @pytest.mark.parametrize(("method", "path", "body"), OPERATIONS, ids=OPERATION_IDS)

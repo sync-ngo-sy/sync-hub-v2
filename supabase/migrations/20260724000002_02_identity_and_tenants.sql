@@ -73,3 +73,41 @@ create table recruiters (
 );
 
 create index recruiters_tenant_id_idx on recruiters (tenant_id);
+
+-- Nobody creates their own Tenant: a company asks for access here, and a Platform admin turns the
+-- ask into a Tenant or dismisses it. The only row on the platform an unauthenticated stranger may
+-- write, so it holds nothing but what a visitor typed and carries no identity — an Access request
+-- is not an account, and converting one is what creates the Profile.
+create table access_requests (
+  id uuid primary key default gen_random_uuid(),
+
+  company   text not null,
+  full_name text not null,
+  email     text not null,
+
+  status access_request_status not null default 'pending',
+
+  -- What the request became. Kept so a converted request still names its Tenant; nulled rather
+  -- than deleted if that Tenant ever goes, because the request itself stays part of the record.
+  tenant_id uuid references tenants (id) on delete set null,
+
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+
+  constraint access_requests_decision check (
+    case status
+      when 'pending'   then decided_at is null     and tenant_id is null
+      when 'dismissed' then decided_at is not null and tenant_id is null
+      when 'converted' then decided_at is not null and tenant_id is not null
+    end
+  )
+);
+
+-- The queue: pending requests, oldest first.
+create index access_requests_pending_idx on access_requests (created_at)
+  where status = 'pending';
+
+-- Asking twice is asking once. Only while pending — a company dismissed a year ago may ask again,
+-- and one already converted has a Tenant to sign in to.
+create unique index access_requests_one_pending_per_email_idx on access_requests (email)
+  where status = 'pending';

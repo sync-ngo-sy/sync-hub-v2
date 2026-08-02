@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
+import { Route as AdminAccessRequestsRouteImport } from './routes/_admin/access-requests'
 import { Route as AdminOverviewRouteImport } from './routes/_admin/overview'
 import { Route as AdminTenantsRouteImport } from './routes/_admin/tenants'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -42,6 +43,11 @@ const WrongPortalRoute = WrongPortalRouteImport.update({
   path: '/wrong-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAccessRequestsRoute = AdminAccessRequestsRouteImport.update({
+  id: '/access-requests',
+  path: '/access-requests',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOverviewRoute = AdminOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
+  '/access-requests': typeof AdminAccessRequestsRoute
   '/overview': typeof AdminOverviewRoute
   '/tenants': typeof AdminTenantsRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
+  '/access-requests': typeof AdminAccessRequestsRoute
   '/overview': typeof AdminOverviewRoute
   '/tenants': typeof AdminTenantsRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/wrong-portal': typeof WrongPortalRoute
+  '/_admin/access-requests': typeof AdminAccessRequestsRoute
   '/_admin/overview': typeof AdminOverviewRoute
   '/_admin/tenants': typeof AdminTenantsRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/wrong-portal'
+    | '/access-requests'
     | '/overview'
     | '/tenants'
     | '/auth/reset-password'
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/wrong-portal'
+    | '/access-requests'
     | '/overview'
     | '/tenants'
     | '/auth/reset-password'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/wrong-portal'
+    | '/_admin/access-requests'
     | '/_admin/overview'
     | '/_admin/tenants'
     | '/auth/reset-password'
@@ -164,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WrongPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/access-requests': {
+      id: '/_admin/access-requests'
+      path: '/access-requests'
+      fullPath: '/access-requests'
+      preLoaderRoute: typeof AdminAccessRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/overview': {
       id: '/_admin/overview'
       path: '/overview'
@@ -189,11 +208,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminAccessRequestsRoute: typeof AdminAccessRequestsRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminTenantsRoute: typeof AdminTenantsRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAccessRequestsRoute: AdminAccessRequestsRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminTenantsRoute: AdminTenantsRoute,
 }

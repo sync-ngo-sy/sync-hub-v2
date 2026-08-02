@@ -218,26 +218,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/tenants": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create a tenant and its founding admin
-         * @description Create the Tenant and the admin who runs it. No session yet: the founder confirms first.
-         */
-        post: operations["signUpTenant"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/tenants/me": {
         parameters: {
             query?: never;
@@ -300,6 +280,30 @@ export interface paths {
          * @description Promote, demote, deactivate or reinstate a colleague. Deactivating keeps the row.
          */
         patch: operations["changeTenantMember"];
+        trace?: never;
+    };
+    "/v1/access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for access to Sync
+         * @description Sync is sold, not self-served: this asks a human to open a Tenant, and creates nothing.
+         *
+         *     Accepted rather than created, and answered with nothing: what a stranger asked for is not
+         *     theirs to read back, and a second ask from the same address revises the first rather than
+         *     queueing another — which the answer deliberately does not disclose either.
+         */
+        post: operations["askForAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/platform/tenants": {
@@ -365,6 +369,71 @@ export interface paths {
          *     they had. Nothing is deleted either way.
          */
         patch: operations["setPlatformTenantStatus"];
+        trace?: never;
+    };
+    "/v1/platform/access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Companies waiting to be let onto Sync
+         * @description The queue, oldest first. A request leaves it the moment it is converted or dismissed.
+         */
+        get: operations["listAccessRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/access-requests/{request_id}/tenant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn a request into a tenant
+         * @description Same operation as opening a tenant by hand, with nothing retyped: the company, the
+         *     founding admin and their address all come off the request, which then leaves the queue.
+         *
+         *     A taken slug or an address that already has an account is refused the way it always is, and
+         *     the request stays pending — so a mistyped address is one correction away, not a lost ask.
+         */
+        post: operations["convertAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/access-requests/{request_id}/dismissal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take a request off the queue
+         * @description Nothing is opened and nothing is emailed. The row stays, so the same company asking
+         *     again reads as a second ask rather than a first one.
+         */
+        post: operations["dismissAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/platform/overview": {
@@ -1379,6 +1448,32 @@ export interface components {
             password: string;
         };
         /**
+         * AccessRequestView
+         * @description A company waiting to be let onto Sync, exactly as its visitor typed it.
+         */
+        AccessRequestView: {
+            /** Id */
+            id: string;
+            /** Company */
+            company: string;
+            /**
+             * Full Name
+             * @description Who asked, and who the founding admin would be.
+             */
+            full_name: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When they asked. The queue runs oldest first.
+             */
+            created_at: string;
+        };
+        /**
          * AccountType
          * @enum {string}
          */
@@ -1693,6 +1788,25 @@ export interface components {
             employment_type?: components["schemas"]["EmploymentType"] | null;
             work_mode?: components["schemas"]["WorkMode"] | null;
         };
+        /** AskForAccessRequest */
+        AskForAccessRequest: {
+            /**
+             * Company
+             * @description The company that wants Sync.
+             */
+            company: string;
+            /**
+             * Full Name
+             * @description Who is asking.
+             */
+            full_name: string;
+            /**
+             * Email
+             * Format: email
+             * @description Where Sync answers them.
+             */
+            email: string;
+        };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -1831,6 +1945,19 @@ export interface components {
              * @example correct-horse-battery
              */
             password: string;
+        };
+        /**
+         * ConvertAccessRequest
+         * @description The tenant's address — the one thing the visitor could not tell us, because it is ours
+         *     to hand out. Everything else the Tenant is made of comes off the request itself.
+         */
+        ConvertAccessRequest: {
+            /**
+             * Slug
+             * @description Lowercase letters, digits and single hyphens.
+             * @example acme-recruiting
+             */
+            slug: string;
         };
         /** CreateTenantRequest */
         CreateTenantRequest: {
@@ -2683,14 +2810,6 @@ export interface components {
             scope: components["schemas"]["TagScope"];
         };
         /**
-         * NewTenantView
-         * @description What self-serve signup produced.
-         */
-        NewTenantView: {
-            tenant: components["schemas"]["TenantView"];
-            admin: components["schemas"]["MemberView"];
-        };
-        /**
          * NewTrackedLink
          * @description A named link to a Job, so the views and applications it brings can be told apart.
          */
@@ -3338,37 +3457,6 @@ export interface components {
              */
             password: string;
             /** Full Name */
-            full_name: string;
-        };
-        /** SignUpTenantRequest */
-        SignUpTenantRequest: {
-            /**
-             * Tenant Name
-             * @description The hiring company's display name.
-             */
-            tenant_name: string;
-            /**
-             * Slug
-             * @description Lowercase letters, digits and single hyphens.
-             * @example acme-recruiting
-             */
-            slug: string;
-            /**
-             * Email
-             * Format: email
-             * @description The founding admin's address.
-             */
-            email: string;
-            /**
-             * Password
-             * @description At least 8 characters.
-             * @example correct-horse-battery
-             */
-            password: string;
-            /**
-             * Full Name
-             * @description The founding admin's name.
-             */
             full_name: string;
         };
         /**
@@ -4221,75 +4309,6 @@ export interface operations {
             };
         };
     };
-    signUpTenant: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignUpTenantRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NewTenantView"];
-                };
-            };
-            /** @description The identity provider rejected the password. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The slug or the email address is already taken. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The request did not match the expected shape. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
-                };
-            };
-            /** @description Something went wrong on the server. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The identity provider is not answering. */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-        };
-    };
     getMyTenant: {
         parameters: {
             query?: never;
@@ -4560,6 +4579,55 @@ export interface operations {
             };
         };
     };
+    askForAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskForAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listPlatformTenants: {
         parameters: {
             query?: never;
@@ -4656,7 +4724,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The address or the email address is already taken. */
+            /** @description The slug or the email address is already taken. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4823,6 +4891,227 @@ export interface operations {
             };
             /** @description No tenant with that id. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listAccessRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequestView"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    convertAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedTenantView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No access request with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description That access request has already been converted or dismissed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    dismissAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequestView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No access request with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description That access request has already been converted or dismissed. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

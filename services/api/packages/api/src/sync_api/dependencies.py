@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Annotated, cast
 from fastapi import Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.access_requests import AccessRequestService
 from sync_api.applications import (
     ApplicationReviewService,
     ApplicationService,
@@ -194,6 +195,17 @@ def get_platform_service(
 
 
 PlatformServiceDep = Annotated[PlatformService, Depends(get_platform_service)]
+
+
+def get_access_request_service(
+    platform: PlatformServiceDep, session: SessionDep
+) -> AccessRequestService:
+    """Converting a request opens a Tenant, so the queue is built on the same service the
+    Platform admin opens one by hand with — one way to make a Tenant, not two."""
+    return AccessRequestService(session, platform)
+
+
+AccessRequestServiceDep = Annotated[AccessRequestService, Depends(get_access_request_service)]
 
 
 def get_tenant_admin(recruiter: ActingRecruiterDep) -> ActingRecruiter:

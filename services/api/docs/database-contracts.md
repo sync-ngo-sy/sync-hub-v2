@@ -43,6 +43,9 @@ composite FK (supabase ADR-0001, amended by supabase ADR-0003).
   row they will run — see *Platform operations* below.
 - Do **not** rely on an `auth.users` trigger; the flow decides the role, so the backend writes
   both rows.
+- There is **no Tenant signup**. Sync is sold, not self-served: no public endpoint creates a
+  `tenants` row, and the rule lives here rather than in a hidden button. A company asks with an
+  `access_requests` row, and a Platform admin converts it — see *Access requests* below.
 
 ## Platform operations (`sync_api.platform`)
 
@@ -54,9 +57,10 @@ one router-level guard, so who may reach them is a single decision rather than o
   includes colleagues an admin has deactivated; and `invite_pending`, which is
   `email_confirmed_at is null` on the founding admin below. No tenant filter anywhere: this is the
   one reader on the platform that is deliberately not scoped to one.
-- **Opening a Tenant** writes the same three rows a self-serve signup does — `tenants`, then
+- **Opening a Tenant** writes three rows — `tenants`, then
   `profiles(account_type='recruiter')`, then `recruiters(role='admin')` — in one transaction
-  (`sync_api.tenants.provisioning.provision_tenant`, shared with signup). The founding admin is
+  (`sync_api.tenants.provisioning.provision_tenant`). It is the only way a `tenants` row is ever
+  made, whether an operator typed it or converted an Access request. The founding admin is
   **invited**, never given a password: GoTrue's invite creates the identity, and the address is
   confirmed only once they redeem the link and choose one.
 - Both refusals — an address (`tenants.slug`) already taken, an email address that already has an
@@ -81,6 +85,31 @@ one router-level guard, so who may reach them is a single decision rather than o
 - **Platform counts** are four `count(*)` subqueries in one round trip. Candidates are counted
   `where deleted_at is null`: a deleted Candidate keeps its row, because the Applications Tenants
   received still name it.
+
+## Access requests (`sync_api.access_requests`)
+
+Where every Tenant starts, and the one row an unauthenticated stranger may write.
+
+- **Asking** upserts `access_requests` on the partial unique index
+  `access_requests_one_pending_per_email_idx` (`email` where `status = 'pending'`), so a second ask
+  from the same address revises the first rather than queueing another. The address is lowercased
+  before it is written, because that index is a plain equality. The endpoint answers `202` with no
+  body: what a stranger asked for is not theirs to read back, and the answer must not disclose
+  whether the address was already waiting.
+- **Its own rate limit.** Nothing here touches GoTrue, so none of the identity provider's limits
+  apply. `SYNC_ACCESS_REQUEST_RATE_LIMIT_*` is what stands between the queue and a script, and it
+  is deliberately tighter than the public browse limit — a company asks once.
+- **Converting** calls the same `PlatformService.create_tenant` an operator uses by hand, with
+  the company, the founding admin and their address read off the row; only `slug` comes from the
+  request body. The row is marked `converted` and points at the Tenant it became **after** the
+  Tenant exists, so a refusal (slug taken, address already an account) leaves it `pending` and
+  correctable rather than lost. The two are not one transaction: `create_tenant` owns its own, and
+  the window is one status update wide.
+- **Dismissing** marks the row `dismissed` and does nothing else — no Tenant, no email. Neither
+  decision deletes the row, which is what makes a company's second ask visibly a second one.
+- `access_requests_decision` is the CHECK that keeps the three states honest: `pending` has no
+  `decided_at` and no `tenant_id`, `dismissed` has a `decided_at` and no `tenant_id`, and
+  `converted` has both. `tenant_id` is `ON DELETE SET NULL` — the request outlives the Tenant.
 
 ## Candidate profile replacement
 
