@@ -21,6 +21,21 @@ Storage (uploads, signed download URLs) — it never reads or writes application
   stored session to confuse. Ours is the adapter around it — the claims the API acts on,
   and one error for every refusal.
 
+**Amended for the Cloud Run deployment.** Deployed environments connect through Supabase's
+Supavisor pooler in transaction mode, not straight to Postgres. Compute scales to many
+short-lived instances and each one's own pool multiplies into the database's connection
+limit; the pooler is what bounds that. "Direct" in the title now means "not through
+PostgREST", not "not through a pooler".
+
+The consequence is asyncpg-specific and not obvious. Transaction-mode pooling gives each
+transaction whichever server connection is free, so a statement prepared on one is missing
+from the next, and two clients sharing a connection collide on the same generated statement
+name. `sync_core.db` therefore disables the dialect's prepared-statement cache — a URL query
+parameter, because the engine keyword is rejected — disables asyncpg's own cache, and gives
+every statement a unique name. Failures without this are intermittent and only appear under
+concurrency, which is why the pooled path is exercised directly in
+`tests/integration/test_transaction_pooler.py` rather than trusted to configuration.
+
 The forcing fact: ADR-0001 makes multi-row single-transaction writes (application
 submission, PII scrub, chunk swaps) and `SELECT … FOR UPDATE SKIP LOCKED` queue claims the
 backend's job — and supabase-py speaks PostgREST, which has no client-side transactions at
