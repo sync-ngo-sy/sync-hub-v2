@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from sync_api.app import create_app
 from sync_core import Database, Settings, Storage, get_settings
-from tests.conftest import RECRUITER_PORTAL_URL
+from tests.conftest import ADMIN_PORTAL_URL, RECRUITER_PORTAL_URL
 from tests.support import stack
 from tests.support.cvs import empty_cv_bucket
 from tests.support.harness import SPA_HEADERS, asgi_client
@@ -45,6 +45,7 @@ def _stack_environment() -> Iterator[None]:
             "SYNC_PUBLIC_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_ASSESSMENT_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_RECRUITER_PORTAL_URL": RECRUITER_PORTAL_URL,
+            "SYNC_ADMIN_PORTAL_URL": ADMIN_PORTAL_URL,
         }
     )
     get_settings.cache_clear()

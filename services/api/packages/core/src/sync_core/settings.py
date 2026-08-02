@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     auth_rate_limit_max_requests: int = Field(default=20, ge=1)
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     recruiter_portal_url: AnyHttpUrl
+    admin_portal_url: AnyHttpUrl
 
     public_rate_limit_max_requests: int = Field(default=120, ge=1)
     public_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
