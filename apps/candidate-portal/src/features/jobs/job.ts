@@ -10,14 +10,50 @@ type Skill = components['schemas']['JobSkillRequirement'];
 type Language = components['schemas']['JobLanguageRequirement'];
 type Proficiency = components['schemas']['LanguageProficiency'];
 type Question = components['schemas']['PublicJobQuestion'];
+type EmploymentType = components['schemas']['EmploymentType'];
+type WorkMode = components['schemas']['WorkMode'];
 
 /** The sentence every list and header shares when nothing is published. */
 export const NOTHING_PUBLISHED =
   'No roles are open right now. New ones appear here the moment an employer publishes them.';
 
-/** The employer first, then whichever of place and shape the Job actually carries. */
+/** Both fixed sets are the API's, so only the English is written here — a value the platform
+ * adds fails to compile until it has a word, rather than reaching a reader as `full_time`. */
+const EMPLOYMENT_TYPE: Record<EmploymentType, string> = {
+  full_time: 'Full time',
+  part_time: 'Part time',
+  contract: 'Contract',
+  temporary: 'Temporary',
+  internship: 'Internship',
+  volunteer: 'Volunteer',
+};
+
+const WORK_MODE: Record<WorkMode, string> = {
+  onsite: 'On-site',
+  hybrid: 'Hybrid',
+  remote: 'Remote',
+};
+
+export function employmentTypeLabel(type: EmploymentType | null | undefined): string | null {
+  return type ? EMPLOYMENT_TYPE[type] : null;
+}
+
+export function workModeLabel(mode: WorkMode | null | undefined): string | null {
+  return mode ? WORK_MODE[mode] : null;
+}
+
+/** The employer, then where the team is, then how much of the work happens there, then what
+ * the contract is — whichever of the four the Job actually carries. Work mode sits beside the
+ * place rather than replacing it: a remote role still has a team somewhere. */
 export function jobMeta(job: Job | JobSummary): string {
-  return [job.tenant.name, job.location_name, job.employment_type].filter(Boolean).join(' · ');
+  return [
+    job.tenant.name,
+    job.location_name,
+    workModeLabel(job.work_mode),
+    employmentTypeLabel(job.employment_type),
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /**

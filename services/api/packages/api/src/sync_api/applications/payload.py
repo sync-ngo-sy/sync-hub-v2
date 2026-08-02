@@ -17,8 +17,10 @@ from sync_api.text import LocationName, OptionalLine, OptionalParagraph
 from sync_core.models import (
     ApplicationQuestionType,
     ApplicationStatus,
+    EmploymentType,
     QualificationStatus,
     StatusChangeSource,
+    WorkMode,
 )
 from sync_core.profile import MAX_ENTRIES
 
@@ -75,7 +77,8 @@ class AppliedJob(BaseModel):
     tenant: PublicTenant
     location_key: str | None = None
     location_name: LocationName = None
-    employment_type: str | None = None
+    employment_type: EmploymentType | None = None
+    work_mode: WorkMode | None = None
 
 
 class Application(BaseModel):

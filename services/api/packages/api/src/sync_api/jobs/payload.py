@@ -6,12 +6,14 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
-from sync_api.text import LanguageCode, Line, LocationKey, LocationName, OptionalLine, Paragraph
+from sync_api.text import LanguageCode, Line, LocationKey, LocationName, Paragraph
 from sync_core.models import (
     ApplicationQuestionType,
+    EmploymentType,
     JobStatus,
     LanguageProficiency,
     SkillImportance,
+    WorkMode,
 )
 from sync_core.profile import MAX_ENTRIES, MAX_YEARS_EXPERIENCE
 
@@ -21,6 +23,23 @@ MAX_MINIMUM_YEARS: Final = 99
 Expiry = Annotated[
     AwareDatetime | None,
     Field(description="When the Job stops being public. Null means it stays up until closed."),
+]
+
+EmploymentTypeChoice = Annotated[
+    EmploymentType | None,
+    Field(
+        description="What the contract is, from a fixed set. Null says nothing about it.",
+        examples=[EmploymentType.FULL_TIME],
+    ),
+]
+
+WorkModeChoice = Annotated[
+    WorkMode | None,
+    Field(
+        description="How much of the work happens where the team is. It never stands in for "
+        "`location_key` — a remote Job still has a Location. Null says nothing about it.",
+        examples=[WorkMode.REMOTE],
+    ),
 ]
 
 
@@ -128,7 +147,8 @@ class NewJob(BaseModel):
     title: Line = Field(examples=["Senior Backend Engineer"])
     description: Paragraph
     location_key: LocationKey = None
-    employment_type: OptionalLine = Field(default=None, examples=["Full time"])
+    employment_type: EmploymentTypeChoice = None
+    work_mode: WorkModeChoice = None
     expires_at: Expiry = None
 
 
@@ -138,7 +158,8 @@ class JobChanges(BaseModel):
     title: Line | None = None
     description: Paragraph | None = None
     location_key: LocationKey = None
-    employment_type: OptionalLine = None
+    employment_type: EmploymentTypeChoice = None
+    work_mode: WorkModeChoice = None
     expires_at: Expiry = None
     status: JobStatus | None = Field(
         default=None,
@@ -160,7 +181,8 @@ class JobSummary(BaseModel):
     status: JobStatus
     location_key: str | None = None
     location_name: LocationName = None
-    employment_type: str | None = None
+    employment_type: EmploymentType | None = None
+    work_mode: WorkMode | None = None
     expires_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
@@ -201,7 +223,8 @@ class PublicJobSummary(BaseModel):
     tenant: PublicTenant
     location_key: str | None = None
     location_name: LocationName = None
-    employment_type: str | None = None
+    employment_type: EmploymentType | None = None
+    work_mode: WorkMode | None = None
     expires_at: datetime | None = None
     created_at: datetime
 

@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import type { StatusTone } from '@sync/ui/components/status-chip';
+import { employmentTypeLabel, workModeLabel } from '@/features/jobs/job';
 
 export type Application = components['schemas']['Application'];
 export type ApplicationStatus = components['schemas']['ApplicationStatus'];
@@ -26,11 +27,13 @@ export function applicationState(status: ApplicationStatus): ApplicationState {
   return APPLICATION_STATE[status];
 }
 
+/** The Job an Application went to, read the same way the Job itself reads on the board. */
 export function applicationMeta(application: Application): string {
   return [
     application.job.tenant.name,
     application.job.location_name,
-    application.job.employment_type,
+    workModeLabel(application.job.work_mode),
+    employmentTypeLabel(application.job.employment_type),
   ]
     .filter((part): part is string => Boolean(part))
     .join(' · ');

@@ -6,6 +6,33 @@ export type JobSummary = components['schemas']['JobSummary'];
 export type JobStatus = components['schemas']['JobStatus'];
 export type NewJob = components['schemas']['NewJob'];
 export type JobChanges = components['schemas']['JobChanges'];
+export type EmploymentType = components['schemas']['EmploymentType'];
+export type WorkMode = components['schemas']['WorkMode'];
+
+/** Both fixed sets are the API's, so only the English is written here — a value the platform
+ * adds fails to compile until it has a word, and the pickers are these maps in order. */
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+  full_time: 'Full time',
+  part_time: 'Part time',
+  contract: 'Contract',
+  temporary: 'Temporary',
+  internship: 'Internship',
+  volunteer: 'Volunteer',
+};
+
+export const WORK_MODE_LABELS: Record<WorkMode, string> = {
+  onsite: 'On-site',
+  hybrid: 'Hybrid',
+  remote: 'Remote',
+};
+
+export function employmentTypeLabel(type: EmploymentType | null | undefined): string | null {
+  return type ? EMPLOYMENT_TYPE_LABELS[type] : null;
+}
+
+export function workModeLabel(mode: WorkMode | null | undefined): string | null {
+  return mode ? WORK_MODE_LABELS[mode] : null;
+}
 
 interface JobState {
   label: string;
@@ -24,7 +51,11 @@ export function jobState(status: JobStatus): JobState {
 }
 
 export function jobMeta(job: JobSummary): string {
-  return [job.location_name, job.employment_type].filter(Boolean).join(' · ') || 'Details not set';
+  return (
+    [job.location_name, workModeLabel(job.work_mode), employmentTypeLabel(job.employment_type)]
+      .filter(Boolean)
+      .join(' · ') || 'Details not set'
+  );
 }
 
 const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'always' });

@@ -16,7 +16,7 @@ from sync_api.jobs.payload import PublicJob, PublicJobPage, PublicJobSummary, Pu
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core import get_logger, transaction
-from sync_core.models import Job, JobViewEvent, Tenant, TrackedJobLink
+from sync_core.models import EmploymentType, Job, JobViewEvent, Tenant, TrackedJobLink
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -42,7 +42,7 @@ class JobBrowseService:
         *,
         keywords: str | None = None,
         location_key: str | None = None,
-        employment_type: str | None = None,
+        employment_type: EmploymentType | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> PublicJobPage:
@@ -54,7 +54,7 @@ class JobBrowseService:
         if location_key:
             query = query.where(Job.location_key == location_key)
         if employment_type:
-            query = query.where(func.lower(Job.employment_type) == employment_type.lower())
+            query = query.where(Job.employment_type == employment_type)
 
         found = list(
             (
@@ -143,6 +143,7 @@ def _summary(job: Job, tenant: Tenant) -> PublicJobSummary:
         location_key=job.location_key,
         location_name=location_name(job),
         employment_type=job.employment_type,
+        work_mode=job.work_mode,
         expires_at=job.expires_at,
         created_at=job.created_at,
     )

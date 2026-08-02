@@ -11,15 +11,28 @@ import { ReferencePicker } from '@/features/reference/components/reference-picke
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups } from '@/features/reference/options';
 import { useChangeJob, useCreateJob } from '../hooks/use-job-actions';
-import type { Job, JobChanges, NewJob } from '../job';
+import {
+  EMPLOYMENT_TYPE_LABELS,
+  type Job,
+  type JobChanges,
+  type NewJob,
+  WORK_MODE_LABELS,
+} from '../job';
 import { jobFormRejection } from '../rejection';
 import { type JobFormValues, jobFormSchema } from '../schemas/job';
+import { ChoiceSelect } from './choice-select';
+
+/** The blank leads, so a Job nobody has decided about yet reads as undecided rather than as
+ * whichever value happened to be first. */
+const EMPLOYMENT_TYPES = { '': 'Not set', ...EMPLOYMENT_TYPE_LABELS };
+const WORK_MODES = { '': 'Not set', ...WORK_MODE_LABELS };
 
 const EMPTY_JOB: JobFormValues = {
   title: '',
   description: '',
   locationKey: '',
   employmentType: '',
+  workMode: '',
   expiresAt: '',
 };
 
@@ -27,12 +40,18 @@ function optional(value: string): string | null {
   return value.trim() || null;
 }
 
+/** The blank a select shows before a choice is made is "not stated", not a value to send. */
+function chosen<Value extends string>(value: Value | ''): Value | null {
+  return value || null;
+}
+
 function newJob(values: JobFormValues): NewJob {
   return {
     title: values.title.trim(),
     description: values.description.trim(),
     location_key: optional(values.locationKey),
-    employment_type: optional(values.employmentType),
+    employment_type: chosen(values.employmentType),
+    work_mode: chosen(values.workMode),
     expires_at: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
   };
 }
@@ -49,6 +68,7 @@ function editValues(job: Job): JobFormValues {
     description: job.description,
     locationKey: job.location_key ?? '',
     employmentType: job.employment_type ?? '',
+    workMode: job.work_mode ?? '',
     expiresAt: job.expires_at ? inputDateTime(job.expires_at) : '',
   };
 }
@@ -115,8 +135,16 @@ export function JobForm({ job, onSaved, onCancel }: JobFormProps) {
             />
           )}
         </FormField>
+        <FormField
+          control={form.control}
+          name="workMode"
+          label="Work mode"
+          description="Where the work happens. A remote role still has a Location."
+        >
+          {(field) => <ChoiceSelect field={field} items={WORK_MODES} />}
+        </FormField>
         <FormField control={form.control} name="employmentType" label="Employment type">
-          {(field) => <Input {...field} value={field.value} placeholder="e.g. Full time" />}
+          {(field) => <ChoiceSelect field={field} items={EMPLOYMENT_TYPES} />}
         </FormField>
       </div>
 

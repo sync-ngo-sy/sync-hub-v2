@@ -70,6 +70,7 @@ class JobService:
             description=new.description,
             location_key=new.location_key,
             employment_type=new.employment_type,
+            work_mode=new.work_mode,
             expires_at=new.expires_at,
         )
         async with transaction(self._db):
@@ -177,6 +178,7 @@ def _summary(job: Job) -> JobSummary:
         location_key=job.location_key,
         location_name=location_name(job),
         employment_type=job.employment_type,
+        work_mode=job.work_mode,
         expires_at=job.expires_at,
         created_at=job.created_at,
         updated_at=job.updated_at,

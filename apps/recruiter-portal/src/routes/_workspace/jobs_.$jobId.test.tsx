@@ -41,6 +41,7 @@ describe('a recruiter Job detail page', () => {
     expect(screen.getByText('Published')).toBeVisible();
     expect(screen.getByText('Aleppo')).toBeVisible();
     expect(screen.getByText('Full time')).toBeVisible();
+    expect(screen.getByText('On-site')).toBeVisible();
     expect(screen.getByRole('tab', { name: 'Screening criteria' })).toHaveAttribute('data-active');
     expect(screen.getByRole('button', { name: 'Close job' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Archive job' })).toBeVisible();

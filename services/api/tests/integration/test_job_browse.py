@@ -34,7 +34,8 @@ A_FRONTEND_JOB = {
     "title": "Frontend Engineer",
     "description": "Build the candidate portal in React and TypeScript.",
     "location_key": "sy-aleppo",
-    "employment_type": "Part time",
+    "employment_type": "part_time",
+    "work_mode": "remote",
 }
 
 
@@ -122,10 +123,34 @@ async def test_the_location_and_the_employment_type_are_hard_filters(
     assert [item["id"] for item in await browse(visitor, location_key="sy-damascus")] == [
         backend["id"]
     ]
-    assert [item["id"] for item in await browse(visitor, employment_type="part time")] == [
+    assert [item["id"] for item in await browse(visitor, employment_type="part_time")] == [
         frontend["id"]
     ]
-    assert (await browse(visitor, location_key="sy-damascus", employment_type="Part time")) == []
+    assert (await browse(visitor, location_key="sy-damascus", employment_type="part_time")) == []
+
+
+async def test_an_employment_type_outside_the_set_is_refused_rather_than_ignored(
+    visitor: AsyncClient,
+) -> None:
+    """A filter the platform has no such kind of job for is a mistake worth naming, not an
+    empty page that reads as "nobody is hiring"."""
+    response = await visitor.get(JOBS, params={"employment_type": "Part time"})
+
+    assert response.status_code == 422, response.text
+
+
+async def test_a_published_job_carries_its_employment_type_and_work_mode(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    job = await a_published_job(recruiter, **A_FRONTEND_JOB)
+
+    [listed] = await browse(visitor)
+    read = await read_public_job(visitor, job["id"])
+
+    assert (listed["employment_type"], listed["work_mode"]) == ("part_time", "remote")
+    assert read.json()["employment_type"] == "part_time"
+    assert read.json()["work_mode"] == "remote"
+    assert read.json()["location_name"] == "Aleppo"
 
 
 async def test_a_governorate_never_answers_for_the_one_beside_it(
