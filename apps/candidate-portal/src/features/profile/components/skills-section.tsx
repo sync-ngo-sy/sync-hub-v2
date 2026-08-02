@@ -1,20 +1,32 @@
+import { Combobox } from '@sync/ui/components/combobox';
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import { Sparkles, Wrench } from 'lucide-react';
-import { type Control, useFieldArray } from 'react-hook-form';
+import { type Control, useFieldArray, useWatch } from 'react-hook-form';
+import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-skills';
+import { skillGroups } from '@/features/reference/options';
 import { BLANK_SKILL, BLANK_UNMAPPED_SKILL, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
 
+type SkillEntry = ProfileFormValues['skills'][number];
+
+/** What the other rows hold, so the same skill cannot be listed twice. */
+function takenElsewhere(entries: SkillEntry[] | undefined, index: number): string[] {
+  return (entries ?? []).filter((_, at) => at !== index).map((entry) => entry.name);
+}
+
 export function SkillsSection({ control }: { control: Control<ProfileFormValues> }) {
   const skills = useFieldArray({ control, name: 'skills' });
   const others = useFieldArray({ control, name: 'unmapped_skills' });
+  const taxonomy = useCanonicalSkills();
+  const listed = useWatch({ control, name: 'skills' });
 
   return (
     <>
       <ProfileSection
         title="Skills"
-        description="Named exactly as the platform names them — these are what Screening reads."
+        description="Chosen from the platform's list — these are what Screening reads."
       >
         <EntryList
           ids={skills.fields.map((field) => field.id)}
@@ -28,7 +40,25 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
           {(index) => (
             <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
               <FormField control={control} name={`skills.${index}.name`} label="Skill">
-                {(field) => <Input {...field} placeholder="Python" />}
+                {({ value, onChange, onBlur, id, ...aria }) => (
+                  <Combobox
+                    id={id}
+                    options={skillGroups(taxonomy.data, takenElsewhere(listed, index))}
+                    value={value || null}
+                    onValueChange={(name) => onChange(name ?? '')}
+                    onBlur={onBlur}
+                    placeholder="Type to search"
+                    loading={taxonomy.isPending}
+                    loadingMessage="Loading skills…"
+                    emptyMessage={
+                      taxonomy.isError
+                        ? "The skill list couldn't be loaded."
+                        : 'No skill by that name.'
+                    }
+                    aria-describedby={aria['aria-describedby']}
+                    aria-invalid={aria['aria-invalid']}
+                  />
+                )}
               </FormField>
               <FormField
                 control={control}
@@ -45,7 +75,8 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
 
       <ProfileSection
         title="Other skills"
-        description="Anything the platform has no name for yet. Recruiters read these; Screening does not."
+        description="Skills the platform has no name for, written however you like. Recruiters read
+          these; Screening does not."
       >
         <EntryList
           ids={others.fields.map((field) => field.id)}

@@ -521,6 +521,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every Canonical skill, by category
+         * @description The whole taxonomy — a skill named any other way is refused, so this is the only list
+         *     worth offering anyone.
+         *
+         *     It arrives by category and then by name, one contiguous run per category, so a picker can
+         *     group it without sorting. Small enough to fetch whole and filter in the browser; there is
+         *     no search here.
+         */
+        get: operations["listCanonicalSkills"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/languages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every language the platform knows
+         * @description By name, so a picker reads in the order it displays. A profile stores the code.
+         */
+        get: operations["listLanguages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/search/candidates": {
         parameters: {
             query?: never;
@@ -1612,6 +1657,24 @@ export interface components {
             skills?: components["schemas"]["OneEntryPerSkill_ProfileSkill__MaxLen_max_length_50_"];
         };
         /**
+         * CanonicalSkill
+         * @description One skill the platform has a name for, and the heading it belongs under.
+         */
+        CanonicalSkill: {
+            /**
+             * Name
+             * @description The Canonical skill's exact name.
+             * @example Python
+             */
+            name: string;
+            /**
+             * Category
+             * @description What the taxonomy files it under.
+             * @example Programming Languages
+             */
+            category: string;
+        };
+        /**
          * ChangeMemberRequest
          * @description Both fields optional: an admin changing a role should not have to restate access.
          */
@@ -2077,6 +2140,24 @@ export interface components {
              * @description True once the Job has an Application: the criteria are frozen from then on, and only the prose can still be edited.
              */
             criteria_locked: boolean;
+        };
+        /**
+         * Language
+         * @description One language the platform knows, by the code it is stored as and the name it is read as.
+         */
+        Language: {
+            /**
+             * Code
+             * @description Its ISO 639-1 code — what a profile stores.
+             * @example ar
+             */
+            code: string;
+            /**
+             * Name
+             * @description What to call it on screen.
+             * @example Arabic
+             */
+            name: string;
         };
         /**
          * LanguageProficiency
@@ -5031,6 +5112,100 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listCanonicalSkills: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CanonicalSkill"][];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listLanguages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Language"][];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */

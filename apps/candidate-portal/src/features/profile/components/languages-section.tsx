@@ -1,5 +1,5 @@
+import { Combobox } from '@sync/ui/components/combobox';
 import { FormField } from '@sync/ui/components/form-field';
-import { Input } from '@sync/ui/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -8,16 +8,27 @@ import {
   SelectValue,
 } from '@sync/ui/components/ui/select';
 import { Languages } from 'lucide-react';
-import { type Control, useFieldArray } from 'react-hook-form';
+import { type Control, useFieldArray, useWatch } from 'react-hook-form';
+import { useLanguages } from '@/features/reference/hooks/use-languages';
+import { languageOptions } from '@/features/reference/options';
 import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
 
+type LanguageEntry = ProfileFormValues['languages'][number];
+
+/** What the other rows hold, so the same language cannot be listed twice. */
+function takenElsewhere(entries: LanguageEntry[] | undefined, index: number): string[] {
+  return (entries ?? []).filter((_, at) => at !== index).map((entry) => entry.code);
+}
+
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
+  const known = useLanguages();
+  const listed = useWatch({ control, name: 'languages' });
 
   return (
-    <ProfileSection title="Languages" description="By their code — ar, en, fr, tr.">
+    <ProfileSection title="Languages" description="The ones you speak, and how well.">
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Language ${index + 1}`}
@@ -29,8 +40,26 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
       >
         {(index) => (
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField control={control} name={`languages.${index}.code`} label="Language code">
-              {(field) => <Input {...field} placeholder="ar" />}
+            <FormField control={control} name={`languages.${index}.code`} label="Language">
+              {({ value, onChange, onBlur, id, ...aria }) => (
+                <Combobox
+                  id={id}
+                  options={languageOptions(known.data, takenElsewhere(listed, index))}
+                  value={value || null}
+                  onValueChange={(code) => onChange(code ?? '')}
+                  onBlur={onBlur}
+                  placeholder="Type to search"
+                  loading={known.isPending}
+                  loadingMessage="Loading languages…"
+                  emptyMessage={
+                    known.isError
+                      ? "The language list couldn't be loaded."
+                      : 'No language by that name.'
+                  }
+                  aria-describedby={aria['aria-describedby']}
+                  aria-invalid={aria['aria-invalid']}
+                />
+              )}
             </FormField>
             <FormField
               control={control}

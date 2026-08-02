@@ -54,8 +54,20 @@ _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate 
 **Other skills**:
 The skills a Candidate claims that the platform has no Canonical name for — `unmapped_skills` on
 the wire. Recruiters read them; Screening never does, which is why the editor keeps them in a
-section of their own rather than mixed in with Skills.
+section of their own rather than mixed in with Skills. Now that Skills can only be picked from
+the taxonomy, this is the only route for anything the taxonomy lacks, so it is a peer of Skills
+rather than a footnote to it.
 _Avoid_: Unmapped skills (the wire's word, not the reader's), custom skills, free-text skills.
+
+**Reference data**:
+The platform's fixed lists — Canonical skills with their categories, and languages with their
+names and codes — read from endpoints of their own and held for the session. Every field the API
+constrains is a picker over one of these rather than a text box, so a profile the API would
+refuse cannot be typed. Each list is small enough to fetch whole and filter in the browser;
+nothing is searched server-side, and a picker shows the language's name while the profile stores
+its code.
+_Avoid_: Lookups, master data, enums (an enum reaches the portals through the generated client;
+these are rows).
 
 **Notifications**:
 Everything the platform has told the signed-in Candidate, newest first: a CV it could not read, an

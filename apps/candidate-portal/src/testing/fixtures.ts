@@ -414,6 +414,21 @@ export const MORE_NOTIFICATIONS: Notification[] = [
   }),
 ];
 
+/** A slice of the taxonomy, in the category-then-name order the API answers in. */
+export const CANONICAL_SKILLS: components['schemas']['CanonicalSkill'][] = [
+  { name: 'PostgreSQL', category: 'Databases' },
+  { name: 'Redis', category: 'Databases' },
+  { name: 'Go', category: 'Programming Languages' },
+  { name: 'Python', category: 'Programming Languages' },
+];
+
+export const LANGUAGES: components['schemas']['Language'][] = [
+  { code: 'ar', name: 'Arabic' },
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'French' },
+  { code: 'tr', name: 'Turkish' },
+];
+
 export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {
   type: 'urn:sync:problem:unknown-canonical-skill',
   title: 'Unprocessable Entity',
