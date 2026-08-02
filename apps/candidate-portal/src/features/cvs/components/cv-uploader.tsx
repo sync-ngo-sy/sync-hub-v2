@@ -5,7 +5,7 @@ import { CircleAlert, FileText, Upload } from 'lucide-react';
 import { type ChangeEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { isClientError, problemMessage } from '@/lib/api-problem';
-import { MAX_CVS } from '../cv';
+import { type Cv, MAX_CVS } from '../cv';
 import { CV_FILE_ACCEPT, CV_FORMATS, MAX_CV_MB, rejectionFor } from '../file-check';
 import { cvUpload, useUploadCv } from '../hooks/use-upload-cv';
 
@@ -13,9 +13,11 @@ interface CvUploaderProps {
   slotsLeft: number;
   /** With none kept, the uploader *is* the list's empty state rather than a bar above it. */
   hasCvs: boolean;
+  /** The CV the API took, so whoever is waiting for its parse knows which one to watch. */
+  onUploaded: (cv: Cv) => void;
 }
 
-export function CvUploader({ slotsLeft, hasCvs }: CvUploaderProps) {
+export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
   const upload = useUploadCv();
   const input = useRef<HTMLInputElement>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export function CvUploader({ slotsLeft, hasCvs }: CvUploaderProps) {
     setUploading(file.name);
     try {
       const cv = await upload.mutateAsync(cvUpload(file));
+      onUploaded(cv);
       toast.success(`“${cv.display_name}” uploaded. We're reading it now.`);
     } catch (error) {
       const message = problemMessage(error, "Couldn't upload that file. Try again.");

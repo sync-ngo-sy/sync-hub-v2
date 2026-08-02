@@ -20,7 +20,7 @@ function ProfilePage() {
     <div className="space-y-8">
       <PageHeader
         title="Profile"
-        description="What recruiters see when you apply. Saved all at once."
+        description="What recruiters see when you apply. Upload a CV and the fields fill in from it. Saved all at once."
       />
       <ProfileEditor />
     </div>

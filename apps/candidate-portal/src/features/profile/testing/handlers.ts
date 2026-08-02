@@ -23,6 +23,17 @@ export function savesProfile(saved: CandidateProfile, onSave?: (body: CandidateP
   ];
 }
 
+/** Answers with the body it was sent, as a whole-profile replace does. */
+export function echoesProfile(onSave?: (body: CandidateProfile) => void) {
+  return [
+    http.put('/v1/candidates/me/profile', async ({ request, response }) => {
+      const body = await request.json();
+      onSave?.(body);
+      return response(200).json(body);
+    }),
+  ];
+}
+
 export function refusesProfile(problem: ValidationProblemDetail) {
   return [http.put('/v1/candidates/me/profile', ({ response }) => response(422).json(problem))];
 }

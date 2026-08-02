@@ -12,8 +12,10 @@ import {
   listsNotificationsInTurn,
   marksRead,
 } from '@/features/notifications/testing/handlers';
+import { hasProfile } from '@/features/profile/testing/handlers';
 import {
   CANDIDATE,
+  CANDIDATE_PROFILE,
   CV_FAILURE_NOTIFICATION,
   FAILED_CV,
   MOVED_NOTIFICATION,
@@ -153,6 +155,7 @@ describe('the bell dropdown', () => {
       ...countsUnreadInTurn(3, 2),
       ...listsNotificationsInTurn([CV_FAILURE_NOTIFICATION], [opened]),
       ...marksRead([CV_FAILURE_NOTIFICATION], read),
+      ...hasProfile(CANDIDATE_PROFILE),
       ...listsCvs([FAILED_CV]),
     );
 
@@ -160,7 +163,7 @@ describe('the bell dropdown', () => {
     await user.click(bell(3));
     await user.click(await screen.findByRole('menuitem', { name: /Couldn't read/ }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/cvs'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'));
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_FAILURE_NOTIFICATION.id));
     await waitFor(() => expect(bell(2)).toBeVisible());
 
