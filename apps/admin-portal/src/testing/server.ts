@@ -1,4 +1,10 @@
 import { setupServer } from 'msw/node';
-import { respondsWithPlatformOverview } from '@/features/platform/testing/handlers';
+import {
+  respondsWithPlatformOverview,
+  respondsWithPlatformTenants,
+} from '@/features/platform/testing/handlers';
 
-export const server = setupServer(...respondsWithPlatformOverview());
+export const server = setupServer(
+  ...respondsWithPlatformOverview(),
+  ...respondsWithPlatformTenants(),
+);
