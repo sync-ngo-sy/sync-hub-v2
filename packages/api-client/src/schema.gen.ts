@@ -1297,7 +1297,7 @@ export interface components {
          * AccountType
          * @enum {string}
          */
-        AccountType: "candidate" | "recruiter";
+        AccountType: "candidate" | "recruiter" | "platform_admin";
         /**
          * AnsweredQuestion
          * @description One of the Job's questions, and what the Candidate answered.

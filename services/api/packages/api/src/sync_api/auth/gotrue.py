@@ -96,7 +96,11 @@ class GoTrue:
         self._service_role_key = service_role_key
         self._anon_key = anon_key
 
-    async def create_user(self, *, email: str, password: str) -> GoTrueUser:
+    async def create_user(
+        self, *, email: str, password: str, confirmed: bool = False
+    ) -> GoTrueUser:
+        """`confirmed` skips the confirmation email — only for an account created out of band,
+        where there is no inbox round trip to make and nobody to send the link to."""
         with refusals(
             {
                 "email_exists": EmailAlreadyRegisteredError,
@@ -105,7 +109,7 @@ class GoTrue:
             }
         ):
             answered = await self._as_admin().admin.create_user(
-                {"email": email, "password": password, "email_confirm": False}
+                {"email": email, "password": password, "email_confirm": confirmed}
             )
         return _user_from(answered.user)
 

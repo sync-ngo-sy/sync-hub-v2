@@ -131,7 +131,31 @@ If the API is already running under compose, run only the portals so nothing fig
 pnpm exec turbo run dev --filter='./apps/*'
 ```
 
-## 4. Tests
+## 4. Create a Platform admin
+
+A Platform admin is the operator account that belongs to no Tenant — the one a Tenant is
+created and suspended from. There is no sign-up for it: the first one has nobody to authorise
+them, and a migration cannot make one because the auth user and its password belong to GoTrue,
+not to the schema. A script does it, against whatever environment the `SYNC_*` settings point at:
+
+```bash
+cd services/api
+uv run python scripts/create_platform_admin.py --email ops@sync.example --full-name "Nour Sabbagh"
+```
+
+It prints the target and asks before writing anything; `--yes` skips that. The password is typed
+at the prompt, or read from `SYNC_PLATFORM_ADMIN_PASSWORD` where there is no terminal (CI, a
+deploy shell). It is never an argument — those live on in shell history.
+
+The account comes out already confirmed, so it can sign in immediately. Neither portal serves the
+account type yet, so signing in to one lands on the wrong-portal notice; the admin screens arrive
+with #146.
+
+Against a deployed environment, export that environment's `SYNC_DATABASE_URL`,
+`SYNC_SUPABASE_URL` and `SYNC_SUPABASE_SERVICE_ROLE_KEY` first — the script reads exactly what the
+API reads, `.env` included, so check which one it picked up before answering the prompt.
+
+## 5. Tests
 
 The suite drives the real stack, so it has to be running:
 

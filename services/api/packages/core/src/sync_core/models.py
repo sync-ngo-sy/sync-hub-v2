@@ -38,6 +38,7 @@ class Base(DeclarativeBase):
 class AccountType(enum.StrEnum):
     CANDIDATE = "candidate"
     RECRUITER = "recruiter"
+    PLATFORM_ADMIN = "platform_admin"
 
 
 class ApplicationQuestionType(enum.StrEnum):
@@ -901,6 +902,40 @@ class CandidateSkill(Base):
 
     candidate: Mapped["Candidate"] = relationship("Candidate", viewonly=True)
     taxonomy: Mapped["SkillTaxonomy"] = relationship("SkillTaxonomy", viewonly=True)
+
+
+class PlatformAdmin(Base):
+    __tablename__ = "platform_admins"
+    __table_args__ = (
+        CheckConstraint(
+            "account_type = 'platform_admin'::account_type",
+            name="platform_admins_account_type_check",
+        ),
+        ForeignKeyConstraint(
+            ["id", "account_type"],
+            ["public.profiles.id", "public.profiles.account_type"],
+            ondelete="CASCADE",
+            name="platform_admins_id_account_type_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="platform_admins_pkey"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    account_type: Mapped[AccountType] = mapped_column(
+        Enum(
+            AccountType,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="account_type",
+        ),
+        nullable=False,
+        server_default=text("'platform_admin'::account_type"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+
+    profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
 
 
 class Recruiter(Base):
