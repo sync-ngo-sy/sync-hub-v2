@@ -50,14 +50,3 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
     </div>
   );
 }
-
-export function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <section>
-      <h1 className="font-heading text-h2">{title}</h1>
-      <p className="mt-3 text-muted-foreground">
-        This area is being prepared for platform operations.
-      </p>
-    </section>
-  );
-}
