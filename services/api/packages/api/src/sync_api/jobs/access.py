@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from sqlalchemy import Select, func, or_, select
+from sqlalchemy.orm import selectinload
 
 from sync_api.problems import JOB_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core.models import Job, JobStatus, Tenant
@@ -13,9 +14,16 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
+#: A Job is read to be shown, and showing one names its Location — so every read that reaches
+#: a payload brings the Location with it rather than leaving a lazy load to fail under asyncio.
+WITH_LOCATION: Final = (selectinload(Job.location),)
+
+
 async def own_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> Job:
     """The tenant's own Job. Another tenant's Job and a nonexistent one are the same 404."""
-    job = await session.scalar(select(Job).where(Job.id == job_id, Job.tenant_id == tenant_id))
+    job = await session.scalar(
+        select(Job).where(Job.id == job_id, Job.tenant_id == tenant_id).options(*WITH_LOCATION)
+    )
     if job is None:
         raise Problem(
             status=404,
@@ -33,6 +41,7 @@ def public_jobs() -> Select[tuple[Job, Tenant]]:
     """
     return (
         select(Job, Tenant)
+        .options(*WITH_LOCATION)
         .join(Tenant, Tenant.id == Job.tenant_id)
         .where(
             Job.status == JobStatus.PUBLISHED,

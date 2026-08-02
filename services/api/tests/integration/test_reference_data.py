@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from sync_core.models import Language, SkillTaxonomy
+from sync_core.models import Language, Location, SkillTaxonomy
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -82,3 +82,53 @@ async def test_every_language_the_platform_knows_is_offered(
     held = set((await db_session.scalars(select(Language.code))).all())
 
     assert {language["code"] for language in await read_languages(visitor)} == held
+
+
+async def read_locations(client: AsyncClient) -> list[dict[str, str]]:
+    response = await client.get("/v1/locations")
+    assert response.status_code == 200
+    return response.json()
+
+
+async def test_a_visitor_reads_every_syrian_governorate(visitor: AsyncClient) -> None:
+    locations = await read_locations(visitor)
+
+    assert {"key": "sy-aleppo", "name": "Aleppo", "group": "Syria"} in locations
+    assert len([entry for entry in locations if entry["group"] == "Syria"]) == 14
+
+
+async def test_a_candidate_outside_syria_has_a_country_to_choose(visitor: AsyncClient) -> None:
+    """Otherwise the only honest answer is a blank field, or a governorate they are not in."""
+    locations = await read_locations(visitor)
+
+    assert {"key": "de", "name": "Germany", "group": "Outside Syria"} in locations
+
+
+async def test_the_two_damascus_governorates_are_separate_places(visitor: AsyncClient) -> None:
+    named = {location["name"] for location in await read_locations(visitor)}
+
+    assert {"Damascus", "Rif Dimashq"} <= named
+
+
+async def test_locations_arrive_grouped_by_heading_and_sorted_by_name(
+    visitor: AsyncClient,
+) -> None:
+    locations = await read_locations(visitor)
+    groups = [location["group"] for location in locations]
+
+    # One run per heading — a heading that came back in two pieces would be shown twice.
+    assert groups == ["Syria"] * groups.count("Syria") + ["Outside Syria"] * groups.count(
+        "Outside Syria"
+    )
+    for block in ("Syria", "Outside Syria"):
+        under = [entry["name"] for entry in locations if entry["group"] == block]
+        assert under == sorted(under)
+
+
+async def test_every_location_the_taxonomy_holds_is_offered(
+    visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The picker filters in the browser, so a place missing here cannot be chosen at all."""
+    held = set((await db_session.scalars(select(Location.key))).all())
+
+    assert {location["key"] for location in await read_locations(visitor)} == held

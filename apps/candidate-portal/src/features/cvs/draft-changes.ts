@@ -3,6 +3,8 @@ import type { components } from '@sync/api-client';
 export type CandidateProfile = components['schemas']['CandidateProfile'];
 export type ProfileDraft = components['schemas']['ProfileDraft'];
 
+/** Location is not among them: a CV names a place in prose and the profile holds a Location the
+ * Candidate picked, so a draft carries the one they already chose and never proposes a move. */
 export interface DraftChange {
   label: string;
   before: string;
@@ -17,7 +19,7 @@ export interface DraftChange {
 
 const NOTHING = '—';
 
-type TextKey = 'full_name' | 'phone' | 'headline' | 'summary' | 'location';
+type TextKey = 'full_name' | 'phone' | 'headline' | 'summary';
 type ListKey = 'experiences' | 'educations' | 'languages' | 'projects';
 
 const TEXT_FIELDS: [key: TextKey, label: string][] = [
@@ -25,7 +27,6 @@ const TEXT_FIELDS: [key: TextKey, label: string][] = [
   ['phone', 'Phone'],
   ['headline', 'Headline'],
   ['summary', 'Summary'],
-  ['location', 'Location'],
 ];
 
 const LIST_FIELDS: [key: ListKey, label: string][] = [

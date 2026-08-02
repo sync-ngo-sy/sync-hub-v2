@@ -140,7 +140,7 @@ class MatchAssessmentService:
             job=AssessedJob(
                 title=job.title,
                 description=job.description,
-                location=job.location,
+                location=job.location.name if job.location else None,
                 employment_type=job.employment_type,
                 minimum_total_experience_years=criteria.minimum_total_experience_years,
                 skills=tuple(

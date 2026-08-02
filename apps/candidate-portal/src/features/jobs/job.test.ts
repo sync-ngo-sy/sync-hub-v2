@@ -12,7 +12,7 @@ import {
 
 describe('a Job meta line', () => {
   it('reads employer, place and shape, in that order', () => {
-    expect(jobMeta(PUBLIC_JOB)).toBe('Levant Digital · Remote · Full-time');
+    expect(jobMeta(PUBLIC_JOB)).toBe('Levant Digital · Damascus · Full-time');
   });
 
   it('carries only what the Job actually has', () => {
@@ -21,7 +21,7 @@ describe('a Job meta line', () => {
 
   it('reads the same for a summary as for the whole Job', () => {
     expect(PUBLIC_JOBS.map(jobMeta)).toEqual([
-      'Levant Digital · Remote · Full-time',
+      'Levant Digital · Damascus · Full-time',
       'Aman Relief · Aleppo · Contract',
       'Sham Care',
     ]);

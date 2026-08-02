@@ -103,6 +103,11 @@ class LanguageProficiency(enum.StrEnum):
     NATIVE = "native"
 
 
+class LocationKind(enum.StrEnum):
+    COUNTRY = "country"
+    GOVERNORATE = "governorate"
+
+
 class NotificationType(enum.StrEnum):
     CV_PARSE_FAILED = "cv_parse_failed"
     APPLICATION_STATUS_CHANGED = "application_status_changed"
@@ -258,7 +263,8 @@ t_candidate_search_profiles = Table(
     Column("avatar_url", Text),
     Column("headline", Text),
     Column("summary", Text),
-    Column("location", Text),
+    Column("location_key", Text),
+    Column("location_name", Text),
     Column("preferred_language_code", Text),
     schema="public",
 )
@@ -286,12 +292,16 @@ class Candidate(Base):
             name="candidates_current_cv_fk",
         ),
         ForeignKeyConstraint(
+            ["location_key"], ["public.locations.key"], name="candidates_location_fk"
+        ),
+        ForeignKeyConstraint(
             ["preferred_language_code"],
             ["public.languages.code"],
             name="candidates_preferred_language_fk",
         ),
         PrimaryKeyConstraint("id", name="candidates_pkey"),
         Index("candidates_current_cv_id_idx", "current_cv_id"),
+        Index("candidates_location_key_idx", "location_key"),
         Index("candidates_preferred_language_idx", "preferred_language_code"),
         Index("candidates_search_idx", "search_vector", postgresql_using="gin"),
         Index(
@@ -327,19 +337,14 @@ class Candidate(Base):
     current_cv_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
-    location: Mapped[str | None] = mapped_column(Text)
+    location_key: Mapped[str | None] = mapped_column(Text)
     preferred_language_code: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    search_vector: Mapped[Any | None] = mapped_column(
-        TSVECTOR,
-        Computed(
-            "to_tsvector('english'::regconfig, ((((COALESCE(headline, ''::text) || ' '::text) || COALESCE(summary, ''::text)) || ' '::text) || COALESCE(location, ''::text)))",
-            persisted=True,
-        ),
-    )
+    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
 
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
     cv: Mapped[Optional["Cv"]] = relationship("Cv", foreign_keys=[id, current_cv_id], viewonly=True)
+    location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
     language: Mapped[Optional["Language"]] = relationship("Language", viewonly=True)
 
 
@@ -408,6 +413,26 @@ class Language(Base):
 
     code: Mapped[str] = mapped_column(Text, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class Location(Base):
+    __tablename__ = "locations"
+    __table_args__ = (
+        PrimaryKeyConstraint("key", name="locations_pkey"),
+        UniqueConstraint("name", name="locations_name_key"),
+        {"schema": "public"},
+    )
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[LocationKind] = mapped_column(
+        Enum(
+            LocationKind,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="location_kind",
+        ),
+        nullable=False,
+    )
 
 
 class SkillCategory(Base):
@@ -996,6 +1021,9 @@ class Job(Base):
             name="jobs_min_experience_nonneg",
         ),
         ForeignKeyConstraint(
+            ["location_key"], ["public.locations.key"], name="jobs_location_key_fkey"
+        ),
+        ForeignKeyConstraint(
             ["tenant_id", "created_by_recruiter_id"],
             ["public.recruiters.tenant_id", "public.recruiters.id"],
             name="jobs_tenant_id_created_by_recruiter_id_fkey",
@@ -1004,6 +1032,7 @@ class Job(Base):
         PrimaryKeyConstraint("id", name="jobs_pkey"),
         UniqueConstraint("tenant_id", "id", name="jobs_tenant_id_id_key"),
         Index("jobs_created_by_idx", "created_by_recruiter_id"),
+        Index("jobs_location_key_idx", "location_key"),
         Index("jobs_search_idx", "search_vector", postgresql_using="gin"),
         Index("jobs_status_expires_at_idx", "status", "expires_at"),
         Index("jobs_tenant_status_idx", "tenant_id", "status"),
@@ -1032,18 +1061,13 @@ class Job(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
-    location: Mapped[str | None] = mapped_column(Text)
+    location_key: Mapped[str | None] = mapped_column(Text)
     employment_type: Mapped[str | None] = mapped_column(Text)
     minimum_total_experience_years: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
     expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    search_vector: Mapped[Any | None] = mapped_column(
-        TSVECTOR,
-        Computed(
-            "to_tsvector('english'::regconfig, ((((COALESCE(title, ''::text) || ' '::text) || COALESCE(description, ''::text)) || ' '::text) || COALESCE(location, ''::text)))",
-            persisted=True,
-        ),
-    )
+    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
 
+    location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
     tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
 

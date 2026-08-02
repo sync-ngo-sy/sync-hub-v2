@@ -13,7 +13,7 @@ from sync_api.candidates import (
     ProfileSkill,
 )
 from sync_api.jobs import PublicTenant
-from sync_api.text import OptionalLine, OptionalParagraph
+from sync_api.text import LocationName, OptionalLine, OptionalParagraph
 from sync_core.models import (
     ApplicationQuestionType,
     ApplicationStatus,
@@ -73,7 +73,8 @@ class AppliedJob(BaseModel):
     id: UUID
     title: str
     tenant: PublicTenant
-    location: str | None = None
+    location_key: str | None = None
+    location_name: LocationName = None
     employment_type: str | None = None
 
 

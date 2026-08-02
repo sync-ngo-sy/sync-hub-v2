@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 A_BACKEND_ENGINEER: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
     "summary": "Builds payment systems in Python and PostgreSQL.",
-    "location": "Damascus, Syria",
+    "location_key": "sy-damascus",
     "preferred_language_code": "ar",
     "skills": [
         {"name": "Python", "years_experience": 8.0},
@@ -46,7 +46,7 @@ A_BACKEND_ENGINEER: dict[str, Any] = {
 A_FRONTEND_ENGINEER: dict[str, Any] = {
     "headline": "Frontend engineer",
     "summary": "Builds React interfaces.",
-    "location": "Damascus, Syria",
+    "location_key": "sy-damascus",
     "preferred_language_code": "en",
     "skills": [
         {"name": "React", "years_experience": 4.0},
@@ -57,7 +57,7 @@ A_FRONTEND_ENGINEER: dict[str, Any] = {
 A_GRAPHIC_DESIGNER: dict[str, Any] = {
     "headline": "Graphic designer",
     "summary": "Brand identity and print work.",
-    "location": "Paris, France",
+    "location_key": "fr",
     "preferred_language_code": "fr",
     "skills": [{"name": "Figma", "years_experience": 5.0}],
 }
@@ -198,11 +198,67 @@ async def test_a_result_never_carries_an_email_or_a_phone_number(
         "avatar_url",
         "headline",
         "summary",
-        "location",
+        "location_key",
+        "location_name",
         "preferred_language_code",
         "matched_section",
         "matched_text",
     }
+
+
+async def test_a_governorate_never_answers_for_the_one_beside_it(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """The bug the taxonomy exists to fix, on the Candidate side: "Damascus" was matched inside
+    the location, so a Candidate in Rif Dimashq answered for a search of Damascus."""
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    lina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="lina",
+        **{**A_FRONTEND_ENGINEER, "location_key": "sy-rif-dimashq"},
+    )
+    await drain(a_reembed_worker(database, embedder))
+
+    assert named(await found(recruiter, q="engineer", location_key="sy-damascus")) == [
+        str(amina.id)
+    ]
+    assert named(await found(recruiter, q="engineer", location_key="sy-rif-dimashq")) == [
+        str(lina.id)
+    ]
+
+
+async def test_a_candidate_is_found_by_the_name_of_their_location(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """The profile holds a key now, so the keyword vector has to reach through the relation."""
+    amina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="amina",
+        **{**A_BACKEND_ENGINEER, "location_key": "sy-latakia"},
+    )
+    await drain(a_reembed_worker(database, embedder))
+
+    [match] = await found(recruiter, q="engineer", keywords="Latakia")
+
+    assert match["candidate_id"] == str(amina.id)
+    assert match["location_key"] == "sy-latakia"
+    assert match["location_name"] == "Latakia"
 
 
 async def test_the_filters_narrow_the_results_together(
@@ -226,15 +282,15 @@ async def test_the_filters_narrow_the_results_together(
     everyone = {str(amina.id), str(lina.id), str(yusuf.id)}
 
     assert set(named(await found(recruiter, q="engineer or designer"))) == everyone
-    assert set(named(await found(recruiter, q="engineer", location="Damascus"))) == {
+    assert set(named(await found(recruiter, q="engineer", location_key="sy-damascus"))) == {
         str(amina.id),
         str(lina.id),
     }
     assert set(named(await found(recruiter, q="engineer", language="fr"))) == {str(yusuf.id)}
-    assert named(await found(recruiter, q="engineer", location="Damascus", language="en")) == [
-        str(lina.id)
-    ]
-    assert named(await found(recruiter, q="engineer", location="Paris", language="ar")) == []
+    assert named(
+        await found(recruiter, q="engineer", location_key="sy-damascus", language="en")
+    ) == [str(lina.id)]
+    assert named(await found(recruiter, q="engineer", location_key="fr", language="ar")) == []
 
 
 async def test_keywords_are_a_hard_filter_that_does_not_reorder_what_survives(
@@ -282,7 +338,7 @@ async def test_editing_a_profile_changes_what_the_recruiter_finds(
         amina,
         headline="Pastry chef",
         summary="Croissants, and the ovens that ruin them.",
-        location="Damascus, Syria",
+        location_key="sy-damascus",
     )
     await drain(worker)
 

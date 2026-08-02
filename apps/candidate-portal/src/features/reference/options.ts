@@ -3,6 +3,7 @@ import type { ComboboxOption, ComboboxOptionGroup } from '@sync/ui/components/co
 
 type CanonicalSkill = components['schemas']['CanonicalSkill'];
 type Language = components['schemas']['Language'];
+type Location = components['schemas']['Location'];
 
 /** A Canonical skill is named by its name, so the value a form saves is the label on screen.
  * The API answers in category then name order, which makes the grouping a fold rather than a
@@ -32,4 +33,17 @@ export function languageOptions(
   return (languages ?? [])
     .filter((language) => !already.has(language.code))
     .map((language) => ({ value: language.code, label: language.name }));
+}
+
+/** A Location reads as its name and saves as its key, grouped by the heading the API files it
+ * under — Syria's governorates, then everywhere else by country. */
+export function locationGroups(locations: Location[] | undefined): ComboboxOptionGroup[] {
+  const groups: ComboboxOptionGroup[] = [];
+  for (const location of locations ?? []) {
+    const current = groups.at(-1);
+    const option = { value: location.key, label: location.name };
+    if (current?.label === location.group) current.options.push(option);
+    else groups.push({ label: location.group, options: [option] });
+  }
+  return groups;
 }

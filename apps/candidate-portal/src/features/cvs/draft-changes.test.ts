@@ -34,13 +34,23 @@ describe('what applying a draft would change', () => {
 
   it('reports a field the CV would overwrite, showing both sides', () => {
     const changes = draftChanges(
-      aProfile({ location: 'Damascus, Syria' }),
-      aDraft({ location: 'Aleppo, Syria' }),
+      aProfile({ headline: 'Nurse' }),
+      aDraft({ headline: 'Backend engineer, 8 years' }),
     );
 
     expect(changes).toEqual([
-      { label: 'Location', before: 'Damascus, Syria', after: 'Aleppo, Syria' },
+      { label: 'Headline', before: 'Nurse', after: 'Backend engineer, 8 years' },
     ]);
+  });
+
+  // A CV names a place in prose; the profile holds a Location the Candidate picked from a list.
+  it('never proposes a move, whatever the CV said about where they are', () => {
+    const changes = draftChanges(
+      aProfile({ location_key: 'sy-damascus' }),
+      aDraft({ location_key: 'sy-damascus' }),
+    );
+
+    expect(changes).toEqual([]);
   });
 
   // The API replaces rather than merges every section but skills, so a CV that mentions no
@@ -76,7 +86,6 @@ describe('what applying a draft would change', () => {
       phone: '+963 11 000 0000',
       headline: 'Backend engineer',
       summary: 'Eight years on payments systems.',
-      location: 'Aleppo',
       experiences: [{ job_title: 'Nurse', is_current: false }],
       educations: [{ institution: 'Damascus University' }],
       languages: [{ code: 'ar', proficiency: 'native' }],
@@ -90,7 +99,6 @@ describe('what applying a draft would change', () => {
       'Phone',
       'Headline',
       'Summary',
-      'Location',
       'Experience',
       'Education',
       'Languages',
@@ -183,7 +191,7 @@ describe('turning a reviewed draft into the profile to save', () => {
   });
 
   it('leaves a draft with no skills exactly as it came', () => {
-    const draft = aDraft({ location: 'Aleppo' });
+    const draft = aDraft({ location_key: 'sy-aleppo' });
 
     expect(profileFromDraft(draft, {})).toEqual(draft);
   });

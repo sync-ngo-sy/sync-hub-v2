@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.jobs.access import own_job
+from sync_api.jobs.access import WITH_LOCATION, own_job
 from sync_api.jobs.criteria import criteria_of
 from sync_api.jobs.payload import JobPage, JobSummary, JobView
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
@@ -15,7 +15,11 @@ from sync_api.problems import (
     JOB_TRANSITION_PROBLEM_TYPE,
     Problem,
 )
-from sync_api.vocabulary import canonical_skill_ids, refuse_unknown_languages
+from sync_api.vocabulary import (
+    canonical_skill_ids,
+    refuse_an_unknown_location,
+    refuse_unknown_languages,
+)
 from sync_core import get_logger, transaction
 from sync_core.models import (
     Application,
@@ -58,17 +62,19 @@ class JobService:
         self._db = session
 
     async def create(self, recruiter: ActingRecruiter, new: NewJob) -> JobView:
+        await refuse_an_unknown_location(self._db, new.location_key, at="body.location_key")
         job = Job(
             tenant_id=recruiter.tenant.id,
             created_by_recruiter_id=recruiter.profile.id,
             title=new.title,
             description=new.description,
-            location=new.location,
+            location_key=new.location_key,
             employment_type=new.employment_type,
             expires_at=new.expires_at,
         )
         async with transaction(self._db):
             self._db.add(job)
+        await self._db.refresh(job, ["location"])
         logger.info("jobs.created", tenant_id=str(recruiter.tenant.id), job_id=str(job.id))
         return await self._view(job)
 
@@ -80,7 +86,7 @@ class JobService:
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> JobPage:
-        query = select(Job).where(Job.tenant_id == recruiter.tenant.id)
+        query = select(Job).options(*WITH_LOCATION).where(Job.tenant_id == recruiter.tenant.id)
         if status is not None:
             query = query.where(Job.status == status)
 
@@ -100,6 +106,8 @@ class JobService:
     async def change(
         self, recruiter: ActingRecruiter, job_id: UUID, changes: JobChanges
     ) -> JobView:
+        if "location_key" in changes.model_fields_set:
+            await refuse_an_unknown_location(self._db, changes.location_key, at="body.location_key")
         async with transaction(self._db):
             job = await own_job(self._db, recruiter.tenant.id, job_id)
             changed = changes.model_dump(exclude_unset=True)
@@ -108,7 +116,8 @@ class JobService:
             for field, value in changed.items():
                 setattr(job, field, value)
         logger.info("jobs.changed", job_id=str(job_id), fields=sorted(changed))
-        await self._db.refresh(job)  # `updated_at` is the trigger's to write, not ours
+        # `updated_at` and `search_vector` are the triggers' to write, not ours.
+        await self._db.refresh(job, ["updated_at", "location"])
         return await self._view(job)
 
     async def replace_criteria(
@@ -166,7 +175,8 @@ def _summary(job: Job) -> JobSummary:
         id=job.id,
         title=job.title,
         status=job.status,
-        location=job.location,
+        location_key=job.location_key,
+        location_name=job.location.name if job.location else None,
         employment_type=job.employment_type,
         expires_at=job.expires_at,
         created_at=job.created_at,

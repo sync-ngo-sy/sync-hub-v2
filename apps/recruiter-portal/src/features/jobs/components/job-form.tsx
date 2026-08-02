@@ -7,6 +7,9 @@ import { Textarea } from '@sync/ui/components/ui/textarea';
 import { CircleAlert } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
+import { useLocations } from '@/features/reference/hooks/use-locations';
+import { locationGroups } from '@/features/reference/options';
 import { useChangeJob, useCreateJob } from '../hooks/use-job-actions';
 import type { Job, JobChanges, NewJob } from '../job';
 import { jobFormRejection } from '../rejection';
@@ -15,7 +18,7 @@ import { type JobFormValues, jobFormSchema } from '../schemas/job';
 const EMPTY_JOB: JobFormValues = {
   title: '',
   description: '',
-  location: '',
+  locationKey: '',
   employmentType: '',
   expiresAt: '',
 };
@@ -28,7 +31,7 @@ function newJob(values: JobFormValues): NewJob {
   return {
     title: values.title.trim(),
     description: values.description.trim(),
-    location: optional(values.location),
+    location_key: optional(values.locationKey),
     employment_type: optional(values.employmentType),
     expires_at: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
   };
@@ -44,7 +47,7 @@ function editValues(job: Job): JobFormValues {
   return {
     title: job.title,
     description: job.description,
-    location: job.location ?? '',
+    locationKey: job.location_key ?? '',
     employmentType: job.employment_type ?? '',
     expiresAt: job.expires_at ? inputDateTime(job.expires_at) : '',
   };
@@ -57,6 +60,7 @@ interface JobFormProps {
 }
 
 export function JobForm({ job, onSaved, onCancel }: JobFormProps) {
+  const places = useLocations();
   const create = useCreateJob();
   const change = useChangeJob();
   const form = useForm<JobFormValues>({
@@ -96,8 +100,20 @@ export function JobForm({ job, onSaved, onCancel }: JobFormProps) {
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField control={form.control} name="location" label="Location">
-          {(field) => <Input {...field} value={field.value} placeholder="e.g. Aleppo or Remote" />}
+        <FormField control={form.control} name="locationKey" label="Location">
+          {({ value, onChange, onBlur, id, ...aria }) => (
+            <ReferencePicker
+              id={id}
+              noun="location"
+              list={places}
+              options={locationGroups(places.data)}
+              value={value || null}
+              onChange={onChange}
+              onBlur={onBlur}
+              aria-describedby={aria['aria-describedby']}
+              aria-invalid={aria['aria-invalid']}
+            />
+          )}
         </FormField>
         <FormField control={form.control} name="employmentType" label="Employment type">
           {(field) => <Input {...field} value={field.value} placeholder="e.g. Full time" />}

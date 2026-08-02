@@ -76,7 +76,7 @@ export function JobDetailPage({ jobId, tab, onTabChange }: JobDetailPageProps) {
           </div>
           <div>
             <dt className="text-meta text-muted-foreground">Location</dt>
-            <dd>{job.location ?? 'Not set'}</dd>
+            <dd>{job.location_name ?? 'Not set'}</dd>
           </div>
           <div>
             <dt className="text-meta text-muted-foreground">Employment type</dt>

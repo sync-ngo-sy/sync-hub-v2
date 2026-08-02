@@ -41,7 +41,7 @@ class JobBrowseService:
         self,
         *,
         keywords: str | None = None,
-        location: str | None = None,
+        location_key: str | None = None,
         employment_type: str | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
@@ -51,8 +51,8 @@ class JobBrowseService:
             query = query.where(
                 Job.search_vector.op("@@")(func.websearch_to_tsquery(ENGLISH, keywords))
             )
-        if location:
-            query = query.where(Job.location.ilike(_containing(location)))
+        if location_key:
+            query = query.where(Job.location_key == location_key)
         if employment_type:
             query = query.where(func.lower(Job.employment_type) == employment_type.lower())
 
@@ -140,13 +140,9 @@ def _summary(job: Job, tenant: Tenant) -> PublicJobSummary:
         id=job.id,
         title=job.title,
         tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
-        location=job.location,
+        location_key=job.location_key,
+        location_name=job.location.name if job.location else None,
         employment_type=job.employment_type,
         expires_at=job.expires_at,
         created_at=job.created_at,
     )
-
-
-def _containing(value: str) -> str:
-    escaped = value.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
-    return f"%{escaped}%"

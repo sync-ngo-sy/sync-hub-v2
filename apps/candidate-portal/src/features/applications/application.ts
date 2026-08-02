@@ -27,7 +27,11 @@ export function applicationState(status: ApplicationStatus): ApplicationState {
 }
 
 export function applicationMeta(application: Application): string {
-  return [application.job.tenant.name, application.job.location, application.job.employment_type]
+  return [
+    application.job.tenant.name,
+    application.job.location_name,
+    application.job.employment_type,
+  ]
     .filter((part): part is string => Boolean(part))
     .join(' · ');
 }

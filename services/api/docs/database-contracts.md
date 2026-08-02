@@ -134,9 +134,13 @@ Deleting a CV is **soft** — `cvs.deleted_at`, the row and the Storage object b
 A Job's *criteria* — `job_skills`, `job_languages`, `job_application_questions` and
 `jobs.minimum_total_experience_years` — are one thing that freezes together, so
 `PUT /v1/tenants/me/jobs/{id}/criteria` replaces all four at once, deleting and re-inserting
-the child rows rather than matching them up. The prose (`title`, `description`, `location`,
-`employment_type`, `expires_at`) and the lifecycle move through a separate `PATCH`, which is
-why a typo can still be fixed after the applications start arriving.
+the child rows rather than matching them up. The rest of the Job (`title`, `description`,
+`location_key`, `employment_type`, `expires_at`) and the lifecycle move through a separate
+`PATCH`, which is why a typo can still be fixed after the applications start arriving.
+
+`jobs.location_key` references `locations`, and the public board filters it with `=` — never a
+substring, which used to answer a search for Damascus with Jobs in Rif Dimashq. A key the
+taxonomy does not have is refused at `body.location_key` before anything is written.
 
 The lock itself is the database's: `forbid_locked_job_criteria` and
 `forbid_locked_job_min_experience` fire for the service role like any other trigger. The
@@ -155,7 +159,9 @@ only endpoints with no session behind them, so they carry their own rate limit a
 `where` clause: `status = 'published'`, the owning `tenants.is_active`, and `expires_at`
 either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. `q` is a hard
 filter over `jobs.search_vector` (`websearch_to_tsquery`), never a ranking: the newest Job is
-always first. A public payload never carries `accepted_boolean_answer`; which answer passes a
+always first. That vector is trigger-maintained rather than generated, because it reaches
+through `location_key` for the Location's name — a generated column may only read its own row —
+and `candidates.search_vector` is the same shape for the same reason. A public payload never carries `accepted_boolean_answer`; which answer passes a
 knockout question is the Job's business, not the applicant's.
 
 Reading one Job writes a `job_view_events` row — through a tracked link, with that link's id
@@ -341,7 +347,7 @@ insert application_ai_match_assessments(application_id, match_percentage, explan
 Its input on the Candidate's side is the immutable `application_*` snapshot — what they froze
 when they applied, never their live `candidate_*` rows. On the Job's side it is the criteria
 Screening measured (`job_skills`, `job_languages`, `jobs.minimum_total_experience_years`) plus
-the Job's own words (`title`, `description`, `location`, `employment_type`), which is what lets
+the Job's own words (`title`, `description`, its Location's name, `employment_type`), which lets
 a model say anything the deterministic verdict could not. Those words are read as they stand:
 the criteria lock freezes the bar once an Application arrives, and deliberately not the prose.
 Nothing else is written: `applications.qualification_status`, `qualification_reason` and
@@ -608,8 +614,8 @@ order by ch.candidate_id, distance          -- then order the result by distance
 `distinct on` is what keeps a candidate to one place in the ranking, holding the chunk of
 theirs that matched best; that chunk is returned as the evidence for the hit.
 
-Optional filters AND onto the join: structured predicates on the view (location matched
-inside, preferred language exactly) and, when the recruiter supplies explicit keywords,
+Optional filters AND onto the join: structured predicates on the view (Location key exactly,
+preferred language exactly) and, when the recruiter supplies explicit keywords,
 `candidates.search_vector @@ websearch_to_tsquery('english', :keywords)`. Semantics come from
 the vector ranking; FTS is a hard filter only — there is no rank fusion.
 

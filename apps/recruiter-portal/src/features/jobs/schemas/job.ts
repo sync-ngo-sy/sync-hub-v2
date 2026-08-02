@@ -13,7 +13,7 @@ export const jobFormSchema = z.object({
     .trim()
     .min(1, 'Enter a job description.')
     .max(5_000, 'Keep the description to 5,000 characters or fewer.'),
-  location: optionalLine,
+  locationKey: optionalLine,
   employmentType: optionalLine,
   expiresAt: z
     .string()

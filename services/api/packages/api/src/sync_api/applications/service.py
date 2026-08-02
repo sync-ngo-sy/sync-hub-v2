@@ -21,7 +21,7 @@ from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
 from sync_api.candidates import refuse_incomplete_profile, whole_candidate
 from sync_api.jobs import PublicTenant
-from sync_api.jobs.access import open_job
+from sync_api.jobs.access import WITH_LOCATION, open_job
 from sync_api.jobs.criteria import questions_of
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
@@ -186,6 +186,7 @@ class ApplicationService:
                 await self._db.execute(
                     newest_first(
                         select(ApplicationRow, Job, Tenant)
+                        .options(*WITH_LOCATION)
                         .join(Job, Job.id == ApplicationRow.job_id)
                         .join(Tenant, Tenant.id == ApplicationRow.tenant_id)
                         .where(ApplicationRow.candidate_id == candidate.id),
@@ -261,7 +262,8 @@ def _as_payload(application: ApplicationRow, job: Job, tenant: Tenant) -> Applic
             id=job.id,
             title=job.title,
             tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
-            location=job.location,
+            location_key=job.location_key,
+            location_name=job.location.name if job.location else None,
             employment_type=job.employment_type,
         ),
         cv_id=application.cv_id,

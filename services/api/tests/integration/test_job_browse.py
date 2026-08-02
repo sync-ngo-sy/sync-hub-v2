@@ -14,10 +14,12 @@ from tests.support.harness import TEST_HOST, asgi_client, spa_onto
 from tests.support.jobs import (
     JOBS,
     a_created_job,
+    a_job,
     a_published_job,
     browse,
     change_job,
     job_views,
+    post_job,
     read_public_job,
     set_criteria,
 )
@@ -31,7 +33,7 @@ if TYPE_CHECKING:
 A_FRONTEND_JOB = {
     "title": "Frontend Engineer",
     "description": "Build the candidate portal in React and TypeScript.",
-    "location": "Aleppo, Syria",
+    "location_key": "sy-aleppo",
     "employment_type": "Part time",
 }
 
@@ -66,7 +68,7 @@ async def test_a_published_job_names_the_tenant_hiring(
 
     assert listed["tenant"] == {"name": "Acme Recruiting", "slug": listed["tenant"]["slug"]}
     assert listed["title"] == job["title"]
-    assert listed["location"] == "Damascus, Syria"
+    assert listed["location_name"] == "Damascus"
 
 
 async def test_a_suspended_tenants_jobs_leave_the_board(
@@ -117,11 +119,62 @@ async def test_the_location_and_the_employment_type_are_hard_filters(
     backend = await a_published_job(recruiter)
     frontend = await a_published_job(recruiter, **A_FRONTEND_JOB)
 
-    assert [item["id"] for item in await browse(visitor, location="damascus")] == [backend["id"]]
+    assert [item["id"] for item in await browse(visitor, location_key="sy-damascus")] == [
+        backend["id"]
+    ]
     assert [item["id"] for item in await browse(visitor, employment_type="part time")] == [
         frontend["id"]
     ]
-    assert await browse(visitor, location="Damascus", employment_type="Part time") == []
+    assert (await browse(visitor, location_key="sy-damascus", employment_type="Part time")) == []
+
+
+async def test_a_governorate_never_answers_for_the_one_beside_it(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """The bug the taxonomy exists to fix: "Damascus" used to be matched inside the location, so
+    a Job in Rif Dimashq — a different governorate — came back for it, and there was no way to
+    ask for one without the other."""
+    in_damascus = await a_published_job(recruiter, location_key="sy-damascus")
+    in_the_countryside = await a_published_job(
+        recruiter, title="Field officer", location_key="sy-rif-dimashq"
+    )
+
+    assert [item["id"] for item in await browse(visitor, location_key="sy-damascus")] == [
+        in_damascus["id"]
+    ]
+    assert [item["id"] for item in await browse(visitor, location_key="sy-rif-dimashq")] == [
+        in_the_countryside["id"]
+    ]
+
+
+async def test_a_job_is_found_by_the_name_of_its_location(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """The Job holds a key now, so the keyword vector has to reach through the relation for the
+    word a person would actually type."""
+    in_latakia = await a_published_job(recruiter, title="Field officer", location_key="sy-latakia")
+
+    assert [item["id"] for item in await browse(visitor, q="Latakia")] == [in_latakia["id"]]
+
+
+async def test_a_job_names_the_location_it_holds_the_key_to(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    await a_published_job(recruiter, location_key="sy-latakia")
+
+    (listed,) = await browse(visitor)
+
+    assert listed["location_key"] == "sy-latakia"
+    assert listed["location_name"] == "Latakia"
+
+
+async def test_a_job_cannot_be_put_somewhere_the_platform_does_not_list(
+    recruiter: AsyncClient,
+) -> None:
+    refused = await post_job(recruiter, a_job(location_key="damascus-ish"))
+
+    assert refused.status_code == 422
+    assert [error["location"] for error in refused.json()["errors"]] == ["body.location_key"]
 
 
 async def test_the_board_pages_by_cursor(recruiter: AsyncClient, visitor: AsyncClient) -> None:

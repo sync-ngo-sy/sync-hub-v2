@@ -5,7 +5,7 @@ import type { JobFormValues } from './schemas/job';
 const JOB_FIELD: Record<string, FieldPath<JobFormValues>> = {
   'body.title': 'title',
   'body.description': 'description',
-  'body.location': 'location',
+  'body.location_key': 'locationKey',
   'body.employment_type': 'employmentType',
   'body.expires_at': 'expiresAt',
 };
