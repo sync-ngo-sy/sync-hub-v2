@@ -90,12 +90,15 @@ one router-level guard, so who may reach them is a single decision rather than o
 
 Where every Tenant starts, and the one row an unauthenticated stranger may write.
 
-- **Asking** upserts `access_requests` on the partial unique index
-  `access_requests_one_pending_per_email_idx` (`email` where `status = 'pending'`), so a second ask
-  from the same address revises the first rather than queueing another. The address is lowercased
-  before it is written, because that index is a plain equality. The endpoint answers `202` with no
-  body: what a stranger asked for is not theirs to read back, and the answer must not disclose
-  whether the address was already waiting.
+- **Asking** inserts into `access_requests` with `on conflict do nothing` against the partial
+  unique index `access_requests_one_pending_per_email_idx` (`email` where `status = 'pending'`), so
+  a second ask from the same address is ignored rather than queued — and the first ask stands.
+  Deliberately *not* an upsert: nobody proves they own an address here, so `do update` would let a
+  stranger who knows a waiting address rewrite the `company` and `full_name` the operator reads,
+  and `company` is what the Tenant gets called on conversion. The address is lowercased before it
+  is written, because that index is a plain equality. The endpoint answers `202` with no body:
+  what a stranger asked for is not theirs to read back, and the answer must not disclose whether
+  the address was already waiting.
 - **Its own rate limit.** Nothing here touches GoTrue, so none of the identity provider's limits
   apply. `SYNC_ACCESS_REQUEST_RATE_LIMIT_*` is what stands between the queue and a script, and it
   is deliberately tighter than the public browse limit — a company asks once.

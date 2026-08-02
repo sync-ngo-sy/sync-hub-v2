@@ -46,8 +46,9 @@ with no account. Sync is sold, not self-served: nobody creates their own Tenant,
 where every Tenant starts. It is not an account and carries no identity; converting one is
 what creates the Profile. A Platform admin either **converts** it, which opens the Tenant and
 invites the founding admin it named, or **dismisses** it — and either decision takes it off
-the queue for good. One company may hold only one *pending* request, so asking twice is asking
-once; a company already dismissed may ask again.
+the queue for good. One *address* may hold only one pending request, so asking twice is asking
+once and the first ask stands — nothing a stranger sends can rewrite one that is already
+waiting. An address whose request was dismissed may ask again.
 _Avoid_: Sign-up, Application (that word belongs to a Candidate applying to a Job), Lead,
 Enquiry, Waitlist entry.
 

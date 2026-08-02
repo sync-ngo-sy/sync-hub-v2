@@ -63,14 +63,16 @@ async def test_asking_needs_no_account_at_all(browser: AsyncClient) -> None:
 async def test_asking_twice_from_one_address_leaves_one_request(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
+    """And the first ask stands. Nobody proves they own the address, so a second ask must not be
+    able to rewrite what the operator reads — the company is what the Tenant gets called."""
     ask = an_ask()
     await ask_for_access(browser, ask)
 
-    again = await ask_for_access(browser, replace(ask, company="Acme Recruiting Ltd"))
+    again = await ask_for_access(browser, replace(ask, company="Somebody Else Entirely"))
 
     assert again.status_code == 202, again.text
     recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
-    assert recorded.company == "Acme Recruiting Ltd"
+    assert recorded.company == ask.company
 
 
 async def test_a_malformed_address_is_refused(browser: AsyncClient) -> None:

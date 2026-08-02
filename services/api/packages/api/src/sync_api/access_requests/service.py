@@ -8,13 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from sync_api.problems import (
-    ACCESS_REQUEST_DECIDED_PROBLEM_TYPE,
+    ACCESS_REQUEST_ALREADY_DECIDED_PROBLEM_TYPE,
     ACCESS_REQUEST_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
 from sync_core import get_logger, transaction
-from sync_core.models import AccessRequest as AccessRequestRow
-from sync_core.models import AccessRequestStatus
+from sync_core.models import AccessRequest, AccessRequestStatus
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -27,7 +26,7 @@ logger = get_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
-class AccessRequest:
+class AccessRequestRecord:
     """A company asking to be given Sync, as the Platform admin working the queue sees it."""
 
     id: UUID
@@ -44,33 +43,39 @@ class AccessRequestService:
         self._db = session
         self._platform = platform
 
-    async def submit(self, *, company: str, full_name: str, email: str) -> AccessRequest:
-        """Record what a visitor typed. Asking again from the same address while the first ask is
-        still pending revises it rather than queueing a second one — the visitor is told the same
-        thing either way, and the operator works one row per company."""
+    async def submit(self, *, company: str, full_name: str, email: str) -> None:
+        """Record what a visitor typed, and answer nothing.
+
+        Asking again from the same address while the first ask is still pending is *ignored*
+        rather than applied: the first ask stands. Nobody proves they own an address here, so an
+        upsert would let a stranger who knows a waiting address rewrite the company and the name
+        the operator reads — and the company is what the Tenant gets called on conversion.
+        Either way the visitor is told the same thing, and the operator keeps one row per address.
+        """
         address = email.strip().lower()
         async with transaction(self._db):
-            rows = await self._db.scalars(
-                insert(AccessRequestRow)
+            recorded = await self._db.scalar(
+                insert(AccessRequest)
                 .values(company=company, full_name=full_name, email=address)
-                .on_conflict_do_update(
-                    index_elements=[AccessRequestRow.email],
-                    index_where=AccessRequestRow.status == AccessRequestStatus.PENDING,
-                    set_={"company": company, "full_name": full_name},
+                .on_conflict_do_nothing(
+                    index_elements=[AccessRequest.email],
+                    index_where=AccessRequest.status == AccessRequestStatus.PENDING,
                 )
-                .returning(AccessRequestRow)
+                .returning(AccessRequest.id)
             )
-            row = rows.one()
 
-        logger.info("access_requests.submitted", access_request_id=str(row.id))
-        return _request_from(row)
+        logger.info(
+            "access_requests.submitted",
+            access_request_id=str(recorded) if recorded else None,
+            already_waiting=recorded is None,
+        )
 
-    async def pending(self) -> list[AccessRequest]:
+    async def pending(self) -> list[AccessRequestRecord]:
         """The queue: everything still waiting on a decision, oldest first."""
         rows = await self._db.scalars(
-            select(AccessRequestRow)
-            .where(AccessRequestRow.status == AccessRequestStatus.PENDING)
-            .order_by(AccessRequestRow.created_at, AccessRequestRow.id)
+            select(AccessRequest)
+            .where(AccessRequest.status == AccessRequestStatus.PENDING)
+            .order_by(AccessRequest.created_at, AccessRequest.id)
         )
         return [_request_from(row) for row in rows]
 
@@ -96,7 +101,7 @@ class AccessRequestService:
         )
         return created
 
-    async def dismiss(self, request_id: UUID) -> AccessRequest:
+    async def dismiss(self, request_id: UUID) -> AccessRequestRecord:
         """Take a request off the queue without opening anything. The row stays, so the same
         company asking again is visibly a second ask rather than a first one."""
         request = await self._pending_request(request_id)
@@ -105,8 +110,8 @@ class AccessRequestService:
         logger.info("access_requests.dismissed", access_request_id=str(request_id))
         return _request_from(request)
 
-    async def _pending_request(self, request_id: UUID) -> AccessRequestRow:
-        request = await self._db.get(AccessRequestRow, request_id)
+    async def _pending_request(self, request_id: UUID) -> AccessRequest:
+        request = await self._db.get(AccessRequest, request_id)
         if request is None:
             raise Problem(
                 status=404,
@@ -116,14 +121,14 @@ class AccessRequestService:
         if request.status is not AccessRequestStatus.PENDING:
             raise Problem(
                 status=409,
-                type=ACCESS_REQUEST_DECIDED_PROBLEM_TYPE,
+                type=ACCESS_REQUEST_ALREADY_DECIDED_PROBLEM_TYPE,
                 detail="This access request has already been dealt with.",
             )
         return request
 
     async def _decide(
         self,
-        request: AccessRequestRow,
+        request: AccessRequest,
         status: AccessRequestStatus,
         *,
         tenant_id: UUID | None = None,
@@ -134,8 +139,8 @@ class AccessRequestService:
             request.decided_at = datetime.now(UTC)
 
 
-def _request_from(row: AccessRequestRow) -> AccessRequest:
-    return AccessRequest(
+def _request_from(row: AccessRequest) -> AccessRequestRecord:
+    return AccessRequestRecord(
         id=row.id,
         company=row.company,
         full_name=row.full_name,

@@ -1,3 +1,3 @@
-from sync_api.access_requests.service import AccessRequest, AccessRequestService
+from sync_api.access_requests.service import AccessRequestRecord, AccessRequestService
 
-__all__ = ["AccessRequest", "AccessRequestService"]
+__all__ = ["AccessRequestRecord", "AccessRequestService"]

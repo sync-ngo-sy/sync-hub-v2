@@ -102,14 +102,14 @@ describe('the access request queue', () => {
     const { user } = await renderApp('/access-requests');
     await screen.findByRole('table', { name: 'Access requests' });
     await user.click(screen.getByRole('button', { name: 'Actions for Aman Relief' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Create tenant' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Convert to tenant' }));
 
-    const dialog = screen.getByRole('dialog', { name: 'Open a tenant for Aman Relief' });
+    const dialog = screen.getByRole('dialog', { name: 'Convert the request from Aman Relief' });
     expect(
       within(dialog).getByText(/Rana Aljabri \(rana@aman\.test\) becomes the founding admin/),
     ).toBeVisible();
     expect(within(dialog).getByLabelText('Tenant address')).toHaveValue('aman-relief');
-    await user.click(within(dialog).getByRole('button', { name: 'Create tenant' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Convert to tenant' }));
 
     expect(converted).toHaveBeenCalledWith('aman-relief');
     const table = await screen.findByRole('table', { name: 'Access requests' });
@@ -127,10 +127,10 @@ describe('the access request queue', () => {
     const { user } = await renderApp('/access-requests');
     await screen.findByRole('table', { name: 'Access requests' });
     await user.click(screen.getByRole('button', { name: 'Actions for Aman Relief' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Create tenant' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Convert to tenant' }));
 
-    const dialog = screen.getByRole('dialog', { name: 'Open a tenant for Aman Relief' });
-    await user.click(within(dialog).getByRole('button', { name: 'Create tenant' }));
+    const dialog = screen.getByRole('dialog', { name: 'Convert the request from Aman Relief' });
+    await user.click(within(dialog).getByRole('button', { name: 'Convert to tenant' }));
 
     expect(await within(dialog).findByText(SLUG_TAKEN.detail ?? '')).toBeVisible();
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));

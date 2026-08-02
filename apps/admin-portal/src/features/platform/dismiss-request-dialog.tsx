@@ -29,11 +29,11 @@ export function DismissRequestDialog({ request, onClose }: DismissRequestDialogP
 
   if (!request) return null;
 
-  const pending = request;
+  const selectedRequest = request;
 
   async function confirm() {
     try {
-      await dismiss.mutateAsync({ params: { path: { request_id: pending.id } } });
+      await dismiss.mutateAsync({ params: { path: { request_id: selectedRequest.id } } });
       onClose();
     } catch {
       return;
@@ -44,9 +44,9 @@ export function DismissRequestDialog({ request, onClose }: DismissRequestDialogP
     <AlertDialog open onOpenChange={changeOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{`Dismiss the request from ${pending.company}?`}</AlertDialogTitle>
+          <AlertDialogTitle>{`Dismiss the request from ${selectedRequest.company}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            {`It leaves the queue and no tenant is opened. Nothing is emailed to ${pending.email}, and they can ask again.`}
+            {`It leaves the queue and no tenant is opened. Nothing is emailed to ${selectedRequest.email}, and they can ask again.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

@@ -47,10 +47,13 @@ export function ConvertRequestDialog({ request, onClose }: ConvertRequestDialogP
 
   if (!request) return null;
 
-  const pending = request;
+  const selectedRequest = request;
   const submit = handleSubmit(async ({ slug }) => {
     try {
-      await convert.mutateAsync({ params: { path: { request_id: pending.id } }, body: { slug } });
+      await convert.mutateAsync({
+        params: { path: { request_id: selectedRequest.id } },
+        body: { slug },
+      });
       onClose();
     } catch {
       return;
@@ -61,9 +64,9 @@ export function ConvertRequestDialog({ request, onClose }: ConvertRequestDialogP
     <Dialog open onOpenChange={changeOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{`Open a tenant for ${pending.company}`}</DialogTitle>
+          <DialogTitle>{`Convert the request from ${selectedRequest.company}`}</DialogTitle>
           <DialogDescription>
-            {`${pending.full_name} (${pending.email}) becomes the founding admin and is emailed an invitation. Only the tenant's address is yours to choose.`}
+            {`${selectedRequest.full_name} (${selectedRequest.email}) becomes the founding admin and is emailed an invitation. Only the tenant's address is yours to choose.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -80,7 +83,7 @@ export function ConvertRequestDialog({ request, onClose }: ConvertRequestDialogP
 
         {convert.isError ? (
           <Alert variant="destructive">
-            <AlertTitle>Tenant not created</AlertTitle>
+            <AlertTitle>Request not converted</AlertTitle>
             <AlertDescription>
               {problemMessage(
                 convert.error,
@@ -100,7 +103,7 @@ export function ConvertRequestDialog({ request, onClose }: ConvertRequestDialogP
             Cancel
           </Button>
           <Button type="submit" form="convert-request-form" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating tenant…' : 'Create tenant'}
+            {isSubmitting ? 'Converting…' : 'Convert to tenant'}
           </Button>
         </DialogFooter>
       </DialogContent>

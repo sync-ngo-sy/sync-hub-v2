@@ -1947,11 +1947,11 @@ export interface components {
             password: string;
         };
         /**
-         * ConvertAccessRequest
+         * ConvertToTenantRequest
          * @description The tenant's address — the one thing the visitor could not tell us, because it is ours
          *     to hand out. Everything else the Tenant is made of comes off the request itself.
          */
-        ConvertAccessRequest: {
+        ConvertToTenantRequest: {
             /**
              * Slug
              * @description Lowercase letters, digits and single hyphens.
@@ -4985,7 +4985,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ConvertAccessRequest"];
+                "application/json": components["schemas"]["ConvertToTenantRequest"];
             };
         };
         responses: {

@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 
-from sync_api.access_requests import AccessRequest
+from sync_api.access_requests import AccessRequestRecord
 from sync_api.dependencies import (
     AccessRequestServiceDep,
     PlatformServiceDep,
@@ -113,7 +113,7 @@ class AccessRequestView(BaseModel):
     created_at: datetime = Field(description="When they asked. The queue runs oldest first.")
 
     @classmethod
-    def of(cls, request: AccessRequest) -> AccessRequestView:
+    def of(cls, request: AccessRequestRecord) -> AccessRequestView:
         return cls(
             id=str(request.id),
             company=request.company,
@@ -123,7 +123,7 @@ class AccessRequestView(BaseModel):
         )
 
 
-class ConvertAccessRequest(BaseModel):
+class ConvertToTenantRequest(BaseModel):
     """The tenant's address — the one thing the visitor could not tell us, because it is ours
     to hand out. Everything else the Tenant is made of comes off the request itself."""
 
@@ -231,7 +231,7 @@ async def list_access_requests(
     },
 )
 async def convert_access_request(
-    request_id: UUID, body: ConvertAccessRequest, access_requests: AccessRequestServiceDep
+    request_id: UUID, body: ConvertToTenantRequest, access_requests: AccessRequestServiceDep
 ) -> CreatedTenantView:
     """Same operation as opening a tenant by hand, with nothing retyped: the company, the
     founding admin and their address all come off the request, which then leaves the queue.

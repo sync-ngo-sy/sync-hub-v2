@@ -15,7 +15,7 @@ const requestColumns: DataTableColumn<AccessRequest>[] = [
   { accessorKey: 'company', header: 'Company' },
   { accessorKey: 'full_name', header: 'Asked by' },
   { accessorKey: 'email', header: 'Email' },
-  { id: 'asked', header: 'Asked', cell: ({ row }) => askedOn(row.original) },
+  { id: 'asked', header: 'Asked', cell: ({ row }) => askedOn(row.original.created_at) },
 ];
 
 export function AccessRequests() {
@@ -36,7 +36,7 @@ export function AccessRequests() {
         getRowId={(request) => request.id}
         rowLabel={(request) => request.company}
         rowActions={(request) => [
-          { label: 'Create tenant', onSelect: () => setConverting(request) },
+          { label: 'Convert to tenant', onSelect: () => setConverting(request) },
           { label: 'Dismiss request', onSelect: () => setDismissing(request) },
         ]}
         isLoading={requests.isPending}
