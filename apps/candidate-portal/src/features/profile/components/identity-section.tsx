@@ -1,9 +1,9 @@
-import { Combobox } from '@sync/ui/components/combobox';
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import type { Control } from 'react-hook-form';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { languageOptions } from '@/features/reference/options';
 import type { ProfileFormValues } from '../schemas/profile';
@@ -51,19 +51,15 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         description="The one you would rather be contacted in. Recruiters filter on it."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
-          <Combobox
+          <ReferencePicker
             id={id}
             className="sm:max-w-60"
+            noun="language"
+            list={known}
             options={[NO_PREFERENCE, ...languageOptions(known.data)]}
             value={value}
-            onValueChange={(code) => onChange(code ?? '')}
+            onChange={onChange}
             onBlur={onBlur}
-            placeholder="Type to search"
-            loading={known.isPending}
-            loadingMessage="Loading languages…"
-            emptyMessage={
-              known.isError ? "The language list couldn't be loaded." : 'No language by that name.'
-            }
             aria-describedby={aria['aria-describedby']}
             aria-invalid={aria['aria-invalid']}
           />

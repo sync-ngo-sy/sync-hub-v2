@@ -1,20 +1,14 @@
-import { Combobox } from '@sync/ui/components/combobox';
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import { Sparkles, Wrench } from 'lucide-react';
 import { type Control, useFieldArray, useWatch } from 'react-hook-form';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-skills';
 import { skillGroups } from '@/features/reference/options';
 import { BLANK_SKILL, BLANK_UNMAPPED_SKILL, type ProfileFormValues } from '../schemas/profile';
+import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-
-type SkillEntry = ProfileFormValues['skills'][number];
-
-/** What the other rows hold, so the same skill cannot be listed twice. */
-function takenElsewhere(entries: SkillEntry[] | undefined, index: number): string[] {
-  return (entries ?? []).filter((_, at) => at !== index).map((entry) => entry.name);
-}
 
 export function SkillsSection({ control }: { control: Control<ProfileFormValues> }) {
   const skills = useFieldArray({ control, name: 'skills' });
@@ -41,20 +35,17 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
             <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
               <FormField control={control} name={`skills.${index}.name`} label="Skill">
                 {({ value, onChange, onBlur, id, ...aria }) => (
-                  <Combobox
+                  <ReferencePicker
                     id={id}
-                    options={skillGroups(taxonomy.data, takenElsewhere(listed, index))}
+                    noun="skill"
+                    list={taxonomy}
+                    options={skillGroups(
+                      taxonomy.data,
+                      takenElsewhere(listed, index, (entry) => entry.name),
+                    )}
                     value={value || null}
-                    onValueChange={(name) => onChange(name ?? '')}
+                    onChange={onChange}
                     onBlur={onBlur}
-                    placeholder="Type to search"
-                    loading={taxonomy.isPending}
-                    loadingMessage="Loading skills…"
-                    emptyMessage={
-                      taxonomy.isError
-                        ? "The skill list couldn't be loaded."
-                        : 'No skill by that name.'
-                    }
                     aria-describedby={aria['aria-describedby']}
                     aria-invalid={aria['aria-invalid']}
                   />

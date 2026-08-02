@@ -1,4 +1,3 @@
-import { Combobox } from '@sync/ui/components/combobox';
 import { FormField } from '@sync/ui/components/form-field';
 import {
   Select,
@@ -9,18 +8,13 @@ import {
 } from '@sync/ui/components/ui/select';
 import { Languages } from 'lucide-react';
 import { type Control, useFieldArray, useWatch } from 'react-hook-form';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { languageOptions } from '@/features/reference/options';
 import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../schemas/profile';
+import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-
-type LanguageEntry = ProfileFormValues['languages'][number];
-
-/** What the other rows hold, so the same language cannot be listed twice. */
-function takenElsewhere(entries: LanguageEntry[] | undefined, index: number): string[] {
-  return (entries ?? []).filter((_, at) => at !== index).map((entry) => entry.code);
-}
 
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
@@ -42,20 +36,17 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField control={control} name={`languages.${index}.code`} label="Language">
               {({ value, onChange, onBlur, id, ...aria }) => (
-                <Combobox
+                <ReferencePicker
                   id={id}
-                  options={languageOptions(known.data, takenElsewhere(listed, index))}
+                  noun="language"
+                  list={known}
+                  options={languageOptions(
+                    known.data,
+                    takenElsewhere(listed, index, (entry) => entry.code),
+                  )}
                   value={value || null}
-                  onValueChange={(code) => onChange(code ?? '')}
+                  onChange={onChange}
                   onBlur={onBlur}
-                  placeholder="Type to search"
-                  loading={known.isPending}
-                  loadingMessage="Loading languages…"
-                  emptyMessage={
-                    known.isError
-                      ? "The language list couldn't be loaded."
-                      : 'No language by that name.'
-                  }
                   aria-describedby={aria['aria-describedby']}
                   aria-invalid={aria['aria-invalid']}
                 />
