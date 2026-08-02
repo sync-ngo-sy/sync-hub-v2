@@ -99,6 +99,23 @@ describe('Combobox', () => {
     expect(screen.queryByText('No skill by that name.', { exact: false })).not.toBeInTheDocument();
   });
 
+  it('reports being left, so a form can answer a field on blur', async () => {
+    const user = userEvent.setup();
+    const onBlur = vi.fn();
+    render(
+      <>
+        <Combobox aria-label="Skill" options={SKILLS} onBlur={onBlur} />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Skill' }));
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+
+    expect(onBlur).toHaveBeenCalled();
+  });
+
   it('files options under group headings when the taxonomy needs it', async () => {
     const user = userEvent.setup();
     render(<Combobox aria-label="Skill" options={GROUPED_SKILLS} />);

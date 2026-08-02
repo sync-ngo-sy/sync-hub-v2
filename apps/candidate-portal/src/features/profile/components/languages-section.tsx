@@ -1,5 +1,4 @@
 import { FormField } from '@sync/ui/components/form-field';
-import { Input } from '@sync/ui/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -8,16 +7,22 @@ import {
   SelectValue,
 } from '@sync/ui/components/ui/select';
 import { Languages } from 'lucide-react';
-import { type Control, useFieldArray } from 'react-hook-form';
+import { type Control, useFieldArray, useWatch } from 'react-hook-form';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
+import { useLanguages } from '@/features/reference/hooks/use-languages';
+import { languageOptions } from '@/features/reference/options';
 import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../schemas/profile';
+import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
 
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
+  const known = useLanguages();
+  const listed = useWatch({ control, name: 'languages' });
 
   return (
-    <ProfileSection title="Languages" description="By their code — ar, en, fr, tr.">
+    <ProfileSection title="Languages" description="The ones you speak, and how well.">
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Language ${index + 1}`}
@@ -29,8 +34,23 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
       >
         {(index) => (
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField control={control} name={`languages.${index}.code`} label="Language code">
-              {(field) => <Input {...field} placeholder="ar" />}
+            <FormField control={control} name={`languages.${index}.code`} label="Language">
+              {({ value, onChange, onBlur, id, ...aria }) => (
+                <ReferencePicker
+                  id={id}
+                  noun="language"
+                  list={known}
+                  options={languageOptions(
+                    known.data,
+                    takenElsewhere(listed, index, (entry) => entry.code),
+                  )}
+                  value={value || null}
+                  onChange={onChange}
+                  onBlur={onBlur}
+                  aria-describedby={aria['aria-describedby']}
+                  aria-invalid={aria['aria-invalid']}
+                />
+              )}
             </FormField>
             <FormField
               control={control}

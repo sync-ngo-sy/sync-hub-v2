@@ -11,6 +11,7 @@ import {
   refusesSearchable,
   savesProfile,
 } from '@/features/profile/testing/handlers';
+import { failsToLoadCanonicalSkills } from '@/features/reference/testing/handlers';
 import {
   CANDIDATE,
   CANDIDATE_PROFILE,
@@ -42,6 +43,18 @@ async function openProfile() {
   return renderApp('/profile');
 }
 
+/** The profile, open and saveable — `sent.body` is the whole-profile body the form put back. */
+async function openProfileThatSaves(saved: CandidateProfile = CANDIDATE_PROFILE) {
+  const sent: { body?: CandidateProfile } = {};
+  server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+  server.use(
+    ...savesProfile(saved, (body) => {
+      sent.body = body;
+    }),
+  );
+  return { ...(await renderApp('/profile')), sent };
+}
+
 describe('the profile editor', () => {
   it('loads the whole profile into the form', async () => {
     await openProfile();
@@ -49,7 +62,7 @@ describe('the profile editor', () => {
     expect(screen.getByLabelText('Full name')).toHaveValue(CANDIDATE_PROFILE.full_name);
     expect(screen.getByLabelText('Headline')).toHaveValue('Field coordinator, 6 years');
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo, Syria');
-    expect(screen.getByLabelText('Preferred language')).toHaveValue('ar');
+    expect(screen.getByLabelText('Preferred language')).toHaveValue('Arabic');
     expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).not.toBeChecked();
 
     const job = entry('Job 1');
@@ -70,7 +83,7 @@ describe('the profile editor', () => {
     expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Kobo Toolbox');
 
     const language = entry('Language 1');
-    expect(language.getByLabelText('Language code')).toHaveValue('ar');
+    expect(language.getByLabelText('Language')).toHaveValue('Arabic');
     expect(language.getByLabelText('Proficiency')).toHaveTextContent('Native');
 
     expect(entry('Project 1').getByLabelText('Project name')).toHaveValue('Distribution tracker');
@@ -122,33 +135,19 @@ describe('the profile editor', () => {
   it('replaces the whole profile and confirms quietly', async () => {
     const headline = 'Coordinator and trainer';
     const saved: CandidateProfile = { ...CANDIDATE_PROFILE, headline };
-    let sent: CandidateProfile | undefined;
-    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
-    server.use(
-      ...savesProfile(saved, (body) => {
-        sent = body;
-      }),
-    );
+    const { user, sent } = await openProfileThatSaves(saved);
 
-    const { user } = await renderApp('/profile');
     await editHeadline(user, headline);
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(sent).toEqual(saved);
+    expect(sent.body).toEqual(saved);
     expect(screen.getByText('Everything is saved.')).toBeVisible();
   });
 
   it('sends a section the candidate emptied as an empty section', async () => {
-    let sent: CandidateProfile | undefined;
-    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
-    server.use(
-      ...savesProfile({ ...CANDIDATE_PROFILE, projects: [] }, (body) => {
-        sent = body;
-      }),
-    );
+    const { user, sent } = await openProfileThatSaves({ ...CANDIDATE_PROFILE, projects: [] });
 
-    const { user } = await renderApp('/profile');
     await user.click(screen.getByRole('button', { name: 'Remove Project 1' }));
 
     expect(
@@ -159,7 +158,7 @@ describe('the profile editor', () => {
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(sent?.projects).toEqual([]);
+    expect(sent.body?.projects).toEqual([]);
   });
 
   it('adds an entry the candidate asked for, and takes it away again', async () => {
@@ -183,6 +182,113 @@ describe('the profile editor', () => {
     expect(await screen.findByText('“Pythonn” is not a Canonical skill.')).toBeVisible();
     expect(entry('Skill 1').getByLabelText('Skill')).toHaveAttribute('aria-invalid');
     expect(screen.getByLabelText('Full name')).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('offers the platform’s skills by category, and saves the one chosen', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    const added = entry('Skill 2');
+    await user.click(added.getByLabelText('Skill'));
+
+    expect(screen.getByRole('group', { name: 'Databases' })).toBeVisible();
+
+    await user.keyboard('postgre');
+    await user.click(screen.getByRole('option', { name: 'PostgreSQL' }));
+    await user.type(added.getByLabelText('Years'), '2');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.skills).toEqual([
+      { name: 'Python', years_experience: 3.5 },
+      { name: 'PostgreSQL', years_experience: 2 },
+    ]);
+  });
+
+  it('leaves the skills already on the profile out of the picker', async () => {
+    const { user } = await openProfile();
+
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    await user.click(entry('Skill 2').getByLabelText('Skill'));
+
+    expect(screen.getByRole('option', { name: 'PostgreSQL' })).toBeVisible();
+    expect(screen.queryByRole('option', { name: 'Python' })).toBeNull();
+  });
+
+  it('will not let a skill the platform has no name for reach the API', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.type(entry('Skill 1').getByLabelText('Skill'), 'nn');
+    await user.tab();
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.skills).toEqual([{ name: 'Python', years_experience: 3.5 }]);
+  });
+
+  it('saves a language chosen by its name as its code', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByRole('button', { name: 'Add a language' }));
+    await user.click(entry('Language 2').getByLabelText('Language'));
+
+    expect(screen.queryByRole('option', { name: 'Arabic' })).toBeNull();
+
+    await user.keyboard('Engl');
+    await user.click(screen.getByRole('option', { name: 'English' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.languages).toEqual([
+      { code: 'ar', proficiency: 'native' },
+      { code: 'en', proficiency: 'intermediate' },
+    ]);
+  });
+
+  it('saves the preferred language chosen by name as its code', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByLabelText('Preferred language'));
+    await user.click(screen.getByRole('option', { name: 'French' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.preferred_language_code).toBe('fr');
+  });
+
+  it('lets the candidate say they have no preferred language', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByLabelText('Preferred language'));
+    await user.click(screen.getByRole('option', { name: 'No preference' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.preferred_language_code).toBeNull();
+  });
+
+  it('says the skill list is missing rather than that there are no skills', async () => {
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    server.use(...failsToLoadCanonicalSkills(SERVER_FAULT));
+
+    const { user } = await renderApp('/profile');
+    await user.click(screen.getByRole('button', { name: 'Add a skill' }));
+    await user.click(entry('Skill 2').getByLabelText('Skill'));
+
+    expect(
+      await screen.findByText("The skill list couldn't be loaded.", { exact: false }),
+    ).toBeVisible();
+  });
+
+  it('keeps a place for skills the platform has no name for', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByRole('button', { name: 'Add another skill' }));
+    await user.type(entry('Other skill 2').getByLabelText('Skill'), 'Sphere Standards');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.unmapped_skills).toEqual(['Kobo Toolbox', 'Sphere Standards']);
   });
 
   it('blames the searchable switch when Global search needs a CV first', async () => {

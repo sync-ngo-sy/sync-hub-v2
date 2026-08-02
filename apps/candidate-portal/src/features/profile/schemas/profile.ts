@@ -65,7 +65,7 @@ const isLanguageCode = (raw: string) =>
 const languageCode = z
   .string()
   .trim()
-  .min(1, 'Enter a language code.')
+  .min(1, 'Choose a language.')
   .refine(isLanguageCode, LANGUAGE_CODE_MESSAGE);
 
 const optionalLanguageCode = z
@@ -149,7 +149,7 @@ const education = z.object({
 });
 
 const skill = z.object({
-  name: line('Enter the skill.'),
+  name: line('Choose a skill.'),
   years_experience: yearsOfExperience,
 });
 
