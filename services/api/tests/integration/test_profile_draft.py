@@ -45,7 +45,8 @@ async def test_a_candidate_with_no_profile_yet_gets_the_whole_cv(
     assert draft["full_name"] == "Amina Haddad"
     assert draft["phone"] == "+963 11 555 0134"
     assert draft["headline"] == "Backend engineer, 8 years"
-    assert draft["location"] == "Damascus, Syria"
+    # A Location is chosen from a list, so it stays the Candidate's rather than the CV's.
+    assert draft["location_key"] is None
     assert [entry["job_title"] for entry in draft["experiences"]] == [
         "Senior Backend Engineer",
         "Backend Engineer",

@@ -7,6 +7,7 @@ from pydantic import AfterValidator, BaseModel, Field, model_validator
 from sync_api.text import (
     LanguageCode,
     Line,
+    LocationKey,
     OptionalLine,
     OptionalLink,
     OptionalParagraph,
@@ -153,7 +154,7 @@ class ProfileClaims(BaseModel):
     phone: OptionalLine = None
     headline: OptionalLine = Field(default=None, examples=["Backend engineer, 8 years"])
     summary: OptionalParagraph = None
-    location: OptionalLine = Field(default=None, examples=["Damascus, Syria"])
+    location_key: LocationKey = None
     preferred_language_code: LanguageCode | None = Field(
         default=None,
         description="A recruiter search filter, and never read off a CV: the language a "

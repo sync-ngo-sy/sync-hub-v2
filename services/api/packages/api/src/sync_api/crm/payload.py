@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from sync_api.text import Line, Paragraph
+from sync_api.text import Line, LocationName, Paragraph
 from sync_core.models import TagScope, TenantTag
 
 
@@ -72,7 +72,7 @@ class PooledCandidate(BaseModel):
     candidate_id: UUID
     full_name: str
     headline: str | None = None
-    location: str | None = None
+    location_name: LocationName = None
     added_at: datetime = Field(description="When this Tenant first saved them.")
 
 

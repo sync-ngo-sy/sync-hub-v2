@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final, cast
 from uuid import UUID
 
 from sqlalchemy import Select, delete, select
@@ -11,9 +11,10 @@ from sync_api.crm.access import reachable_candidate
 from sync_api.crm.payload import PooledCandidate, TalentPoolPage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_core import get_logger, transaction
-from sync_core.models import Candidate, Profile, TalentPoolMember
+from sync_core.models import Candidate, Location, Profile, TalentPoolMember
 
 if TYPE_CHECKING:
+    from sqlalchemy import ColumnElement
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.tenants import ActingRecruiter
@@ -22,6 +23,10 @@ logger = get_logger(__name__)
 
 #: One row of the pool: who they are now, and when this Tenant saved them.
 type Member = tuple[UUID, str, str | None, str | None, datetime]
+
+#: Left-joined, so a Candidate who has chosen no Location has no name here — which the column
+#: itself, `not null` on its own table, has no way to say.
+LOCATION_NAME: Final = cast("ColumnElement[str | None]", Location.name)
 
 
 class TalentPoolService:
@@ -115,25 +120,26 @@ def _members() -> Select[Member]:
             TalentPoolMember.candidate_id,
             Profile.full_name,
             Candidate.headline,
-            Candidate.location,
+            LOCATION_NAME,
             TalentPoolMember.added_at,
         )
         .join(Candidate, Candidate.id == TalentPoolMember.candidate_id)
         .join(Profile, Profile.id == TalentPoolMember.candidate_id)
+        .outerjoin(Location, Location.key == Candidate.location_key)
     )
 
 
 def _cursor(row: Member) -> Cursor:
-    candidate_id, _name, _headline, _location, added_at = row
+    candidate_id, _name, _headline, _location_name, added_at = row
     return Cursor(created_at=added_at, id=candidate_id)
 
 
 def _as_payload(row: Member) -> PooledCandidate:
-    candidate_id, full_name, headline, location, added_at = row
+    candidate_id, full_name, headline, location_name, added_at = row
     return PooledCandidate(
         candidate_id=candidate_id,
         full_name=full_name,
         headline=headline,
-        location=location,
+        location_name=location_name,
         added_at=added_at,
     )

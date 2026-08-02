@@ -39,9 +39,14 @@ async def search_candidates(
             examples=["backend engineer who has run payment systems"],
         ),
     ],
-    location: Annotated[
+    location_key: Annotated[
         str | None,
-        Query(max_length=MAX_LINE_LENGTH, description="Matched inside the candidate's location."),
+        Query(
+            max_length=MAX_LINE_LENGTH,
+            description="A Location's key, from `/v1/locations`. Matched exactly, so a "
+            "governorate never answers for the one beside it.",
+            examples=["sy-damascus"],
+        ),
     ] = None,
     language: Annotated[
         str | None, Query(max_length=8, description="A candidate's preferred language code.")
@@ -64,5 +69,9 @@ async def search_candidates(
     `keywords` never changes the order. Results never carry an email or a phone number.
     """
     return await search.matches(
-        q, location=location, language_code=language, keywords=keywords, limit=limit
+        q,
+        location_key=location_key,
+        language_code=language,
+        keywords=keywords,
+        limit=limit,
     )

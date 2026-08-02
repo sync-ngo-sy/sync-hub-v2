@@ -24,7 +24,8 @@ SEARCH_PROFILES: Final = table(
     column("avatar_url", Text),
     column("headline", Text),
     column("summary", Text),
-    column("location", Text),
+    column("location_key", Text),
+    column("location_name", Text),
     column("preferred_language_code", Text),
     schema="public",
 )
@@ -35,7 +36,7 @@ ENGLISH: Final[ColumnElement[str]] = literal_column("'english'")
 
 @dataclass(frozen=True, slots=True)
 class SearchFilters:
-    location: str | None = None
+    location_key: str | None = None
     language_code: str | None = None
     keywords: str | None = None
 
@@ -47,7 +48,8 @@ class CandidateMatch:
     avatar_url: str | None
     headline: str | None
     summary: str | None
-    location: str | None
+    location_key: str | None
+    location_name: str | None
     preferred_language_code: str | None
     chunk_type: str | None
     chunk_text: str
@@ -68,7 +70,8 @@ class CandidateSearch:
                 SEARCH_PROFILES.c.avatar_url,
                 SEARCH_PROFILES.c.headline,
                 SEARCH_PROFILES.c.summary,
-                SEARCH_PROFILES.c.location,
+                SEARCH_PROFILES.c.location_key,
+                SEARCH_PROFILES.c.location_name,
                 SEARCH_PROFILES.c.preferred_language_code,
                 CandidateProfileChunk.chunk_type,
                 CandidateProfileChunk.chunk_text,
@@ -82,8 +85,8 @@ class CandidateSearch:
             .distinct(CandidateProfileChunk.candidate_id)
             .order_by(CandidateProfileChunk.candidate_id, distance)
         )
-        if filters.location:
-            best = best.where(SEARCH_PROFILES.c.location.ilike(_containing(filters.location)))
+        if filters.location_key:
+            best = best.where(SEARCH_PROFILES.c.location_key == filters.location_key)
         if filters.language_code:
             best = best.where(SEARCH_PROFILES.c.preferred_language_code == filters.language_code)
         if filters.keywords:
@@ -102,15 +105,11 @@ class CandidateSearch:
                 avatar_url=row.avatar_url,
                 headline=row.headline,
                 summary=row.summary,
-                location=row.location,
+                location_key=row.location_key,
+                location_name=row.location_name,
                 preferred_language_code=row.preferred_language_code,
                 chunk_type=row.chunk_type,
                 chunk_text=row.chunk_text,
             )
             for row in rows
         ]
-
-
-def _containing(value: str) -> str:
-    escaped = value.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
-    return f"%{escaped}%"

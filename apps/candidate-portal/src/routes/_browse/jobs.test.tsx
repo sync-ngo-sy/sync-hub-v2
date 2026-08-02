@@ -26,7 +26,7 @@ describe('browsing jobs', () => {
     ).toEqual(PUBLIC_JOBS.map((job) => `/jobs/${job.id}`));
 
     const developer = within(list).getByRole('link', { name: /Frontend Developer/ });
-    expect(within(developer).getByText('Levant Digital · Remote · Full-time')).toBeVisible();
+    expect(within(developer).getByText('Levant Digital · Damascus · Full-time')).toBeVisible();
     // Neither location nor employment type: the meta line carries only what the Job has.
     const pharmacist = within(list).getByRole('link', { name: /Pharmacist/ });
     expect(within(pharmacist).getByText('Sham Care')).toBeVisible();

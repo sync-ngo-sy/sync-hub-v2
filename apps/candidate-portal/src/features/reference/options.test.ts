@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { languageOptions, skillGroups } from './options';
+import { languageOptions, locationGroups, skillGroups } from './options';
 
 const SKILLS = [
   { name: 'Go', category: 'Programming Languages' },
@@ -58,5 +58,30 @@ describe('languageOptions', () => {
 
   it('offers nothing while the list is still arriving', () => {
     expect(languageOptions(undefined)).toEqual([]);
+  });
+});
+
+const LOCATIONS = [
+  { key: 'sy-aleppo', name: 'Aleppo', group: 'Syria' },
+  { key: 'sy-damascus', name: 'Damascus', group: 'Syria' },
+  { key: 'lb', name: 'Lebanon', group: 'Outside Syria' },
+];
+
+describe('locationGroups', () => {
+  it('files every place under its heading, in the order the API answered', () => {
+    expect(locationGroups(LOCATIONS)).toEqual([
+      {
+        label: 'Syria',
+        options: [
+          { value: 'sy-aleppo', label: 'Aleppo' },
+          { value: 'sy-damascus', label: 'Damascus' },
+        ],
+      },
+      { label: 'Outside Syria', options: [{ value: 'lb', label: 'Lebanon' }] },
+    ]);
+  });
+
+  it('offers nothing while the taxonomy is still arriving', () => {
+    expect(locationGroups(undefined)).toEqual([]);
   });
 });

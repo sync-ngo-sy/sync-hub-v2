@@ -24,7 +24,7 @@ export function jobState(status: JobStatus): JobState {
 }
 
 export function jobMeta(job: JobSummary): string {
-  return [job.location, job.employment_type].filter(Boolean).join(' · ') || 'Details not set';
+  return [job.location_name, job.employment_type].filter(Boolean).join(' · ') || 'Details not set';
 }
 
 const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'always' });

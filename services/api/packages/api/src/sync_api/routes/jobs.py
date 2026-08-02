@@ -40,8 +40,14 @@ async def browse_jobs(
             examples=["backend engineer python"],
         ),
     ] = None,
-    location: Annotated[
-        str | None, Query(max_length=MAX_LINE_LENGTH, description="Matched inside the location.")
+    location_key: Annotated[
+        str | None,
+        Query(
+            max_length=MAX_LINE_LENGTH,
+            description="A Location's key, from `/v1/locations`. Matched exactly, so a "
+            "governorate never answers for the one beside it.",
+            examples=["sy-damascus"],
+        ),
     ] = None,
     employment_type: Annotated[
         str | None, Query(max_length=MAX_LINE_LENGTH, description="Matched exactly, any case.")
@@ -60,7 +66,7 @@ async def browse_jobs(
     """
     return await jobs.page(
         keywords=q,
-        location=location,
+        location_key=location_key,
         employment_type=employment_type,
         cursor=cursor,
         limit=limit,

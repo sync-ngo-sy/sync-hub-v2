@@ -16,7 +16,7 @@ const FILLED: ProfileFormValues = {
   phone: '+963 11 000 0000',
   headline: 'Field coordinator, 6 years',
   summary: 'Six years of coordination work across Idlib and Aleppo.',
-  location: 'Aleppo, Syria',
+  location_key: 'sy-aleppo',
   preferred_language_code: 'ar',
   is_searchable: false,
   experiences: [
@@ -84,7 +84,7 @@ describe('the profile schema', () => {
         phone: '',
         headline: '',
         summary: '',
-        location: '',
+        location_key: '',
         preferred_language_code: '',
         experiences: [],
         educations: [],
@@ -121,10 +121,10 @@ describe('the profile schema', () => {
   });
 
   it('sends a blank optional line as "not set" rather than as nothing', () => {
-    const body = parsed({ ...FILLED, phone: '   ', headline: '', location: '' });
+    const body = parsed({ ...FILLED, phone: '   ', headline: '', location_key: '' });
     expect(body.phone).toBeNull();
     expect(body.headline).toBeNull();
-    expect(body.location).toBeNull();
+    expect(body.location_key).toBeNull();
   });
 
   it('drops the spaces around everything it keeps', () => {
@@ -261,7 +261,7 @@ describe('the profile schema', () => {
       phone: '+963 11 000 0000',
       headline: 'Field coordinator, 6 years',
       summary: 'Six years of coordination work across Idlib and Aleppo.',
-      location: 'Aleppo, Syria',
+      location_key: 'sy-aleppo',
       preferred_language_code: 'ar',
       is_searchable: false,
       experiences: [
@@ -310,7 +310,7 @@ describe('the profile the API answers with', () => {
     phone: null,
     headline: null,
     summary: null,
-    location: null,
+    location_key: null,
     preferred_language_code: null,
     is_searchable: true,
     experiences: [
@@ -338,7 +338,7 @@ describe('the profile the API answers with', () => {
       phone: '',
       headline: '',
       summary: '',
-      location: '',
+      location_key: '',
       preferred_language_code: '',
       is_searchable: true,
       experiences: [

@@ -25,7 +25,7 @@ PROFILE = "/v1/candidates/me/profile"
 A_FULL_PROFILE: dict[str, Any] = a_profile(
     headline="Backend engineer, 8 years",
     summary="Builds boring payment systems that stay up.",
-    location="Damascus, Syria",
+    location_key="sy-damascus",
     preferred_language_code="ar",
     experiences=[
         {
@@ -119,7 +119,7 @@ async def test_every_section_of_the_profile_becomes_its_own_evidence(
         ChunkType.LANGUAGES,
         ChunkType.PROJECT,
     }
-    assert "Damascus, Syria" in written[ChunkType.IDENTITY]
+    assert "Damascus" in written[ChunkType.IDENTITY]
     assert "Damascus University" in written[ChunkType.EDUCATION]
     assert "Python (8 years)" in written[ChunkType.SKILLS]
     assert "Arabic (native)" in written[ChunkType.LANGUAGES]

@@ -147,6 +147,16 @@ CV parsing maps free-text skills onto Canonical skills in-model; what cannot be 
 surfaced to the Candidate at review and never influences Screening.
 _Avoid_: Skill string, Keyword.
 
+**Location**:
+A platform-global entry in the place taxonomy (one key, one spelling), which a Job and a
+Candidate each reference by key. Syria is resolved to the **governorate** and no further;
+everywhere else is a **country**, so somebody outside Syria has an answer that is true rather
+than a governorate they are not in. A place is chosen from the list or left unset — never
+typed — which is what makes filtering by it an equality on the key: Damascus no longer
+answers for Rif Dimashq. Full-text search reaches the name through the relation, so a Job is
+still found by the word a person would type.
+_Avoid_: City, Place string, Region, Address.
+
 **CV**:
 A candidate document, parsed once by AI into immutable `parsed_cv_data`. The Candidate
 reviews the parse before it updates a profile or feeds an Application; the raw parse is
