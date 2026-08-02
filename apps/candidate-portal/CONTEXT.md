@@ -13,10 +13,23 @@ surface where animation is allowed.
 _Avoid_: Home page, intro page, splash.
 
 **Browse**:
-The public list of published Jobs at `/jobs`, newest first, extended a page at a time by
-Load more. The API's order is fixed and its pages are cursor-keyed, so there are no page
-numbers, no totals and no sorting — only "the newest page, then the next one".
-_Avoid_: Search (nothing is being searched yet), job board, listings, feed.
+The public list of published Jobs at `/jobs`, newest first, narrowed by the Filter bar and
+extended a page at a time by Load more. The API's order is fixed and its pages are cursor-keyed,
+so there are no page numbers, no totals and no sorting — only "the newest page, then the next
+one" of whatever the filters left.
+_Avoid_: Search (the keyword box is one filter of three, not the name of the page), job board,
+listings, feed.
+
+**Filter bar**:
+The three filters over Browse — a keyword, a Location and an employment type — living in the
+address bar rather than in the page, so a reload keeps them, Back takes the last one off, and a
+pasted link reproduces the list it was copied from. All three are the API's own hard filters, so
+a narrowed list is narrowed by the platform rather than in the browser, and one Clear undoes
+every one of them. It is a single form: whichever control a Candidate reaches for last applies
+the keyword already in the box, so the bar and the list never disagree. A combination that
+matches nothing says exactly that — the platform having published nothing at all is a different
+sentence, and a Candidate who reads the wrong one stops looking.
+_Avoid_: Search bar (it filters three ways), facets, refinements, advanced search.
 
 **Job detail**:
 The public page for one Job at `/jobs/:jobId` — the description, what the role asks for,

@@ -10,16 +10,19 @@ type Skill = components['schemas']['JobSkillRequirement'];
 type Language = components['schemas']['JobLanguageRequirement'];
 type Proficiency = components['schemas']['LanguageProficiency'];
 type Question = components['schemas']['PublicJobQuestion'];
-type EmploymentType = components['schemas']['EmploymentType'];
+export type EmploymentType = components['schemas']['EmploymentType'];
 type WorkMode = components['schemas']['WorkMode'];
 
 /** The sentence every list and header shares when nothing is published. */
 export const NOTHING_PUBLISHED =
   'No roles are open right now. New ones appear here the moment an employer publishes them.';
 
+export const NOTHING_MATCHES =
+  'No open roles match these filters. Widen one of them, or clear them all, to see more.';
+
 /** Keyed by the generated union, so a value the platform adds fails to compile until it has a
  * word here rather than reaching a reader as `full_time`. */
-const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   full_time: 'Full time',
   part_time: 'Part time',
   contract: 'Contract',

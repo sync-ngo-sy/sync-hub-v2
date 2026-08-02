@@ -6,6 +6,10 @@ import { DEAD_TRACKED_LINK, NO_SUCH_JOB, TOO_MANY_REQUESTS } from '@/testing/fix
 
 type Problem = components['schemas']['ProblemDetail'];
 
+type AskedQuery = (query: URLSearchParams) => void;
+
+const asked = (request: Request) => new URL(request.url).searchParams;
+
 export function listsJobs(items: JobSummary[]) {
   return [http.get('/v1/jobs', ({ response }) => response(200).json({ items, next_cursor: null }))];
 }
@@ -18,13 +22,33 @@ export function publishesNothing() {
  * Cursor-paged, one page per array: the handler answers whichever page the `cursor` it was
  * given names, so Load-more is exercised through the same round-trip the API asks for.
  */
-export function pagesJobs(pages: JobSummary[][]) {
+export function pagesJobs(pages: JobSummary[][], onQuery?: AskedQuery) {
   return [
-    http.get('/v1/jobs', ({ response, query }) => {
+    http.get('/v1/jobs', ({ response, query, request }) => {
+      onQuery?.(asked(request));
       const cursor = query.get('cursor');
       const index = cursor === null ? 0 : Number(cursor);
       const next = index + 1 < pages.length ? String(index + 1) : null;
       return response(200).json({ items: pages[index] ?? [], next_cursor: next });
+    }),
+  ];
+}
+
+export function filtersJobs(items: JobSummary[], onQuery?: AskedQuery) {
+  return [
+    http.get('/v1/jobs', ({ response, query, request }) => {
+      onQuery?.(asked(request));
+      const keywords = query.get('q')?.toLowerCase();
+      const location = query.get('location_key');
+      const employmentType = query.get('employment_type');
+      const matched = items.filter(
+        (job) =>
+          (!keywords ||
+            `${job.title} ${job.location_name ?? ''}`.toLowerCase().includes(keywords)) &&
+          (!location || job.location_key === location) &&
+          (!employmentType || job.employment_type === employmentType),
+      );
+      return response(200).json({ items: matched, next_cursor: null });
     }),
   ];
 }
