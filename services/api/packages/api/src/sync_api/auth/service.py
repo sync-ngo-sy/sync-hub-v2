@@ -160,8 +160,9 @@ class AuthService:
         )
         # A Platform admin takes the default alongside a Candidate, deliberately: no portal
         # serves them yet, and the candidate portal's reset page redeems the token whoever it
-        # belongs to, then shows them the wrong-portal notice. Give them their own the day
-        # they have a portal.
+        # belongs to, then shows them the wrong-portal notice. #148 builds them one and adds
+        # the third branch — and has to put its address in `additional_redirect_urls` too, or
+        # GoTrue quietly falls back to `site_url` and the link still arrives here.
         redirect_to = self._recruiter_portal_url if account_type == AccountType.RECRUITER else None
         await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 
