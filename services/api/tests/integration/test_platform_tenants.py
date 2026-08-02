@@ -21,7 +21,7 @@ from tests.support.platform_admins import (
 )
 from tests.support.tenants import accept_invite, an_admin, an_invitee_address, invite
 
-ADDRESS_TAKEN = "urn:sync:problem:email-already-registered"
+EMAIL_TAKEN = "urn:sync:problem:email-already-registered"
 SLUG_TAKEN = "urn:sync:problem:tenant-slug-taken"
 TENANT_NOT_FOUND = "urn:sync:problem:tenant-not-found"
 INVITE_ALREADY_ACCEPTED = "urn:sync:problem:invite-already-accepted"
@@ -106,7 +106,7 @@ async def test_the_founding_admin_sets_their_own_password_and_runs_the_new_tenan
     assert inviting_a_teammate.status_code == 201, inviting_a_teammate.text
 
 
-async def test_a_taken_tenant_address_is_refused(
+async def test_a_taken_slug_is_refused(
     app: FastAPI, browser: AsyncClient, db_session: AsyncSession
 ) -> None:
     await a_signed_in_platform_admin(app, browser, db_session)
@@ -134,7 +134,7 @@ async def test_a_founding_admins_existing_account_is_refused_the_way_it_always_i
     refused = await create_tenant(browser, wanted)
 
     assert refused.status_code == 409, refused.text
-    assert refused.json()["type"] == ADDRESS_TAKEN
+    assert refused.json()["type"] == EMAIL_TAKEN
     assert refused.json()["detail"] == "An account already exists for this email address."
     assert await db_session.scalar(select(func.count()).select_from(Tenant)) == 0
     still_a_candidate = (
@@ -143,18 +143,21 @@ async def test_a_founding_admins_existing_account_is_refused_the_way_it_always_i
     assert still_a_candidate.account_type.value == "candidate"
 
 
-async def test_a_refused_tenant_leaves_no_identity_behind(
-    app: FastAPI, browser: AsyncClient, db_session: AsyncSession
+async def test_a_refused_tenant_never_invites_anybody(
+    app: FastAPI, browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
+    """The slug is checked before the invitation goes out, so a request that cannot succeed
+    puts no link in anybody's inbox and strands no identity to clean up afterwards."""
     await a_signed_in_platform_admin(app, browser, db_session)
     taken = a_new_tenant()
     await create_tenant(browser, taken)
-    second = a_new_tenant(slug=taken.slug)
+    doomed = a_new_tenant(slug=taken.slug)
 
-    await create_tenant(browser, second)
+    await create_tenant(browser, doomed)
 
+    assert await mailbox.count_for(doomed.email) == 0
     identities = await db_session.scalar(
-        text("select count(*) from auth.users where email = :email").bindparams(email=second.email)
+        text("select count(*) from auth.users where email = :email").bindparams(email=doomed.email)
     )
     assert identities == 0
 
@@ -171,7 +174,7 @@ async def test_a_pending_invite_shows_on_the_tenant_and_can_be_resent(
 
     assert resent.status_code == 200, resent.text
     assert resent.json()["email"] == wanted.email
-    assert await mailbox.count_reaches(wanted.email, 2) == 2
+    assert await mailbox.delivered_at_least(wanted.email, 2)
 
 
 async def test_a_resent_invite_still_opens_the_tenant(

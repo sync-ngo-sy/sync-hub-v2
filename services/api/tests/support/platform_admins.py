@@ -80,16 +80,17 @@ async def list_tenants(browser: AsyncClient) -> Response:
     return await browser.get(TENANTS)
 
 
+def a_new_tenant_body(tenant: NewTenant) -> dict[str, str]:
+    return {
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "email": tenant.email,
+        "full_name": tenant.full_name,
+    }
+
+
 async def create_tenant(browser: AsyncClient, tenant: NewTenant) -> Response:
-    return await browser.post(
-        TENANTS,
-        json={
-            "name": tenant.name,
-            "slug": tenant.slug,
-            "email": tenant.email,
-            "full_name": tenant.full_name,
-        },
-    )
+    return await browser.post(TENANTS, json=a_new_tenant_body(tenant))
 
 
 async def resend_invite(browser: AsyncClient, tenant_id: str) -> Response:

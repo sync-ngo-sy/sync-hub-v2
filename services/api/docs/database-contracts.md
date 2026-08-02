@@ -49,6 +49,11 @@ composite FK (supabase ADR-0001, amended by supabase ADR-0003).
 What a Platform admin does to the platform as a whole. Every route under `/v1/platform` carries
 one router-level guard, so who may reach them is a single decision rather than one per route.
 
+- **Listing Tenants** reads every `tenants` row — suspended ones included — with two correlated
+  subqueries beside it: `member_count`, which counts *every* `recruiters` row of the tenant and so
+  includes colleagues an admin has deactivated; and `invite_pending`, which is
+  `email_confirmed_at is null` on the founding admin below. No tenant filter anywhere: this is the
+  one reader on the platform that is deliberately not scoped to one.
 - **Opening a Tenant** writes the same three rows a self-serve signup does — `tenants`, then
   `profiles(account_type='recruiter')`, then `recruiters(role='admin')` — in one transaction
   (`sync_api.tenants.provisioning.provision_tenant`, shared with signup). The founding admin is
@@ -59,7 +64,9 @@ one router-level guard, so who may reach them is a single decision rather than o
   puts a link in somebody's inbox. `tenants_slug_key` and `profiles_pkey` stay the backstop for
   the race. A failure after the invite deletes the identity again, **except** where `profiles_pkey`
   is what refused: that Profile is somebody's account, and deleting its identity would cascade the
-  account away with it.
+  account away with it. That exception is not theoretical — two requests inviting the same address
+  both pass the check, and GoTrue answers the second with the *same* user it minted for the first,
+  so the loser must not undo what the winner now owns.
 - **The founding admin** is a Tenant's *first* `recruiters` row (`created_at`, then `id`). Nothing
   marks it and nothing needs to: a Tenant is opened with exactly one recruiter, and the roster only
   ever grows from there.

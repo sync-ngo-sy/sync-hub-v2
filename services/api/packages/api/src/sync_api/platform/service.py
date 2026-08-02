@@ -7,18 +7,14 @@ from sqlalchemy import ColumnElement, ScalarSelect, func, select
 from sqlalchemy.orm import DeclarativeBase
 
 from sync_api.auth.gotrue import EmailAlreadyRegisteredError
-from sync_api.auth.registration import (
-    address_is_taken,
-    email_already_registered,
-    undo_identity,
-)
+from sync_api.auth.registration import identity_undone_unless_taken, invite_identity
 from sync_api.problems import (
     INVITE_ALREADY_ACCEPTED_PROBLEM_TYPE,
     TENANT_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
 from sync_api.tenants import Member
-from sync_api.tenants.provisioning import is_already_provisioned, provision_tenant, slug_taken
+from sync_api.tenants.provisioning import provision_tenant, slug_taken
 from sync_core import get_logger, transaction
 from sync_core.models import (
     Application,
@@ -26,7 +22,6 @@ from sync_core.models import (
     Job,
     Profile,
     Recruiter,
-    RecruiterRole,
     Tenant,
     TenantPlan,
     User,
@@ -69,6 +64,12 @@ class PlatformCounts:
     applications: int
 
 
+@dataclass(frozen=True, slots=True)
+class FoundingAdmin:
+    member: Member
+    invite_pending: bool
+
+
 class PlatformService:
     """Every operation that spans the whole platform rather than one Tenant."""
 
@@ -100,36 +101,18 @@ class PlatformService:
         never puts a link in somebody's inbox. The constraints stay the backstop for the race.
         """
         await self._refuse_a_taken_slug(slug)
-        if await address_is_taken(self._db, email):
-            raise email_already_registered()
-
-        try:
-            user = await self._gotrue.invite_user(
-                email=email, redirect_to=self._recruiter_portal_url
-            )
-        except EmailAlreadyRegisteredError as exc:
-            raise email_already_registered() from exc
-
-        try:
+        user = await invite_identity(
+            self._gotrue, self._db, email=email, redirect_to=self._recruiter_portal_url
+        )
+        async with identity_undone_unless_taken(self._gotrue, user.id):
             tenant = await provision_tenant(
                 self._db, admin_id=user.id, name=name, slug=slug, full_name=full_name
             )
-        except BaseException as exc:
-            if is_already_provisioned(exc):
-                raise email_already_registered() from exc
-            await undo_identity(self._gotrue, user.id)
-            raise
 
         logger.info("platform.tenant_created", tenant_id=str(tenant.id), profile_id=str(user.id))
         return CreatedTenant(
             tenant=await self._tenant(tenant.id),
-            founding_admin=Member(
-                id=user.id,
-                full_name=full_name,
-                email=user.email,
-                role=RecruiterRole.ADMIN,
-                is_active=True,
-            ),
+            founding_admin=Member.founding(user, full_name),
         )
 
     async def resend_invite(self, tenant_id: UUID) -> Member:
@@ -166,11 +149,7 @@ class PlatformService:
     async def _existing_tenant(self, tenant_id: UUID) -> Tenant:
         tenant = await self._db.get(Tenant, tenant_id)
         if tenant is None:
-            raise Problem(
-                status=404,
-                type=TENANT_NOT_FOUND_PROBLEM_TYPE,
-                detail="No tenant with that id.",
-            )
+            raise _tenant_not_found()
         return tenant
 
     async def _founding_admin(self, tenant_id: UUID) -> FoundingAdmin | None:
@@ -196,12 +175,6 @@ class PlatformService:
         return _tenant_from(rows.tuples().one())
 
 
-@dataclass(frozen=True, slots=True)
-class FoundingAdmin:
-    member: Member
-    invite_pending: bool
-
-
 def _total(entity: type[DeclarativeBase], *conditions: ColumnElement[bool]) -> ScalarSelect[int]:
     return select(func.count()).select_from(entity).where(*conditions).scalar_subquery()
 
@@ -225,7 +198,7 @@ MEMBER_COUNT = (
 #: a Tenant is opened with exactly one, and the roster only ever grows from there.
 OLDEST_FIRST = (Recruiter.created_at, Recruiter.id)
 
-FOUNDING_ADMIN = (
+FOUNDING_ADMIN_ID = (
     select(Recruiter.id)
     .where(Recruiter.tenant_id == Tenant.id)
     .order_by(*OLDEST_FIRST)
@@ -236,7 +209,7 @@ FOUNDING_ADMIN = (
 
 INVITE_PENDING = (
     select(User.email_confirmed_at.is_(None))
-    .where(User.id == FOUNDING_ADMIN)
+    .where(User.id == FOUNDING_ADMIN_ID)
     .correlate(Tenant)
     .scalar_subquery()
 )
@@ -269,6 +242,14 @@ def _tenant_from(row: tuple[Tenant, int, bool | None]) -> TenantRecord:
         member_count=member_count,
         is_active=tenant.is_active,
         invite_pending=bool(invite_pending),
+    )
+
+
+def _tenant_not_found() -> Problem:
+    return Problem(
+        status=404,
+        type=TENANT_NOT_FOUND_PROBLEM_TYPE,
+        detail="No tenant with that id.",
     )
 
 

@@ -6,13 +6,11 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from sync_api.auth.gotrue import EmailAlreadyRegisteredError
 from sync_api.auth.registration import (
-    address_is_taken,
     create_identity,
-    email_already_registered,
     identity_undone_on_failure,
-    undo_identity,
+    identity_undone_unless_taken,
+    invite_identity,
 )
 from sync_api.problems import (
     LAST_TENANT_ADMIN_PROBLEM_TYPE,
@@ -20,14 +18,14 @@ from sync_api.problems import (
     Problem,
 )
 from sync_api.tenants.access import TenantSummary
-from sync_api.tenants.provisioning import is_already_provisioned, provision_tenant
+from sync_api.tenants.provisioning import provision_tenant
 from sync_core import get_logger, transaction
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, User
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.auth.gotrue import GoTrue
+    from sync_api.auth.gotrue import GoTrue, GoTrueUser
 
 logger = get_logger(__name__)
 
@@ -39,6 +37,17 @@ class Member:
     email: str
     role: RecruiterRole
     is_active: bool
+
+    @classmethod
+    def founding(cls, user: GoTrueUser, full_name: str) -> Member:
+        """The admin a Tenant was just opened with — active, and alone on the roster."""
+        return cls(
+            id=user.id,
+            full_name=full_name,
+            email=user.email,
+            role=RecruiterRole.ADMIN,
+            is_active=True,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,16 +75,7 @@ class TenantService:
             )
 
         logger.info("tenants.signed_up", tenant_id=str(tenant.id), profile_id=str(user.id))
-        return NewTenant(
-            tenant=tenant,
-            admin=Member(
-                id=user.id,
-                full_name=full_name,
-                email=user.email,
-                role=RecruiterRole.ADMIN,
-                is_active=True,
-            ),
-        )
+        return NewTenant(tenant=tenant, admin=Member.founding(user, full_name))
 
     async def members(self, tenant_id: UUID) -> list[Member]:
         rows = await self._db.execute(
@@ -86,28 +86,18 @@ class TenantService:
     async def invite(
         self, *, tenant_id: UUID, email: str, full_name: str, role: RecruiterRole
     ) -> Member:
-        if await address_is_taken(self._db, email):
-            raise email_already_registered()
-
-        try:
-            user = await self._gotrue.invite_user(
-                email=email, redirect_to=self._recruiter_portal_url
+        user = await invite_identity(
+            self._gotrue, self._db, email=email, redirect_to=self._recruiter_portal_url
+        )
+        async with (
+            identity_undone_unless_taken(self._gotrue, user.id),
+            transaction(self._db),
+        ):
+            self._db.add(
+                Profile(id=user.id, account_type=AccountType.RECRUITER, full_name=full_name)
             )
-        except EmailAlreadyRegisteredError as exc:
-            raise email_already_registered() from exc
-
-        try:
-            async with transaction(self._db):
-                self._db.add(
-                    Profile(id=user.id, account_type=AccountType.RECRUITER, full_name=full_name)
-                )
-                await self._db.flush()
-                self._db.add(Recruiter(id=user.id, tenant_id=tenant_id, role=role))
-        except BaseException as exc:
-            if is_already_provisioned(exc):
-                raise email_already_registered() from exc
-            await undo_identity(self._gotrue, user.id)
-            raise
+            await self._db.flush()
+            self._db.add(Recruiter(id=user.id, tenant_id=tenant_id, role=role))
 
         logger.info("tenants.invited", tenant_id=str(tenant_id), profile_id=str(user.id))
         return Member(id=user.id, full_name=full_name, email=user.email, role=role, is_active=True)

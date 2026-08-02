@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 TENANT_SLUG_CONSTRAINT: Final = "tenants_slug_key"
-PROFILE_CONSTRAINT: Final = "profiles_pkey"
 
 
 async def provision_tenant(
@@ -25,7 +24,7 @@ async def provision_tenant(
     """The three rows a Tenant is, in the one order the constraints allow, in one transaction.
 
     The identity already exists — however it was made — and this is only the Postgres half, so
-    every caller stays responsible for undoing that identity when this refuses.
+    every caller wraps it in whichever undo suits how they made that identity.
     """
     tenant = Tenant(name=name, slug=slug)
     try:
@@ -50,8 +49,3 @@ def slug_taken(slug: str) -> Problem:
         type=TENANT_SLUG_TAKEN_PROBLEM_TYPE,
         detail=f"The address “{slug}” is already taken. Choose another.",
     )
-
-
-def is_already_provisioned(exc: BaseException) -> bool:
-    """A Profile already exists for this identity — somebody's account, so not ours to undo."""
-    return isinstance(exc, IntegrityError) and violated_constraint(exc) == PROFILE_CONSTRAINT

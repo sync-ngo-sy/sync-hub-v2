@@ -116,7 +116,7 @@ async def list_platform_tenants(platform: PlatformServiceDep) -> list[PlatformTe
     status_code=status.HTTP_201_CREATED,
     responses={
         **PLATFORM_ACCESS_REFUSED,
-        409: openapi_problem("The address or the email address is already taken."),
+        409: openapi_problem("The slug or the email address is already taken."),
         **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
