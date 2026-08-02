@@ -19,7 +19,8 @@ A_JOB: Final[dict[str, Any]] = {
     "title": "Senior Backend Engineer",
     "description": "Build and run the payment platform in Python and PostgreSQL.",
     "location_key": "sy-damascus",
-    "employment_type": "Full time",
+    "employment_type": "full_time",
+    "work_mode": "onsite",
 }
 
 NO_CRITERIA: Final[dict[str, Any]] = {

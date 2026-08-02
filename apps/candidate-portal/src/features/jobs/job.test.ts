@@ -11,8 +11,12 @@ import {
 } from './job';
 
 describe('a Job meta line', () => {
-  it('reads employer, place and shape, in that order', () => {
-    expect(jobMeta(PUBLIC_JOB)).toBe('Levant Digital · Damascus · Full-time');
+  it('reads employer, place, how the work happens and what the contract is', () => {
+    expect(jobMeta(PUBLIC_JOB)).toBe('Levant Digital · Damascus · Remote · Full time');
+  });
+
+  it('keeps a remote Job in the place its team sits, rather than instead of it', () => {
+    expect(jobMeta(PUBLIC_JOB)).toContain('Damascus · Remote');
   });
 
   it('carries only what the Job actually has', () => {
@@ -21,8 +25,8 @@ describe('a Job meta line', () => {
 
   it('reads the same for a summary as for the whole Job', () => {
     expect(PUBLIC_JOBS.map(jobMeta)).toEqual([
-      'Levant Digital · Damascus · Full-time',
-      'Aman Relief · Aleppo · Contract',
+      'Levant Digital · Damascus · Remote · Full time',
+      'Aman Relief · Aleppo · On-site · Contract',
       'Sham Care',
     ]);
   });

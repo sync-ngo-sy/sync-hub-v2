@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from decimal import Decimal
 
     from sync_assessments.schema import AssessedMatch
-    from sync_core.models import LanguageProficiency, SkillImportance
+    from sync_core.models import EmploymentType, LanguageProficiency, SkillImportance
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +34,7 @@ class AssessedJob:
     title: str
     description: str
     location: str | None = None
-    employment_type: str | None = None
+    employment_type: EmploymentType | None = None
     minimum_total_experience_years: Decimal | None = None
     skills: tuple[RequiredSkill, ...] = ()
     languages: tuple[RequiredLanguage, ...] = ()

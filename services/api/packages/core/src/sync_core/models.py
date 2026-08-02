@@ -82,6 +82,15 @@ class CvParsingStatus(enum.StrEnum):
     FAILED = "failed"
 
 
+class EmploymentType(enum.StrEnum):
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+    CONTRACT = "contract"
+    TEMPORARY = "temporary"
+    INTERNSHIP = "internship"
+    VOLUNTEER = "volunteer"
+
+
 class IngestionStatus(enum.StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -147,6 +156,12 @@ class TenantPlan(enum.StrEnum):
     FREE = "free"
     PRO = "pro"
     ENTERPRISE = "enterprise"
+
+
+class WorkMode(enum.StrEnum):
+    ONSITE = "onsite"
+    HYBRID = "hybrid"
+    REMOTE = "remote"
 
 
 class User(Base):
@@ -1097,7 +1112,18 @@ class Job(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     location_key: Mapped[str | None] = mapped_column(Text)
-    employment_type: Mapped[str | None] = mapped_column(Text)
+    employment_type: Mapped[EmploymentType | None] = mapped_column(
+        Enum(
+            EmploymentType,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="employment_type",
+        )
+    )
+    work_mode: Mapped[WorkMode | None] = mapped_column(
+        Enum(
+            WorkMode, values_callable=lambda cls: [member.value for member in cls], name="work_mode"
+        )
+    )
     minimum_total_experience_years: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
     expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)

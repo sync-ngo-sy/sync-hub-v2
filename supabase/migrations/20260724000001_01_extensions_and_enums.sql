@@ -9,6 +9,14 @@ create type job_status    as enum ('draft', 'published', 'closed', 'archived');
 
 create type location_kind      as enum ('country', 'governorate');
 create type skill_importance   as enum ('required', 'preferred', 'optional');
+
+-- What the contract is, and where the work happens — two answers to two different questions.
+-- Work mode is not a place: a remote Job still records the Location its team sits in.
+create type employment_type as enum (
+  'full_time', 'part_time', 'contract', 'temporary', 'internship', 'volunteer'
+);
+create type work_mode       as enum ('onsite', 'hybrid', 'remote');
+
 create type cv_parsing_status  as enum ('uploaded', 'processing', 'ready', 'failed');
 create type ingestion_status   as enum ('pending', 'processing', 'completed', 'failed');
 

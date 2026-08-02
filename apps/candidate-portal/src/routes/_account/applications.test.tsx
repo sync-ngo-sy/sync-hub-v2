@@ -54,7 +54,9 @@ describe('My Applications', () => {
 
     const submitted = cardFor(recentApplication.job.title);
     expect(within(submitted).getByText('Submitted')).toBeVisible();
-    expect(within(submitted).getByText('Levant Digital · Damascus · Full-time')).toBeVisible();
+    expect(
+      within(submitted).getByText('Levant Digital · Damascus · Remote · Full time'),
+    ).toBeVisible();
     expect(within(submitted).getByText('14 days ago')).toHaveAttribute(
       'title',
       absoluteDateTime(recentApplication.applied_at),

@@ -97,7 +97,10 @@ describe('Jobs', () => {
     await user.click(screen.getByLabelText('Location'));
     expect(await screen.findByText('Syria')).toBeVisible();
     await user.click(screen.getByRole('option', { name: 'Aleppo' }));
-    await user.type(screen.getByLabelText('Employment type'), 'Full time');
+    await user.click(screen.getByLabelText('Employment type'));
+    await user.click(screen.getByRole('option', { name: 'Full time' }));
+    await user.click(screen.getByLabelText('Work mode'));
+    await user.click(screen.getByRole('option', { name: 'On-site' }));
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() =>
@@ -105,11 +108,62 @@ describe('Jobs', () => {
         title: 'Field Coordinator',
         description: 'Coordinate field teams.',
         location_key: 'sy-aleppo',
-        employment_type: 'Full time',
+        employment_type: 'full_time',
+        work_mode: 'onsite',
         expires_at: null,
       }),
     );
     expect(await screen.findByText('Draft saved')).toBeVisible();
+  });
+
+  it('offers employment type and work mode as fixed sets, never as text boxes', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([]));
+
+    const { user } = await renderApp('/jobs');
+    await user.click(screen.getByRole('button', { name: 'Create job' }));
+
+    for (const [field, choices] of [
+      [
+        'Employment type',
+        ['Full time', 'Part time', 'Contract', 'Temporary', 'Internship', 'Volunteer'],
+      ],
+      ['Work mode', ['On-site', 'Hybrid', 'Remote']],
+    ] as const) {
+      const control = screen.getByLabelText(field);
+      expect(control.tagName).not.toBe('INPUT');
+      await user.click(control);
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+        'Not set',
+        ...choices,
+      ]);
+      await user.keyboard('{Escape}');
+    }
+  });
+
+  it('leaves a Job free to be remote and still say where its team is', async () => {
+    const onCreate = vi.fn();
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsJobs([]),
+      ...createsJob(FIELD_COORDINATOR_VIEW, onCreate),
+    );
+
+    const { user } = await renderApp('/jobs');
+    await user.click(screen.getByRole('button', { name: 'Create job' }));
+    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
+    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
+    await user.click(screen.getByLabelText('Location'));
+    expect(await screen.findByText('Syria')).toBeVisible();
+    await user.click(screen.getByRole('option', { name: 'Aleppo' }));
+    await user.click(screen.getByLabelText('Work mode'));
+    await user.click(screen.getByRole('option', { name: 'Remote' }));
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ location_key: 'sy-aleppo', work_mode: 'remote' }),
+      ),
+    );
   });
 
   it('puts a server rejection beneath the new Job field it names', async () => {
@@ -135,6 +189,34 @@ describe('Jobs', () => {
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     expect(await screen.findByText('A Job with this title already exists.')).toBeVisible();
+  });
+
+  it('puts a rejection of either fixed set beneath the field it names', async () => {
+    const rejected: components['schemas']['ValidationProblemDetail'] = {
+      type: 'urn:sync:problem:validation',
+      title: 'Invalid request',
+      status: 422,
+      detail: 'Two fields need attention.',
+      errors: [
+        {
+          location: 'body.employment_type',
+          message: 'That is not an employment type.',
+          type: 'enum',
+        },
+        { location: 'body.work_mode', message: 'That is not a work mode.', type: 'enum' },
+      ],
+    };
+    server.use(...signedInAs(RECRUITER), ...listsJobs([]), ...refusesJobCreation(rejected));
+
+    const { user } = await renderApp('/jobs');
+    await user.click(screen.getByRole('button', { name: 'Create job' }));
+    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
+    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    expect(await screen.findByText('That is not an employment type.')).toBeVisible();
+    expect(screen.getByText('That is not a work mode.')).toBeVisible();
+    expect(screen.queryByText("This Job couldn't be saved.")).not.toBeInTheDocument();
   });
 
   it('loads a Job and saves its edits through the API', async () => {
@@ -163,7 +245,8 @@ describe('Jobs', () => {
         title: 'Field Coordinator',
         description: 'Coordinate field teams and regional partners.',
         location_key: 'sy-aleppo',
-        employment_type: 'Full time',
+        employment_type: 'full_time',
+        work_mode: 'onsite',
         expires_at: null,
       }),
     );

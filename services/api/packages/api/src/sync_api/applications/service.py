@@ -265,6 +265,7 @@ def _as_payload(application: ApplicationRow, job: Job, tenant: Tenant) -> Applic
             location_key=job.location_key,
             location_name=location_name(job),
             employment_type=job.employment_type,
+            work_mode=job.work_mode,
         ),
         cv_id=application.cv_id,
         status=application.status,
