@@ -31,3 +31,21 @@ LanguageCode = Annotated[
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
     Field(description="A code from the platform's `languages` table.", examples=["en"]),
 ]
+
+LocationKey = Annotated[
+    OptionalLine,
+    Field(
+        description="A key from the platform's `locations` table, which `/v1/locations` lists. "
+        "Null says nothing about where this is.",
+        examples=["sy-aleppo"],
+    ),
+]
+
+#: Read-only, and never a way to set one: a Location is chosen by key and named by the taxonomy.
+LocationName = Annotated[
+    str | None,
+    Field(
+        description="What `location_key` is called. Null when there is no Location.",
+        examples=["Aleppo"],
+    ),
+]

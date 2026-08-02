@@ -36,15 +36,18 @@ def draft_of(
     years the candidate typed by hand can be carried across. Experiences, educations and
     projects have no such key, and matching them by shape would leave duplicates to delete.
 
-    `is_searchable` and `preferred_language_code` come from the candidate: they are settings,
-    and a CV's `detected_language` is the language the document is written in, not a preference.
+    `is_searchable`, `preferred_language_code` and `location_key` come from the candidate, not
+    from the CV. The first two are settings, and a CV's `detected_language` is the language the
+    document is written in rather than a preference; the third is a choice from a list, which
+    the free text a CV gives its address in is not — "Damascus, Syria" names no Location on its
+    own, and guessing which one it meant is how the wrong governorate gets saved.
     """
     return ProfileDraft(
         full_name=parsed.full_name or full_name,
         phone=parsed.phone,
         headline=parsed.headline,
         summary=parsed.summary,
-        location=parsed.location,
+        location_key=candidate.location_key,
         preferred_language_code=candidate.preferred_language_code,
         is_searchable=candidate.is_searchable,
         unmapped_skills=list(parsed.unmapped_skills),

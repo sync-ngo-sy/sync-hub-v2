@@ -59,7 +59,8 @@ async def test_a_new_job_is_a_draft_with_no_criteria(
 
     assert job["status"] == "draft"
     assert job["title"] == "Senior Backend Engineer"
-    assert job["location"] == "Damascus, Syria"
+    assert job["location_key"] == "sy-damascus"
+    assert job["location_name"] == "Damascus"
     assert job["criteria"] == {
         "minimum_total_experience_years": None,
         "skills": [],
@@ -361,13 +362,14 @@ async def test_the_prose_stays_editable_after_an_application_arrives(
         job["id"],
         title="Senior Backend Engineer (payments)",
         description="Now with a typo fixed.",
-        location="Aleppo, Syria",
+        location_key="sy-aleppo",
         status="published",
     )
 
     assert edited.status_code == 200, edited.text
     assert edited.json()["title"] == "Senior Backend Engineer (payments)"
-    assert edited.json()["location"] == "Aleppo, Syria"
+    assert edited.json()["location_key"] == "sy-aleppo"
+    assert edited.json()["location_name"] == "Aleppo"
     assert edited.json()["status"] == "published"
     assert edited.json()["updated_at"] > job["updated_at"]
 

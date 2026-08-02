@@ -1,7 +1,11 @@
 import { setupServer } from 'msw/node';
 import { listsJobs } from '@/features/jobs/testing/handlers';
-import { hasCanonicalSkills, hasLanguages } from '@/features/reference/testing/handlers';
-import { CANONICAL_SKILLS, LANGUAGES } from './fixtures';
+import {
+  hasCanonicalSkills,
+  hasLanguages,
+  hasLocations,
+} from '@/features/reference/testing/handlers';
+import { CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
 
 /**
  * The taxonomies are here because every picker asks for them, and only a test about the pickers
@@ -11,4 +15,5 @@ export const server = setupServer(
   ...listsJobs([]),
   ...hasCanonicalSkills(CANONICAL_SKILLS),
   ...hasLanguages(LANGUAGES),
+  ...hasLocations(LOCATIONS),
 );

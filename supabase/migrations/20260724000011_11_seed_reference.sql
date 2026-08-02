@@ -8,6 +8,56 @@ insert into languages (code, name) values
   ('hi', 'Hindi'),   ('tr', 'Turkish'),  ('pl', 'Polish')
 on conflict (code) do nothing;
 
+-- Syria's fourteen governorates. A place is resolved this far and no further: a Job in Manbij
+-- is a Job in Aleppo, which is the answer a filter can actually be held to.
+insert into locations (key, name, kind) values
+  ('sy-damascus',    'Damascus',     'governorate'),
+  ('sy-rif-dimashq', 'Rif Dimashq',  'governorate'),
+  ('sy-aleppo',      'Aleppo',       'governorate'),
+  ('sy-homs',        'Homs',         'governorate'),
+  ('sy-hama',        'Hama',         'governorate'),
+  ('sy-latakia',     'Latakia',      'governorate'),
+  ('sy-tartus',      'Tartus',       'governorate'),
+  ('sy-idlib',       'Idlib',        'governorate'),
+  ('sy-deir-ez-zor', 'Deir ez-Zor',  'governorate'),
+  ('sy-al-hasakah',  'Al-Hasakah',   'governorate'),
+  ('sy-raqqa',       'Raqqa',        'governorate'),
+  ('sy-daraa',       'Daraa',        'governorate'),
+  ('sy-as-suwayda',  'As-Suwayda',   'governorate'),
+  ('sy-quneitra',    'Quneitra',     'governorate')
+on conflict (key) do nothing;
+
+-- Somewhere correct for a Candidate who is not in Syria, keyed by ISO 3166-1 alpha-2. Not
+-- every country on earth: the ones the platform's people are actually in. A country that is
+-- missing is added here, in this list, rather than typed into a profile.
+insert into locations (key, name, kind)
+select v.key, v.name, 'country'
+from (values
+  ('af', 'Afghanistan'),  ('al', 'Albania'),    ('dz', 'Algeria'),    ('ar', 'Argentina'),
+  ('am', 'Armenia'),      ('au', 'Australia'),  ('at', 'Austria'),    ('az', 'Azerbaijan'),
+  ('bh', 'Bahrain'),      ('bd', 'Bangladesh'), ('be', 'Belgium'),    ('br', 'Brazil'),
+  ('bg', 'Bulgaria'),     ('ca', 'Canada'),     ('cl', 'Chile'),      ('cn', 'China'),
+  ('hr', 'Croatia'),      ('cy', 'Cyprus'),     ('cz', 'Czechia'),    ('dk', 'Denmark'),
+  ('eg', 'Egypt'),        ('ee', 'Estonia'),    ('et', 'Ethiopia'),   ('fi', 'Finland'),
+  ('fr', 'France'),       ('ge', 'Georgia'),    ('de', 'Germany'),    ('gh', 'Ghana'),
+  ('gr', 'Greece'),       ('hu', 'Hungary'),    ('in', 'India'),      ('id', 'Indonesia'),
+  ('ir', 'Iran'),         ('iq', 'Iraq'),       ('ie', 'Ireland'),    ('it', 'Italy'),
+  ('jp', 'Japan'),        ('jo', 'Jordan'),     ('kz', 'Kazakhstan'), ('ke', 'Kenya'),
+  ('kw', 'Kuwait'),       ('lv', 'Latvia'),     ('lb', 'Lebanon'),    ('ly', 'Libya'),
+  ('lt', 'Lithuania'),    ('my', 'Malaysia'),   ('mt', 'Malta'),      ('mr', 'Mauritania'),
+  ('mx', 'Mexico'),       ('ma', 'Morocco'),    ('nl', 'Netherlands'),('nz', 'New Zealand'),
+  ('ng', 'Nigeria'),      ('no', 'Norway'),     ('om', 'Oman'),       ('pk', 'Pakistan'),
+  ('ps', 'Palestine'),    ('ph', 'Philippines'),('pl', 'Poland'),     ('pt', 'Portugal'),
+  ('qa', 'Qatar'),        ('ro', 'Romania'),    ('ru', 'Russia'),     ('sa', 'Saudi Arabia'),
+  ('sn', 'Senegal'),      ('rs', 'Serbia'),     ('sg', 'Singapore'),  ('sk', 'Slovakia'),
+  ('si', 'Slovenia'),     ('so', 'Somalia'),    ('za', 'South Africa'),
+  ('kr', 'South Korea'),  ('es', 'Spain'),      ('sd', 'Sudan'),      ('se', 'Sweden'),
+  ('ch', 'Switzerland'),  ('tn', 'Tunisia'),    ('tr', 'Türkiye'),    ('ua', 'Ukraine'),
+  ('ae', 'United Arab Emirates'),               ('gb', 'United Kingdom'),
+  ('us', 'United States'),('uz', 'Uzbekistan'), ('vn', 'Vietnam'),    ('ye', 'Yemen')
+) as v(key, name)
+on conflict (key) do nothing;
+
 insert into skill_categories (name) values
   ('Programming Languages'),
   ('Frameworks & Libraries'),

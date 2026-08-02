@@ -7,10 +7,11 @@ from sqlalchemy import select
 from sync_api.problems import (
     UNKNOWN_CANONICAL_SKILL_PROBLEM_TYPE,
     UNKNOWN_LANGUAGE_PROBLEM_TYPE,
+    UNKNOWN_LOCATION_PROBLEM_TYPE,
     InvalidField,
     Problem,
 )
-from sync_core.models import Language, SkillTaxonomy
+from sync_core.models import Language, Location, SkillTaxonomy
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -70,6 +71,29 @@ async def refuse_unknown_languages(session: AsyncSession, named: Mapping[str, st
         ],
         problem_type=UNKNOWN_LANGUAGE_PROBLEM_TYPE,
         detail="Every language has to be one of the platform's language codes.",
+    )
+
+
+async def refuse_unknown_location(session: AsyncSession, key: str | None, *, at: str) -> None:
+    """Refuse a Location key the taxonomy does not have.
+
+    One key rather than a mapping, unlike the two above: a Job and a Candidate each sit in one
+    place, so `at` is the only field a refusal could ever point at.
+    """
+    if key is None:
+        return
+    if await session.scalar(select(Location.key).where(Location.key == key)) is not None:
+        return
+    _refuse_unknown(
+        [
+            InvalidField(
+                location=at,
+                message=f"“{key}” is not a Location the platform knows.",
+                type="unknown_location",
+            )
+        ],
+        problem_type=UNKNOWN_LOCATION_PROBLEM_TYPE,
+        detail="A location has to be one the platform lists.",
     )
 
 

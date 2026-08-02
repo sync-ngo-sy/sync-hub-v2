@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
 import { JobsPage as JobsFeaturePage } from '@/features/jobs/components/jobs-page';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
+import { warmLocations } from '@/features/reference/reference-queries';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { pageTitle } from '@/lib/page-title';
 
@@ -11,7 +12,10 @@ export const Route = createFileRoute('/_workspace/jobs')({
   validateSearch: z.object({ status: jobStatus.optional() }),
   loaderDeps: ({ search }) => ({ status: search.status }),
   loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(jobsFirstPageQuery(deps.status)).catch(() => undefined),
+    Promise.all([
+      context.queryClient.ensureQueryData(jobsFirstPageQuery(deps.status)).catch(() => undefined),
+      warmLocations(context.queryClient),
+    ]),
   head: () => ({ meta: [{ title: pageTitle('Jobs') }] }),
   component: JobsPage,
 });

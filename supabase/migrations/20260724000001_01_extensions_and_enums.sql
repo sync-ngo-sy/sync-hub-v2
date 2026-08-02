@@ -7,6 +7,7 @@ create type recruiter_role as enum ('admin', 'recruiter');
 create type tenant_plan   as enum ('free', 'pro', 'enterprise');
 create type job_status    as enum ('draft', 'published', 'closed', 'archived');
 
+create type location_kind      as enum ('country', 'governorate');
 create type skill_importance   as enum ('required', 'preferred', 'optional');
 create type cv_parsing_status  as enum ('uploaded', 'processing', 'ready', 'failed');
 create type ingestion_status   as enum ('pending', 'processing', 'completed', 'failed');

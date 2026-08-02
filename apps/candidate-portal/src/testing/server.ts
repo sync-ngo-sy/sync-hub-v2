@@ -1,7 +1,11 @@
 import { setupServer } from 'msw/node';
 import { countsUnread, listsNotifications } from '@/features/notifications/testing/handlers';
-import { hasCanonicalSkills, hasLanguages } from '@/features/reference/testing/handlers';
-import { CANONICAL_SKILLS, LANGUAGES } from './fixtures';
+import {
+  hasCanonicalSkills,
+  hasLanguages,
+  hasLocations,
+} from '@/features/reference/testing/handlers';
+import { CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
 
 /**
  * The bell lives in the account shell, so every signed-in render asks what it should say. These
@@ -16,4 +20,5 @@ export const server = setupServer(
   ...listsNotifications([]),
   ...hasCanonicalSkills(CANONICAL_SKILLS),
   ...hasLanguages(LANGUAGES),
+  ...hasLocations(LOCATIONS),
 );

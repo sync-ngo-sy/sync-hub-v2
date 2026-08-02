@@ -18,7 +18,7 @@ JOBS: Final = "/v1/jobs"
 A_JOB: Final[dict[str, Any]] = {
     "title": "Senior Backend Engineer",
     "description": "Build and run the payment platform in Python and PostgreSQL.",
-    "location": "Damascus, Syria",
+    "location_key": "sy-damascus",
     "employment_type": "Full time",
 }
 

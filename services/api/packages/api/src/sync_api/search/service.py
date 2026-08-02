@@ -22,7 +22,7 @@ class CandidateSearchService:
         self,
         query: str,
         *,
-        location: str | None,
+        location_key: str | None,
         language_code: str | None,
         keywords: str | None,
         limit: int,
@@ -30,7 +30,7 @@ class CandidateSearchService:
         found = await self._search.find(
             query,
             filters=SearchFilters(
-                location=location, language_code=language_code, keywords=keywords
+                location_key=location_key, language_code=language_code, keywords=keywords
             ),
             limit=limit,
         )
@@ -45,7 +45,8 @@ def _as_payload(match: CandidateMatch) -> MatchedCandidate:
         avatar_url=match.avatar_url,
         headline=match.headline,
         summary=match.summary,
-        location=match.location,
+        location_key=match.location_key,
+        location_name=match.location_name,
         preferred_language_code=match.preferred_language_code,
         matched_section=ChunkType(match.chunk_type) if match.chunk_type else None,
         matched_text=match.chunk_text,

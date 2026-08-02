@@ -6,7 +6,7 @@ describe('a Job form', () => {
     const result = jobFormSchema.safeParse({
       title: '   ',
       description: '',
-      location: '',
+      locationKey: '',
       employmentType: '',
       expiresAt: '',
     });
@@ -23,7 +23,7 @@ describe('a Job form', () => {
     const result = jobFormSchema.safeParse({
       title: 'Field Coordinator',
       description: 'Coordinate field teams.',
-      location: '',
+      locationKey: '',
       employmentType: '',
       expiresAt: 'not-a-date',
     });

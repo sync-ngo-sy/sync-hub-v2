@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import ColumnElement, select
 
+from sync_api.jobs.access import WITH_LOCATION
 from sync_api.problems import APPLICATION_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core.models import Application, Job, Tenant
 
@@ -54,6 +55,7 @@ async def _applied(
 ) -> Applied:
     query = (
         select(Application, Job, Tenant)
+        .options(*WITH_LOCATION)
         .join(Job, Job.id == Application.job_id)
         .join(Tenant, Tenant.id == Application.tenant_id)
         .where(*scope)

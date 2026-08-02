@@ -17,7 +17,7 @@ export const NOTHING_PUBLISHED =
 
 /** The employer first, then whichever of place and shape the Job actually carries. */
 export function jobMeta(job: Job | JobSummary): string {
-  return [job.tenant.name, job.location, job.employment_type].filter(Boolean).join(' · ');
+  return [job.tenant.name, job.location_name, job.employment_type].filter(Boolean).join(' · ');
 }
 
 /**

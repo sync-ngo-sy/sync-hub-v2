@@ -1025,7 +1025,7 @@ export type Database = {
           headline: string | null;
           id: string;
           is_searchable: boolean;
-          location: string | null;
+          location_key: string | null;
           preferred_language_code: string | null;
           search_vector: unknown;
           summary: string | null;
@@ -1040,7 +1040,7 @@ export type Database = {
           headline?: string | null;
           id: string;
           is_searchable?: boolean;
-          location?: string | null;
+          location_key?: string | null;
           preferred_language_code?: string | null;
           search_vector?: unknown;
           summary?: string | null;
@@ -1055,7 +1055,7 @@ export type Database = {
           headline?: string | null;
           id?: string;
           is_searchable?: boolean;
-          location?: string | null;
+          location_key?: string | null;
           preferred_language_code?: string | null;
           search_vector?: unknown;
           summary?: string | null;
@@ -1076,6 +1076,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id', 'account_type'];
+          },
+          {
+            foreignKeyName: 'candidates_location_fk';
+            columns: ['location_key'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['key'];
           },
           {
             foreignKeyName: 'candidates_preferred_language_fk';
@@ -1477,7 +1484,7 @@ export type Database = {
           employment_type: string | null;
           expires_at: string | null;
           id: string;
-          location: string | null;
+          location_key: string | null;
           minimum_total_experience_years: number | null;
           search_vector: unknown;
           status: Database['public']['Enums']['job_status'];
@@ -1492,7 +1499,7 @@ export type Database = {
           employment_type?: string | null;
           expires_at?: string | null;
           id?: string;
-          location?: string | null;
+          location_key?: string | null;
           minimum_total_experience_years?: number | null;
           search_vector?: unknown;
           status?: Database['public']['Enums']['job_status'];
@@ -1507,7 +1514,7 @@ export type Database = {
           employment_type?: string | null;
           expires_at?: string | null;
           id?: string;
-          location?: string | null;
+          location_key?: string | null;
           minimum_total_experience_years?: number | null;
           search_vector?: unknown;
           status?: Database['public']['Enums']['job_status'];
@@ -1516,6 +1523,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'jobs_location_key_fkey';
+            columns: ['location_key'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['key'];
+          },
           {
             foreignKeyName: 'jobs_tenant_id_created_by_recruiter_id_fkey';
             columns: ['tenant_id', 'created_by_recruiter_id'];
@@ -1543,6 +1557,24 @@ export type Database = {
         };
         Update: {
           code?: string;
+          name?: string;
+        };
+        Relationships: [];
+      };
+      locations: {
+        Row: {
+          key: string;
+          kind: Database['public']['Enums']['location_kind'];
+          name: string;
+        };
+        Insert: {
+          key: string;
+          kind: Database['public']['Enums']['location_kind'];
+          name: string;
+        };
+        Update: {
+          key?: string;
+          kind?: Database['public']['Enums']['location_kind'];
           name?: string;
         };
         Relationships: [];
@@ -1999,11 +2031,19 @@ export type Database = {
           candidate_id: string | null;
           full_name: string | null;
           headline: string | null;
-          location: string | null;
+          location_key: string | null;
+          location_name: string | null;
           preferred_language_code: string | null;
           summary: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'candidates_location_fk';
+            columns: ['location_key'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['key'];
+          },
           {
             foreignKeyName: 'candidates_preferred_language_fk';
             columns: ['preferred_language_code'];
@@ -2039,6 +2079,7 @@ export type Database = {
       ingestion_status: 'pending' | 'processing' | 'completed' | 'failed';
       job_status: 'draft' | 'published' | 'closed' | 'archived';
       language_proficiency: 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'native';
+      location_kind: 'country' | 'governorate';
       notification_type: 'cv_parse_failed' | 'application_status_changed';
       qualification_status: 'pending' | 'qualified' | 'disqualified' | 'review_required';
       recruiter_role: 'admin' | 'recruiter';
@@ -2197,6 +2238,7 @@ export const Constants = {
       ingestion_status: ['pending', 'processing', 'completed', 'failed'],
       job_status: ['draft', 'published', 'closed', 'archived'],
       language_proficiency: ['beginner', 'intermediate', 'advanced', 'fluent', 'native'],
+      location_kind: ['country', 'governorate'],
       notification_type: ['cv_parse_failed', 'application_status_changed'],
       qualification_status: ['pending', 'qualified', 'disqualified', 'review_required'],
       recruiter_role: ['admin', 'recruiter'],

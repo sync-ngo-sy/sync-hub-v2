@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
-from sync_api.text import LanguageCode, Line, OptionalLine, Paragraph
+from sync_api.text import LanguageCode, Line, LocationKey, LocationName, OptionalLine, Paragraph
 from sync_core.models import (
     ApplicationQuestionType,
     JobStatus,
@@ -127,7 +127,7 @@ class NewJob(BaseModel):
 
     title: Line = Field(examples=["Senior Backend Engineer"])
     description: Paragraph
-    location: OptionalLine = Field(default=None, examples=["Damascus, Syria"])
+    location_key: LocationKey = None
     employment_type: OptionalLine = Field(default=None, examples=["Full time"])
     expires_at: Expiry = None
 
@@ -137,7 +137,7 @@ class JobChanges(BaseModel):
 
     title: Line | None = None
     description: Paragraph | None = None
-    location: OptionalLine = None
+    location_key: LocationKey = None
     employment_type: OptionalLine = None
     expires_at: Expiry = None
     status: JobStatus | None = Field(
@@ -158,7 +158,8 @@ class JobSummary(BaseModel):
     id: UUID
     title: str
     status: JobStatus
-    location: str | None = None
+    location_key: str | None = None
+    location_name: LocationName = None
     employment_type: str | None = None
     expires_at: datetime | None = None
     created_at: datetime
@@ -198,7 +199,8 @@ class PublicJobSummary(BaseModel):
     id: UUID
     title: str
     tenant: PublicTenant
-    location: str | None = None
+    location_key: str | None = None
+    location_name: LocationName = None
     employment_type: str | None = None
     expires_at: datetime | None = None
     created_at: datetime

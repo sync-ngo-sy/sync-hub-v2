@@ -37,7 +37,8 @@ create table candidates (
 
   headline text,
   summary  text,
-  location text,
+
+  location_key text,  -- FK to locations(key) added in migration 03
 
   unmapped_skills text[] not null default '{}',
 
