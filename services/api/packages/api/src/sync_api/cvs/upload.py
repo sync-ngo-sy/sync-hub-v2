@@ -19,7 +19,7 @@ from sync_core.profile import MAX_LINE_LENGTH
 from sync_core.storage import CV_MEDIA_TYPE_BY_EXTENSION, CV_MEDIA_TYPES
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
     from io import BufferedReader
 
     from fastapi import UploadFile
@@ -37,7 +37,7 @@ class ReceivedFile:
 
 
 @asynccontextmanager
-async def received(upload: UploadFile, *, max_bytes: int) -> AsyncIterator[ReceivedFile]:
+async def received(upload: UploadFile, *, max_bytes: int) -> AsyncGenerator[ReceivedFile]:
     media_type = _media_type_of(upload)
     with tempfile.TemporaryDirectory(prefix="sync-cv-") as directory:
         spooled = Path(directory) / "upload"

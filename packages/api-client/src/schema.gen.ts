@@ -302,6 +302,91 @@ export interface paths {
         patch: operations["changeTenantMember"];
         trace?: never;
     };
+    "/v1/platform/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every tenant on the platform
+         * @description The whole customer list, suspended tenants included.
+         */
+        get: operations["listPlatformTenants"];
+        put?: never;
+        /**
+         * Open a tenant and invite its founding admin
+         * @description One operation: the tenant exists and its founding admin has been mailed an invitation.
+         */
+        post: operations["createPlatformTenant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/tenants/{tenant_id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mail the founding admin their invitation again
+         * @description For the invitation that expired, or never arrived. The fresh link supersedes the old one.
+         */
+        post: operations["resendFoundingAdminInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/tenants/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Suspend a tenant or restore it
+         * @description Suspending turns every recruiter of the tenant away; restoring gives them back what
+         *     they had. Nothing is deleted either way.
+         */
+        patch: operations["setPlatformTenantStatus"];
+        trace?: never;
+    };
+    "/v1/platform/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform-wide counts
+         * @description How big the platform is. Deleted candidates are counted out.
+         */
+        get: operations["getPlatformOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/candidates/me/profile": {
         parameters: {
             query?: never;
@@ -1747,6 +1832,39 @@ export interface components {
              */
             password: string;
         };
+        /** CreateTenantRequest */
+        CreateTenantRequest: {
+            /**
+             * Name
+             * @description The hiring company's display name.
+             */
+            name: string;
+            /**
+             * Slug
+             * @description Lowercase letters, digits and single hyphens.
+             * @example acme-recruiting
+             */
+            slug: string;
+            /**
+             * Email
+             * Format: email
+             * @description The founding admin's address. They are invited, not given a password.
+             */
+            email: string;
+            /**
+             * Full Name
+             * @description The founding admin's name.
+             */
+            full_name: string;
+        };
+        /**
+         * CreatedTenantView
+         * @description What opening a tenant produced: the tenant, and the admin now holding an invitation.
+         */
+        CreatedTenantView: {
+            tenant: components["schemas"]["PlatformTenantView"];
+            founding_admin: components["schemas"]["MemberView"];
+        };
         /**
          * Cv
          * @description One uploaded CV, and how far the platform has got with it.
@@ -2710,6 +2828,52 @@ export interface components {
             email: string;
         };
         /**
+         * PlatformOverviewView
+         * @description The whole platform in four numbers.
+         */
+        PlatformOverviewView: {
+            /** Tenants */
+            tenants: number;
+            /** Candidates */
+            candidates: number;
+            /** Jobs */
+            jobs: number;
+            /** Applications */
+            applications: number;
+        };
+        /**
+         * PlatformTenantView
+         * @description A Tenant as the operator running the platform sees it.
+         */
+        PlatformTenantView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Slug
+             * @description The tenant's address, unique across the platform.
+             */
+            slug: string;
+            /** @description Reported only — nothing on the platform reads it yet. */
+            plan: components["schemas"]["TenantPlan"];
+            /**
+             * Member Count
+             * @description Every recruiter on the roster, deactivated ones too.
+             */
+            member_count: number;
+            /**
+             * Is Active
+             * @description False while the tenant is suspended.
+             */
+            is_active: boolean;
+            /**
+             * Invite Pending
+             * @description True while the founding admin has not yet accepted their invitation.
+             */
+            invite_pending: boolean;
+        };
+        /**
          * PooledCandidate
          * @description One Candidate the Tenant has saved, as its talent pool lists them.
          */
@@ -3152,6 +3316,14 @@ export interface components {
              */
             reason?: string | null;
         };
+        /** SetTenantStatusRequest */
+        SetTenantStatusRequest: {
+            /**
+             * Is Active
+             * @description False suspends the tenant; True restores it.
+             */
+            is_active: boolean;
+        };
         /** SignUpRequest */
         SignUpRequest: {
             /**
@@ -3335,6 +3507,11 @@ export interface components {
              */
             next_cursor?: string | null;
         };
+        /**
+         * TenantPlan
+         * @enum {string}
+         */
+        TenantPlan: "free" | "pro" | "enterprise";
         /**
          * TenantView
          * @description A Tenant as its own recruiters see it.
@@ -4356,6 +4533,352 @@ export interface operations {
             };
             /** @description The change would leave the tenant with no active admin. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listPlatformTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantView"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createPlatformTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTenantRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedTenantView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The address or the email address is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    resendFoundingAdminInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No tenant with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The founding admin has already accepted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    setPlatformTenantStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetTenantStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No tenant with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getPlatformOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOverviewView"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a platform admin. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
