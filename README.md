@@ -1,10 +1,11 @@
 # Sync Platform
 
-A monorepo with two React apps and one Python backend, managed by Turborepo.
+A monorepo with three React apps and one Python backend, managed by Turborepo.
 
 ## What's inside
 
-- `apps/candidate-portal` and `apps/recruiter-portal` — the two React frontends.
+- `apps/candidate-portal`, `apps/recruiter-portal`, and `apps/admin-portal` — the React
+  frontends for Candidates, Recruiters, and Platform admins.
 - `packages/` — code shared between the frontends (see below).
 - `services/api` — the Python (FastAPI) backend, managed by `uv`.
 - `supabase/` — the database config.
@@ -37,7 +38,7 @@ pnpm install
 uv sync --directory services/api
 cp services/api/.env.example services/api/.env   # then fill in from `supabase status`
 
-# run everything (both frontends + the API)
+# run everything (all three frontends + the API)
 pnpm dev
 
 # check the whole repo (JS + Python together)
@@ -108,9 +109,9 @@ SYNC_OPENAI_API_KEY=sk-... uv run --directory services/api pytest -m ai_live
 
 ## The shared packages
 
-These live in `packages/` and exist so the two apps don't duplicate code:
+These live in `packages/` and exist so the three apps don't duplicate code:
 
-- **`@sync/ui`** — Shared buttons, components, and design (colors, spacing, fonts). Add a new component once here (`pnpm dlx shadcn@latest add <name>`), and both apps can use it. No copy-pasting UI code between apps.
+- **`@sync/ui`** — Shared buttons, components, and design (colors, spacing, fonts). Add a new component once here (`pnpm dlx shadcn@latest add <name>`), and every app can use it. No copy-pasting UI code between apps.
 
 - **`@sync/api-client`** — A typed client for talking to the backend. It's generated straight from the FastAPI backend's schema, so if the backend changes, TypeScript will immediately show an error anywhere the frontend used the old shape. No guessing what an API call returns.
 
