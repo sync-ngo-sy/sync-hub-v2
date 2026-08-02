@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from sync_core.models import SkillImportance
+from sync_core.models import EmploymentType, SkillImportance
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -45,6 +45,17 @@ or what language they speak counts except where the job asks for it.
 
 _NOTHING: Final = "not stated"
 
+#: The model reads prose, and `full_time` is not prose. A member with no word here would raise
+#: mid-assessment, so a test walks the enum rather than trusting the dict to keep up with it.
+_EMPLOYMENT_TYPES: Final[dict[EmploymentType, str]] = {
+    EmploymentType.FULL_TIME: "Full time",
+    EmploymentType.PART_TIME: "Part time",
+    EmploymentType.CONTRACT: "Contract",
+    EmploymentType.TEMPORARY: "Temporary",
+    EmploymentType.INTERNSHIP: "Internship",
+    EmploymentType.VOLUNTEER: "Volunteer",
+}
+
 
 def as_document(request: MatchRequest) -> str:
     """The whole input the model reads, as one document. Versioned with the instructions."""
@@ -56,7 +67,7 @@ def _job(job: AssessedJob) -> str:
         "THE JOB",
         _field("Title", job.title),
         _field("Location", job.location),
-        _field("Employment type", job.employment_type),
+        _field("Employment type", _employment(job.employment_type)),
         _field(
             "Minimum total experience",
             None
@@ -68,6 +79,10 @@ def _job(job: AssessedJob) -> str:
         _field("Required languages", _joined(_language(entry) for entry in job.languages)),
         _prose("Description", job.description),
     )
+
+
+def _employment(kind: EmploymentType | None) -> str | None:
+    return None if kind is None else _EMPLOYMENT_TYPES[kind]
 
 
 def _application(application: AssessedApplication) -> str:

@@ -10,6 +10,7 @@ from sync_api.errors import openapi_problem
 from sync_api.jobs import PublicJob, PublicJobPage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_public_rate_limit
+from sync_core.models import EmploymentType
 from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/jobs"
@@ -27,7 +28,12 @@ router = APIRouter(
     "",
     operation_id="browseJobs",
     summary="Published Jobs, newest first",
-    responses={**TOO_MANY, 422: openapi_problem("`cursor` is not one this API issued.")},
+    responses={
+        **TOO_MANY,
+        422: openapi_problem(
+            "`cursor` is not one this API issued, or `employment_type` is not one of the set."
+        ),
+    },
 )
 async def browse_jobs(
     jobs: JobBrowseServiceDep,
@@ -50,7 +56,12 @@ async def browse_jobs(
         ),
     ] = None,
     employment_type: Annotated[
-        str | None, Query(max_length=MAX_LINE_LENGTH, description="Matched exactly, any case.")
+        EmploymentType | None,
+        Query(
+            description="One of the platform's employment types. Anything else is refused "
+            "rather than answered with an empty page.",
+            examples=[EmploymentType.FULL_TIME],
+        ),
     ] = None,
     cursor: Annotated[
         str | None,

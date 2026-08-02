@@ -141,12 +141,20 @@ A Job's *criteria* — `job_skills`, `job_languages`, `job_application_questions
 `jobs.minimum_total_experience_years` — are one thing that freezes together, so
 `PUT /v1/tenants/me/jobs/{id}/criteria` replaces all four at once, deleting and re-inserting
 the child rows rather than matching them up. The rest of the Job (`title`, `description`,
-`location_key`, `employment_type`, `expires_at`) and the lifecycle move through a separate
-`PATCH`, which is why a typo can still be fixed after the applications start arriving.
+`location_key`, `employment_type`, `work_mode`, `expires_at`) and the lifecycle move through a
+separate `PATCH`, which is why a typo can still be fixed after the applications start arriving.
 
 `jobs.location_key` references `locations`, and the public board filters it with `=` — never a
 substring, which used to answer a search for Damascus with Jobs in Rif Dimashq. A key the
 taxonomy does not have is refused at `body.location_key` before anything is written.
+
+`employment_type` and `work_mode` are enums, not prose and not tables: closed sets that change
+approximately never, which reach both portals through the generated client rather than being
+listed by hand in either. `employment_type` was `text`, so "Full time" and "Full-time" were two
+kinds of job and the board's filter had to `lower()` both sides and still miss; it is an equality
+on the enum now, and a value outside the set is a 422 rather than an empty page. `work_mode`
+answers a different question from `location_key` and never replaces it — a `remote` Job still
+carries the Location its team sits in, which is what keeps "Remote" out of the place taxonomy.
 
 The lock itself is the database's: `forbid_locked_job_criteria` and
 `forbid_locked_job_min_experience` fire for the service role like any other trigger. The
@@ -355,8 +363,10 @@ Its input on the Candidate's side is the immutable `application_*` snapshot — 
 when they applied, never their live `candidate_*` rows. On the Job's side it is the criteria
 Screening measured (`job_skills`, `job_languages`, `jobs.minimum_total_experience_years`) plus
 the Job's own words (`title`, `description`, its Location's name, `employment_type`), which lets
-a model say anything the deterministic verdict could not. Those words are read as they stand:
-the criteria lock freezes the bar once an Application arrives, and deliberately not the prose.
+a model say anything the deterministic verdict could not. The employment type is written into the
+document as English — a model reads "Full time", not `full_time`. Those words are read as they
+stand: the criteria lock freezes the bar once an Application arrives, and deliberately not the
+prose.
 Nothing else is written: `applications.qualification_status`, `qualification_reason` and
 `application_qualification_history` are Screening's, and no number of assessments is a word in
 them. Running it again appends; the history reads newest first (`created_at desc, id desc`,

@@ -1605,8 +1605,8 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
-            /** Employment Type */
-            employment_type?: string | null;
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            work_mode?: components["schemas"]["WorkMode"] | null;
         };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
@@ -1901,6 +1901,11 @@ export interface components {
             years_experience?: number | null;
         };
         /**
+         * EmploymentType
+         * @enum {string}
+         */
+        EmploymentType: "full_time" | "part_time" | "contract" | "temporary" | "internship" | "volunteer";
+        /**
          * Health
          * @description The process is up and serving.
          */
@@ -1961,8 +1966,16 @@ export interface components {
              * @example sy-aleppo
              */
             location_key?: string | null;
-            /** Employment Type */
-            employment_type?: string | null;
+            /**
+             * @description What the contract is, from a fixed set. Null says nothing about it.
+             * @example full_time
+             */
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            /**
+             * @description How much of the work happens where the team is. It never stands in for `location_key` — a remote Job still has a Location. Null says nothing about it.
+             * @example remote
+             */
+            work_mode?: components["schemas"]["WorkMode"] | null;
             /**
              * Expires At
              * @description When the Job stops being public. Null means it stays up until closed.
@@ -2130,8 +2143,8 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
-            /** Employment Type */
-            employment_type?: string | null;
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            work_mode?: components["schemas"]["WorkMode"] | null;
             /** Expires At */
             expires_at?: string | null;
             /**
@@ -2166,8 +2179,8 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
-            /** Employment Type */
-            employment_type?: string | null;
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            work_mode?: components["schemas"]["WorkMode"] | null;
             /** Expires At */
             expires_at?: string | null;
             /**
@@ -2483,10 +2496,15 @@ export interface components {
              */
             location_key?: string | null;
             /**
-             * Employment Type
-             * @example Full time
+             * @description What the contract is, from a fixed set. Null says nothing about it.
+             * @example full_time
              */
-            employment_type?: string | null;
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            /**
+             * @description How much of the work happens where the team is. It never stands in for `location_key` — a remote Job still has a Location. Null says nothing about it.
+             * @example remote
+             */
+            work_mode?: components["schemas"]["WorkMode"] | null;
             /**
              * Expires At
              * @description When the Job stops being public. Null means it stays up until closed.
@@ -2963,8 +2981,8 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
-            /** Employment Type */
-            employment_type?: string | null;
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            work_mode?: components["schemas"]["WorkMode"] | null;
             /** Expires At */
             expires_at?: string | null;
             /**
@@ -3033,8 +3051,8 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
-            /** Employment Type */
-            employment_type?: string | null;
+            employment_type?: components["schemas"]["EmploymentType"] | null;
+            work_mode?: components["schemas"]["WorkMode"] | null;
             /** Expires At */
             expires_at?: string | null;
             /**
@@ -3432,6 +3450,11 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * WorkMode
+         * @enum {string}
+         */
+        WorkMode: "onsite" | "hybrid" | "remote";
     };
     responses: never;
     parameters: never;
@@ -8277,8 +8300,8 @@ export interface operations {
                 q?: string | null;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description Matched exactly, any case. */
-                employment_type?: string | null;
+                /** @description One of the platform's employment types. Anything else is refused rather than answered with an empty page. */
+                employment_type?: components["schemas"]["EmploymentType"] | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */
                 cursor?: string | null;
                 /** @description How many to return. */
@@ -8299,7 +8322,7 @@ export interface operations {
                     "application/json": components["schemas"]["PublicJobPage"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or `employment_type` is not one of the set. */
             422: {
                 headers: {
                     [name: string]: unknown;

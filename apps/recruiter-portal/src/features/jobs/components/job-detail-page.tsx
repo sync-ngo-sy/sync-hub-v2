@@ -11,7 +11,14 @@ import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import { useJob } from '../hooks/use-job';
 import { useChangeJob } from '../hooks/use-job-actions';
-import { type JobLifecycleAction, jobAbsoluteDate, jobLifecycleActions, jobState } from '../job';
+import {
+  employmentTypeLabel,
+  type JobLifecycleAction,
+  jobAbsoluteDate,
+  jobLifecycleActions,
+  jobState,
+  workModeLabel,
+} from '../job';
 import { CriteriaForm } from './criteria-form';
 
 export type JobDetailTab = 'applications' | 'criteria' | 'links';
@@ -80,7 +87,11 @@ export function JobDetailPage({ jobId, tab, onTabChange }: JobDetailPageProps) {
           </div>
           <div>
             <dt className="text-meta text-muted-foreground">Employment type</dt>
-            <dd>{job.employment_type ?? 'Not set'}</dd>
+            <dd>{employmentTypeLabel(job.employment_type) ?? 'Not set'}</dd>
+          </div>
+          <div>
+            <dt className="text-meta text-muted-foreground">Work mode</dt>
+            <dd>{workModeLabel(job.work_mode) ?? 'Not set'}</dd>
           </div>
           <div>
             <dt className="text-meta text-muted-foreground">Closing date</dt>

@@ -34,8 +34,11 @@ create table jobs (
   title       text not null,
   description text not null,
 
+  -- Where the team is, what the contract is, and how much of the work happens in that place:
+  -- three separate answers. A remote Job keeps its Location, because remote is not a place.
   location_key    text references locations (key),
-  employment_type text,
+  employment_type employment_type,
+  work_mode       work_mode,
   minimum_total_experience_years numeric(4,1)
     constraint jobs_min_experience_nonneg
     check (minimum_total_experience_years is null or minimum_total_experience_years >= 0),

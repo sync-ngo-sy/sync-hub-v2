@@ -61,6 +61,8 @@ async def test_a_new_job_is_a_draft_with_no_criteria(
     assert job["title"] == "Senior Backend Engineer"
     assert job["location_key"] == "sy-damascus"
     assert job["location_name"] == "Damascus"
+    assert job["employment_type"] == "full_time"
+    assert job["work_mode"] == "onsite"
     assert job["criteria"] == {
         "minimum_total_experience_years": None,
         "skills": [],
@@ -382,3 +384,51 @@ async def test_a_job_with_no_title_is_refused_before_it_reaches_the_database(
     response = await post_job(browser, a_job(title="   "))
 
     assert response.status_code == 422, response.text
+
+
+@pytest.mark.parametrize(
+    "written",
+    [
+        {"employment_type": "Full time"},
+        {"employment_type": "freelance"},
+        {"work_mode": "Remote"},
+        {"work_mode": "field"},
+    ],
+)
+async def test_employment_type_and_work_mode_are_chosen_and_never_written(
+    browser: AsyncClient, mailbox: Mailbox, written: dict[str, str]
+) -> None:
+    """Both are fixed sets, so the spelling a recruiter would have typed is not a value —
+    which is what stops "Full time" and "Full-time" being two kinds of job."""
+    await an_admin(browser, mailbox)
+
+    response = await post_job(browser, a_job(**written))
+
+    assert response.status_code == 422, response.text
+
+
+async def test_a_remote_job_still_says_where_the_team_is(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """Work mode is not a place. Remote used to be written into the Location, which made the
+    two answers one; now a remote Job keeps the Location its team sits in."""
+    await an_admin(browser, mailbox)
+
+    job = await a_created_job(browser, work_mode="remote", location_key="sy-aleppo")
+
+    assert job["work_mode"] == "remote"
+    assert job["location_key"] == "sy-aleppo"
+    assert job["location_name"] == "Aleppo"
+
+
+async def test_both_sets_can_be_changed_after_the_job_is_written(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+
+    edited = await change_job(browser, job["id"], employment_type="volunteer", work_mode="hybrid")
+
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["employment_type"] == "volunteer"
+    assert edited.json()["work_mode"] == "hybrid"

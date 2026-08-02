@@ -27,7 +27,7 @@ describe('a Job detail page', () => {
     await renderApp(`/jobs/${PUBLIC_JOB.id}`);
 
     expect(await screen.findByRole('heading', { level: 1, name: PUBLIC_JOB.title })).toBeVisible();
-    expect(screen.getByText('Levant Digital · Damascus · Full-time')).toBeVisible();
+    expect(screen.getByText('Levant Digital · Damascus · Remote · Full time')).toBeVisible();
     expect(screen.getByText(/You will own the design system/)).toBeVisible();
     expect(screen.getByText('3+ years total experience')).toBeVisible();
 
