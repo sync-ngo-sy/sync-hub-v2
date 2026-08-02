@@ -4,7 +4,7 @@ import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/headline';
 import { client } from '@/lib/api';
-import { CANDIDATE, RECRUITER } from '@/testing/fixtures';
+import { CANDIDATE, PLATFORM_ADMIN, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -29,6 +29,19 @@ describe('the workspace guard', () => {
       await screen.findByRole('heading', { name: 'This is the Recruiter Portal' }),
     ).toBeVisible();
     expect(screen.getByText(/Sync Candidate Portal/)).toBeVisible();
+  });
+
+  it('shows a platform admin the same notice, in words that fit their account', async () => {
+    server.use(...signedInAs(PLATFORM_ADMIN));
+
+    const { router } = await renderApp('/dashboard');
+
+    expect(router.state.location.pathname).toBe('/wrong-portal');
+    expect(
+      await screen.findByRole('heading', { name: 'This is the Recruiter Portal' }),
+    ).toBeVisible();
+    expect(screen.getByText(/platform admin account/)).toBeVisible();
+    expect(screen.queryByText(/candidate account/)).not.toBeInTheDocument();
   });
 
   it('redirects to sign in when the client reports the session is over', async () => {
