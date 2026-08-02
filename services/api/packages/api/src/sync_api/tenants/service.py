@@ -1,39 +1,35 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 
 from sync_api.auth.gotrue import EmailAlreadyRegisteredError
 from sync_api.auth.registration import (
+    address_is_taken,
     create_identity,
     email_already_registered,
     identity_undone_on_failure,
     undo_identity,
 )
-from sync_api.integrity import violated_constraint
 from sync_api.problems import (
     LAST_TENANT_ADMIN_PROBLEM_TYPE,
     MEMBER_NOT_FOUND_PROBLEM_TYPE,
-    TENANT_SLUG_TAKEN_PROBLEM_TYPE,
     Problem,
 )
 from sync_api.tenants.access import TenantSummary
+from sync_api.tenants.provisioning import is_already_provisioned, provision_tenant
 from sync_core import get_logger, transaction
-from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant, User
+from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, User
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.auth.gotrue import GoTrue, GoTrueUser
+    from sync_api.auth.gotrue import GoTrue
 
 logger = get_logger(__name__)
-
-TENANT_SLUG_CONSTRAINT: Final = "tenants_slug_key"
-PROFILE_CONSTRAINT: Final = "profiles_pkey"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,8 +58,8 @@ class TenantService:
     ) -> NewTenant:
         user = await create_identity(self._gotrue, email=email, password=password)
         async with identity_undone_on_failure(self._gotrue, user.id):
-            tenant = await self._provision_tenant(
-                user, tenant_name=tenant_name, slug=slug, full_name=full_name
+            tenant = await provision_tenant(
+                self._db, admin_id=user.id, name=tenant_name, slug=slug, full_name=full_name
             )
             await self._gotrue.send_confirmation_email(
                 email, redirect_to=self._recruiter_portal_url
@@ -90,7 +86,7 @@ class TenantService:
     async def invite(
         self, *, tenant_id: UUID, email: str, full_name: str, role: RecruiterRole
     ) -> Member:
-        if await self._address_is_taken(email):
+        if await address_is_taken(self._db, email):
             raise email_already_registered()
 
         try:
@@ -108,7 +104,7 @@ class TenantService:
                 await self._db.flush()
                 self._db.add(Recruiter(id=user.id, tenant_id=tenant_id, role=role))
         except BaseException as exc:
-            if _is_already_provisioned(exc):
+            if is_already_provisioned(exc):
                 raise email_already_registered() from exc
             await undo_identity(self._gotrue, user.id)
             raise
@@ -150,35 +146,6 @@ class TenantService:
         )
         return await self._member(recruiter_id)
 
-    async def _provision_tenant(
-        self, user: GoTrueUser, *, tenant_name: str, slug: str, full_name: str
-    ) -> TenantSummary:
-        tenant = Tenant(name=tenant_name, slug=slug)
-        try:
-            async with transaction(self._db):
-                self._db.add(tenant)
-                await self._db.flush()
-                self._db.add(
-                    Profile(id=user.id, account_type=AccountType.RECRUITER, full_name=full_name)
-                )
-                await self._db.flush()
-                self._db.add(Recruiter(id=user.id, tenant_id=tenant.id, role=RecruiterRole.ADMIN))
-        except IntegrityError as exc:
-            if violated_constraint(exc) != TENANT_SLUG_CONSTRAINT:
-                raise
-            raise Problem(
-                status=409,
-                type=TENANT_SLUG_TAKEN_PROBLEM_TYPE,
-                detail=f"The address “{slug}” is already taken. Choose another.",
-            ) from exc
-        return TenantSummary(id=tenant.id, name=tenant.name, slug=tenant.slug)
-
-    async def _address_is_taken(self, email: str) -> bool:
-        found = await self._db.scalar(
-            select(User.id).where(func.lower(User.email) == email.lower())
-        )
-        return found is not None
-
     async def _has_an_active_admin(self, tenant_id: UUID) -> bool:
         total = await self._db.scalar(
             select(func.count())
@@ -212,7 +179,3 @@ def _member_from(row: tuple[UUID, str, str | None, RecruiterRole, bool]) -> Memb
         role=role,
         is_active=is_active,
     )
-
-
-def _is_already_provisioned(exc: BaseException) -> bool:
-    return isinstance(exc, IntegrityError) and violated_constraint(exc) == PROFILE_CONSTRAINT

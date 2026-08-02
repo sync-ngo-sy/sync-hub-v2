@@ -3,6 +3,8 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from sqlalchemy import func, select
+
 from sync_api.auth.gotrue import EmailAlreadyRegisteredError, WeakPasswordError
 from sync_api.problems import (
     EMAIL_ALREADY_REGISTERED_PROBLEM_TYPE,
@@ -10,10 +12,13 @@ from sync_api.problems import (
     Problem,
 )
 from sync_core import get_logger
+from sync_core.models import User
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth.gotrue import GoTrue, GoTrueUser
 
@@ -27,6 +32,13 @@ async def create_identity(gotrue: GoTrue, *, email: str, password: str) -> GoTru
         raise email_already_registered() from exc
     except WeakPasswordError as exc:
         raise weak_password() from exc
+
+
+async def address_is_taken(session: AsyncSession, email: str) -> bool:
+    """Asked before an invite, so the undo that follows a failed one can never reach an identity
+    the request did not create — deleting that would take the account hanging off it with it."""
+    found = await session.scalar(select(User.id).where(func.lower(User.email) == email.lower()))
+    return found is not None
 
 
 @asynccontextmanager

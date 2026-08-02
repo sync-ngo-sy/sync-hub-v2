@@ -33,6 +33,15 @@ class Mailbox:
     async def count_for(self, email: str) -> int:
         return len(await self._messages_for(email))
 
+    async def count_reaches(self, email: str, wanted: int) -> int:
+        """Waits for delivery, so a test can tell a second message from the same one twice."""
+        deadline = asyncio.get_running_loop().time() + DELIVERY_TIMEOUT_SECONDS
+        while True:
+            arrived = await self.count_for(email)
+            if arrived >= wanted or asyncio.get_running_loop().time() >= deadline:
+                return arrived
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
     async def newest_body(self, email: str) -> str:
         return await self._newest_body(email)
 
