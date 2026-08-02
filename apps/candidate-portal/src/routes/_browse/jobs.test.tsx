@@ -78,14 +78,14 @@ describe('browsing jobs', () => {
     expect(screen.queryByRole('button', { name: 'Load more jobs' })).toBeNull();
   });
 
-  it('sends a signed-in candidate to their CVs when nothing is published yet', async () => {
+  it('sends a signed-in candidate to their profile when nothing is published yet', async () => {
     server.use(...signedInAs(CANDIDATE), ...publishesNothing());
 
     await renderApp('/jobs');
 
     expect(await screen.findByRole('link', { name: 'Keep your CV ready' })).toHaveAttribute(
       'href',
-      '/cvs',
+      '/profile',
     );
     expect(screen.queryByRole('link', { name: 'Create your profile' })).toBeNull();
   });

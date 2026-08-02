@@ -6,7 +6,6 @@ import type { Cv } from '../cv';
 type Problem = components['schemas']['ProblemDetail'];
 type CvProblem = components['schemas']['CvConflictProblemDetail'];
 type ProfileDraft = components['schemas']['ProfileDraft'];
-type CandidateProfile = components['schemas']['CandidateProfile'];
 
 export function listsCvs(cvs: Cv[]) {
   return [http.get('/v1/candidates/me/cvs', ({ response }) => response(200).json(cvs))];
@@ -103,11 +102,12 @@ export function linksDownloadInTurn(...urls: string[]) {
   ];
 }
 
-export function drafts(draft: ProfileDraft) {
+export function drafts(draft: ProfileDraft, onRequest?: (cvId: string) => void) {
   return [
-    http.get('/v1/candidates/me/cvs/{cv_id}/profile-draft', ({ response }) =>
-      response(200).json(draft),
-    ),
+    http.get('/v1/candidates/me/cvs/{cv_id}/profile-draft', ({ params, response }) => {
+      onRequest?.(params.cv_id);
+      return response(200).json(draft);
+    }),
   ];
 }
 
@@ -119,20 +119,10 @@ export function refusesDraft(problem: Problem) {
   ];
 }
 
-export function hasProfile(profile: CandidateProfile) {
-  return [http.get('/v1/candidates/me/profile', ({ response }) => response(200).json(profile))];
-}
-
-export function savesProfile(onRequest?: (body: CandidateProfile) => void) {
+export function faultsOnDraft(problem: Problem) {
   return [
-    http.put('/v1/candidates/me/profile', async ({ request, response }) => {
-      const body = (await request.json()) as CandidateProfile;
-      onRequest?.(body);
-      return response(200).json(body);
-    }),
+    http.get('/v1/candidates/me/cvs/{cv_id}/profile-draft', ({ response }) =>
+      response(500).json(problem),
+    ),
   ];
-}
-
-export function refusesProfile(problem: Problem) {
-  return [http.put('/v1/candidates/me/profile', ({ response }) => response(500).json(problem))];
 }

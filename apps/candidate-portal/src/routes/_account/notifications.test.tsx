@@ -10,8 +10,10 @@ import {
   listsNotifications,
   marksRead,
 } from '@/features/notifications/testing/handlers';
+import { hasProfile } from '@/features/profile/testing/handlers';
 import {
   CANDIDATE,
+  CANDIDATE_PROFILE,
   CV_FAILURE_NOTIFICATION,
   FAILED_CV,
   MORE_NOTIFICATIONS,
@@ -38,7 +40,9 @@ describe('the notifications page', () => {
     const list = await screen.findByRole('list', { name: 'Notifications' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(3);
     expect(screen.getByText("Couldn't read “scan.pdf”")).toBeVisible();
-    expect(screen.getByText('Open your CVs to see why, and upload another file.')).toBeVisible();
+    expect(
+      screen.getByText('Open your profile to see why, and upload another file.'),
+    ).toBeVisible();
     expect(screen.getByText('Frontend Developer (Remote) at Levant Digital')).toBeVisible();
     expect(screen.getByText('Moved from Under review to Shortlisted.')).toBeVisible();
   });
@@ -53,19 +57,20 @@ describe('the notifications page', () => {
     expect(within(rowFor(/Field Coordinator/)).queryByText('Unread.')).toBeNull();
   });
 
-  it('marks a CV failure read and lands on the CVs', async () => {
+  it('marks a CV failure read and lands on the profile the CVs are on', async () => {
     const read = vi.fn();
     server.use(
       ...signedInAs(CANDIDATE),
       ...listsNotifications(NOTIFICATIONS),
       ...marksRead(NOTIFICATIONS, read),
+      ...hasProfile(CANDIDATE_PROFILE),
       ...listsCvs([FAILED_CV]),
     );
 
     const { router, user } = await renderApp('/notifications');
     await user.click(await screen.findByRole('link', { name: /Couldn't read/ }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/cvs'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'));
     expect(await screen.findByRole('heading', { name: FAILED_CV.display_name })).toBeVisible();
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_FAILURE_NOTIFICATION.id));
   });
@@ -105,13 +110,14 @@ describe('the notifications page', () => {
       ...signedInAs(CANDIDATE),
       ...listsNotifications(NOTIFICATIONS),
       ...faultsOnMarkingRead(SERVER_FAULT),
+      ...hasProfile(CANDIDATE_PROFILE),
       ...listsCvs([FAILED_CV]),
     );
 
     const { router, user } = await renderApp('/notifications');
     await user.click(await screen.findByRole('link', { name: /Couldn't read/ }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/cvs'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'));
   });
 
   it('pages by cursor, a page at a time', async () => {

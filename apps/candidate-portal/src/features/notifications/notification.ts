@@ -47,9 +47,10 @@ export function notificationCopy({ payload }: Notification): NotificationCopy {
     case 'cv_parse_failed':
       return {
         headline: `Couldn't read “${payload.display_name}”`,
-        detail: 'Open your CVs to see why, and upload another file.',
+        detail: 'Open your profile to see why, and upload another file.',
         icon: CircleAlert,
-        to: '/cvs',
+        // Where the CVs are: the profile's first section, not a page of their own.
+        to: '/profile',
       };
     case 'application_status_changed':
       return {

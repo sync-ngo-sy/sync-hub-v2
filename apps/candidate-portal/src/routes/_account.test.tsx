@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
-import { listsCvs } from '@/features/cvs/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { hasProfile } from '@/features/profile/testing/handlers';
@@ -54,26 +53,39 @@ describe('the account guard', () => {
   });
 
   it('redirects to sign in when the client reports the session is over', async () => {
-    server.use(...signedInAs(CANDIDATE), ...listsCvs([]));
-    const { router } = await renderApp('/cvs');
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    const { router } = await renderApp('/profile');
 
     server.use(...signedOut());
     await client.GET('/v1/auth/me');
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
-    expect(router.state.location.search).toEqual({ returnTo: '/cvs' });
+    expect(router.state.location.search).toEqual({ returnTo: '/profile' });
   });
 });
 
 describe('the account chrome', () => {
   it('marks the destination the candidate is on', async () => {
-    server.use(...signedInAs(CANDIDATE), ...listsCvs([]));
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
 
-    await renderApp('/cvs');
+    await renderApp('/profile');
 
     const nav = screen.getByRole('navigation', { name: 'Sections' });
-    expect(within(nav).getByRole('link', { name: 'CVs' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Profile' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(within(nav).getByRole('link', { name: 'Jobs' })).not.toHaveAttribute('aria-current');
+  });
+
+  // CVs were a destination of their own until they became the profile's first section.
+  it('offers no CVs tab, because there is no page to send it to', async () => {
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+
+    await renderApp('/profile');
+
+    const nav = screen.getByRole('navigation', { name: 'Sections' });
+    expect(within(nav).queryByRole('link', { name: 'CVs' })).toBeNull();
   });
 
   it('moves between destinations from the tab bar', async () => {
