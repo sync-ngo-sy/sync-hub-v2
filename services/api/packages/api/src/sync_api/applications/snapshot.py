@@ -41,6 +41,7 @@ from sync_core.models import (
     CandidateProject,
     CandidateSkill,
     JobApplicationQuestion,
+    Location,
     Profile,
     SkillTaxonomy,
 )
@@ -77,7 +78,9 @@ class Twin:
 
 #: `email` is deliberately absent from the scalar row: only `auth.users` has a confirmed one. So
 #: are the settings on `candidates` — freezing a setting would leave someone asking why changing
-#: it changed nothing.
+#: it changed nothing. `location` is the one column that is not copied across: the Snapshot
+#: freezes what the Location was *called* when the Application was sent, so renaming a
+#: Location — or the Candidate moving — never rewrites an Application already judged.
 SCALARS: Final = ("full_name", "phone", "headline", "summary", "location", "unmapped_skills")
 
 SECTIONS: Final = (
@@ -150,10 +153,11 @@ def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
             Profile.phone,
             Candidate.headline,
             Candidate.summary,
-            Candidate.location,
+            Location.name,
             Candidate.unmapped_skills,
         )
         .join_from(Candidate, Profile, Profile.id == Candidate.id)
+        .outerjoin(Location, Location.key == Candidate.location_key)
         .where(Candidate.id == candidate_id),
     )
     return [

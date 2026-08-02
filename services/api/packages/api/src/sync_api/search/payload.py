@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from sync_api.text import LocationName
 from sync_rag import ChunkType
 
 
@@ -15,7 +16,8 @@ class MatchedCandidate(BaseModel):
     avatar_url: str | None = None
     headline: str | None = None
     summary: str | None = None
-    location: str | None = None
+    location_key: str | None = None
+    location_name: LocationName = None
     preferred_language_code: str | None = None
     matched_section: ChunkType | None = Field(
         default=None, description="Which part of the profile the fragment came from."

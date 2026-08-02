@@ -521,6 +521,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every Location the platform has
+         * @description The whole taxonomy — a place named any other way cannot be stored, so this is the only
+         *     list worth offering anyone.
+         *
+         *     Syria's governorates first and then the countries, each group in one contiguous run so a
+         *     picker can group it without sorting. Small enough to fetch whole and filter in the browser;
+         *     there is no search here.
+         */
+        get: operations["listLocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/skills": {
         parameters: {
             query?: never;
@@ -1572,8 +1597,14 @@ export interface components {
             /** Title */
             title: string;
             tenant: components["schemas"]["PublicTenant"];
-            /** Location */
-            location?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /** Employment Type */
             employment_type?: string | null;
         };
@@ -1613,10 +1644,11 @@ export interface components {
             /** Summary */
             summary?: string | null;
             /**
-             * Location
-             * @example Damascus, Syria
+             * Location Key
+             * @description A key from the platform's `locations` table, which `/v1/locations` lists. Null says nothing about where this is.
+             * @example sy-aleppo
              */
-            location?: string | null;
+            location_key?: string | null;
             /**
              * Preferred Language Code
              * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
@@ -1923,8 +1955,12 @@ export interface components {
             title?: string | null;
             /** Description */
             description?: string | null;
-            /** Location */
-            location?: string | null;
+            /**
+             * Location Key
+             * @description A key from the platform's `locations` table, which `/v1/locations` lists. Null says nothing about where this is.
+             * @example sy-aleppo
+             */
+            location_key?: string | null;
             /** Employment Type */
             employment_type?: string | null;
             /**
@@ -2086,8 +2122,14 @@ export interface components {
             /** Title */
             title: string;
             status: components["schemas"]["JobStatus"];
-            /** Location */
-            location?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /** Employment Type */
             employment_type?: string | null;
             /** Expires At */
@@ -2116,8 +2158,14 @@ export interface components {
             /** Title */
             title: string;
             status: components["schemas"]["JobStatus"];
-            /** Location */
-            location?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /** Employment Type */
             employment_type?: string | null;
             /** Expires At */
@@ -2164,6 +2212,30 @@ export interface components {
          * @enum {string}
          */
         LanguageProficiency: "beginner" | "intermediate" | "advanced" | "fluent" | "native";
+        /**
+         * Location
+         * @description One place a Job or a Candidate can be, and the heading it belongs under.
+         */
+        Location: {
+            /**
+             * Key
+             * @description What a Job and a profile store, and what a filter matches exactly.
+             * @example sy-aleppo
+             */
+            key: string;
+            /**
+             * Name
+             * @description What to call it on screen.
+             * @example Aleppo
+             */
+            name: string;
+            /**
+             * Group
+             * @description “Syria” for a governorate, “Outside Syria” for a country.
+             * @example Syria
+             */
+            group: string;
+        };
         /** LogInRequest */
         LogInRequest: {
             /**
@@ -2258,8 +2330,14 @@ export interface components {
             headline?: string | null;
             /** Summary */
             summary?: string | null;
-            /** Location */
-            location?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /** Preferred Language Code */
             preferred_language_code?: string | null;
             /** @description Which part of the profile the fragment came from. */
@@ -2399,10 +2477,11 @@ export interface components {
             /** Description */
             description: string;
             /**
-             * Location
-             * @example Damascus, Syria
+             * Location Key
+             * @description A key from the platform's `locations` table, which `/v1/locations` lists. Null says nothing about where this is.
+             * @example sy-aleppo
              */
-            location?: string | null;
+            location_key?: string | null;
             /**
              * Employment Type
              * @example Full time
@@ -2626,8 +2705,12 @@ export interface components {
             full_name: string;
             /** Headline */
             headline?: string | null;
-            /** Location */
-            location?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /**
              * Added At
              * Format: date-time
@@ -2698,10 +2781,11 @@ export interface components {
             /** Summary */
             summary?: string | null;
             /**
-             * Location
-             * @example Damascus, Syria
+             * Location Key
+             * @description A key from the platform's `locations` table, which `/v1/locations` lists. Null says nothing about where this is.
+             * @example sy-aleppo
              */
-            location?: string | null;
+            location_key?: string | null;
             /**
              * Preferred Language Code
              * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
@@ -2871,8 +2955,14 @@ export interface components {
             /** Title */
             title: string;
             tenant: components["schemas"]["PublicTenant"];
-            /** Location */
-            location?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /** Employment Type */
             employment_type?: string | null;
             /** Expires At */
@@ -2935,8 +3025,14 @@ export interface components {
             /** Title */
             title: string;
             tenant: components["schemas"]["PublicTenant"];
-            /** Location */
-            location?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
             /** Employment Type */
             employment_type?: string | null;
             /** Expires At */
@@ -5125,6 +5221,53 @@ export interface operations {
             };
         };
     };
+    listLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"][];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listCanonicalSkills: {
         parameters: {
             query?: never;
@@ -5224,8 +5367,8 @@ export interface operations {
             query: {
                 /** @description What you are looking for, in your own words. */
                 q: string;
-                /** @description Matched inside the candidate's location. */
-                location?: string | null;
+                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
+                location_key?: string | null;
                 /** @description A candidate's preferred language code. */
                 language?: string | null;
                 /** @description Words that must appear in the profile. Supports `"quoted phrases"`, `or` and `-excluded`. */
@@ -8132,8 +8275,8 @@ export interface operations {
             query?: {
                 /** @description Words that must appear in the Job. Supports `"quoted phrases"`, `or` and `-excluded`. */
                 q?: string | null;
-                /** @description Matched inside the location. */
-                location?: string | null;
+                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
+                location_key?: string | null;
                 /** @description Matched exactly, any case. */
                 employment_type?: string | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */

@@ -13,6 +13,7 @@ from sync_core.models import (
     CandidateProject,
     CandidateSkill,
     Language,
+    Location,
     Profile,
     SkillTaxonomy,
 )
@@ -58,20 +59,21 @@ async def current_profile(session: AsyncSession, candidate_id: UUID) -> CurrentP
     write in it fires `reembed_on_change` — rebuilds nothing instead of re-indexing the remains."""
     identity = (
         await session.execute(
-            select(Candidate, Profile.full_name)
+            select(Candidate, Profile.full_name, Location.name)
             .join(Profile, Profile.id == Candidate.id)
+            .outerjoin(Location, Location.key == Candidate.location_key)
             .where(Candidate.id == candidate_id, Candidate.deleted_at.is_(None))
         )
     ).first()
     if identity is None:
         return None
 
-    candidate, full_name = identity
+    candidate, full_name, location_name = identity
     return CurrentProfile(
         full_name=full_name,
         headline=candidate.headline,
         summary=candidate.summary,
-        location=candidate.location,
+        location=location_name,
         unmapped_skills=list(candidate.unmapped_skills),
         experiences=list(
             await session.scalars(

@@ -60,12 +60,13 @@ rather than a footnote to it.
 _Avoid_: Unmapped skills (the wire's word, not the reader's), custom skills, free-text skills.
 
 **Reference data**:
-The platform's fixed lists — Canonical skills with their categories, and languages with their
-names and codes — read from endpoints of their own and held for the session. Every field the API
-constrains is a picker over one of these rather than a text box, so a profile the API would
-refuse cannot be typed. Each list is small enough to fetch whole and filter in the browser;
-nothing is searched server-side, and a picker shows the language's name while the profile stores
-its code.
+The platform's fixed lists — Canonical skills with their categories, languages with their names
+and codes, and Locations under their heading — read from endpoints of their own and held for the
+session. Every field the API constrains is a picker over one of these rather than a text box, so
+a profile the API would refuse cannot be typed. Each list is small enough to fetch whole and
+filter in the browser; nothing is searched server-side, and a picker shows the language's name
+while the profile stores its code — the same for a Location, which reads as its name and is
+stored as its key.
 _Avoid_: Lookups, master data, enums (an enum reaches the portals through the generated client;
 these are rows).
 

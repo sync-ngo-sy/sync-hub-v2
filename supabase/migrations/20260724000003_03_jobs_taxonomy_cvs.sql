@@ -3,6 +3,15 @@ create table languages (
   name text not null unique
 );
 
+-- Every place a Job or a Candidate can be, as a closed list: filtering by place is an equality
+-- on `key`, never a substring, so Damascus and Rif Dimashq can no longer match each other.
+-- Syria is resolved to the governorate and no finer; everywhere else is its country.
+create table locations (
+  key  text primary key,       -- 'sy-aleppo', 'lb'
+  name text not null unique,   -- what a picker shows, so no two rows may share one
+  kind location_kind not null
+);
+
 create table skill_categories (
   id         uuid primary key default gen_random_uuid(),
   name       text not null unique,
@@ -25,7 +34,7 @@ create table jobs (
   title       text not null,
   description text not null,
 
-  location        text,
+  location_key    text references locations (key),
   employment_type text,
   minimum_total_experience_years numeric(4,1)
     constraint jobs_min_experience_nonneg
@@ -40,6 +49,7 @@ create table jobs (
   foreign key (tenant_id, created_by_recruiter_id) references recruiters (tenant_id, id),
   unique (tenant_id, id)
 );
+create index jobs_location_key_idx     on jobs (location_key);
 create index jobs_tenant_status_idx    on jobs (tenant_id, status);
 create index jobs_created_by_idx        on jobs (created_by_recruiter_id);
 create index jobs_status_expires_at_idx on jobs (status, expires_at);
@@ -137,6 +147,11 @@ alter table candidates
   add constraint candidates_preferred_language_fk
   foreign key (preferred_language_code) references languages (code);
 create index candidates_preferred_language_idx on candidates (preferred_language_code);
+
+alter table candidates
+  add constraint candidates_location_fk
+  foreign key (location_key) references locations (key);
+create index candidates_location_key_idx on candidates (location_key);
 
 alter table candidates
   add constraint candidates_current_cv_fk

@@ -61,7 +61,7 @@ describe('the profile editor', () => {
 
     expect(screen.getByLabelText('Full name')).toHaveValue(CANDIDATE_PROFILE.full_name);
     expect(screen.getByLabelText('Headline')).toHaveValue('Field coordinator, 6 years');
-    expect(screen.getByLabelText('Location')).toHaveValue('Aleppo, Syria');
+    expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
     expect(screen.getByLabelText('Preferred language')).toHaveValue('Arabic');
     expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).not.toBeChecked();
 
@@ -243,6 +243,22 @@ describe('the profile editor', () => {
       { code: 'ar', proficiency: 'native' },
       { code: 'en', proficiency: 'intermediate' },
     ]);
+  });
+
+  it('saves a location chosen by its name as its key, grouped by heading', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByLabelText('Location'));
+
+    expect(screen.getByRole('group', { name: 'Syria' })).toBeVisible();
+    expect(screen.getByRole('group', { name: 'Outside Syria' })).toBeVisible();
+
+    await user.click(screen.getByRole('option', { name: 'Rif Dimashq' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    // Not 'sy-damascus': the two are separate places, and the one chosen is the one saved.
+    expect(sent.body?.location_key).toBe('sy-rif-dimashq');
   });
 
   it('saves the preferred language chosen by name as its code', async () => {

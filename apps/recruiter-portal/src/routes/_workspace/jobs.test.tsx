@@ -94,7 +94,9 @@ describe('Jobs', () => {
     await user.click(screen.getByRole('button', { name: 'Create job' }));
     await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
     await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
-    await user.type(screen.getByLabelText('Location'), 'Aleppo');
+    await user.click(screen.getByLabelText('Location'));
+    expect(await screen.findByText('Syria')).toBeVisible();
+    await user.click(screen.getByRole('option', { name: 'Aleppo' }));
     await user.type(screen.getByLabelText('Employment type'), 'Full time');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
@@ -102,7 +104,7 @@ describe('Jobs', () => {
       expect(onCreate).toHaveBeenCalledExactlyOnceWith({
         title: 'Field Coordinator',
         description: 'Coordinate field teams.',
-        location: 'Aleppo',
+        location_key: 'sy-aleppo',
         employment_type: 'Full time',
         expires_at: null,
       }),
@@ -160,7 +162,7 @@ describe('Jobs', () => {
       expect(onChange).toHaveBeenCalledExactlyOnceWith({
         title: 'Field Coordinator',
         description: 'Coordinate field teams and regional partners.',
-        location: 'Aleppo',
+        location_key: 'sy-aleppo',
         employment_type: 'Full time',
         expires_at: null,
       }),

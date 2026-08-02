@@ -9,6 +9,7 @@ from sync_api.applications.access import own_application
 from sync_api.applications.criteria import screening_criteria_of
 from sync_api.applications.payload import MatchAssessment, MatchAssessmentPage
 from sync_api.applications.snapshot import answers_of, snapshot_of
+from sync_api.jobs.access import location_name
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     ASSESSMENT_FAILED_PROBLEM_TYPE,
@@ -140,7 +141,7 @@ class MatchAssessmentService:
             job=AssessedJob(
                 title=job.title,
                 description=job.description,
-                location=job.location,
+                location=location_name(job),
                 employment_type=job.employment_type,
                 minimum_total_experience_years=criteria.minimum_total_experience_years,
                 skills=tuple(

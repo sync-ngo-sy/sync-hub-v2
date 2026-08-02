@@ -5,7 +5,8 @@ import { Textarea } from '@sync/ui/components/ui/textarea';
 import type { Control } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
-import { languageOptions } from '@/features/reference/options';
+import { useLocations } from '@/features/reference/hooks/use-locations';
+import { languageOptions, locationGroups } from '@/features/reference/options';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
 
@@ -14,6 +15,7 @@ const NO_PREFERENCE = { value: '', label: 'No preference' };
 
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {
   const known = useLanguages();
+  const places = useLocations();
 
   return (
     <ProfileSection title="About you" description="The first thing a recruiter reads.">
@@ -34,9 +36,25 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         {(field) => <Input {...field} placeholder="Field coordinator, 6 years" />}
       </FormField>
 
-      <FormField control={control} name="location" label="Location">
-        {(field) => (
-          <Input {...field} autoComplete="address-level2" placeholder="Damascus, Syria" />
+      <FormField
+        control={control}
+        name="location_key"
+        label="Location"
+        description="Where you are. Recruiters filter on it."
+      >
+        {({ value, onChange, onBlur, id, ...aria }) => (
+          <ReferencePicker
+            id={id}
+            className="sm:max-w-60"
+            noun="location"
+            list={places}
+            options={locationGroups(places.data)}
+            value={value || null}
+            onChange={onChange}
+            onBlur={onBlur}
+            aria-describedby={aria['aria-describedby']}
+            aria-invalid={aria['aria-invalid']}
+          />
         )}
       </FormField>
 

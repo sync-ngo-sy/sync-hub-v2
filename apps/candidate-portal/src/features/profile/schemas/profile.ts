@@ -194,7 +194,7 @@ export const profileSchema = z
     phone: optionalLine,
     headline: optionalLine,
     summary: optionalParagraph,
-    location: optionalLine,
+    location_key: optionalLine,
     preferred_language_code: optionalLanguageCode,
     is_searchable: z.boolean(),
     experiences: section(experience, 'jobs'),
@@ -292,7 +292,7 @@ export function toFormValues(profile: CandidateProfile): ProfileFormValues {
     phone: orEmpty(profile.phone),
     headline: orEmpty(profile.headline),
     summary: orEmpty(profile.summary),
-    location: orEmpty(profile.location),
+    location_key: orEmpty(profile.location_key),
     preferred_language_code: orEmpty(profile.preferred_language_code),
     is_searchable: profile.is_searchable,
     experiences: (profile.experiences ?? []).map((entry) => ({

@@ -89,6 +89,13 @@ export const CANONICAL_SKILLS: components['schemas']['CanonicalSkill'][] = [
   { name: 'Python', category: 'Programming Languages' },
 ];
 
+export const LOCATIONS: components['schemas']['Location'][] = [
+  { key: 'sy-aleppo', name: 'Aleppo', group: 'Syria' },
+  { key: 'sy-damascus', name: 'Damascus', group: 'Syria' },
+  { key: 'sy-rif-dimashq', name: 'Rif Dimashq', group: 'Syria' },
+  { key: 'lb', name: 'Lebanon', group: 'Outside Syria' },
+];
+
 export const LANGUAGES: components['schemas']['Language'][] = [
   { code: 'ar', name: 'Arabic' },
   { code: 'en', name: 'English' },

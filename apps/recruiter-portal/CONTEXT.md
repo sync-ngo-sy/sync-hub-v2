@@ -30,13 +30,15 @@ reviewing it. Distinct from Screening, which is the automated verdict.
 _Avoid_: Funnel, workflow, stages.
 
 **Reference data**:
-The platform's fixed lists — Canonical skills with their categories, and languages with
-their names and codes — read from endpoints of their own and held for the session. A
-Job's screening criteria pick skills and languages from these rather than taking typed
-answers, so a Recruiter states a requirement in the same words a Candidate states a
-skill, which is what makes the two comparable. Each list is small enough to fetch whole
-and filter in the browser; nothing is searched server-side, and a picker shows a
-language's name while the criteria store its code.
+The platform's fixed lists — Canonical skills with their categories, languages with their
+names and codes, and Locations under their heading — read from endpoints of their own and
+held for the session. A Job's screening criteria pick skills and languages from these
+rather than taking typed answers, so a Recruiter states a requirement in the same words a
+Candidate states a skill, which is what makes the two comparable; a Job's Location is
+picked the same way, from the list a Candidate picks theirs from. Each list is small
+enough to fetch whole and filter in the browser; nothing is searched server-side, and a
+picker shows a language's name while the criteria store its code — the same for a
+Location, which reads as its name and is stored as its key.
 _Avoid_: Lookups, master data, enums (an enum reaches the portals through the generated
 client; these are rows).
 

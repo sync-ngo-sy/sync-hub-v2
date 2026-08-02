@@ -29,7 +29,7 @@ A_FULL_PROFILE: dict[str, Any] = {
     "phone": "+963 11 555 0100",
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
-    "location": "Damascus, Syria",
+    "location_key": "sy-damascus",
     "preferred_language_code": "ar",
     "is_searchable": False,
     "experiences": [
@@ -466,7 +466,9 @@ async def test_a_shape_the_schema_would_refuse_is_refused_here(
 async def test_an_empty_form_field_reads_as_unset(browser: AsyncClient, mailbox: Mailbox) -> None:
     await a_signed_in_candidate(browser, mailbox)
 
-    saved = await browser.put(PROFILE, json=a_profile(headline="   ", summary="", location=None))
+    saved = await browser.put(
+        PROFILE, json=a_profile(headline="   ", summary="", location_key=None)
+    )
 
     assert saved.status_code == 200, saved.text
     assert saved.json() == EMPTY_PROFILE

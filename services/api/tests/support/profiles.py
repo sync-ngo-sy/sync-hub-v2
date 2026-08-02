@@ -129,7 +129,7 @@ EMPTY_PROFILE: dict[str, Any] = {
     "phone": None,
     "headline": None,
     "summary": None,
-    "location": None,
+    "location_key": None,
     "preferred_language_code": None,
     "is_searchable": False,
     "experiences": [],
@@ -175,7 +175,7 @@ FILLED_PROFILE: dict[str, Any] = {
     **EMPTY_PROFILE,
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
-    "location": "Damascus, Syria",
+    "location_key": "sy-damascus",
     "experiences": [AN_EXPERIENCE],
     "educations": [AN_EDUCATION],
     "skills": [
