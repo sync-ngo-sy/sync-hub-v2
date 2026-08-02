@@ -29,6 +29,17 @@ The ordered application statuses a Recruiter moves an Application through while
 reviewing it. Distinct from Screening, which is the automated verdict.
 _Avoid_: Funnel, workflow, stages.
 
+**Reference data**:
+The platform's fixed lists — Canonical skills with their categories, and languages with
+their names and codes — read from endpoints of their own and held for the session. A
+Job's screening criteria pick skills and languages from these rather than taking typed
+answers, so a Recruiter states a requirement in the same words a Candidate states a
+skill, which is what makes the two comparable. Each list is small enough to fetch whole
+and filter in the browser; nothing is searched server-side, and a picker shows a
+language's name while the criteria store its code.
+_Avoid_: Lookups, master data, enums (an enum reaches the portals through the generated
+client; these are rows).
+
 **Wrong-portal screen**:
 The full-page notice shown when a signed-in Profile of the other account type opens this
 portal, naming the portal they should be in.

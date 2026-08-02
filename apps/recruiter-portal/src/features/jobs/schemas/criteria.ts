@@ -55,13 +55,13 @@ const optionalInteger = z
   .refine((value) => value === '' || Number(value) <= 99, 'Enter 99 or less.');
 
 const skill = z.object({
-  name: requiredShortText('Enter the skill.'),
+  name: requiredShortText('Choose a skill.'),
   importance: z.enum(importance),
   minimumYears: optionalInteger,
 });
 
 const language = z.object({
-  code: z.string().trim().min(2, 'Enter a language code.').max(8, 'Use 8 characters or fewer.'),
+  code: z.string().trim().min(1, 'Choose a language.'),
   minimumProficiency: z.enum(proficiency),
 });
 
