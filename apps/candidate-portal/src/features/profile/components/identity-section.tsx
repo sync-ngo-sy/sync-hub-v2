@@ -3,10 +3,18 @@ import { Input } from '@sync/ui/components/ui/input';
 import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import type { Control } from 'react-hook-form';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
+import { useLanguages } from '@/features/reference/hooks/use-languages';
+import { languageOptions } from '@/features/reference/options';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
 
+/** Having no preference is a choice, so it is on the list rather than left to a blank field. */
+const NO_PREFERENCE = { value: '', label: 'No preference' };
+
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {
+  const known = useLanguages();
+
   return (
     <ProfileSection title="About you" description="The first thing a recruiter reads.">
       <FormField control={control} name="full_name" label="Full name">
@@ -40,9 +48,22 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="preferred_language_code"
         label="Preferred language"
-        description="A language code, like en or ar. Recruiters filter on it."
+        description="The one you would rather be contacted in. Recruiters filter on it."
       >
-        {(field) => <Input {...field} className="sm:max-w-40" placeholder="ar" />}
+        {({ value, onChange, onBlur, id, ...aria }) => (
+          <ReferencePicker
+            id={id}
+            className="sm:max-w-60"
+            noun="language"
+            list={known}
+            options={[NO_PREFERENCE, ...languageOptions(known.data)]}
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            aria-describedby={aria['aria-describedby']}
+            aria-invalid={aria['aria-invalid']}
+          />
+        )}
       </FormField>
 
       <FormField
