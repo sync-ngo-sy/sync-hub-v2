@@ -43,6 +43,8 @@ _Avoid_: Lookups, master data, enums (an enum reaches the portals through the ge
 client; these are rows).
 
 **Wrong-portal screen**:
-The full-page notice shown when a signed-in Profile of the other account type opens this
-portal, naming the portal they should be in.
+The full-page notice shown when a signed-in Profile this portal does not serve opens it. It
+names the account type they are signed in with, and the portal they should be in where there
+is one — a Candidate is pointed at the Candidate Portal; a Platform admin, whom no portal
+serves yet, is only offered the way out.
 _Avoid_: 403 page, forbidden page.

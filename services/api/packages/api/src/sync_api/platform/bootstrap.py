@@ -21,7 +21,6 @@ logger = get_logger(__name__)
 class NewPlatformAdmin:
     id: UUID
     email: str
-    full_name: str
 
 
 async def create_platform_admin(
@@ -45,4 +44,4 @@ async def create_platform_admin(
         session.add(PlatformAdmin(id=user.id))
 
     logger.info("platform.admin_created", profile_id=str(user.id))
-    return NewPlatformAdmin(id=user.id, email=user.email, full_name=full_name)
+    return NewPlatformAdmin(id=user.id, email=user.email)

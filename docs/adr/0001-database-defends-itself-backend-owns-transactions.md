@@ -11,7 +11,7 @@ transaction. The database does **not** implement these as large PL/pgSQL
 
 Instead the database is designed to defend its own invariants regardless of caller:
 composite foreign keys for tenant isolation, `CHECK` constraints, and a small set of
-invariant-critical triggers/functions (candidate XOR recruiter, embed-enqueue on profile
+invariant-critical triggers/functions (a Profile is exactly one kind, embed-enqueue on profile
 change, `updated_at`, screening-criteria lock). RLS governs direct client access.
 
 ## Rationale

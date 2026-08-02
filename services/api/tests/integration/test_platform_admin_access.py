@@ -16,6 +16,7 @@ from tests.support.platform_admins import (
     a_signed_in_platform_admin,
     mount_the_probe,
 )
+from tests.support.profiles import my_id
 from tests.support.tenants import an_admin
 
 if TYPE_CHECKING:
@@ -43,7 +44,11 @@ PLATFORM_ADMIN_ONLY: Final = "urn:sync:problem:platform-admin-only"
 
 @pytest.fixture(scope="module")
 async def app(settings: Settings, _migrated_database: None) -> AsyncIterator[FastAPI]:
-    """Every client in this module rides on an app carrying one extra route: the guard, alone."""
+    """Every client in this module rides on an app carrying one extra route: the guard, alone.
+
+    Not the shared app: the probe is not a product operation, and mounting it there would put a
+    route in the OpenAPI document that no client should ever be generated against.
+    """
     application = create_app(settings)
     mount_the_probe(application)
     async with LifespanManager(application):
@@ -76,13 +81,34 @@ async def test_a_platform_admin_belongs_to_no_tenant(
     assert candidates == 0
 
 
-async def test_a_profile_is_still_exactly_one_of_the_three(
+async def test_a_platform_admin_cannot_also_be_a_candidate(
     app: FastAPI, browser: AsyncClient, db_session: AsyncSession
 ) -> None:
     await a_signed_in_platform_admin(app, browser, db_session)
     admin = (await db_session.scalars(select(PlatformAdmin))).one()
 
     db_session.add(Candidate(id=admin.id))
+    with pytest.raises(IntegrityError):
+        await db_session.flush()
+    await db_session.rollback()
+
+
+async def test_a_candidate_cannot_also_be_a_platform_admin(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The direction the new table introduces, refused by the composite FK rather than a rule."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    db_session.add(PlatformAdmin(id=await my_id(browser)))
+    with pytest.raises(IntegrityError):
+        await db_session.flush()
+    await db_session.rollback()
+
+
+async def test_a_recruiter_cannot_also_be_a_platform_admin(
+    recruiter: AsyncClient, db_session: AsyncSession
+) -> None:
+    db_session.add(PlatformAdmin(id=await my_id(recruiter)))
     with pytest.raises(IntegrityError):
         await db_session.flush()
     await db_session.rollback()

@@ -158,6 +158,10 @@ class AuthService:
             .join(User, User.id == Profile.id)
             .where(func.lower(User.email) == email.lower())
         )
+        # A Platform admin takes the default alongside a Candidate, deliberately: no portal
+        # serves them yet, and the candidate portal's reset page redeems the token whoever it
+        # belongs to, then shows them the wrong-portal notice. Give them their own the day
+        # they have a portal.
         redirect_to = self._recruiter_portal_url if account_type == AccountType.RECRUITER else None
         await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 

@@ -59,13 +59,13 @@ def read_password() -> str:
     return password
 
 
-def confirmed(target: str) -> bool:
+def target_agreed(target: str) -> bool:
     return input(f"Create a Platform admin on {target}? [y/N] ").strip().lower() == "y"
 
 
 async def run(*, email: str, full_name: str, password: str, skip_confirmation: bool) -> int:
     settings = get_settings()
-    if not skip_confirmation and not confirmed(str(settings.supabase_url)):
+    if not skip_confirmation and not target_agreed(str(settings.supabase_url)):
         print("Nothing was created.")
         return 1
 
