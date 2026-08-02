@@ -27,7 +27,6 @@ export function applicationState(status: ApplicationStatus): ApplicationState {
   return APPLICATION_STATE[status];
 }
 
-/** The Job an Application went to, read the same way the Job itself reads on the board. */
 export function applicationMeta(application: Application): string {
   return [
     application.job.tenant.name,

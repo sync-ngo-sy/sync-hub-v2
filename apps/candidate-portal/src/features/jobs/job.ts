@@ -17,9 +17,9 @@ type WorkMode = components['schemas']['WorkMode'];
 export const NOTHING_PUBLISHED =
   'No roles are open right now. New ones appear here the moment an employer publishes them.';
 
-/** Both fixed sets are the API's, so only the English is written here — a value the platform
- * adds fails to compile until it has a word, rather than reaching a reader as `full_time`. */
-const EMPLOYMENT_TYPE: Record<EmploymentType, string> = {
+/** Keyed by the generated union, so a value the platform adds fails to compile until it has a
+ * word here rather than reaching a reader as `full_time`. */
+const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   full_time: 'Full time',
   part_time: 'Part time',
   contract: 'Contract',
@@ -28,18 +28,18 @@ const EMPLOYMENT_TYPE: Record<EmploymentType, string> = {
   volunteer: 'Volunteer',
 };
 
-const WORK_MODE: Record<WorkMode, string> = {
+const WORK_MODE_LABELS: Record<WorkMode, string> = {
   onsite: 'On-site',
   hybrid: 'Hybrid',
   remote: 'Remote',
 };
 
 export function employmentTypeLabel(type: EmploymentType | null | undefined): string | null {
-  return type ? EMPLOYMENT_TYPE[type] : null;
+  return type ? EMPLOYMENT_TYPE_LABELS[type] : null;
 }
 
 export function workModeLabel(mode: WorkMode | null | undefined): string | null {
-  return mode ? WORK_MODE[mode] : null;
+  return mode ? WORK_MODE_LABELS[mode] : null;
 }
 
 /** The employer, then where the team is, then how much of the work happens there, then what

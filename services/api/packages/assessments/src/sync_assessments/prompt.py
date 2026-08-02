@@ -45,7 +45,8 @@ or what language they speak counts except where the job asks for it.
 
 _NOTHING: Final = "not stated"
 
-#: The model reads prose, and `full_time` is not prose. Same words the portals show.
+#: The model reads prose, and `full_time` is not prose. A member with no word here would raise
+#: mid-assessment, so a test walks the enum rather than trusting the dict to keep up with it.
 _EMPLOYMENT_TYPES: Final[dict[EmploymentType, str]] = {
     EmploymentType.FULL_TIME: "Full time",
     EmploymentType.PART_TIME: "Part time",

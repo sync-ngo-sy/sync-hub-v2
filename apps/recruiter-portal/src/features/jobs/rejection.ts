@@ -7,6 +7,7 @@ const JOB_FIELD: Record<string, FieldPath<JobFormValues>> = {
   'body.description': 'description',
   'body.location_key': 'locationKey',
   'body.employment_type': 'employmentType',
+  'body.work_mode': 'workMode',
   'body.expires_at': 'expiresAt',
 };
 

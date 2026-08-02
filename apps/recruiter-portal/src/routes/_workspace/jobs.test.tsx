@@ -191,6 +191,34 @@ describe('Jobs', () => {
     expect(await screen.findByText('A Job with this title already exists.')).toBeVisible();
   });
 
+  it('puts a rejection of either fixed set beneath the field it names', async () => {
+    const rejected: components['schemas']['ValidationProblemDetail'] = {
+      type: 'urn:sync:problem:validation',
+      title: 'Invalid request',
+      status: 422,
+      detail: 'Two fields need attention.',
+      errors: [
+        {
+          location: 'body.employment_type',
+          message: 'That is not an employment type.',
+          type: 'enum',
+        },
+        { location: 'body.work_mode', message: 'That is not a work mode.', type: 'enum' },
+      ],
+    };
+    server.use(...signedInAs(RECRUITER), ...listsJobs([]), ...refusesJobCreation(rejected));
+
+    const { user } = await renderApp('/jobs');
+    await user.click(screen.getByRole('button', { name: 'Create job' }));
+    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
+    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    expect(await screen.findByText('That is not an employment type.')).toBeVisible();
+    expect(screen.getByText('That is not a work mode.')).toBeVisible();
+    expect(screen.queryByText("This Job couldn't be saved.")).not.toBeInTheDocument();
+  });
+
   it('loads a Job and saves its edits through the API', async () => {
     const onChange = vi.fn();
     const changed = {

@@ -22,8 +22,8 @@ import { jobFormRejection } from '../rejection';
 import { type JobFormValues, jobFormSchema } from '../schemas/job';
 import { ChoiceSelect } from './choice-select';
 
-/** The blank leads, so a Job nobody has decided about yet reads as undecided rather than as
- * whichever value happened to be first. */
+/** The blank leads, and is what a Job nobody has decided about yet shows — a select has no
+ * empty state of its own, and the first value would otherwise read as a choice. */
 const EMPLOYMENT_TYPES = { '': 'Not set', ...EMPLOYMENT_TYPE_LABELS };
 const WORK_MODES = { '': 'Not set', ...WORK_MODE_LABELS };
 
@@ -40,18 +40,13 @@ function optional(value: string): string | null {
   return value.trim() || null;
 }
 
-/** The blank a select shows before a choice is made is "not stated", not a value to send. */
-function chosen<Value extends string>(value: Value | ''): Value | null {
-  return value || null;
-}
-
 function newJob(values: JobFormValues): NewJob {
   return {
     title: values.title.trim(),
     description: values.description.trim(),
     location_key: optional(values.locationKey),
-    employment_type: chosen(values.employmentType),
-    work_mode: chosen(values.workMode),
+    employment_type: values.employmentType || null,
+    work_mode: values.workMode || null,
     expires_at: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
   };
 }
