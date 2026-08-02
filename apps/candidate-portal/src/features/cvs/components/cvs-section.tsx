@@ -14,19 +14,21 @@ interface CvsSectionProps {
 
 export function CvsSection({ onFill, filling }: CvsSectionProps) {
   const cvs = useMyCvs();
+  // The upload whose parse is being waited on — the newest, if another started meanwhile: the
+  // last file chosen is the one the candidate is watching, and an earlier one can still fill on
+  // demand once it is read.
   const [awaited, setAwaited] = useState<string | null>(null);
-  // A ref as well as the state, because StrictMode runs an effect twice against one commit: a
-  // second fill would snapshot the form the first had already filled, and take Undo's way back
-  // with it.
-  const filled = useRef<string | null>(null);
+  // A ref as well, because StrictMode runs an effect twice against one commit: a second fill
+  // would snapshot the form the first had already filled, taking Undo's way back with it.
+  const alreadyFilled = useRef<string | null>(null);
 
   // A CV uploaded here is read within seconds, and the fields below it are what the candidate
   // came to fill — so the parse landing is the fill, without asking for it a second time.
   useEffect(() => {
-    if (!awaited || filled.current === awaited) return;
+    if (!awaited || alreadyFilled.current === awaited) return;
     const cv = cvs.data?.find((entry) => entry.id === awaited);
     if (!cv || isParsing(cv)) return;
-    filled.current = awaited;
+    alreadyFilled.current = awaited;
     setAwaited(null);
     if (isReady(cv)) onFill(cv);
   }, [awaited, cvs.data, onFill]);

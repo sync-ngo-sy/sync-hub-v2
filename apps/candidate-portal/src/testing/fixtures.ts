@@ -351,9 +351,9 @@ export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
 };
 
 /**
- * What one CV says. `location_key`, `preferred_language_code` and `is_searchable` come from the
- * candidate rather than the CV, which is why the draft carries the empty ones — the API never
- * reads a place or a setting off a document.
+ * What one CV says. The API never reads a place or a setting off a document: it copies
+ * `location_key`, `preferred_language_code` and `is_searchable` from the candidate as *saved*,
+ * and this draft is one for a candidate who had none of the three saved yet.
  */
 export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   full_name: 'Lina Khoury',

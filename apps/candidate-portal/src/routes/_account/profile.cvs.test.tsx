@@ -615,6 +615,67 @@ describe('a CV filling the form', () => {
     expect(await screen.findByText('Something went wrong on our side.')).toBeVisible();
     expect(screen.queryByText('That CV did not fill the form')).toBeNull();
   });
+
+  // A refusal is about one attempt. Left up, it goes on accusing a CV of something that is no
+  // longer true of the profile in front of it.
+  it('drops a refusal once the profile has been saved', async () => {
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...refusesDraft(CV_NOT_READY_FOR_DRAFT),
+      ...echoesProfile(),
+    ]);
+    await user.click(
+      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+    );
+    await screen.findByText('That CV did not fill the form');
+
+    await user.clear(headline());
+    await user.type(headline(), 'Coordinator and trainer');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(screen.queryByText('That CV did not fill the form')).toBeNull();
+  });
+});
+
+// The one run the ticket asks for end to end, rather than a link of it at a time.
+describe('uploading a CV and saving what it filled', () => {
+  it('reads the file, fills the fields, saves nothing until asked, and keeps what it saved', async () => {
+    const sent: { body?: CandidateProfile } = {};
+    const { user } = await openProfile([
+      ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
+      ...acceptsUpload(PROCESSING_CV),
+      ...drafts(CV_DRAFT),
+      ...echoesProfile((body) => {
+        sent.body = body;
+      }),
+    ]);
+
+    await pick(user, aPdf());
+    expect(await screen.findByText('Reading')).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
+    expect(sent.body).toBeUndefined();
+
+    await user.type(entry('Skill 2').getByLabelText('Years'), '4');
+    await user.clear(headline());
+    await user.type(headline(), 'Backend engineer, Aleppo');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body).toMatchObject({
+      headline: 'Backend engineer, Aleppo',
+      skills: [
+        { name: 'Python', years_experience: 3.5 },
+        { name: 'Kubernetes', years_experience: 4 },
+      ],
+    });
+    expect(headline()).toHaveValue('Backend engineer, Aleppo');
+    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue('4');
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
 });
 
 describe('undoing a fill', () => {

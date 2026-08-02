@@ -8,11 +8,7 @@ interface FilledNoticeProps {
   onDismiss: () => void;
 }
 
-/**
- * What replaced the review dialog. The dialog summarised edits to a form the reader could not
- * see; this says which CV spoke, leaves the reading to the fields themselves, and keeps one way
- * back — which is the whole safety net for a profile that was written by hand.
- */
+/** Names the CV that spoke, leaves the reading to the fields themselves, and keeps one way back. */
 export function FilledNotice({ cvName, onUndo, onDismiss }: FilledNoticeProps) {
   return (
     <Alert>

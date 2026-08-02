@@ -14,24 +14,17 @@ interface Form {
 }
 
 export interface Fill {
-  /** Fills the form from a CV. Writes nothing — Save is still the only thing that does. */
   from: (cv: Cv) => Promise<void>;
-  /** The CV a fill is in flight for, so the card that asked says so. */
+  /** The CV a fill is in flight for, and the one the notice is about. */
   pending: string | null;
-  /** The CV that filled the form, while the notice about it is still up. */
   filledBy: string | null;
-  /** Puts back exactly what the form held before the fill. */
   undo: () => void;
+  /** Drops the notice and any refusal, keeping whatever the fields now hold. */
   dismiss: () => void;
-  /** Why a fill did not happen, said where the CV that refused it is. */
   refusal: string | null;
 }
 
-/**
- * A fill, and the way back from it. The snapshot is what replaces the dialog this used to open:
- * instead of summarising the edits to a form nobody could see, the values land in the fields and
- * the candidate reads them in context — with one action that restores what was there before.
- */
+/** A fill, and the way back from it: the snapshot is what replaces the review dialog. */
 export function useCvFill({ getValues, reset }: Form): Fill {
   const draft = useProfileDraft();
   const [filled, setFilled] = useState<{ cvName: string; before: ProfileFormValues } | null>(null);
@@ -48,12 +41,16 @@ export function useCvFill({ getValues, reset }: Form): Fill {
         reset(values, { keepDefaultValues: true });
         setFilled({ cvName: cv.display_name, before });
       } catch (error) {
-        reportError(error, { boundary: 'widget', source: 'Profile draft' });
         const message = problemMessage(error, "This CV couldn't fill the form. Try again.");
-        // A CV the API turns down is about that CV, so it is said beside it. A fault on our side
-        // is nobody's CV, and goes to Sonner instead (§7.2, §7.3).
-        if (isClientError(error)) setRefusal(message);
-        else toast.error(message);
+        // A CV the API turns down is an answer about that CV, so it is said beside it and not
+        // reported. A fault on our side is nobody's CV: it goes to Sonner, and to the seam every
+        // other tier reports through (§7.2, §7.3).
+        if (isClientError(error)) {
+          setRefusal(message);
+          return;
+        }
+        reportError(error, { boundary: 'widget', source: 'Profile draft' });
+        toast.error(message);
       }
     },
     [draft, getValues, reset],
@@ -65,12 +62,17 @@ export function useCvFill({ getValues, reset }: Form): Fill {
     setFilled(null);
   }, [filled, reset]);
 
+  const dismiss = useCallback(() => {
+    setFilled(null);
+    setRefusal(null);
+  }, []);
+
   return {
     from,
     pending: draft.isPending ? (draft.variables ?? null) : null,
     filledBy: filled?.cvName ?? null,
     undo,
-    dismiss: () => setFilled(null),
+    dismiss,
     refusal,
   };
 }
