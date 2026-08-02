@@ -71,11 +71,13 @@ class AuthService:
         verifier: JwtVerifier,
         *,
         recruiter_portal_url: str | None = None,
+        admin_portal_url: str | None = None,
     ) -> None:
         self._db = session
         self._gotrue = gotrue
         self._verifier = verifier
         self._recruiter_portal_url = recruiter_portal_url
+        self._admin_portal_url = admin_portal_url
 
     async def register_candidate(
         self, *, email: str, password: str, full_name: str
@@ -158,12 +160,12 @@ class AuthService:
             .join(User, User.id == Profile.id)
             .where(func.lower(User.email) == email.lower())
         )
-        # A Platform admin takes the default alongside a Candidate, deliberately: no portal
-        # serves them yet, and the candidate portal's reset page redeems the token whoever it
-        # belongs to, then shows them the wrong-portal notice. #148 builds them one and adds
-        # the third branch — and has to put its address in `additional_redirect_urls` too, or
-        # GoTrue quietly falls back to `site_url` and the link still arrives here.
-        redirect_to = self._recruiter_portal_url if account_type == AccountType.RECRUITER else None
+        if account_type == AccountType.RECRUITER:
+            redirect_to = self._recruiter_portal_url
+        elif account_type == AccountType.PLATFORM_ADMIN:
+            redirect_to = self._admin_portal_url
+        else:
+            redirect_to = None
         await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 
     async def reset_password(self, *, token_hash: str, password: str) -> None:

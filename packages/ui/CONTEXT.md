@@ -1,6 +1,6 @@
 # Design System
 
-The shared visual language of both portals: the design tokens and every component that
+The shared visual language of all three portals: the design tokens and every component that
 renders purely from props. Nothing in this context fetches data or knows the API exists.
 
 ## Language

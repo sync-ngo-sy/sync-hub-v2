@@ -44,8 +44,8 @@ the first one has nobody to authorise them.
   Tenant-scoped route by the same account-type check that already refused the other two,
   and Platform-admin-only surfaces refuse a Candidate and a Recruiter through
   `acting_platform_admin`.
-- Neither portal serves the account type, so a Platform admin signing in to either lands on
-  the existing wrong-portal notice, which now names their account type rather than
-  guessing.
+- The Platform Portal serves the account type. A Platform admin signing in to the Candidate or
+  Recruiter Portal lands on that portal's wrong-portal notice and is directed to the Platform
+  Portal.
 - One human who both operates the platform and recruits still needs two accounts — the
   consequence ADR-0001 already accepted, now with one more kind to it.

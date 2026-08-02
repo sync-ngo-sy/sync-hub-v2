@@ -3,8 +3,9 @@
 How to get the backend running on a fresh machine, either straight from `uv` or as containers.
 
 Two things are always separate: the **Supabase CLI stack** (Postgres, GoTrue, Storage, Mailpit)
-and **our two processes** (the API and the worker). The stack is never containerized by us — the
-CLI owns it. Only the API and the worker are.
+and **our backend processes** (the API and the worker). The stack is never containerized by us —
+the CLI owns it. Only the API and the worker are containerized; the three portals run through
+their Vite development servers.
 
 ## Prerequisites
 
@@ -112,18 +113,22 @@ pnpm install
 pnpm dev
 ```
 
-Neither portal has a required variable. The recruiter landing offers the Sync team's WhatsApp
-number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to see those links, copy
-`apps/recruiter-portal/.env.example` to `.env.local`. Left unset, the landing just offers no
-contact — nothing else changes.
+None of the portals requires a variable for local development. The recruiter landing offers the
+Sync team's WhatsApp number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to
+see those links, copy `apps/recruiter-portal/.env.example` to `.env.local`. Left unset, the
+landing just offers no contact — nothing else changes.
 
 `turbo run dev` starts the `dev` script of every workspace that has one: the candidate portal on
-`127.0.0.1:5173`, the recruiter portal on `127.0.0.1:5174`, and — through the shim in
-`services/api/package.json` — `uvicorn` on `8000`. So this covers 2a as well; the worker is the one
-process it does not start.
+`127.0.0.1:5173`, the recruiter portal on `127.0.0.1:5174`, the Platform Portal on
+`127.0.0.1:5175`, and — through the shim in `services/api/package.json` — `uvicorn` on `8000`.
+So this covers 2a as well; the worker is the one process it does not start.
 
 `SYNC_RECRUITER_PORTAL_URL` has to match the recruiter portal's address, because GoTrue will only
 redirect an invite to a URL listed in `additional_redirect_urls` in `supabase/config.toml`.
+`SYNC_ADMIN_PORTAL_URL` has to match the Platform Portal's address for Platform-admin password
+reset links; both local portal URLs are listed in that allowlist. The Candidate and Recruiter
+Portals use `VITE_ADMIN_PORTAL_URL` when their wrong-portal screen directs a Platform admin to the
+Platform Portal.
 
 If the API is already running under compose, run only the portals so nothing fights over port 8000:
 
@@ -147,9 +152,9 @@ It prints the target and asks before writing anything; `--yes` skips that. The p
 at the prompt, or read from `SYNC_PLATFORM_ADMIN_PASSWORD` where there is no terminal (CI, a
 deploy shell). It is never an argument — those live on in shell history.
 
-The account comes out already confirmed, so it can sign in immediately. Neither portal serves the
-account type yet, so signing in to one lands on the wrong-portal notice; the admin screens arrive
-with #146.
+The account comes out already confirmed, so it can sign in immediately at the Platform Portal
+(`http://127.0.0.1:5175` under `pnpm dev`). The Candidate and Recruiter Portals direct that account
+to the Platform Portal from their wrong-portal screen.
 
 Against a deployed environment, export that environment's `SYNC_DATABASE_URL`,
 `SYNC_SUPABASE_URL` and `SYNC_SUPABASE_SERVICE_ROLE_KEY` first — the script reads exactly what the

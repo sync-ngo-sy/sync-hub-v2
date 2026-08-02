@@ -50,6 +50,10 @@ describe('the account guard', () => {
     ).toBeVisible();
     expect(screen.getByText(/platform admin account/)).toBeVisible();
     expect(screen.queryByText(/Sync\s+Recruiter Portal/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to Admin Portal' })).toHaveAttribute(
+      'href',
+      'http://localhost:5175',
+    );
   });
 
   it('redirects to sign in when the client reports the session is over', async () => {

@@ -84,6 +84,7 @@ def get_auth_service(
         authentication.gotrue,
         authentication.verifier,
         recruiter_portal_url=str(settings.recruiter_portal_url).rstrip("/"),
+        admin_portal_url=str(settings.admin_portal_url).rstrip("/"),
     )
 
 

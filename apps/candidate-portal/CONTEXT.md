@@ -148,7 +148,6 @@ _Avoid_: Invalid token error, 400 page.
 
 **Wrong-portal screen**:
 The full-page notice shown when a signed-in Profile this portal does not serve opens it. It
-names the account type they are signed in with, and the portal they should be in where there
-is one — a Recruiter is pointed at the Recruiter Portal; a Platform admin, whom no portal
-serves yet, is only offered the way out.
+names the account type they are signed in with, and the portal they should be in — a Recruiter
+is pointed at the Recruiter Portal and a Platform admin at the Platform Portal.
 _Avoid_: 403 page, forbidden page.
