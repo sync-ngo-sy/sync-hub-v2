@@ -81,3 +81,17 @@ export const SERVER_FAULT: components['schemas']['ProblemDetail'] = {
   status: 500,
   detail: 'Something went wrong on our side.',
 };
+
+export const CANONICAL_SKILLS: components['schemas']['CanonicalSkill'][] = [
+  { name: 'PostgreSQL', category: 'Databases' },
+  { name: 'Redis', category: 'Databases' },
+  { name: 'Go', category: 'Programming Languages' },
+  { name: 'Python', category: 'Programming Languages' },
+];
+
+export const LANGUAGES: components['schemas']['Language'][] = [
+  { code: 'ar', name: 'Arabic' },
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'French' },
+  { code: 'tr', name: 'Turkish' },
+];

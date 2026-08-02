@@ -16,6 +16,10 @@ import { CircleAlert, CircleHelp, Languages, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { ReferencePicker } from '@/features/reference/components/reference-picker';
+import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-skills';
+import { useLanguages } from '@/features/reference/hooks/use-languages';
+import { languageOptions, skillGroups } from '@/features/reference/options';
 import { problemMessage } from '@/lib/api-problem';
 import { useReplaceJobCriteria } from '../hooks/use-job-actions';
 import type { Job } from '../job';
@@ -31,6 +35,7 @@ import {
   toCriteria,
   toCriteriaFormValues,
 } from '../schemas/criteria';
+import { takenElsewhere } from '../taken-elsewhere';
 import { CriteriaEntryList } from './criteria-entry-list';
 
 export function CriteriaForm({ job }: { job: Job }) {
@@ -43,6 +48,10 @@ export function CriteriaForm({ job }: { job: Job }) {
   const languages = useFieldArray({ control: form.control, name: 'languages' });
   const questions = useFieldArray({ control: form.control, name: 'questions' });
   const questionValues = form.watch('questions');
+  const skillValues = form.watch('skills');
+  const languageValues = form.watch('languages');
+  const skillList = useCanonicalSkills();
+  const languageList = useLanguages();
 
   const save = form.handleSubmit(async (values) => {
     try {
@@ -119,7 +128,22 @@ export function CriteriaForm({ job }: { job: Job }) {
           {(index) => (
             <div className="grid gap-4 md:grid-cols-[1fr_11rem_9rem]">
               <FormField control={form.control} name={`skills.${index}.name`} label="Skill">
-                {(field) => <Input {...field} value={field.value} placeholder="Python" />}
+                {({ value, onChange, onBlur, id, ...aria }) => (
+                  <ReferencePicker
+                    id={id}
+                    noun="skill"
+                    list={skillList}
+                    options={skillGroups(
+                      skillList.data,
+                      takenElsewhere(skillValues, index, (entry) => entry.name),
+                    )}
+                    value={value || null}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    aria-describedby={aria['aria-describedby']}
+                    aria-invalid={aria['aria-invalid']}
+                  />
+                )}
               </FormField>
               <FormField
                 control={form.control}
@@ -159,13 +183,23 @@ export function CriteriaForm({ job }: { job: Job }) {
         >
           {(index) => (
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name={`languages.${index}.code`}
-                label="Language code"
-                description="For example: ar, en or fr."
-              >
-                {(field) => <Input {...field} value={field.value} placeholder="en" />}
+              <FormField control={form.control} name={`languages.${index}.code`} label="Language">
+                {({ value, onChange, onBlur, id, ...aria }) => (
+                  <ReferencePicker
+                    id={id}
+                    noun="language"
+                    list={languageList}
+                    options={languageOptions(
+                      languageList.data,
+                      takenElsewhere(languageValues, index, (entry) => entry.code),
+                    )}
+                    value={value || null}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    aria-describedby={aria['aria-describedby']}
+                    aria-invalid={aria['aria-invalid']}
+                  />
+                )}
               </FormField>
               <FormField
                 control={form.control}
