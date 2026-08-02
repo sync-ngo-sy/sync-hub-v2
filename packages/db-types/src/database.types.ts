@@ -1481,7 +1481,7 @@ export type Database = {
           created_at: string;
           created_by_recruiter_id: string;
           description: string;
-          employment_type: string | null;
+          employment_type: Database['public']['Enums']['employment_type'] | null;
           expires_at: string | null;
           id: string;
           location_key: string | null;
@@ -1491,12 +1491,13 @@ export type Database = {
           tenant_id: string;
           title: string;
           updated_at: string;
+          work_mode: Database['public']['Enums']['work_mode'] | null;
         };
         Insert: {
           created_at?: string;
           created_by_recruiter_id: string;
           description: string;
-          employment_type?: string | null;
+          employment_type?: Database['public']['Enums']['employment_type'] | null;
           expires_at?: string | null;
           id?: string;
           location_key?: string | null;
@@ -1506,12 +1507,13 @@ export type Database = {
           tenant_id: string;
           title: string;
           updated_at?: string;
+          work_mode?: Database['public']['Enums']['work_mode'] | null;
         };
         Update: {
           created_at?: string;
           created_by_recruiter_id?: string;
           description?: string;
-          employment_type?: string | null;
+          employment_type?: Database['public']['Enums']['employment_type'] | null;
           expires_at?: string | null;
           id?: string;
           location_key?: string | null;
@@ -1521,6 +1523,7 @@ export type Database = {
           tenant_id?: string;
           title?: string;
           updated_at?: string;
+          work_mode?: Database['public']['Enums']['work_mode'] | null;
         };
         Relationships: [
           {
@@ -2102,6 +2105,13 @@ export type Database = {
         | 'application_rejection'
         | 'recruiter_message';
       cv_parsing_status: 'uploaded' | 'processing' | 'ready' | 'failed';
+      employment_type:
+        | 'full_time'
+        | 'part_time'
+        | 'contract'
+        | 'temporary'
+        | 'internship'
+        | 'volunteer';
       ingestion_status: 'pending' | 'processing' | 'completed' | 'failed';
       job_status: 'draft' | 'published' | 'closed' | 'archived';
       language_proficiency: 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'native';
@@ -2113,6 +2123,7 @@ export type Database = {
       status_change_source: 'recruiter' | 'candidate' | 'system';
       tag_scope: 'candidate' | 'application';
       tenant_plan: 'free' | 'pro' | 'enterprise';
+      work_mode: 'onsite' | 'hybrid' | 'remote';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -2261,6 +2272,14 @@ export const Constants = {
         'recruiter_message',
       ],
       cv_parsing_status: ['uploaded', 'processing', 'ready', 'failed'],
+      employment_type: [
+        'full_time',
+        'part_time',
+        'contract',
+        'temporary',
+        'internship',
+        'volunteer',
+      ],
       ingestion_status: ['pending', 'processing', 'completed', 'failed'],
       job_status: ['draft', 'published', 'closed', 'archived'],
       language_proficiency: ['beginner', 'intermediate', 'advanced', 'fluent', 'native'],
@@ -2272,6 +2291,7 @@ export const Constants = {
       status_change_source: ['recruiter', 'candidate', 'system'],
       tag_scope: ['candidate', 'application'],
       tenant_plan: ['free', 'pro', 'enterprise'],
+      work_mode: ['onsite', 'hybrid', 'remote'],
     },
   },
 } as const;

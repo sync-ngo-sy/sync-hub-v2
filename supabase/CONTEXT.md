@@ -168,6 +168,22 @@ answers for Rif Dimashq. Full-text search reaches the name through the relation,
 still found by the word a person would type.
 _Avoid_: City, Place string, Region, Address.
 
+**Employment type**:
+What the contract on a Job is, from a fixed set — `full_time`, `part_time`, `contract`,
+`temporary`, `internship`, `volunteer`. An enum rather than a table: the set changes
+approximately never, and as an enum it reaches both portals through the generated client,
+so no list is written into a portal by hand. It was prose, and two Recruiters writing "Full
+time" and "Full-time" made two kinds of job that no single filter could ask for. Unset says
+nothing about the contract; it is not a value.
+_Avoid_: Contract type, Job type, Employment status.
+
+**Work mode**:
+How much of a Job's work happens where its team is — `onsite`, `hybrid`, `remote`. An enum,
+for the same reasons as Employment type. It answers a different question from **Location**
+and never stands in for one: remote is not a place, and a remote Job still records the
+Location its team sits in, which is what stops "Remote" being typed into the place taxonomy.
+_Avoid_: Remote, Location type, Arrangement, Workplace.
+
 **CV**:
 A candidate document, parsed once by AI into immutable `parsed_cv_data`. The Candidate
 reviews the parse before it updates a profile or feeds an Application; the raw parse is

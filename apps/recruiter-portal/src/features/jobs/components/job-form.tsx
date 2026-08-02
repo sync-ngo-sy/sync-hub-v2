@@ -11,15 +11,28 @@ import { ReferencePicker } from '@/features/reference/components/reference-picke
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups } from '@/features/reference/options';
 import { useChangeJob, useCreateJob } from '../hooks/use-job-actions';
-import type { Job, JobChanges, NewJob } from '../job';
+import {
+  EMPLOYMENT_TYPE_LABELS,
+  type Job,
+  type JobChanges,
+  type NewJob,
+  WORK_MODE_LABELS,
+} from '../job';
 import { jobFormRejection } from '../rejection';
 import { type JobFormValues, jobFormSchema } from '../schemas/job';
+import { ChoiceSelect } from './choice-select';
+
+/** The blank leads, and is what a Job nobody has decided about yet shows — a select has no
+ * empty state of its own, and the first value would otherwise read as a choice. */
+const EMPLOYMENT_TYPES = { '': 'Not set', ...EMPLOYMENT_TYPE_LABELS };
+const WORK_MODES = { '': 'Not set', ...WORK_MODE_LABELS };
 
 const EMPTY_JOB: JobFormValues = {
   title: '',
   description: '',
   locationKey: '',
   employmentType: '',
+  workMode: '',
   expiresAt: '',
 };
 
@@ -32,7 +45,8 @@ function newJob(values: JobFormValues): NewJob {
     title: values.title.trim(),
     description: values.description.trim(),
     location_key: optional(values.locationKey),
-    employment_type: optional(values.employmentType),
+    employment_type: values.employmentType || null,
+    work_mode: values.workMode || null,
     expires_at: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
   };
 }
@@ -49,6 +63,7 @@ function editValues(job: Job): JobFormValues {
     description: job.description,
     locationKey: job.location_key ?? '',
     employmentType: job.employment_type ?? '',
+    workMode: job.work_mode ?? '',
     expiresAt: job.expires_at ? inputDateTime(job.expires_at) : '',
   };
 }
@@ -115,8 +130,16 @@ export function JobForm({ job, onSaved, onCancel }: JobFormProps) {
             />
           )}
         </FormField>
+        <FormField
+          control={form.control}
+          name="workMode"
+          label="Work mode"
+          description="Where the work happens. A remote role still has a Location."
+        >
+          {(field) => <ChoiceSelect field={field} items={WORK_MODES} />}
+        </FormField>
         <FormField control={form.control} name="employmentType" label="Employment type">
-          {(field) => <Input {...field} value={field.value} placeholder="e.g. Full time" />}
+          {(field) => <ChoiceSelect field={field} items={EMPLOYMENT_TYPES} />}
         </FormField>
       </div>
 
