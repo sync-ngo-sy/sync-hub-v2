@@ -31,6 +31,7 @@ from sync_api.cvs import CvService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
 from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService
+from sync_api.platform import ActingPlatformAdmin, acting_platform_admin
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
@@ -168,6 +169,15 @@ async def get_acting_recruiter(profile: CurrentProfileDep, session: SessionDep) 
 
 
 ActingRecruiterDep = Annotated[ActingRecruiter, Depends(get_acting_recruiter)]
+
+
+async def get_acting_platform_admin(
+    profile: CurrentProfileDep, session: SessionDep
+) -> ActingPlatformAdmin:
+    return await acting_platform_admin(session, profile)
+
+
+PlatformAdminDep = Annotated[ActingPlatformAdmin, Depends(get_acting_platform_admin)]
 
 
 def get_tenant_admin(recruiter: ActingRecruiterDep) -> ActingRecruiter:
