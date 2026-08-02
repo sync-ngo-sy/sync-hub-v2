@@ -39,8 +39,48 @@ composite FK (supabase ADR-0001, amended by supabase ADR-0003).
   same undo candidate signup uses. No endpoint does this: the first Platform admin has nobody
   to authorise them, so `scripts/create_platform_admin.py` is run against a target environment
   and the address is confirmed on the spot, there being no portal to send a link to.
+- **Founding admin invite**: the same two inserts as a recruiter invite, alongside the `tenants`
+  row they will run — see *Platform operations* below.
 - Do **not** rely on an `auth.users` trigger; the flow decides the role, so the backend writes
   both rows.
+
+## Platform operations (`sync_api.platform`)
+
+What a Platform admin does to the platform as a whole. Every route under `/v1/platform` carries
+one router-level guard, so who may reach them is a single decision rather than one per route.
+
+- **Listing Tenants** reads every `tenants` row — suspended ones included — with two correlated
+  subqueries beside it: `member_count`, which counts *every* `recruiters` row of the tenant and so
+  includes colleagues an admin has deactivated; and `invite_pending`, which is
+  `email_confirmed_at is null` on the founding admin below. No tenant filter anywhere: this is the
+  one reader on the platform that is deliberately not scoped to one.
+- **Opening a Tenant** writes the same three rows a self-serve signup does — `tenants`, then
+  `profiles(account_type='recruiter')`, then `recruiters(role='admin')` — in one transaction
+  (`sync_api.tenants.provisioning.provision_tenant`, shared with signup). The founding admin is
+  **invited**, never given a password: GoTrue's invite creates the identity, and the address is
+  confirmed only once they redeem the link and choose one.
+- Both refusals — an address (`tenants.slug`) already taken, an email address that already has an
+  account — are asked **before** the invitation goes out, so a request that cannot succeed never
+  puts a link in somebody's inbox. `tenants_slug_key` and `profiles_pkey` stay the backstop for
+  the race. A failure after the invite deletes the identity again, **except** where `profiles_pkey`
+  is what refused: that Profile is somebody's account, and deleting its identity would cascade the
+  account away with it. That exception is not theoretical — two requests inviting the same address
+  both pass the check, and GoTrue answers the second with the *same* user it minted for the first,
+  so the loser must not undo what the winner now owns.
+- **The founding admin** is a Tenant's *first* `recruiters` row (`created_at`, then `id`). Nothing
+  marks it and nothing needs to: a Tenant is opened with exactly one recruiter, and the roster only
+  ever grows from there.
+- **Resending an invitation** calls GoTrue's invite again for the same address, which supersedes
+  the previous link. `auth.users.email_confirmed_at` is what says an invitation is still
+  outstanding; once it is set there is nothing to resend and the request is a 409.
+- **Suspension** flips `tenants.is_active` and needs no new enforcement — resolving a Recruiter's
+  tenant access and serving a Job both already read it. Nothing is deleted, so a restored Tenant
+  comes back with its roster, Jobs and Applications exactly as they were.
+- **Plan** (`tenants.plan`) is reported and never written. Nothing on the platform reads it yet,
+  so a control for it would be a switch wired to nothing.
+- **Platform counts** are four `count(*)` subqueries in one round trip. Candidates are counted
+  `where deleted_at is null`: a deleted Candidate keeps its row, because the Applications Tenants
+  received still name it.
 
 ## Candidate profile replacement
 
@@ -666,5 +706,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| A Profile is exactly one of candidate, recruiter, platform admin; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued | **Backend** |
+| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |
