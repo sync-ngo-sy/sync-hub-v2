@@ -17,13 +17,11 @@ type WorkMode = components['schemas']['WorkMode'];
 export const NOTHING_PUBLISHED =
   'No roles are open right now. New ones appear here the moment an employer publishes them.';
 
-/** The other empty list: roles exist, none of them answer these filters. Worth saying apart, so
- * a reader loosens a filter rather than concluding the platform is bare. */
 export const NOTHING_MATCHES =
   'No open roles match these filters. Widen one of them, or clear them all, to see more.';
 
 /** Keyed by the generated union, so a value the platform adds fails to compile until it has a
- * word here rather than reaching a reader as `full_time`. The picker is this map, in this order. */
+ * word here rather than reaching a reader as `full_time`. */
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   full_time: 'Full time',
   part_time: 'Part time',

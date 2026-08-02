@@ -113,11 +113,7 @@ describe('browsing jobs', () => {
   });
 });
 
-/** Every filter is asserted through the address bar as well as the list, because the address is
- * the contract: it is what a reload re-reads, what Back walks, and what a shared link carries. */
 describe('filtering jobs', () => {
-  /** The rows on screen as a reader sees them, so a narrowed list can be read whole. An absent
-   * list is no rows, not a failure: that is what every filter matching nothing looks like. */
   function rows() {
     const list = screen.queryByRole('list', { name: 'Jobs' });
     return list === null
@@ -127,7 +123,6 @@ describe('filtering jobs', () => {
           .map((row) => row.textContent ?? '');
   }
 
-  /** Every query the browse endpoint was asked, in order. */
   function records() {
     const asked: URLSearchParams[] = [];
     return { asked, spy: (query: URLSearchParams) => asked.push(query) };
@@ -178,7 +173,6 @@ describe('filtering jobs', () => {
     const { user, router } = await renderApp('/jobs');
     await screen.findByRole('list', { name: 'Jobs' });
 
-    // Typed but not submitted: picking a filter next applies what the bar already reads.
     await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'coordinator');
     await user.click(screen.getByRole('combobox', { name: 'Location' }));
     await user.click(await screen.findByRole('option', { name: 'Aleppo' }));
@@ -258,7 +252,6 @@ describe('filtering jobs', () => {
     const { user, router } = await renderApp('/jobs?q=field&location=sy-aleppo&type=contract');
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
 
-    // Emptying the Location box is how that one filter goes, as it is everywhere in the product.
     await user.clear(await screen.findByRole('combobox', { name: 'Location' }));
 
     await waitFor(() =>
@@ -269,7 +262,6 @@ describe('filtering jobs', () => {
   it('clears a keyword typed but never applied, so nothing survives the one action', async () => {
     server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
 
-    // No keyword in the address to begin with: the box holds a draft of nothing.
     const { user, router } = await renderApp('/jobs?location=sy-aleppo');
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
     await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'nurse');
@@ -280,7 +272,6 @@ describe('filtering jobs', () => {
     expect(screen.getByRole('searchbox', { name: 'Search jobs' })).toHaveValue('');
     expect(rows()).toHaveLength(PUBLIC_JOBS.length);
 
-    // And the word is gone for good: the next choice cannot bring it back.
     await user.click(screen.getByLabelText('Employment type'));
     await user.click(await screen.findByRole('option', { name: 'Contract' }));
 
@@ -300,8 +291,6 @@ describe('filtering jobs', () => {
     expect(screen.queryByText(/No roles are open right now/)).toBeNull();
     expect(screen.queryByRole('list', { name: 'Jobs' })).toBeNull();
 
-    // The bar carries a clear; so does the empty state, where the eye already is. This is the
-    // empty state's, found by being the one outside the bar rather than by its position.
     const bar = screen.getByRole('searchbox', { name: 'Search jobs' }).closest('form');
     const fromEmptyState = screen
       .getAllByRole('button', { name: 'Clear filters' })

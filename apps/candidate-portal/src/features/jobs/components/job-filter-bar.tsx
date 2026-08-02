@@ -20,13 +20,8 @@ import {
 } from '../filters';
 import { EMPLOYMENT_TYPE_LABELS } from '../job';
 
-/** Filtering by nothing is a choice on the list rather than a blank the reader has to guess at,
- * and it leads: the whole set is what an unfiltered Browse shows. */
 const EMPLOYMENT_TYPES = { '': 'Any type', ...EMPLOYMENT_TYPE_LABELS };
 
-/** One value per set of filters, so a render can tell the address moved without comparing objects
- * the router is free to hand back new each time. Encoded rather than joined, because a keyword can
- * hold whatever a separator would be. */
 const appliedFilters = (filters: JobFilters) =>
   JSON.stringify([filters.q, filters.location, filters.type]);
 
@@ -35,23 +30,11 @@ interface JobFilterBarProps {
   onChange: (filters: JobFilters) => void;
 }
 
-/**
- * The three filters the API takes, over the list they narrow. One form, so whichever control a
- * Candidate reaches for last carries the keyword already in the box — a bar that reads one way
- * while the list underneath answers another is worse than no bar at all.
- *
- * Full-width and stacked until there is room for a row: on a phone every control sits under the
- * thumb, and the keyboard's own search key runs it without reaching for a button.
- */
 export function JobFilterBar({ filters, onChange }: JobFilterBarProps) {
   const places = useLocations();
   const [typed, setTyped] = useState(filters.q ?? '');
   const [applied, setApplied] = useState(() => appliedFilters(filters));
 
-  // The box holds a draft of the address bar's keyword, so any move of the address replaces it:
-  // filters cleared, a link pasted, the way back taken. Watching the whole set rather than the
-  // keyword alone is what makes Clear clear the box — clearing a Location leaves `q` untouched,
-  // and a word left in the box would be applied by the next control touched.
   const current = appliedFilters(filters);
   if (current !== applied) {
     setApplied(current);

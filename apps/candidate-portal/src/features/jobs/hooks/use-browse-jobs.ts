@@ -7,8 +7,7 @@ export const JOBS_PAGE_SIZE = 20;
 
 /**
  * The API's browse order is a fixed newest-first, paged by an opaque cursor with no totals —
- * so browsing can only ever be "the newest page, then the next one" (§10). The filters are part
- * of the query key, so changing one starts a fresh first page, and every later page carries them.
+ * so browsing can only ever be "the newest page, then the next one" (§10).
  */
 export function useBrowseJobs(filters: JobFilters) {
   const jobs = api.useInfiniteQuery(

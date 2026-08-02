@@ -6,11 +6,6 @@ import { DEAD_TRACKED_LINK, NO_SUCH_JOB, TOO_MANY_REQUESTS } from '@/testing/fix
 
 type Problem = components['schemas']['ProblemDetail'];
 
-/**
- * What a test watches the browse endpoint being asked. The typed `query` a handler is handed
- * only answers questions about names the schema knows, so the whole search string comes off the
- * request instead — a test asserting a parameter is *absent* needs to see everything sent.
- */
 type AskedQuery = (query: URLSearchParams) => void;
 
 const asked = (request: Request) => new URL(request.url).searchParams;
@@ -25,8 +20,7 @@ export function publishesNothing() {
 
 /**
  * Cursor-paged, one page per array: the handler answers whichever page the `cursor` it was
- * given names, so Load-more is exercised through the same round-trip the API asks for. The spy
- * sees every request, which is how a test proves the filters rode along to the second page.
+ * given names, so Load-more is exercised through the same round-trip the API asks for.
  */
 export function pagesJobs(pages: JobSummary[][], onQuery?: AskedQuery) {
   return [
@@ -40,11 +34,6 @@ export function pagesJobs(pages: JobSummary[][], onQuery?: AskedQuery) {
   ];
 }
 
-/**
- * Filters the way the API does — every one a hard filter — so a test can drive the bar and read
- * the list that comes back rather than a page fixed in advance. The keyword goes over the title
- * and the place, which is as much of the API's index as a summary carries.
- */
 export function filtersJobs(items: JobSummary[], onQuery?: AskedQuery) {
   return [
     http.get('/v1/jobs', ({ response, query, request }) => {

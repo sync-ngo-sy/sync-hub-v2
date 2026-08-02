@@ -24,8 +24,6 @@ export function BrowseJobs({ signedIn, filters, onFiltersChange }: BrowseJobsPro
     <div className="space-y-8">
       <PageHeader title="Jobs" description="Open roles across Syria, newest first." />
 
-      {/* Rendered whatever the list is doing, the failed load included: a filter the reader
-          cannot reach is a filter they cannot undo. */}
       <JobFilterBar filters={filters} onChange={onFiltersChange} />
 
       {jobs.isPending ? (
