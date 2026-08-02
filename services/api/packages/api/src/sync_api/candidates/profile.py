@@ -26,8 +26,8 @@ from sync_api.problems import (
 )
 from sync_api.vocabulary import (
     canonical_skill_ids,
-    refuse_an_unknown_location,
     refuse_unknown_languages,
+    refuse_unknown_location,
 )
 from sync_core import get_logger, transaction
 from sync_core.models import (
@@ -83,7 +83,7 @@ class CandidateProfileService:
         """
         skills = await canonical_skill_ids(self._db, skills_named(profile))
         await refuse_unknown_languages(self._db, languages_named(profile))
-        await refuse_an_unknown_location(self._db, profile.location_key, at="body.location_key")
+        await refuse_unknown_location(self._db, profile.location_key, at="body.location_key")
 
         async with transaction(self._db):
             candidate, identity = await self._candidate(candidate_id, lock=True)

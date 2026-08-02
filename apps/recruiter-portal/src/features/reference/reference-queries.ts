@@ -19,8 +19,7 @@ export const locationsQuery = api.queryOptions('get', '/v1/locations', undefined
 });
 
 /** Warmed by the Job detail route, so a saved language is never read back as its raw code while
- * the list that names it is still on the wire; the Jobs list warms the Locations on their own,
- * for the create form it opens. A taxonomy that will not load is not worth failing
+ * the list that names it is still on the wire. A taxonomy that will not load is not worth failing
  * a whole page for — the picker says so itself — so this settles either way. */
 export function warmReferenceData(queryClient: QueryClient): Promise<unknown> {
   const settled = (loading: Promise<unknown>) => loading.catch(() => undefined);
@@ -29,4 +28,10 @@ export function warmReferenceData(queryClient: QueryClient): Promise<unknown> {
     settled(queryClient.ensureQueryData(languagesQuery)),
     settled(queryClient.ensureQueryData(locationsQuery)),
   ]);
+}
+
+/** The Jobs list warms this one alone: the only picker it opens is the Location field of the
+ * create form, and the criteria taxonomies belong to the route that edits them. */
+export function warmLocations(queryClient: QueryClient): Promise<unknown> {
+  return queryClient.ensureQueryData(locationsQuery).catch(() => undefined);
 }

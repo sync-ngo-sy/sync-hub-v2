@@ -161,8 +161,9 @@ either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. `
 filter over `jobs.search_vector` (`websearch_to_tsquery`), never a ranking: the newest Job is
 always first. That vector is trigger-maintained rather than generated, because it reaches
 through `location_key` for the Location's name — a generated column may only read its own row —
-and `candidates.search_vector` is the same shape for the same reason. A public payload never carries `accepted_boolean_answer`; which answer passes a
-knockout question is the Job's business, not the applicant's.
+and `candidates.search_vector` is the same shape for the same reason. A public payload never
+carries `accepted_boolean_answer`; which answer passes a knockout question is the Job's
+business, not the applicant's.
 
 Reading one Job writes a `job_view_events` row — through a tracked link, with that link's id
 in it. The `session_id` is the platform's own `sync_visitor` cookie (issued on the first

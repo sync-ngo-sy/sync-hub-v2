@@ -74,11 +74,11 @@ async def refuse_unknown_languages(session: AsyncSession, named: Mapping[str, st
     )
 
 
-async def refuse_an_unknown_location(session: AsyncSession, key: str | None, *, at: str) -> None:
-    """Refuse a Location key the taxonomy does not have, located as `canonical_skill_ids`.
+async def refuse_unknown_location(session: AsyncSession, key: str | None, *, at: str) -> None:
+    """Refuse a Location key the taxonomy does not have.
 
-    One key rather than a mapping: a Job and a Candidate each sit in one place, so there is
-    never a second field to point at.
+    One key rather than a mapping, unlike the two above: a Job and a Candidate each sit in one
+    place, so `at` is the only field a refusal could ever point at.
     """
     if key is None:
         return

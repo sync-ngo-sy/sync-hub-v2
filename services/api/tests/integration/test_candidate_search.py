@@ -236,6 +236,36 @@ async def test_a_governorate_never_answers_for_the_one_beside_it(
     ]
 
 
+async def test_a_place_whose_key_contains_another_is_still_a_different_place(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """The equality, held to the letter. "ma" — Morocco — sits inside "sy-hama", so a filter that
+    matched inside the value instead of equalling it would answer either with both."""
+    amina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="amina",
+        **{**A_BACKEND_ENGINEER, "location_key": "sy-hama"},
+    )
+    lina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="lina",
+        **{**A_FRONTEND_ENGINEER, "location_key": "ma"},
+    )
+    await drain(a_reembed_worker(database, embedder))
+
+    assert named(await found(recruiter, q="engineer", location_key="ma")) == [str(lina.id)]
+    assert named(await found(recruiter, q="engineer", location_key="sy-hama")) == [str(amina.id)]
+
+
 async def test_a_candidate_is_found_by_the_name_of_their_location(
     searching: FastAPI,
     recruiter: AsyncClient,

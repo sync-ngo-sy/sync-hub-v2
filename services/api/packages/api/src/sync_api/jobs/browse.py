@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Final
 
 from sqlalchemy import ColumnElement, func, literal_column, select
 
-from sync_api.jobs.access import open_job, public_jobs
+from sync_api.jobs.access import location_name, open_job, public_jobs
 from sync_api.jobs.criteria import (
     languages_of,
     minimum_experience_of,
@@ -141,7 +141,7 @@ def _summary(job: Job, tenant: Tenant) -> PublicJobSummary:
         title=job.title,
         tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
         location_key=job.location_key,
-        location_name=job.location.name if job.location else None,
+        location_name=location_name(job),
         employment_type=job.employment_type,
         expires_at=job.expires_at,
         created_at=job.created_at,

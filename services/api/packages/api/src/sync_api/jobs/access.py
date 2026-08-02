@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 WITH_LOCATION: Final = (selectinload(Job.location),)
 
 
+def location_name(job: Job) -> str | None:
+    """What the Job's Location is called, for a Job loaded `WITH_LOCATION`. None when the Job
+    says where it is nowhere, which is what a payload shows as no place at all."""
+    return job.location.name if job.location else None
+
+
 async def own_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> Job:
     """The tenant's own Job. Another tenant's Job and a nonexistent one are the same 404."""
     job = await session.scalar(

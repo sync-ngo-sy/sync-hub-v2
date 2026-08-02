@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.jobs.access import WITH_LOCATION, own_job
+from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
 from sync_api.jobs.criteria import criteria_of
 from sync_api.jobs.payload import JobPage, JobSummary, JobView
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
@@ -17,8 +17,8 @@ from sync_api.problems import (
 )
 from sync_api.vocabulary import (
     canonical_skill_ids,
-    refuse_an_unknown_location,
     refuse_unknown_languages,
+    refuse_unknown_location,
 )
 from sync_core import get_logger, transaction
 from sync_core.models import (
@@ -62,7 +62,7 @@ class JobService:
         self._db = session
 
     async def create(self, recruiter: ActingRecruiter, new: NewJob) -> JobView:
-        await refuse_an_unknown_location(self._db, new.location_key, at="body.location_key")
+        await refuse_unknown_location(self._db, new.location_key, at="body.location_key")
         job = Job(
             tenant_id=recruiter.tenant.id,
             created_by_recruiter_id=recruiter.profile.id,
@@ -106,8 +106,7 @@ class JobService:
     async def change(
         self, recruiter: ActingRecruiter, job_id: UUID, changes: JobChanges
     ) -> JobView:
-        if "location_key" in changes.model_fields_set:
-            await refuse_an_unknown_location(self._db, changes.location_key, at="body.location_key")
+        await refuse_unknown_location(self._db, changes.location_key, at="body.location_key")
         async with transaction(self._db):
             job = await own_job(self._db, recruiter.tenant.id, job_id)
             changed = changes.model_dump(exclude_unset=True)
@@ -176,7 +175,7 @@ def _summary(job: Job) -> JobSummary:
         title=job.title,
         status=job.status,
         location_key=job.location_key,
-        location_name=job.location.name if job.location else None,
+        location_name=location_name(job),
         employment_type=job.employment_type,
         expires_at=job.expires_at,
         created_at=job.created_at,

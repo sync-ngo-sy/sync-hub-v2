@@ -147,6 +147,18 @@ async def test_a_governorate_never_answers_for_the_one_beside_it(
     ]
 
 
+async def test_a_place_whose_key_contains_another_is_still_a_different_place(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """The equality, held to the letter. "ma" — Morocco — sits inside "sy-hama", so a filter that
+    matched inside the value instead of equalling it would answer either with both."""
+    in_hama = await a_published_job(recruiter, location_key="sy-hama")
+    in_morocco = await a_published_job(recruiter, title="Field officer", location_key="ma")
+
+    assert [item["id"] for item in await browse(visitor, location_key="ma")] == [in_morocco["id"]]
+    assert [item["id"] for item in await browse(visitor, location_key="sy-hama")] == [in_hama["id"]]
+
+
 async def test_a_job_is_found_by_the_name_of_its_location(
     recruiter: AsyncClient, visitor: AsyncClient
 ) -> None:
