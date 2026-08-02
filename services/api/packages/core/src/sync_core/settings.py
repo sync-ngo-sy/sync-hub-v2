@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     #: Sized for many short-lived Cloud Run instances rather than one long process: the
     #: transaction pooler does the real pooling, and every instance holding a large local
     #: pool is how the database's connection limit gets exhausted. Raise per deployment.
-    database_pool_size: int = Field(default=2, ge=1)
-    database_max_overflow: int = Field(default=2, ge=0)
+    database_pool_size: int = Field(default=5, ge=1)
+    database_max_overflow: int = Field(default=5, ge=0)
     database_echo: bool = False
 
     supabase_url: AnyHttpUrl
