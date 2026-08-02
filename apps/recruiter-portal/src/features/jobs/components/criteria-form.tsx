@@ -50,8 +50,8 @@ export function CriteriaForm({ job }: { job: Job }) {
   const questionValues = form.watch('questions');
   const skillValues = form.watch('skills');
   const languageValues = form.watch('languages');
-  const taxonomy = useCanonicalSkills();
-  const known = useLanguages();
+  const skillList = useCanonicalSkills();
+  const languageList = useLanguages();
 
   const save = form.handleSubmit(async (values) => {
     try {
@@ -132,15 +132,14 @@ export function CriteriaForm({ job }: { job: Job }) {
                   <ReferencePicker
                     id={id}
                     noun="skill"
-                    list={taxonomy}
+                    list={skillList}
                     options={skillGroups(
-                      taxonomy.data,
+                      skillList.data,
                       takenElsewhere(skillValues, index, (entry) => entry.name),
                     )}
                     value={value || null}
                     onChange={onChange}
                     onBlur={onBlur}
-                    disabled={job.criteria_locked}
                     aria-describedby={aria['aria-describedby']}
                     aria-invalid={aria['aria-invalid']}
                   />
@@ -189,15 +188,14 @@ export function CriteriaForm({ job }: { job: Job }) {
                   <ReferencePicker
                     id={id}
                     noun="language"
-                    list={known}
+                    list={languageList}
                     options={languageOptions(
-                      known.data,
+                      languageList.data,
                       takenElsewhere(languageValues, index, (entry) => entry.code),
                     )}
                     value={value || null}
                     onChange={onChange}
                     onBlur={onBlur}
-                    disabled={job.criteria_locked}
                     aria-describedby={aria['aria-describedby']}
                     aria-invalid={aria['aria-invalid']}
                   />

@@ -54,22 +54,14 @@ const optionalInteger = z
   .refine((value) => value === '' || /^\d+$/.test(value), 'Enter a whole number of years.')
   .refine((value) => value === '' || Number(value) <= 99, 'Enter 99 or less.');
 
-const LANGUAGE_CODE_MESSAGE = 'A language code is 2 to 8 characters.';
-
 const skill = z.object({
   name: requiredShortText('Choose a skill.'),
   importance: z.enum(importance),
   minimumYears: optionalInteger,
 });
 
-/** A picker only ever leaves this blank or holds a code the platform named, so the message a
- * Recruiter can actually reach is the first one. */
 const language = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(1, 'Choose a language.')
-    .refine((raw) => raw.length >= 2 && raw.length <= 8, LANGUAGE_CODE_MESSAGE),
+  code: z.string().trim().min(1, 'Choose a language.'),
   minimumProficiency: z.enum(proficiency),
 });
 

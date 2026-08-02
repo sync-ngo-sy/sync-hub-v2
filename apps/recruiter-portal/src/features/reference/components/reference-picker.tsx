@@ -15,7 +15,6 @@ interface ReferencePickerProps {
   list: { isPending: boolean; isError: boolean };
   /** Singular, lowercase — 'skill', 'language'. */
   noun: string;
-  disabled?: boolean;
   className?: string;
   'aria-describedby'?: string;
   'aria-invalid'?: boolean;
@@ -31,7 +30,6 @@ export function ReferencePicker({
   options,
   list,
   noun,
-  disabled,
   className,
   ...aria
 }: ReferencePickerProps) {
@@ -43,7 +41,6 @@ export function ReferencePicker({
       value={value}
       onValueChange={(chosen) => onChange(chosen ?? '')}
       onBlur={onBlur}
-      disabled={disabled}
       placeholder="Type to search"
       loading={list.isPending}
       loadingMessage={`Loading ${noun}s…`}

@@ -268,6 +268,15 @@ describe("a Job's screening criteria", () => {
     expect(sent.body).toBeUndefined();
   });
 
+  it('leaves the pickers alone once an Application has locked the criteria', async () => {
+    await openCriteriaThatSaves({ ...SCREENED_JOB, criteria_locked: true });
+
+    expect(await screen.findByText('Screening criteria are locked')).toBeVisible();
+    expect(entry('Skill 1').getByLabelText('Skill')).toBeDisabled();
+    expect(entry('Language 1').getByLabelText('Language')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Save screening criteria' })).toBeNull();
+  });
+
   it('says the skill list is missing rather than that there are no skills', async () => {
     server.use(...failsToLoadCanonicalSkills(SERVER_FAULT));
     const { user } = await openCriteriaThatSaves(SCREENED_JOB);
