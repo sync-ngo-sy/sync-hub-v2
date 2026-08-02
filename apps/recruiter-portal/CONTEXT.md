@@ -44,7 +44,6 @@ client; these are rows).
 
 **Wrong-portal screen**:
 The full-page notice shown when a signed-in Profile this portal does not serve opens it. It
-names the account type they are signed in with, and the portal they should be in where there
-is one — a Candidate is pointed at the Candidate Portal; a Platform admin, whom no portal
-serves yet, is only offered the way out.
+names the account type they are signed in with, and the portal they should be in — a Candidate
+is pointed at the Candidate Portal and a Platform admin at the Platform Portal.
 _Avoid_: 403 page, forbidden page.

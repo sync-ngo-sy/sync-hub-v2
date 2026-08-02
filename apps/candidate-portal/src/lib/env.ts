@@ -1,8 +1,18 @@
 import { readClientEnv } from '@sync/api-client';
 import { z } from 'zod';
 
-/** Both portals run on their own dev server, and on their own hostname in production. */
+/** Each portal runs on its own dev server, and on its own hostname in production. */
 const RECRUITER_PORTAL_DEV_URL = 'http://localhost:5174';
+const ADMIN_PORTAL_DEV_URL = 'http://localhost:5175';
+const adminPortalUrlSchema = z
+  .url({ error: 'VITE_ADMIN_PORTAL_URL must be an absolute http(s) URL' })
+  .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), {
+    error: 'VITE_ADMIN_PORTAL_URL must be an absolute http(s) URL',
+  });
+
+export function parseAdminPortalUrl(value: string): string {
+  return adminPortalUrlSchema.parse(value);
+}
 
 /**
  * An unset base URL means same-origin, which is the topology in dev (behind the Vite
@@ -16,4 +26,7 @@ export const env = {
   recruiterPortalUrl: z
     .url({ error: 'VITE_RECRUITER_PORTAL_URL must be an absolute http(s) URL' })
     .parse(import.meta.env.VITE_RECRUITER_PORTAL_URL ?? RECRUITER_PORTAL_DEV_URL),
+  adminPortalUrl: parseAdminPortalUrl(
+    import.meta.env.VITE_ADMIN_PORTAL_URL ?? ADMIN_PORTAL_DEV_URL,
+  ),
 };
