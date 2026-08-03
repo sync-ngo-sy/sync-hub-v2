@@ -142,6 +142,50 @@ in a chunk of its own so the charting library only travels for a Recruiter who o
 address is built on the Candidate Portal's origin, since that is the portal that counts the view.
 _Avoid_: Campaigns tab, UTM builder, analytics tab.
 
+**Workspace settings**:
+The three things a Tenant administers about itself, under one address with the open tab in it: the
+Team, the Tag vocabulary, and the Tenant. The page itself reads nothing — each tab is an
+Independent widget that asks for what it needs when it is opened, so a Recruiter who came for the
+Tags never waits on the roster.
+_Avoid_: Admin panel, preferences, account settings (a Profile is not what is administered here).
+
+**Team tab**:
+The Tenant's roster: everyone on it with their role and whether they can still sign in, colleagues
+without access included. An admin invites a teammate from here and changes what a colleague may do;
+a Recruiter reads the same list and is told plainly that the changes are an admin's. The caller's
+own role is read off the roster rather than out of their Profile, because that is where it is
+written — which also means a demotion arrives on the next read.
+_Avoid_: Users page, members list, seats.
+
+**Teammate invitation**:
+One address, one name and one role, sent by the API as an email the invitee sets their own password
+from. The roster gains them at once, pending that password, so an admin sees the invitation rather
+than having to remember it. An address that already has a Sync account is refused, and the refusal
+lands under the email field, because the address is what was wrong rather than the asking.
+_Avoid_: Sign-up, adding a user, provisioning.
+
+**Member change**:
+One named move an admin makes against a colleague — promote, demote, revoke access, give it back —
+each confirmed first, because every one of them is felt by somebody else. The moves offered are the
+ones that exist from where the colleague stands: a colleague with no access has only their access to
+get back. Your own row offers stepping down and nothing else — an admin may hand over, and the API's
+last-active-admin refusal is what stops the last one doing it, but revoking your own access is never
+offered because it would lock you out on the spot. A refusal is shown in the server's words, in the
+confirmation, and the roster is re-read whatever the answer — a caller who has just stepped down, or
+who was demoted while reading, learns it from the same read.
+_Avoid_: Permissions editor, seat management.
+
+**Tag vocabulary**:
+The whole of the Tenant's filing words on one tab, each with what it may be put on and when it was
+added — the counterpart to the Tag picker, which mints into the same vocabulary from an Application.
+The picker's scoped read and this tab's whole one are two cache entries of one path, so a word minted
+in either shows up in both. A word is unique per scope, so a duplicate is refused beside the field
+from the list already on screen, naming the Tag the Tenant actually has rather than the spelling that
+was typed; the API's 409 stays the backstop for a word a colleague minted meanwhile. A rename keeps
+everything filed under it and cannot change its scope; deleting unfiles it from every Candidate or
+Application it was on, which is what the confirmation says — and a Tag a colleague has already
+deleted counts as deleted, since that is what was asked for.
+_Avoid_: Tag settings, taxonomy, label manager.
 **Candidate search**:
 The Workspace's one way past its own applicants: words describing who is wanted, and up to three
 hard filters — a Location, a preferred language, words that must appear — over every Candidate on
