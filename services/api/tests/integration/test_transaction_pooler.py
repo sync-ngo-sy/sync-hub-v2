@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import asyncpg
 import pytest
-from sqlalchemy import text
+from sqlalchemy import Integer, bindparam, text
 
 from sync_core import Database
 from tests.support import stack
@@ -66,15 +66,20 @@ async def pooled_database(settings: Settings, _migrated_database: None) -> Async
     await db.dispose()
 
 
+#: Typed, because two untyped parameters leave Postgres unable to resolve `+` at all
+#: ("operator is not unique: unknown + unknown").
+SUM_OF_TWO = text("select :marker + :attempt").bindparams(
+    bindparam("marker", type_=Integer),
+    bindparam("attempt", type_=Integer),
+)
+
+
 async def test_concurrent_sessions_share_server_connections(pooled_database: Database) -> None:
     async def query(marker: int) -> list[int]:
         seen = []
         for attempt in range(QUERIES_PER_SESSION):
             async with pooled_database.session() as session:
-                result = await session.execute(
-                    text("select :marker + :attempt"),
-                    {"marker": marker, "attempt": attempt},
-                )
+                result = await session.execute(SUM_OF_TWO, {"marker": marker, "attempt": attempt})
                 seen.append(result.scalar_one())
         return seen
 
