@@ -4,6 +4,7 @@ import type { ApplicationSummary } from '@/features/applications/application';
 import { holding } from '@/testing/holding';
 
 type Problem = components['schemas']['ProblemDetail'];
+type ApplicationSummaryPage = components['schemas']['ApplicationSummaryPage'];
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 
@@ -12,17 +13,19 @@ export interface JobApplicationsFixture {
   next_cursor?: string | null;
 }
 
-/** The Dashboard reads one page per Job, so its handler answers per Job id rather than per call.
- * A Job the map does not name has had no applicants. */
+/** A Job the map does not name has had no applicants. */
+function pageFor(
+  pages: Record<string, JobApplicationsFixture>,
+  jobId: string,
+): ApplicationSummaryPage {
+  const page = pages[jobId];
+  return { items: page?.items ?? [], next_cursor: page?.next_cursor ?? null };
+}
+
+/** The Dashboard reads one page per Job, so its handler answers per Job id rather than per call. */
 export function listsApplicationsPerJob(pages: Record<string, JobApplicationsFixture>) {
   return [
-    http.get(PATH, ({ params, response }) => {
-      const page = pages[params.job_id];
-      return response(200).json({
-        items: page?.items ?? [],
-        next_cursor: page?.next_cursor ?? null,
-      });
-    }),
+    http.get(PATH, ({ params, response }) => response(200).json(pageFor(pages, params.job_id))),
   ];
 }
 
@@ -33,14 +36,11 @@ export function failsOneJobsApplications(
   problem: Problem,
 ) {
   return [
-    http.get(PATH, ({ params, response }) => {
-      if (params.job_id === jobId) return response(500).json(problem);
-      const page = pages[params.job_id];
-      return response(200).json({
-        items: page?.items ?? [],
-        next_cursor: page?.next_cursor ?? null,
-      });
-    }),
+    http.get(PATH, ({ params, response }) =>
+      params.job_id === jobId
+        ? response(500).json(problem)
+        : response(200).json(pageFor(pages, params.job_id)),
+    ),
   ];
 }
 
@@ -52,11 +52,7 @@ export function holdsApplicationsPerJob(pages: Record<string, JobApplicationsFix
     handlers: [
       http.get(PATH, async ({ params, response }) => {
         await gate.held;
-        const page = pages[params.job_id];
-        return response(200).json({
-          items: page?.items ?? [],
-          next_cursor: page?.next_cursor ?? null,
-        });
+        return response(200).json(pageFor(pages, params.job_id));
       }),
     ],
   };

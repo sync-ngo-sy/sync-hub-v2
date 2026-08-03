@@ -10,8 +10,6 @@ import type { ApplicationsRead, RecentApplication } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
-// The triage list's row treatment, with the Job named — on the Dashboard a row can come from
-// any Job, which is the one thing that list never has to say.
 const COLUMNS: DataTableColumn<RecentApplication>[] = [
   {
     id: 'candidate',
@@ -77,7 +75,6 @@ export function RecentApplications({ applications, onApplicationOpen }: RecentAp
       title="Recent applications"
       description="The newest Applications across your published Jobs."
       footer={
-        // Only worth saying once there are rows: the empty state below already points at Jobs.
         recent.length > 0 ? (
           <span>
             Every Application lives on its Job — open one for its whole triage list.{' '}

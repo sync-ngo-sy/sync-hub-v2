@@ -1,7 +1,6 @@
 import type { ApplicationSummary } from '@/features/applications/application';
 import type { JobSummary } from '@/features/jobs/job';
 
-/** The clock the Dashboard's counts are read against, so "this week" means one fixed week. */
 export const TODAY = new Date('2026-08-04T09:00:00Z');
 
 export const MEAL_OFFICER: JobSummary = {

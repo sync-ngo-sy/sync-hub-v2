@@ -52,7 +52,12 @@ export function DashboardPage({ onJobOpen, onApplicationOpen }: DashboardPagePro
             }
           />
 
-          <JobsOverview jobs={jobs} onJobOpen={onJobOpen} onCreateJob={() => setCreating(true)} />
+          <JobsOverview
+            jobs={jobs}
+            applicationsByJob={applications.data?.byJob}
+            onJobOpen={onJobOpen}
+            onCreateJob={() => setCreating(true)}
+          />
         </div>
       </div>
 

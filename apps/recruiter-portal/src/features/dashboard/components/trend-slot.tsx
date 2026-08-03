@@ -6,15 +6,10 @@ interface TrendSlotProps {
   title: string;
   description: string;
   icon: LucideIcon;
-  /** What will fill this card, in so many words — a slot that names what is coming reads as
-   * designed, where a blank card reads as broken. */
   coming: string;
   action?: ReactNode;
 }
 
-/** A card the Dashboard keeps for a chart the API cannot draw yet: the tenant analytics
- * endpoints are the fast-follow bucket (§13 of the design document), and until they ship this
- * says so rather than showing numbers nobody can stand behind. */
 export function TrendSlot({ title, description, icon: Icon, coming, action }: TrendSlotProps) {
   return (
     <DashboardPanel title={title} description={description}>

@@ -2,8 +2,8 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
 import { api } from '@/lib/api';
 import {
+  APPLICATIONS_PER_JOB,
   type ApplicationsRead,
-  DASHBOARD_APPLICATIONS,
   type JobApplications,
   type JobsRead,
   readApplications,
@@ -12,17 +12,16 @@ import {
 
 const APPLICATIONS_PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 
-/** `cursor: null` is what keeps this key clear of the triage list's infinite query on the same
- * path — the two hash alike without it, and would then fight over one cache entry holding
- * shapes neither can read. The Jobs list uses the same trick for its own first page. */
-export function dashboardApplicationsQuery(jobId: string) {
+/** A first page, which is what keeps this key clear of the triage list's infinite query. */
+export function applicationsFirstPageQuery(jobId: string) {
   return api.queryOptions('get', APPLICATIONS_PATH, {
-    params: { path: { job_id: jobId }, query: { limit: DASHBOARD_APPLICATIONS, cursor: null } },
+    params: {
+      path: { job_id: jobId },
+      query: { limit: APPLICATIONS_PER_JOB, cursor: null },
+    },
   });
 }
 
-/** One panel's read: what it has, whether it is still coming, what refused, and how to ask again.
- * Nothing here throws — a dashboard panel that fails says so in its own card. */
 export interface PanelRead<TData> {
   data?: TData;
   isPending: boolean;
@@ -37,15 +36,13 @@ export interface DashboardRead {
 }
 
 export function useDashboard(): DashboardRead {
-  // The subtitle alone rides on this, so a refusal costs the page its Tenant's name and
-  // nothing else — there is nothing here worth a Retry of its own.
   const tenant = api.useQuery('get', '/v1/tenants/me', {});
 
   const jobs = useQuery(jobsFirstPageQuery());
   const jobsRead = jobs.data ? readJobs(jobs.data) : undefined;
 
   const pages = useQueries({
-    queries: (jobsRead?.toCount ?? []).map((job) => dashboardApplicationsQuery(job.id)),
+    queries: (jobsRead?.toCount ?? []).map((job) => applicationsFirstPageQuery(job.id)),
   });
 
   const arrived: JobApplications[] = (jobsRead?.toCount ?? []).flatMap((job, index) => {
@@ -63,8 +60,6 @@ export function useDashboard(): DashboardRead {
       refetch: () => void jobs.refetch(),
     },
     applications: {
-      // Read from the Jobs that answered: a Job whose page refused makes every count a floor
-      // rather than blanking the panel, which is what `everyJob` says downstream.
       data: jobsRead
         ? readApplications(arrived, {
             now: new Date(),

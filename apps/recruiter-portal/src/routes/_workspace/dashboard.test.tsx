@@ -15,6 +15,7 @@ import {
   PROGRAMME_OFFICER,
 } from '@/features/jobs/testing/fixtures';
 import { failsToListJobs, getsJob, listsJobs } from '@/features/jobs/testing/handlers';
+import { relativeTime } from '@/lib/dates';
 import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
@@ -188,6 +189,26 @@ describe('the Dashboard', () => {
     expect(jobs.getAllByText('Published')).toHaveLength(2);
     expect(jobs.getByText('Draft')).toBeVisible();
     expect(jobs.getByText('Aleppo · On-site · Full time')).toBeVisible();
+  });
+
+  it('says what each Job it counted has brought in, and how the draft it did not stands', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsJobs(TENANT_JOBS),
+      ...listsApplicationsPerJob({
+        [FIELD_COORDINATOR.id]: { items: [AMAL, BASSEL, CARLA], next_cursor: 'older' },
+        [MEAL_OFFICER.id]: { items: [DIMA] },
+      }),
+    );
+
+    await renderApp('/dashboard');
+    const jobs = panel('Your jobs');
+
+    expect(await jobs.findByText('3+ applications')).toBeVisible();
+    expect(jobs.getByText('1 application')).toBeVisible();
+    expect(
+      jobs.getByText(`Updated ${relativeTime(PROGRAMME_OFFICER.updated_at, TODAY)}`),
+    ).toBeVisible();
   });
 
   it('keeps the trend-chart slots as placeholders that name what is coming', async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApplicationSummary } from '@/features/applications/application';
 import type { JobSummary } from '@/features/jobs/job';
 import {
-  DASHBOARD_JOBS,
+  FAN_OUT_JOBS,
   type JobApplications,
   OVERVIEW_JOBS,
   RECENT_APPLICATIONS,
@@ -60,7 +60,7 @@ describe('readJobs', () => {
     });
 
     expect(jobs.open).toEqual({ value: 2, atLeast: false });
-    expect(jobs.draft).toBe(2);
+    expect(jobs.draft).toEqual({ value: 2, atLeast: false });
   });
 
   it('says a count is a floor when the tenant has Jobs the first page did not reach', () => {
@@ -91,13 +91,13 @@ describe('readJobs', () => {
   it('reads Applications for the published Jobs only, capped at the fan-out it allows', () => {
     const items = [
       job('draft-1', { status: 'draft' }),
-      ...Array.from({ length: DASHBOARD_JOBS + 2 }, (_, index) => job(`published-${index}`)),
+      ...Array.from({ length: FAN_OUT_JOBS + 2 }, (_, index) => job(`published-${index}`)),
       job('closed-1', { status: 'closed' }),
     ];
 
     const jobs = readJobs({ items, next_cursor: null });
 
-    expect(jobs.toCount).toHaveLength(DASHBOARD_JOBS);
+    expect(jobs.toCount).toHaveLength(FAN_OUT_JOBS);
     expect(jobs.toCount.every((each) => each.status === 'published')).toBe(true);
     expect(jobs.everyJob).toBe(false);
   });
@@ -155,8 +155,23 @@ describe('readApplications', () => {
     );
 
     expect(applications.thisWeek).toEqual({ value: 2, atLeast: false });
-    expect(applications.today).toBe(1);
+    expect(applications.today).toEqual({ value: 1, atLeast: false });
     expect(applications.awaitingReview).toEqual({ value: 2, atLeast: false });
+  });
+
+  it('says what each Job it read has brought in, and where it stopped counting', () => {
+    const applications = readApplications(
+      [
+        read(FIELD, [application('one'), application('two')], 'older'),
+        read(MEAL, [application('three')]),
+      ],
+      { now: NOW, everyJob: true },
+    );
+
+    expect(applications.byJob).toEqual({
+      field: { value: 2, atLeast: true },
+      meal: { value: 1, atLeast: false },
+    });
   });
 
   it('counts the Screening verdicts and the rate it passed the decided ones at', () => {

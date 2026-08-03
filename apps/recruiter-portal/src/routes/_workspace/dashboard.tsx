@@ -5,8 +5,6 @@ import { warmLocations } from '@/features/reference/reference-queries';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_workspace/dashboard')({
-  // The Jobs read is warmed here because every panel below waits on it: the Applications the
-  // Dashboard counts are read Job by Job. A refusal is left to the panels, which retry inline.
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(jobsFirstPageQuery()).catch(() => undefined),

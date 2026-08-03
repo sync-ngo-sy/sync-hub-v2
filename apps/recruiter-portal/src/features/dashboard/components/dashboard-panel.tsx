@@ -1,12 +1,11 @@
+import { ChartCardShell } from '@sync/ui/components/chart-card';
 import {
-  Card,
   CardAction,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
 } from '@sync/ui/components/ui/card';
-import { cardSurface } from '@sync/ui/lib/card-surface';
 import { type ReactNode, useId } from 'react';
 
 interface DashboardPanelProps {
@@ -17,8 +16,6 @@ interface DashboardPanelProps {
   children: ReactNode;
 }
 
-/** One card on the Dashboard, named so a reader — and a screen reader — can tell the panels
- * apart. Every panel on this page wears the same register, the slots included. */
 export function DashboardPanel({
   title,
   description,
@@ -30,7 +27,7 @@ export function DashboardPanel({
 
   return (
     <section aria-labelledby={headingId}>
-      <Card className={cardSurface}>
+      <ChartCardShell>
         <CardHeader>
           <h2 id={headingId} className="font-heading text-title text-foreground">
             {title}
@@ -44,7 +41,7 @@ export function DashboardPanel({
         {footer ? (
           <CardFooter className="text-meta text-muted-foreground">{footer}</CardFooter>
         ) : null}
-      </Card>
+      </ChartCardShell>
     </section>
   );
 }
