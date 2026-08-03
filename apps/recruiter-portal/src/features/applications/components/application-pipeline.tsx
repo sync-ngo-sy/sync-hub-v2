@@ -4,11 +4,11 @@ import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
 import { type PipelineStatus, pipelineState } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
 import { type PipelineMove, pipelineMoves, pipelineOutcome } from '../review';
-import { ReviewCard } from './review-card';
 
 interface ApplicationPipelineProps {
   applicationId: string;
