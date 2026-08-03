@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -422,20 +423,31 @@ async def test_the_scheduled_call_recovers_a_row_no_notification_arrived_for(
     assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
 
 
-async def test_the_scheduled_call_finishes_a_row_a_crashed_invocation_abandoned(
+async def test_a_row_a_crashed_invocation_abandoned_is_swept_then_drained(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
 ) -> None:
-    """Sweeping alone would only return it to pending; the drain in the same call finishes it."""
+    """Sweeping returns it to pending, but with its retry delay, so a later drain finishes it.
+
+    Not the same call, unless the backoff has already elapsed: that is the retry policy doing
+    its job, and it is still recovery — the schedule runs again. What must never happen is the
+    row staying in processing with nobody looking at it.
+    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
     await _abandon_the_claim(db_session, cv["id"], claimed_ago=timedelta(minutes=15))
-    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    prompt_retry = settings.model_copy(update={"worker_retry_backoff_seconds": 0.01})
+    worker = Worker(prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender())
 
     try:
-        report = await worker.scheduled()
+        swept = await worker.scheduled()
+        job = await ingestion_job(db_session, cv["id"])
+        assert swept.swept["ingestion"] == 1
+        assert job.status is IngestionStatus.PENDING
+
+        await asyncio.sleep(0.05)
+        drained = await worker.scheduled()
     finally:
         await worker.aclose()
 
-    assert report.swept["ingestion"] == 1
-    assert report.processed["ingestion"] == 1
+    assert drained.processed["ingestion"] == 1
     assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY

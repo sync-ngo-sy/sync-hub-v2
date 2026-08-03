@@ -109,12 +109,16 @@ class Worker:
         return swept
 
     async def scheduled(self) -> DrainReport:
-        """The correctness guarantee: sweep first, then drain what the sweep released.
+        """The correctness guarantee: sweep, then drain.
 
-        A dropped webhook leaves a row pending, and the sweep alone would never see it —
-        it only rescues rows already in processing. Only the drain half picks those up, so
-        this ordering is what makes the schedule sufficient on its own and the webhook
-        merely a latency optimisation.
+        A dropped webhook leaves a row pending, and a sweep would never see it — sweeping
+        only rescues rows already in processing. The drain half is what picks those up, which
+        is what makes the schedule sufficient on its own and the webhook merely a latency
+        optimisation.
+
+        A row the sweep releases returns to pending carrying its retry delay, so the call that
+        finishes it may be this one or a later one. Either way it is no longer stranded in
+        processing with nobody looking at it.
         """
         swept = await self.sweep()
         drained = await self.drain()

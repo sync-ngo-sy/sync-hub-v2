@@ -148,8 +148,8 @@ async def test_the_scheduled_call_sweeps_before_draining(secured: Settings) -> N
     assert worker.calls == ["sweep", "drain"]
     body: dict[str, Any] = response.json()
     assert body["swept"] == {"ingestion": 2}
-    # Swept rows are only pending afterwards, so the drain in the same call is what finishes
-    # them. Sweeping alone would leave them for nobody.
+    # Swept rows are only pending afterwards, and a drain is the only thing that finishes a
+    # pending row. The stub has no retry delay, so here that drain is this same call.
     assert body["processed"] == {"ingestion": 2}
 
 
