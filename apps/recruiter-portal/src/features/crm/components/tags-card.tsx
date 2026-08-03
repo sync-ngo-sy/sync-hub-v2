@@ -5,7 +5,7 @@ import { CircleAlert, X } from 'lucide-react';
 import { useState } from 'react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { ReviewCard } from '@/features/shell/components/review-card';
-import { problemMessage } from '@/lib/api-problem';
+import { problemDetail, problemMessage } from '@/lib/api-problem';
 import type { Tag, TagsWidget } from '../tag';
 import { TagPicker } from './tag-picker';
 
@@ -14,12 +14,13 @@ const HINT = 'How your team files this Application. Your Tags, and yours alone.'
 export function TagsCard({ tags }: { tags: TagsWidget }) {
   const [failure, setFailure] = useState<string | null>(null);
 
-  async function attempt(work: Promise<unknown>, fallback: string) {
+  async function attempt(change: () => Promise<unknown>, fallback: string) {
+    if (tags.isChanging) return;
     setFailure(null);
     try {
-      await work;
+      await change();
     } catch (error) {
-      setFailure(problemMessage(error, fallback));
+      setFailure(problemDetail(error, fallback));
     }
   }
 
@@ -27,7 +28,7 @@ export function TagsCard({ tags }: { tags: TagsWidget }) {
 
   function toggle(tagId: string) {
     void attempt(
-      isOn(tagId) ? tags.take(tagId) : tags.put(tagId),
+      () => (isOn(tagId) ? tags.take(tagId) : tags.put(tagId)),
       "That Tag couldn't be changed. The Application is filed as it was.",
     );
   }
@@ -77,11 +78,12 @@ export function TagsCard({ tags }: { tags: TagsWidget }) {
           <TagPicker
             vocabulary={tags.vocabulary}
             on={tags.on}
+            isChanging={tags.isChanging}
             onToggle={toggle}
             onCreate={(name) =>
               void attempt(
-                tags.create(name),
-                `“${name}” couldn't be created. The Application is filed as it was.`,
+                () => tags.create(name),
+                `“${name}” couldn't be put on this Application.`,
               )
             }
           />

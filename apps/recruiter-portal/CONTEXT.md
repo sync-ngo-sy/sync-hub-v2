@@ -87,12 +87,14 @@ leaves the Tenant).
 **Tag picker**:
 The one control on the Application review that does both halves of filing: it lists the Tenant's
 application-scoped vocabulary to toggle a Tag on or off, and offers to mint the word the Tenant
-does not have yet from whatever has been typed. Creating is one act even though it is two on the
-wire — a Tag minted and left off the Application is not what was asked for. Only
-application-scoped Tags are ever offered, because a candidate-scoped one is a refusal the picker
-should not be able to ask for, and a part-match is still a new word: "Arab" is not "Arabic", and
-only the Recruiter knows which they meant. The Tags already on show as removable chips beside it,
-so taking one off never needs the picker opened.
+does not have yet from whatever has been typed. Creating reads as one act although it is two on
+the wire, and the two are told apart when only the first lands: a Tag that was minted stays in the
+vocabulary even if the Application could not then be filed under it, so the picker offers the word
+rather than offering to create it a second time — which the API would refuse as a name already
+taken. Only application-scoped Tags are ever offered, because a candidate-scoped one is a refusal
+the picker should not be able to ask for, and a part-match is still a new word: "Arab" is not
+"Arabic", and only the Recruiter knows which they meant. The Tags already on show as removable
+chips beside it, so taking one off never needs the picker opened.
 _Avoid_: Labels, categories, keywords.
 
 **Independent widget**:

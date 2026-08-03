@@ -34,6 +34,7 @@ export interface TagsWidget {
   vocabulary: Tag[];
   on: Tag[];
   isPending: boolean;
+  isChanging: boolean;
   error: unknown;
   refetch: () => void;
   put: (tagId: string) => Promise<unknown>;

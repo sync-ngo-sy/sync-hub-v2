@@ -18,7 +18,7 @@ export function noteByline(note: Note): NoteByline {
 }
 
 export interface NotesWidget {
-  notes: Note[];
+  items: Note[];
   isPending: boolean;
   error: unknown;
   refetch: () => void;
@@ -26,5 +26,5 @@ export interface NotesWidget {
   isLoadingMore: boolean;
   write: (text: string) => Promise<unknown>;
   rewrite: (noteId: string, text: string) => Promise<unknown>;
-  erase: (noteId: string) => Promise<unknown>;
+  remove: (noteId: string) => Promise<unknown>;
 }

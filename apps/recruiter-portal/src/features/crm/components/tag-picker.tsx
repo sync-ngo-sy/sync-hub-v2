@@ -8,11 +8,12 @@ import { type Tag, tagChoices, tagToCreate } from '../tag';
 interface TagPickerProps {
   vocabulary: Tag[];
   on: Tag[];
+  isChanging: boolean;
   onToggle: (tagId: string) => void;
   onCreate: (name: string) => void;
 }
 
-export function TagPicker({ vocabulary, on, onToggle, onCreate }: TagPickerProps) {
+export function TagPicker({ vocabulary, on, isChanging, onToggle, onCreate }: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const choices = tagChoices(vocabulary, on, query);
@@ -49,8 +50,9 @@ export function TagPicker({ vocabulary, on, onToggle, onCreate }: TagPickerProps
                 <button
                   type="button"
                   aria-pressed={choice.isOn}
+                  disabled={isChanging}
                   onClick={() => onToggle(choice.id)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-dense outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-dense outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
                 >
                   <Check
                     aria-hidden="true"
@@ -73,6 +75,7 @@ export function TagPicker({ vocabulary, on, onToggle, onCreate }: TagPickerProps
               variant="ghost"
               size="sm"
               className="w-full justify-start"
+              disabled={isChanging}
               onClick={() => {
                 onCreate(toCreate);
                 setQuery('');

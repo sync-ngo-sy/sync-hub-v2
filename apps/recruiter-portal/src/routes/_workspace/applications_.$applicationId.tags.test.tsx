@@ -270,6 +270,34 @@ describe('the Tags on the Application review page', () => {
     expect(screen.queryByRole('list', { name: 'Tags on this Application' })).toBeNull();
   });
 
+  it('keeps a minted word the Application could not then be filed under', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...refusesApplicationTag({ vocabulary: VOCABULARY }, TAG_WRONG_SCOPE),
+    );
+
+    const { user, tags } = await openTags();
+
+    await user.click(tags.getByRole('button', { name: 'Add a Tag' }));
+    await user.type(screen.getByLabelText('Find or create a Tag'), 'Kurdish');
+    await user.click(screen.getByRole('button', { name: 'Create “Kurdish”' }));
+
+    expect(await tags.findByText('Tags unchanged')).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Tags on this Application' })).toBeNull();
+
+    await waitFor(() =>
+      expect(vocabulary().getByRole('button', { name: 'Kurdish' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      ),
+    );
+
+    await user.type(screen.getByLabelText('Find or create a Tag'), 'Kurdish');
+    expect(vocabulary().getByRole('button', { name: 'Kurdish' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Create “Kurdish”' })).toBeNull();
+  });
+
   it('says why a word could not be created', async () => {
     server.use(
       ...signedInAs(RECRUITER),

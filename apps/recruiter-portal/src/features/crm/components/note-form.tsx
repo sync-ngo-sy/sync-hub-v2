@@ -5,7 +5,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { CircleAlert } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { problemMessage } from '@/lib/api-problem';
+import { problemDetail } from '@/lib/api-problem';
 import { type NoteTextValues, noteTextSchema } from '../schemas/note-text';
 
 interface NoteFormProps {
@@ -43,7 +43,7 @@ export function NoteForm({
       await onSubmit(values.text.trim());
       form.reset({ text: '' });
     } catch (error) {
-      form.setError('root', { message: problemMessage(error, refusalFallback) });
+      form.setError('root', { message: problemDetail(error, refusalFallback) });
     }
   });
 

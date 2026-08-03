@@ -4,6 +4,8 @@ import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
 import type { ApplicationSummary, PipelineStatus } from '../application';
+import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
+import { TAG_PATH, TAGS_PATH, VOCABULARY_PATH } from '../hooks/use-application-tags';
 import type { ApplicationReview } from '../review';
 
 type Problem = components['schemas']['ProblemDetail'];
@@ -13,11 +15,6 @@ type NewTag = components['schemas']['NewTag'];
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
-const NOTES_PATH = '/v1/tenants/me/applications/{application_id}/notes';
-const NOTE_PATH = '/v1/tenants/me/applications/{application_id}/notes/{note_id}';
-const VOCABULARY_PATH = '/v1/tenants/me/tags';
-const TAGS_PATH = '/v1/tenants/me/applications/{application_id}/tags';
-const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_id}';
 
 const NO_SUCH_APPLICATION: Problem = {
   type: 'urn:sync:problem:not-found',
@@ -118,6 +115,13 @@ const NO_SUCH_NOTE: Problem = {
   title: 'Not Found',
   status: 404,
   detail: 'This tenant has no application, or no note on it, with that id.',
+};
+
+const NO_SUCH_TAG: Problem = {
+  type: 'urn:sync:problem:not-found',
+  title: 'Not Found',
+  status: 404,
+  detail: 'This tenant has no application or no tag with that id.',
 };
 
 const WROTE_AT = '2026-08-03T12:00:00Z';
@@ -232,7 +236,7 @@ export function filesApplicationTags(session: TagSession, created?: NewTag[]) {
     http.get(TAGS_PATH, ({ response }) => response(200).json(on)),
     http.put(TAG_PATH, ({ params, response }) => {
       const tag = vocabulary.find((each) => each.id === params.tag_id);
-      if (!tag) return response(404).json(NO_SUCH_APPLICATION);
+      if (!tag) return response(404).json(NO_SUCH_TAG);
       if (!on.some((each) => each.id === tag.id)) on = [...on, tag];
       return response(200).json(tag);
     }),

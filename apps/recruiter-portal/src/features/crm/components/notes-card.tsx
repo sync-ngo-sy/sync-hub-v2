@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { ReviewCard } from '@/features/shell/components/review-card';
-import { problemMessage } from '@/lib/api-problem';
+import { problemDetail, problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { type Note, type NotesWidget, noteByline } from '../note';
 import { NoteForm } from './note-form';
@@ -25,17 +25,21 @@ const HINT = 'Your team only — the candidate never sees these.';
 
 export function NotesCard({ notes }: { notes: NotesWidget }) {
   const [editing, setEditing] = useState<string | null>(null);
-  const [erasing, setErasing] = useState<Note | null>(null);
+  const [deleting, setDeleting] = useState<Note | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  async function erase(note: Note) {
+  async function remove(note: Note) {
+    if (isDeleting) return;
+    setIsDeleting(true);
     try {
-      await notes.erase(note.id);
-      setErasing(null);
+      await notes.remove(note.id);
       toast.success('Note deleted');
     } catch (error) {
-      setFailure(problemMessage(error, "That note couldn't be deleted. It still reads as it did."));
-      setErasing(null);
+      setFailure(problemDetail(error, "That note couldn't be deleted. It still reads as it did."));
+    } finally {
+      setIsDeleting(false);
+      setDeleting(null);
     }
   }
 
@@ -73,9 +77,9 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
 
         {notes.isPending ? <SkeletonText lines={3} /> : null}
 
-        {notes.notes.length > 0 ? (
+        {notes.items.length > 0 ? (
           <ul aria-label="Notes" className="divide-y divide-border">
-            {notes.notes.map((note) => (
+            {notes.items.map((note) => (
               <li key={note.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
                 {editing === note.id ? (
                   <NoteForm
@@ -101,9 +105,9 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
                       setFailure(null);
                       setEditing(note.id);
                     }}
-                    onErase={() => {
+                    onDelete={() => {
                       setFailure(null);
-                      setErasing(note);
+                      setDeleting(note);
                     }}
                   />
                 )}
@@ -112,7 +116,7 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
           </ul>
         ) : null}
 
-        {!notes.isPending && !notes.error && notes.notes.length === 0 ? (
+        {!notes.isPending && !notes.error && notes.items.length === 0 ? (
           <p className="text-dense text-muted-foreground">
             Nothing written down yet. The first note is the one your colleagues will read first.
           </p>
@@ -130,10 +134,11 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
         ) : null}
       </div>
 
-      <EraseNoteDialog
-        note={erasing}
-        onConfirm={(note) => void erase(note)}
-        onClose={() => setErasing(null)}
+      <DeleteNoteDialog
+        note={deleting}
+        isDeleting={isDeleting}
+        onConfirm={(note) => void remove(note)}
+        onClose={() => setDeleting(null)}
       />
     </ReviewCard>
   );
@@ -142,10 +147,10 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
 interface NoteEntryProps {
   note: Note;
   onEdit: () => void;
-  onErase: () => void;
+  onDelete: () => void;
 }
 
-function NoteEntry({ note, onEdit, onErase }: NoteEntryProps) {
+function NoteEntry({ note, onEdit, onDelete }: NoteEntryProps) {
   const byline = noteByline(note);
   const stamp = absoluteDateTime(byline.at);
   const whose = `${byline.author}'s note from ${stamp}`;
@@ -164,7 +169,7 @@ function NoteEntry({ note, onEdit, onErase }: NoteEntryProps) {
           <Button variant="ghost" size="sm" aria-label={`Edit ${whose}`} onClick={onEdit}>
             Edit
           </Button>
-          <Button variant="ghost" size="sm" aria-label={`Delete ${whose}`} onClick={onErase}>
+          <Button variant="ghost" size="sm" aria-label={`Delete ${whose}`} onClick={onDelete}>
             Delete
           </Button>
         </span>
@@ -174,13 +179,14 @@ function NoteEntry({ note, onEdit, onErase }: NoteEntryProps) {
   );
 }
 
-interface EraseNoteDialogProps {
+interface DeleteNoteDialogProps {
   note: Note | null;
+  isDeleting: boolean;
   onConfirm: (note: Note) => void;
   onClose: () => void;
 }
 
-function EraseNoteDialog({ note, onConfirm, onClose }: EraseNoteDialogProps) {
+function DeleteNoteDialog({ note, isDeleting, onConfirm, onClose }: DeleteNoteDialogProps) {
   if (!note) return null;
 
   return (
@@ -199,9 +205,13 @@ function EraseNoteDialog({ note, onConfirm, onClose }: EraseNoteDialogProps) {
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={() => onConfirm(note)}>
-            Delete note
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={isDeleting}
+            onClick={() => onConfirm(note)}
+          >
+            {isDeleting ? 'Deleting note…' : 'Delete note'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

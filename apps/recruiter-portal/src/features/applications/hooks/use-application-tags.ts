@@ -2,56 +2,58 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { TagsWidget } from '@/features/crm/tag';
 import { api } from '@/lib/api';
 
-const VOCABULARY_PATH = '/v1/tenants/me/tags';
-const TAGS_PATH = '/v1/tenants/me/applications/{application_id}/tags';
-const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_id}';
+export const VOCABULARY_PATH = '/v1/tenants/me/tags';
+export const TAGS_PATH = '/v1/tenants/me/applications/{application_id}/tags';
+export const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_id}';
 
 const APPLICATION_SCOPE = { params: { query: { scope: 'application' as const } } };
 
+export function applicationVocabularyQuery() {
+  return api.queryOptions('get', VOCABULARY_PATH, APPLICATION_SCOPE);
+}
+
+export function applicationTagsQuery(applicationId: string) {
+  return api.queryOptions('get', TAGS_PATH, {
+    params: { path: { application_id: applicationId } },
+  });
+}
+
 export function useApplicationTags(applicationId: string): TagsWidget {
   const queryClient = useQueryClient();
-  const init = { params: { path: { application_id: applicationId } } };
 
   const vocabulary = api.useQuery('get', VOCABULARY_PATH, APPLICATION_SCOPE);
-  const on = api.useQuery('get', TAGS_PATH, init);
+  const on = api.useQuery('get', TAGS_PATH, {
+    params: { path: { application_id: applicationId } },
+  });
 
-  const create = api.useMutation('post', VOCABULARY_PATH);
-  const put = api.useMutation('put', TAG_PATH);
-  const take = api.useMutation('delete', TAG_PATH);
+  const rereadVocabulary = () =>
+    queryClient.invalidateQueries({ queryKey: applicationVocabularyQuery().queryKey });
+  const rereadFiling = () =>
+    queryClient.invalidateQueries({ queryKey: applicationTagsQuery(applicationId).queryKey });
 
-  const reread = () =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: api.queryOptions('get', VOCABULARY_PATH, APPLICATION_SCOPE).queryKey,
-      }),
-      queryClient.invalidateQueries({
-        queryKey: api.queryOptions('get', TAGS_PATH, init).queryKey,
-      }),
-    ]);
+  const mint = api.useMutation('post', VOCABULARY_PATH, { onSuccess: rereadVocabulary });
+  const put = api.useMutation('put', TAG_PATH, { onSuccess: rereadFiling });
+  const take = api.useMutation('delete', TAG_PATH, { onSuccess: rereadFiling });
 
   const path = { application_id: applicationId };
 
-  const putOn = async (tagId: string) => {
-    await put.mutateAsync({ params: { path: { ...path, tag_id: tagId } } });
-    await reread();
-  };
+  const putOn = (tagId: string) =>
+    put.mutateAsync({ params: { path: { ...path, tag_id: tagId } } });
 
   return {
     vocabulary: vocabulary.data ?? [],
     on: on.data ?? [],
     isPending: vocabulary.isPending || on.isPending,
+    isChanging: put.isPending || take.isPending || mint.isPending,
     error: on.error ?? vocabulary.error ?? null,
     refetch: () => {
       void vocabulary.refetch();
       void on.refetch();
     },
     put: putOn,
-    take: async (tagId) => {
-      await take.mutateAsync({ params: { path: { ...path, tag_id: tagId } } });
-      await reread();
-    },
+    take: (tagId) => take.mutateAsync({ params: { path: { ...path, tag_id: tagId } } }),
     create: async (name) => {
-      const minted = await create.mutateAsync({ body: { name, scope: 'application' } });
+      const minted = await mint.mutateAsync({ body: { name, scope: 'application' } });
       await putOn(minted.id);
     },
   };
