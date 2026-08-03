@@ -128,7 +128,9 @@ redirect an invite to a URL listed in `additional_redirect_urls` in `supabase/co
 `SYNC_ADMIN_PORTAL_URL` has to match the Platform Portal's address for Platform-admin password
 reset links; both local portal URLs are listed in that allowlist. The Candidate and Recruiter
 Portals use `VITE_ADMIN_PORTAL_URL` when their wrong-portal screen directs a Platform admin to the
-Platform Portal.
+Platform Portal. The Recruiter Portal also reads `VITE_CANDIDATE_PORTAL_URL` to build the
+shareable address of a Job's Tracked links, so a copied link opens the Candidate Portal that
+counts the view.
 
 If the API is already running under compose, run only the portals so nothing fights over port 8000:
 
