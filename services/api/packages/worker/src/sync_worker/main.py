@@ -1,15 +1,22 @@
 from __future__ import annotations
 
-import asyncio
-from contextlib import suppress
+import os
 
-from sync_core import get_settings
-from sync_worker.worker import run_worker
+import uvicorn
+
+#: Cloud Run names the port it expects the container to listen on. 8080 is its default, and
+#: the local fallback.
+DEFAULT_PORT = 8080
 
 
 def main() -> None:
-    with suppress(KeyboardInterrupt):
-        asyncio.run(run_worker(get_settings()))
+    uvicorn.run(
+        "sync_worker.service:create_app",
+        factory=True,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", DEFAULT_PORT)),
+        access_log=False,
+    )
 
 
 if __name__ == "__main__":

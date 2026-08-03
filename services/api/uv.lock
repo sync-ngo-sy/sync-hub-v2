@@ -1738,20 +1738,24 @@ name = "sync-worker"
 version = "0.1.0"
 source = { editable = "packages/worker" }
 dependencies = [
+    { name = "fastapi" },
     { name = "sync-comms" },
     { name = "sync-core" },
     { name = "sync-ingestion" },
     { name = "sync-parsers" },
     { name = "sync-rag" },
+    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "fastapi", specifier = ">=0.139.2" },
     { name = "sync-comms", editable = "packages/comms" },
     { name = "sync-core", editable = "packages/core" },
     { name = "sync-ingestion", editable = "packages/ingestion" },
     { name = "sync-parsers", editable = "packages/parsers" },
     { name = "sync-rag", editable = "packages/rag" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.51.0" },
 ]
 
 [[package]]

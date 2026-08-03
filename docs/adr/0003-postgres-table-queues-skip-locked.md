@@ -10,6 +10,25 @@ Python worker) claim rows with `SELECT ... FOR UPDATE SKIP LOCKED` and retry via
 `available_at` + `attempts`; `LISTEN/NOTIFY` wakes workers with low latency, and a periodic
 `pg_cron` sweep requeues stuck jobs.
 
+**Amended when the worker became a service.** The consumer no longer polls. It was eleven
+concurrent polling tasks in a permanently running process — roughly fifty thousand queries a
+day on an idle system, and a container rented around the clock mostly to sleep. It is now an
+HTTP service that drains its queues on demand and scales to zero between bursts. Two things
+call it: a database webhook on enqueue, for sub-second latency, and a schedule every few
+minutes. The endpoints take a shared secret rather than IAM, because neither caller can mint
+a Google identity token.
+
+**The schedule is the correctness guarantee, not a fallback.** It performs a drain *as well
+as* a sweep, and in that order. The sweep only rescues rows already in a processing state
+that a crashed invocation abandoned; it will never see a row still pending. So a dropped
+webhook would strand that row forever if the scheduled call swept alone. The webhook is a
+latency optimisation and nothing depends on it.
+
+The claim semantics above are what make this safe: `FOR UPDATE SKIP LOCKED` means parallel
+invocations cannot double-process, so a burst of webhooks coalesces into whichever instances
+happen to be running rather than one per event. Each drain is bounded by a row ceiling, so a
+continuously fed queue cannot keep one request alive until the platform kills it mid-job.
+
 ## Considered options
 
 - **pgmq / Supabase Queues** — rejected: no message coalescing (the embedding queue needs
