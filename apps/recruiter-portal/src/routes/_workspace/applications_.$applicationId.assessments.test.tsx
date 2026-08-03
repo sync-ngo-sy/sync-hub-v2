@@ -13,6 +13,7 @@ import {
   assessesMatch,
   failsToAssessMatch,
   failsToListMatchAssessments,
+  failsToPageMatchAssessments,
   getsApplication,
   holdsMatchAssessment,
   listsMatchAssessments,
@@ -262,6 +263,26 @@ describe('asking an AI to assess a match', () => {
 });
 
 describe('an Application review whose assessments will not load', () => {
+  it('keeps the readings already on screen when an older page faults', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...failsToPageMatchAssessments([LATEST_ASSESSMENT], SERVER_FAULT),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
+
+    await user.click(widget().getByRole('button', { name: 'Show older assessments' }));
+
+    await waitFor(() =>
+      expect(widget().getByRole('alert')).toHaveTextContent('Something went wrong on our side.'),
+    );
+    expect(widget().getByText('82% of what the Job asks for')).toBeVisible();
+    expect(screen.queryByText("Couldn't load this")).toBeNull();
+  });
+
   it('takes down the widget and leaves the rest of the review standing', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     server.use(

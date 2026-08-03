@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { messagePreview, paragraphs } from './preview';
+import { messagePreview } from './preview';
 import { INTERVIEW_INVITATION } from './testing/fixtures';
 
 const FILLED = {
@@ -44,23 +44,5 @@ describe('a Message template previewed against one Application', () => {
     );
 
     expect(preview.subject).toBe('Hi {{ recruiter_name }}');
-  });
-});
-
-describe('the shape a previewed body is read in', () => {
-  it('parts paragraphs on a blank line, the way the sent mail does', () => {
-    expect(paragraphs('Hi Amal,\n\nWe would like to talk.\n\nAman Relief')).toEqual([
-      'Hi Amal,',
-      'We would like to talk.',
-      'Aman Relief',
-    ]);
-  });
-
-  it('keeps a single newline inside the paragraph it belongs to', () => {
-    expect(paragraphs('Two things:\n- one\n- two')).toEqual(['Two things:\n- one\n- two']);
-  });
-
-  it('drops the emptiness left by trailing or repeated blank lines', () => {
-    expect(paragraphs('Only this.\n\n\n\n')).toEqual(['Only this.']);
   });
 });

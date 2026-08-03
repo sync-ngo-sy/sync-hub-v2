@@ -1,6 +1,6 @@
 export const FILLABLE: readonly string[] = ['candidate_name', 'job_title', 'tenant_name'];
 
-const PLACEHOLDER = /\{\{([^{}]*)\}\}/g;
+export const PLACEHOLDER = /\{\{([^{}]*)\}\}/g;
 
 function asWritten(name: string): string {
   return `{{ ${name} }}`;

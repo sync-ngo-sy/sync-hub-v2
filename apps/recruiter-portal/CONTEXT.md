@@ -89,12 +89,14 @@ _Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, picked and read in full on the
 Application review before it goes. The preview resolves the Placeholder vocabulary against this
-Candidate, this Job and this Tenant, so what is on screen is what the Candidate will read rather
-than the template's braces — the portal fills them itself, because the API resolves them only at
-send and there is nothing to preview from. Reading the Tenant's own name is the one thing this
-costs, and it is the only place the portal asks for it. Each send is its own decision: the picker
-empties afterwards so the same words don't go twice by accident, and a refused send keeps the
-preview so the Recruiter can try the same message again.
+Application, this Job and this Tenant, so a Recruiter reads sentences rather than the template's
+braces — the portal fills them itself, because the API resolves them only at send and there would
+be nothing to preview from. Reading the Tenant's own name is what that costs, and this is the only
+place the portal asks for it. One placeholder the preview cannot promise: the API greets the
+Candidate by the name on their profile at send, while the portal has only the Snapshot's, so the
+preview says which of the two it showed rather than implying they are always the same. Each send
+is its own decision: the picker empties afterwards so the same words don't go twice by accident,
+and a refused send keeps the preview so the Recruiter can try the same message again.
 _Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
 **Tracked links tab**:

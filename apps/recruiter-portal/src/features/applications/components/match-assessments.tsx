@@ -18,7 +18,7 @@ function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
     <div className="space-y-1">
       <p className="text-meta text-muted-foreground">{title}</p>
       <ul className="list-disc space-y-0.5 pl-4 text-dense">
-        {phrases.map((phrase) => (
+        {[...new Set(phrases)].map((phrase) => (
           <li key={phrase}>{phrase}</li>
         ))}
       </ul>
@@ -64,16 +64,19 @@ function Assessment({ assessment }: { assessment: MatchAssessment }) {
 export function MatchAssessments({ applicationId }: { applicationId: string }) {
   const assessments = useMatchAssessments(applicationId);
   const asking = useAssessMatch(applicationId);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
 
   const items = assessments.data ?? [];
+  const failure = assessments.isError
+    ? problemDetail(assessments.error, "The older assessments couldn't be read.")
+    : refused;
 
   async function ask() {
-    setFailure(null);
+    setRefused(null);
     try {
       await asking.mutateAsync({ params: { path: { application_id: applicationId } } });
     } catch (error) {
-      setFailure(
+      setRefused(
         problemDetail(error, "This Application couldn't be assessed. Nothing was recorded."),
       );
     }
@@ -101,7 +104,9 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
         {failure ? (
           <Alert>
             <CircleAlert aria-hidden="true" />
-            <AlertTitle>No assessment was made</AlertTitle>
+            <AlertTitle>
+              {assessments.isError ? 'Not everything loaded' : 'No assessment was made'}
+            </AlertTitle>
             <AlertDescription>{failure}</AlertDescription>
           </Alert>
         ) : null}

@@ -93,12 +93,30 @@ describe('the preview of a message before it goes', () => {
 
     const preview = within(await screen.findByRole('article', { name: 'Message preview' }));
     expect(preview.getByText('An interview for Field Coordinator?')).toBeVisible();
-    expect(preview.getByText('Hi Amal Haddad,')).toBeVisible();
     expect(
-      preview.getByText('We would like to talk to you about Field Coordinator.'),
+      preview.getByText(
+        'Hi Amal Haddad, We would like to talk to you about Field Coordinator. Aman Relief',
+      ),
     ).toBeVisible();
-    expect(preview.getByText('Aman Relief')).toBeVisible();
     expect(preview.queryByText(/\{\{/)).toBeNull();
+  });
+
+  it('admits the greeting comes from the Snapshot, not the profile the send will read', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...listsMessageTemplates(TEMPLATES),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+    await pick(user, 'Interview invitation');
+
+    expect(await screen.findByRole('article', { name: 'Message preview' })).toBeVisible();
+    expect(
+      widget().getByText(
+        'The name here is the Snapshot’s. The send greets the candidate by the name on their profile today.',
+      ),
+    ).toBeVisible();
   });
 
   it('re-reads the preview when a different template is picked', async () => {
@@ -116,7 +134,7 @@ describe('the preview of a message before it goes', () => {
 
     const preview = within(await screen.findByRole('article', { name: 'Message preview' }));
     expect(preview.getByText('Your application for Field Coordinator')).toBeVisible();
-    expect(preview.getByText('We are moving other applicants forward.')).toBeVisible();
+    expect(preview.getByText(/We are moving other applicants forward\./)).toBeVisible();
     expect(preview.queryByText('An interview for Field Coordinator?')).toBeNull();
   });
 });

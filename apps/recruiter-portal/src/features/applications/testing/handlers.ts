@@ -132,7 +132,16 @@ export function failsToListMatchAssessments(problem: Problem) {
   return [http.get(ASSESSMENTS_PATH, ({ response }) => response(500).json(problem))];
 }
 
-/** Records the assessment for real, so a test reads the list the way a Recruiter would. */
+export function failsToPageMatchAssessments(newest: MatchAssessment[], problem: Problem) {
+  return [
+    http.get(ASSESSMENTS_PATH, ({ query, response }) =>
+      query.get('cursor')
+        ? response(500).json(problem)
+        : response(200).json({ items: newest, next_cursor: 'older' }),
+    ),
+  ];
+}
+
 export function assessesMatch(initial: MatchAssessment[], written: MatchAssessment) {
   let items = [...initial];
   return [
@@ -144,8 +153,6 @@ export function assessesMatch(initial: MatchAssessment[], written: MatchAssessme
   ];
 }
 
-/** The status matters here: a rate limit, a model that failed and a deployment without one are
- * three different sentences, and the widget has to tell them apart. */
 export function failsToAssessMatch(
   initial: MatchAssessment[],
   problem: Problem,
@@ -157,7 +164,6 @@ export function failsToAssessMatch(
   ];
 }
 
-/** Holds the request open until the caller lets it answer, so a test can see the wait. */
 export function holdsMatchAssessment(initial: MatchAssessment[], written: MatchAssessment) {
   const gate = holding();
   let items = [...initial];
@@ -190,7 +196,6 @@ export function refusesMessage(problem: Problem, status: 404 | 500) {
   return [http.post(MESSAGES_PATH, ({ response }) => response(status).json(problem))];
 }
 
-/** Holds the send open until the caller lets it land, so a test can see the message go. */
 export function holdsMessage(queued: QueuedMessage) {
   const gate = holding();
   return {

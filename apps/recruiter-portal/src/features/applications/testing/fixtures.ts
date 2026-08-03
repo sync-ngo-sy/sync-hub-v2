@@ -153,7 +153,6 @@ export const AMAL_REVIEW: ApplicationReview = {
   updated_at: '2026-08-02T14:30:00Z',
 };
 
-/** Everything an assessment can say, so a reading that says less says so by leaving it out. */
 export const LATEST_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000601',
   match_percentage: 82,
@@ -176,7 +175,6 @@ export const EARLIER_ASSESSMENT: MatchAssessment = {
   assessed_at: '2026-07-28T09:00:00Z',
 };
 
-/** A model that gave a number and nothing else — the page still has to render it. */
 export const BARE_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000603',
   match_percentage: 40,

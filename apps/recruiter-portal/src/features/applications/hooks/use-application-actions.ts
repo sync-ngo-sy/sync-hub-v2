@@ -17,8 +17,6 @@ export function useMoveApplication(applicationId: string) {
   });
 }
 
-/** No optimistic row either: an assessment is the model's words, and the list re-reads so the
- * finished one arrives where the API puts it — at the top, newest first. */
 export function useAssessMatch(applicationId: string) {
   const queryClient = useQueryClient();
 
@@ -28,11 +26,6 @@ export function useAssessMatch(applicationId: string) {
   });
 }
 
-export function useMessageApplicant(applicationId: string) {
-  const queryClient = useQueryClient();
-
-  return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/messages', {
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: applicationQuery(applicationId).queryKey }),
-  });
+export function useMessageApplicant() {
+  return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/messages');
 }

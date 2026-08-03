@@ -23,6 +23,6 @@ export function useMatchAssessments(applicationId: string) {
     initialPageParam: null,
     getNextPageParam: (page) => page.next_cursor,
     select: (data) => data.pages.flatMap((page) => page.items),
-    throwOnError: true,
+    throwOnError: (_error, query) => query.state.data === undefined,
   });
 }

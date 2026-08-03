@@ -14,7 +14,7 @@ import { CircleAlert, Send } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { useMessageTemplates } from '@/features/templates/hooks/use-message-templates';
-import { messagePreview, paragraphs } from '@/features/templates/preview';
+import { messagePreview } from '@/features/templates/preview';
 import { useMyTenant } from '@/features/tenant/hooks/use-my-tenant';
 import { problemDetail } from '@/lib/api-problem';
 import { useMessageApplicant } from '../hooks/use-application-actions';
@@ -23,20 +23,20 @@ import { ReviewCard } from './review-card';
 const SENT = 'Message queued — the candidate will have it shortly.';
 const NOT_SENT = 'This message was not sent. Nothing reached the candidate.';
 
-interface ApplicantOutreachProps {
+interface ApplicantMessageProps {
   applicationId: string;
   candidateName: string;
   jobTitle: string;
 }
 
-export function ApplicantOutreach({
+export function ApplicantMessage({
   applicationId,
   candidateName,
   jobTitle,
-}: ApplicantOutreachProps) {
+}: ApplicantMessageProps) {
   const templates = useMessageTemplates();
   const tenant = useMyTenant();
-  const sending = useMessageApplicant(applicationId);
+  const sending = useMessageApplicant();
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const pickerId = useId();
@@ -53,12 +53,12 @@ export function ApplicantOutreach({
         })
       : null;
 
-  async function send(templateId: string) {
+  async function send(chosen: string) {
     setFailure(null);
     try {
       await sending.mutateAsync({
         params: { path: { application_id: applicationId } },
-        body: { template_id: templateId },
+        body: { template_id: chosen },
       });
       toast.success(SENT);
       setTemplateId(null);
@@ -126,14 +126,15 @@ export function ApplicantOutreach({
                 className="space-y-2 rounded-lg border border-border bg-muted/40 p-3"
               >
                 <p className="font-medium text-dense text-foreground">{preview.subject}</p>
-                <div className="space-y-2 text-dense text-muted-foreground">
-                  {paragraphs(preview.body).map((paragraph) => (
-                    <p key={paragraph} className="whitespace-pre-wrap">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
+                <p className="whitespace-pre-wrap text-dense text-muted-foreground">
+                  {preview.body}
+                </p>
               </article>
+
+              <p className="text-meta text-muted-foreground">
+                The name here is the Snapshot’s. The send greets the candidate by the name on their
+                profile today.
+              </p>
 
               <Button
                 className="w-full"

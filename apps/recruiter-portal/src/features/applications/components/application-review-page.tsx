@@ -6,7 +6,7 @@ import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { absoluteDateTime } from '@/lib/dates';
 import { screeningState } from '../application';
 import { useApplication } from '../hooks/use-application';
-import { ApplicantOutreach } from './applicant-outreach';
+import { ApplicantMessage } from './applicant-message';
 import { ApplicationAnswers } from './application-answers';
 import { ApplicationHistory } from './application-history';
 import { ApplicationPipeline } from './application-pipeline';
@@ -77,7 +77,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
           <ApplicationPipeline applicationId={applicationId} status={review.status} />
 
           <WidgetBoundary name="Message the applicant">
-            <ApplicantOutreach
+            <ApplicantMessage
               applicationId={applicationId}
               candidateName={review.snapshot.full_name}
               jobTitle={review.job.title}
