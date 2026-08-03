@@ -9,16 +9,15 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { problemMessage } from '@/lib/api-problem';
+import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useChangeJob } from '../hooks/use-job-actions';
 import { useJobs } from '../hooks/use-jobs';
 import {
   type JobLifecycleAction,
   type JobStatus,
   type JobSummary,
-  jobAbsoluteDate,
   jobLifecycleActions,
   jobMeta,
-  jobRelativeDate,
   jobState,
 } from '../job';
 import { CreateJobDialog } from './create-job-dialog';
@@ -47,8 +46,8 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
     accessorKey: 'updated_at',
     header: 'Updated',
     cell: ({ row }) => (
-      <time dateTime={row.original.updated_at} title={jobAbsoluteDate(row.original.updated_at)}>
-        {jobRelativeDate(row.original.updated_at)}
+      <time dateTime={row.original.updated_at} title={absoluteDateTime(row.original.updated_at)}>
+        {relativeTime(row.original.updated_at)}
       </time>
     ),
   },

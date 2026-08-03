@@ -38,6 +38,15 @@ The ordered application statuses a Recruiter moves an Application through while
 reviewing it. Distinct from Screening, which is the automated verdict.
 _Avoid_: Funnel, workflow, stages.
 
+**Triage list**:
+A Job's Applications, newest first, under the Job's Applications tab — the surface a Recruiter
+works from before opening anything. Each row carries the Screening verdict and the Pipeline
+status side by side, because the two answer different questions and neither substitutes for the
+other. Both are filters, they combine, and they live in the address bar rather than in the page,
+so a reload keeps them and a pasted link reproduces the list it was copied from. The list is
+paged by cursor and never sorted in the browser: the API decides the order.
+_Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
+
 **Reference data**:
 The platform's fixed lists — Canonical skills with their categories, languages with their
 names and codes, and Locations under their heading — read from endpoints of their own and

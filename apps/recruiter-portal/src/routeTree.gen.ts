@@ -27,6 +27,7 @@ import { Route as WorkspaceTemplatesRouteImport } from './routes/_workspace/temp
 import { Route as AuthAcceptInviteRouteImport } from './routes/auth.accept-invite'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as WorkspaceApplicationsApplicationIdRouteImport } from './routes/_workspace/applications_.$applicationId'
 import { Route as WorkspaceJobsJobIdRouteImport } from './routes/_workspace/jobs_.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -118,6 +119,12 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkspaceApplicationsApplicationIdRoute =
+  WorkspaceApplicationsApplicationIdRouteImport.update({
+    id: '/applications_/$applicationId',
+    path: '/applications/$applicationId',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
 const WorkspaceJobsJobIdRoute = WorkspaceJobsJobIdRouteImport.update({
   id: '/jobs_/$jobId',
   path: '/jobs/$jobId',
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/applications/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
   '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRoutesByTo {
@@ -162,6 +170,7 @@ export interface FileRoutesByTo {
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/applications/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
   '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRoutesById {
@@ -184,6 +193,7 @@ export interface FileRoutesById {
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/_workspace/applications_/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
   '/_workspace/jobs_/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRouteTypes {
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
+    | '/applications/$applicationId'
     | '/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
+    | '/applications/$applicationId'
     | '/jobs/$jobId'
   id:
     | '__root__'
@@ -247,6 +259,7 @@ export interface FileRouteTypes {
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
+    | '/_workspace/applications_/$applicationId'
     | '/_workspace/jobs_/$jobId'
   fileRoutesById: FileRoutesById
 }
@@ -392,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_workspace/applications_/$applicationId': {
+      id: '/_workspace/applications_/$applicationId'
+      path: '/applications/$applicationId'
+      fullPath: '/applications/$applicationId'
+      preLoaderRoute: typeof WorkspaceApplicationsApplicationIdRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/jobs_/$jobId': {
       id: '/_workspace/jobs_/$jobId'
       path: '/jobs/$jobId'
@@ -410,6 +430,7 @@ interface WorkspaceRouteChildren {
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
   WorkspaceTalentPoolRoute: typeof WorkspaceTalentPoolRoute
   WorkspaceTemplatesRoute: typeof WorkspaceTemplatesRoute
+  WorkspaceApplicationsApplicationIdRoute: typeof WorkspaceApplicationsApplicationIdRoute
   WorkspaceJobsJobIdRoute: typeof WorkspaceJobsJobIdRoute
 }
 
@@ -421,6 +442,8 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,
   WorkspaceTalentPoolRoute: WorkspaceTalentPoolRoute,
   WorkspaceTemplatesRoute: WorkspaceTemplatesRoute,
+  WorkspaceApplicationsApplicationIdRoute:
+    WorkspaceApplicationsApplicationIdRoute,
   WorkspaceJobsJobIdRoute: WorkspaceJobsJobIdRoute,
 }
 

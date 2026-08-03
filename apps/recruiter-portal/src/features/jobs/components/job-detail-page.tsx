@@ -8,13 +8,17 @@ import { Link } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import type { ApplicationSummary } from '@/features/applications/application';
+import { JobApplications } from '@/features/applications/components/job-applications';
+import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
+import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { problemMessage } from '@/lib/api-problem';
+import { absoluteDateTime } from '@/lib/dates';
 import { useJob } from '../hooks/use-job';
 import { useChangeJob } from '../hooks/use-job-actions';
 import {
   employmentTypeLabel,
   type JobLifecycleAction,
-  jobAbsoluteDate,
   jobLifecycleActions,
   jobState,
   workModeLabel,
@@ -27,9 +31,19 @@ interface JobDetailPageProps {
   jobId: string;
   tab: JobDetailTab;
   onTabChange: (tab: JobDetailTab) => void;
+  filters: ApplicationFilters;
+  onFiltersChange: (filters: ApplicationFilters) => void;
+  onApplicationOpen: (application: ApplicationSummary) => void;
 }
 
-export function JobDetailPage({ jobId, tab, onTabChange }: JobDetailPageProps) {
+export function JobDetailPage({
+  jobId,
+  tab,
+  onTabChange,
+  filters,
+  onFiltersChange,
+  onApplicationOpen,
+}: JobDetailPageProps) {
   const { data: job } = useJob(jobId);
   const change = useChangeJob();
   const [lifecycleFailure, setLifecycleFailure] = useState<string | null>(null);
@@ -95,7 +109,7 @@ export function JobDetailPage({ jobId, tab, onTabChange }: JobDetailPageProps) {
           </div>
           <div>
             <dt className="text-meta text-muted-foreground">Closing date</dt>
-            <dd>{job.expires_at ? jobAbsoluteDate(job.expires_at) : 'No closing date'}</dd>
+            <dd>{job.expires_at ? absoluteDateTime(job.expires_at) : 'No closing date'}</dd>
           </div>
         </dl>
       </div>
@@ -115,9 +129,15 @@ export function JobDetailPage({ jobId, tab, onTabChange }: JobDetailPageProps) {
           <TabsTrigger value="links">Tracked links</TabsTrigger>
         </TabsList>
         <TabsContent value="applications">
-          <Card>
-            <CardContent>Applications will appear here.</CardContent>
-          </Card>
+          <WidgetBoundary name="Applications">
+            <JobApplications
+              jobId={jobId}
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+              onApplicationOpen={onApplicationOpen}
+              onShowLinks={() => onTabChange('links')}
+            />
+          </WidgetBoundary>
         </TabsContent>
         <TabsContent value="criteria">
           <CriteriaForm job={job} />
