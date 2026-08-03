@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Tag, tagChoices, tagToCreate } from './tag';
+import { type Tag, tagChoices, tagNamed, tagToCreate } from './tag';
 
 function tag(name: string): Tag {
   return { id: `id-${name}`, name, scope: 'application', created_at: '2026-07-01T09:00:00Z' };
@@ -70,5 +70,40 @@ describe('the Tag a picker would create from what was typed', () => {
 
   it('still offers to create a name that only part-matches an existing Tag', () => {
     expect(tagToCreate(VOCABULARY, 'Arab')).toBe('Arab');
+  });
+});
+
+describe('the Tag already holding a name, told before the API is asked', () => {
+  const RELOCATING_CANDIDATE: Tag = {
+    ...tag('Relocating'),
+    id: 'candidate-scoped',
+    scope: 'candidate',
+  };
+  const CURATED = [...VOCABULARY, RELOCATING_CANDIDATE];
+
+  it('is the Tag of that name in that scope, whatever case it was typed in', () => {
+    expect(tagNamed(CURATED, { name: 'arabic', scope: 'application' })).toBe(ARABIC);
+    expect(tagNamed(CURATED, { name: '  Arabic ', scope: 'application' })).toBe(ARABIC);
+  });
+
+  it('is the Tag the Tenant has, so a refusal can spell the name back as it stands', () => {
+    expect(tagNamed(CURATED, { name: 'arabic', scope: 'application' })?.name).toBe('Arabic');
+  });
+
+  it('is nobody in the other scope: one word may file both Candidates and Applications', () => {
+    expect(tagNamed(CURATED, { name: 'Arabic', scope: 'candidate' })).toBeUndefined();
+  });
+
+  it('is nobody when only part of an existing name matches', () => {
+    expect(tagNamed(CURATED, { name: 'Arab', scope: 'application' })).toBeUndefined();
+  });
+
+  it('leaves a Tag being renamed out of the reckoning — its own name is not a clash', () => {
+    expect(
+      tagNamed(CURATED, { name: 'Arabic', scope: 'application', except: ARABIC.id }),
+    ).toBeUndefined();
+    expect(tagNamed(CURATED, { name: 'Relocating', scope: 'application', except: ARABIC.id })).toBe(
+      RELOCATING,
+    );
   });
 });
