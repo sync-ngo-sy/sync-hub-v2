@@ -1,0 +1,9 @@
+# The ledger holds every migrated candidate's name and email address. It is the audit trail for
+# the run and it belongs on the machine that ran it — never in the repository.
+manatal-migration-ledger.json
+*-ledger.json
+
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
