@@ -2,7 +2,6 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
-import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
@@ -12,6 +11,7 @@ import type { ApplicationSummary } from '@/features/applications/application';
 import { JobApplications } from '@/features/applications/components/job-applications';
 import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { TrackedLinks } from '@/features/tracked-links/components/tracked-links';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
 import { useJob } from '../hooks/use-job';
@@ -143,9 +143,9 @@ export function JobDetailPage({
           <CriteriaForm job={job} />
         </TabsContent>
         <TabsContent value="links">
-          <Card>
-            <CardContent>Tracked links will appear here.</CardContent>
-          </Card>
+          <WidgetBoundary name="Tracked links">
+            <TrackedLinks jobId={jobId} />
+          </WidgetBoundary>
         </TabsContent>
       </Tabs>
     </div>
