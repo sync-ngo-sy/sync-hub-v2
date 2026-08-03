@@ -39,6 +39,16 @@ export function problemMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * For the places that put a refusal beside the control that caused it, where the caller's own
+ * sentence names that control and the problem's `title` — an HTTP phrase like "Conflict" —
+ * would say less than the fallback it would otherwise win against.
+ */
+export function problemDetail(error: unknown, fallback: string): string {
+  const detail = problemBody(error)?.detail;
+  return typeof detail === 'string' && detail !== '' ? detail : fallback;
+}
+
 export interface FormRejection<Field extends string> {
   fields: { name: Field; message: string }[];
   root: string | null;

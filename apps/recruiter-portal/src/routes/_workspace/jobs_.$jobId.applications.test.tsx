@@ -1,9 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AMAL, BASSEL, CARLA } from '@/features/applications/testing/fixtures';
+import { AMAL, AMAL_REVIEW, BASSEL, CARLA } from '@/features/applications/testing/fixtures';
 import {
   type AskedFor,
   failsToListJobApplications,
+  getsApplication,
   holdsJobApplications,
   listsJobApplications,
   pagesJobApplications,
@@ -151,7 +152,12 @@ describe("a Job's Applications tab", () => {
   });
 
   it('takes the reader to the Application the row stands for', async () => {
-    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL]),
+      ...getsApplication(AMAL_REVIEW),
+    );
 
     const { router, user } = await renderApp(`/jobs/${JOB.id}`);
 
@@ -180,7 +186,12 @@ describe("a Job's Applications tab", () => {
 
   it('stands a skeleton in the table while the first page is on the wire', async () => {
     const held = holdsJobApplications([AMAL]);
-    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...held.handlers);
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...held.handlers,
+      ...getsApplication(AMAL_REVIEW),
+    );
 
     const { user } = await renderApp(`/jobs/${JOB.id}?tab=criteria`);
     await user.click(screen.getByRole('tab', { name: 'Applications' }));

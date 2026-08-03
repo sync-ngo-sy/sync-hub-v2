@@ -47,6 +47,32 @@ so a reload keeps them and a pasted link reproduces the list it was copied from.
 paged by cursor and never sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
+**Application review**:
+The page one Application is read on, reached from the Triage list or from its own address —
+the Snapshot and the answers on the left, and on the right the things a Recruiter acts on or
+against: the Pipeline, the Screening verdict, the CV, and the history. It reads the Snapshot
+rather than the Candidate's live profile, and says so on the page, because the two can differ
+and only one of them is what was reviewed. The CV's link is short-lived and never stored: the
+page re-reads the Application instead of holding on to it.
+_Avoid_: Application detail, candidate page, applicant profile.
+
+**Pipeline move**:
+One named action on the Application review, offered only where the platform allows it from
+where the Application stands — so the buttons on screen are the moves that exist, and the
+current status sits above them. A move forward or back is named for its stage, a decision for
+the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
+was told, because every move notifies them and a rejection also emails them. Withdrawing is
+never offered: that is the Candidate's alone.
+_Avoid_: Status change, transition, stage update.
+
+**Refused move**:
+A Pipeline move the API answers with a 409, rendered where the buttons are rather than as a
+toast or a page-wide banner — the reason belongs beside the thing that caused it, and the
+Application has not moved, so the rest of the page is still true. The wording is the server's:
+it owns the rule, and the portal's own sentence is only the fallback for a refusal that
+explains nothing.
+_Avoid_: Invalid transition error, move failure.
+
 **Tracked links tab**:
 The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,
 renames it, turns it off, and reads what each one brought. Minting hands the address straight back
