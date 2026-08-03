@@ -1,12 +1,13 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
+import { VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
 import type { ApplicationSummary, PipelineStatus } from '../application';
 import type { MatchAssessment } from '../assessment';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
-import { TAG_PATH, TAGS_PATH, VOCABULARY_PATH } from '../hooks/use-application-tags';
+import { TAG_PATH, TAGS_PATH } from '../hooks/use-application-tags';
 import type { ApplicationReview } from '../review';
 
 type Problem = components['schemas']['ProblemDetail'];
