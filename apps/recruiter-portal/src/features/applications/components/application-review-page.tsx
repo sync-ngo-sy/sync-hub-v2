@@ -2,6 +2,7 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { absoluteDateTime } from '@/lib/dates';
 import { screeningState } from '../application';
@@ -9,10 +10,11 @@ import { useApplication } from '../hooks/use-application';
 import { ApplicantMessage } from './applicant-message';
 import { ApplicationAnswers } from './application-answers';
 import { ApplicationHistory } from './application-history';
+import { ApplicationNotes } from './application-notes';
 import { ApplicationPipeline } from './application-pipeline';
 import { ApplicationSnapshot } from './application-snapshot';
+import { ApplicationTags } from './application-tags';
 import { MatchAssessments } from './match-assessments';
-import { ReviewCard } from './review-card';
 
 export function ApplicationNotFound() {
   return (
@@ -71,10 +73,18 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
           <WidgetBoundary name="Match assessment">
             <MatchAssessments applicationId={applicationId} />
           </WidgetBoundary>
+
+          <WidgetBoundary name="Notes">
+            <ApplicationNotes applicationId={applicationId} />
+          </WidgetBoundary>
         </div>
 
         <div className="space-y-6">
           <ApplicationPipeline applicationId={applicationId} status={review.status} />
+
+          <WidgetBoundary name="Tags">
+            <ApplicationTags applicationId={applicationId} />
+          </WidgetBoundary>
 
           <WidgetBoundary name="Message the applicant">
             <ApplicantMessage

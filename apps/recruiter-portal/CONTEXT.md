@@ -74,6 +74,39 @@ it owns the rule, and the portal's own sentence is only the fallback for a refus
 explains nothing.
 _Avoid_: Invalid transition error, move failure.
 
+**Notes widget**:
+The Application review's team memory: a box to write in, and under it what the team has already
+written, newest first. Each note carries the Recruiter who wrote it and how long ago, and says
+"edited" and re-dates itself when somebody rewrites it — a note belongs to the Tenant, so any
+Recruiter may rewrite or delete any of them, and the byline stays whoever wrote it first. Nothing
+is patched in the browser after a write: the author and both timestamps are the server's to write,
+so the widget re-reads what it has just changed. Older notes arrive only when they are asked for.
+Deleting asks first, because the words are the only copy.
+_Avoid_: Comments, activity feed, internal messages (a Message goes to the Candidate; a note never
+leaves the Tenant).
+
+**Tag picker**:
+The one control on the Application review that does both halves of filing: it lists the Tenant's
+application-scoped vocabulary to toggle a Tag on or off, and offers to mint the word the Tenant
+does not have yet from whatever has been typed. Creating reads as one act although it is two on
+the wire, and the two are told apart when only the first lands: a Tag that was minted stays in the
+vocabulary even if the Application could not then be filed under it, so the picker offers the word
+rather than offering to create it a second time — which the API would refuse as a name already
+taken. Only application-scoped Tags are ever offered, because a candidate-scoped one is a refusal
+the picker should not be able to ask for, and a part-match is still a new word: "Arab" is not
+"Arabic", and only the Recruiter knows which they meant. The Tags already on show as removable
+chips beside it, so taking one off never needs the picker opened.
+_Avoid_: Labels, categories, keywords.
+
+**Independent widget**:
+A card on a page that reads its own endpoint, and fails and retries without the page failing —
+the notes, the Tags, the Match assessment and the Applicant message on the Application review are
+all this. The refusal lands inside the card, with its own Retry, while the Snapshot, the Pipeline
+and the CV stay on screen and true; the page-wide route error is kept for the read the page cannot
+do without. A write refused inside a widget is shown against the control that caused it, in the
+server's words, and changes nothing.
+_Avoid_: Sub-page, partial, fragment.
+
 **Match assessment**:
 An AI's reading of how much of what a Job asks for one Application evidences — a percentage, an
 explanation, the strengths and the gaps — asked for on the Application review and read there,

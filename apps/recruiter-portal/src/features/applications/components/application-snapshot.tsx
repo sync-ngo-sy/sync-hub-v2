@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
+import { ReviewCard } from '@/features/shell/components/review-card';
 import {
   LANGUAGE_PROFICIENCY_LABELS,
   linkLabel,
@@ -7,7 +8,6 @@ import {
   type Snapshot,
   yearsOfExperience,
 } from '../review';
-import { ReviewCard } from './review-card';
 
 const HINT =
   'What the candidate reviewed when they applied — not their profile as it stands today.';

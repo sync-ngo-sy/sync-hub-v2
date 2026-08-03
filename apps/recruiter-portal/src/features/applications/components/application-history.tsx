@@ -1,6 +1,6 @@
+import { ReviewCard } from '@/features/shell/components/review-card';
 import { absoluteDateTime } from '@/lib/dates';
 import { historyLine, type StatusHistoryEntry } from '../review';
-import { ReviewCard } from './review-card';
 
 export function ApplicationHistory({ history }: { history: StatusHistoryEntry[] }) {
   return (

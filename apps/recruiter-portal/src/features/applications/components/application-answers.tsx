@@ -1,5 +1,5 @@
+import { ReviewCard } from '@/features/shell/components/review-card';
 import { type AnsweredQuestion, answerText } from '../review';
-import { ReviewCard } from './review-card';
 
 export function ApplicationAnswers({ answers }: { answers: AnsweredQuestion[] }) {
   return (
