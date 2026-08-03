@@ -1,9 +1,9 @@
 import { EmptyState } from '@sync/ui/components/empty-state';
 import { ListSkeleton } from '@sync/ui/components/skeletons';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { Badge } from '@sync/ui/components/ui/badge';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { Users } from 'lucide-react';
+import { Star, Users } from 'lucide-react';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { languageName } from '@/features/reference/options';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
@@ -16,8 +16,11 @@ import {
   hardFilterCount,
   isAsked,
   noMatchesMessage,
+  SEARCH_LIMIT,
   searchAddress,
 } from '../search';
+import { CandidateAvatar } from './candidate-avatar';
+import { MatchEvidenceNote } from './match-evidence';
 
 const TO_THE_POOL = (
   <Link to="/talent-pool" className={buttonVariants({ variant: 'outline' })}>
@@ -78,9 +81,7 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-meta text-muted-foreground">
-        {items.length === 1 ? '1 match, closest first.' : `${items.length} matches, closest first.`}
-      </p>
+      <p className="text-meta text-muted-foreground">{howMany(items.length)}</p>
       <ul aria-label="Matching Candidates" className="space-y-3">
         {items.map((match) => (
           <li key={match.candidate_id}>
@@ -95,6 +96,15 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
       </ul>
     </div>
   );
+}
+
+/** The API answers one page and offers no cursor, so a full page is a ceiling rather than a
+ * total, and saying "20 matches" of an unknown many would be a lie. */
+function howMany(shown: number): string {
+  if (shown >= SEARCH_LIMIT) {
+    return `The closest ${shown}. Narrow the search to reach past them.`;
+  }
+  return shown === 1 ? '1 match, closest first.' : `${shown} matches, closest first.`;
 }
 
 interface CandidateResultProps {
@@ -118,19 +128,22 @@ function CandidateResult({ match, filters, languageName, saved }: CandidateResul
       className="block space-y-3 rounded-lg border border-border p-4 outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="space-y-1">
-          <p className="text-dense font-medium text-foreground">{card.fullName}</p>
-          {meta ? <p className="text-meta text-muted-foreground">{meta}</p> : null}
+        <div className="flex min-w-0 items-start gap-3">
+          <CandidateAvatar card={card} />
+          <div className="min-w-0 space-y-1">
+            <p className="text-dense font-medium text-foreground">{card.fullName}</p>
+            {meta ? <p className="text-meta text-muted-foreground">{meta}</p> : null}
+          </div>
         </div>
-        {saved ? <StatusChip tone="positive" label="In your talent pool" /> : null}
+        {saved ? (
+          <Badge variant="secondary" className="gap-1">
+            <Star aria-hidden="true" className="size-3" />
+            In your talent pool
+          </Badge>
+        ) : null}
       </div>
 
-      {evidence ? (
-        <figure className="space-y-1 border-s-2 border-border ps-3">
-          <blockquote className="text-dense text-muted-foreground">{evidence.text}</blockquote>
-          <figcaption className="text-meta text-muted-foreground">{evidence.where}</figcaption>
-        </figure>
-      ) : null}
+      <MatchEvidenceNote evidence={evidence} />
     </Link>
   );
 }

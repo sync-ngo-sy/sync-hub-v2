@@ -1,3 +1,5 @@
+import { said } from '@/lib/said';
+
 export interface CandidateSearchFilters {
   q: string;
   location?: string;
@@ -5,14 +7,12 @@ export interface CandidateSearchFilters {
   keywords?: string;
 }
 
-/** The API refuses anything shorter, so the portal does not ask. */
 export const MIN_QUERY_LENGTH = 2;
 
 export const SEARCH_LIMIT = 20;
 
 function set(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed === undefined || trimmed === '' ? undefined : trimmed;
+  return said(value)?.trim();
 }
 
 export function isAsked(filters: CandidateSearchFilters): boolean {
@@ -29,8 +29,7 @@ export function searchQuery(filters: CandidateSearchFilters) {
   };
 }
 
-/** The address bar's own copy of the search: an unset filter is left off rather than left blank,
- * so a link reproduces the list it was copied from and says nothing more. */
+/** An unset filter is left off the address rather than left blank in it. */
 export function searchAddress(filters: CandidateSearchFilters) {
   return {
     q: set(filters.q),

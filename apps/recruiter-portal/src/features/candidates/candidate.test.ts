@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { PooledCandidate } from '@/features/talent-pool/pool';
 import {
   candidateMeta,
   type MatchedCandidate,
   matchEvidence,
   matchedCard,
-  type PooledCandidate,
   pooledCard,
 } from './candidate';
 

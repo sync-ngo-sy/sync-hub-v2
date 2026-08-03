@@ -149,8 +149,11 @@ the platform who has opted into being found. The words are read for what they me
 are absolute, so a Candidate failing any of them is not a result and the keywords never reorder the
 ones that remain. Asked on submit rather than as a Recruiter types, because the search is a real
 one and half a sentence is a different question; the whole search lives in the address bar, so a
-reload keeps it and a pasted link reproduces it. Nothing here carries an address or a phone number,
-and the page says so before the first search rather than after it.
+reload keeps it and a pasted link reproduces it. The API answers one page and offers no cursor, so
+a full page is a ceiling rather than a count — it reads as "the closest twenty" and points at
+narrowing, because there is no next page to offer and calling it a total would be a lie. Nothing
+here carries an address or a phone number, and the page says so before the first search rather than
+after it.
 _Avoid_: Sourcing, candidate database, global search (that is the backend's name for the index).
 
 **Candidate view**:

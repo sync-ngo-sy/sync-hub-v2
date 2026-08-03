@@ -1,7 +1,8 @@
 import type { components } from '@sync/api-client';
+import type { PooledCandidate } from '@/features/talent-pool/pool';
+import { said } from '@/lib/said';
 
 export type MatchedCandidate = components['schemas']['MatchedCandidate'];
-export type PooledCandidate = components['schemas']['PooledCandidate'];
 export type MatchedSection = components['schemas']['ChunkType'];
 
 /**
@@ -29,10 +30,6 @@ const SECTION_WORDS: Record<MatchedSection, string> = {
   languages: 'their languages',
   project: 'their projects',
 };
-
-function said(value: string | null | undefined): string | null {
-  return value === undefined || value === null || value.trim() === '' ? null : value;
-}
 
 export function matchedCard(match: MatchedCandidate): CandidateCard {
   return {

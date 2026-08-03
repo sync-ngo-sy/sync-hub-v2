@@ -73,6 +73,36 @@ describe('the candidate search page', () => {
     expect(router.state.location.search).toEqual({ q: 'backend engineer', keywords: 'payments' });
   });
 
+  it('picks a Location and a language from the platform’s own lists, not from typing', async () => {
+    const asked: AskedSearch[] = [];
+    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA], asked));
+
+    const { user, router } = await renderApp(AT);
+
+    await user.type(screen.getByLabelText('Who are you looking for?'), 'nurse');
+
+    await user.click(screen.getByLabelText('Location'));
+    await user.click(await screen.findByRole('option', { name: 'Aleppo' }));
+
+    await user.click(screen.getByLabelText('Preferred language'));
+    await user.click(await screen.findByRole('option', { name: 'Arabic' }));
+
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(asked[0]).toEqual({
+      q: 'nurse',
+      location_key: 'sy-aleppo',
+      language: 'ar',
+      keywords: null,
+    });
+    expect(router.state.location.search).toEqual({
+      q: 'nurse',
+      location: 'sy-aleppo',
+      language: 'ar',
+    });
+  });
+
   it('renders each match with what it says about the person and the fragment that matched', async () => {
     server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA, YOUSSEF]));
 

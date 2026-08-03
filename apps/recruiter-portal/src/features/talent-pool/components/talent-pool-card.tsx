@@ -11,6 +11,11 @@ import { useTalentPool, useTalentPoolActions } from '../hooks/use-talent-pool';
 
 const HINT = 'People your team wants to reach again, whether or not they have ever applied.';
 
+function label(saved: boolean, isChanging: boolean): string {
+  if (isChanging) return saved ? 'Dropping…' : 'Saving…';
+  return saved ? 'Drop from talent pool' : 'Save to talent pool';
+}
+
 interface TalentPoolCardProps {
   candidateId: string;
   candidateName: string;
@@ -83,7 +88,7 @@ export function TalentPoolCard({ candidateId, candidateName }: TalentPoolCardPro
               onClick={() => void change()}
             >
               {saved ? <StarOff aria-hidden="true" /> : <Star aria-hidden="true" />}
-              {saved ? 'Drop from talent pool' : 'Save to talent pool'}
+              {label(saved, actions.isChanging)}
             </Button>
           </>
         ) : null}

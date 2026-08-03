@@ -1,8 +1,5 @@
-/**
- * What the notes and the Tags are about, in the words the cards say it in. The interactions are
- * the same on an Application and on a Candidate; only the noun on screen differs, and a Tag's
- * scope is named for the plural because that is how the vocabulary is divided.
- */
+/** What the notes and the Tags are about: the interactions are the same on an Application and on
+ * a Candidate, and only the noun on screen differs. */
 export interface CrmSubject {
   one: string;
   many: string;

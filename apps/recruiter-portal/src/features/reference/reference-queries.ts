@@ -36,8 +36,8 @@ export function warmLocations(queryClient: QueryClient): Promise<unknown> {
   return queryClient.ensureQueryData(locationsQuery).catch(() => undefined);
 }
 
-/** Candidate search filters by Location and language, and a Candidate reads as neither a raw
- * location key nor a bare language code — so the two taxonomies come along, and skills do not. */
+/** Candidate search picks a Location and a language, and names both back; skills it never asks
+ * about, so they do not travel. */
 export function warmSearchTaxonomies(queryClient: QueryClient): Promise<unknown> {
   const settled = (loading: Promise<unknown>) => loading.catch(() => undefined);
   return Promise.all([

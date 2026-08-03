@@ -8,8 +8,10 @@ import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
 import { type CandidateCard, candidateMeta, type MatchEvidence } from '../candidate';
 import { type CandidateSearchFilters, searchAddress } from '../search';
+import { CandidateAvatar } from './candidate-avatar';
 import { CandidateNotes } from './candidate-notes';
 import { CandidateTags } from './candidate-tags';
+import { MatchEvidenceNote } from './match-evidence';
 
 const PROFILE_HINT =
   'What the platform will show you about this person. Sync never hands over an address or a phone number.';
@@ -53,10 +55,13 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
         >
           Back to candidate search
         </Link>
-        <PageHeader
-          title={card.fullName}
-          description={candidateMeta(card, language) || undefined}
-        />
+        <div className="flex items-center gap-4">
+          <CandidateAvatar card={card} size="lg" />
+          <PageHeader
+            title={card.fullName}
+            description={candidateMeta(card, language) || undefined}
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
@@ -78,16 +83,7 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
                 </div>
               </dl>
 
-              {evidence ? (
-                <figure className="space-y-1 border-s-2 border-border ps-3">
-                  <blockquote className="text-dense text-muted-foreground">
-                    {evidence.text}
-                  </blockquote>
-                  <figcaption className="text-meta text-muted-foreground">
-                    {evidence.where}
-                  </figcaption>
-                </figure>
-              ) : null}
+              <MatchEvidenceNote evidence={evidence} />
             </div>
           </ReviewCard>
 
