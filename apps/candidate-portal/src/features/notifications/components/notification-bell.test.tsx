@@ -1,5 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
-import { act } from 'react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { listsCvs } from '@/features/cvs/testing/handlers';

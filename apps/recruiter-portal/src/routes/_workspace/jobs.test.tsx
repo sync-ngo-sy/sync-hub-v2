@@ -1,6 +1,7 @@
 import type { components } from '@sync/api-client';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { listsJobApplications } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import {
   FIELD_COORDINATOR,
@@ -29,6 +30,7 @@ describe('Jobs', () => {
       ...signedInAs(RECRUITER),
       ...listsJobs([FIELD_COORDINATOR]),
       ...getsJob(FIELD_COORDINATOR_VIEW),
+      ...listsJobApplications([]),
     );
 
     const { router, user } = await renderApp('/jobs');
