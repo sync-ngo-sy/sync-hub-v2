@@ -25,6 +25,14 @@ A Profile in the job-seeker role: owns a professional profile and applies to Job
 the three kinds a Profile can be, and never a second one as well.
 _Avoid_: Job-seeker, User. (Reserve "Applicant" for the act of applying, not the person.)
 
+**Imported candidate**:
+A Candidate the platform created on somebody's behalf rather than one who signed up
+(`candidates.is_imported_from_manatal`, written by `scripts/manatal-migration`). Nobody typed
+their profile — it was read off a CV — and the address on it has never been confirmed by the
+person behind it. Whether they have since **claimed** the account is not a column:
+`auth.users.last_sign_in_at` already knows, and an account nobody has signed into has none.
+_Avoid_: Ghost candidate, Shadow profile, Sourced candidate.
+
 **Recruiter**:
 A Profile in the staff role, belonging to exactly one Tenant. One of the three kinds a
 Profile can be, and never a second one as well. `admin` is a Recruiter *role* — authority

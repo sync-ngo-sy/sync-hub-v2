@@ -37,6 +37,8 @@ export function keepsTalentPool(pool: PooledCandidate[], asked?: string[]) {
         headline: null,
         location_name: null,
         added_at: ADDED_AT,
+        is_imported_from_manatal: false,
+        is_claimed: true,
       };
       if (!already) current = [saved, ...current];
       return response(200).json(saved);

@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { MAX_POOL_PAGES, type PooledCandidate, type PoolPage, readWholePool } from './pool';
 
 function saved(id: string): PooledCandidate {
-  return { candidate_id: id, full_name: `Candidate ${id}`, added_at: '2026-07-30T09:00:00Z' };
+  return {
+    candidate_id: id,
+    full_name: `Candidate ${id}`,
+    added_at: '2026-07-30T09:00:00Z',
+    is_imported_from_manatal: false,
+    is_claimed: true,
+  };
 }
 
 function pages(...given: PoolPage[]) {

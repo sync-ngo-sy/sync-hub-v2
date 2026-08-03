@@ -4,10 +4,10 @@ A one-off script that brings a Manatal account's candidates and their CVs into S
 can be switched off afterwards. Not an integration: no webhook, no polling, no endpoints, no
 screens, nothing left running.
 
-Everything it needs is in this folder. It changes no schema, adds no table and no column, and
-imports nothing from `services/api` — it talks to Postgres, Supabase Auth and Supabase Storage
-directly, so the platform's code can keep moving without breaking it and deleting this folder
-leaves no trace anywhere else.
+Everything it needs is in this folder. It imports nothing from `services/api` — it talks to
+Postgres, Supabase Auth and Supabase Storage directly, so the platform's code can keep moving
+without breaking it. The one thing it needs from the platform is a column saying where these
+Candidates came from; see below.
 
 ## Running it
 
@@ -45,9 +45,9 @@ Every candidate is written to `manatal-migration-ledger.json` as it is dealt wit
 rather than at the end. A second run walks past everything settled, retries what failed, and
 publishes whatever has since been parsed. Killing it mid-run loses nothing.
 
-**Keep that ledger file.** Nothing is written to the database to say a Candidate came from
-Manatal, so it is the only record of which Manatal candidate became which Candidate here — and
-after Manatal is gone, the only record that they came from anywhere.
+**Keep that ledger file.** The database records *that* a Candidate came from Manatal
+(`candidates.is_imported_from_manatal`) but not *which* Manatal candidate they were — so once
+Manatal is switched off, this file is the only thing that can map the two together.
 
 | Variable | Meaning |
 | --- | --- |
@@ -66,9 +66,15 @@ nobody has confirmed, because everything in this schema hangs off `candidates �
 auth.users` and nothing else can own a CV. It cannot be signed into. Whoever owns it claims it
 later through the ordinary password-reset flow.
 
-Then, per candidate: a `candidates` row, their CV in the `cvs` bucket and a `cvs` row, an entry in
-the importing Tenant's talent pool, and — once the worker has parsed the CV — a full profile
-written from that parse, with `is_searchable` turned on.
+Then, per candidate: a `candidates` row flagged `is_imported_from_manatal`, their CV in the `cvs`
+bucket and a `cvs` row, an entry in the importing Tenant's talent pool, and — once the worker has
+parsed the CV — a full profile written from that parse, with `is_searchable` turned on.
+
+That flag is the one thing this migration needs from the platform, because nothing else in the
+schema would say where these Candidates came from: they would look exactly like people who signed
+up. The talent pool shows it alongside whether the account has been **claimed**, which is not
+stored anywhere — `auth.users.last_sign_in_at` already answers it, so a Recruiter reading the pool
+sees "imported, never signed in" without a second column anybody has to remember to write.
 
 **They enter Global search.** That is a deliberate instruction and worth being explicit about:
 Global search is cross-tenant, so these people become visible to every Tenant on the platform, and
@@ -101,4 +107,9 @@ against a staging database, which is the only place that proves anything about t
 
 ## Afterwards
 
-Delete this folder, and keep the ledger file. Nothing else in the repository mentions Manatal.
+Delete this folder, and keep the ledger file.
+
+Two things outside it stay, and should: `candidates.is_imported_from_manatal` and the two fields
+the talent pool reads it through. They are how a Recruiter knows, a year from now, that a profile
+was read off a CV rather than typed by the person it describes — which outlives the script that
+did the reading.
