@@ -423,14 +423,15 @@ async def test_the_scheduled_call_recovers_a_row_no_notification_arrived_for(
     assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
 
 
-async def test_a_row_a_crashed_invocation_abandoned_is_swept_then_drained(
+async def test_a_row_a_crashed_invocation_abandoned_is_recovered_by_the_schedule(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
 ) -> None:
-    """Sweeping returns it to pending, but with its retry delay, so a later drain finishes it.
+    """The property is that it gets finished, not which call finishes it.
 
-    Not the same call, unless the backoff has already elapsed: that is the retry policy doing
-    its job, and it is still recovery — the schedule runs again. What must never happen is the
-    row staying in processing with nobody looking at it.
+    Sweeping releases the row to pending carrying the retry delay its attempts have earned,
+    so whether the drain in the same invocation can claim it depends on that delay against
+    the time the sweep took. Both are correct; pinning either one makes the test a clock
+    reading. What must never happen is the row staying in processing with nobody looking.
     """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
@@ -439,15 +440,14 @@ async def test_a_row_a_crashed_invocation_abandoned_is_swept_then_drained(
     worker = Worker(prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender())
 
     try:
-        swept = await worker.scheduled()
-        job = await ingestion_job(db_session, cv["id"])
-        assert swept.swept["ingestion"] == 1
-        assert job.status is IngestionStatus.PENDING
+        first = await worker.scheduled()
+        assert first.swept["ingestion"] == 1
 
-        await asyncio.sleep(0.05)
-        drained = await worker.scheduled()
+        if first.processed["ingestion"] == 0:
+            await asyncio.sleep(0.05)
+            assert (await worker.scheduled()).processed["ingestion"] == 1
     finally:
         await worker.aclose()
 
-    assert drained.processed["ingestion"] == 1
     assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
+    assert (await ingestion_job(db_session, cv["id"])).status is IngestionStatus.COMPLETED
