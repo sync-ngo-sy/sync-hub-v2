@@ -1,7 +1,12 @@
 import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { faultsOnReset, refusesReset, resetsPassword } from '@/features/auth/testing/handlers';
+import {
+  faultsOnReset,
+  refusesReset,
+  resetsPassword,
+  signedOut,
+} from '@/features/auth/testing/handlers';
 import { DEAD_LINK, SERVER_FAULT, WEAK_PASSWORD } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
@@ -16,7 +21,7 @@ async function chooseAPassword(user: UserEvent, password = 'correct-horse-batter
 describe('choosing a new recruiter password', () => {
   it('saves it and hands the recruiter to sign-in', async () => {
     const request = vi.fn();
-    server.use(...resetsPassword(request));
+    server.use(...signedOut(), ...resetsPassword(request));
 
     const { router, user } = await renderApp(RESET_LINK);
     await chooseAPassword(user);
@@ -32,7 +37,7 @@ describe('choosing a new recruiter password', () => {
   });
 
   it('offers a fresh link when this one is spent or expired', async () => {
-    server.use(...refusesReset(DEAD_LINK));
+    server.use(...signedOut(), ...refusesReset(DEAD_LINK));
 
     const { user } = await renderApp(RESET_LINK);
     await chooseAPassword(user);
@@ -42,13 +47,15 @@ describe('choosing a new recruiter password', () => {
   });
 
   it('treats a missing token as a dead link immediately', async () => {
+    server.use(...signedOut());
+
     await renderApp('/auth/reset-password');
 
     expect(await screen.findByRole('heading', { name: "This link didn't work" })).toBeVisible();
   });
 
   it('keeps a refused password beside the field', async () => {
-    server.use(...refusesReset(WEAK_PASSWORD));
+    server.use(...signedOut(), ...refusesReset(WEAK_PASSWORD));
 
     const { user } = await renderApp(RESET_LINK);
     await chooseAPassword(user);
@@ -58,7 +65,7 @@ describe('choosing a new recruiter password', () => {
   });
 
   it('sends a server fault to a toast and keeps the link usable', async () => {
-    server.use(...faultsOnReset(SERVER_FAULT));
+    server.use(...signedOut(), ...faultsOnReset(SERVER_FAULT));
 
     const { router, user } = await renderApp(RESET_LINK);
     await chooseAPassword(user);
