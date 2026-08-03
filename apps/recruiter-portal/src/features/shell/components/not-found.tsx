@@ -10,7 +10,7 @@ export function NotFound() {
         That address doesn't exist in Sync Recruiter.
       </p>
       <div>
-        <Button variant="outline" render={<Link to="/dashboard" />}>
+        <Button variant="outline" nativeButton={false} render={<Link to="/dashboard" />}>
           Go to the Dashboard
         </Button>
       </div>
