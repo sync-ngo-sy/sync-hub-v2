@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -385,38 +384,70 @@ async def _abandon_the_claim(
     await session.commit()
 
 
-async def test_the_worker_process_drains_the_queue_and_stops_cleanly(
+async def test_the_worker_drains_the_queue_and_returns(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
 ) -> None:
+    """Draining terminates on its own once the queue is empty — no cancellation needed.
+
+    The polling version had to be started as a task, waited on until the row changed, then
+    cancelled, which is why it failed intermittently. A drain either finishes or it doesn't.
+    """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    worker = Worker(
-        settings.model_copy(
-            update={"worker_poll_interval_seconds": 0.05, "worker_idle_backoff_max_seconds": 0.05}
-        ),
-        FakeExtractor(),
-        FakeEmbedder(),
-        CapturingSender(),
-    )
+    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
 
-    running = asyncio.create_task(worker.run())
     try:
-        await _until_ready(db_session, cv["id"])
+        report = await worker.drain()
     finally:
-        running.cancel()
-        with suppress(asyncio.CancelledError):
-            await running
+        await worker.aclose()
 
-    assert running.done()
+    assert report.processed["ingestion"] == 1
+    assert report.truncated == []
     assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
 
 
-async def _until_ready(session: AsyncSession, cv_id: str, *, within: float = 10.0) -> None:
-    deadline = asyncio.get_running_loop().time() + within
-    status: CvParsingStatus | None = None
-    while asyncio.get_running_loop().time() < deadline:
-        status = (await cv_row(session, cv_id)).parsing_status
-        if status is CvParsingStatus.READY:
-            return
-        await asyncio.sleep(0.05)
-    raise AssertionError(f"cv {cv_id} was still {status} after {within}s")
+async def test_the_scheduled_call_recovers_a_row_no_notification_arrived_for(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
+) -> None:
+    """The dropped-webhook case: nothing tells the worker, and the schedule finishes it."""
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
+
+    try:
+        report = await worker.scheduled()
+    finally:
+        await worker.aclose()
+
+    assert report.processed["ingestion"] == 1
+    assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
+
+
+async def test_a_row_a_crashed_invocation_abandoned_is_recovered_by_the_schedule(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, settings: Settings
+) -> None:
+    """The property is that it gets finished, not which call finishes it.
+
+    Sweeping releases the row to pending carrying the retry delay its attempts have earned,
+    so whether the drain in the same invocation can claim it depends on that delay against
+    the time the sweep took. Both are correct; pinning either one makes the test a clock
+    reading. What must never happen is the row staying in processing with nobody looking.
+    """
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    await _abandon_the_claim(db_session, cv["id"], claimed_ago=timedelta(minutes=15))
+    prompt_retry = settings.model_copy(update={"worker_retry_backoff_seconds": 0.01})
+    worker = Worker(prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender())
+
+    try:
+        first = await worker.scheduled()
+        assert first.swept["ingestion"] == 1
+
+        if first.processed["ingestion"] == 0:
+            await asyncio.sleep(0.05)
+            assert (await worker.scheduled()).processed["ingestion"] == 1
+    finally:
+        await worker.aclose()
+
+    assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
+    assert (await ingestion_job(db_session, cv["id"])).status is IngestionStatus.COMPLETED

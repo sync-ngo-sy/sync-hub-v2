@@ -9,16 +9,19 @@ from sync_worker.engine import (
     RetryPolicy,
 )
 from sync_worker.ingestion import INGESTION_QUEUE, CvIngestionConsumer
-from sync_worker.runner import Drainable, consume, sweep
-from sync_worker.worker import Worker, run_worker
+from sync_worker.runner import Drainable, DrainReport, drain_queue
+from sync_worker.service import SECRET_HEADER, create_app
+from sync_worker.worker import Worker
 
 __all__ = [
     "COMMUNICATIONS_QUEUE",
     "INGESTION_QUEUE",
+    "SECRET_HEADER",
     "ClaimedJob",
     "CommunicationsConsumer",
     "Consumer",
     "CvIngestionConsumer",
+    "DrainReport",
     "Drainable",
     "PermanentFailureError",
     "Queue",
@@ -27,7 +30,6 @@ __all__ = [
     "ReembedPolicy",
     "RetryPolicy",
     "Worker",
-    "consume",
-    "run_worker",
-    "sweep",
+    "create_app",
+    "drain_queue",
 ]
