@@ -3,12 +3,12 @@ import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/aler
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
 import { assessmentProvenance, type MatchAssessment, matchLabel } from '../assessment';
 import { useAssessMatch } from '../hooks/use-application-actions';
 import { useMatchAssessments } from '../hooks/use-match-assessments';
-import { ReviewCard } from '@/features/shell/components/review-card';
 
 const ADVICE =
   'Advice drawn from the Snapshot and the Job — it does not change the Screening verdict.';
