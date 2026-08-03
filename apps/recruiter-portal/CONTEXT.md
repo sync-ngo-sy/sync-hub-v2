@@ -49,8 +49,9 @@ _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is
 
 **Application review**:
 The page one Application is read on, reached from the Triage list or from its own address —
-the Snapshot and the answers on the left, and on the right the things a Recruiter acts on or
-against: the Pipeline, the Screening verdict, the CV, and the history. It reads the Snapshot
+what the Application says on the left (the Snapshot, the answers, and the Match assessments read
+of them), and on the right the things a Recruiter acts on or against: the Pipeline, the Applicant
+message, the Screening verdict, the CV, and the history. It reads the Snapshot
 rather than the Candidate's live profile, and says so on the page, because the two can differ
 and only one of them is what was reviewed. The CV's link is short-lived and never stored: the
 page re-reads the Application instead of holding on to it.
@@ -72,6 +73,29 @@ Application has not moved, so the rest of the page is still true. The wording is
 it owns the rule, and the portal's own sentence is only the fallback for a refusal that
 explains nothing.
 _Avoid_: Invalid transition error, move failure.
+
+**Match assessment**:
+An AI's reading of how much of what a Job asks for one Application evidences — a percentage, an
+explanation, the strengths and the gaps — asked for on the Application review and read there,
+newest first. Advice, and the page says so: it carries no chip and no colour, because the surface
+already has a Screening verdict and a second coloured badge would read as a second verdict. The
+percentage is spelled out as what it measures rather than shown bare. Asking again appends rather
+than replaces, so every past reading stays with the model and prompt version that wrote it, and
+the wait is shown as a wait — the model is slow, nothing is put in the list optimistically, and
+the finished reading arrives only when the API has it. A refusal (asked too often, the model
+failed, no model configured) lands beside the button in the server's own words.
+_Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
+
+**Applicant message**:
+One email a Recruiter sends an applicant from a Message template, picked and read in full on the
+Application review before it goes. The preview resolves the Placeholder vocabulary against this
+Candidate, this Job and this Tenant, so what is on screen is what the Candidate will read rather
+than the template's braces — the portal fills them itself, because the API resolves them only at
+send and there is nothing to preview from. Reading the Tenant's own name is the one thing this
+costs, and it is the only place the portal asks for it. Each send is its own decision: the picker
+empties afterwards so the same words don't go twice by accident, and a refused send keeps the
+preview so the Recruiter can try the same message again.
+_Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
 **Tracked links tab**:
 The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,

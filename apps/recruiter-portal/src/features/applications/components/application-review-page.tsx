@@ -2,13 +2,16 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { absoluteDateTime } from '@/lib/dates';
 import { screeningState } from '../application';
 import { useApplication } from '../hooks/use-application';
+import { ApplicantOutreach } from './applicant-outreach';
 import { ApplicationAnswers } from './application-answers';
 import { ApplicationHistory } from './application-history';
 import { ApplicationPipeline } from './application-pipeline';
 import { ApplicationSnapshot } from './application-snapshot';
+import { MatchAssessments } from './match-assessments';
 import { ReviewCard } from './review-card';
 
 export function ApplicationNotFound() {
@@ -65,10 +68,21 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         <div className="space-y-6">
           <ApplicationSnapshot snapshot={review.snapshot} />
           <ApplicationAnswers answers={review.answers} />
+          <WidgetBoundary name="Match assessment">
+            <MatchAssessments applicationId={applicationId} />
+          </WidgetBoundary>
         </div>
 
         <div className="space-y-6">
           <ApplicationPipeline applicationId={applicationId} status={review.status} />
+
+          <WidgetBoundary name="Message the applicant">
+            <ApplicantOutreach
+              applicationId={applicationId}
+              candidateName={review.snapshot.full_name}
+              jobTitle={review.job.title}
+            />
+          </WidgetBoundary>
 
           <ReviewCard title="Screening">
             <div className="space-y-3">

@@ -9,6 +9,12 @@ export const RECRUITER: components['schemas']['ProfileView'] = {
   phone: null,
 };
 
+export const AMAN: components['schemas']['TenantView'] = {
+  id: '00000000-0000-4000-8000-000000000001',
+  name: 'Aman Relief',
+  slug: 'aman-relief',
+};
+
 export const CANDIDATE: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000022',
   email: 'lina@example.test',

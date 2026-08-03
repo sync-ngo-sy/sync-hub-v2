@@ -1,6 +1,7 @@
 import type { components } from '@sync/api-client';
 import { FIELD_COORDINATOR } from '@/features/jobs/testing/fixtures';
 import type { ApplicationSummary } from '../application';
+import type { MatchAssessment } from '../assessment';
 import type { ApplicationReview } from '../review';
 
 export const AMAL: ApplicationSummary = {
@@ -150,4 +151,75 @@ export const AMAL_REVIEW: ApplicationReview = {
   },
   applied_at: AMAL.applied_at,
   updated_at: '2026-08-02T14:30:00Z',
+};
+
+/** Everything an assessment can say, so a reading that says less says so by leaving it out. */
+export const LATEST_ASSESSMENT: MatchAssessment = {
+  id: '00000000-0000-4000-8000-000000000601',
+  match_percentage: 82,
+  explanation: 'Answers both languages and most of the required skills.',
+  strengths: ['Nine years of field logistics', 'Native Arabic and advanced English'],
+  gaps: ['No formal procurement training'],
+  model_name: 'claude-sonnet-5',
+  prompt_version: 'v3',
+  assessed_at: '2026-08-03T09:00:00Z',
+};
+
+export const EARLIER_ASSESSMENT: MatchAssessment = {
+  id: '00000000-0000-4000-8000-000000000602',
+  match_percentage: 54,
+  explanation: 'Reads as a warehouse profile rather than a coordination one.',
+  strengths: ['Warehouse operations'],
+  gaps: ['Little evidence of coordinating across sites', 'No budget ownership'],
+  model_name: 'claude-sonnet-5',
+  prompt_version: 'v2',
+  assessed_at: '2026-07-28T09:00:00Z',
+};
+
+/** A model that gave a number and nothing else — the page still has to render it. */
+export const BARE_ASSESSMENT: MatchAssessment = {
+  id: '00000000-0000-4000-8000-000000000603',
+  match_percentage: 40,
+  explanation: null,
+  strengths: [],
+  gaps: [],
+  model_name: 'claude-sonnet-5',
+  prompt_version: 'v3',
+  assessed_at: '2026-07-20T09:00:00Z',
+};
+
+export const TOO_MANY_ASSESSMENTS: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:rate-limited',
+  title: 'Too Many Requests',
+  status: 429,
+  detail: 'This tenant has asked for too many assessments. Try again in a few minutes.',
+};
+
+export const MODEL_COULD_NOT_ASSESS: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:assessment-failed',
+  title: 'Bad Gateway',
+  status: 502,
+  detail: 'The model could not assess this Application. Nothing was recorded.',
+};
+
+export const NO_ASSESSMENT_MODEL: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:assessment-unavailable',
+  title: 'Service Unavailable',
+  status: 503,
+  detail: 'This deployment has no assessment model configured.',
+};
+
+export const QUEUED_MESSAGE: components['schemas']['QueuedMessage'] = {
+  id: '00000000-0000-4000-8000-000000000701',
+  subject: 'An interview for Field Coordinator?',
+  body: 'Hi Amal Haddad,\n\nWe would like to talk to you about Field Coordinator.\n\nAman Relief',
+  status: 'queued',
+  created_at: '2026-08-03T10:00:00Z',
+};
+
+export const NO_SUCH_TEMPLATE_TO_SEND: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:not-found',
+  title: 'Not Found',
+  status: 404,
+  detail: 'This tenant has no message template with that id.',
 };
