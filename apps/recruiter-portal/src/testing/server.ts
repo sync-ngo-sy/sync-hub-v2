@@ -5,6 +5,7 @@ import {
   hasLanguages,
   hasLocations,
 } from '@/features/reference/testing/handlers';
+import { listsMessageTemplates } from '@/features/templates/testing/handlers';
 import { CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
 
 /**
@@ -13,6 +14,7 @@ import { CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
  */
 export const server = setupServer(
   ...listsJobs([]),
+  ...listsMessageTemplates([]),
   ...hasCanonicalSkills(CANONICAL_SKILLS),
   ...hasLanguages(LANGUAGES),
   ...hasLocations(LOCATIONS),

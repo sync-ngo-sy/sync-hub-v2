@@ -60,6 +60,18 @@ Location, which reads as its name and is stored as its key.
 _Avoid_: Lookups, master data, enums (an enum reaches the portals through the generated
 client; these are rows).
 
+**Placeholder vocabulary**:
+The `{{ … }}` names a Message template may use — `candidate_name`, `job_title`,
+`tenant_name` — which one send fills with this Candidate, this Job and this Tenant. The
+backend owns the set and refuses an unfillable name at save time, but it publishes no list
+of them, so this portal carries its own copy: the template editor has to name the three in
+its help text before a Recruiter can use them, and once the list is here, refusing a bad
+one beside the field costs nothing. Unlike Reference data, this is a mirrored constant
+rather than rows — if the platform ever adds a placeholder, this copy is the one thing that
+does not learn about it, and the API's refusal is the backstop that still lands under the
+right field.
+_Avoid_: Merge fields, variables, tokens.
+
 **Wrong-portal screen**:
 The full-page notice shown when a signed-in Profile this portal does not serve opens it. It
 names the account type they are signed in with, and the portal they should be in — a Candidate
