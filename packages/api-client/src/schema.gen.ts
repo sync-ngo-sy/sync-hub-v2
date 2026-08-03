@@ -3699,6 +3699,18 @@ export interface components {
              * @description When this Tenant first saved them.
              */
             added_at: string;
+            /**
+             * Is Imported From Manatal
+             * @description True where a migration made this Candidate rather than the person signing up. Nobody typed this profile: it was read off a CV.
+             * @default false
+             */
+            is_imported_from_manatal: boolean;
+            /**
+             * Is Claimed
+             * @description Whether the person has ever signed in. False means the account exists but nobody has taken it over, so nothing on it has been confirmed by them.
+             * @default true
+             */
+            is_claimed: boolean;
         };
         /**
          * ProblemDetail

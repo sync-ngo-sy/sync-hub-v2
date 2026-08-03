@@ -35,6 +35,8 @@ const POOLED: PooledCandidate = {
   total_experience_years: 8,
   tags: [],
   added_at: '2026-07-30T09:00:00Z',
+  is_imported_from_manatal: false,
+  is_claimed: true,
 };
 
 describe('the card a search hit hands the Candidate view', () => {

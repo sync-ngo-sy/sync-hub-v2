@@ -22,6 +22,7 @@ from sync_core.models import (
     Profile,
     TalentPoolMember,
     TenantTag,
+    User,
 )
 
 if TYPE_CHECKING:
@@ -39,6 +40,10 @@ logger = get_logger(__name__)
 LOCATION_NAME: Final = cast("ColumnElement[str | None]", Location.name)
 
 CANONICAL_ROLE_NAME: Final = cast("ColumnElement[str | None]", CanonicalRole.name)
+
+#: Whether anybody has ever signed into the account. `auth.users` is the only thing that knows,
+#: and asking it is what keeps "claimed" from being a column somebody has to remember to write.
+LAST_SIGN_IN: Final = cast("ColumnElement[datetime | None]", User.last_sign_in_at)
 
 
 class TalentPoolOrder(StrEnum):
@@ -196,9 +201,12 @@ def _members() -> Select[Any]:
             CANONICAL_ROLE_NAME.label("canonical_role_name"),
             Candidate.total_experience_years,
             TalentPoolMember.added_at,
+            Candidate.is_imported_from_manatal,
+            LAST_SIGN_IN.label("last_sign_in_at"),
         )
         .join(Candidate, Candidate.id == TalentPoolMember.candidate_id)
         .join(Profile, Profile.id == TalentPoolMember.candidate_id)
+        .join(User, User.id == TalentPoolMember.candidate_id)
         .outerjoin(Location, Location.key == Candidate.location_key)
         .outerjoin(CanonicalRole, CanonicalRole.key == Candidate.canonical_role_key)
     )
@@ -237,4 +245,6 @@ def _as_payload(row: Any, filed: dict[UUID, list[Tag]]) -> PooledCandidate:
         total_experience_years=row.total_experience_years,
         tags=filed.get(row.candidate_id, []),
         added_at=row.added_at,
+        is_imported_from_manatal=row.is_imported_from_manatal,
+        is_claimed=row.last_sign_in_at is not None,
     )

@@ -7,6 +7,8 @@ function saved(id: string): PooledCandidate {
     full_name: `Candidate ${id}`,
     total_experience_years: 0,
     added_at: '2026-07-30T09:00:00Z',
+    is_imported_from_manatal: false,
+    is_claimed: true,
   };
 }
 

@@ -83,7 +83,11 @@ async def importer(pool: asyncpg.Pool, recruiter_id: UUID) -> Importer:
 async def create_candidate(
     pool: asyncpg.Pool, account_id: UUID, *, full_name: str, headline: str | None
 ) -> None:
-    """The two rows a Candidate is, in one transaction, as signup writes them."""
+    """The two rows a Candidate is, in one transaction, as signup writes them.
+
+    Flagged as Manatal's: nothing else in the schema would say so, and a Recruiter
+    reading one of these needs to know that nobody typed it.
+    """
     async with pool.acquire() as connection, connection.transaction():
         await connection.execute(
             "insert into profiles (id, account_type, full_name) values ($1, 'candidate', $2)",
@@ -91,7 +95,12 @@ async def create_candidate(
             full_name,
         )
         await connection.execute(
-            "insert into candidates (id, headline) values ($1, $2)", account_id, headline
+            """
+            insert into candidates (id, headline, is_imported_from_manatal)
+            values ($1, $2, true)
+            """,
+            account_id,
+            headline,
         )
 
 
