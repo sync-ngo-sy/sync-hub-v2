@@ -1,16 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { everyVocabularyKey, VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { TagsWidget } from '@/features/crm/tag';
 import { api } from '@/lib/api';
 
-export const VOCABULARY_PATH = '/v1/tenants/me/tags';
 export const TAGS_PATH = '/v1/tenants/me/applications/{application_id}/tags';
 export const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_id}';
 
 const APPLICATION_SCOPE = { params: { query: { scope: 'application' as const } } };
-
-export function applicationVocabularyQuery() {
-  return api.queryOptions('get', VOCABULARY_PATH, APPLICATION_SCOPE);
-}
 
 export function applicationTagsQuery(applicationId: string) {
   return api.queryOptions('get', TAGS_PATH, {
@@ -26,8 +22,7 @@ export function useApplicationTags(applicationId: string): TagsWidget {
     params: { path: { application_id: applicationId } },
   });
 
-  const rereadVocabulary = () =>
-    queryClient.invalidateQueries({ queryKey: applicationVocabularyQuery().queryKey });
+  const rereadVocabulary = () => queryClient.invalidateQueries({ queryKey: everyVocabularyKey() });
   const rereadFiling = () =>
     queryClient.invalidateQueries({ queryKey: applicationTagsQuery(applicationId).queryKey });
 
