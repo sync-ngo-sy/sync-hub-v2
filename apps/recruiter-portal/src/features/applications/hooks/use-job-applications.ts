@@ -10,6 +10,12 @@ export interface ApplicationFilters {
   screening?: ScreeningVerdict;
 }
 
+/** Every Job's triage list at once: a move made on the review page changes which filters a row
+ * belongs under, and this page cannot know which lists are still cached behind it. */
+export function jobApplicationsQueryPrefix() {
+  return api.queryOptions('get', PATH, { params: { path: { job_id: '' } } }).queryKey.slice(0, 2);
+}
+
 export function useJobApplications(jobId: string, filters: ApplicationFilters) {
   return api.useInfiniteQuery(
     'get',
