@@ -111,7 +111,10 @@ describe('the Application review page', () => {
   it('leaves out the parts of a Snapshot the candidate never filled in', async () => {
     server.use(
       ...signedInAs(RECRUITER),
-      ...getsApplication({ ...REVIEW, snapshot: { full_name: 'Amal Haddad' } }),
+      ...getsApplication({
+        ...REVIEW,
+        snapshot: { full_name: 'Amal Haddad', headline: 'Field logistics lead' },
+      }),
     );
 
     await renderApp(`/applications/${REVIEW.id}`);
@@ -121,8 +124,20 @@ describe('the Application review page', () => {
       expect(snapshot.queryByRole('heading', { name: heading })).toBeNull();
     }
     expect(
-      snapshot.getByText('This Snapshot carries nothing but the candidate’s name.'),
+      snapshot.getByText('Nothing else was on the profile when this Application was sent.'),
     ).toBeVisible();
+  });
+
+  it('makes a project’s repository reachable rather than showing a bare address', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const snapshot = within(await screen.findByRole('region', { name: 'Snapshot' }));
+    expect(snapshot.getByRole('link', { name: 'example.test/cold-chain-repo' })).toHaveAttribute(
+      'href',
+      'https://example.test/cold-chain-repo',
+    );
   });
 
   it("pairs each of the Job's questions with what the candidate answered", async () => {
@@ -271,15 +286,19 @@ describe('the Pipeline on the Application review page', () => {
   });
 
   it.each([
-    ['Move to Interview', 'interview'],
-    ['Move to Offer', 'offer'],
-    ['Mark as hired', 'hired'],
-    ['Reject', 'rejected'],
-    ['Move back to Reviewing', 'reviewing'],
-    ['Move back to New', 'new'],
-  ] as const)('sends %s as the status %s', async (label, target) => {
+    ['new', 'Move to Reviewing', 'reviewing'],
+    ['new', 'Move to Shortlisted', 'shortlisted'],
+    ['shortlisted', 'Move to Interview', 'interview'],
+    ['shortlisted', 'Move to Offer', 'offer'],
+    ['shortlisted', 'Mark as hired', 'hired'],
+    ['shortlisted', 'Reject', 'rejected'],
+    ['shortlisted', 'Move back to Reviewing', 'reviewing'],
+    ['shortlisted', 'Move back to New', 'new'],
+    ['interview', 'Move back to Shortlisted', 'shortlisted'],
+    ['offer', 'Move back to Interview', 'interview'],
+  ] as const)('sends "%s → %s" as the status %s', async (from, label, target) => {
     const asked: PipelineStatus[] = [];
-    server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW, asked));
+    server.use(...signedInAs(RECRUITER), ...reviewsApplication({ ...REVIEW, status: from }, asked));
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
@@ -328,16 +347,16 @@ describe('the Pipeline on the Application review page', () => {
   it('names the move it could not make when the server refuses without saying why', async () => {
     server.use(
       ...signedInAs(RECRUITER),
-      ...refusesApplicationMove(REVIEW, { ...MOVE_REFUSED, title: '', detail: null }),
+      ...refusesApplicationMove(REVIEW, { ...MOVE_REFUSED, detail: null }),
     );
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     await user.click(await screen.findByRole('button', { name: 'Mark as hired' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      "This Application couldn't move to Hired.",
-    );
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("This Application couldn't move to Hired.");
+    expect(alert).not.toHaveTextContent('Conflict');
   });
 
   it('drops the refusal once a move the platform allows goes through', async () => {

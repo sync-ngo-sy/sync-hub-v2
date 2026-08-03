@@ -4,7 +4,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { problemMessage } from '@/lib/api-problem';
+import { problemDetail } from '@/lib/api-problem';
 import { type PipelineStatus, pipelineState } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
 import { type PipelineMove, pipelineMoves, pipelineOutcome } from '../review';
@@ -16,25 +16,25 @@ interface ApplicationPipelineProps {
 }
 
 export function ApplicationPipeline({ applicationId, status }: ApplicationPipelineProps) {
-  const move = useMoveApplication(applicationId);
+  const moving = useMoveApplication(applicationId);
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = pipelineState(status);
   const moves = pipelineMoves(status);
   const outcome = pipelineOutcome(status);
 
-  async function take(wanted: PipelineMove) {
+  async function makeMove(move: PipelineMove) {
     setRefusal(null);
     try {
-      await move.mutateAsync({
+      await moving.mutateAsync({
         params: { path: { application_id: applicationId } },
-        body: { status: wanted.target },
+        body: { status: move.target },
       });
-      toast.success(wanted.success);
+      toast.success(move.success);
     } catch (error) {
       setRefusal(
-        problemMessage(
+        problemDetail(
           error,
-          `This Application couldn't move to ${pipelineState(wanted.target).label}.`,
+          `This Application couldn't move to ${pipelineState(move.target).label}.`,
         ),
       );
     }
@@ -60,14 +60,14 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
 
         {moves.length > 0 ? (
           <div className="flex flex-col gap-2">
-            {moves.map((one, index) => (
+            {moves.map((move, index) => (
               <Button
-                key={one.label}
+                key={move.label}
                 variant={index === 0 ? 'default' : 'outline'}
-                disabled={move.isPending}
-                onClick={() => void take(one)}
+                disabled={moving.isPending}
+                onClick={() => void makeMove(move)}
               >
-                {one.label}
+                {move.label}
               </Button>
             ))}
           </div>

@@ -103,7 +103,7 @@ export const AMAL_REVIEW: ApplicationReview = {
         name: 'Cold-chain pilot',
         description: 'Kept vaccines viable on a twelve-hour route.',
         project_url: 'https://example.test/cold-chain',
-        repository_url: null,
+        repository_url: 'https://example.test/cold-chain-repo',
         start_year: 2024,
         start_month: 6,
         end_year: 2024,

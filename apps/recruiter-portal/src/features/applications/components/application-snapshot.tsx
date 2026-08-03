@@ -1,7 +1,12 @@
-import { StatusChip } from '@sync/ui/components/status-chip';
 import type { ReactNode } from 'react';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
-import { LANGUAGE_PROFICIENCY_LABELS, period, type Snapshot, yearsOfExperience } from '../review';
+import {
+  LANGUAGE_PROFICIENCY_LABELS,
+  linkLabel,
+  period,
+  type Snapshot,
+  yearsOfExperience,
+} from '../review';
 import { ReviewCard } from './review-card';
 
 const HINT =
@@ -34,7 +39,7 @@ export function ApplicationSnapshot({ snapshot }: { snapshot: Snapshot }) {
     <ReviewCard title="Snapshot" hint={HINT}>
       {bare ? (
         <p className="text-dense text-muted-foreground">
-          This Snapshot carries nothing but the candidate’s name.
+          Nothing else was on the profile when this Application was sent.
         </p>
       ) : (
         <div className="space-y-8">
@@ -121,19 +126,18 @@ export function ApplicationSnapshot({ snapshot }: { snapshot: Snapshot }) {
                   key={`${project.name}-${project.start_year}-${project.start_month}`}
                   title={
                     project.project_url ? (
-                      <a
-                        href={project.project_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline underline-offset-4"
-                      >
-                        {project.name}
-                      </a>
+                      <ExternalLink href={project.project_url}>{project.name}</ExternalLink>
                     ) : (
                       project.name
                     )
                   }
-                  subtitle={project.repository_url}
+                  subtitle={
+                    project.repository_url ? (
+                      <ExternalLink href={project.repository_url}>
+                        {linkLabel(project.repository_url)}
+                      </ExternalLink>
+                    ) : null
+                  }
                   when={period(project)}
                   description={project.description}
                 />
@@ -148,8 +152,8 @@ export function ApplicationSnapshot({ snapshot }: { snapshot: Snapshot }) {
               </p>
               <ul aria-label="Other skills" className="flex flex-wrap gap-2">
                 {unmapped.map((skill) => (
-                  <li key={skill}>
-                    <StatusChip label={skill} tone="neutral" />
+                  <li key={skill} className="rounded-md bg-muted px-2 py-1 text-dense">
+                    {skill}
                   </li>
                 ))}
               </ul>
@@ -170,9 +174,17 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+      {children}
+    </a>
+  );
+}
+
 interface EntryProps {
   title: ReactNode;
-  subtitle?: string | null;
+  subtitle?: ReactNode;
   when: string | null;
   description?: string | null;
 }

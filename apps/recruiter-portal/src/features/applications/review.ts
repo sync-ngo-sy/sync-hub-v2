@@ -5,7 +5,6 @@ export type ApplicationReview = components['schemas']['ApplicationReview'];
 export type Snapshot = components['schemas']['ApplicationSnapshot'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
 export type StatusHistoryEntry = components['schemas']['StatusHistoryEntry'];
-export type ReviewedCv = components['schemas']['ApplicationCv'];
 type LanguageProficiency = components['schemas']['LanguageProficiency'];
 type StatusChangeSource = components['schemas']['StatusChangeSource'];
 
@@ -15,7 +14,6 @@ export interface PipelineMove {
   success: string;
 }
 
-/** Every move notifies the candidate in-app; only a rejection also earns them an email. */
 const TOLD = 'the candidate has been told.';
 
 const TO_REVIEWING: PipelineMove = {
@@ -138,13 +136,15 @@ function monthYear(
   return `${MONTH.format(new Date(Date.UTC(2000, month - 1, 1)))} ${year}`;
 }
 
-/** A Snapshot's dates are whatever the candidate chose to give, so every part is optional and
- * the range says only what it knows — an end nobody stated is left unsaid rather than guessed. */
 export function period(entry: SnapshotPeriod): string | null {
   const from = monthYear(entry.start_year, entry.start_month);
   const to = entry.is_current ? 'Present' : monthYear(entry.end_year, entry.end_month);
   if (from && to) return `${from} – ${to}`;
   return from ?? to ?? null;
+}
+
+export function linkLabel(url: string): string {
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
 export function yearsOfExperience(years: number): string {

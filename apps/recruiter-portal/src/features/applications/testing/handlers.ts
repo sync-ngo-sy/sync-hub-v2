@@ -68,8 +68,7 @@ export function failsToGetApplication(problem: Problem) {
   return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
 }
 
-/** Moves the Application for real, so a test reads the page the way a Recruiter would after a
- * move rather than being handed a canned answer. */
+/** Moves the Application for real, so a test reads the page the way a Recruiter would. */
 export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
   let current = review;
   return [

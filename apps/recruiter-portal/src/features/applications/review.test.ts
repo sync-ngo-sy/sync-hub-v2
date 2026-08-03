@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   answerText,
   historyLine,
+  linkLabel,
   period,
   pipelineMoves,
   pipelineOutcome,
@@ -12,6 +13,8 @@ const targets = (status: Parameters<typeof pipelineMoves>[0]) =>
   pipelineMoves(status).map((move) => move.target);
 
 describe('the Pipeline moves offered from a status', () => {
+  /** Written out from the API's own MOVES table in `applications/pipeline.py`, every row of it,
+   * so the two can be compared by eye and a drift on either side shows up here. */
   it('offers every other undecided stage and both decisions while it is undecided', () => {
     expect(targets('new')).toEqual([
       'reviewing',
@@ -27,6 +30,22 @@ describe('the Pipeline moves offered from a status', () => {
       'offer',
       'hired',
       'rejected',
+      'new',
+    ]);
+    expect(targets('shortlisted')).toEqual([
+      'interview',
+      'offer',
+      'hired',
+      'rejected',
+      'reviewing',
+      'new',
+    ]);
+    expect(targets('interview')).toEqual([
+      'offer',
+      'hired',
+      'rejected',
+      'shortlisted',
+      'reviewing',
       'new',
     ]);
     expect(targets('offer')).toEqual([
@@ -164,6 +183,21 @@ describe('how long a candidate says they have done a skill', () => {
   it('does not round a few months up to a year', () => {
     expect(yearsOfExperience(0.5)).toBe('Under a year');
     expect(yearsOfExperience(0)).toBe('Under a year');
+  });
+});
+
+describe('how a link a candidate gave reads on screen', () => {
+  it('drops the scheme, which no reader needs', () => {
+    expect(linkLabel('https://example.test/cold-chain-repo')).toBe('example.test/cold-chain-repo');
+    expect(linkLabel('http://example.test/x')).toBe('example.test/x');
+  });
+
+  it('drops a trailing slash, so two spellings of one address read alike', () => {
+    expect(linkLabel('https://example.test/')).toBe('example.test');
+  });
+
+  it('leaves an address it does not recognise exactly as the candidate typed it', () => {
+    expect(linkLabel('example.test/x')).toBe('example.test/x');
   });
 });
 
