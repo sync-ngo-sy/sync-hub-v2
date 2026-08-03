@@ -1,19 +1,9 @@
 import type { FieldPath } from 'react-hook-form';
-import { isProblem, problemFields, problemMessage } from '@/lib/api-problem';
+import { type FormRejection, formRejection, isProblem, problemMessage } from '@/lib/api-problem';
 import { NAME_TAKEN_PROBLEM } from './problems';
 import type { MessageTemplateFormValues } from './schemas/message-template';
 
 type MessageTemplateField = FieldPath<MessageTemplateFormValues>;
-
-interface FieldRejection {
-  name: MessageTemplateField;
-  message: string;
-}
-
-export interface MessageTemplateRejection {
-  fields: FieldRejection[];
-  root: string | null;
-}
 
 const TEMPLATE_FIELD: Record<string, MessageTemplateField> = {
   'body.name': 'name',
@@ -21,7 +11,7 @@ const TEMPLATE_FIELD: Record<string, MessageTemplateField> = {
   'body.body': 'body',
 };
 
-export function messageTemplateRejection(error: unknown): MessageTemplateRejection {
+export function messageTemplateRejection(error: unknown): FormRejection<MessageTemplateField> {
   if (isProblem(error, NAME_TAKEN_PROBLEM)) {
     return {
       fields: [
@@ -34,17 +24,5 @@ export function messageTemplateRejection(error: unknown): MessageTemplateRejecti
     };
   }
 
-  const located = problemFields(error).map((entry) => ({
-    name: TEMPLATE_FIELD[entry.location],
-    message: entry.message,
-  }));
-  const fields = located.filter((entry): entry is FieldRejection => entry.name !== undefined);
-
-  return {
-    fields,
-    root:
-      located.length > 0 && fields.length === located.length
-        ? null
-        : problemMessage(error, "This template couldn't be saved."),
-  };
+  return formRejection(error, TEMPLATE_FIELD, "This template couldn't be saved.");
 }

@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { problemStatus } from '@/lib/api-problem';
 import { messageTemplateQuery } from './use-message-template';
 import { messageTemplatesQuery } from './use-message-templates';
 
@@ -25,12 +26,18 @@ export function useReviseMessageTemplate() {
 export function useDeleteMessageTemplate() {
   const queryClient = useQueryClient();
 
+  function forget(templateId: string) {
+    queryClient.removeQueries({ queryKey: messageTemplateQuery(templateId).queryKey });
+    return queryClient.invalidateQueries({ queryKey: messageTemplatesQuery().queryKey });
+  }
+
   return api.useMutation('delete', '/v1/tenants/me/message-templates/{template_id}', {
-    onSuccess: (_deleted, variables) => {
-      queryClient.removeQueries({
-        queryKey: messageTemplateQuery(variables.params.path.template_id).queryKey,
-      });
-      return queryClient.invalidateQueries({ queryKey: messageTemplatesQuery().queryKey });
-    },
+    onSuccess: (_deleted, variables) => forget(variables.params.path.template_id),
+    onError: (error, variables) =>
+      isAlreadyGone(error) ? forget(variables.params.path.template_id) : undefined,
   });
+}
+
+export function isAlreadyGone(error: unknown): boolean {
+  return problemStatus(error) === 404;
 }

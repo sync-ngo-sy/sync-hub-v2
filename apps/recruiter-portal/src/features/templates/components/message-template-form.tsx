@@ -11,7 +11,11 @@ import {
   useCreateMessageTemplate,
   useReviseMessageTemplate,
 } from '../hooks/use-message-template-actions';
-import type { MessageTemplate, NewMessageTemplate } from '../message-template';
+import type {
+  MessageTemplate,
+  MessageTemplateChanges,
+  NewMessageTemplate,
+} from '../message-template';
 import { asList, FILLABLE } from '../placeholders';
 import { messageTemplateRejection } from '../rejection';
 import {
@@ -54,7 +58,7 @@ export function MessageTemplateForm({ template, onSaved, onCancel }: MessageTemp
       if (template) {
         await revise.mutateAsync({
           params: { path: { template_id: template.id } },
-          body: written(values),
+          body: written(values) satisfies MessageTemplateChanges,
         });
         toast.success('Template updated');
       } else {

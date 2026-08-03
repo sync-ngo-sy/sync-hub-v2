@@ -11,7 +11,7 @@ import {
 } from '@sync/ui/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
-import { useDeleteMessageTemplate } from '../hooks/use-message-template-actions';
+import { isAlreadyGone, useDeleteMessageTemplate } from '../hooks/use-message-template-actions';
 import type { MessageTemplate } from '../message-template';
 
 interface DeleteTemplateDialogProps {
@@ -30,23 +30,23 @@ export function DeleteTemplateDialog({ template, onClose }: DeleteTemplateDialog
 
   if (!template) return null;
 
-  const doomed = template;
+  const selected = template;
 
   async function confirm() {
     try {
-      await remove.mutateAsync({ params: { path: { template_id: doomed.id } } });
-      toast.success('Template deleted');
-      onClose();
-    } catch {
-      return;
+      await remove.mutateAsync({ params: { path: { template_id: selected.id } } });
+    } catch (error) {
+      if (!isAlreadyGone(error)) return;
     }
+    toast.success('Template deleted');
+    onClose();
   }
 
   return (
     <AlertDialog open onOpenChange={changeOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{`Delete “${doomed.name}”?`}</AlertDialogTitle>
+          <AlertDialogTitle>{`Delete “${selected.name}”?`}</AlertDialogTitle>
           <AlertDialogDescription>
             Your team loses these words. Messages already sent from it are untouched — each one
             carries the words it was sent with.

@@ -22,14 +22,14 @@ export function EditTemplateDialog({ templateId, open, onOpenChange }: EditTempl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Edit template</DialogTitle>
+          <DialogTitle>Edit Message template</DialogTitle>
           <DialogDescription>
             Saving rewrites all of it. Messages already sent keep the words they were sent with.
           </DialogDescription>
         </DialogHeader>
 
         {template.isPending ? (
-          <div role="status" aria-label="Loading template" className="py-4">
+          <div role="status" aria-label="Loading Message template" className="py-4">
             <SkeletonText lines={5} />
           </div>
         ) : null}

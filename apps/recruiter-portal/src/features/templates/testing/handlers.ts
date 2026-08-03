@@ -16,6 +16,15 @@ const NO_SUCH_TEMPLATE: Problem = {
   detail: 'This tenant has no message template with that id.',
 };
 
+function takenName(name: string): Problem {
+  return {
+    type: 'urn:sync:problem:message-template-name-taken',
+    title: 'Conflict',
+    status: 409,
+    detail: `This tenant already has a message template called “${name}”.`,
+  };
+}
+
 export function listsMessageTemplates(items: MessageTemplate[]) {
   return [
     http.get('/v1/tenants/me/message-templates', ({ response }) => response(200).json(items)),
@@ -32,12 +41,6 @@ export function getsMessageTemplate(template: MessageTemplate) {
   ];
 }
 
-export function refusesMessageTemplateCreation(problem: ValidationProblem) {
-  return [
-    http.post('/v1/tenants/me/message-templates', ({ response }) => response(422).json(problem)),
-  ];
-}
-
 export function refusesMessageTemplateRevision(problem: ValidationProblem) {
   return [
     http.put('/v1/tenants/me/message-templates/{template_id}', ({ response }) =>
@@ -46,10 +49,32 @@ export function refusesMessageTemplateRevision(problem: ValidationProblem) {
   ];
 }
 
-export function refusesMessageTemplateDeletion(problem: Problem) {
+export function refusesTakenNameOnRevision(name: string) {
+  return [
+    http.put('/v1/tenants/me/message-templates/{template_id}', ({ response }) =>
+      response(409).json(takenName(name)),
+    ),
+  ];
+}
+
+export function alreadyDeletedElsewhere(template: MessageTemplate) {
+  let gone = false;
+
+  return [
+    http.get('/v1/tenants/me/message-templates', ({ response }) =>
+      response(200).json(gone ? [] : [template]),
+    ),
+    http.delete('/v1/tenants/me/message-templates/{template_id}', ({ response }) => {
+      gone = true;
+      return response(404).json(NO_SUCH_TEMPLATE);
+    }),
+  ];
+}
+
+export function failsToDeleteMessageTemplate(problem: Problem) {
   return [
     http.delete('/v1/tenants/me/message-templates/{template_id}', ({ response }) =>
-      response(404).json(problem),
+      response(500).json(problem),
     ),
   ];
 }
@@ -81,12 +106,7 @@ export function managesMessageTemplates(
       const written = (await request.json()) as NewMessageTemplate;
       spies.onCreate?.(written);
       if (templates.some((template) => template.name === written.name))
-        return response(409).json({
-          type: 'urn:sync:problem:message-template-name-taken',
-          title: 'Conflict',
-          status: 409,
-          detail: `This tenant already has a message template called “${written.name}”.`,
-        });
+        return response(409).json(takenName(written.name));
 
       minted += 1;
       const saved: MessageTemplate = {

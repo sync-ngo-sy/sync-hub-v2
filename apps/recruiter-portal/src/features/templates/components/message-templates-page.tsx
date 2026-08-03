@@ -11,11 +11,23 @@ import { CreateTemplateDialog } from './create-template-dialog';
 import { DeleteTemplateDialog } from './delete-template-dialog';
 import { EditTemplateDialog } from './edit-template-dialog';
 
+function opening(body: string): string {
+  const [first = ''] = body.split('\n');
+  return first.length > 120 ? `${first.slice(0, 120).trimEnd()}…` : first;
+}
+
 const COLUMNS: DataTableColumn<MessageTemplate>[] = [
   {
     accessorKey: 'name',
     header: 'Template',
-    cell: ({ row }) => <span className="flex min-w-52">{row.original.name}</span>,
+    cell: ({ row }) => (
+      <span className="flex min-w-52 flex-col gap-1">
+        <span>{row.original.name}</span>
+        <span className="text-meta font-normal text-muted-foreground">
+          {opening(row.original.body)}
+        </span>
+      </span>
+    ),
   },
   {
     accessorKey: 'subject',
@@ -43,7 +55,7 @@ export function MessageTemplatesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Templates"
-        description="The messages your team reuses when it writes an applicant."
+        description="The Message templates your Recruiters reuse when they write an applicant."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />
@@ -65,7 +77,7 @@ export function MessageTemplatesPage() {
         isLoading={templates.isPending}
         empty={{
           icon: MailPlus,
-          message: 'No templates yet — write the first message your team will reuse.',
+          message: 'No Message templates yet — write the first one your Recruiters will reuse.',
           action: <Button onClick={() => setCreating(true)}>Create your first template</Button>,
         }}
       />

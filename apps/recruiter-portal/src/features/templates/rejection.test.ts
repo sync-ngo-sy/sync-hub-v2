@@ -4,7 +4,7 @@ import { messageTemplateRejection } from './rejection';
 
 function refused(errors: components['schemas']['InvalidField'][]) {
   return {
-    type: 'urn:sync:problem:validation',
+    type: 'urn:sync:problem:validation-error',
     title: 'Invalid request',
     status: 422,
     detail: 'One field needs attention.',

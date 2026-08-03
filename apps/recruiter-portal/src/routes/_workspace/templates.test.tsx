@@ -3,11 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { INTERVIEW_INVITATION, THANKS_BUT_NO } from '@/features/templates/testing/fixtures';
 import {
+  alreadyDeletedElsewhere,
+  failsToDeleteMessageTemplate,
   getsMessageTemplate,
   listsMessageTemplates,
   managesMessageTemplates,
-  refusesMessageTemplateDeletion,
   refusesMessageTemplateRevision,
+  refusesTakenNameOnRevision,
 } from '@/features/templates/testing/handlers';
 import { RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -21,7 +23,9 @@ describe('Message templates', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Templates' })).toBeVisible();
     expect(
-      screen.getByText('No templates yet — write the first message your team will reuse.'),
+      screen.getByText(
+        'No Message templates yet — write the first one your Recruiters will reuse.',
+      ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Create your first template' })).toBeVisible();
   });
@@ -146,15 +150,30 @@ describe('Message templates', () => {
     expect(screen.getByText('Thanks, but not this time')).toBeVisible();
   });
 
-  it('keeps the list when a delete is refused, saying so in the confirmation', async () => {
+  it('takes a template a teammate already deleted as deleted, not as a failure', async () => {
+    server.use(...signedInAs(RECRUITER), ...alreadyDeletedElsewhere(INTERVIEW_INVITATION));
+
+    const { user } = await renderApp('/templates');
+    await user.click(
+      await screen.findByRole('button', { name: 'Actions for Interview invitation' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete template' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete template' }));
+
+    expect(await screen.findByText('Template deleted')).toBeVisible();
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Interview invitation')).not.toBeInTheDocument());
+  });
+
+  it('keeps the list and the confirmation when a delete actually fails', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...listsMessageTemplates([INTERVIEW_INVITATION]),
-      ...refusesMessageTemplateDeletion({
-        type: 'urn:sync:problem:not-found',
-        title: 'Not Found',
-        status: 404,
-        detail: 'This tenant has no message template with that id.',
+      ...failsToDeleteMessageTemplate({
+        type: 'urn:sync:problem:internal-error',
+        title: 'Internal Server Error',
+        status: 500,
+        detail: 'Something went wrong on our side.',
       }),
     );
 
@@ -165,9 +184,7 @@ describe('Message templates', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Delete template' }));
     await user.click(await screen.findByRole('button', { name: 'Delete template' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This tenant has no message template with that id.',
-    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
     expect(screen.getByRole('alertdialog')).toBeVisible();
     expect(screen.getByText('Interview invitation')).toBeVisible();
   });
@@ -229,14 +246,14 @@ describe('Message templates', () => {
       ...listsMessageTemplates([INTERVIEW_INVITATION]),
       ...getsMessageTemplate(INTERVIEW_INVITATION),
       ...refusesMessageTemplateRevision({
-        type: 'urn:sync:problem:validation',
-        title: 'Invalid request',
+        type: 'urn:sync:problem:validation-error',
+        title: 'Unprocessable Entity',
         status: 422,
-        detail: 'One field needs attention.',
+        detail: 'The request body is invalid.',
         errors: [
           {
             location: 'body.body',
-            message: 'names {{ salary }}, which no message can fill.',
+            message: 'Value error, String should have at most 5000 characters',
             type: 'value_error',
           },
         ],
@@ -250,6 +267,34 @@ describe('Message templates', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Edit template' }));
     await user.click(await screen.findByRole('button', { name: 'Save changes' }));
 
-    expect(await screen.findByText('names {{ salary }}, which no message can fill.')).toBeVisible();
+    expect(
+      await screen.findByText('Value error, String should have at most 5000 characters'),
+    ).toBeVisible();
+  });
+
+  it('puts a name taken by another template beneath the name field when revising too', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsMessageTemplates([INTERVIEW_INVITATION, THANKS_BUT_NO]),
+      ...getsMessageTemplate(INTERVIEW_INVITATION),
+      ...refusesTakenNameOnRevision('Thanks, but not this time'),
+    );
+
+    const { user } = await renderApp('/templates');
+    await user.click(
+      await screen.findByRole('button', { name: 'Actions for Interview invitation' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit template' }));
+    const name = await screen.findByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'Thanks, but not this time');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText(
+        'This tenant already has a message template called “Thanks, but not this time”.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
   });
 });
