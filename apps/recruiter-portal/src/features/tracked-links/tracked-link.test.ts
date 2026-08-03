@@ -71,14 +71,15 @@ describe('the views each link brought', () => {
     ]);
   });
 
-  it('gives everything past the fourth link the gray step of the ramp', () => {
+  it('keeps everything past the fourth link on the ramp, never on the neutral step', () => {
     const bars = viewsPerLink(
       [10, 9, 8, 7, 6, 5].map((views, index) =>
         link({ id: String(index), name: `Link ${index}`, view_count: views }),
       ),
     );
 
-    expect(bars.slice(4).map((bar) => bar.fill)).toEqual(['var(--chart-5)', 'var(--chart-5)']);
+    expect(bars.slice(4).map((bar) => bar.fill)).toEqual(['var(--chart-4)', 'var(--chart-4)']);
+    expect(bars.map((bar) => bar.fill)).not.toContain('var(--chart-5)');
   });
 
   it('keeps a link that brought nothing, and orders ties by name', () => {
@@ -102,5 +103,19 @@ describe('the views each link brought', () => {
     );
 
     expect(summary).toBe('Views per tracked link. LinkedIn post: 342 views. Notice board: 1 view.');
+  });
+
+  it('stops reading out after the eighth link rather than listing a whole campaign', () => {
+    const summary = viewsSummary(
+      viewsPerLink(
+        Array.from({ length: 11 }, (_, index) =>
+          link({ id: String(index), name: `Link ${index}`, view_count: 100 - index }),
+        ),
+      ),
+    );
+
+    expect(summary).toContain('Link 7: 93 views.');
+    expect(summary).not.toContain('Link 8');
+    expect(summary).toContain('And 3 more links, further down.');
   });
 });

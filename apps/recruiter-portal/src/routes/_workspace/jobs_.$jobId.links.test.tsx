@@ -11,6 +11,7 @@ import {
 } from '@/features/tracked-links/testing/fixtures';
 import {
   failsToListTrackedLinks,
+  holdsTrackedLinkChange,
   holdsTrackedLinks,
   listsTrackedLinks,
   managesTrackedLinks,
@@ -87,6 +88,9 @@ describe("a Job's Tracked links tab", () => {
 
     expect(await screen.findByRole('row', { name: /Alumni newsletter/ })).toBeVisible();
     expect(links.links.map((link) => link.name)).toEqual(['LinkedIn post', 'Alumni newsletter']);
+
+    await user.click(screen.getByRole('button', { name: 'Mint a tracked link' }));
+    expect(await screen.findByLabelText('Name')).toHaveValue('');
   });
 
   it('says which name the Job already uses rather than minting a second one', async () => {
@@ -270,5 +274,41 @@ describe("a Job's Tracked links tab", () => {
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(await screen.findByText('LinkedIn post')).toBeVisible();
+  });
+
+  it('still offers minting when the list itself could not be read', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...failsToListTrackedLinks(SERVER_FAULT));
+
+    await renderApp(LINKS);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
+    expect(screen.getByRole('button', { name: 'Mint a tracked link' })).toBeVisible();
+  });
+
+  it('sends one change however often the recruiter asks while it is in flight', async () => {
+    const change = holdsTrackedLinkChange({ ...LINKEDIN_POST, is_active: false });
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsTrackedLinks([LINKEDIN_POST]),
+      ...change.handlers,
+    );
+
+    const { user } = await renderApp(LINKS);
+
+    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    await openActions(user, 'LinkedIn post');
+    await user.click(await screen.findByRole('menuitem', { name: 'Turn link off' }));
+    await openActions(user, 'LinkedIn post');
+    await user.click(await screen.findByRole('menuitem', { name: 'Turn link off' }));
+
+    change.arrive();
+
+    expect(
+      await screen.findByText(
+        'Tracked link turned off — its address stops working, and the views it brought stay counted.',
+      ),
+    ).toBeVisible();
+    expect(change.asked).toEqual([LINKEDIN_POST.id]);
   });
 });

@@ -27,7 +27,7 @@ const COLUMNS: DataTableColumn<TrackedLink>[] = [
           <span className="max-w-64 truncate font-normal text-muted-foreground" title={address}>
             {address}
           </span>
-          <CopyAddressButton address={address} name={row.original.name} />
+          <CopyAddressButton link={row.original} />
         </span>
       );
     },
@@ -67,8 +67,10 @@ export function TrackedLinks({ jobId }: { jobId: string }) {
   const [changeFailure, setChangeFailure] = useState<string | null>(null);
 
   const items = links.data ?? [];
+  const listedNothing = links.isSuccess && items.length === 0;
 
   async function toggle(link: TrackedLink) {
+    if (change.isPending) return;
     setChangeFailure(null);
     try {
       await change.mutateAsync({
@@ -85,14 +87,14 @@ export function TrackedLinks({ jobId }: { jobId: string }) {
 
   return (
     <div className="space-y-6 pt-4">
-      {items.length > 0 ? (
+      {listedNothing ? null : (
         <div className="flex justify-end">
           <Button onClick={() => setMinting(true)}>
             <Plus aria-hidden="true" />
             Mint a tracked link
           </Button>
         </div>
-      ) : null}
+      )}
 
       {items.length > 0 ? <LinkViewsCard links={items} /> : null}
 

@@ -30,8 +30,9 @@ export interface LinkViews {
   fill: string;
 }
 
-const RAMP = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'];
-const BEYOND_THE_RAMP = 'var(--chart-5)';
+const PALEST_STEP = 'var(--chart-4)';
+const RAMP = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', PALEST_STEP];
+const SPOKEN_AT_MOST = 8;
 
 export function viewsPerLink(links: TrackedLink[]): LinkViews[] {
   return [...links]
@@ -40,7 +41,7 @@ export function viewsPerLink(links: TrackedLink[]): LinkViews[] {
       id: link.id,
       name: link.name,
       views: link.view_count,
-      fill: RAMP[index] ?? BEYOND_THE_RAMP,
+      fill: RAMP[index] ?? PALEST_STEP,
     }));
 }
 
@@ -49,6 +50,11 @@ export function totalViews(links: TrackedLink[]): number {
 }
 
 export function viewsSummary(bars: LinkViews[]): string {
-  const rows = bars.map((bar) => `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}`);
-  return `Views per tracked link. ${rows.join('. ')}.`;
+  const spoken = bars.slice(0, SPOKEN_AT_MOST);
+  const rows = spoken.map(
+    (bar) => `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}`,
+  );
+  const rest = bars.length - spoken.length;
+  const tail = rest > 0 ? ` And ${rest} more ${rest === 1 ? 'link' : 'links'}, further down.` : '';
+  return `Views per tracked link. ${rows.join('. ')}.${tail}`;
 }

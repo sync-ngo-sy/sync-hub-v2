@@ -10,7 +10,7 @@ export function LinkViewsCard({ links }: { links: TrackedLink[] }) {
 
   return (
     <ChartCard
-      title="Where applicants find you"
+      title="Views by tracked link"
       description="Job views each link has brought since it was minted, turned off ones included."
     >
       {totalViews(links) === 0 ? (
