@@ -2,15 +2,15 @@ import type { components } from '@sync/api-client';
 import type { StatusTone } from '@sync/ui/components/status-chip';
 
 export type ApplicationSummary = components['schemas']['ApplicationSummary'];
-export type ApplicationStatus = components['schemas']['ApplicationStatus'];
-export type QualificationStatus = components['schemas']['QualificationStatus'];
+export type PipelineStatus = components['schemas']['ApplicationStatus'];
+export type ScreeningVerdict = components['schemas']['QualificationStatus'];
 
 interface ChipState {
   label: string;
   tone: StatusTone;
 }
 
-const PIPELINE_STATE: Record<ApplicationStatus, ChipState> = {
+const PIPELINE_STATE: Record<PipelineStatus, ChipState> = {
   new: { label: 'New', tone: 'neutral' },
   reviewing: { label: 'Reviewing', tone: 'neutral' },
   shortlisted: { label: 'Shortlisted', tone: 'shortlisted' },
@@ -21,28 +21,37 @@ const PIPELINE_STATE: Record<ApplicationStatus, ChipState> = {
   withdrawn: { label: 'Withdrawn', tone: 'neutral' },
 };
 
-const SCREENING_STATE: Record<QualificationStatus, ChipState> = {
+const SCREENING_STATE: Record<ScreeningVerdict, ChipState> = {
   pending: { label: 'Pending', tone: 'neutral' },
   qualified: { label: 'Qualified', tone: 'positive' },
   disqualified: { label: 'Disqualified', tone: 'negative' },
   review_required: { label: 'Review required', tone: 'review-required' },
 };
 
-export const PIPELINE_STATUSES = Object.keys(PIPELINE_STATE) as [
-  ApplicationStatus,
-  ...ApplicationStatus[],
-];
-export const QUALIFICATION_STATUSES = Object.keys(SCREENING_STATE) as [
-  QualificationStatus,
-  ...QualificationStatus[],
-];
+export const PIPELINE_STATUSES = [
+  'new',
+  'reviewing',
+  'shortlisted',
+  'interview',
+  'offer',
+  'hired',
+  'rejected',
+  'withdrawn',
+] as const satisfies readonly PipelineStatus[];
 
-export function pipelineState(status: ApplicationStatus): ChipState {
+export const SCREENING_VERDICTS = [
+  'pending',
+  'qualified',
+  'disqualified',
+  'review_required',
+] as const satisfies readonly ScreeningVerdict[];
+
+export function pipelineState(status: PipelineStatus): ChipState {
   return PIPELINE_STATE[status];
 }
 
-export function screeningState(status: QualificationStatus): ChipState {
-  return SCREENING_STATE[status];
+export function screeningState(verdict: ScreeningVerdict): ChipState {
+  return SCREENING_STATE[verdict];
 }
 
 export function candidateMeta(application: ApplicationSummary): string {

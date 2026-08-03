@@ -1,13 +1,13 @@
 import { api } from '@/lib/api';
-import type { ApplicationStatus, QualificationStatus } from '../application';
+import type { PipelineStatus, ScreeningVerdict } from '../application';
 
 export const APPLICATIONS_PAGE_SIZE = 20;
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 
 export interface ApplicationFilters {
-  status?: ApplicationStatus;
-  qualification?: QualificationStatus;
+  pipeline?: PipelineStatus;
+  screening?: ScreeningVerdict;
 }
 
 export function useJobApplications(jobId: string, filters: ApplicationFilters) {
@@ -19,8 +19,8 @@ export function useJobApplications(jobId: string, filters: ApplicationFilters) {
         path: { job_id: jobId },
         query: {
           limit: APPLICATIONS_PAGE_SIZE,
-          status: filters.status,
-          qualification_status: filters.qualification,
+          status: filters.pipeline,
+          qualification_status: filters.screening,
         },
       },
     },

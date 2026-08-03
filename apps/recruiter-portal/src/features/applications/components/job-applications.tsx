@@ -1,21 +1,21 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { Button } from '@sync/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { Inbox } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import {
-  type ApplicationStatus,
   type ApplicationSummary,
   candidateMeta,
   PIPELINE_STATUSES,
+  type PipelineStatus,
   pipelineState,
-  QUALIFICATION_STATUSES,
-  type QualificationStatus,
+  SCREENING_VERDICTS,
+  type ScreeningVerdict,
   screeningState,
 } from '../application';
 import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
+import { SegmentedFilter } from './segmented-filter';
 
 const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
   {
@@ -60,42 +60,6 @@ const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
   },
 ];
 
-interface FilterControlProps<TValue extends string> {
-  label: string;
-  anyLabel: string;
-  value: TValue | undefined;
-  options: { value: TValue; label: string }[];
-  onChange: (value: TValue | undefined) => void;
-}
-
-function FilterControl<TValue extends string>({
-  label,
-  anyLabel,
-  value,
-  options,
-  onChange,
-}: FilterControlProps<TValue>) {
-  return (
-    <div className="flex min-w-0 max-w-full items-center gap-3">
-      <span className="shrink-0 text-meta text-muted-foreground">{label}</span>
-      <Tabs
-        className="min-w-0 overflow-x-auto"
-        value={value ?? 'all'}
-        onValueChange={(next) => onChange(next === 'all' ? undefined : (next as TValue))}
-      >
-        <TabsList aria-label={label}>
-          <TabsTrigger value="all">{anyLabel}</TabsTrigger>
-          {options.map((option) => (
-            <TabsTrigger key={option.value} value={option.value}>
-              {option.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-    </div>
-  );
-}
-
 interface JobApplicationsProps {
   jobId: string;
   filters: ApplicationFilters;
@@ -112,30 +76,30 @@ export function JobApplications({
   onShowLinks,
 }: JobApplicationsProps) {
   const applications = useJobApplications(jobId, filters);
-  const filtered = Boolean(filters.status || filters.qualification);
+  const active = [filters.screening, filters.pipeline].filter(Boolean).length;
 
   return (
     <div className="space-y-6 pt-4">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-        <FilterControl<QualificationStatus>
+        <SegmentedFilter<ScreeningVerdict>
           label="Screening"
           anyLabel="All verdicts"
-          value={filters.qualification}
-          options={QUALIFICATION_STATUSES.map((status) => ({
-            value: status,
-            label: screeningState(status).label,
+          value={filters.screening}
+          options={SCREENING_VERDICTS.map((verdict) => ({
+            value: verdict,
+            label: screeningState(verdict).label,
           }))}
-          onChange={(qualification) => onFiltersChange({ ...filters, qualification })}
+          onChange={(screening) => onFiltersChange({ ...filters, screening })}
         />
-        <FilterControl<ApplicationStatus>
+        <SegmentedFilter<PipelineStatus>
           label="Pipeline"
           anyLabel="All statuses"
-          value={filters.status}
+          value={filters.pipeline}
           options={PIPELINE_STATUSES.map((status) => ({
             value: status,
             label: pipelineState(status).label,
           }))}
-          onChange={(status) => onFiltersChange({ ...filters, status })}
+          onChange={(pipeline) => onFiltersChange({ ...filters, pipeline })}
         />
       </div>
 
@@ -157,21 +121,25 @@ export function JobApplications({
         }
         empty={{
           icon: Inbox,
-          message: filtered
-            ? 'No Application on this Job matches both filters.'
-            : 'No one has applied yet — a tracked link is the quickest way to bring candidates to this Job.',
-          action: filtered ? (
-            <Button
-              variant="outline"
-              onClick={() => onFiltersChange({ status: undefined, qualification: undefined })}
-            >
-              Clear filters
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={onShowLinks}>
-              Go to tracked links
-            </Button>
-          ),
+          message:
+            active === 0
+              ? 'No one has applied yet — a tracked link is the quickest way to bring candidates to this Job.'
+              : active === 1
+                ? 'No Application on this Job matches that filter.'
+                : 'No Application on this Job matches both filters.',
+          action:
+            active > 0 ? (
+              <Button
+                variant="outline"
+                onClick={() => onFiltersChange({ pipeline: undefined, screening: undefined })}
+              >
+                {active === 1 ? 'Clear filter' : 'Clear filters'}
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={onShowLinks}>
+                Go to tracked links
+              </Button>
+            ),
         }}
         loadMore={{
           hasMore: applications.hasNextPage,

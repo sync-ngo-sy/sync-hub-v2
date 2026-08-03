@@ -43,3 +43,20 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
 export function failsToListJobApplications(problem: Problem) {
   return [http.get(PATH, ({ response }) => response(500).json(problem))];
 }
+
+/** Holds the page open until the caller lets it arrive, so a test can see the skeleton. */
+export function holdsJobApplications(items: ApplicationSummary[]) {
+  let arrive: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    arrive = resolve;
+  });
+  return {
+    arrive: () => arrive(),
+    handlers: [
+      http.get(PATH, async ({ response }) => {
+        await held;
+        return response(200).json({ items, next_cursor: null });
+      }),
+    ],
+  };
+}
