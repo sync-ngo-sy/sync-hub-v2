@@ -96,12 +96,15 @@ class Settings(BaseSettings):
     email_from: str = "Sync <onboarding@resend.dev>"
     email_timeout_seconds: int = Field(default=30, gt=0)
 
-    worker_poll_interval_seconds: float = Field(default=1.0, gt=0)
-    worker_idle_backoff_max_seconds: float = Field(default=15.0, gt=0)
+    #: Shared with the database webhook and the schedule that call the worker. Neither can
+    #: mint a Google identity token, so this is what stands in for IAM.
+    worker_shared_secret: SecretStr | None = None
+    #: Ceiling on one invocation, so a continuously fed queue cannot keep a request alive
+    #: until the platform kills it mid-job. Stopping early is safe; the schedule calls again.
+    worker_drain_max_rows: int = Field(default=500, ge=1)
     worker_max_attempts: int = Field(default=3, ge=1)
     worker_retry_backoff_seconds: float = Field(default=10.0, gt=0)
     worker_stuck_job_seconds: float = Field(default=600.0, gt=0)
-    worker_sweep_interval_seconds: float = Field(default=60.0, gt=0)
     worker_ingestion_concurrency: int = Field(default=4, ge=1)
     worker_embedding_concurrency: int = Field(default=2, ge=1)
     worker_communications_concurrency: int = Field(default=2, ge=1)

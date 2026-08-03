@@ -8,6 +8,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    # The worker is an HTTP service now, not a loop: a webhook and a schedule call it.
+    "fastapi>=0.139.2",
+    "uvicorn[standard]>=0.51.0",
     "sync-comms",
     "sync-core",
     "sync-ingestion",
@@ -16,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-# The deployable command, alongside the API's `uvicorn sync_api.main:app`.
+# Serves the drain endpoints; the API is `uvicorn sync_api.main:app` alongside it.
 sync-worker = "sync_worker.main:main"
 
 [build-system]
