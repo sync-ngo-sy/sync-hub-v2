@@ -13,7 +13,7 @@ function hrefsOf(links: HTMLElement[]): (string | null)[] {
 }
 
 describe('the recruiter landing', () => {
-  it('explains Sync to a company and sends both CTAs to sign-up and sign-in', async () => {
+  it('explains Sync to a company and asks for access rather than offering a workspace', async () => {
     await renderApp('/');
 
     expect(
@@ -21,19 +21,20 @@ describe('the recruiter landing', () => {
     ).toBeInTheDocument();
 
     const page = screen.getByRole('main');
-    expect(hrefsOf(within(page).getAllByRole('link', { name: /Create your workspace/ }))).toEqual([
-      '/signup',
-      '/signup',
+    expect(hrefsOf(within(page).getAllByRole('link', { name: /Request access/ }))).toEqual([
+      '/request-access',
+      '/request-access',
     ]);
+    expect(within(page).queryByRole('link', { name: /workspace/i })).not.toBeInTheDocument();
     expect(hrefsOf(within(page).getAllByRole('link', { name: 'Sign in' }))).toEqual([
       '/login',
       '/login',
     ]);
 
     const header = screen.getByRole('banner');
-    expect(within(header).getByRole('link', { name: 'Create workspace' })).toHaveAttribute(
+    expect(within(header).getByRole('link', { name: 'Request access' })).toHaveAttribute(
       'href',
-      '/signup',
+      '/request-access',
     );
     expect(within(header).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
   });
@@ -51,7 +52,7 @@ describe('the recruiter landing', () => {
       within(steps)
         .getAllByRole('listitem')
         .map((step) => within(step).getByRole('heading', { level: 3 }).textContent),
-    ).toEqual(['Create your workspace', 'Publish a job with its criteria', 'Work the pipeline']);
+    ).toEqual(['Ask for access', 'Publish a job with its criteria', 'Work the pipeline']);
   });
 
   it('reaches the Sync team on the one WhatsApp number and address it is configured with', async () => {
@@ -69,14 +70,14 @@ describe('the recruiter landing', () => {
     expect(emailLink).toHaveAccessibleName(`Email ${env.contact.email}`);
   });
 
-  it('repeats the workspace and contact links in the footer', async () => {
+  it('repeats the access and contact links in the footer', async () => {
     await renderApp('/');
 
     const footer = await screen.findByRole('contentinfo');
 
-    expect(within(footer).getByRole('link', { name: 'Create your workspace' })).toHaveAttribute(
+    expect(within(footer).getByRole('link', { name: 'Request access' })).toHaveAttribute(
       'href',
-      '/signup',
+      '/request-access',
     );
     expect(within(footer).getByRole('link', { name: /^WhatsApp/ })).toHaveAttribute(
       'href',
@@ -85,7 +86,7 @@ describe('the recruiter landing', () => {
     expect(within(footer).getByRole('link', { name: /^Email/ })).toHaveAttribute('href', email);
   });
 
-  it('holds the page sections and sign-up behind the menu button a phone header shows', async () => {
+  it('holds the page sections and the access ask behind the menu button a phone header shows', async () => {
     const { user } = await renderApp('/');
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
@@ -99,9 +100,9 @@ describe('the recruiter landing', () => {
       '#how-it-works',
     );
     expect(within(menu).getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '#contact');
-    expect(within(menu).getByRole('link', { name: 'Create workspace' })).toHaveAttribute(
+    expect(within(menu).getByRole('link', { name: 'Request access' })).toHaveAttribute(
       'href',
-      '/signup',
+      '/request-access',
     );
   });
 

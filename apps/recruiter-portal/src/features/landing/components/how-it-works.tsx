@@ -3,8 +3,8 @@ import { Wrap } from './page-parts';
 
 const STEPS = [
   {
-    title: 'Create your workspace',
-    body: 'Your company gets its own Sync. Invite the people who hire with you.',
+    title: 'Ask for access',
+    body: 'We set your company up with its own Sync. Invite the people who hire with you.',
   },
   {
     title: 'Publish a job with its criteria',

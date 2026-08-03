@@ -39,3 +39,44 @@ export function setsPlatformTenantStatus(tenant: components['schemas']['Platform
     http.patch('/v1/platform/tenants/{tenant_id}', ({ response }) => response(200).json(tenant)),
   ];
 }
+
+export const ACCESS_REQUESTS: components['schemas']['AccessRequestView'][] = [];
+
+export function respondsWithAccessRequests(
+  requests: components['schemas']['AccessRequestView'][] = ACCESS_REQUESTS,
+) {
+  return [http.get('/v1/platform/access-requests', ({ response }) => response(200).json(requests))];
+}
+
+export function convertsAccessRequest(
+  created: components['schemas']['CreatedTenantView'],
+  onRequest?: (slug: string) => void,
+) {
+  return [
+    http.post('/v1/platform/access-requests/{request_id}/tenant', async ({ request, response }) => {
+      const body = (await request.json()) as { slug: string };
+      onRequest?.(body.slug);
+      return response(201).json(created);
+    }),
+  ];
+}
+
+export function refusesConversion(problem: components['schemas']['ProblemDetail']) {
+  return [
+    http.post('/v1/platform/access-requests/{request_id}/tenant', ({ response }) =>
+      response(409).json(problem),
+    ),
+  ];
+}
+
+export function dismissesAccessRequest(
+  request: components['schemas']['AccessRequestView'],
+  onRequest?: () => void,
+) {
+  return [
+    http.post('/v1/platform/access-requests/{request_id}/dismissal', ({ response }) => {
+      onRequest?.();
+      return response(200).json(request);
+    }),
+  ];
+}

@@ -47,8 +47,11 @@ export function LandingHeader() {
           <Link to="/login" className={cn(buttonVariants({ variant: 'ghost' }), NAV_BUTTON)}>
             Sign in
           </Link>
-          <Link to="/signup" className={cn(buttonVariants(), NAV_BUTTON, 'hidden sm:inline-flex')}>
-            Create workspace
+          <Link
+            to="/request-access"
+            className={cn(buttonVariants(), NAV_BUTTON, 'hidden sm:inline-flex')}
+          >
+            Request access
           </Link>
 
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -62,7 +65,7 @@ export function LandingHeader() {
             <SheetContent side="right" className="w-72 gap-6 p-6 pt-14">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <SheetDescription className="sr-only">
-                Read what Sync does for employers, or create your workspace.
+                Read what Sync does for employers, or ask for access.
               </SheetDescription>
               <div className="-mx-2 flex flex-col text-reading font-medium text-secondary-foreground">
                 {SECTIONS.map(({ href, label }) => (
@@ -76,8 +79,12 @@ export function LandingHeader() {
                   </a>
                 ))}
               </div>
-              <Link to="/signup" onClick={close} className={cn(buttonVariants(), NAV_BUTTON)}>
-                Create workspace
+              <Link
+                to="/request-access"
+                onClick={close}
+                className={cn(buttonVariants(), NAV_BUTTON)}
+              >
+                Request access
               </Link>
             </SheetContent>
           </Sheet>

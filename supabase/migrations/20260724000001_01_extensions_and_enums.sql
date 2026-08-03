@@ -5,6 +5,8 @@ create type account_type as enum ('candidate', 'recruiter');
 
 create type recruiter_role as enum ('admin', 'recruiter');
 create type tenant_plan   as enum ('free', 'pro', 'enterprise');
+-- Where an Access request ends up. Sync is sold, not self-served, so a Tenant starts here.
+create type access_request_status as enum ('pending', 'converted', 'dismissed');
 create type job_status    as enum ('draft', 'published', 'closed', 'archived');
 
 create type location_kind      as enum ('country', 'governorate');

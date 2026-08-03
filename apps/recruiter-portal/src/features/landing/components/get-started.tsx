@@ -19,12 +19,15 @@ export function GetStarted() {
               Start hiring on Sync.
             </h2>
             <p className="mt-3 text-reading text-secondary-foreground">
-              Create your workspace, publish your first job, and see the difference on the first
-              application that arrives.
+              Ask for access, and we'll set your company up. Publish your first job and see the
+              difference on the first application that arrives.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-              <Link to="/signup" className={cn(buttonVariants({ size: 'lg' }), HERO_BUTTON)}>
-                Create your workspace <span aria-hidden="true">→</span>
+              <Link
+                to="/request-access"
+                className={cn(buttonVariants({ size: 'lg' }), HERO_BUTTON)}
+              >
+                Request access <span aria-hidden="true">→</span>
               </Link>
               <Link to="/login" className={UNDERLINE_LINK}>
                 Sign in
@@ -36,8 +39,7 @@ export function GetStarted() {
             <div className="lg:w-[300px] lg:shrink-0">
               <h3 className="text-title text-foreground">Talk to the Sync team</h3>
               <p className="mt-2 mb-5 max-w-[38ch] text-dense text-muted-foreground">
-                Questions about screening, or want a walkthrough before you sign up? Reach us
-                directly.
+                Questions about screening, or want a walkthrough first? Reach us directly.
               </p>
               <ContactLinks />
             </div>

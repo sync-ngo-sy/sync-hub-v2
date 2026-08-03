@@ -6,19 +6,12 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from sync_api.auth.registration import (
-    create_identity,
-    identity_undone_on_failure,
-    identity_undone_unless_taken,
-    invite_identity,
-)
+from sync_api.auth.registration import identity_undone_unless_taken, invite_identity
 from sync_api.problems import (
     LAST_TENANT_ADMIN_PROBLEM_TYPE,
     MEMBER_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
-from sync_api.tenants.access import TenantSummary
-from sync_api.tenants.provisioning import provision_tenant
 from sync_core import get_logger, transaction
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, User
 
@@ -50,32 +43,14 @@ class Member:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class NewTenant:
-    tenant: TenantSummary
-    admin: Member
-
-
 class TenantService:
+    """What a Tenant's own admins do to their roster. Opening a Tenant is not here: only a
+    Platform admin does that, from an Access request."""
+
     def __init__(self, session: AsyncSession, gotrue: GoTrue, *, recruiter_portal_url: str) -> None:
         self._db = session
         self._gotrue = gotrue
         self._recruiter_portal_url = recruiter_portal_url
-
-    async def sign_up(
-        self, *, tenant_name: str, slug: str, email: str, password: str, full_name: str
-    ) -> NewTenant:
-        user = await create_identity(self._gotrue, email=email, password=password)
-        async with identity_undone_on_failure(self._gotrue, user.id):
-            tenant = await provision_tenant(
-                self._db, admin_id=user.id, name=tenant_name, slug=slug, full_name=full_name
-            )
-            await self._gotrue.send_confirmation_email(
-                email, redirect_to=self._recruiter_portal_url
-            )
-
-        logger.info("tenants.signed_up", tenant_id=str(tenant.id), profile_id=str(user.id))
-        return NewTenant(tenant=tenant, admin=Member.founding(user, full_name))
 
     async def members(self, tenant_id: UUID) -> list[Member]:
         rows = await self._db.execute(

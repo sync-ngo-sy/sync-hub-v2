@@ -28,6 +28,18 @@ describe('signing in', () => {
     expect(await screen.findByRole('heading', { name: 'Jobs' })).toBeVisible();
   });
 
+  it('offers newcomers a way to ask for access, never a workspace to create', async () => {
+    server.use(...signedOut());
+
+    await renderApp('/login');
+
+    expect(await screen.findByRole('link', { name: 'Request access' })).toHaveAttribute(
+      'href',
+      '/request-access',
+    );
+    expect(screen.queryByRole('link', { name: /workspace/i })).not.toBeInTheDocument();
+  });
+
   it('sends a recruiter with no destination to the Dashboard', async () => {
     server.use(...signedOut(), ...logsIn(RECRUITER));
 
