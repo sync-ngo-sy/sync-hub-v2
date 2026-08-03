@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,13 +12,16 @@ from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Ten
 from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.candidates import DEFAULT_PASSWORD, a_confirmed_candidate
 from tests.support.mailbox import Mailbox
+from tests.support.platform_admins import (
+    a_new_tenant,
+    a_signed_in_platform_admin,
+    create_tenant,
+)
 from tests.support.tenants import (
-    a_tenant_signup,
     accept_invite,
     an_admin,
     an_invitee_address,
     invite,
-    sign_up_tenant,
 )
 
 
@@ -152,14 +156,19 @@ async def test_inviting_someone_already_on_the_roster_is_refused(
     assert await db_session.scalar(select(func.count()).select_from(Recruiter)) == 2
 
 
-async def test_an_invited_address_cannot_start_a_tenant_of_its_own(
-    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+async def test_an_invited_address_cannot_found_a_tenant_of_its_own(
+    app: FastAPI,
+    browser: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
 ) -> None:
     await an_admin(browser, mailbox)
     email = an_invitee_address()
     await invite(browser, email=email)
+    await a_signed_in_platform_admin(app, other_browser, db_session)
 
-    response = await sign_up_tenant(other_browser, replace(a_tenant_signup(), email=email))
+    response = await create_tenant(other_browser, replace(a_new_tenant(), email=email))
 
     assert response.status_code == 409
     assert response.json()["type"] == "urn:sync:problem:email-already-registered"

@@ -3,7 +3,6 @@ import { http } from '@sync/api-client/testing';
 import { NO_SESSION } from '@/testing/fixtures';
 
 type Profile = components['schemas']['ProfileView'];
-type TenantSignupRequest = components['schemas']['SignUpTenantRequest'];
 type ConfirmEmailRequest = components['schemas']['ConfirmEmailRequest'];
 type AcceptInviteRequest = components['schemas']['AcceptInviteRequest'];
 type PasswordResetRequest = components['schemas']['PasswordResetRequest'];
@@ -34,23 +33,6 @@ export function rejectsCredentials(problem: components['schemas']['ProblemDetail
 
 export function logsOut() {
   return [http.post('/v1/auth/logout', ({ response }) => response(204).empty())];
-}
-
-export function signsUpTenant(
-  tenant: components['schemas']['NewTenantView'],
-  onRequest?: (body: TenantSignupRequest) => void,
-) {
-  return [
-    http.post('/v1/tenants', async ({ request, response }) => {
-      onRequest?.((await request.json()) as TenantSignupRequest);
-      return response(201).json(tenant);
-    }),
-  ];
-}
-
-export function refusesTenantSignup(problem: components['schemas']['ProblemDetail']) {
-  const status = problem.status === 400 ? 400 : 409;
-  return [http.post('/v1/tenants', ({ response }) => response(status).json(problem))];
 }
 
 export function confirmsEmail(profile: Profile, onRequest?: (body: ConfirmEmailRequest) => void) {

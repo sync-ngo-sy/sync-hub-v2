@@ -28,6 +28,47 @@ export type Database = {
   };
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          company: string;
+          created_at: string;
+          decided_at: string | null;
+          email: string;
+          full_name: string;
+          id: string;
+          status: Database['public']['Enums']['access_request_status'];
+          tenant_id: string | null;
+        };
+        Insert: {
+          company: string;
+          created_at?: string;
+          decided_at?: string | null;
+          email: string;
+          full_name: string;
+          id?: string;
+          status?: Database['public']['Enums']['access_request_status'];
+          tenant_id?: string | null;
+        };
+        Update: {
+          company?: string;
+          created_at?: string;
+          decided_at?: string | null;
+          email?: string;
+          full_name?: string;
+          id?: string;
+          status?: Database['public']['Enums']['access_request_status'];
+          tenant_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'access_requests_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       application_ai_match_assessments: {
         Row: {
           application_id: string;
@@ -2087,6 +2128,7 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
+      access_request_status: 'pending' | 'converted' | 'dismissed';
       account_type: 'candidate' | 'recruiter' | 'platform_admin';
       application_question_type: 'yes_no' | 'short_text';
       application_status:
@@ -2252,6 +2294,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      access_request_status: ['pending', 'converted', 'dismissed'],
       account_type: ['candidate', 'recruiter', 'platform_admin'],
       application_question_type: ['yes_no', 'short_text'],
       application_status: [

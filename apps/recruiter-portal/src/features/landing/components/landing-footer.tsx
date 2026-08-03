@@ -21,8 +21,8 @@ export function LandingFooter() {
           </div>
 
           <Column title="Workspace">
-            <Link to="/signup" className={LINK}>
-              Create your workspace
+            <Link to="/request-access" className={LINK}>
+              Request access
             </Link>
             <Link to="/login" className={LINK}>
               Sign in

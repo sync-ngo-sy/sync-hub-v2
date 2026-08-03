@@ -11,11 +11,13 @@ from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
 from sync_api.errors import PROBLEM_RESPONSES, install_problem_handlers, use_problem_media_type
 from sync_api.middleware import REQUEST_ID_HEADER, AccessLogMiddleware
 from sync_api.rate_limit import (
+    build_access_request_rate_limiter,
     build_assessment_rate_limiter,
     build_auth_rate_limiter,
     build_public_rate_limiter,
 )
 from sync_api.routes import (
+    access_requests,
     applications,
     auth,
     candidates,
@@ -81,6 +83,7 @@ def create_app(
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
         app.state.public_rate_limiter = build_public_rate_limiter(resolved)
         app.state.assessment_rate_limiter = build_assessment_rate_limiter(resolved)
+        app.state.access_request_rate_limiter = build_access_request_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield
@@ -113,6 +116,7 @@ def create_app(
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(tenants.router, prefix=API_PREFIX)
+    app.include_router(access_requests.router, prefix=API_PREFIX)
     app.include_router(platform.router, prefix=API_PREFIX)
     app.include_router(candidates.router, prefix=API_PREFIX)
     app.include_router(cvs.router, prefix=API_PREFIX)

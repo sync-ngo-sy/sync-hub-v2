@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from http.cookies import SimpleCookie
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient, Response
@@ -22,6 +22,9 @@ TEST_HOST = "testserver"
 
 SPA_HEADERS = {CSRF_HEADER: "1"}
 
+#: Which app a client speaks to, remembered on the client itself.
+APP = "sync_app"
+
 
 @asynccontextmanager
 async def asgi_client(
@@ -31,7 +34,17 @@ async def asgi_client(
     async with AsyncClient(
         transport=transport, base_url=TEST_BASE_URL, headers=headers
     ) as http_client:
+        setattr(http_client, APP, app)
         yield http_client
+
+
+def app_of(browser: AsyncClient) -> FastAPI:
+    """The app behind a client, for the little that test setup has to do past HTTP.
+
+    Opening a Tenant is a Platform admin's operation now, so a test that just needs a Tenant to
+    exist reaches the service directly rather than signing an operator in first.
+    """
+    return cast("FastAPI", getattr(browser, APP))
 
 
 @asynccontextmanager

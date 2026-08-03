@@ -7,6 +7,7 @@ import { useTheme } from '@/lib/theme';
 
 const destinations = [
   { to: '/overview' as const, label: 'Overview' },
+  { to: '/access-requests' as const, label: 'Access requests' },
   { to: '/tenants' as const, label: 'Tenants' },
 ];
 

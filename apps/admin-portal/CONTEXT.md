@@ -1,7 +1,8 @@
 # Platform Portal
 
-The Platform-admin web app: the place where Sync operators inspect platform counts and operate
-Tenants. Domain vocabulary (Platform admin, Tenant, Recruiter…) is inherited from the
+The Platform-admin web app: the place where Sync operators inspect platform counts, work the
+Access-request queue, and operate Tenants. Domain vocabulary (Platform admin, Tenant, Recruiter,
+Access request…) is inherited from the
 [Database context](../../supabase/CONTEXT.md) and never redefined here.
 
 ## Language
@@ -24,6 +25,15 @@ its founding admin invitation, resending a pending founding-admin invitation, an
 restoring a Tenant. A status change must explain its access and job-board consequences before it
 is confirmed; a plan is display-only.
 _Avoid_: Tenant CRM, account management, billing.
+
+**Access-request queue**:
+The Platform Portal's work at `/access-requests`: the companies that have asked to be let onto
+Sync, oldest first, with the two decisions that empty it — converting one into a Tenant, or
+dismissing it. Converting retypes nothing: the company, the founding admin and their address all
+come off the request, and the Tenant's address is the only thing the operator supplies (offered
+pre-filled from the company name). This is where Tenants normally come from; the Create-tenant
+form under Tenant operations is for the company that never asked here.
+_Avoid_: Inbox, leads, sign-up queue, applications.
 
 **Wrong-portal screen**:
 The full-page notice shown when a Candidate or Recruiter opens the Platform Portal. It identifies
