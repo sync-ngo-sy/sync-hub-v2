@@ -11,6 +11,8 @@ import {
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { FIELD_COORDINATOR_VIEW } from '@/features/jobs/testing/fixtures';
 import { getsJob } from '@/features/jobs/testing/handlers';
+import { LINKEDIN_POST } from '@/features/tracked-links/testing/fixtures';
+import { listsTrackedLinks } from '@/features/tracked-links/testing/handlers';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -210,7 +212,12 @@ describe("a Job's Applications tab", () => {
   });
 
   it('points an untouched Job at its tracked links rather than at nothing', async () => {
-    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([]),
+      ...listsTrackedLinks([LINKEDIN_POST]),
+    );
 
     const { router, user } = await renderApp(`/jobs/${JOB.id}`);
 
@@ -223,7 +230,7 @@ describe("a Job's Applications tab", () => {
     await user.click(screen.getByRole('button', { name: 'Go to tracked links' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'links' }));
-    expect(screen.getByText('Tracked links will appear here.')).toBeVisible();
+    expect(await screen.findByText(LINKEDIN_POST.name)).toBeVisible();
   });
 
   it('says a filtered view is empty because of the filters, and offers to drop them', async () => {
