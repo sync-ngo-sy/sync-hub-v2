@@ -10,9 +10,6 @@ export function useInviteMember() {
   });
 }
 
-/** The roster is re-read whatever the answer, rather than patched: the role and the access flag
- * are the server's to write, and a refusal can itself be news — a caller who is no longer an
- * admin learns it from the roster, which is the only place their own role is written. */
 export function useChangeMember() {
   const queryClient = useQueryClient();
 

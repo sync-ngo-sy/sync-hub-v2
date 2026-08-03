@@ -13,6 +13,7 @@ import {
   listsMembers,
   managesTeam,
   refusesMemberChange,
+  refusesMemberChangeToNonAdmins,
   refusesTeamInvite,
   refusesTeamInviteToNonAdmins,
 } from '@/features/team/testing/handlers';
@@ -213,6 +214,61 @@ describe('the Team tab', () => {
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(rowOf('Omar Zayed').getByText('Admin')).toBeVisible();
+  });
+
+  it('lets an admin step down, and the roster it re-reads takes the buttons away', async () => {
+    const onChange = vi.fn();
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...managesTeam([RANA, { ...OMAR, role: 'admin' }], { onChange }),
+    );
+
+    const { user } = await renderApp('/settings');
+    await openActions(user, 'Rana Aljabri');
+    await user.click(await screen.findByRole('menuitem', { name: 'Step down to recruiter' }));
+
+    const asking = within(await screen.findByRole('alertdialog'));
+    expect(asking.getByRole('heading', { name: 'Step down to recruiter?' })).toBeVisible();
+    await user.click(asking.getByRole('button', { name: 'Step down' }));
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(RANA.id, { role: 'recruiter' }),
+    );
+    expect(await screen.findByText('You are a recruiter now')).toBeVisible();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Invite teammate' })).not.toBeInTheDocument(),
+    );
+    expect(rowOf('Rana Aljabri').getByText('Recruiter')).toBeVisible();
+  });
+
+  it('reads a refused change from somebody who stopped being an admin mid-change', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsMembers([RANA, OMAR]),
+      ...refusesMemberChangeToNonAdmins(ADMIN_ONLY),
+    );
+
+    const { user } = await renderApp('/settings');
+    await openActions(user, 'Omar Zayed');
+    await user.click(await screen.findByRole('menuitem', { name: 'Make admin' }));
+    await user.click(screen.getByRole('button', { name: 'Make admin' }));
+
+    const asking = within(await screen.findByRole('alertdialog'));
+    expect(await asking.findByText('Only a tenant admin can do this.')).toBeVisible();
+  });
+
+  it('forgets what was typed into an invitation that was cancelled', async () => {
+    server.use(...signedInAs(RECRUITER), ...managesTeam([RANA]));
+
+    const { user } = await renderApp('/settings');
+    await user.click(await screen.findByRole('button', { name: 'Invite teammate' }));
+    await user.type(screen.getByLabelText('Full name'), 'Omar Zayed');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Invite teammate' }));
+
+    expect(await screen.findByLabelText('Full name')).toHaveValue('');
   });
 
   it('reads a refusal aimed at somebody who stopped being an admin mid-invitation', async () => {

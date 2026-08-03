@@ -35,6 +35,7 @@ export function TagVocabulary() {
   const [deleting, setDeleting] = useState<Tag | null>(null);
 
   const tags = vocabulary.data ?? [];
+  const listedNothing = vocabulary.isSuccess && tags.length === 0;
 
   return (
     <div className="space-y-6 pt-4">
@@ -43,12 +44,12 @@ export function TagVocabulary() {
           The words your team files Candidates and Applications under. Renaming one keeps everything
           already filed under it; deleting one unfiles it everywhere.
         </p>
-        {tags.length > 0 ? (
+        {listedNothing ? null : (
           <Button onClick={() => setAdding(true)}>
             <Plus aria-hidden="true" />
             Add a Tag
           </Button>
-        ) : null}
+        )}
       </div>
 
       <DataTable

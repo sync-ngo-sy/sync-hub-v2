@@ -75,17 +75,18 @@ describe('Workspace settings', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('tells you which row is yours, and offers no change to your own access', async () => {
+  it('tells you which row is yours, and offers only stepping down on it', async () => {
     server.use(...signedInAs(RECRUITER), ...listsMembers([RANA, OMAR]));
 
-    await renderApp('/settings');
+    const { user } = await renderApp('/settings');
 
     expect(await screen.findByText('Omar Zayed')).toBeVisible();
     expect(rowOf('Rana Aljabri').getByText('You')).toBeVisible();
-    expect(
-      screen.queryByRole('button', { name: 'Actions for Rana Aljabri' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Actions for Omar Zayed' })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Actions for Rana Aljabri' }));
+
+    expect(await screen.findByRole('menuitem', { name: 'Step down to recruiter' })).toBeVisible();
+    expect(screen.queryByRole('menuitem', { name: 'Revoke access' })).not.toBeInTheDocument();
   });
 
   it('keeps the page when the roster will not load, and offers its own Retry', async () => {

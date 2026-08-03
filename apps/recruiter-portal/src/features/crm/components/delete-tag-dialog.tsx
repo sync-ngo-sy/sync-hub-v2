@@ -12,14 +12,7 @@ import {
 import { toast } from 'sonner';
 import { problemMessage, problemStatus } from '@/lib/api-problem';
 import { useDeleteTag } from '../hooks/use-tag-vocabulary';
-import type { Tag, TagScope } from '../tag';
-
-/** Deleting unfiles, which is the part a Recruiter cannot see from the list. */
-const UNFILES: Record<TagScope, string> = {
-  application:
-    'Every Application filed under it loses it. The Applications themselves are untouched.',
-  candidate: 'Every Candidate filed under it loses it. The Candidates themselves are untouched.',
-};
+import { DELETING_UNFILES, type Tag } from '../tag';
 
 interface DeleteTagDialogProps {
   tag: Tag;
@@ -39,7 +32,6 @@ export function DeleteTagDialog({ tag, onClose }: DeleteTagDialogProps) {
     try {
       await remove.mutateAsync({ params: { path: { tag_id: tag.id } } });
     } catch (error) {
-      // A Tag a colleague has already deleted is deleted, which is what was asked for.
       if (problemStatus(error) !== 404) return;
     }
     toast.success('Tag deleted');
@@ -51,7 +43,7 @@ export function DeleteTagDialog({ tag, onClose }: DeleteTagDialogProps) {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{`Delete “${tag.name}”?`}</AlertDialogTitle>
-          <AlertDialogDescription>{UNFILES[tag.scope]}</AlertDialogDescription>
+          <AlertDialogDescription>{DELETING_UNFILES[tag.scope]}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {remove.isError ? (

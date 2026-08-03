@@ -115,8 +115,10 @@ export function TeamRoster({ profileId }: { profileId: string }) {
         }
         empty={{
           icon: UserPlus,
-          message: 'Nobody else is on the roster yet — invite the first teammate.',
-          action: <Button onClick={() => setInviting(true)}>Invite the first teammate</Button>,
+          message: 'Nobody is on the roster yet — invite the first teammate.',
+          action: mayAdminister ? (
+            <Button onClick={() => setInviting(true)}>Invite the first teammate</Button>
+          ) : null,
         }}
       />
 

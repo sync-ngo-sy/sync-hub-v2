@@ -20,10 +20,6 @@ interface MemberChangeDialogProps {
   onClose: () => void;
 }
 
-/**
- * Every change to a colleague's role or access is confirmed first, because each one is felt by
- * somebody else — and a refusal lands here, in the server's words, with the roster untouched.
- */
 export function MemberChangeDialog({ member, change, onClose }: MemberChangeDialogProps) {
   const apply = useChangeMember();
 

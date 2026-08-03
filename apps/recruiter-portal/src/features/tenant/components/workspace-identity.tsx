@@ -1,3 +1,4 @@
+import { SkeletonText } from '@sync/ui/components/skeletons';
 import {
   Card,
   CardContent,
@@ -8,9 +9,7 @@ import {
 import { useMyTenant } from '../hooks/use-my-tenant';
 
 export function WorkspaceIdentity() {
-  const { data: tenant } = useMyTenant();
-
-  if (!tenant) return null;
+  const { data: tenant, isPending } = useMyTenant();
 
   return (
     <Card className="mt-4 max-w-xl">
@@ -21,16 +20,20 @@ export function WorkspaceIdentity() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="space-y-4">
-          <div className="space-y-1">
-            <dt className="text-meta text-muted-foreground">Name</dt>
-            <dd className="text-foreground">{tenant.name}</dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="text-meta text-muted-foreground">Address</dt>
-            <dd className="text-foreground">{tenant.slug}</dd>
-          </div>
-        </dl>
+        {isPending || !tenant ? (
+          <SkeletonText lines={2} />
+        ) : (
+          <dl className="space-y-4">
+            <div className="space-y-1">
+              <dt className="text-meta text-muted-foreground">Name</dt>
+              <dd className="text-foreground">{tenant.name}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="text-meta text-muted-foreground">Address</dt>
+              <dd className="text-foreground">{tenant.slug}</dd>
+            </div>
+          </dl>
+        )}
       </CardContent>
     </Card>
   );

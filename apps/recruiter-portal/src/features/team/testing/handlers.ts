@@ -24,8 +24,6 @@ export function refusesTeamInvite(problem: Problem) {
   return [http.post(MEMBERS_PATH, ({ response }) => response(409).json(problem))];
 }
 
-/** The roster a Recruiter reads is not proof they may write to it: their own role can change
- * under them between the read and the invitation. */
 export function refusesTeamInviteToNonAdmins(problem: Problem) {
   return [http.post(MEMBERS_PATH, ({ response }) => response(403).json(problem))];
 }
@@ -34,13 +32,15 @@ export function refusesMemberChange(problem: Problem) {
   return [http.patch(MEMBER_PATH, ({ response }) => response(409).json(problem))];
 }
 
+export function refusesMemberChangeToNonAdmins(problem: Problem) {
+  return [http.patch(MEMBER_PATH, ({ response }) => response(403).json(problem))];
+}
+
 export interface TeamSpies {
   onInvite?: (body: NewMember) => void;
   onChange?: (recruiterId: string, body: MemberChanges) => void;
 }
 
-/** The roster as the API keeps it: an invitation joins it pending a password, and a change is
- * only visible on the read that follows it. */
 export function managesTeam(initial: Member[], spies: TeamSpies = {}) {
   let roster = [...initial];
   let invited = 0;

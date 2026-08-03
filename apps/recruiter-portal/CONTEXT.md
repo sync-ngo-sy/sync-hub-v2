@@ -168,18 +168,23 @@ _Avoid_: Sign-up, adding a user, provisioning.
 One named move an admin makes against a colleague — promote, demote, revoke access, give it back —
 each confirmed first, because every one of them is felt by somebody else. The moves offered are the
 ones that exist from where the colleague stands: a colleague with no access has only their access to
-get back. Your own row offers none, since revoking your own access would lock you out on the spot
-and stepping down is another admin's to confirm. A refusal (the last active admin) is shown in the
-server's words, in the confirmation, and the roster is re-read whatever the answer.
+get back. Your own row offers stepping down and nothing else — an admin may hand over, and the API's
+last-active-admin refusal is what stops the last one doing it, but revoking your own access is never
+offered because it would lock you out on the spot. A refusal is shown in the server's words, in the
+confirmation, and the roster is re-read whatever the answer — a caller who has just stepped down, or
+who was demoted while reading, learns it from the same read.
 _Avoid_: Permissions editor, seat management.
 
 **Tag vocabulary**:
 The whole of the Tenant's filing words on one tab, each with what it may be put on and when it was
 added — the counterpart to the Tag picker, which mints into the same vocabulary from an Application.
-A word is unique per scope, so a duplicate is refused beside the field from the list already on
-screen, and the API's 409 stays the backstop for a word a colleague minted meanwhile. A rename keeps
+The picker's scoped read and this tab's whole one are two cache entries of one path, so a word minted
+in either shows up in both. A word is unique per scope, so a duplicate is refused beside the field
+from the list already on screen, naming the Tag the Tenant actually has rather than the spelling that
+was typed; the API's 409 stays the backstop for a word a colleague minted meanwhile. A rename keeps
 everything filed under it and cannot change its scope; deleting unfiles it from every Candidate or
-Application it was on, which is what the confirmation says.
+Application it was on, which is what the confirmation says — and a Tag a colleague has already
+deleted counts as deleted, since that is what was asked for.
 _Avoid_: Tag settings, taxonomy, label manager.
 
 **Reference data**:

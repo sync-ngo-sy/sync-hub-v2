@@ -39,16 +39,24 @@ export function failsToDeleteTag(problem: Problem) {
   return [http.delete(VOCABULARY_TAG_PATH, ({ response }) => response(500).json(problem))];
 }
 
+export function tagAlreadyDeletedElsewhere(tag: Tag) {
+  let gone = false;
+
+  return [
+    http.get(VOCABULARY_PATH, ({ response }) => response(200).json(gone ? [] : [tag])),
+    http.delete(VOCABULARY_TAG_PATH, ({ response }) => {
+      gone = true;
+      return response(404).json(NO_SUCH_TAG);
+    }),
+  ];
+}
+
 export interface VocabularySpies {
   onCreate?: (body: NewTag) => void;
   onRename?: (tagId: string, body: TagChanges) => void;
   onDelete?: (tagId: string) => void;
 }
 
-/**
- * The vocabulary as the API keeps it: whole when nothing is asked of it, narrowed to a scope for
- * a picker, and unique by name within each scope.
- */
 export function curatesVocabulary(initial: Tag[], spies: VocabularySpies = {}) {
   let vocabulary = [...initial];
   let minted = 0;

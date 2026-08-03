@@ -8,10 +8,6 @@ export const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_
 
 const APPLICATION_SCOPE = { params: { query: { scope: 'application' as const } } };
 
-export function applicationVocabularyQuery() {
-  return api.queryOptions('get', VOCABULARY_PATH, APPLICATION_SCOPE);
-}
-
 export function applicationTagsQuery(applicationId: string) {
   return api.queryOptions('get', TAGS_PATH, {
     params: { path: { application_id: applicationId } },

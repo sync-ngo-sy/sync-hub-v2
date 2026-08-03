@@ -61,8 +61,20 @@ describe('the changes an admin may make to a colleague', () => {
     expect(keys({ ...OMAR, is_active: false })).toEqual(['reinstate']);
   });
 
-  it('offers nothing on your own row — a change to your own access is another admin’s to make', () => {
-    expect(keys(YOU)).toEqual([]);
+  it('offers to step down on your own row, and never to revoke your own access', () => {
+    expect(keys(YOU)).toEqual(['step-down']);
+  });
+
+  it('offers nothing on your own row once you are not an admin of it', () => {
+    expect(keys({ ...YOU, role: 'recruiter' })).toEqual([]);
+    expect(keys({ ...YOU, is_active: false })).toEqual([]);
+  });
+
+  it('writes the step down for the admin taking it, not about a colleague', () => {
+    const [down] = memberChanges(YOU, 'you');
+    expect(down?.title).toBe('Step down to recruiter?');
+    expect(down?.body).toEqual({ role: 'recruiter' });
+    expect(down?.success).toBe('You are a recruiter now');
   });
 
   it('sends the role, and nothing about access, when only the role changes', () => {

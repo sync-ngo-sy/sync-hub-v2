@@ -13,8 +13,6 @@ interface WorkspaceSettingsPageProps {
   onTabChange: (tab: SettingsTab) => void;
 }
 
-/** Three things a Workspace is administered from, each reading its own endpoint and failing on
- * its own — the page itself asks for nothing. */
 export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: WorkspaceSettingsPageProps) {
   return (
     <div className="space-y-8">

@@ -7,11 +7,6 @@ const name = z
   .min(1, 'Name the Tag.')
   .max(200, 'Keep the name to 200 characters or fewer.');
 
-/**
- * A duplicate is refused beside the field rather than on the wire, because the vocabulary the
- * form was opened with already knows — and the API's own 409 stays the backstop for a word a
- * colleague minted in the meantime.
- */
 function takenName(vocabulary: Tag[], except?: string) {
   return (values: { name: string; scope: Tag['scope'] }, ctx: z.RefinementCtx) => {
     const held = tagNamed(vocabulary, { name: values.name, scope: values.scope, except });
@@ -25,12 +20,8 @@ function takenName(vocabulary: Tag[], except?: string) {
   };
 }
 
-export function newTagSchema(vocabulary: Tag[]) {
-  return z.object({ name, scope: z.enum(TAG_SCOPES) }).superRefine(takenName(vocabulary));
+export function tagFormSchema(vocabulary: Tag[], tag?: Tag) {
+  return z.object({ name, scope: z.enum(TAG_SCOPES) }).superRefine(takenName(vocabulary, tag?.id));
 }
 
-export function tagNameSchema(vocabulary: Tag[], tag: Tag) {
-  return z.object({ name, scope: z.literal(tag.scope) }).superRefine(takenName(vocabulary, tag.id));
-}
-
-export type TagFormValues = { name: string; scope: Tag['scope'] };
+export type TagFormValues = z.infer<ReturnType<typeof tagFormSchema>>;

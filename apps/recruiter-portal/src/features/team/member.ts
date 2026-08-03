@@ -8,14 +8,11 @@ export type MemberChanges = components['schemas']['ChangeMemberRequest'];
 
 export const RECRUITER_ROLES = ['recruiter', 'admin'] as const satisfies readonly RecruiterRole[];
 
-/** Keyed by the generated union, so a role the platform adds fails to compile until it has a
- * word here. */
 export const ROLE_LABELS: Record<RecruiterRole, string> = {
   admin: 'Admin',
   recruiter: 'Recruiter',
 };
 
-/** What each role is for, in the one place a Recruiter has to choose between them. */
 export const ROLE_DESCRIPTIONS: Record<RecruiterRole, string> = {
   admin: 'Everything a Recruiter does, and the team: invitations, roles and access.',
   recruiter: 'Works Jobs, Applications and the CRM.',
@@ -26,8 +23,6 @@ const ROLE_IN_A_SENTENCE: Record<RecruiterRole, string> = {
   recruiter: 'a recruiter',
 };
 
-/** The caller's own role is not in their Profile — the roster is where it is written, and an
- * admin whose access has been revoked is no longer one. */
 export function isTenantAdmin(members: Member[], profileId: string): boolean {
   return members.some(
     (member) => member.id === profileId && member.role === 'admin' && member.is_active,
@@ -40,7 +35,12 @@ export function memberAccess(member: Member): { label: string; tone: StatusTone 
     : { label: 'No access', tone: 'negative' };
 }
 
-export type MemberChangeKey = 'make-admin' | 'make-recruiter' | 'revoke' | 'reinstate';
+export type MemberChangeKey =
+  | 'make-admin'
+  | 'make-recruiter'
+  | 'revoke'
+  | 'reinstate'
+  | 'step-down';
 
 export interface MemberChange {
   key: MemberChangeKey;
@@ -84,6 +84,21 @@ function makeRecruiter(member: Member): MemberChange {
   };
 }
 
+function stepDown(): MemberChange {
+  return {
+    key: 'step-down',
+    label: 'Step down to recruiter',
+    title: 'Step down to recruiter?',
+    description:
+      'You keep everything a Recruiter works on, and stop being able to invite teammates or change anyone’s access. Only another admin can make you one again.',
+    confirmLabel: 'Step down',
+    pendingLabel: 'Stepping down…',
+    body: { role: 'recruiter' },
+    success: 'You are a recruiter now',
+    destructive: false,
+  };
+}
+
 function revoke(member: Member): MemberChange {
   return {
     key: 'revoke',
@@ -113,13 +128,10 @@ function reinstate(member: Member): MemberChange {
   };
 }
 
-/**
- * What an admin may do to one colleague, from where that colleague stands — so the menu on
- * screen is the changes that exist. Your own row offers none: revoking your own access would
- * lock you out of the Workspace on the spot, and stepping down is another admin's to confirm.
- */
 export function memberChanges(member: Member, profileId: string): MemberChange[] {
-  if (member.id === profileId) return [];
+  if (member.id === profileId) {
+    return member.role === 'admin' && member.is_active ? [stepDown()] : [];
+  }
   if (!member.is_active) return [reinstate(member)];
 
   return [member.role === 'admin' ? makeRecruiter(member) : makeAdmin(member), revoke(member)];

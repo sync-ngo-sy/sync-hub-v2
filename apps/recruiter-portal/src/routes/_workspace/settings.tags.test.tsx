@@ -12,6 +12,7 @@ import {
   failsToDeleteTag,
   listsVocabulary,
   refusesTagRename,
+  tagAlreadyDeletedElsewhere,
 } from '@/features/crm/testing/handlers';
 import { RANA } from '@/features/team/testing/fixtures';
 import { listsMembers } from '@/features/team/testing/handlers';
@@ -207,6 +208,37 @@ describe('the Tags tab', () => {
     expect(await screen.findByText('Tag deleted')).toBeVisible();
     await waitFor(() => expect(screen.queryByText('Arabic')).not.toBeInTheDocument());
     expect(screen.getByText('Has a driving licence')).toBeVisible();
+  });
+
+  it('takes a Tag a colleague already deleted as deleted, and drops the row too', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsMembers([RANA]),
+      ...tagAlreadyDeletedElsewhere(ARABIC),
+    );
+
+    const { user } = await renderApp(TAGS);
+    await openActions(user, 'Arabic');
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete Tag' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete Tag' }));
+
+    expect(await screen.findByText('Tag deleted')).toBeVisible();
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Arabic')).not.toBeInTheDocument());
+  });
+
+  it('forgets what was typed into an Add that was cancelled', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsMembers([RANA]), ...curatesVocabulary([ARABIC]));
+
+    const { user } = await renderApp(TAGS);
+    await user.click(await screen.findByRole('button', { name: 'Add a Tag' }));
+    await user.type(screen.getByLabelText('Name'), 'Kurdish');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Add a Tag' }));
+
+    expect(await screen.findByLabelText('Name')).toHaveValue('');
   });
 
   it('keeps the vocabulary and the confirmation when a delete actually fails', async () => {

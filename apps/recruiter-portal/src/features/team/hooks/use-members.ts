@@ -1,4 +1,3 @@
-import type { QueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 export const MEMBERS_PATH = '/v1/tenants/me/members';
@@ -10,8 +9,4 @@ export function membersQuery() {
 
 export function useMembers() {
   return api.useQuery('get', MEMBERS_PATH, {});
-}
-
-export function warmMembers(queryClient: QueryClient) {
-  return queryClient.ensureQueryData(membersQuery()).catch(() => undefined);
 }

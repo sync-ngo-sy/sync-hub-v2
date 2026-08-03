@@ -2,8 +2,6 @@ import type { components } from '@sync/api-client';
 import { RECRUITER } from '@/testing/fixtures';
 import type { Member } from '../member';
 
-/** The signed-in Recruiter's own row — same id as the Profile, which is how the roster tells
- * them apart from their colleagues. */
 export const RANA: Member = {
   id: RECRUITER.id,
   full_name: RECRUITER.full_name,
