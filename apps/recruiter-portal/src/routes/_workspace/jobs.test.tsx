@@ -100,9 +100,9 @@ describe('Jobs', () => {
     expect(await screen.findByText('Syria')).toBeVisible();
     await user.click(screen.getByRole('option', { name: 'Aleppo' }));
     await user.click(screen.getByLabelText('Employment type'));
-    await user.click(screen.getByRole('option', { name: 'Full time' }));
+    await user.click(await screen.findByRole('option', { name: 'Full time' }));
     await user.click(screen.getByLabelText('Work mode'));
-    await user.click(screen.getByRole('option', { name: 'On-site' }));
+    await user.click(await screen.findByRole('option', { name: 'On-site' }));
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() =>
@@ -134,10 +134,8 @@ describe('Jobs', () => {
       const control = screen.getByLabelText(field);
       expect(control.tagName).not.toBe('INPUT');
       await user.click(control);
-      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-        'Not set',
-        ...choices,
-      ]);
+      const offered = await screen.findAllByRole('option');
+      expect(offered.map((option) => option.textContent)).toEqual(['Not set', ...choices]);
       await user.keyboard('{Escape}');
     }
   });
@@ -158,7 +156,7 @@ describe('Jobs', () => {
     expect(await screen.findByText('Syria')).toBeVisible();
     await user.click(screen.getByRole('option', { name: 'Aleppo' }));
     await user.click(screen.getByLabelText('Work mode'));
-    await user.click(screen.getByRole('option', { name: 'Remote' }));
+    await user.click(await screen.findByRole('option', { name: 'Remote' }));
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() =>
