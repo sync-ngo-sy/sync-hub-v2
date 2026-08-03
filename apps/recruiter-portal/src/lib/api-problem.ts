@@ -38,3 +38,30 @@ export function problemMessage(error: unknown, fallback: string): string {
   if (typeof body?.title === 'string' && body.title !== '') return body.title;
   return fallback;
 }
+
+export interface FormRejection<Field extends string> {
+  fields: { name: Field; message: string }[];
+  root: string | null;
+}
+
+export function formRejection<Field extends string>(
+  error: unknown,
+  fieldFor: Record<string, Field>,
+  fallback: string,
+): FormRejection<Field> {
+  const located = problemFields(error).map((entry) => ({
+    name: fieldFor[entry.location],
+    message: entry.message,
+  }));
+  const fields = located.filter(
+    (entry): entry is { name: Field; message: string } => entry.name !== undefined,
+  );
+
+  return {
+    fields,
+    root:
+      located.length > 0 && fields.length === located.length
+        ? null
+        : problemMessage(error, fallback),
+  };
+}
