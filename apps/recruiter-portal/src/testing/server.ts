@@ -1,4 +1,8 @@
 import { setupServer } from 'msw/node';
+import {
+  listsApplicationNotes,
+  listsApplicationTags,
+} from '@/features/applications/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
 import {
   hasCanonicalSkills,
@@ -15,6 +19,8 @@ import { CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
 export const server = setupServer(
   ...listsJobs([]),
   ...listsMessageTemplates([]),
+  ...listsApplicationNotes([]),
+  ...listsApplicationTags([]),
   ...hasCanonicalSkills(CANONICAL_SKILLS),
   ...hasLanguages(LANGUAGES),
   ...hasLocations(LOCATIONS),

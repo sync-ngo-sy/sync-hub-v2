@@ -2,14 +2,17 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusChip } from '@sync/ui/components/status-chip';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { ReviewCard } from '@/features/shell/components/review-card';
+import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { absoluteDateTime } from '@/lib/dates';
 import { screeningState } from '../application';
 import { useApplication } from '../hooks/use-application';
 import { ApplicationAnswers } from './application-answers';
 import { ApplicationHistory } from './application-history';
+import { ApplicationNotes } from './application-notes';
 import { ApplicationPipeline } from './application-pipeline';
 import { ApplicationSnapshot } from './application-snapshot';
-import { ReviewCard } from './review-card';
+import { ApplicationTags } from './application-tags';
 
 export function ApplicationNotFound() {
   return (
@@ -65,10 +68,17 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         <div className="space-y-6">
           <ApplicationSnapshot snapshot={review.snapshot} />
           <ApplicationAnswers answers={review.answers} />
+          <WidgetBoundary name="Notes">
+            <ApplicationNotes applicationId={applicationId} />
+          </WidgetBoundary>
         </div>
 
         <div className="space-y-6">
           <ApplicationPipeline applicationId={applicationId} status={review.status} />
+
+          <WidgetBoundary name="Tags">
+            <ApplicationTags applicationId={applicationId} />
+          </WidgetBoundary>
 
           <ReviewCard title="Screening">
             <div className="space-y-3">
