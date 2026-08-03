@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import asyncio
-import signal
-from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 from sync_comms import CommunicationDelivery
 from sync_comms.resend_sender import ResendEmailSender
-from sync_core import Database, Storage, configure_logging, get_logger
+from sync_core import Database, Storage, get_logger
 from sync_ingestion import CvIngestion
 from sync_parsers.openai_extractor import OpenAiCvExtractor
 from sync_rag import ProfileEmbedding
@@ -16,7 +13,7 @@ from sync_worker.communications import CommunicationsConsumer
 from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import QueueEngine, RetryPolicy
 from sync_worker.ingestion import CvIngestionConsumer
-from sync_worker.runner import Drainable, consume, sweep
+from sync_worker.runner import Drainable, DrainReport, drain_queue
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -79,30 +76,53 @@ class Worker:
             (communications, self._settings.worker_communications_concurrency),
         ]
 
-    async def run(self) -> None:
-        engines = self._engines
-        logger.info(
-            "worker.started",
-            environment=self._settings.environment.value,
-            queues=[engine.name for engine, _ in engines],
-        )
-        try:
-            async with asyncio.TaskGroup() as group:
-                for engine, concurrency in engines:
-                    for _ in range(concurrency):
-                        group.create_task(
-                            consume(
-                                engine,
-                                interval=self._settings.worker_poll_interval_seconds,
-                                idle_max=self._settings.worker_idle_backoff_max_seconds,
-                            )
-                        )
-                    group.create_task(
-                        sweep(engine, every=self._settings.worker_sweep_interval_seconds)
-                    )
-        finally:
-            await self.aclose()
-            logger.info("worker.stopped")
+    async def drain(self) -> DrainReport:
+        """Empty every queue, then return. Safe to call concurrently with itself.
+
+        Parallel invocations cannot double-process: claims take a row lock with skip-locked,
+        so a second caller simply sees fewer rows. A burst of notifications therefore
+        coalesces — whichever instance arrives first drains the backlog the others would
+        have.
+        """
+        processed: dict[str, int] = {}
+        truncated: list[str] = []
+        for engine, concurrency in self._engines:
+            count, hit_bound = await drain_queue(
+                engine,
+                concurrency=concurrency,
+                max_rows=self._settings.worker_drain_max_rows,
+            )
+            processed[engine.name] = count
+            if hit_bound:
+                truncated.append(engine.name)
+        return DrainReport(processed=processed, truncated=truncated)
+
+    async def sweep(self) -> dict[str, int]:
+        """Return rows a crashed invocation abandoned mid-processing to pending."""
+        swept: dict[str, int] = {}
+        for engine, _ in self._engines:
+            try:
+                swept[engine.name] = await engine.sweep()
+            except Exception:
+                logger.exception("worker.sweep_failed", queue=engine.name)
+                swept[engine.name] = 0
+        return swept
+
+    async def scheduled(self) -> DrainReport:
+        """The correctness guarantee: sweep, then drain.
+
+        A dropped webhook leaves a row pending, and a sweep would never see it — sweeping
+        only rescues rows already in processing. The drain half is what picks those up, which
+        is what makes the schedule sufficient on its own and the webhook merely a latency
+        optimisation.
+
+        A row the sweep releases returns to pending carrying its retry delay, so the call that
+        finishes it may be this one or a later one. Either way it is no longer stranded in
+        processing with nobody looking at it.
+        """
+        swept = await self.sweep()
+        drained = await self.drain()
+        return DrainReport(processed=drained.processed, swept=swept, truncated=drained.truncated)
 
     async def aclose(self) -> None:
         await self._storage.aclose()
@@ -143,13 +163,3 @@ def _resend_sender(settings: Settings) -> EmailSender:
         sender=settings.email_from,
         timeout_seconds=settings.email_timeout_seconds,
     )
-
-
-async def run_worker(settings: Settings) -> None:
-    configure_logging(level=settings.log_level, log_format=settings.log_format)
-    running = asyncio.ensure_future(Worker(settings).run())
-    loop = asyncio.get_running_loop()
-    for signalled in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(signalled, running.cancel)
-    with suppress(asyncio.CancelledError):
-        await running
