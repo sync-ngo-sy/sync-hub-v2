@@ -35,3 +35,13 @@ export function warmReferenceData(queryClient: QueryClient): Promise<unknown> {
 export function warmLocations(queryClient: QueryClient): Promise<unknown> {
   return queryClient.ensureQueryData(locationsQuery).catch(() => undefined);
 }
+
+/** Candidate search picks a Location and a language, and names both back; skills it never asks
+ * about, so they do not travel. */
+export function warmSearchTaxonomies(queryClient: QueryClient): Promise<unknown> {
+  const settled = (loading: Promise<unknown>) => loading.catch(() => undefined);
+  return Promise.all([
+    settled(queryClient.ensureQueryData(languagesQuery)),
+    settled(queryClient.ensureQueryData(locationsQuery)),
+  ]);
+}

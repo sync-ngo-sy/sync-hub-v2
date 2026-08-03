@@ -44,7 +44,8 @@ describe('choosing the words to write an applicant', () => {
 
     await user.click(await screen.findByLabelText('Message template'));
 
-    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+    const offered = await screen.findAllByRole('option');
+    expect(offered.map((option) => option.textContent)).toEqual([
       'Interview invitation',
       'Thanks, but not this time',
     ]);

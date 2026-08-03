@@ -186,6 +186,41 @@ everything filed under it and cannot change its scope; deleting unfiles it from 
 Application it was on, which is what the confirmation says — and a Tag a colleague has already
 deleted counts as deleted, since that is what was asked for.
 _Avoid_: Tag settings, taxonomy, label manager.
+**Candidate search**:
+The Workspace's one way past its own applicants: words describing who is wanted, and up to three
+hard filters — a Location, a preferred language, words that must appear — over every Candidate on
+the platform who has opted into being found. The words are read for what they mean and the filters
+are absolute, so a Candidate failing any of them is not a result and the keywords never reorder the
+ones that remain. Asked on submit rather than as a Recruiter types, because the search is a real
+one and half a sentence is a different question; the whole search lives in the address bar, so a
+reload keeps it and a pasted link reproduces it. The API answers one page and offers no cursor, so
+a full page is a ceiling rather than a count — it reads as "the closest twenty" and points at
+narrowing, because there is no next page to offer and calling it a total would be a lie. Nothing
+here carries an address or a phone number, and the page says so before the first search rather than
+after it.
+_Avoid_: Sourcing, candidate database, global search (that is the backend's name for the index).
+
+**Candidate view**:
+One person as this Tenant knows them: what the platform will show of their profile, the fragment
+that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
+Talent pool. There is no endpoint that reads a Candidate's profile by id, so the page has whatever
+the list that found them carried — it re-runs the search in its own address to get it, and falls
+back to the Talent pool when no search led here. When neither has them the page says exactly that
+rather than inventing a profile, because a Candidate who has stopped being searchable really is out
+of reach. The notes and the Tags are the Application review's own interactions, naming a Candidate
+instead of an Application; a Tag offered here is candidate-scoped, which is the other half of the
+same vocabulary.
+_Avoid_: Candidate profile, candidate detail (a Profile is the Candidate's own; this is the
+Tenant's reading of it).
+
+**Talent pool state**:
+Whether one Candidate is saved, which the API will only answer by listing the whole pool — so the
+portal reads it whole, once, and both the search results and the Candidate view say who is in it
+from that one copy. A button that cannot say yet says nothing yet: the card shows its own skeleton
+while the pool is arriving and its own refusal when it will not, rather than offering a save whose
+state would be a guess. Saving and dropping are idempotent and reversible, so neither asks first,
+and both re-read the pool rather than patching it in the browser.
+_Avoid_: Bookmarks, favourites, shortlist (a shortlist is a Pipeline status).
 
 **Reference data**:
 The platform's fixed lists — Canonical skills with their categories, languages with their
