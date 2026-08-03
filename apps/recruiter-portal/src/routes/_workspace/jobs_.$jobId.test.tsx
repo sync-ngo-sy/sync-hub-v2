@@ -5,6 +5,8 @@ import { signedInAs } from '@/features/auth/testing/handlers';
 import { FIELD_COORDINATOR_VIEW } from '@/features/jobs/testing/fixtures';
 import { getsJob, replacesJobCriteria } from '@/features/jobs/testing/handlers';
 import { failsToLoadCanonicalSkills } from '@/features/reference/testing/handlers';
+import { LINKEDIN_POST } from '@/features/tracked-links/testing/fixtures';
+import { listsTrackedLinks } from '@/features/tracked-links/testing/handlers';
 import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
@@ -31,7 +33,11 @@ async function openCriteriaThatSaves(job: JobView) {
 
 describe('a recruiter Job detail page', () => {
   it('loads the whole Job and keeps tab navigation in the URL', async () => {
-    server.use(...signedInAs(RECRUITER), ...getsJob(FIELD_COORDINATOR_VIEW));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(FIELD_COORDINATOR_VIEW),
+      ...listsTrackedLinks([LINKEDIN_POST]),
+    );
 
     const { router, user } = await renderApp(`/jobs/${FIELD_COORDINATOR_VIEW.id}?tab=criteria`);
 
@@ -49,7 +55,7 @@ describe('a recruiter Job detail page', () => {
     await user.click(screen.getByRole('tab', { name: 'Tracked links' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'links' }));
-    expect(screen.getByText('Tracked links will appear here.')).toBeVisible();
+    expect(await screen.findByText(LINKEDIN_POST.name)).toBeVisible();
   });
 
   it('says that saving replaces every criterion and sends the whole edited set', async () => {

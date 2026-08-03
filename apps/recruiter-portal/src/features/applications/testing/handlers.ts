@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
+import { holding } from '@/testing/holding';
 import type { ApplicationSummary, PipelineStatus } from '../application';
 import type { ApplicationReview } from '../review';
 
@@ -105,15 +106,12 @@ export function refusesApplicationMove(review: ApplicationReview, problem: Probl
 
 /** Holds the page open until the caller lets it arrive, so a test can see the skeleton. */
 export function holdsJobApplications(items: ApplicationSummary[]) {
-  let arrive: () => void = () => {};
-  const held = new Promise<void>((resolve) => {
-    arrive = resolve;
-  });
+  const gate = holding();
   return {
-    arrive: () => arrive(),
+    arrive: gate.arrive,
     handlers: [
       http.get(PATH, async ({ response }) => {
-        await held;
+        await gate.held;
         return response(200).json({ items, next_cursor: null });
       }),
     ],

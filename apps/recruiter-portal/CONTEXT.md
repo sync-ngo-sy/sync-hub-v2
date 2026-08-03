@@ -73,6 +73,16 @@ it owns the rule, and the portal's own sentence is only the fallback for a refus
 explains nothing.
 _Avoid_: Invalid transition error, move failure.
 
+**Tracked links tab**:
+The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,
+renames it, turns it off, and reads what each one brought. Minting hands the address straight back
+to copy, because a link nobody can share is worth nothing. A link that is off keeps its row and its
+count: turning it off ends the traffic, not the history — and so a rename leaves both the address
+and the views alone. The comparison is a bar chart of views per link on the teal chart ramp, loaded
+in a chunk of its own so the charting library only travels for a Recruiter who opens this tab. The
+address is built on the Candidate Portal's origin, since that is the portal that counts the view.
+_Avoid_: Campaigns tab, UTM builder, analytics tab.
+
 **Reference data**:
 The platform's fixed lists — Canonical skills with their categories, languages with their
 names and codes, and Locations under their heading — read from endpoints of their own and
