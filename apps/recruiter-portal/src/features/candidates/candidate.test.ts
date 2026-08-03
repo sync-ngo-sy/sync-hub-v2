@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+import {
+  candidateMeta,
+  type MatchedCandidate,
+  matchEvidence,
+  matchedCard,
+  type PooledCandidate,
+  pooledCard,
+} from './candidate';
+
+const MATCH: MatchedCandidate = {
+  candidate_id: '00000000-0000-4000-8000-000000000031',
+  full_name: 'Amina Haddad',
+  avatar_url: null,
+  headline: 'Backend engineer, 8 years',
+  summary: 'Builds payment systems.',
+  location_key: 'sy-aleppo',
+  location_name: 'Aleppo',
+  preferred_language_code: 'ar',
+  matched_section: 'experience',
+  matched_text: 'Ran the payment platform at Hand in Hand.',
+};
+
+const POOLED: PooledCandidate = {
+  candidate_id: '00000000-0000-4000-8000-000000000031',
+  full_name: 'Amina Haddad',
+  headline: 'Backend engineer, 8 years',
+  location_name: 'Aleppo',
+  added_at: '2026-07-30T09:00:00Z',
+};
+
+describe('the card a search hit hands the Candidate view', () => {
+  it('carries everything the hit knows about the person', () => {
+    expect(matchedCard(MATCH)).toEqual({
+      id: '00000000-0000-4000-8000-000000000031',
+      fullName: 'Amina Haddad',
+      headline: 'Backend engineer, 8 years',
+      summary: 'Builds payment systems.',
+      locationName: 'Aleppo',
+      preferredLanguageCode: 'ar',
+      avatarUrl: null,
+    });
+  });
+
+  it('names a Candidate the search came back without a name for', () => {
+    expect(matchedCard({ ...MATCH, full_name: null }).fullName).toBe('Unnamed candidate');
+  });
+
+  it('reads an absent field as absent rather than as an empty string', () => {
+    const card = matchedCard({
+      candidate_id: MATCH.candidate_id,
+      full_name: 'Amina Haddad',
+      matched_text: '',
+    });
+
+    expect(card.headline).toBeNull();
+    expect(card.summary).toBeNull();
+    expect(card.locationName).toBeNull();
+    expect(card.preferredLanguageCode).toBeNull();
+  });
+});
+
+describe('the card a talent-pool row hands the Candidate view', () => {
+  it('carries the three things the pool lists, and claims nothing else', () => {
+    expect(pooledCard(POOLED)).toEqual({
+      id: '00000000-0000-4000-8000-000000000031',
+      fullName: 'Amina Haddad',
+      headline: 'Backend engineer, 8 years',
+      summary: null,
+      locationName: 'Aleppo',
+      preferredLanguageCode: null,
+      avatarUrl: null,
+    });
+  });
+});
+
+describe('the line under a Candidate’s name', () => {
+  it('reads the headline, where they are, and the language they prefer', () => {
+    expect(candidateMeta(matchedCard(MATCH), 'Arabic')).toBe(
+      'Backend engineer, 8 years · Aleppo · Prefers Arabic',
+    );
+  });
+
+  it('leaves out a language whose name the platform has not loaded', () => {
+    expect(candidateMeta(matchedCard(MATCH), null)).toBe('Backend engineer, 8 years · Aleppo');
+  });
+
+  it('says nothing at all when the profile says nothing', () => {
+    expect(
+      candidateMeta(pooledCard({ ...POOLED, headline: null, location_name: null }), null),
+    ).toBe('');
+  });
+});
+
+describe('the evidence a search hit is shown with', () => {
+  it('names the part of the profile the fragment came from', () => {
+    expect(matchEvidence(MATCH)).toEqual({
+      where: 'Matched in their experience',
+      text: 'Ran the payment platform at Hand in Hand.',
+    });
+  });
+
+  it('falls back to the profile at large when the search does not say which part', () => {
+    expect(matchEvidence({ ...MATCH, matched_section: null })?.where).toBe(
+      'Matched in their profile',
+    );
+  });
+
+  it('shows nothing rather than an empty quotation', () => {
+    expect(matchEvidence({ ...MATCH, matched_text: '   ' })).toBeNull();
+  });
+});

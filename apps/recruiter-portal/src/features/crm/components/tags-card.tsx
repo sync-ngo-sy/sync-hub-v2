@@ -6,12 +6,11 @@ import { useState } from 'react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail, problemMessage } from '@/lib/api-problem';
+import type { CrmSubject } from '../subject';
 import type { Tag, TagsWidget } from '../tag';
 import { TagPicker } from './tag-picker';
 
-const HINT = 'How your team files this Application. Your Tags, and yours alone.';
-
-export function TagsCard({ tags }: { tags: TagsWidget }) {
+export function TagsCard({ tags, subject }: { tags: TagsWidget; subject: CrmSubject }) {
   const [failure, setFailure] = useState<string | null>(null);
 
   async function attempt(change: () => Promise<unknown>, fallback: string) {
@@ -29,16 +28,19 @@ export function TagsCard({ tags }: { tags: TagsWidget }) {
   function toggle(tagId: string) {
     void attempt(
       () => (isOn(tagId) ? tags.take(tagId) : tags.put(tagId)),
-      "That Tag couldn't be changed. The Application is filed as it was.",
+      `That Tag couldn't be changed. The ${subject.one} is filed as it was.`,
     );
   }
 
   return (
-    <ReviewCard title="Tags" hint={HINT}>
+    <ReviewCard
+      title="Tags"
+      hint={`How your team files this ${subject.one}. Your Tags, and yours alone.`}
+    >
       <div className="space-y-4">
         {tags.error ? (
           <RetryNotice
-            message={problemMessage(tags.error, "Couldn't load the Tags on this Application.")}
+            message={problemMessage(tags.error, `Couldn't load the Tags on this ${subject.one}.`)}
             onRetry={tags.refetch}
           />
         ) : null}
@@ -59,7 +61,7 @@ export function TagsCard({ tags }: { tags: TagsWidget }) {
         ) : null}
 
         {tags.on.length > 0 ? (
-          <ul aria-label="Tags on this Application" className="flex flex-wrap gap-2">
+          <ul aria-label={`Tags on this ${subject.one}`} className="flex flex-wrap gap-2">
             {tags.on.map((tag) => (
               <li key={tag.id}>
                 <OnTag tag={tag} onTakeOff={() => toggle(tag.id)} />
@@ -70,12 +72,13 @@ export function TagsCard({ tags }: { tags: TagsWidget }) {
 
         {!tags.isPending && !tags.error && tags.on.length === 0 ? (
           <p className="text-dense text-muted-foreground">
-            Not filed under anything yet. A Tag here is how you find this Application again.
+            {`Not filed under anything yet. A Tag here is how you find this ${subject.one} again.`}
           </p>
         ) : null}
 
         {tags.error ? null : (
           <TagPicker
+            subject={subject}
             vocabulary={tags.vocabulary}
             on={tags.on}
             isChanging={tags.isChanging}
@@ -83,7 +86,7 @@ export function TagsCard({ tags }: { tags: TagsWidget }) {
             onCreate={(name) =>
               void attempt(
                 () => tags.create(name),
-                `“${name}” couldn't be put on this Application.`,
+                `“${name}” couldn't be put on this ${subject.one}.`,
               )
             }
           />
