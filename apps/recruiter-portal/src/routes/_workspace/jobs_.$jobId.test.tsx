@@ -164,7 +164,7 @@ describe('a recruiter Job detail page', () => {
 
     const { user } = await renderApp(`/jobs/${job.id}?tab=criteria`);
     await user.click(await screen.findByLabelText('Answer type'));
-    await user.click(screen.getByRole('option', { name: 'Short answer' }));
+    await user.click(await screen.findByRole('option', { name: 'Short answer' }));
 
     expect(screen.queryByLabelText('Passing answer')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save screening criteria' }));

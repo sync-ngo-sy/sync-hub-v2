@@ -28,6 +28,7 @@ import { Route as AuthAcceptInviteRouteImport } from './routes/auth.accept-invit
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as WorkspaceApplicationsApplicationIdRouteImport } from './routes/_workspace/applications_.$applicationId'
+import { Route as WorkspaceCandidatesCandidateIdRouteImport } from './routes/_workspace/candidates_.$candidateId'
 import { Route as WorkspaceJobsJobIdRouteImport } from './routes/_workspace/jobs_.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -125,6 +126,12 @@ const WorkspaceApplicationsApplicationIdRoute =
     path: '/applications/$applicationId',
     getParentRoute: () => WorkspaceRoute,
   } as any)
+const WorkspaceCandidatesCandidateIdRoute =
+  WorkspaceCandidatesCandidateIdRouteImport.update({
+    id: '/candidates_/$candidateId',
+    path: '/candidates/$candidateId',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
 const WorkspaceJobsJobIdRoute = WorkspaceJobsJobIdRouteImport.update({
   id: '/jobs_/$jobId',
   path: '/jobs/$jobId',
@@ -150,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/applications/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
+  '/candidates/$candidateId': typeof WorkspaceCandidatesCandidateIdRoute
   '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRoutesByTo {
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/applications/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
+  '/candidates/$candidateId': typeof WorkspaceCandidatesCandidateIdRoute
   '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRoutesById {
@@ -194,6 +203,7 @@ export interface FileRoutesById {
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_workspace/applications_/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
+  '/_workspace/candidates_/$candidateId': typeof WorkspaceCandidatesCandidateIdRoute
   '/_workspace/jobs_/$jobId': typeof WorkspaceJobsJobIdRoute
 }
 export interface FileRouteTypes {
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/auth/reset-password'
     | '/applications/$applicationId'
+    | '/candidates/$candidateId'
     | '/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/auth/reset-password'
     | '/applications/$applicationId'
+    | '/candidates/$candidateId'
     | '/jobs/$jobId'
   id:
     | '__root__'
@@ -260,6 +272,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/auth/reset-password'
     | '/_workspace/applications_/$applicationId'
+    | '/_workspace/candidates_/$candidateId'
     | '/_workspace/jobs_/$jobId'
   fileRoutesById: FileRoutesById
 }
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceApplicationsApplicationIdRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/candidates_/$candidateId': {
+      id: '/_workspace/candidates_/$candidateId'
+      path: '/candidates/$candidateId'
+      fullPath: '/candidates/$candidateId'
+      preLoaderRoute: typeof WorkspaceCandidatesCandidateIdRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/jobs_/$jobId': {
       id: '/_workspace/jobs_/$jobId'
       path: '/jobs/$jobId'
@@ -431,6 +451,7 @@ interface WorkspaceRouteChildren {
   WorkspaceTalentPoolRoute: typeof WorkspaceTalentPoolRoute
   WorkspaceTemplatesRoute: typeof WorkspaceTemplatesRoute
   WorkspaceApplicationsApplicationIdRoute: typeof WorkspaceApplicationsApplicationIdRoute
+  WorkspaceCandidatesCandidateIdRoute: typeof WorkspaceCandidatesCandidateIdRoute
   WorkspaceJobsJobIdRoute: typeof WorkspaceJobsJobIdRoute
 }
 
@@ -444,6 +465,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceTemplatesRoute: WorkspaceTemplatesRoute,
   WorkspaceApplicationsApplicationIdRoute:
     WorkspaceApplicationsApplicationIdRoute,
+  WorkspaceCandidatesCandidateIdRoute: WorkspaceCandidatesCandidateIdRoute,
   WorkspaceJobsJobIdRoute: WorkspaceJobsJobIdRoute,
 }
 

@@ -3,9 +3,11 @@ import { Input } from '@sync/ui/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@sync/ui/components/ui/popover';
 import { Check, Plus, Tag as TagIcon } from 'lucide-react';
 import { useState } from 'react';
+import type { CrmSubject } from '../subject';
 import { type Tag, tagChoices, tagToCreate } from '../tag';
 
 interface TagPickerProps {
+  subject: CrmSubject;
   vocabulary: Tag[];
   on: Tag[];
   isChanging: boolean;
@@ -13,7 +15,14 @@ interface TagPickerProps {
   onCreate: (name: string) => void;
 }
 
-export function TagPicker({ vocabulary, on, isChanging, onToggle, onCreate }: TagPickerProps) {
+export function TagPicker({
+  subject,
+  vocabulary,
+  on,
+  isChanging,
+  onToggle,
+  onCreate,
+}: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const choices = tagChoices(vocabulary, on, query);
@@ -66,7 +75,7 @@ export function TagPicker({ vocabulary, on, isChanging, onToggle, onCreate }: Ta
 
           {choices.length === 0 && !toCreate ? (
             <p className="px-2 py-1.5 text-dense text-muted-foreground">
-              Your team has no Tags for Applications yet. Type a word to make the first one.
+              {`Your team has no Tags for ${subject.many} yet. Type a word to make the first one.`}
             </p>
           ) : null}
 

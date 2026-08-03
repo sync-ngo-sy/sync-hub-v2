@@ -35,6 +35,16 @@ export function languageOptions(
     .map((language) => ({ value: language.code, label: language.name }));
 }
 
+/** The other direction: a stored code read back as the name a Recruiter knows it by, and nothing
+ * at all while the taxonomy that names it is still on the wire — a raw code is not a language. */
+export function languageName(
+  languages: Language[] | undefined,
+  code: string | null | undefined,
+): string | null {
+  if (!code) return null;
+  return languages?.find((language) => language.code === code)?.name ?? null;
+}
+
 /** A Location reads as its name and saves as its key, grouped by the heading the API files it
  * under — Syria's governorates, then everywhere else by country. */
 export function locationGroups(locations: Location[] | undefined): ComboboxOptionGroup[] {

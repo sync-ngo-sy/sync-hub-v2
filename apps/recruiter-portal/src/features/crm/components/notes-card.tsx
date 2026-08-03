@@ -19,11 +19,12 @@ import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail, problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { type Note, type NotesWidget, noteByline } from '../note';
+import type { CrmSubject } from '../subject';
 import { NoteForm } from './note-form';
 
 const HINT = 'Your team only — the candidate never sees these.';
 
-export function NotesCard({ notes }: { notes: NotesWidget }) {
+export function NotesCard({ notes, subject }: { notes: NotesWidget; subject: CrmSubject }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Note | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -48,7 +49,7 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
       <div className="space-y-6">
         <NoteForm
           label="New note"
-          placeholder="What should your team know about this Application?"
+          placeholder={`What should your team know about this ${subject.one}?`}
           submitLabel="Add note"
           pendingLabel="Adding note…"
           refusalTitle="Note not added"
@@ -70,7 +71,7 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
 
         {notes.error ? (
           <RetryNotice
-            message={problemMessage(notes.error, "Couldn't load the notes on this Application.")}
+            message={problemMessage(notes.error, `Couldn't load the notes on this ${subject.one}.`)}
             onRetry={notes.refetch}
           />
         ) : null}
@@ -136,6 +137,7 @@ export function NotesCard({ notes }: { notes: NotesWidget }) {
 
       <DeleteNoteDialog
         note={deleting}
+        subject={subject}
         isDeleting={isDeleting}
         onConfirm={(note) => void remove(note)}
         onClose={() => setDeleting(null)}
@@ -181,12 +183,19 @@ function NoteEntry({ note, onEdit, onDelete }: NoteEntryProps) {
 
 interface DeleteNoteDialogProps {
   note: Note | null;
+  subject: CrmSubject;
   isDeleting: boolean;
   onConfirm: (note: Note) => void;
   onClose: () => void;
 }
 
-function DeleteNoteDialog({ note, isDeleting, onConfirm, onClose }: DeleteNoteDialogProps) {
+function DeleteNoteDialog({
+  note,
+  subject,
+  isDeleting,
+  onConfirm,
+  onClose,
+}: DeleteNoteDialogProps) {
   if (!note) return null;
 
   return (
@@ -200,7 +209,7 @@ function DeleteNoteDialog({ note, isDeleting, onConfirm, onClose }: DeleteNoteDi
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this note?</AlertDialogTitle>
           <AlertDialogDescription>
-            Your team loses these words, and nothing else about the Application changes.
+            {`Your team loses these words, and nothing else about the ${subject.one} changes.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

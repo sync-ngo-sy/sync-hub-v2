@@ -1,12 +1,33 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { PlaceholderPage } from '@/features/shell/components/placeholder-page';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { CandidateSearchPage } from '@/features/candidates/components/candidate-search-page';
+import { type CandidateSearchFilters, searchAddress } from '@/features/candidates/search';
+import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
+import { warmTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
 import { pageTitle } from '@/lib/page-title';
+import { candidateSearchParams, filtersFrom } from './-candidate-search-params';
 
 export const Route = createFileRoute('/_workspace/candidates')({
+  validateSearch: candidateSearchParams,
+  loader: async ({ context }) => {
+    await Promise.all([
+      warmSearchTaxonomies(context.queryClient),
+      warmTalentPool(context.queryClient),
+    ]);
+  },
   head: () => ({ meta: [{ title: pageTitle('Candidates') }] }),
-  component: CandidatesPage,
+  component: CandidatesRoute,
 });
 
-function CandidatesPage() {
-  return <PlaceholderPage title="Candidates" />;
+function CandidatesRoute() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
+  return (
+    <CandidateSearchPage
+      filters={filtersFrom(search)}
+      onFiltersChange={(filters: CandidateSearchFilters) =>
+        void navigate({ search: searchAddress(filters) })
+      }
+    />
+  );
 }

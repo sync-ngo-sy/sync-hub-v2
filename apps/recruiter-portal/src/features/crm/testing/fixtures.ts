@@ -46,6 +46,13 @@ export const OPEN_TO_RELOCATION: Tag = {
   created_at: '2026-07-02T09:00:00Z',
 };
 
+export const WORKED_WITH_US: Tag = {
+  id: '00000000-0000-4000-8000-000000000805',
+  name: 'Worked with us before',
+  scope: 'candidate',
+  created_at: '2026-07-02T09:00:00Z',
+};
+
 export const TAG_NAME_TAKEN: components['schemas']['ProblemDetail'] = {
   type: 'urn:sync:problem:tag-name-taken',
   title: 'Conflict',
