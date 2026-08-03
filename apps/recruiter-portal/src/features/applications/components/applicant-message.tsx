@@ -13,12 +13,12 @@ import { Link } from '@tanstack/react-router';
 import { CircleAlert, Send } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
+import { ReviewCard } from '@/features/shell/components/review-card';
 import { useMessageTemplates } from '@/features/templates/hooks/use-message-templates';
 import { messagePreview } from '@/features/templates/preview';
 import { useMyTenant } from '@/features/tenant/hooks/use-my-tenant';
 import { problemDetail } from '@/lib/api-problem';
 import { useMessageApplicant } from '../hooks/use-application-actions';
-import { ReviewCard } from './review-card';
 
 const SENT = 'Message queued — the candidate will have it shortly.';
 const NOT_SENT = 'This message was not sent. Nothing reached the candidate.';
