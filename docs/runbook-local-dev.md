@@ -139,7 +139,11 @@ pnpm exec turbo run dev --filter='./apps/*'
 ## 4. Create a Platform admin
 
 A Platform admin is the operator account that belongs to no Tenant — the one a Tenant is
-created and suspended from. There is no sign-up for it: the first one has nobody to authorise
+created and suspended from, and the only one that can turn an access request into a Tenant.
+Nobody self-serves a Tenant, so this account is how you get one at all: ask for access at the
+recruiter portal's `/request-access`, then convert the request under **Access requests** in the
+Platform Portal, and read the founding admin's invitation out of Mailpit.
+There is no sign-up for a Platform admin: the first one has nobody to authorise
 them, and a migration cannot make one because the auth user and its password belong to GoTrue,
 not to the schema. A script does it, against whatever environment the `SYNC_*` settings point at:
 

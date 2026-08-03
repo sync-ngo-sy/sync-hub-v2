@@ -39,8 +39,8 @@ export function Hero() {
               'mt-9 flex flex-wrap items-center gap-x-6 gap-y-4 motion-safe:delay-200',
             )}
           >
-            <Link to="/signup" className={cn(buttonVariants({ size: 'lg' }), HERO_BUTTON)}>
-              Create your workspace <span aria-hidden="true">→</span>
+            <Link to="/request-access" className={cn(buttonVariants({ size: 'lg' }), HERO_BUTTON)}>
+              Request access <span aria-hidden="true">→</span>
             </Link>
             <Link to="/login" className={UNDERLINE_LINK}>
               Sign in

@@ -39,8 +39,8 @@ function LogInPage() {
         </p>
         <p>
           New to Sync?{' '}
-          <Link to="/signup" className={AUTH_LINK}>
-            Create a workspace
+          <Link to="/request-access" className={AUTH_LINK}>
+            Request access
           </Link>
         </p>
       </div>

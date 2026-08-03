@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     public_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     visitor_hash_salt: SecretStr | None = None
 
+    #: Asking for access is the one unauthenticated write on the platform, and it goes nowhere
+    #: near the identity provider, so none of GoTrue's own limits cover it. A company asks once;
+    #: anything submitting by the handful is a script.
+    access_request_rate_limit_max_requests: int = Field(default=5, ge=1)
+    access_request_rate_limit_window_seconds: float = Field(default=3600.0, gt=0)
+
     cv_max_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
 

@@ -9,9 +9,18 @@ Recruiter, Job, Application, Screening, Tracked link…) is inherited from the
 
 **Landing page**:
 The public page at the portal's root that explains the platform to companies and offers
-contact (WhatsApp, email) and workspace sign-up. One of the two surfaces where animation
-is allowed (the other is the Candidate Portal's landing page).
+contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync is
+sold, not self-served, so every call to action points at the Access-request page. One of the two
+surfaces where animation is allowed (the other is the Candidate Portal's landing page).
 _Avoid_: Home page, marketing site.
+
+**Access-request page**:
+The public page at `/request-access` where a visitor leaves their company, their name and their
+address, and is told the request was received. The one unauthenticated write this portal makes.
+`/signup` is kept as a redirect to it, because that address was published. Creating an account
+here is impossible — a Platform admin converts the request, and the founding admin arrives by
+invitation.
+_Avoid_: Sign-up page, contact form, waitlist.
 
 **Workspace**:
 Everything behind the sign-in guard — the Tenant's own Sync, reached through the

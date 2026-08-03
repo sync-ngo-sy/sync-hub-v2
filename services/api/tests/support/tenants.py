@@ -6,8 +6,11 @@ from uuid import uuid4
 
 from sqlalchemy import update
 
+from sync_api.platform import PlatformService
 from sync_core.models import RecruiterRole, Tenant
+from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.candidates import DEFAULT_PASSWORD
+from tests.support.harness import app_of
 
 if TYPE_CHECKING:
     from httpx import AsyncClient, Response
@@ -17,7 +20,9 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class TenantSignup:
+class FoundedTenant:
+    """A Tenant an operator opened, and the founding admin who was invited to run it."""
+
     tenant_name: str
     slug: str
     email: str
@@ -25,38 +30,37 @@ class TenantSignup:
     full_name: str
 
 
-def a_tenant_signup(label: str = "acme", *, slug: str | None = None) -> TenantSignup:
+async def an_admin(browser: AsyncClient, mailbox: Mailbox, label: str = "acme") -> FoundedTenant:
+    """A signed-in founding admin of a Tenant of their own, opened and invited the way a real one
+    is: nobody creates their own Tenant, so there is no endpoint a test can post to either. The
+    operator's own service stands in for the operator, rather than signing one in first.
+    """
     unique = uuid4().hex
-    return TenantSignup(
+    tenant = FoundedTenant(
         tenant_name="Acme Recruiting",
-        slug=slug if slug is not None else f"{label}-{unique}",
+        slug=f"{label}-{unique}",
         email=f"{label}-admin-{unique}@example.com",
         password=DEFAULT_PASSWORD,
         full_name="Rana Khalil",
     )
 
+    app = app_of(browser)
+    async with app.state.database.session() as session:
+        platform = PlatformService(
+            session,
+            app.state.authentication.gotrue,
+            recruiter_portal_url=RECRUITER_PORTAL_URL,
+        )
+        await platform.create_tenant(
+            name=tenant.tenant_name,
+            slug=tenant.slug,
+            email=tenant.email,
+            full_name=tenant.full_name,
+        )
 
-async def sign_up_tenant(browser: AsyncClient, signup: TenantSignup) -> Response:
-    return await browser.post(
-        "/v1/tenants",
-        json={
-            "tenant_name": signup.tenant_name,
-            "slug": signup.slug,
-            "email": signup.email,
-            "password": signup.password,
-            "full_name": signup.full_name,
-        },
-    )
-
-
-async def an_admin(browser: AsyncClient, mailbox: Mailbox, label: str = "acme") -> TenantSignup:
-    signup = a_tenant_signup(label)
-    signed_up = await sign_up_tenant(browser, signup)
-    assert signed_up.status_code == 201, signed_up.text
-    token_hash = await mailbox.confirmation_token(signup.email)
-    confirmed = await browser.post("/v1/auth/confirm-email", json={"token_hash": token_hash})
-    assert confirmed.status_code == 200, confirmed.text
-    return signup
+    accepted = await accept_invite(browser, mailbox, tenant.email, password=tenant.password)
+    assert accepted.status_code == 200, accepted.text
+    return tenant
 
 
 async def invite(
