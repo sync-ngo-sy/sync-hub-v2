@@ -90,7 +90,7 @@ describe('signing in', () => {
   });
 
   it('honours the returnTo when bouncing an already-signed-in candidate', async () => {
-    server.use(...signedInAs(CANDIDATE));
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
 
     const { router } = await renderApp('/login?returnTo=%2Fprofile');
 
