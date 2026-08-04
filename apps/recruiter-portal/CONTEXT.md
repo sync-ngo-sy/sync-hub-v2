@@ -30,8 +30,31 @@ _Avoid_: App, dashboard area, admin.
 
 **Dashboard**:
 The signed-in Recruiter's home: an overview of the Tenant's hiring activity. One
-destination inside the Workspace, not a name for the Workspace itself.
+destination inside the Workspace, not a name for the Workspace itself. It is assembled from the
+reads the API already answers — the Jobs list, then one first page of Applications per published
+Job — because there is no tenant-wide Application list and no analytics endpoint. So it says what
+it counted from rather than implying a total it cannot see, and every panel on it is an
+Independent widget in every respect but the read: three of them share those two reads, so one
+refusal is spoken by each panel it leaves blank, in that panel, with that panel's own Retry.
 _Avoid_: Home, overview page.
+
+**Read count**:
+A number on the Dashboard arrived at by counting what the first pages held, rather than by asking
+the platform for a total. A count that reached the end of what it was counting is exact; one that
+did not is a floor, written with a trailing `+` and never rounded or extrapolated — "4+" is four
+seen and more unread, and the sentence under the stat cards names the Jobs and Applications the
+whole row was read from. Which Jobs those are is bounded on purpose (the fan-out is one request
+per published Job), and the bound is stated rather than hidden: a cap nobody is told about reads
+as a total.
+_Avoid_: Total, metric, KPI, approximate count.
+
+**Trend slot**:
+A Dashboard card held for a chart the platform cannot draw yet — the tenant analytics endpoints
+are a fast-follow, so the card names the chart that is coming and points at the nearest thing that
+exists today (a Job's own Tracked links, a Job's Applications tab). It carries no numbers at all:
+a slot that invents a shape to fill itself is worse than one that says it is waiting.
+_Avoid_: Coming soon, empty state (an empty state means there is no data; a slot means there is no
+endpoint).
 
 **Pipeline**:
 The ordered application statuses a Recruiter moves an Application through while
