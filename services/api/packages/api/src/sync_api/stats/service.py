@@ -48,10 +48,10 @@ class StatsService:
     def __init__(self, session: AsyncSession) -> None:
         self._db = session
 
-    async def of(self, recruiter: ActingRecruiter) -> TenantStats:
+    async def counts(self, recruiter: ActingRecruiter) -> TenantStats:
         tenant_id = recruiter.tenant.id
         counted = (await self._db.execute(_counts(tenant_id))).mappings().one()
-        sources = await self._sources(tenant_id)
+        sources, channels = await self._sources(tenant_id)
 
         return TenantStats(
             jobs=JobCounts(
@@ -75,14 +75,21 @@ class StatsService:
                     disqualified=counted[_verdict(QualificationStatus.DISQUALIFIED)],
                 ),
             ),
-            sources=[
-                Source(name=name, views=int(views)) for name, views in sources[:SOURCES_ON_THE_CARD]
-            ],
-            sources_total=len(sources),
+            sources=sources,
+            sources_total=channels,
         )
 
-    async def _sources(self, tenant_id: UUID) -> list[tuple[str, Any]]:
-        return list((await self._db.execute(_ranked_sources(tenant_id))).tuples())
+    async def _sources(self, tenant_id: UUID) -> tuple[list[Source], int]:
+        """The card's six, and how many channels there were to choose them from.
+
+        Both come from one statement: the count is a window over the grouped rows, which
+        Postgres computes before the limit clips them.
+        """
+        rows = (await self._db.execute(_ranked_sources(tenant_id))).tuples().all()
+        return (
+            [Source(name=name, views=int(views)) for name, views, _channels in rows],
+            rows[0][2] if rows else 0,
+        )
 
 
 def _pass_rate(*, qualified: int, disqualified: int) -> int | None:
@@ -195,9 +202,16 @@ def _ranked_sources(tenant_id: UUID) -> Select[Any]:
     # Summed over the union rather than concatenated: a link somebody named "Direct" would
     # otherwise put two rows with one label on the card.
     channels = union_all(named, direct).subquery()
-    views = func.sum(channels.c.views).label("views")
-    return (
-        select(channels.c.name, views)
+    ranked = (
+        select(channels.c.name, func.sum(channels.c.views).label("views"))
         .group_by(channels.c.name)
-        .order_by(views.desc(), channels.c.name)
+        .subquery()
+    )
+    # The count is a window over the grouped rows, which Postgres computes before the limit
+    # clips them — so the six that fit and the number there were to choose from arrive
+    # together, and a tenant with two hundred channels still sends six rows.
+    return (
+        select(ranked.c.name, ranked.c.views, func.count().over().label("channels"))
+        .order_by(ranked.c.views.desc(), ranked.c.name)
+        .limit(SOURCES_ON_THE_CARD)
     )

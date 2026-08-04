@@ -68,3 +68,10 @@ async def decide(
         update(Application).where(Application.id == application_id).values(**changes)
     )
     await session.commit()
+
+
+async def forget_when_it_went_live(session: AsyncSession, job_id: str | UUID) -> None:
+    """A Job as it stands after a deploy that added `published_at` without backfilling it:
+    live, and with nothing recording when it became so."""
+    await session.execute(update(Job).where(Job.id == UUID(str(job_id))).values(published_at=None))
+    await session.commit()

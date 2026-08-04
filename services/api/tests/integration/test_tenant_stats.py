@@ -338,3 +338,25 @@ async def test_another_tenants_numbers_are_not_in_these_ones(
     assert stats["applications"]["total"] == 0
     assert stats["sources"] == []
     assert stats["sources_total"] == 0
+
+
+async def test_the_seam_between_this_week_and_the_one_before_holds(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Either side of the seven-day mark, hours apart. Each window claims exactly one, and the
+    two together claim both — an overlap would double-count and a gap would lose one."""
+    await a_signed_in_candidate(other_browser, mailbox)
+    candidate = await my_id(other_browser)
+    for title, days in {"just inside": 6.9, "just outside": 7.1}.items():
+        job = await a_published_job(recruiter, title=title)
+        application = await an_application(db_session, job["id"], candidate)
+        await received_days_ago(db_session, application, days)
+
+    stats = (await stats_of(recruiter))["applications"]
+
+    assert stats["last_7d"] == 1
+    assert stats["previous_7d"] == 1
+    assert stats["total"] == 2

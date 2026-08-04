@@ -26,4 +26,4 @@ async def get_tenant_stats(recruiter: ActingRecruiterDep, stats: StatsServiceDep
     counts span every Job whatever state it is in, and every Application whatever stage it has
     reached — a rejected Application was still received, so it is still counted as one.
     """
-    return await stats.of(recruiter)
+    return await stats.counts(recruiter)

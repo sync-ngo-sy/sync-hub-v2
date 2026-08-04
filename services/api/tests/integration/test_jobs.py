@@ -23,6 +23,7 @@ from tests.support.jobs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import my_id
+from tests.support.stats import forget_when_it_went_live
 from tests.support.tenants import a_teammate, an_admin
 
 A_KNOCKOUT_QUESTION: dict[str, Any] = {
@@ -493,3 +494,19 @@ async def test_a_job_nobody_has_applied_to_counts_none(
 
     assert job["application_count"] == 0
     assert (await browser.get(TENANT_JOBS)).json()["items"][0]["application_count"] == 0
+
+
+async def test_editing_a_published_job_does_not_pretend_it_just_went_live(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Every Job published before the column existed carries a null. Stamping one on an
+    unrelated edit would report a Job open since March among this week's."""
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+    await change_job(browser, job["id"], status="published")
+    await forget_when_it_went_live(db_session, job["id"])
+
+    edited = await change_job(browser, job["id"], title="Staff Backend Engineer")
+
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["published_at"] is None
