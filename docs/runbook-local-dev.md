@@ -184,7 +184,58 @@ Against a deployed environment, export that environment's `SYNC_DATABASE_URL`,
 `SYNC_SUPABASE_URL` and `SYNC_SUPABASE_SERVICE_ROLE_KEY` first — the script reads exactly what the
 API reads, `.env` included, so check which one it picked up before answering the prompt.
 
-## 5. Tests
+## 5. Seed the stack with demo data
+
+Section 4 gets you one operator account and an empty platform. This fills it:
+
+```bash
+cd services/api
+uv run python scripts/seed_demo.py            # refuses if a seed is already there
+uv run python scripts/seed_demo.py --purge    # replace the previous one
+uv run python scripts/seed_demo.py --purge-only
+uv run python scripts/seed_demo.py --no-embed # skip the OpenAI calls Global search needs
+```
+
+Three Tenants, nine Candidates, ten Jobs, nineteen Applications across every pipeline stage and
+every Screening verdict, a month of campaign traffic, and the Tenant records that hang off it all
+— notes, Tags, the Talent pool, Message templates, sent messages, Notifications. It creates the
+Platform admin too, so it replaces section 4 for local work.
+
+Almost nothing is written as SQL: an Application goes through `ApplicationService.submit`, so its
+Snapshot and Screening verdict are computed by the code that owns them, and a pipeline move goes
+through the review service, so the status history, the Candidate's Notification and the rejection
+email all happen for the real reason. Two things are the seed's own, and both are labelled in the
+data: the timestamps (`scripts/seed/history.py` moves the rows into the past afterwards, because
+the services correctly stamp `now()`), and the delivery state of queued email —
+`communications.provider` reads `seed`, never `resend`, because no provider ever saw them.
+
+**Nothing is emailed to anybody.** The invitations it really does send land in Mailpit.
+
+It only runs against a local stack, and refuses anything else. `--purge` removes only what the
+seed itself created, by the addresses and slugs in `scripts/seed/cast.py` — anything you made by
+clicking around survives it.
+
+### Signing in
+
+One password for every seeded account, on all three portals:
+
+```text
+sync-demo-2026
+```
+
+The three to start from:
+
+| Portal    | Address                           | Who                                 |
+| --------- | --------------------------------- | ----------------------------------- |
+| Platform  | `ops@sync.example`                | the operator                        |
+| Recruiter | `rana.khalil@northbridge.example` | admin of the busiest Tenant         |
+| Candidate | `amina.haddad@example.com`        | 3 CVs, hired once, withdrew once    |
+
+All seventeen — and which state each one is worth opening for — are in
+[demo-accounts.md](./demo-accounts.md). The script prints the same list on every run, so neither
+can go stale.
+
+## 6. Tests
 
 The suite drives the real stack, so it has to be running:
 
