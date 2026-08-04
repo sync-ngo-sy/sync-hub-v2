@@ -8,14 +8,20 @@ from sqlalchemy.exc import IntegrityError
 
 from sync_api.integrity import refuse_duplicate
 from sync_api.jobs.access import own_job
-from sync_api.jobs.payload import TrackedLink
+from sync_api.jobs.payload import (
+    LinkedJob,
+    TenantTrackedLink,
+    TenantTrackedLinkPage,
+    TrackedLink,
+)
+from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     TRACKED_LINK_NAME_TAKEN_PROBLEM_TYPE,
     TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
 from sync_core import get_logger, transaction
-from sync_core.models import JobViewEvent, TrackedJobLink
+from sync_core.models import Job, JobViewEvent, TrackedJobLink
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -30,6 +36,9 @@ logger = get_logger(__name__)
 TOKEN_BYTES: Final = 16
 
 NAME_CONSTRAINT: Final = "tracked_job_links_tenant_id_job_id_name_key"
+
+#: Backslash rather than the default, which is `%` itself and cannot then escape one.
+ESCAPE: Final = "\\"
 
 
 class TrackedLinkService:
@@ -104,6 +113,55 @@ class TrackedLinkService:
             )
         return link
 
+    async def tenant_page(
+        self,
+        recruiter: ActingRecruiter,
+        *,
+        q: str | None = None,
+        is_active: bool | None = None,
+        cursor: str | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+    ) -> TenantTrackedLinkPage:
+        """Every Tracked link the tenant has, across every Job, newest first.
+
+        Expiry is not a filter here. A link expires by a date the caller already has, so
+        deciding "live" from "expired" costs the reader nothing and costs this query a clock.
+        """
+        query = (
+            select(TrackedJobLink, Job, VIEW_COUNT)
+            .join(Job, Job.id == TrackedJobLink.job_id)
+            .where(TrackedJobLink.tenant_id == recruiter.tenant.id)
+        )
+        if q is not None:
+            query = query.where(TrackedJobLink.name.ilike(_containing(q), escape=ESCAPE))
+        if is_active is not None:
+            query = query.where(TrackedJobLink.is_active.is_(is_active))
+
+        found = list(
+            (
+                await self._db.execute(
+                    newest_first(
+                        query,
+                        created_at=TrackedJobLink.created_at,
+                        id_=TrackedJobLink.id,
+                        cursor=cursor,
+                        limit=limit,
+                    )
+                )
+            ).tuples()
+        )
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
+        return TenantTrackedLinkPage(
+            items=[
+                TenantTrackedLink(
+                    **_as_payload(link, views=views).model_dump(),
+                    job=LinkedJob(id=job.id, title=job.title),
+                )
+                for link, job, views in rows
+            ],
+            next_cursor=next_cursor,
+        )
+
     async def _views_of(self, link_id: UUID) -> int:
         views = await self._db.scalar(
             select(func.count())
@@ -111,6 +169,28 @@ class TrackedLinkService:
             .where(JobViewEvent.tracked_link_id == link_id)
         )
         return int(views or 0)
+
+
+#: Correlated so one page of links carries its counts, rather than a request per row.
+VIEW_COUNT: Final = (
+    select(func.count())
+    .select_from(JobViewEvent)
+    .where(JobViewEvent.tracked_link_id == TrackedJobLink.id)
+    .correlate(TrackedJobLink)
+    .scalar_subquery()
+)
+
+
+def _containing(term: str) -> str:
+    """A search term as a substring pattern. `%` and `_` are wildcards to the database and
+    ordinary characters to whoever typed them, so they are escaped rather than honoured."""
+    escaped = term.replace(ESCAPE, ESCAPE * 2).replace("%", f"{ESCAPE}%").replace("_", f"{ESCAPE}_")
+    return f"%{escaped}%"
+
+
+def _cursor(row: tuple[TrackedJobLink, Job, int]) -> Cursor:
+    link, _job, _views = row
+    return Cursor(created_at=link.created_at, id=link.id)
 
 
 def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:

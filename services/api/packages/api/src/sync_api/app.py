@@ -32,8 +32,10 @@ from sync_api.routes import (
     tenant_candidates,
     tenant_jobs,
     tenant_message_templates,
+    tenant_stats,
     tenant_tags,
     tenant_talent_pool,
+    tenant_tracked_links,
     tenants,
 )
 from sync_assessments.openai_assessor import OpenAiMatchAssessor
@@ -129,6 +131,8 @@ def create_app(
     app.include_router(tenant_talent_pool.router, prefix=API_PREFIX)
     app.include_router(tenant_jobs.router, prefix=API_PREFIX)
     app.include_router(tenant_applications.router, prefix=API_PREFIX)
+    app.include_router(tenant_stats.router, prefix=API_PREFIX)
+    app.include_router(tenant_tracked_links.router, prefix=API_PREFIX)
     app.include_router(jobs.router, prefix=API_PREFIX)
     app.include_router(applications.router, prefix=API_PREFIX)
 

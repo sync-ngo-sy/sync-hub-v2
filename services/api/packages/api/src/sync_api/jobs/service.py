@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import delete, exists, select
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
@@ -87,19 +87,28 @@ class JobService:
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> JobPage:
-        query = select(Job).options(*WITH_LOCATION).where(Job.tenant_id == recruiter.tenant.id)
+        query = (
+            select(Job, APPLICATION_COUNT)
+            .options(*WITH_LOCATION)
+            .where(Job.tenant_id == recruiter.tenant.id)
+        )
         if status is not None:
             query = query.where(Job.status == status)
 
         found = list(
-            await self._db.scalars(
-                newest_first(
-                    query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit
+            (
+                await self._db.execute(
+                    newest_first(
+                        query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit
+                    )
                 )
-            )
+            ).tuples()
         )
-        rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
-        return JobPage(items=[_summary(row) for row in rows], next_cursor=next_cursor)
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=lambda row: _cursor(row[0]))
+        return JobPage(
+            items=[_summary(job, applications) for job, applications in rows],
+            next_cursor=next_cursor,
+        )
 
     async def job(self, recruiter: ActingRecruiter, job_id: UUID) -> JobView:
         return await self._view(await own_job(self._db, recruiter.tenant.id, job_id))
@@ -113,11 +122,13 @@ class JobService:
             changed = changes.model_dump(exclude_unset=True)
             if "status" in changed:
                 _refuse_impossible_move(job.status, JobStatus(changed["status"]))
+            was = job.status
             for field, value in changed.items():
                 setattr(job, field, value)
+            _stamp_publication(job, was=was)
         logger.info("jobs.changed", job_id=str(job_id), fields=sorted(changed))
         # `updated_at` and `search_vector` are the triggers' to write, not ours.
-        await self._db.refresh(job, ["updated_at", "location"])
+        await self._db.refresh(job, ["updated_at", "published_at", "location"])
         return await self._view(job)
 
     async def replace_criteria(
@@ -161,16 +172,35 @@ class JobService:
     async def _has_applications(self, job_id: UUID) -> bool:
         return bool(await self._db.scalar(select(exists().where(Application.job_id == job_id))))
 
+    async def _applications(self, job_id: UUID) -> int:
+        counted = await self._db.scalar(
+            select(func.count()).select_from(Application).where(Application.job_id == job_id)
+        )
+        return counted or 0
+
     async def _view(self, job: Job) -> JobView:
+        # The count answers the lock too: criteria freeze on the first Application, so one read
+        # settles both rather than asking the same table twice.
+        applications = await self._applications(job.id)
         return JobView(
-            **_summary(job).model_dump(),
+            **_summary(job, applications).model_dump(),
             description=job.description,
             criteria=await criteria_of(self._db, job),
-            criteria_locked=await self._has_applications(job.id),
+            criteria_locked=applications > 0,
         )
 
 
-def _summary(job: Job) -> JobSummary:
+#: Correlated so one page of Jobs carries its counts, rather than a request per row.
+APPLICATION_COUNT: Final = (
+    select(func.count())
+    .select_from(Application)
+    .where(Application.job_id == Job.id)
+    .correlate(Job)
+    .scalar_subquery()
+)
+
+
+def _summary(job: Job, applications: int) -> JobSummary:
     return JobSummary(
         id=job.id,
         title=job.title,
@@ -182,7 +212,26 @@ def _summary(job: Job) -> JobSummary:
         expires_at=job.expires_at,
         created_at=job.created_at,
         updated_at=job.updated_at,
+        published_at=job.published_at,
+        application_count=applications,
     )
+
+
+def _stamp_publication(job: Job, *, was: JobStatus) -> None:
+    """When the Job went live, written on the move that took it there and never rewritten.
+
+    Both guards earn their place. The move matters because every Job published before this
+    column existed carries a null: without it, the next edit to such a Job's title would stamp
+    it as going live today and report a Job that has been open since March among this week's.
+    The null check matters because a Job closed and republished went live when it first did.
+
+    The database's clock, not this process's: the window that reads it (`published_last_week`)
+    is `now() - interval` in SQL, so a second clock could put a Job just published outside the
+    week it was published in.
+    """
+    became_live = job.status == JobStatus.PUBLISHED and was != JobStatus.PUBLISHED
+    if became_live and job.published_at is None:
+        job.published_at = func.now()
 
 
 def _cursor(job: Job) -> Cursor:

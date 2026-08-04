@@ -1527,6 +1527,7 @@ export type Database = {
           id: string;
           location_key: string | null;
           minimum_total_experience_years: number | null;
+          published_at: string | null;
           search_vector: unknown;
           status: Database['public']['Enums']['job_status'];
           tenant_id: string;
@@ -1543,6 +1544,7 @@ export type Database = {
           id?: string;
           location_key?: string | null;
           minimum_total_experience_years?: number | null;
+          published_at?: string | null;
           search_vector?: unknown;
           status?: Database['public']['Enums']['job_status'];
           tenant_id: string;
@@ -1559,6 +1561,7 @@ export type Database = {
           id?: string;
           location_key?: string | null;
           minimum_total_experience_years?: number | null;
+          published_at?: string | null;
           search_vector?: unknown;
           status?: Database['public']['Enums']['job_status'];
           tenant_id?: string;
