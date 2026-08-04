@@ -22,6 +22,10 @@ export function listsJobs(items: JobSummary[]) {
   ];
 }
 
+export function failsToListJobs(problem: Problem) {
+  return [http.get('/v1/tenants/me/jobs', ({ response }) => response(500).json(problem))];
+}
+
 export function pagesJobs(pages: JobSummary[][]) {
   return [
     http.get('/v1/tenants/me/jobs', ({ query, response }) => {
