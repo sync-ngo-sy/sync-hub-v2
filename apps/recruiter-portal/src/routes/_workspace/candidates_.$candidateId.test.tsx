@@ -2,12 +2,7 @@ import type { components } from '@sync/api-client';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import {
-  AMINA,
-  AMINA_SAVED,
-  CANDIDATE_OUT_OF_REACH,
-  YOUSSEF,
-} from '@/features/candidates/testing/fixtures';
+import { AMINA, CANDIDATE_OUT_OF_REACH, YOUSSEF } from '@/features/candidates/testing/fixtures';
 import {
   type AskedSearch,
   filesCandidateTags,
@@ -21,6 +16,7 @@ import {
   OPEN_TO_RELOCATION,
   WORKED_WITH_US,
 } from '@/features/crm/testing/fixtures';
+import { AMINA_SAVED } from '@/features/talent-pool/testing/fixtures';
 import {
   failsToReadTalentPool,
   holdsTalentPool,

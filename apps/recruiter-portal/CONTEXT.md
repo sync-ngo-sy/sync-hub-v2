@@ -231,9 +231,10 @@ endpoint, so a save or a drop made anywhere re-reads both, the copy nobody is wa
 that copy is what a route loader reads next, and it hands back what it has rather than waiting.
 A row opens the Candidate view, which finds the person in the pool because no search led there.
 Dropping asks first here although the card does not: the action is one line in a row menu rather
-than a button that has just told you the state, and what it costs is that nothing points at that
-Candidate any more until a search finds them again. The empty pool points at candidate search,
-since search is the only way to fill it.
+than a button that has just told you the state. What it costs is what the asking says — the
+Tenant's notes and Tags on them survive, but nothing points at that Candidate any more until a
+search finds them again, which is the sense in which a drop is reversible rather than destructive.
+The empty pool points at candidate search, since search is the only way to fill it.
 _Avoid_: Saved list, shortlist page.
 
 **Reference data**:

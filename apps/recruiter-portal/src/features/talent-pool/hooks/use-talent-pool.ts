@@ -1,15 +1,11 @@
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, client } from '@/lib/api';
-import {
-  POOL_LIST_PAGE_SIZE,
-  POOL_PAGE_SIZE,
-  type PooledCandidate,
-  type PoolPage,
-  readWholePool,
-} from '../pool';
+import { POOL_PAGE_SIZE, type PooledCandidate, type PoolPage, readWholePool } from '../pool';
 
 export const POOL_PATH = '/v1/tenants/me/talent-pool';
 export const POOL_ENTRY_PATH = '/v1/tenants/me/talent-pool/{candidate_id}';
+
+export const SAVED_PAGE_SIZE = 20;
 
 export const talentPoolQuery = queryOptions({
   queryKey: ['talent-pool', 'whole'],
@@ -28,22 +24,21 @@ export function warmTalentPool(queryClient: QueryClient): Promise<PooledCandidat
   return queryClient.ensureQueryData(talentPoolQuery).catch(() => []);
 }
 
-function listParams(cursor?: string | null) {
-  return { params: { query: { limit: POOL_LIST_PAGE_SIZE, cursor } } };
+function savedParams(cursor?: string | null) {
+  return { params: { query: { limit: SAVED_PAGE_SIZE, cursor } } };
 }
 
-export function talentPoolFirstPageQuery() {
-  return api.queryOptions('get', POOL_PATH, listParams(null));
+export function savedCandidatesFirstPageQuery() {
+  return api.queryOptions('get', POOL_PATH, savedParams(null));
 }
 
-/** Every paged read of the pool, whatever cursor it stopped at. */
-function talentPoolListPrefix() {
-  return talentPoolFirstPageQuery().queryKey.slice(0, 2);
+function savedCandidatesPrefix() {
+  return savedCandidatesFirstPageQuery().queryKey.slice(0, 2);
 }
 
 /** Settled rather than awaited: a page that will not load is the list's own to report. */
-export function warmTalentPoolFirstPage(queryClient: QueryClient): Promise<PoolPage | undefined> {
-  return queryClient.ensureQueryData(talentPoolFirstPageQuery()).catch(() => undefined);
+export function warmSavedCandidates(queryClient: QueryClient): Promise<PoolPage | undefined> {
+  return queryClient.ensureQueryData(savedCandidatesFirstPageQuery()).catch(() => undefined);
 }
 
 export interface TalentPool {
@@ -67,21 +62,16 @@ export function useTalentPool(): TalentPool {
   };
 }
 
-/**
- * The pool as a list rather than as an answer about one Candidate: paged the way the API pages
- * it, because a page is what the list shows and the whole pool is only ever needed to say
- * whether somebody is in it.
- */
 export function useSavedCandidates() {
   const queryClient = useQueryClient();
-  const firstPageQuery = talentPoolFirstPageQuery();
+  const firstPageQuery = savedCandidatesFirstPageQuery();
   const firstPage = queryClient.getQueryData<PoolPage>(firstPageQuery.queryKey);
   const firstPageUpdatedAt = queryClient.getQueryState(firstPageQuery.queryKey)?.dataUpdatedAt;
 
-  return api.useInfiniteQuery('get', POOL_PATH, listParams(), {
+  return api.useInfiniteQuery('get', POOL_PATH, savedParams(), {
     initialPageParam: null,
-    getNextPageParam: (page: PoolPage) => page.next_cursor,
-    select: (data: { pages: PoolPage[] }) => data.pages.flatMap((page) => page.items),
+    getNextPageParam: (page) => page.next_cursor,
+    select: (data) => data.pages.flatMap((page) => page.items),
     initialData: firstPage ? { pages: [firstPage], pageParams: [null] } : undefined,
     initialDataUpdatedAt: firstPageUpdatedAt,
   });
@@ -96,17 +86,10 @@ export interface TalentPoolActions {
 export function useTalentPoolActions(): TalentPoolActions {
   const queryClient = useQueryClient();
 
-  // Both readings of one pool: the whole copy the save buttons answer from, and the pages the
-  // talent pool page shows. A change to either is a change to both — and `all` rather than the
-  // default because the copy nobody is watching is the one a route loader reads next, and
-  // `ensureQueryData` hands back stale data rather than waiting for it to be re-read.
   const reread = () =>
     Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: talentPoolQuery.queryKey,
-        refetchType: 'all',
-      }),
-      queryClient.invalidateQueries({ queryKey: talentPoolListPrefix(), refetchType: 'all' }),
+      queryClient.invalidateQueries({ queryKey: talentPoolQuery.queryKey, refetchType: 'all' }),
+      queryClient.invalidateQueries({ queryKey: savedCandidatesPrefix(), refetchType: 'all' }),
     ]);
 
   const save = api.useMutation('put', POOL_ENTRY_PATH, { onSuccess: reread });

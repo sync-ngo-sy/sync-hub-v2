@@ -155,8 +155,6 @@ describe('the talent pool page', () => {
 
     const { user, router } = await renderApp(AT);
 
-    // The Candidate view is what reads the pool whole, so opening it first is what leaves a
-    // second copy behind for the drop to have to reach.
     await user.click(await saved().findByRole('button', { name: 'Open Amina Haddad' }));
     expect(await screen.findByText('Amina Haddad is in your talent pool.')).toBeVisible();
 

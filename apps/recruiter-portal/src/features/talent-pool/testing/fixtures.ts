@@ -1,15 +1,16 @@
+import { AMINA, YOUSSEF } from '@/features/candidates/testing/fixtures';
 import type { PooledCandidate } from '../pool';
 
 export const AMINA_SAVED: PooledCandidate = {
-  candidate_id: '00000000-0000-4000-8000-000000000031',
+  candidate_id: AMINA.candidate_id,
   full_name: 'Amina Haddad',
   headline: 'Backend engineer, 8 years',
   location_name: 'Aleppo',
-  added_at: '2026-08-03T09:00:00Z',
+  added_at: '2026-07-30T09:00:00Z',
 };
 
 export const YOUSSEF_SAVED: PooledCandidate = {
-  candidate_id: '00000000-0000-4000-8000-000000000032',
+  candidate_id: YOUSSEF.candidate_id,
   full_name: 'Youssef Nassar',
   headline: 'Site nurse',
   location_name: 'Damascus',

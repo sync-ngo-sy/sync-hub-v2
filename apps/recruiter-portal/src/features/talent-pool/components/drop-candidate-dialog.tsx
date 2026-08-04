@@ -11,11 +11,11 @@ import {
 } from '@sync/ui/components/ui/alert-dialog';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { problemMessage } from '@/lib/api-problem';
+import { problemDetail } from '@/lib/api-problem';
 import { useTalentPoolActions } from '../hooks/use-talent-pool';
-import type { PooledCandidate } from '../pool';
+import { DROP_REFUSED, droppedSays, type PooledCandidate } from '../pool';
 
-const LOSES =
+const WHAT_DROPPING_COSTS =
   'They leave this list. Your notes and Tags on them stay, but nothing points at them here until a search finds them again.';
 
 interface DropCandidateDialogProps {
@@ -38,12 +38,10 @@ export function DropCandidateDialog({ entry, onClose }: DropCandidateDialogProps
     try {
       await actions.drop(entry.candidate_id);
     } catch (error) {
-      setFailure(
-        problemMessage(error, "That Candidate couldn't be dropped. Your talent pool is as it was."),
-      );
+      setFailure(problemDetail(error, DROP_REFUSED));
       return;
     }
-    toast.success(`${entry.full_name} dropped from your talent pool`);
+    toast.success(droppedSays(entry.full_name));
     onClose();
   }
 
@@ -52,7 +50,7 @@ export function DropCandidateDialog({ entry, onClose }: DropCandidateDialogProps
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{`Drop ${entry.full_name} from your talent pool?`}</AlertDialogTitle>
-          <AlertDialogDescription>{LOSES}</AlertDialogDescription>
+          <AlertDialogDescription>{WHAT_DROPPING_COSTS}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {failure ? (
