@@ -186,6 +186,12 @@ class JobSummary(BaseModel):
     expires_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    published_at: datetime | None = Field(
+        default=None,
+        description="When the Job first went live. Null while it has never been published, and "
+        "unchanged by a later republish.",
+    )
+    application_count: int = Field(description="How many Applications this Job has received.")
 
 
 class JobView(JobSummary):
@@ -278,6 +284,34 @@ class TrackedLink(BaseModel):
     expires_at: datetime | None = None
     created_at: datetime
     view_count: int = Field(description="Job views that arrived through this link.")
+
+
+class LinkedJob(BaseModel):
+    """The Job a Tracked link points at, as a list spanning every Job has to name it."""
+
+    id: UUID
+    title: str
+
+
+class TenantTrackedLink(TrackedLink):
+    """One Tracked link in the tenant's own list of them.
+
+    One row per link, never merged by name: a link has a state and a Job of its own, and the
+    same name on two Jobs is two links with two of each. The Dashboard's `sources` merges by
+    name instead, because it answers a different question — which channel works, not how each
+    link is doing.
+    """
+
+    job: LinkedJob
+
+
+class TenantTrackedLinkPage(BaseModel):
+    """One page of the tenant's Tracked links, newest first across every Job."""
+
+    items: list[TenantTrackedLink]
+    next_cursor: str | None = Field(
+        default=None, description="Send back as `cursor` for the following page."
+    )
 
 
 def _refuse_blanks(model: BaseModel, *fields: str) -> None:

@@ -127,6 +127,33 @@ class ApplicationSummaryPage(BaseModel):
     )
 
 
+class ApplicationJob(BaseModel):
+    """The Job an Application came in for, as a list spanning every Job has to name it."""
+
+    id: UUID
+    title: str
+    location_name: LocationName = None
+
+
+class TenantApplicationSummary(ApplicationSummary):
+    """One Application in the tenant's own list.
+
+    Carries its Job, which a Job's own triage list can leave implied and this one cannot: every
+    row here may have come from a different Job.
+    """
+
+    job: ApplicationJob
+
+
+class TenantApplicationPage(BaseModel):
+    """One page of the tenant's Applications, newest first across every Job."""
+
+    items: list[TenantApplicationSummary]
+    next_cursor: str | None = Field(
+        default=None, description="Send back as `cursor` for the following page."
+    )
+
+
 class ApplicationSnapshot(BaseModel):
     """The candidate's profile as it was frozen when the Application was sent, and never since."""
 

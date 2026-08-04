@@ -11,6 +11,7 @@ from sync_api.applications import (
     MatchAssessment,
     MatchAssessmentPage,
     MovedApplication,
+    TenantApplicationPage,
 )
 from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
 from sync_api.dependencies import (
@@ -26,6 +27,7 @@ from sync_api.messaging import OutgoingMessage, QueuedMessage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_assessment_rate_limit
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
+from sync_core.models import ApplicationStatus
 
 ROUTER_PREFIX: Final = "/tenants/me/applications"
 
@@ -38,6 +40,44 @@ NOTE_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
 }
 
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
+
+
+@router.get(
+    "",
+    operation_id="listTenantApplications",
+    summary="The tenant's Applications, newest first",
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        422: openapi_problem("`cursor` is not one this API issued."),
+    },
+)
+async def list_tenant_applications(
+    recruiter: ActingRecruiterDep,
+    applications: ApplicationReviewServiceDep,
+    application_status: Annotated[
+        ApplicationStatus | None,
+        Query(alias="status", description="Only Applications at this stage."),
+    ] = None,
+    job_id: Annotated[
+        UUID | None, Query(description="Only Applications for this Job of the tenant.")
+    ] = None,
+    cursor: Annotated[
+        str | None,
+        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+    ] = None,
+    limit: Annotated[
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
+    ] = DEFAULT_PAGE_SIZE,
+) -> TenantApplicationPage:
+    """Every Application the tenant has received, across every Job, newest first.
+
+    Each row names the Job it came in for — the Job's own triage list can leave that implied,
+    and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
+    up, so another tenant's Job matches nothing here instead of refusing.
+    """
+    return await applications.tenant_page(
+        recruiter, status=application_status, job_id=job_id, cursor=cursor, limit=limit
+    )
 
 
 @router.get(
