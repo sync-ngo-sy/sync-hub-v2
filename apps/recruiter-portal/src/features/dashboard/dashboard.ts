@@ -45,10 +45,17 @@ export function applicants(count: number): string {
   return count === 1 ? '1 application' : `${count} applications`;
 }
 
-/** The way off the card, carrying what the card is not showing. The endpoint caps the Sources it
- * returns at what fits here and says how many there were, so the count belongs in the link out —
- * a link to the whole list beats a sentence about what is missing. */
-export function wayOut(stats: TenantStats | undefined): string {
-  if (!stats || stats.sources_total <= stats.sources.length) return 'All links';
-  return `All ${stats.sources_total} channels`;
+const EVERY_CHANNEL = 'Job views each channel brought, added up across your Jobs.';
+
+/** What the card is showing, out of what there was — the endpoint caps the Sources it returns at
+ * what fits here and says how many there were.
+ *
+ * It goes in the card's own subtitle rather than on the link beside it. The count is of Sources,
+ * which are link names merged across Jobs, and the link leads to the Tracked links page, which
+ * lists links one by one: eleven channels may be thirty links, and `Direct` is no link at all.
+ * A number on that link would be describing something other than where it goes.
+ */
+export function sourcesSubtitle(stats: TenantStats | undefined): string {
+  if (!stats || stats.sources_total <= stats.sources.length) return EVERY_CHANNEL;
+  return `Your busiest ${stats.sources.length} of ${stats.sources_total} channels, by the Job views each brought.`;
 }

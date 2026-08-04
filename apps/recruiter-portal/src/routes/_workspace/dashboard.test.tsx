@@ -199,7 +199,7 @@ describe('the Dashboard', () => {
     expect(chart).toHaveAccessibleName(/Direct: 190 views/);
   });
 
-  it('counts the channels it has no room for into its way out', async () => {
+  it('says how many channels it is showing you out of how many there are', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...servesStats(statsWith({ sources_total: 11 })),
@@ -209,16 +209,33 @@ describe('the Dashboard', () => {
 
     await renderApp('/dashboard');
 
-    expect(await screen.findByRole('link', { name: 'All 11 channels' })).toBeVisible();
-    expect(screen.queryByText(/more channels/)).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Your busiest 4 of 11 channels, by the Job views each brought.'),
+    ).toBeVisible();
   });
 
-  it('does not put a number on that link when the card is showing them all', async () => {
+  it('claims no remainder when the card is showing every channel', async () => {
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
+    expect(await sources.findByText(/added up across your Jobs/)).toBeVisible();
+    expect(screen.queryByText(/busiest/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the link out about where it goes, not about the chart beside it', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...servesStats(statsWith({ sources_total: 11 })),
+      ...listsTenantApplications(RECENT),
+      ...listsJobs(TENANT_JOBS),
+    );
+
+    await renderApp('/dashboard');
+    const sources = panel('Where applicants find you');
+
+    // A count of channels on a link to a page of links would describe neither.
     expect(await sources.findByRole('link', { name: 'All links' })).toBeVisible();
   });
 

@@ -43,8 +43,10 @@ A named channel a tenant's Job views arrived through, added up across every Job.
 name is unique per Job rather than per Tenant, so the same campaign run on nine Jobs is nine
 Tracked links and one Source. `Direct` is the Source for visitors who reached a Job with no link
 at all; it appears only when such traffic exists, where a Tracked link somebody made is a Source
-even at zero views. The Dashboard card ranks Sources and shows the six that fit, naming how many
-more there are rather than letting six look like all of them.
+even at zero views. The Dashboard card ranks Sources and shows the six that fit, saying in its own
+subtitle how many there were rather than letting six look like all of them — the count sits there
+and not on the link beside it, because that link leads to the Tracked links page and a count of
+Sources would be describing something other than where it goes.
 _Avoid_: Channel as a separate term, campaign, referrer, UTM.
 
 **Pipeline**:

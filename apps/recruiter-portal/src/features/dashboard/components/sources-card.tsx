@@ -7,7 +7,7 @@ import { lazy, Suspense } from 'react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { viewsRanked } from '@/features/tracked-links/tracked-link';
 import { problemMessage } from '@/lib/api-problem';
-import { type TenantStats, wayOut } from '../dashboard';
+import { sourcesSubtitle, type TenantStats } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
@@ -21,10 +21,10 @@ export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
   return (
     <DashboardPanel
       title="Where applicants find you"
-      description="Job views each channel brought, added up across your Jobs."
+      description={sourcesSubtitle(stats.data)}
       action={
         <Link to="/tracked-links" className={buttonVariants({ variant: 'link', size: 'sm' })}>
-          {wayOut(stats.data)}
+          All links
         </Link>
       }
     >
