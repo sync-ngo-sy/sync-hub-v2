@@ -5,6 +5,9 @@ export type PoolPage = components['schemas']['TalentPoolPage'];
 
 export const POOL_PAGE_SIZE = 100;
 
+/** What the talent pool page shows before it offers to read more. */
+export const POOL_LIST_PAGE_SIZE = 20;
+
 /**
  * The pool is read whole because there is no way to ask whether one Candidate is in it, and a
  * button that cannot say would rather not be shown. A cap keeps a misbehaving cursor from
