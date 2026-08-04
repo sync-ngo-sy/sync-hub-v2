@@ -3,8 +3,17 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated
+from urllib.parse import urlsplit
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, SecretStr, UrlConstraints
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    PostgresDsn,
+    SecretStr,
+    UrlConstraints,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 AsyncPostgresDsn = Annotated[PostgresDsn, UrlConstraints(allowed_schemes=["postgresql+asyncpg"])]
@@ -58,8 +67,20 @@ class Settings(BaseSettings):
     supabase_service_role_key: SecretStr
     supabase_anon_key: SecretStr
 
+    #: Origins allowed to call the API from a browser with credentials. Never a wildcard: the
+    #: browser refuses `*` alongside credentials anyway, and an allowlist is the point.
+    #:
+    #: Plain strings rather than AnyHttpUrl, because pydantic renders a URL with a trailing
+    #: slash and a browser's Origin header never has one — the comparison is literal, so
+    #: "https://jobs.sync.ngo/" would match nothing.
+    cors_allowed_origins: tuple[str, ...] = ()
+
     auth_cookie_secure: bool = True
     auth_cookie_same_site: SameSite = SameSite.LAX
+    #: Deliberately unset: a host-only cookie is what stops staging's session from being sent
+    #: to production's API. Both are subdomains of one registrable domain, so a shared cookie
+    #: domain would travel between them, and SameSite=Lax attaches the cookie cross-origin
+    #: without one. Enforced below rather than merely documented.
     auth_cookie_domain: str | None = None
     auth_rate_limit_max_requests: int = Field(default=20, ge=1)
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
@@ -111,6 +132,45 @@ class Settings(BaseSettings):
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        """Accept `a,b` as well as a JSON array, because the value is set by hand per deployment."""
+        if isinstance(value, str):
+            return tuple(origin.strip() for origin in value.split(",") if origin.strip())
+        return value
+
+    @field_validator("cors_allowed_origins")
+    @classmethod
+    def _origins_are_origins(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        for origin in value:
+            if origin == "*":
+                message = "cors_allowed_origins must name origins explicitly, never '*'."
+                raise ValueError(message)
+            parsed = urlsplit(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                message = f"{origin!r} is not an origin: expected scheme://host[:port]."
+                raise ValueError(message)
+            if parsed.path or parsed.query or parsed.fragment:
+                message = f"{origin!r} has a path; a browser's Origin header never does."
+                raise ValueError(message)
+        return value
+
+    @model_validator(mode="after")
+    def _keep_session_cookies_host_only(self) -> Settings:
+        """A cookie domain in a deployed environment is a cross-environment session leak.
+
+        Refused rather than warned about: the failure it prevents is staging's cookie being
+        accepted by production's API, which no test in either environment would notice.
+        """
+        if self.auth_cookie_domain is not None and self.environment is Environment.PRODUCTION:
+            message = (
+                "auth_cookie_domain must stay unset in deployed environments; a shared parent "
+                "domain would send one environment's session cookie to the other's API."
+            )
+            raise ValueError(message)
+        return self
 
     @property
     def gotrue_url(self) -> str:

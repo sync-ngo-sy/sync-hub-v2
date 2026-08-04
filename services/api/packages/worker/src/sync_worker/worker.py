@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from sync_comms import CommunicationDelivery
 from sync_comms.resend_sender import ResendEmailSender
-from sync_core import Database, Storage, get_logger
+from sync_core import Database, Storage, configure_logging, get_logger, get_settings
 from sync_ingestion import CvIngestion
 from sync_parsers.openai_extractor import OpenAiCvExtractor
 from sync_rag import ProfileEmbedding
@@ -163,3 +163,24 @@ def _resend_sender(settings: Settings) -> EmailSender:
         sender=settings.email_from,
         timeout_seconds=settings.email_timeout_seconds,
     )
+
+
+async def drain_once(settings: Settings | None = None, worker: Worker | None = None) -> DrainReport:
+    """Sweep and drain once, then close everything down.
+
+    The same operation the scheduled endpoint performs, without a server in front of it. Local
+    development needs this — nothing calls the endpoints on a developer's machine — and it is
+    also what you run to clear a backlog by hand rather than waiting for the next schedule.
+    """
+    running = worker
+    if running is None:
+        # Only read here: a caller supplying its own Worker has already decided both, and
+        # reaching for the environment would make this unusable without a full .env.
+        resolved = settings or get_settings()
+        configure_logging(level=resolved.log_level, log_format=resolved.log_format)
+        running = Worker(resolved)
+    try:
+        return await running.scheduled()
+    finally:
+        if worker is None:
+            await running.aclose()
