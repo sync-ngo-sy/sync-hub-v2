@@ -6,19 +6,19 @@ import { Inbox } from 'lucide-react';
 import { candidateMeta, pipelineState, screeningState } from '@/features/applications/application';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
-import type { ApplicationsRead, RecentApplication } from '../dashboard';
+import type { TenantApplication } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
-const COLUMNS: DataTableColumn<RecentApplication>[] = [
+const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'candidate',
     header: 'Candidate',
     cell: ({ row }) => {
-      const meta = candidateMeta(row.original.application);
+      const meta = candidateMeta(row.original);
       return (
         <span className="flex min-w-40 flex-col gap-1">
-          <span>{row.original.application.candidate_name}</span>
+          <span>{row.original.candidate_name}</span>
           {meta ? (
             <span className="text-meta font-normal text-muted-foreground">{meta}</span>
           ) : null}
@@ -36,11 +36,11 @@ const COLUMNS: DataTableColumn<RecentApplication>[] = [
     header: 'Received',
     cell: ({ row }) => (
       <time
-        dateTime={row.original.application.applied_at}
-        title={absoluteDateTime(row.original.application.applied_at)}
+        dateTime={row.original.applied_at}
+        title={absoluteDateTime(row.original.applied_at)}
         className="text-muted-foreground"
       >
-        {relativeTime(row.original.application.applied_at)}
+        {relativeTime(row.original.applied_at)}
       </time>
     ),
   },
@@ -48,7 +48,7 @@ const COLUMNS: DataTableColumn<RecentApplication>[] = [
     id: 'screening',
     header: 'Screening',
     cell: ({ row }) => {
-      const state = screeningState(row.original.application.qualification_status);
+      const state = screeningState(row.original.qualification_status);
       return <StatusChip label={state.label} tone={state.tone} />;
     },
   },
@@ -56,24 +56,24 @@ const COLUMNS: DataTableColumn<RecentApplication>[] = [
     id: 'pipeline',
     header: 'Pipeline',
     cell: ({ row }) => {
-      const state = pipelineState(row.original.application.status);
+      const state = pipelineState(row.original.status);
       return <StatusChip label={state.label} tone={state.tone} />;
     },
   },
 ];
 
 interface RecentApplicationsProps {
-  applications: PanelRead<ApplicationsRead>;
-  onApplicationOpen: (application: RecentApplication) => void;
+  applications: PanelRead<TenantApplication[]>;
+  onApplicationOpen: (application: TenantApplication) => void;
 }
 
 export function RecentApplications({ applications, onApplicationOpen }: RecentApplicationsProps) {
-  const recent = applications.data?.recent ?? [];
+  const recent = applications.data ?? [];
 
   return (
     <DashboardPanel
       title="Recent applications"
-      description="The newest Applications across your published Jobs."
+      description="The newest Applications your Tenant has received, across every Job."
       footer={
         recent.length > 0 ? (
           <span>
@@ -89,8 +89,8 @@ export function RecentApplications({ applications, onApplicationOpen }: RecentAp
         label="Recent applications"
         columns={COLUMNS}
         data={recent}
-        getRowId={(row) => row.application.id}
-        rowLabel={(row) => `${row.application.candidate_name}'s Application`}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => `${row.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
         isLoading={applications.isPending}
         error={

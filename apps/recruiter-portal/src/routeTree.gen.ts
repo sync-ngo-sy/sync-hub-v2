@@ -24,6 +24,7 @@ import { Route as WorkspaceJobsRouteImport } from './routes/_workspace/jobs'
 import { Route as WorkspaceSettingsRouteImport } from './routes/_workspace/settings'
 import { Route as WorkspaceTalentPoolRouteImport } from './routes/_workspace/talent-pool'
 import { Route as WorkspaceTemplatesRouteImport } from './routes/_workspace/templates'
+import { Route as WorkspaceTrackedLinksRouteImport } from './routes/_workspace/tracked-links'
 import { Route as AuthAcceptInviteRouteImport } from './routes/auth.accept-invite'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -105,6 +106,11 @@ const WorkspaceTemplatesRoute = WorkspaceTemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceTrackedLinksRoute = WorkspaceTrackedLinksRouteImport.update({
+  id: '/tracked-links',
+  path: '/tracked-links',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const AuthAcceptInviteRoute = AuthAcceptInviteRouteImport.update({
   id: '/auth/accept-invite',
   path: '/auth/accept-invite',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof WorkspaceSettingsRoute
   '/talent-pool': typeof WorkspaceTalentPoolRoute
   '/templates': typeof WorkspaceTemplatesRoute
+  '/tracked-links': typeof WorkspaceTrackedLinksRoute
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/settings': typeof WorkspaceSettingsRoute
   '/talent-pool': typeof WorkspaceTalentPoolRoute
   '/templates': typeof WorkspaceTemplatesRoute
+  '/tracked-links': typeof WorkspaceTrackedLinksRoute
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/_workspace/settings': typeof WorkspaceSettingsRoute
   '/_workspace/talent-pool': typeof WorkspaceTalentPoolRoute
   '/_workspace/templates': typeof WorkspaceTemplatesRoute
+  '/_workspace/tracked-links': typeof WorkspaceTrackedLinksRoute
   '/auth/accept-invite': typeof AuthAcceptInviteRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/talent-pool'
     | '/templates'
+    | '/tracked-links'
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/talent-pool'
     | '/templates'
+    | '/tracked-links'
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/_workspace/settings'
     | '/_workspace/talent-pool'
     | '/_workspace/templates'
+    | '/_workspace/tracked-links'
     | '/auth/accept-invite'
     | '/auth/confirm'
     | '/auth/reset-password'
@@ -397,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceTemplatesRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/tracked-links': {
+      id: '/_workspace/tracked-links'
+      path: '/tracked-links'
+      fullPath: '/tracked-links'
+      preLoaderRoute: typeof WorkspaceTrackedLinksRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/auth/accept-invite': {
       id: '/auth/accept-invite'
       path: '/auth/accept-invite'
@@ -450,6 +469,7 @@ interface WorkspaceRouteChildren {
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
   WorkspaceTalentPoolRoute: typeof WorkspaceTalentPoolRoute
   WorkspaceTemplatesRoute: typeof WorkspaceTemplatesRoute
+  WorkspaceTrackedLinksRoute: typeof WorkspaceTrackedLinksRoute
   WorkspaceApplicationsApplicationIdRoute: typeof WorkspaceApplicationsApplicationIdRoute
   WorkspaceCandidatesCandidateIdRoute: typeof WorkspaceCandidatesCandidateIdRoute
   WorkspaceJobsJobIdRoute: typeof WorkspaceJobsJobIdRoute
@@ -463,6 +483,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,
   WorkspaceTalentPoolRoute: WorkspaceTalentPoolRoute,
   WorkspaceTemplatesRoute: WorkspaceTemplatesRoute,
+  WorkspaceTrackedLinksRoute: WorkspaceTrackedLinksRoute,
   WorkspaceApplicationsApplicationIdRoute:
     WorkspaceApplicationsApplicationIdRoute,
   WorkspaceCandidatesCandidateIdRoute: WorkspaceCandidatesCandidateIdRoute,
