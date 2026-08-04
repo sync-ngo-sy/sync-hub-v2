@@ -14,7 +14,7 @@ import type { PanelRead } from '../hooks/use-dashboard';
 const GRID = 'grid gap-5 sm:grid-cols-2 xl:grid-cols-4';
 const SKELETON_KEYS = ['open', 'week', 'waiting', 'qualified'];
 
-function figure(value: number | undefined): string {
+function orDash(value: number | undefined): string {
   return value === undefined ? '—' : String(value);
 }
 
@@ -43,24 +43,24 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
       <div className={GRID}>
         <StatCard
           label="Open jobs"
-          value={figure(counted?.jobs.published)}
+          value={orDash(counted?.jobs.published)}
           trend={counted && openedThisWeek(counted.jobs.published_last_week)}
         />
         <StatCard
           label="Applications this week"
-          value={figure(counted?.applications.last_7d)}
+          value={orDash(counted?.applications.last_7d)}
           trend={
             counted && weekOnWeek(counted.applications.last_7d, counted.applications.previous_7d)
           }
         />
         <StatCard
           label="Awaiting review"
-          value={figure(counted?.applications.by_stage.new)}
+          value={orDash(counted?.applications.by_stage.new)}
           trend={counted && awaitingReview(counted.applications.by_stage.new)}
         />
         <StatCard
           label="Qualified by screening"
-          value={figure(counted?.applications.by_qualification.qualified)}
+          value={orDash(counted?.applications.by_qualification.qualified)}
           trend={counted && passRate(counted.applications.pass_rate)}
         />
       </div>

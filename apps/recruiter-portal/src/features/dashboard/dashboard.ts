@@ -2,7 +2,6 @@ import type { components } from '@sync/api-client';
 
 export type TenantStats = components['schemas']['TenantStats'];
 export type TenantApplication = components['schemas']['TenantApplicationSummary'];
-export type Source = components['schemas']['Source'];
 
 /** What the table has room for, and so what the API is asked for. */
 export const RECENT_APPLICATIONS = 6;
@@ -46,11 +45,10 @@ export function applicants(count: number): string {
   return count === 1 ? '1 application' : `${count} applications`;
 }
 
-/** What the card is not showing. The endpoint ranks the Sources, caps them at what the card
- * holds, and says how many there were — so the card names the remainder rather than letting
- * six look like all of them. */
-export function beyondTheCard(shown: number, all: number): string | null {
-  const rest = all - shown;
-  if (rest <= 0) return null;
-  return `${rest} more ${rest === 1 ? 'channel' : 'channels'} on the Tracked links page.`;
+/** The way off the card, carrying what the card is not showing. The endpoint caps the Sources it
+ * returns at what fits here and says how many there were, so the count belongs in the link out —
+ * a link to the whole list beats a sentence about what is missing. */
+export function wayOut(stats: TenantStats | undefined): string {
+  if (!stats || stats.sources_total <= stats.sources.length) return 'All links';
+  return `All ${stats.sources_total} channels`;
 }

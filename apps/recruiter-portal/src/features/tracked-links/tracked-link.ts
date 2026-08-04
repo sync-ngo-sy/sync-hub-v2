@@ -68,22 +68,30 @@ export function viewsSummary(bars: LinkViews[]): string {
 
 export type TenantTrackedLink = components['schemas']['TenantTrackedLink'];
 
-/** The four views of the tenant's links. `off` is a column the API can filter on; `live` and
- * `expired` are the same column plus a date, which the row already carries. */
 export type LinkFilter = 'all' | 'live' | 'expired' | 'off';
 
-export const LINK_FILTERS: { value: LinkFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'live', label: 'Live' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'off', label: 'Off' },
-];
+interface FilterRule {
+  label: string;
+  /** What the endpoint narrows on. Undefined asks for every link. */
+  active?: boolean;
+  /** What is left for the row's own date to settle, once the endpoint has answered. */
+  kind?: LinkStateKind;
+}
 
-/** What the endpoint can narrow. `live` and `expired` are both switched on, so both ask for the
- * same rows and are told apart here rather than costing the query a clock. */
+/** One table rather than a switch in each direction: what the endpoint is asked and what the
+ * page then keeps are the same decision read twice. `live` and `expired` are both switched on,
+ * so both ask for the same rows and are told apart by the date each row already carries. */
+export const LINK_FILTERS: Record<LinkFilter, FilterRule> = {
+  all: { label: 'All' },
+  live: { label: 'Live', active: true, kind: 'live' },
+  expired: { label: 'Expired', active: true, kind: 'expired' },
+  off: { label: 'Off', active: false },
+};
+
+export const LINK_FILTER_ORDER: LinkFilter[] = ['all', 'live', 'expired', 'off'];
+
 export function activeFor(filter: LinkFilter): boolean | undefined {
-  if (filter === 'all') return undefined;
-  return filter !== 'off';
+  return LINK_FILTERS[filter].active;
 }
 
 export function linksMatching(
@@ -91,6 +99,13 @@ export function linksMatching(
   filter: LinkFilter,
   now: Date = new Date(),
 ): TenantTrackedLink[] {
-  if (filter === 'all' || filter === 'off') return links;
-  return links.filter((link) => trackedLinkState(link, now).kind === filter);
+  const { kind } = LINK_FILTERS[filter];
+  if (kind === undefined) return links;
+  return links.filter((link) => trackedLinkState(link, now).kind === kind);
+}
+
+/** True when the endpoint answered with links but the row's own date hid all of them — which
+ * only the two date-sorted filters can do, and which is not the same as having none. */
+export function hiddenByDate(links: TenantTrackedLink[], filter: LinkFilter): boolean {
+  return links.length > 0 && linksMatching(links, filter).length === 0;
 }

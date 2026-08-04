@@ -1,16 +1,18 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusChip } from '@sync/ui/components/status-chip';
-import { buttonVariants } from '@sync/ui/components/ui/button';
+import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
 import { Link2 } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useTenantTrackedLinks } from '../hooks/use-tenant-tracked-links';
 import {
+  hiddenByDate,
+  LINK_FILTER_ORDER,
   LINK_FILTERS,
   type LinkFilter,
   linksMatching,
@@ -90,6 +92,33 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   },
 ];
 
+/**
+ * Four different nothings, which read as four different sentences. A search that matched none is
+ * not a Tenant with no links, and neither is a page of links the state filter happened to hide —
+ * that last one is only ever the date-sorted filters, and it says so rather than claiming the
+ * Tenant has nothing.
+ */
+function emptyMessage({
+  q,
+  filter,
+  hidden,
+  more,
+}: {
+  q: string;
+  filter: LinkFilter;
+  hidden: boolean;
+  more: boolean;
+}): string {
+  if (q !== '') return `No tracked link matches “${q}”.`;
+  if (!hidden) {
+    return 'No tracked links yet — mint one on a Job to see where its applicants come from.';
+  }
+  const state = LINK_FILTERS[filter].label.toLowerCase();
+  return more
+    ? `No ${state} link so far — there are more to read through.`
+    : `None of your tracked links are ${state}.`;
+}
+
 interface TenantTrackedLinksPageProps {
   q: string;
   filter: LinkFilter;
@@ -109,18 +138,27 @@ export function TenantTrackedLinksPage({
 }: TenantTrackedLinksPageProps) {
   const searchId = useId();
   const [typed, setTyped] = useState(q);
+  const settled = useRef(q);
   const links = useTenantTrackedLinks(q, filter);
 
-  useEffect(() => setTyped(q), [q]);
+  useEffect(() => {
+    if (q === settled.current) return;
+    settled.current = q;
+    setTyped(q);
+  }, [q]);
 
   useEffect(() => {
-    if (typed === q) return;
-    const settling = setTimeout(() => onSearch(typed), SETTLE_MS);
+    if (typed === settled.current) return;
+    const settling = setTimeout(() => {
+      settled.current = typed;
+      onSearch(typed);
+    }, SETTLE_MS);
     return () => clearTimeout(settling);
-  }, [typed, q, onSearch]);
+  }, [typed, onSearch]);
 
-  const shown = linksMatching(links.data ?? [], filter);
-  const searching = q !== '';
+  const arrived = links.data ?? [];
+  const shown = linksMatching(arrived, filter);
+  const hidden = hiddenByDate(arrived, filter);
 
   return (
     <div className="space-y-8">
@@ -142,9 +180,9 @@ export function TenantTrackedLinksPage({
 
         <Tabs value={filter} onValueChange={(value) => onFilterChange(value as LinkFilter)}>
           <TabsList aria-label="State">
-            {LINK_FILTERS.map((state) => (
-              <TabsTrigger key={state.value} value={state.value}>
-                {state.label}
+            {LINK_FILTER_ORDER.map((state) => (
+              <TabsTrigger key={state} value={state}>
+                {LINK_FILTERS[state].label}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -168,10 +206,12 @@ export function TenantTrackedLinksPage({
         }
         empty={{
           icon: Link2,
-          message: searching
-            ? `No tracked link matches “${q}”.`
-            : 'No tracked links yet — mint one on a Job to see where its applicants come from.',
-          action: (
+          message: emptyMessage({ q, filter, hidden, more: links.hasNextPage }),
+          action: hidden ? (
+            <Button disabled={!links.hasNextPage} onClick={() => void links.fetchNextPage()}>
+              Keep looking
+            </Button>
+          ) : (
             <Link to="/jobs" className={buttonVariants({ variant: 'outline' })}>
               Go to Jobs
             </Link>

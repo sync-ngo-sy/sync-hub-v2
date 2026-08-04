@@ -199,7 +199,7 @@ describe('the Dashboard', () => {
     expect(chart).toHaveAccessibleName(/Direct: 190 views/);
   });
 
-  it('names the channels the card has no room for', async () => {
+  it('counts the channels it has no room for into its way out', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...servesStats(statsWith({ sources_total: 11 })),
@@ -209,7 +209,17 @@ describe('the Dashboard', () => {
 
     await renderApp('/dashboard');
 
-    expect(await screen.findByText('7 more channels on the Tracked links page.')).toBeVisible();
+    expect(await screen.findByRole('link', { name: 'All 11 channels' })).toBeVisible();
+    expect(screen.queryByText(/more channels/)).not.toBeInTheDocument();
+  });
+
+  it('does not put a number on that link when the card is showing them all', async () => {
+    server.use(...aWorkingDashboard());
+
+    await renderApp('/dashboard');
+    const sources = panel('Where applicants find you');
+
+    expect(await sources.findByRole('link', { name: 'All links' })).toBeVisible();
   });
 
   it('sends anyone who wants the rest to the Tracked links page', async () => {

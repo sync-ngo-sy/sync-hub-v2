@@ -7,7 +7,7 @@ import { lazy, Suspense } from 'react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { viewsRanked } from '@/features/tracked-links/tracked-link';
 import { problemMessage } from '@/lib/api-problem';
-import { beyondTheCard, type TenantStats } from '../dashboard';
+import { type TenantStats, wayOut } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
@@ -17,9 +17,6 @@ const LinkViewsChart = lazy(() => import('@/features/tracked-links/components/li
  * returns only what fits here, so the card draws what it is given and links to the rest. */
 export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
   const sources = stats.data?.sources ?? [];
-  const remainder = stats.data
-    ? beyondTheCard(stats.data.sources.length, stats.data.sources_total)
-    : null;
 
   return (
     <DashboardPanel
@@ -27,10 +24,9 @@ export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
       description="Job views each channel brought, added up across your Jobs."
       action={
         <Link to="/tracked-links" className={buttonVariants({ variant: 'link', size: 'sm' })}>
-          All links
+          {wayOut(stats.data)}
         </Link>
       }
-      footer={remainder ?? undefined}
     >
       {stats.isPending && !stats.error ? (
         <div role="status" aria-label="Loading where applicants find you">

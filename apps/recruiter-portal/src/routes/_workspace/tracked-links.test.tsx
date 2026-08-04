@@ -240,4 +240,33 @@ describe('the Tracked links page', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Tracked links' })).toBeVisible();
   });
+
+  it('keeps what is being typed when an earlier search lands', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantTrackedLinks(TENANT_LINKS));
+
+    const { user } = await renderApp('/tracked-links');
+    await table().findByText('WhatsApp groups');
+
+    // Long enough that the first letters settle and navigate while the rest are still arriving.
+    await user.type(screen.getByLabelText('Search by name'), 'whatsapp groups');
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Search by name')).toHaveValue('whatsapp groups'),
+    );
+  });
+
+  it('does not call a filtered page an empty Tenant', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsTenantTrackedLinks([TENANT_LINKEDIN_FIELD, TENANT_WHATSAPP]),
+    );
+
+    const { user } = await renderApp('/tracked-links');
+    await table().findByText('WhatsApp groups');
+
+    await user.click(screen.getByRole('tab', { name: 'Expired' }));
+
+    expect(await screen.findByText('None of your tracked links are expired.')).toBeVisible();
+    expect(screen.queryByText(/No tracked links yet/)).not.toBeInTheDocument();
+  });
 });
