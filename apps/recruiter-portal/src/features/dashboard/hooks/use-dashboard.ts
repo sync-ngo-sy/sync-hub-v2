@@ -1,26 +1,13 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
+import type { JobSummary } from '@/features/jobs/job';
 import { api } from '@/lib/api';
 import {
-  APPLICATIONS_PER_JOB,
-  type ApplicationsRead,
-  type JobApplications,
-  type JobsRead,
-  readApplications,
-  readJobs,
+  OVERVIEW_JOBS,
+  RECENT_APPLICATIONS,
+  type TenantApplication,
+  type TenantStats,
 } from '../dashboard';
-
-const APPLICATIONS_PATH = '/v1/tenants/me/jobs/{job_id}/applications';
-
-/** A first page, which is what keeps this key clear of the triage list's infinite query. */
-export function applicationsFirstPageQuery(jobId: string) {
-  return api.queryOptions('get', APPLICATIONS_PATH, {
-    params: {
-      path: { job_id: jobId },
-      query: { limit: APPLICATIONS_PER_JOB, cursor: null },
-    },
-  });
-}
 
 export interface PanelRead<TData> {
   data?: TData;
@@ -31,47 +18,51 @@ export interface PanelRead<TData> {
 
 export interface DashboardRead {
   tenantName?: string;
-  jobs: PanelRead<JobsRead>;
-  applications: PanelRead<ApplicationsRead>;
+  stats: PanelRead<TenantStats>;
+  applications: PanelRead<TenantApplication[]>;
+  jobs: PanelRead<JobSummary[]>;
 }
 
+export function statsQuery() {
+  return api.queryOptions('get', '/v1/tenants/me/stats', {});
+}
+
+export function recentApplicationsQuery() {
+  return api.queryOptions('get', '/v1/tenants/me/applications', {
+    params: { query: { limit: RECENT_APPLICATIONS, cursor: null, status: null, job_id: null } },
+  });
+}
+
+/**
+ * Three reads for four panels: the stat cards and the Sources chart share one, the recent
+ * Applications and the Jobs overview have their own. Each panel speaks its own refusal, so one
+ * endpoint failing blanks that panel and no more of the page.
+ */
 export function useDashboard(): DashboardRead {
   const tenant = api.useQuery('get', '/v1/tenants/me', {});
-
+  const stats = useQuery(statsQuery());
+  const applications = useQuery(recentApplicationsQuery());
   const jobs = useQuery(jobsFirstPageQuery());
-  const jobsRead = jobs.data ? readJobs(jobs.data) : undefined;
-
-  const pages = useQueries({
-    queries: (jobsRead?.toCount ?? []).map((job) => applicationsFirstPageQuery(job.id)),
-  });
-
-  const arrived: JobApplications[] = (jobsRead?.toCount ?? []).flatMap((job, index) => {
-    const page = pages[index]?.data;
-    return page ? [{ job, page }] : [];
-  });
-  const refused = pages.find((page) => page.error);
 
   return {
     tenantName: tenant.data?.name,
+    stats: {
+      data: stats.data,
+      isPending: stats.isPending,
+      error: stats.error,
+      refetch: () => void stats.refetch(),
+    },
+    applications: {
+      data: applications.data?.items,
+      isPending: applications.isPending,
+      error: applications.error,
+      refetch: () => void applications.refetch(),
+    },
     jobs: {
-      data: jobsRead,
+      data: jobs.data?.items.slice(0, OVERVIEW_JOBS),
       isPending: jobs.isPending,
       error: jobs.error,
       refetch: () => void jobs.refetch(),
-    },
-    applications: {
-      data: jobsRead
-        ? readApplications(arrived, {
-            now: new Date(),
-            everyJob: jobsRead.everyJob && refused === undefined,
-          })
-        : undefined,
-      isPending: jobs.isPending || pages.some((page) => page.isPending),
-      error: jobs.error ?? refused?.error,
-      refetch: () => {
-        if (jobs.error) void jobs.refetch();
-        for (const page of pages) if (page.error) void page.refetch();
-      },
     },
   };
 }

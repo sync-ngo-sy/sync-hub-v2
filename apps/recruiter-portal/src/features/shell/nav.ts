@@ -1,4 +1,13 @@
-import { Briefcase, FileText, Inbox, LayoutDashboard, Settings, Star, Users } from 'lucide-react';
+import {
+  Briefcase,
+  FileText,
+  Inbox,
+  LayoutDashboard,
+  Link2,
+  Settings,
+  Star,
+  Users,
+} from 'lucide-react';
 import type { ComponentType } from 'react';
 import type { FileRouteTypes } from '@/routeTree.gen';
 
@@ -15,5 +24,6 @@ export const DESTINATIONS: Destination[] = [
   { to: '/candidates', label: 'Candidates', icon: Users },
   { to: '/talent-pool', label: 'Talent pool', icon: Star },
   { to: '/templates', label: 'Templates', icon: FileText },
+  { to: '/tracked-links', label: 'Tracked links', icon: Link2 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

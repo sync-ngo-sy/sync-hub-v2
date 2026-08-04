@@ -8,28 +8,18 @@ import { type JobSummary, jobMeta, jobState } from '@/features/jobs/job';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
-import { type Count, figure, type JobsRead } from '../dashboard';
+import { applicants } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
-function applicants(count: Count): string {
-  return count.value === 1 && !count.atLeast ? '1 application' : `${figure(count)} applications`;
-}
-
 interface JobsOverviewProps {
-  jobs: PanelRead<JobsRead>;
-  applicationsByJob?: Record<string, Count>;
+  jobs: PanelRead<JobSummary[]>;
   onJobOpen: (job: JobSummary) => void;
   onCreateJob: () => void;
 }
 
-export function JobsOverview({
-  jobs,
-  applicationsByJob,
-  onJobOpen,
-  onCreateJob,
-}: JobsOverviewProps) {
-  const overview = jobs.data?.overview ?? [];
+export function JobsOverview({ jobs, onJobOpen, onCreateJob }: JobsOverviewProps) {
+  const overview = jobs.data ?? [];
 
   return (
     <DashboardPanel
@@ -66,7 +56,6 @@ export function JobsOverview({
         <ul className="divide-y divide-border">
           {overview.map((job) => {
             const state = jobState(job.status);
-            const counted = applicationsByJob?.[job.id];
             return (
               <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0">
                 <span className="flex min-w-0 flex-col gap-1">
@@ -82,9 +71,9 @@ export function JobsOverview({
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1.5">
                   <StatusChip label={state.label} tone={state.tone} />
-                  {counted ? (
+                  {job.application_count > 0 ? (
                     <span className="text-meta tabular-nums text-muted-foreground">
-                      {applicants(counted)}
+                      {applicants(job.application_count)}
                     </span>
                   ) : (
                     <time
