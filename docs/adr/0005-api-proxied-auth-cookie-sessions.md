@@ -22,6 +22,20 @@ Tenant onboarding is self-serve (public recruiter signup creates tenant + admin)
 teammates join by invite-as-provisioning: GoTrue invite email + immediate
 `profiles`/`recruiters` rows, so no invitations table exists — deliberately.
 
+**Amended for the deployed topology.** This ADR assumed same-origin: in development the dev
+server proxies API calls, so the API registered no CORS at all. Deployed, the portals are
+static sites on their own hostnames and the API is a separate host, which makes every
+authenticated request cross-origin. The API now registers CORS with credentials allowed and
+an explicit per-environment origin allowlist — never a wildcard, which a browser refuses
+alongside credentials anyway — and preflight permits the CSRF header writes already require.
+
+**The session cookie stays host-only, and that is what isolates the environments.** Because
+the portals and the API are subdomains of one registrable domain, `SameSite=Lax` attaches the
+cookie to cross-origin requests without any shared cookie domain. Setting one would send
+staging's session cookie to production's API, a leak neither environment's tests would
+notice, so a cookie domain in a deployed environment is refused by configuration rather than
+just discouraged.
+
 ## Consequences
 
 - Verification semantics are the provider's, including its treatment of the project's
