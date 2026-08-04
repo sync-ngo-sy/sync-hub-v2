@@ -57,12 +57,29 @@ uv sync
 uv run uvicorn sync_api.main:app --reload --port 8000
 ```
 
-The worker is a second process:
+The worker no longer runs itself. It stopped being a polling process in #81 — it drains its
+queues when something asks it to, and locally nothing does: the database webhook and the
+schedule that call it in a deployed environment do not exist on your machine. So after
+uploading a CV, drain by hand:
 
 ```bash
 cd services/api
-uv run sync-worker
+uv run sync-worker drain
 ```
+
+That sweeps, drains every queue, prints what it processed, and exits. Run it again whenever
+you have queued more work. If a queue reports that it stopped at the row limit, run it again —
+one pass is bounded.
+
+`uv run sync-worker` with no argument serves the drain endpoints instead, which is what the
+container does. It needs `SYNC_WORKER_SHARED_SECRET` set or it refuses every call with a 503,
+and you then have to poke it yourself:
+
+```bash
+curl -sS -X POST localhost:8080/scheduled -H "X-Worker-Secret: $SYNC_WORKER_SHARED_SECRET"
+```
+
+For local work the `drain` command is almost always what you want.
 
 The API serves `http://127.0.0.1:8000`, with OpenAPI at `/docs` and `/openapi.json`.
 
@@ -121,7 +138,8 @@ landing just offers no contact — nothing else changes.
 `turbo run dev` starts the `dev` script of every workspace that has one: the candidate portal on
 `127.0.0.1:5173`, the recruiter portal on `127.0.0.1:5174`, the Platform Portal on
 `127.0.0.1:5175`, and — through the shim in `services/api/package.json` — `uvicorn` on `8000`.
-So this covers 2a as well; the worker is the one process it does not start.
+So this covers 2a as well; the worker is the one thing it does not run, and since the worker
+only works when asked, remember `uv run sync-worker drain` after anything that queues work.
 
 `SYNC_RECRUITER_PORTAL_URL` has to match the recruiter portal's address, because GoTrue will only
 redirect an invite to a URL listed in `additional_redirect_urls` in `supabase/config.toml`.
