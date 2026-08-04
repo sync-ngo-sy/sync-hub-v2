@@ -14,6 +14,7 @@ export const FIELD_COORDINATOR: JobSummary = {
   expires_at: null,
   created_at: '2026-07-25T09:00:00Z',
   updated_at: '2026-07-26T09:00:00Z',
+  application_count: 18,
 };
 
 export const PROGRAMME_OFFICER: JobSummary = {
@@ -27,6 +28,7 @@ export const PROGRAMME_OFFICER: JobSummary = {
   expires_at: '2026-09-30T12:00:00Z',
   created_at: '2026-07-24T09:00:00Z',
   updated_at: '2026-07-24T09:00:00Z',
+  application_count: 0,
 };
 
 export const FIELD_COORDINATOR_VIEW: JobView = {

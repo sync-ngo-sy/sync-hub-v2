@@ -24,7 +24,11 @@ describe('a tracked link address', () => {
 
 describe('what a tracked link is doing', () => {
   it('is live while it is on and has not passed its closing date', () => {
-    expect(trackedLinkState(link({ id: '1' }), NOW)).toEqual({ label: 'Live', tone: 'positive' });
+    expect(trackedLinkState(link({ id: '1' }), NOW)).toEqual({
+      kind: 'live',
+      label: 'Live',
+      tone: 'positive',
+    });
     expect(
       trackedLinkState(link({ id: '1', expires_at: '2026-09-01T09:00:00Z' }), NOW),
     ).toHaveProperty('label', 'Live');
@@ -32,6 +36,7 @@ describe('what a tracked link is doing', () => {
 
   it('is off once it is turned off, whatever its closing date says', () => {
     expect(trackedLinkState(link({ id: '1', is_active: false }), NOW)).toEqual({
+      kind: 'off',
       label: 'Off',
       tone: 'neutral',
     });
@@ -45,6 +50,7 @@ describe('what a tracked link is doing', () => {
 
   it('is expired once its closing date has passed', () => {
     expect(trackedLinkState(link({ id: '1', expires_at: '2026-08-01T09:00:00Z' }), NOW)).toEqual({
+      kind: 'expired',
       label: 'Expired',
       tone: 'neutral',
     });

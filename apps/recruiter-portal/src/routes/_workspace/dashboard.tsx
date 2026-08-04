@@ -22,7 +22,7 @@ function DashboardPage() {
       onJobOpen={(job) =>
         void navigate({ to: '/jobs/$jobId', params: { jobId: job.id }, search: {} })
       }
-      onApplicationOpen={({ application }) =>
+      onApplicationOpen={(application) =>
         void navigate({
           to: '/applications/$applicationId',
           params: { applicationId: application.id },
