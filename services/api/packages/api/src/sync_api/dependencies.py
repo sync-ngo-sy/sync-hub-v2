@@ -35,6 +35,7 @@ from sync_api.notifications import NotificationService
 from sync_api.platform import ActingPlatformAdmin, PlatformService, acting_platform_admin
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
+from sync_api.stats import StatsService
 from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
 from sync_assessments import MatchAssessor
 from sync_core import Database, Settings, Storage
@@ -290,6 +291,13 @@ def get_tracked_link_service(session: SessionDep) -> TrackedLinkService:
 
 
 TrackedLinkServiceDep = Annotated[TrackedLinkService, Depends(get_tracked_link_service)]
+
+
+def get_stats_service(session: SessionDep) -> StatsService:
+    return StatsService(session)
+
+
+StatsServiceDep = Annotated[StatsService, Depends(get_stats_service)]
 
 
 def get_visitors(settings: Annotated[Settings, Depends(get_app_settings)]) -> Visitors:

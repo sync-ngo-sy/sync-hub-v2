@@ -220,6 +220,15 @@ separate `PATCH`, which is why a typo can still be fixed after the applications 
 substring, which used to answer a search for Damascus with Jobs in Rif Dimashq. A key the
 taxonomy does not have is refused at `body.location_key` before anything is written.
 
+`jobs.published_at` is write-once, and the backend is the only thing keeping it so: nothing in
+the schema stops an `UPDATE` from rewriting it. It is stamped on the move that first takes a
+Job to `published` and never again — not on a republish out of `closed`, which would date a Job
+open since March to this week, and not on an ordinary edit. That second case is the sharp one:
+every Job published before the column existed carries a null and is deliberately not
+backfilled, so a rule that only asked "is it published and null?" would stamp one the next time
+anybody fixed its title. Applications record their moves in `application_status_history`; Jobs
+record none, which is why this one column is written this carefully.
+
 `employment_type` and `work_mode` are enums, not prose and not tables: closed sets that change
 approximately never, which reach both portals through the generated client rather than being
 listed by hand in either. `employment_type` was `text`, so "Full time" and "Full-time" were two
@@ -739,4 +748,4 @@ from anything the candidate typed.
 | Invariant | Enforced by |
 | --- | --- |
 | A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |

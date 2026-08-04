@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sync_api.applications.access import own_application
 from sync_api.applications.payload import (
     ApplicationCv,
+    ApplicationJob,
     ApplicationReview,
     ApplicationSummary,
     ApplicationSummaryPage,
@@ -14,11 +15,13 @@ from sync_api.applications.payload import (
     ReviewedJob,
     ScreeningVerdict,
     StatusHistoryEntry,
+    TenantApplicationPage,
+    TenantApplicationSummary,
 )
 from sync_api.applications.pipeline import move_application
 from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.cvs import signed_download
-from sync_api.jobs.access import own_job
+from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_core import get_logger, transaction
 from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
@@ -28,6 +31,7 @@ from sync_core.models import (
     ApplicationStatus,
     ApplicationStatusHistory,
     Cv,
+    Job,
     QualificationStatus,
     StatusChangeSource,
 )
@@ -98,6 +102,62 @@ class ApplicationReviewService:
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return ApplicationSummaryPage(
             items=[_summary(application, snapshot) for application, snapshot in rows],
+            next_cursor=next_cursor,
+        )
+
+    async def tenant_page(
+        self,
+        recruiter: ActingRecruiter,
+        *,
+        status: ApplicationStatus | None = None,
+        job_id: UUID | None = None,
+        cursor: str | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+    ) -> TenantApplicationPage:
+        """Every Application the tenant has, newest first, whichever Job it came in for.
+
+        `job_id` narrows rather than fetches, so another tenant's Job is not a 404 here — it is
+        a filter matching none of this tenant's Applications, which is what it truthfully is.
+        """
+        query = (
+            select(Application, ApplicationProfileSnapshot, Job)
+            .options(*WITH_LOCATION)
+            .join(
+                ApplicationProfileSnapshot,
+                ApplicationProfileSnapshot.application_id == Application.id,
+            )
+            .join(Job, Job.id == Application.job_id)
+            .where(Application.tenant_id == recruiter.tenant.id)
+        )
+        if status is not None:
+            query = query.where(Application.status == status)
+        if job_id is not None:
+            query = query.where(Application.job_id == job_id)
+
+        found = list(
+            (
+                await self._db.execute(
+                    newest_first(
+                        query,
+                        created_at=Application.applied_at,
+                        id_=Application.id,
+                        cursor=cursor,
+                        limit=limit,
+                    )
+                )
+            ).tuples()
+        )
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=_tenant_cursor)
+        return TenantApplicationPage(
+            items=[
+                TenantApplicationSummary(
+                    **_summary(application, snapshot).model_dump(),
+                    job=ApplicationJob(
+                        id=job.id, title=job.title, location_name=location_name(job)
+                    ),
+                )
+                for application, snapshot, job in rows
+            ],
             next_cursor=next_cursor,
         )
 
@@ -218,4 +278,9 @@ def _summary(application: Application, snapshot: ApplicationProfileSnapshot) -> 
 
 def _cursor(row: tuple[Application, ApplicationProfileSnapshot]) -> Cursor:
     application, _snapshot = row
+    return Cursor(created_at=application.applied_at, id=application.id)
+
+
+def _tenant_cursor(row: tuple[Application, ApplicationProfileSnapshot, Job]) -> Cursor:
+    application, _snapshot, _job = row
     return Cursor(created_at=application.applied_at, id=application.id)

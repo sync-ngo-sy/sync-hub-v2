@@ -3,6 +3,7 @@ from sync_api.applications.payload import (
     AnsweredQuestion,
     Application,
     ApplicationCv,
+    ApplicationJob,
     ApplicationPage,
     ApplicationReview,
     ApplicationSnapshot,
@@ -18,6 +19,8 @@ from sync_api.applications.payload import (
     ScreeningVerdict,
     StatusHistoryEntry,
     SubmittedAnswer,
+    TenantApplicationPage,
+    TenantApplicationSummary,
 )
 from sync_api.applications.review import ApplicationReviewService
 from sync_api.applications.service import ApplicationService
@@ -26,6 +29,7 @@ __all__ = [
     "AnsweredQuestion",
     "Application",
     "ApplicationCv",
+    "ApplicationJob",
     "ApplicationPage",
     "ApplicationReview",
     "ApplicationReviewService",
@@ -44,4 +48,6 @@ __all__ = [
     "ScreeningVerdict",
     "StatusHistoryEntry",
     "SubmittedAnswer",
+    "TenantApplicationPage",
+    "TenantApplicationSummary",
 ]

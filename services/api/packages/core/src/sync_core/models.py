@@ -1143,6 +1143,7 @@ class Job(Base):
         Index("jobs_location_key_idx", "location_key"),
         Index("jobs_search_idx", "search_vector", postgresql_using="gin"),
         Index("jobs_status_expires_at_idx", "status", "expires_at"),
+        Index("jobs_tenant_published_at_idx", "tenant_id", "published_at"),
         Index("jobs_tenant_status_idx", "tenant_id", "status"),
         {"schema": "public"},
     )
@@ -1185,6 +1186,10 @@ class Job(Base):
     minimum_total_experience_years: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
     expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(True),
+        comment="When this Job first went live. Null while it has never been published, and never rewritten by a later republish.",
+    )
 
     location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
@@ -1395,6 +1400,7 @@ class TrackedJobLink(Base):
         UniqueConstraint("token", name="tracked_job_links_token_key"),
         Index("tracked_job_links_created_by_idx", "created_by_recruiter_id"),
         Index("tracked_job_links_job_active_idx", "job_id", "is_active"),
+        Index("tracked_job_links_tenant_created_idx", "tenant_id", "created_at", "id"),
         {"schema": "public"},
     )
 
@@ -1445,6 +1451,8 @@ class Application(Base):
         Index("applications_cv_id_idx", "cv_id"),
         Index("applications_job_status_idx", "job_id", "status"),
         Index("applications_job_tracked_link_idx", "job_id", "tracked_link_id"),
+        Index("applications_tenant_applied_at_idx", "tenant_id", "applied_at", "id"),
+        Index("applications_tenant_status_idx", "tenant_id", "status"),
         {"schema": "public"},
     )
 
