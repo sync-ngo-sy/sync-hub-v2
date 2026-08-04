@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isClientError, problemMessage, problemStatus } from './api-problem';
+import { isClientError, problemDetail, problemMessage, problemStatus } from './api-problem';
 
 const NOT_AUTHENTICATED = {
   type: 'urn:sync:problem:not-authenticated',
@@ -46,6 +46,27 @@ describe('problemMessage', () => {
 
   it("falls back to the caller's wording when the failure carries no problem body", () => {
     expect(problemMessage(new TypeError('Failed to fetch'), 'Something went wrong.')).toBe(
+      'Something went wrong.',
+    );
+  });
+});
+
+describe('problemDetail', () => {
+  it('reads the occurrence-specific detail, same as problemMessage', () => {
+    expect(problemDetail(NOT_AUTHENTICATED, 'Something went wrong.')).toBe('Sign in to continue.');
+  });
+
+  it('skips the type summary, because an HTTP phrase explains nothing to a reader', () => {
+    expect(problemDetail({ ...NOT_AUTHENTICATED, detail: null }, 'Something went wrong.')).toBe(
+      'Something went wrong.',
+    );
+    expect(problemDetail({ title: 'Conflict', status: 409 }, 'That move is not allowed.')).toBe(
+      'That move is not allowed.',
+    );
+  });
+
+  it("falls back to the caller's wording when the failure carries no problem body", () => {
+    expect(problemDetail(new TypeError('Failed to fetch'), 'Something went wrong.')).toBe(
       'Something went wrong.',
     );
   });
