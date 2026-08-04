@@ -218,9 +218,24 @@ Whether one Candidate is saved, which the API will only answer by listing the wh
 portal reads it whole, once, and both the search results and the Candidate view say who is in it
 from that one copy. A button that cannot say yet says nothing yet: the card shows its own skeleton
 while the pool is arriving and its own refusal when it will not, rather than offering a save whose
-state would be a guess. Saving and dropping are idempotent and reversible, so neither asks first,
-and both re-read the pool rather than patching it in the browser.
+state would be a guess. Saving and dropping from the card are idempotent and reversible, and the
+card's own button already names what it is about to do, so neither asks first; both re-read the
+pool rather than patching it in the browser.
 _Avoid_: Bookmarks, favourites, shortlist (a shortlist is a Pipeline status).
+
+**Talent pool page**:
+The saved Candidates as a list rather than as an answer about one of them — most recently saved
+first, paged by cursor the way the API pages it, because a page is what the list shows and only
+the membership question ever needs the pool whole. The two readings are two cache entries of one
+endpoint, so a save or a drop made anywhere re-reads both, the copy nobody is watching included:
+that copy is what a route loader reads next, and it hands back what it has rather than waiting.
+A row opens the Candidate view, which finds the person in the pool because no search led there.
+Dropping asks first here although the card does not: the action is one line in a row menu rather
+than a button that has just told you the state. What it costs is what the asking says — the
+Tenant's notes and Tags on them survive, but nothing points at that Candidate any more until a
+search finds them again, which is the sense in which a drop is reversible rather than destructive.
+The empty pool points at candidate search, since search is the only way to fill it.
+_Avoid_: Saved list, shortlist page.
 
 **Reference data**:
 The platform's fixed lists — Canonical skills with their categories, languages with their

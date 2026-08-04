@@ -8,6 +8,7 @@ import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail, problemMessage } from '@/lib/api-problem';
 import { useTalentPool, useTalentPoolActions } from '../hooks/use-talent-pool';
+import { DROP_REFUSED, droppedSays } from '../pool';
 
 const HINT = 'People your team wants to reach again, whether or not they have ever applied.';
 
@@ -33,7 +34,7 @@ export function TalentPoolCard({ candidateId, candidateName }: TalentPoolCardPro
     try {
       if (saved) {
         await actions.drop(candidateId);
-        toast.success(`${candidateName} dropped from your talent pool`);
+        toast.success(droppedSays(candidateName));
       } else {
         await actions.save(candidateId);
         toast.success(`${candidateName} saved to your talent pool`);
@@ -42,9 +43,7 @@ export function TalentPoolCard({ candidateId, candidateName }: TalentPoolCardPro
       setFailure(
         problemDetail(
           error,
-          saved
-            ? "That Candidate couldn't be dropped. Your talent pool is as it was."
-            : "That Candidate couldn't be saved. Your talent pool is as it was.",
+          saved ? DROP_REFUSED : "That Candidate couldn't be saved. Your talent pool is as it was.",
         ),
       );
     }
