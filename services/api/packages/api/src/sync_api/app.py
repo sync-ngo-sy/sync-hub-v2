@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from sync_api.auth import Authentication
 from sync_api.csrf import CSRF_HEADER, enforce_csrf_header
@@ -111,6 +112,22 @@ def create_app(
         CorrelationIdMiddleware,
         header_name=REQUEST_ID_HEADER,
         validator=None,
+    )
+    # Outermost, so preflight is answered without touching the app and so the headers reach
+    # error responses too — a 401 without them reads as a CORS failure in the browser console
+    # and sends whoever is debugging in the wrong direction.
+    #
+    # No allow_origin_regex and no wildcard: with credentials the browser rejects `*` outright,
+    # and echoing back whatever asked would defeat the allowlist.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(resolved.cors_allowed_origins),
+        allow_credentials=True,
+        allow_methods=["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"],
+        # The CSRF header the app requires on every write, so preflight has to permit it or no
+        # cross-origin write can be sent at all.
+        allow_headers=[CSRF_HEADER, REQUEST_ID_HEADER, "Content-Type", "Accept"],
+        expose_headers=[REQUEST_ID_HEADER],
     )
     install_problem_handlers(app)
     app.include_router(health.router, prefix=API_PREFIX)
