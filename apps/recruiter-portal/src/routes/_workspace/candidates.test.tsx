@@ -1,17 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import {
-  AMINA,
-  AMINA_SAVED,
-  SEARCH_OFFLINE,
-  YOUSSEF,
-} from '@/features/candidates/testing/fixtures';
+import { AMINA, SEARCH_OFFLINE, YOUSSEF } from '@/features/candidates/testing/fixtures';
 import {
   type AskedSearch,
   failsToSearchCandidates,
   findsCandidates,
 } from '@/features/candidates/testing/handlers';
+import { AMINA_SAVED } from '@/features/talent-pool/testing/fixtures';
 import { holdsTalentPool } from '@/features/talent-pool/testing/handlers';
 import { RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';

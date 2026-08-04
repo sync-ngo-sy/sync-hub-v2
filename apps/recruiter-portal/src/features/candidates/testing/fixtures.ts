@@ -1,5 +1,4 @@
 import type { components } from '@sync/api-client';
-import type { PooledCandidate } from '@/features/talent-pool/pool';
 import type { MatchedCandidate } from '../candidate';
 
 export const AMINA: MatchedCandidate = {
@@ -26,14 +25,6 @@ export const YOUSSEF: MatchedCandidate = {
   preferred_language_code: 'en',
   matched_section: 'skills',
   matched_text: 'Triage, wound care, cold-chain handling.',
-};
-
-export const AMINA_SAVED: PooledCandidate = {
-  candidate_id: AMINA.candidate_id,
-  full_name: 'Amina Haddad',
-  headline: 'Backend engineer, 8 years',
-  location_name: 'Aleppo',
-  added_at: '2026-07-30T09:00:00Z',
 };
 
 export const SEARCH_OFFLINE: components['schemas']['ProblemDetail'] = {
