@@ -30,31 +30,22 @@ _Avoid_: App, dashboard area, admin.
 
 **Dashboard**:
 The signed-in Recruiter's home: an overview of the Tenant's hiring activity. One
-destination inside the Workspace, not a name for the Workspace itself. It is assembled from the
-reads the API already answers — the Jobs list, then one first page of Applications per published
-Job — because there is no tenant-wide Application list and no analytics endpoint. So it says what
-it counted from rather than implying a total it cannot see, and every panel on it is an
-Independent widget in every respect but the read: three of them share those two reads, so one
-refusal is spoken by each panel it leaves blank, in that panel, with that panel's own Retry.
+destination inside the Workspace, not a name for the Workspace itself. Every number on it is the
+platform's own answer, read whole from the tenant stats endpoint — the page counts nothing, and
+so has nothing to qualify. Three reads carry four panels: the stat cards and the Sources chart
+share the counts, the recent Applications and the Jobs overview have their own. Each panel is an
+Independent widget, so one refusal is spoken by the panel it leaves blank, in that panel, with
+that panel's own Retry.
 _Avoid_: Home, overview page.
 
-**Read count**:
-A number on the Dashboard arrived at by counting what the first pages held, rather than by asking
-the platform for a total. A count that reached the end of what it was counting is exact; one that
-did not is a floor, written with a trailing `+` and never rounded or extrapolated — "4+" is four
-seen and more unread, and the sentence under the stat cards names the Jobs and Applications the
-whole row was read from. Which Jobs those are is bounded on purpose (the fan-out is one request
-per published Job), and the bound is stated rather than hidden: a cap nobody is told about reads
-as a total.
-_Avoid_: Total, metric, KPI, approximate count.
-
-**Trend slot**:
-A Dashboard card held for a chart the platform cannot draw yet — the tenant analytics endpoints
-are a fast-follow, so the card names the chart that is coming and points at the nearest thing that
-exists today (a Job's own Tracked links, a Job's Applications tab). It carries no numbers at all:
-a slot that invents a shape to fill itself is worse than one that says it is waiting.
-_Avoid_: Coming soon, empty state (an empty state means there is no data; a slot means there is no
-endpoint).
+**Source**:
+A named channel a tenant's Job views arrived through, added up across every Job. A Tracked link's
+name is unique per Job rather than per Tenant, so the same campaign run on nine Jobs is nine
+Tracked links and one Source. `Direct` is the Source for visitors who reached a Job with no link
+at all; it appears only when such traffic exists, where a Tracked link somebody made is a Source
+even at zero views. The Dashboard card ranks Sources and shows the six that fit, naming how many
+more there are rather than letting six look like all of them.
+_Avoid_: Channel as a separate term, campaign, referrer, UTM.
 
 **Pipeline**:
 The ordered application statuses a Recruiter moves an Application through while
@@ -164,6 +155,17 @@ and the views alone. The comparison is a bar chart of views per link on the teal
 in a chunk of its own so the charting library only travels for a Recruiter who opens this tab. The
 address is built on the Candidate Portal's origin, since that is the portal that counts the view.
 _Avoid_: Campaigns tab, UTM builder, analytics tab.
+
+**Tracked links page**:
+The Workspace destination that reports every Tracked link the Tenant has, across every Job, with
+what each brought and the state it is in — searchable by name. One row per link and never merged:
+a link has a state and a Job of its own, and the same name on two Jobs is two links with two of
+each. That is the deliberate opposite of a Source, which merges them to answer which channel
+works. It reports and does not manage: renaming, minting and turning a link off stay on the
+Tracked links tab of the Job that owns it, which is where a row leads. Live, Expired and Off are
+one vocabulary with that tab — the API narrows on the switch, and the date that separates Live
+from Expired is read from the row.
+_Avoid_: Campaigns page, analytics page, link manager.
 
 **Workspace settings**:
 The three things a Tenant administers about itself, under one address with the open tab in it: the

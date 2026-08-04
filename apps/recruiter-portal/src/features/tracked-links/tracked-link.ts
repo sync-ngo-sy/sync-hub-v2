@@ -10,17 +10,20 @@ export function trackedLinkAddress(token: string): string {
   return new URL(`/l/${token}`, env.candidatePortalUrl).toString();
 }
 
+export type LinkStateKind = 'live' | 'expired' | 'off';
+
 interface TrackedLinkState {
+  kind: LinkStateKind;
   label: string;
   tone: StatusTone;
 }
 
 export function trackedLinkState(link: TrackedLink, now: Date = new Date()): TrackedLinkState {
-  if (!link.is_active) return { label: 'Off', tone: 'neutral' };
+  if (!link.is_active) return { kind: 'off', label: 'Off', tone: 'neutral' };
   if (link.expires_at && new Date(link.expires_at) <= now) {
-    return { label: 'Expired', tone: 'neutral' };
+    return { kind: 'expired', label: 'Expired', tone: 'neutral' };
   }
-  return { label: 'Live', tone: 'positive' };
+  return { kind: 'live', label: 'Live', tone: 'positive' };
 }
 
 export interface LinkViews {
@@ -34,15 +37,19 @@ const PALEST_STEP = 'var(--chart-4)';
 const RAMP = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', PALEST_STEP];
 const SPOKEN_AT_MOST = 8;
 
+/** Anything countable, ranked and given the chart's ramp. Both charts draw the same bars — the
+ * Job's own links here, the tenant's merged channels on the Dashboard — so the ordering and the
+ * colours are decided once. */
+export function viewsRanked(rows: Omit<LinkViews, 'fill'>[]): LinkViews[] {
+  return [...rows]
+    .sort((one, other) => other.views - one.views || one.name.localeCompare(other.name))
+    .map((row, index) => ({ ...row, fill: RAMP[index] ?? PALEST_STEP }));
+}
+
 export function viewsPerLink(links: TrackedLink[]): LinkViews[] {
-  return [...links]
-    .sort((one, other) => other.view_count - one.view_count || one.name.localeCompare(other.name))
-    .map((link, index) => ({
-      id: link.id,
-      name: link.name,
-      views: link.view_count,
-      fill: RAMP[index] ?? PALEST_STEP,
-    }));
+  return viewsRanked(
+    links.map((link) => ({ id: link.id, name: link.name, views: link.view_count })),
+  );
 }
 
 export function totalViews(links: TrackedLink[]): number {
@@ -57,4 +64,33 @@ export function viewsSummary(bars: LinkViews[]): string {
   const rest = bars.length - spoken.length;
   const tail = rest > 0 ? ` And ${rest} more ${rest === 1 ? 'link' : 'links'}, further down.` : '';
   return `Views per tracked link. ${rows.join('. ')}.${tail}`;
+}
+
+export type TenantTrackedLink = components['schemas']['TenantTrackedLink'];
+
+/** The four views of the tenant's links. `off` is a column the API can filter on; `live` and
+ * `expired` are the same column plus a date, which the row already carries. */
+export type LinkFilter = 'all' | 'live' | 'expired' | 'off';
+
+export const LINK_FILTERS: { value: LinkFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'live', label: 'Live' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'off', label: 'Off' },
+];
+
+/** What the endpoint can narrow. `live` and `expired` are both switched on, so both ask for the
+ * same rows and are told apart here rather than costing the query a clock. */
+export function activeFor(filter: LinkFilter): boolean | undefined {
+  if (filter === 'all') return undefined;
+  return filter !== 'off';
+}
+
+export function linksMatching(
+  links: TenantTrackedLink[],
+  filter: LinkFilter,
+  now: Date = new Date(),
+): TenantTrackedLink[] {
+  if (filter === 'all' || filter === 'off') return links;
+  return links.filter((link) => trackedLinkState(link, now).kind === filter);
 }

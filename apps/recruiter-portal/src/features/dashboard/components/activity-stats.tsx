@@ -2,38 +2,24 @@ import { StatCardSkeleton } from '@sync/ui/components/skeletons';
 import { StatCard } from '@sync/ui/components/stat-card';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { problemMessage } from '@/lib/api-problem';
-import { type ApplicationsRead, figure, type JobsRead } from '../dashboard';
+import {
+  awaitingReview,
+  openedThisWeek,
+  passRate,
+  type TenantStats,
+  weekOnWeek,
+} from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 
 const GRID = 'grid gap-5 sm:grid-cols-2 xl:grid-cols-4';
 const SKELETON_KEYS = ['open', 'week', 'waiting', 'qualified'];
 
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
+function figure(value: number | undefined): string {
+  return value === undefined ? '—' : String(value);
 }
 
-function basis(jobs: JobsRead, applications: ApplicationsRead): string {
-  if (jobs.toCount.length === 0) {
-    return 'Nothing to count yet — publish a Job and these fill in as candidates apply.';
-  }
-
-  const jobsRead =
-    jobs.toCount.length === jobs.open.value && !jobs.open.atLeast
-      ? `all ${plural(jobs.toCount.length, 'published Job', 'published Jobs')}`
-      : `your ${plural(jobs.toCount.length, 'newest published Job', 'newest published Jobs')}`;
-
-  return `Counted from the ${plural(applications.counted, 'newest Application', 'newest Applications')} on ${jobsRead}. Tenant-wide totals arrive when the analytics endpoints ship.`;
-}
-
-interface ActivityStatsProps {
-  jobs: PanelRead<JobsRead>;
-  applications: PanelRead<ApplicationsRead>;
-}
-
-export function ActivityStats({ jobs, applications }: ActivityStatsProps) {
-  const refusal = jobs.error ?? applications.error;
-
-  if (!refusal && (jobs.isPending || applications.isPending)) {
+export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
+  if (!stats.error && stats.isPending) {
     return (
       <div className={GRID} role="status" aria-label="Loading the counts">
         {SKELETON_KEYS.map((key) => (
@@ -43,70 +29,41 @@ export function ActivityStats({ jobs, applications }: ActivityStatsProps) {
     );
   }
 
-  const counts = applications.data;
+  const counted = stats.data;
 
   return (
     <section aria-label="Hiring at a glance" className="space-y-3">
-      {refusal ? (
+      {stats.error ? (
         <RetryNotice
-          message={problemMessage(refusal, "Couldn't count what your Jobs have brought in.")}
-          onRetry={jobs.error ? jobs.refetch : applications.refetch}
+          message={problemMessage(stats.error, "Couldn't count what your Jobs have brought in.")}
+          onRetry={stats.refetch}
         />
       ) : null}
 
       <div className={GRID}>
         <StatCard
           label="Open jobs"
-          value={figure(jobs.data?.open)}
-          trend={
-            jobs.data && {
-              label:
-                jobs.data.draft.value === 0
-                  ? 'Nothing in draft'
-                  : `${figure(jobs.data.draft)} ${jobs.data.draft.value === 1 && !jobs.data.draft.atLeast ? 'Job' : 'Jobs'} in draft`,
-            }
-          }
+          value={figure(counted?.jobs.published)}
+          trend={counted && openedThisWeek(counted.jobs.published_last_week)}
         />
         <StatCard
           label="Applications this week"
-          value={figure(counts?.thisWeek)}
+          value={figure(counted?.applications.last_7d)}
           trend={
-            counts && {
-              label:
-                counts.today.value === 0
-                  ? 'None in the last day'
-                  : `${figure(counts.today)} arrived in the last day`,
-              tone: counts.today.value > 0 ? 'positive' : 'neutral',
-            }
+            counted && weekOnWeek(counted.applications.last_7d, counted.applications.previous_7d)
           }
         />
         <StatCard
           label="Awaiting review"
-          value={figure(counts?.awaitingReview)}
-          trend={
-            counts && {
-              label: counts.awaitingReview.value === 0 ? 'Nothing waiting' : 'Needs attention',
-              tone: counts.awaitingReview.value > 0 ? 'caution' : 'neutral',
-            }
-          }
+          value={figure(counted?.applications.by_stage.new)}
+          trend={counted && awaitingReview(counted.applications.by_stage.new)}
         />
         <StatCard
           label="Qualified by screening"
-          value={figure(counts?.qualified)}
-          trend={
-            counts && {
-              label:
-                counts.passRate === null
-                  ? 'No verdict decided yet'
-                  : `${counts.passRate}% pass rate`,
-            }
-          }
+          value={figure(counted?.applications.by_qualification.qualified)}
+          trend={counted && passRate(counted.applications.pass_rate)}
         />
       </div>
-
-      {jobs.data && counts ? (
-        <p className="text-meta text-muted-foreground">{basis(jobs.data, counts)}</p>
-      ) : null}
     </section>
   );
 }

@@ -1141,6 +1141,30 @@ export interface paths {
         patch: operations["changeTrackedJobLink"];
         trace?: never;
     };
+    "/v1/tenants/me/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's Applications, newest first
+         * @description Every Application the tenant has received, across every Job, newest first.
+         *
+         *     Each row names the Job it came in for — the Job's own triage list can leave that implied,
+         *     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
+         *     up, so another tenant's Job matches nothing here instead of refusing.
+         */
+        get: operations["listTenantApplications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/applications/{application_id}": {
         parameters: {
             query?: never;
@@ -1310,6 +1334,58 @@ export interface paths {
          * @description Idempotent: a Tag that was never on it is not an error.
          */
         delete: operations["untagApplication"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everything the Dashboard counts
+         * @description The tenant's Jobs, its Applications and where its Job views came from, counted whole.
+         *
+         *     Every window is rolling: `last_7d` is the last 168 hours rather than this week so far. The
+         *     counts span every Job whatever state it is in, and every Application whatever stage it has
+         *     reached — a rejected Application was still received, so it is still counted as one.
+         */
+        get: operations["getTenantStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/tracked-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's Tracked links, newest first
+         * @description Every Tracked link of the tenant, across every Job, each naming the Job it points at.
+         *
+         *     One row per link rather than per name: the same campaign run on nine Jobs is nine links,
+         *     each with its own traffic and its own state. The Dashboard's `sources` merges them instead,
+         *     which is a different question.
+         *
+         *     A link that expired or was turned off stays in the list — it still brought the traffic it
+         *     brought. `expires_at` is returned rather than filtered on, so telling live from expired is
+         *     the caller's to do with a date it already has.
+         */
+        get: operations["listTenantTrackedLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1573,6 +1649,36 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * ApplicationCounts
+         * @description The tenant's Applications: how many, how recently, and where they stand.
+         */
+        ApplicationCounts: {
+            /** Total */
+            total: number;
+            /**
+             * Last 24H
+             * @description Received in the last 24 hours.
+             */
+            last_24h: number;
+            /**
+             * Last 7D
+             * @description Received in the last 7 days.
+             */
+            last_7d: number;
+            /**
+             * Previous 7D
+             * @description Received in the 7 days before `last_7d`, which is what makes a week-on-week comparison possible.
+             */
+            previous_7d: number;
+            by_stage: components["schemas"]["StageCounts"];
+            by_qualification: components["schemas"]["QualificationCounts"];
+            /**
+             * Pass Rate
+             * @description The percentage of screened Applications that qualified, 0-100. Null when Screening has decided nothing: a rate over nothing says nothing.
+             */
+            pass_rate: number | null;
+        };
+        /**
          * ApplicationCv
          * @description The CV this Application was sent with, and where to read the original.
          */
@@ -1597,6 +1703,25 @@ export interface components {
              * @description How long `download_url` stays good for.
              */
             expires_in_seconds: number;
+        };
+        /**
+         * ApplicationJob
+         * @description The Job an Application came in for, as a list spanning every Job has to name it.
+         */
+        ApplicationJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
         };
         /**
          * ApplicationPage
@@ -2230,6 +2355,28 @@ export interface components {
             status?: components["schemas"]["JobStatus"] | null;
         };
         /**
+         * JobCounts
+         * @description The tenant's Jobs, by the state each one is in. Every Job is in exactly one, so the four
+         *     states sum to `total`.
+         */
+        JobCounts: {
+            /** Total */
+            total: number;
+            /** Draft */
+            draft: number;
+            /** Published */
+            published: number;
+            /** Closed */
+            closed: number;
+            /** Archived */
+            archived: number;
+            /**
+             * Published Last Week
+             * @description Jobs that first went live in the last 7 days. A Job closed and republished counts for the week it originally went live, not this one.
+             */
+            published_last_week: number;
+        };
+        /**
          * JobCriteria
          * @description The bar an applicant is judged against. Replaced whole; frozen by the first Application.
          */
@@ -2402,6 +2549,16 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Published At
+             * @description When the Job first went live. Null while it has never been published, and unchanged by a later republish.
+             */
+            published_at?: string | null;
+            /**
+             * Application Count
+             * @description How many Applications this Job has received.
+             */
+            application_count: number;
         };
         /**
          * JobView
@@ -2438,6 +2595,16 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Published At
+             * @description When the Job first went live. Null while it has never been published, and unchanged by a later republish.
+             */
+            published_at?: string | null;
+            /**
+             * Application Count
+             * @description How many Applications this Job has received.
+             */
+            application_count: number;
             /** Description */
             description: string;
             criteria: components["schemas"]["JobCriteriaView"];
@@ -2470,6 +2637,19 @@ export interface components {
          * @enum {string}
          */
         LanguageProficiency: "beginner" | "intermediate" | "advanced" | "fluent" | "native";
+        /**
+         * LinkedJob
+         * @description The Job a Tracked link points at, as a list spanning every Job has to name it.
+         */
+        LinkedJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
         /**
          * Location
          * @description One place a Job or a Candidate can be, and the heading it belongs under.
@@ -3355,6 +3535,20 @@ export interface components {
             slug: string;
         };
         /**
+         * QualificationCounts
+         * @description Every Screening verdict, `pending` included — a verdict not yet reached is not a failure.
+         */
+        QualificationCounts: {
+            /** Pending */
+            pending: number;
+            /** Qualified */
+            qualified: number;
+            /** Disqualified */
+            disqualified: number;
+            /** Review Required */
+            review_required: number;
+        };
+        /**
          * QualificationStatus
          * @enum {string}
          */
@@ -3464,6 +3658,47 @@ export interface components {
          * @enum {string}
          */
         SkillImportance: "required" | "preferred" | "optional";
+        /**
+         * Source
+         * @description Where a tenant's Job views came from: one named channel, added up across every Job.
+         *
+         *     A tracked link's name is unique per Job rather than per Tenant, so the same campaign run on
+         *     nine Jobs is nine links and one Source.
+         */
+        Source: {
+            /**
+             * Name
+             * @description The tracked link's name, or `Direct` for visitors who arrived without one.
+             */
+            name: string;
+            /** Views */
+            views: number;
+        };
+        /**
+         * StageCounts
+         * @description Every stage of the Pipeline, including the ones nobody is working any more.
+         *
+         *     Complete on purpose: the parts sum to the total, so a reader can add up whichever subset
+         *     they mean by "in play" without the API having decided that for them.
+         */
+        StageCounts: {
+            /** New */
+            new: number;
+            /** Reviewing */
+            reviewing: number;
+            /** Shortlisted */
+            shortlisted: number;
+            /** Interview */
+            interview: number;
+            /** Offer */
+            offer: number;
+            /** Hired */
+            hired: number;
+            /** Rejected */
+            rejected: number;
+            /** Withdrawn */
+            withdrawn: number;
+        };
         /**
          * StatusChangeSource
          * @enum {string}
@@ -3596,10 +3831,134 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * TenantApplicationPage
+         * @description One page of the tenant's Applications, newest first across every Job.
+         */
+        TenantApplicationPage: {
+            /** Items */
+            items: components["schemas"]["TenantApplicationSummary"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * TenantApplicationSummary
+         * @description One Application in the tenant's own list.
+         *
+         *     Carries its Job, which a Job's own triage list can leave implied and this one cannot: every
+         *     row here may have come from a different Job.
+         */
+        TenantApplicationSummary: {
+            /**
+             * Id
+             * Format: uuid
+             * @description The Application. Read it for everything below the surface.
+             */
+            id: string;
+            /**
+             * Candidate Name
+             * @description The Snapshot's name: who they applied as.
+             */
+            candidate_name: string;
+            /** Headline */
+            headline?: string | null;
+            /** Location */
+            location?: string | null;
+            status: components["schemas"]["ApplicationStatus"];
+            /** @description The Screening verdict. */
+            qualification_status: components["schemas"]["QualificationStatus"];
+            /**
+             * Applied At
+             * Format: date-time
+             */
+            applied_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            job: components["schemas"]["ApplicationJob"];
+        };
+        /**
          * TenantPlan
          * @enum {string}
          */
         TenantPlan: "free" | "pro" | "enterprise";
+        /**
+         * TenantStats
+         * @description Everything the Recruiter Dashboard counts, in one read.
+         *
+         *     The windows are rolling rather than calendar — `last_7d` is the last 168 hours, not this week
+         *     so far. A Tenant has no timezone, so a calendar day would have to be computed in one, and the
+         *     wrong one turns a recruiter's morning into yesterday.
+         */
+        TenantStats: {
+            jobs: components["schemas"]["JobCounts"];
+            applications: components["schemas"]["ApplicationCounts"];
+            /**
+             * Sources
+             * @description The busiest channels, ranked, and never more than six — enough for the card that draws them. `sources_total` says how many there are in all.
+             */
+            sources: components["schemas"]["Source"][];
+            /**
+             * Sources Total
+             * @description Every distinct Source the tenant has, including channels that brought no views at all and the ones ranked below the six returned.
+             */
+            sources_total: number;
+        };
+        /**
+         * TenantTrackedLink
+         * @description One Tracked link in the tenant's own list of them.
+         *
+         *     One row per link, never merged by name: a link has a state and a Job of its own, and the
+         *     same name on two Jobs is two links with two of each. The Dashboard's `sources` merges by
+         *     name instead, because it answers a different question — which channel works, not how each
+         *     link is doing.
+         */
+        TenantTrackedLink: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Token
+             * @description The unguessable part of the public URL.
+             */
+            token: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * View Count
+             * @description Job views that arrived through this link.
+             */
+            view_count: number;
+            job: components["schemas"]["LinkedJob"];
+        };
+        /**
+         * TenantTrackedLinkPage
+         * @description One page of the tenant's Tracked links, newest first across every Job.
+         */
+        TenantTrackedLinkPage: {
+            /** Items */
+            items: components["schemas"]["TenantTrackedLink"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+        };
         /**
          * TenantView
          * @description A Tenant as its own recruiters see it.
@@ -8221,6 +8580,71 @@ export interface operations {
             };
         };
     };
+    listTenantApplications: {
+        parameters: {
+            query?: {
+                /** @description Only Applications at this stage. */
+                status?: components["schemas"]["ApplicationStatus"] | null;
+                /** @description Only Applications for this Job of the tenant. */
+                job_id?: string | null;
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantApplicationPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     getApplication: {
         parameters: {
             query?: never;
@@ -9092,6 +9516,127 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    getTenantStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantStats"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listTenantTrackedLinks: {
+        parameters: {
+            query?: {
+                /** @description Only links whose name contains this, ignoring case. */
+                q?: string | null;
+                /** @description Only links that are on, or only those turned off. */
+                is_active?: boolean | null;
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantTrackedLinkPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
