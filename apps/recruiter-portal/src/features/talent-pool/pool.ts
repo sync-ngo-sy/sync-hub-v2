@@ -5,6 +5,12 @@ export type PoolPage = components['schemas']['TalentPoolPage'];
 
 export const POOL_PAGE_SIZE = 100;
 
+export const DROP_REFUSED = "That Candidate couldn't be dropped. Your talent pool is as it was.";
+
+export function droppedSays(fullName: string): string {
+  return `${fullName} dropped from your talent pool`;
+}
+
 /**
  * The pool is read whole because there is no way to ask whether one Candidate is in it, and a
  * button that cannot say would rather not be shown. A cap keeps a misbehaving cursor from
