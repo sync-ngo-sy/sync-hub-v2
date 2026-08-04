@@ -108,9 +108,12 @@ async def test_the_session_cookie_the_api_sets_carries_no_domain(
     A Domain attribute is what would let staging's cookie be sent to production's API, since
     both are subdomains of one registrable domain.
     """
-    signed_up = await sign_up(browser, a_signup("host-only"))
+    # One signup, reused: each call to a_signup mints a fresh random address, so confirming
+    # against a second one waits for mail that was never sent.
+    signup = a_signup("host-only")
+    signed_up = await sign_up(browser, signup)
     assert signed_up.status_code == 201, signed_up.text
-    confirmed = await confirm_email(browser, mailbox, a_signup("host-only"))
+    confirmed = await confirm_email(browser, mailbox, signup)
 
     cookies = [
         value for name, value in confirmed.headers.multi_items() if name.lower() == "set-cookie"
