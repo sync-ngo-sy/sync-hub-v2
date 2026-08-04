@@ -23,6 +23,7 @@ from tests.support.jobs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import my_id
+from tests.support.stats import forget_when_it_went_live
 from tests.support.tenants import a_teammate, an_admin
 
 A_KNOCKOUT_QUESTION: dict[str, Any] = {
@@ -432,3 +433,80 @@ async def test_both_sets_can_be_changed_after_the_job_is_written(
     assert edited.status_code == 200, edited.text
     assert edited.json()["employment_type"] == "volunteer"
     assert edited.json()["work_mode"] == "hybrid"
+
+
+async def test_a_draft_has_never_gone_live(browser: AsyncClient, mailbox: Mailbox) -> None:
+    await an_admin(browser, mailbox)
+
+    job = await a_created_job(browser)
+
+    assert job["published_at"] is None
+
+
+async def test_publishing_records_when_the_job_went_live(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+
+    published = await change_job(browser, job["id"], status="published")
+
+    assert published.status_code == 200, published.text
+    assert published.json()["published_at"] is not None
+
+
+async def test_republishing_keeps_the_first_publication_date(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """A Job closed and reopened went live when it first went live. Rewriting the date would
+    make a Job that has been around for months look like this week's news."""
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+    first = (await change_job(browser, job["id"], status="published")).json()["published_at"]
+    await change_job(browser, job["id"], status="closed")
+
+    republished = await change_job(browser, job["id"], status="published")
+
+    assert republished.status_code == 200, republished.text
+    assert republished.json()["published_at"] == first
+
+
+async def test_a_job_carries_how_many_applications_it_has(
+    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+    await a_signed_in_candidate(other_browser, mailbox)
+    await an_application(db_session, job["id"], await my_id(other_browser))
+
+    listed = await browser.get(TENANT_JOBS)
+
+    assert listed.status_code == 200, listed.text
+    assert [item["application_count"] for item in listed.json()["items"]] == [1]
+    assert (await read_job(browser, job["id"]))["application_count"] == 1
+
+
+async def test_a_job_nobody_has_applied_to_counts_none(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+
+    assert job["application_count"] == 0
+    assert (await browser.get(TENANT_JOBS)).json()["items"][0]["application_count"] == 0
+
+
+async def test_editing_a_published_job_does_not_pretend_it_just_went_live(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Every Job published before the column existed carries a null. Stamping one on an
+    unrelated edit would report a Job open since March among this week's."""
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+    await change_job(browser, job["id"], status="published")
+    await forget_when_it_went_live(db_session, job["id"])
+
+    edited = await change_job(browser, job["id"], title="Staff Backend Engineer")
+
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["published_at"] is None
