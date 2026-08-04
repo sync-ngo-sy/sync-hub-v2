@@ -5,14 +5,10 @@ const ROW_HEIGHT = 44;
 
 export default function LinkViewsChart({ bars }: { bars: LinkViews[] }) {
   return (
-    <div
-      role="img"
-      aria-label={viewsSummary(bars)}
-      style={{ height: bars.length * ROW_HEIGHT }}
-      className="w-full"
-    >
+    <div role="img" aria-label={viewsSummary(bars)} className="w-full">
       <BarChart
         responsive
+        style={{ width: '100%', height: bars.length * ROW_HEIGHT }}
         accessibilityLayer={false}
         data={bars}
         layout="vertical"

@@ -29,6 +29,10 @@ function rowOf(name: string) {
   return within(screen.getByRole('row', { name: new RegExp(name) }));
 }
 
+function rowArrives(name: string) {
+  return screen.findByRole('row', { name: new RegExp(name) });
+}
+
 async function openActions(user: { click: (element: Element) => Promise<void> }, name: string) {
   await user.click(screen.getByRole('button', { name: `Actions for ${name}` }));
 }
@@ -43,7 +47,7 @@ describe("a Job's Tracked links tab", () => {
 
     await renderApp(LINKS);
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
     expect(rowOf('LinkedIn post').getByText('http://localhost:5173/l/QkJ9lC3nR1sT')).toBeVisible();
     expect(rowOf('LinkedIn post').getByText('342')).toBeVisible();
     expect(rowOf('LinkedIn post').getByText('Live')).toBeVisible();
@@ -127,7 +131,7 @@ describe("a Job's Tracked links tab", () => {
 
     const { user } = await renderApp(LINKS);
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
     await openActions(user, 'LinkedIn post');
     await user.click(await screen.findByRole('menuitem', { name: 'Rename link' }));
 
@@ -149,7 +153,7 @@ describe("a Job's Tracked links tab", () => {
 
     const { user } = await renderApp(LINKS);
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
     await openActions(user, 'LinkedIn post');
     await user.click(await screen.findByRole('menuitem', { name: 'Turn link off' }));
 
@@ -169,7 +173,7 @@ describe("a Job's Tracked links tab", () => {
 
     const { user } = await renderApp(LINKS);
 
-    expect(await screen.findByText('University board')).toBeVisible();
+    expect(await rowArrives('University board')).toBeVisible();
     await openActions(user, 'University board');
     await user.click(await screen.findByRole('menuitem', { name: 'Turn link back on' }));
 
@@ -187,7 +191,7 @@ describe("a Job's Tracked links tab", () => {
 
     const { user } = await renderApp(LINKS);
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
     await openActions(user, 'LinkedIn post');
     await user.click(await screen.findByRole('menuitem', { name: 'Turn link off' }));
 
@@ -260,7 +264,7 @@ describe("a Job's Tracked links tab", () => {
 
     held.arrive();
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
   });
 
   it('reports a failed list inline and reloads it on retry', async () => {
@@ -273,7 +277,7 @@ describe("a Job's Tracked links tab", () => {
     server.use(...listsTrackedLinks([LINKEDIN_POST]));
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
   });
 
   it('still offers minting when the list itself could not be read', async () => {
@@ -296,7 +300,7 @@ describe("a Job's Tracked links tab", () => {
 
     const { user } = await renderApp(LINKS);
 
-    expect(await screen.findByText('LinkedIn post')).toBeVisible();
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
     await openActions(user, 'LinkedIn post');
     await user.click(await screen.findByRole('menuitem', { name: 'Turn link off' }));
     await openActions(user, 'LinkedIn post');
