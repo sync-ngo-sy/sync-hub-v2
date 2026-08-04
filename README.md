@@ -48,8 +48,11 @@ pnpm lint
 # run just the backend
 uv run --directory services/api uvicorn sync_api.main:app --reload
 
-# run the queue worker (the second deployable unit — parses uploaded CVs)
-uv run --directory services/api sync-worker
+# drain the queue worker once — parses uploaded CVs (nothing triggers it locally)
+uv run --directory services/api sync-worker drain
+
+# fill the local stack with demo data (17 accounts across all three portals)
+uv run --directory services/api python scripts/seed_demo.py
 
 # run the backend's tests (needs `supabase start` first — see below)
 pnpm --filter @sync/api test
@@ -74,14 +77,43 @@ SYNC_TEST_SKIP_DB_RESET=1 uv run --directory services/api pytest tests/test_heal
 
 The suite reads the stack's URL and keys from `supabase status`, so it works regardless of what `services/api/.env` says.
 
-## The queue worker
+## Seeding demo data
 
-The backend is two deployable units: the FastAPI app, and one worker process that drains the
-platform's Postgres table queues
+Fill an empty local stack with usable data:
 
 ```bash
-uv run --directory services/api sync-worker
+uv run --directory services/api python scripts/seed_demo.py
 ```
+
+Three Tenants, nine Candidates, ten Jobs and nineteen Applications across every pipeline stage,
+plus the Platform admin — so you don't need `scripts/create_platform_admin.py` locally. It asks
+before writing and only runs against a local stack. `--purge` replaces an existing seed.
+
+All 17 accounts share one password; the script prints them on every run, and they are listed in
+[docs/demo-accounts.md](docs/demo-accounts.md).
+
+## The queue worker
+
+The backend is two deployable units: the FastAPI app, and a worker that drains the platform's
+Postgres table queues — parsing uploaded CVs, building search embeddings, sending queued email.
+
+**The worker does not run itself.** It no longer polls — it drains when something asks it to and
+exits, so it can scale to zero. Locally nothing asks: the database webhook and the schedule that
+call it when deployed don't exist on your machine. So an uploaded CV sits `pending` until you drain
+by hand:
+
+```bash
+uv run --directory services/api sync-worker drain
+```
+
+That sweeps, drains every queue, prints what it did, and exits. Run it again after anything that
+queues work — a CV upload, a profile edit, a queued email.
+
+With no argument, `sync-worker` serves the drain endpoints on port 8080 instead, which is what the
+container runs; it needs `SYNC_WORKER_SHARED_SECRET` or it answers 503. See
+[ADR-0003](docs/adr/0003-postgres-table-queues-skip-locked.md).
+
+### The keys it needs
 
 Uploading a CV is the API's job and needs nothing extra; *parsing* it is the worker's, and
 that needs an OpenAI key — as sending queued emails needs a Resend one:
@@ -92,10 +124,8 @@ SYNC_OPENAI_API_KEY=sk-...
 SYNC_RESEND_API_KEY=re_...
 ```
 
-Without them the worker refuses to start, deliberately — a worker that started happily and
-then failed every CV it claimed would be a much quieter kind of broken. The API does not
-read either key, and the test suite uses fakes, so leaving them unset is fine until you
-actually want a CV read or an email sent.
+Without them the worker won't start. The API reads neither key and the tests use fakes, so leaving
+them unset is fine until you want a CV parsed or an email sent.
 
 ### Tests that call a real model
 
