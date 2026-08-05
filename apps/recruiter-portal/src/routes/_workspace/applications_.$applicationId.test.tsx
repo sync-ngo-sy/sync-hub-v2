@@ -113,7 +113,11 @@ describe('the Application review page', () => {
       ...signedInAs(RECRUITER),
       ...getsApplication({
         ...REVIEW,
-        snapshot: { full_name: 'Amal Haddad', headline: 'Field logistics lead' },
+        snapshot: {
+          full_name: 'Amal Haddad',
+          headline: 'Field logistics lead',
+          total_experience_years: 9,
+        },
       }),
     );
 

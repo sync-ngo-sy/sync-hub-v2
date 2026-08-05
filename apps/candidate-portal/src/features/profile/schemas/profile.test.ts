@@ -17,8 +17,10 @@ const FILLED: ProfileFormValues = {
   headline: 'Field coordinator, 6 years',
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
+  canonical_role_key: 'project-manager',
   preferred_language_code: 'ar',
   is_searchable: false,
+  total_experience_years: 6,
   experiences: [
     {
       job_title: 'Field Coordinator',
@@ -162,10 +164,28 @@ describe('the profile schema', () => {
     ).toBe('The end cannot come before the start.');
   });
 
-  it('leaves a period alone while either end of it is unknown', () => {
+  it('leaves a project alone while either end of its period is unknown', () => {
+    const undated = { ...FILLED, projects: [{ ...BLANK_PROJECT, name: 'Tracker' }] };
+
+    expect(profileSchema.safeParse(undated).success).toBe(true);
+  });
+
+  it('asks a job for the year it started', () => {
     expect(
-      profileSchema.safeParse(withExperience({ start_year: '2024', end_year: '' })).success,
-    ).toBe(true);
+      errorAt('experiences.0.start_year', withExperience({ start_year: '', end_year: '2024' })),
+    ).toBe('Enter the year.');
+  });
+
+  it('asks a job that has ended for the year it ended', () => {
+    expect(
+      errorAt('experiences.0.end_year', withExperience({ start_year: '2020', end_year: '' })),
+    ).toBe('Enter the year it ended, or tick “I still work here”.');
+  });
+
+  it('asks a job still going for nothing but its start', () => {
+    const current = withExperience({ start_year: '2020', end_year: '', is_current: true });
+
+    expect(profileSchema.safeParse(current).success).toBe(true);
   });
 
   it('refuses an end date on a job that is still going, on the half that was filled', () => {
@@ -262,8 +282,10 @@ describe('the profile schema', () => {
       headline: 'Field coordinator, 6 years',
       summary: 'Six years of coordination work across Idlib and Aleppo.',
       location_key: 'sy-aleppo',
+      canonical_role_key: 'project-manager',
       preferred_language_code: 'ar',
       is_searchable: false,
+      total_experience_years: 6,
       experiences: [
         {
           job_title: 'Field Coordinator',
@@ -311,8 +333,10 @@ describe('the profile the API answers with', () => {
     headline: null,
     summary: null,
     location_key: null,
+    canonical_role_key: null,
     preferred_language_code: null,
     is_searchable: true,
+    total_experience_years: 4,
     experiences: [
       {
         job_title: 'Field Coordinator',
@@ -335,6 +359,8 @@ describe('the profile the API answers with', () => {
   it('becomes a form where every absent value is an empty field', () => {
     expect(toFormValues(PROFILE)).toEqual({
       full_name: 'Lina Khoury',
+      canonical_role_key: '',
+      total_experience_years: 4,
       phone: '',
       headline: '',
       summary: '',

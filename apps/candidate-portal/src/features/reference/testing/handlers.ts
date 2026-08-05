@@ -1,6 +1,7 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 
+type CanonicalRole = components['schemas']['CanonicalRole'];
 type CanonicalSkill = components['schemas']['CanonicalSkill'];
 type Language = components['schemas']['Language'];
 type Location = components['schemas']['Location'];
@@ -16,6 +17,10 @@ export function hasLanguages(languages: Language[]) {
 
 export function hasLocations(locations: Location[]) {
   return [http.get('/v1/locations', ({ response }) => response(200).json(locations))];
+}
+
+export function hasCanonicalRoles(roles: CanonicalRole[]) {
+  return [http.get('/v1/roles', ({ response }) => response(200).json(roles))];
 }
 
 export function failsToLoadCanonicalSkills(problem: ProblemDetail) {

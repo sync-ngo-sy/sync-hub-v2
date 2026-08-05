@@ -26,10 +26,12 @@ from sync_api.problems import (
 )
 from sync_api.vocabulary import (
     canonical_skill_ids,
+    refuse_unknown_canonical_role,
     refuse_unknown_languages,
     refuse_unknown_location,
 )
 from sync_core import get_logger, transaction
+from sync_core.experience import WorkPeriod, business_today, total_experience_years
 from sync_core.models import (
     Base,
     Candidate,
@@ -46,6 +48,7 @@ from sync_core.models import (
 from sync_core.profile import as_decimal
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,8 +68,10 @@ class CandidateProfileService:
             headline=candidate.headline,
             summary=candidate.summary,
             location_key=candidate.location_key,
+            canonical_role_key=candidate.canonical_role_key,
             preferred_language_code=candidate.preferred_language_code,
             is_searchable=candidate.is_searchable,
+            total_experience_years=candidate.total_experience_years,
             unmapped_skills=candidate.unmapped_skills,
             experiences=await self._experiences(candidate_id),
             educations=await self._educations(candidate_id),
@@ -84,6 +89,9 @@ class CandidateProfileService:
         skills = await canonical_skill_ids(self._db, skills_named(profile))
         await refuse_unknown_languages(self._db, languages_named(profile))
         await refuse_unknown_location(self._db, profile.location_key, at="body.location_key")
+        await refuse_unknown_canonical_role(
+            self._db, profile.canonical_role_key, at="body.canonical_role_key"
+        )
 
         async with transaction(self._db):
             candidate, identity = await self._candidate(candidate_id, lock=True)
@@ -100,8 +108,12 @@ class CandidateProfileService:
             candidate.headline = profile.headline
             candidate.summary = profile.summary
             candidate.location_key = profile.location_key
+            candidate.canonical_role_key = profile.canonical_role_key
             candidate.preferred_language_code = profile.preferred_language_code
             candidate.is_searchable = profile.is_searchable
+            # Derived here and never read off the request: whatever a caller sends is ignored,
+            # so the number and the jobs it came from cannot disagree.
+            candidate.total_experience_years = derived_experience(profile.experiences)
             candidate.unmapped_skills = profile.unmapped_skills
             for section in (
                 delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
@@ -276,6 +288,22 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
         for order, entry in enumerate(profile.projects)
     ]
     return rows
+
+
+def derived_experience(jobs: Sequence[ProfileExperience]) -> int:
+    """Total experience from the jobs a profile carries, as of the day it is being saved."""
+    return total_experience_years(
+        [
+            WorkPeriod(
+                start_year=job.start_year,
+                start_month=job.start_month,
+                end_year=job.end_year,
+                end_month=job.end_month,
+            )
+            for job in jobs
+        ],
+        business_today(),
+    )
 
 
 def skills_named(profile: CandidateProfile) -> dict[str, str]:

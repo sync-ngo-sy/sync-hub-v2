@@ -25,6 +25,7 @@ AMINA = ParsedCv(
     email="amina.haddad@example.com",
     phone="+963 11 555 0134",
     detected_language="en",
+    canonical_role="backend-engineer",
     headline="Backend engineer, 8 years",
     summary="Builds boring payment systems that stay up.",
     location="Damascus, Syria",

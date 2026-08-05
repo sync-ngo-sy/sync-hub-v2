@@ -529,6 +529,26 @@ describe('a CV filling the form', () => {
     expect(saved).not.toHaveBeenCalled();
   });
 
+  it('leaves a job the CV never dated to be dated before the profile will save', async () => {
+    const saved = vi.fn();
+    const undated = {
+      ...CV_DRAFT,
+      experiences: [
+        { job_title: 'Backend engineer', company_name: 'Levant Digital', is_current: false },
+      ],
+    };
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...drafts(undated),
+      ...echoesProfile(saved),
+    ]);
+    await fillFrom(user, READY_CV);
+    await save(user);
+
+    expect(await screen.findByText('Enter the year.')).toBeVisible();
+    expect(saved).not.toHaveBeenCalled();
+  });
+
   it('surfaces a skill the platform has no name for instead of dropping it', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);
@@ -568,7 +588,12 @@ describe('a CV filling the form', () => {
       headline: 'Backend engineer and trainer',
       location_key: 'sy-aleppo',
       experiences: [
-        { job_title: 'Backend engineer', company_name: 'Levant Digital', is_current: true },
+        {
+          job_title: 'Backend engineer',
+          company_name: 'Levant Digital',
+          start_year: 2021,
+          is_current: true,
+        },
       ],
       educations: [],
       skills: [

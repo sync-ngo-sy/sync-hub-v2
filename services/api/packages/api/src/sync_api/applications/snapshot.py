@@ -9,7 +9,6 @@ from sync_api.applications.payload import AnsweredQuestion, ApplicationSnapshot
 from sync_api.applications.screening import (
     Snapshot,
     SnapshotAnswer,
-    SnapshotExperience,
     SnapshotLanguage,
     SnapshotSkill,
 )
@@ -81,7 +80,18 @@ class Twin:
 #: it changed nothing. `location` is the one column that is not copied across: the Snapshot
 #: freezes what the Location was *called* when the Application was sent, so renaming a
 #: Location — or the Candidate moving — never rewrites an Application already judged.
-SCALARS: Final = ("full_name", "phone", "headline", "summary", "location", "unmapped_skills")
+#: `total_experience_years` is copied rather than recomputed, which is the whole point of
+#: storing it: an applicant who has not saved their profile lately applies with the number they
+#: last saved, and the verdict can be re-explained from the Snapshot alone forever after.
+SCALARS: Final = (
+    "full_name",
+    "phone",
+    "headline",
+    "summary",
+    "location",
+    "unmapped_skills",
+    "total_experience_years",
+)
 
 SECTIONS: Final = (
     Twin(
@@ -155,6 +165,7 @@ def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
             Candidate.summary,
             Location.name,
             Candidate.unmapped_skills,
+            Candidate.total_experience_years,
         )
         .join_from(Candidate, Profile, Profile.id == Candidate.id)
         .outerjoin(Location, Location.key == Candidate.location_key)
@@ -175,31 +186,27 @@ async def screened(
         .where(ApplicationSkill.application_id == application_id)
         .order_by(ApplicationSkill.sort_order)
     )
-    experiences = await session.scalars(
-        select(ApplicationExperience)
-        .where(ApplicationExperience.application_id == application_id)
-        .order_by(ApplicationExperience.sort_order)
-    )
     languages = await session.execute(
         select(ApplicationLanguage.language_code, ApplicationLanguage.proficiency)
         .where(ApplicationLanguage.application_id == application_id)
         .order_by(ApplicationLanguage.sort_order)
     )
+    # Read back rather than passed in: a verdict is drawn from the frozen row, so if the freeze
+    # did not happen there is no number to judge by — and screening somebody as having no work
+    # would be a wrong verdict rather than a missing one.
+    total_experience_years = await session.scalar(
+        select(ApplicationProfileSnapshot.total_experience_years).where(
+            ApplicationProfileSnapshot.application_id == application_id
+        )
+    )
+    if total_experience_years is None:  # pragma: no cover — written in this transaction
+        raise LookupError(f"no snapshot for application {application_id}")
     return Snapshot(
         skills=tuple(
             SnapshotSkill(taxonomy_id=taxonomy_id, years_experience=years)
             for taxonomy_id, years in skills.tuples()
         ),
-        experiences=tuple(
-            SnapshotExperience(
-                start_year=row.start_year,
-                start_month=row.start_month,
-                end_year=row.end_year,
-                end_month=row.end_month,
-                is_current=row.is_current,
-            )
-            for row in experiences
-        ),
+        total_experience_years=total_experience_years,
         languages=tuple(
             SnapshotLanguage(code=code, proficiency=proficiency)
             for code, proficiency in languages.tuples()
@@ -224,6 +231,7 @@ async def snapshot_of(session: AsyncSession, application_id: UUID) -> Applicatio
         summary=captured.summary,
         location=captured.location,
         unmapped_skills=captured.unmapped_skills,
+        total_experience_years=captured.total_experience_years,
         experiences=await _experiences(session, application_id),
         educations=await _educations(session, application_id),
         skills=await _skills(session, application_id),

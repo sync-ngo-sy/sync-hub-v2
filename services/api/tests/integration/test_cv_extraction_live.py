@@ -19,6 +19,7 @@ pytestmark = [
 ]
 
 VOCABULARY = Vocabulary(
+    canonical_roles=["backend-engineer", "frontend-engineer", "data-scientist"],
     canonical_skills=[
         "Python",
         "PostgreSQL",

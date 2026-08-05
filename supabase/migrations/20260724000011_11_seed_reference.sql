@@ -58,6 +58,27 @@ from (values
 ) as v(key, name)
 on conflict (key) do nothing;
 
+-- What kind of practitioner somebody is. Deliberately coarse: fourteen entries a Recruiter can
+-- hold the platform to rather than a catalogue of job titles, because the finer distinctions
+-- are already in the Canonical skills a Candidate lists. A role that is missing is added here,
+-- in this list, rather than typed into a profile.
+insert into canonical_roles (key, name) values
+  ('frontend-engineer',  'Frontend Engineer'),
+  ('backend-engineer',   'Backend Engineer'),
+  ('fullstack-engineer', 'Full-stack Engineer'),
+  ('mobile-engineer',    'Mobile Engineer'),
+  ('devops-engineer',    'DevOps Engineer'),
+  ('qa-engineer',        'QA Engineer'),
+  ('data-engineer',      'Data Engineer'),
+  ('data-scientist',     'Data Scientist'),
+  ('ui-ux-designer',     'UI/UX Designer'),
+  ('graphic-designer',   'Graphic Designer'),
+  ('product-manager',    'Product Manager'),
+  ('project-manager',    'Project Manager'),
+  ('business-analyst',   'Business Analyst'),
+  ('it-support',         'IT Support')
+on conflict (key) do nothing;
+
 insert into skill_categories (name) values
   ('Programming Languages'),
   ('Frameworks & Libraries'),

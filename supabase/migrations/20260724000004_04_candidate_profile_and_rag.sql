@@ -10,7 +10,10 @@ create table candidate_experiences (
   company_name text,
   job_title    text not null,
 
-  start_year  int,
+  -- Dated, always: Total experience is derived from these entries and stored as one number, and
+  -- that number is only honest if every job behind it could be measured. A start year always,
+  -- and an end year unless the job is still held.
+  start_year  int not null,
   start_month int,
   end_year    int,
   end_month   int,
@@ -22,6 +25,7 @@ create table candidate_experiences (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
+  constraint cexp_finished_work_has_an_end check (is_current or end_year is not null),
   constraint cexp_start_month_range check (start_month is null or start_month between 1 and 12),
   constraint cexp_end_month_range   check (end_month   is null or end_month   between 1 and 12),
   constraint cexp_start_year_range  check (start_year  is null or start_year  between 1900 and 2100),

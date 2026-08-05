@@ -130,8 +130,10 @@ EMPTY_PROFILE: dict[str, Any] = {
     "headline": None,
     "summary": None,
     "location_key": None,
+    "canonical_role_key": None,
     "preferred_language_code": None,
     "is_searchable": False,
+    "total_experience_years": 0,
     "experiences": [],
     "educations": [],
     "skills": [],
@@ -176,6 +178,7 @@ FILLED_PROFILE: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
+    "canonical_role_key": "backend-engineer",
     "experiences": [AN_EXPERIENCE],
     "educations": [AN_EDUCATION],
     "skills": [
