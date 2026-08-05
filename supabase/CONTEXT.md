@@ -64,20 +64,40 @@ _Avoid_: Submission, Entry.
 The frozen, candidate-reviewed profile captured when an Application is created — identity,
 experience, education, skills, languages, projects (the `application_*` tables). Distinct
 from the live Candidate profile *and* from the raw AI output in `cvs.parsed_cv_data`; it
-may differ from both. Never edited after creation.
+may differ from both. Carries the Candidate's Total experience as it stood that day, so a
+verdict can be re-explained years later from the Snapshot alone. Never edited after creation.
 _Avoid_: Copy, Archive.
 
 ### Search
 
 **Searchable**:
-A Candidate's explicit opt-in (`is_searchable`) to appear in cross-tenant Global search.
-The search projection never exposes their email or phone.
+A Candidate's explicit opt-in (`is_searchable`) to be found by any Tenant — through Global
+search and through the Candidate directory alike; it is one opt-in, not two. Being found is
+not the same as being contacted: no list of Candidates ever carries a phone or an email, and
+a Tenant reads either only by opening one Candidate's profile, one at a time.
 _Avoid_: Public, Listed, Visible.
 
 **Global search**:
-Cross-tenant semantic search over Searchable Candidates, served by a trusted projection
-that hides contact details and other tenants' private data.
+Cross-tenant search over Searchable Candidates for what a Recruiter *means* — ranked by
+what a query is about rather than the words in it, so a profile that never uses the
+Recruiter's words can still be the closest answer. Filters narrow it but never reorder it.
+Its counterpart is the Candidate directory, and the two never merge: a ranking cannot be
+paged to the end, and a filter cannot rank.
 _Avoid_: Talent search, Discovery.
+
+**Candidate directory**:
+The same Searchable Candidates, asked for by fact rather than by meaning — a Location, a
+Canonical role, skills, years of work. It answers without a query written in words, orders
+newest first, and can be paged to the end, because every answer it gives is a yes or a no
+rather than a degree of closeness.
+_Avoid_: Browse, Listing, Filtered search.
+
+**Total experience**:
+How long a Candidate has worked, in whole years, derived from their experience entries and
+never typed: two jobs held at once count once, not twice, and a stretch of six months or
+more rounds up to a year. Derived when they save their profile — so it is as current as
+they have kept it — and frozen into a Snapshot as it stood the day they applied.
+_Avoid_: Seniority, Tenure, Years of experience (that phrase belongs to one skill).
 
 **Profile chunk**:
 A slice of a Candidate's *current* profile, embedded as a vector for Global search.
@@ -169,6 +189,17 @@ compares — a Candidate's skills, a Job's requirements — is expressed in Cano
 CV parsing maps free-text skills onto Canonical skills in-model; what cannot be mapped is
 surfaced to the Candidate at review and never influences Screening.
 _Avoid_: Skill string, Keyword.
+
+**Canonical role**:
+A platform-global entry in the role taxonomy (one key, one spelling) saying what kind of
+practitioner a Candidate is — frontend, backend, ui/ux design. One per Candidate, chosen from
+the list or left unset — never typed — which is what makes filtering by it an equality on the
+key. Unlike a Canonical skill, it is a judgement rather than a reading: CV parsing *proposes*
+one and the Candidate confirms or changes it at review, so an unset role means nobody has
+claimed one, not that the CV was silent. Named "Canonical" for the same reason a skill is —
+to keep it clear of a Recruiter's **role** inside their Tenant, and of a **Job**, which is the
+open role a Tenant is hiring for.
+_Avoid_: Role, Title, Job title, Discipline, Position.
 
 **Location**:
 A platform-global entry in the place taxonomy (one key, one spelling), which a Job and a
