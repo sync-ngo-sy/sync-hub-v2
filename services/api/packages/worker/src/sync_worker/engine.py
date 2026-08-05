@@ -108,8 +108,7 @@ class QueueEngine[ResultT]:
         except Exception as error:
             await self._failed(job, error, log)
         else:
-            await self._completed(job, result)
-            log.info("worker.job_completed")
+            await self._completed(job, result, log)
         return True
 
     async def sweep(self) -> int:
@@ -132,9 +131,9 @@ class QueueEngine[ResultT]:
                 reason = f"the worker holding this job stopped responding (attempt {job.attempts})"
                 if self._policy.is_exhausted(job.attempts):
                     await self._consumer.give_up(session, job, reason)
-                    await session.execute(self._dead(job.id, reason))
+                    await session.execute(self._dead(job, reason))
                 else:
-                    await session.execute(self._requeue(job.id, job.attempts, reason))
+                    await session.execute(self._requeue(job, reason))
                 swept += 1
 
         if swept:
@@ -173,30 +172,44 @@ class QueueEngine[ResultT]:
             return None
         return ClaimedJob(id=row["id"], attempts=row["attempts"], row=dict(row))
 
-    async def _completed(self, job: ClaimedJob, result: ResultT) -> None:
+    async def _completed(self, job: ClaimedJob, result: ResultT, log: BoundLogger) -> None:
+        """The queue row first, and the consumer's own write only if that row was still ours.
+
+        This order is the whole guarantee: a parse recorded before the claim is checked is a
+        parse that lands whatever the queue says, and for a CV that reads as a Candidate whose
+        profile silently moved backwards.
+        """
         table = self.queue.table
         async with self._database.session() as session, transaction(session):
-            await self._consumer.record(session, job, result)
-            await session.execute(
+            claimed = await session.execute(
                 update(table)
-                .where(table.c.id == job.id)
+                .where(*self._claim_held(job))
                 .values(
                     status=self.queue.completed,
                     completed_at=func.now(),
                     error_message=None,
                 )
+                .returning(table.c.id)
             )
+            if claimed.one_or_none() is None:
+                log.warning("worker.claim_lost")
+                return
+            await self._consumer.record(session, job, result)
+        log.info("worker.job_completed")
 
     async def _failed(self, job: ClaimedJob, error: Exception, log: BoundLogger) -> None:
         reason = failure_reason(error)
         permanent = isinstance(error, PermanentFailureError)
         settled = permanent or self._policy.is_exhausted(job.attempts)
         async with self._database.session() as session, transaction(session):
+            written = await session.execute(
+                self._dead(job, reason) if settled else self._requeue(job, reason)
+            )
+            if written.one_or_none() is None:
+                log.warning("worker.claim_lost", error=reason)
+                return
             if settled:
                 await self._consumer.give_up(session, job, reason)
-                await session.execute(self._dead(job.id, reason))
-            else:
-                await session.execute(self._requeue(job.id, job.attempts, reason))
 
         log.warning(
             "worker.job_failed",
@@ -206,25 +219,42 @@ class QueueEngine[ResultT]:
             exc_info=None if settled else error,
         )
 
-    def _dead(self, job_id: UUID, reason: str) -> Update:
+    def _claim_held(self, job: ClaimedJob) -> tuple[ColumnElement[bool], ...]:
+        """The row exactly as the claim left it.
+
+        A job that outruns the stuck threshold is swept and claimed by a second worker, so
+        writing by id alone lets the first worker's eventual answer overwrite state the second
+        one owns. Every settle asserts this instead, and discards its result when it fails.
+        """
         table = self.queue.table
         return (
-            update(table)
-            .where(table.c.id == job_id)
-            .values(status=self.queue.failed, completed_at=func.now(), error_message=reason)
+            table.c.id == job.id,
+            table.c.status == self.queue.processing,
+            table.c.started_at == job.row["started_at"],
+            table.c.attempts == job.attempts,
         )
 
-    def _requeue(self, job_id: UUID, attempts: int, reason: str) -> Update:
+    def _dead(self, job: ClaimedJob, reason: str) -> Update:
         table = self.queue.table
         return (
             update(table)
-            .where(table.c.id == job_id)
+            .where(*self._claim_held(job))
+            .values(status=self.queue.failed, completed_at=func.now(), error_message=reason)
+            .returning(table.c.id)
+        )
+
+    def _requeue(self, job: ClaimedJob, reason: str) -> Update:
+        table = self.queue.table
+        return (
+            update(table)
+            .where(*self._claim_held(job))
             .values(
                 status=self.queue.pending,
-                available_at=datetime.now(UTC) + self._policy.delay_after(attempts),
+                available_at=datetime.now(UTC) + self._policy.delay_after(job.attempts),
                 started_at=None,
                 error_message=reason,
             )
+            .returning(table.c.id)
         )
 
 

@@ -11,15 +11,27 @@ from sync_core import transaction
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
 TENANT_SLUG_CONSTRAINT: Final = "tenants_slug_key"
 
+#: Work that has to land in the same commit as the Tenant's own rows — recording the Access
+#: request this Tenant came out of, for instance. Raising from it refuses the whole provisioning,
+#: which is the point: there is no state where one of the two happened.
+type SharedCommit = Callable[[AsyncSession, UUID], Awaitable[None]]
+
 
 async def provision_tenant(
-    session: AsyncSession, *, admin_id: UUID, name: str, slug: str, full_name: str
+    session: AsyncSession,
+    *,
+    admin_id: UUID,
+    name: str,
+    slug: str,
+    full_name: str,
+    in_the_same_commit: SharedCommit | None = None,
 ) -> TenantSummary:
     """The three rows a Tenant is, in the one order the constraints allow, in one transaction.
 
@@ -36,6 +48,9 @@ async def provision_tenant(
             )
             await session.flush()
             session.add(Recruiter(id=admin_id, tenant_id=tenant.id, role=RecruiterRole.ADMIN))
+            if in_the_same_commit is not None:
+                await session.flush()
+                await in_the_same_commit(session, tenant.id)
     except IntegrityError as exc:
         if violated_constraint(exc) != TENANT_SLUG_CONSTRAINT:
             raise

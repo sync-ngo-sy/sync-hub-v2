@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_core import Database, transaction
 from sync_core.models import Candidate, CandidateEmbeddingJob
 from sync_rag import EMBEDDING_DIMENSIONS, ChunkType
-from tests.support.candidates import a_signed_in_candidate
+from tests.support.candidates import a_deleted_account, a_signed_in_candidate
 from tests.support.embedders import FakeEmbedder
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import a_profile, embedding_jobs, my_id, profile_chunks
@@ -75,6 +75,107 @@ class EditingEmbedder(FakeEmbedder):
                 .values(headline="Edited while it was being embedded")
             )
         return await super().embed(texts)
+
+
+class DeletingEmbedder(FakeEmbedder):
+    """Deletes the account while its profile is out at the embedder.
+
+    The provider call is the long half of a re-embed, so this is where a Candidate erasing
+    themselves lands: the chunks come back for a profile that no longer exists.
+    """
+
+    def __init__(self, browser: AsyncClient) -> None:
+        super().__init__()
+        self._browser = browser
+
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        await a_deleted_account(self._browser)
+        return await super().embed(texts)
+
+
+class StolenMidEmbed(FakeEmbedder):
+    """Loses its claim mid-flight: the sweeper releases the row and a second worker finishes it.
+
+    Its own model name is what gives it away — chunks carry whichever embedder wrote them.
+    """
+
+    model = "a-worker-that-lost-its-claim"
+
+    def __init__(self, session: AsyncSession, database: Database, candidate_id: UUID) -> None:
+        super().__init__()
+        self._session = session
+        self._database = database
+        self._candidate_id = candidate_id
+
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        await _abandon_the_claim(
+            self._session, self._candidate_id, claimed_ago=timedelta(minutes=5)
+        )
+        successor = a_reembed_worker(self._database, FakeEmbedder(), stuck_after_seconds=60)
+        assert await successor.sweep() == 1
+        assert await successor.run_once() is True, "the successor never claimed the released job"
+        return await super().embed(texts)
+
+
+class LosingItsClaimMidEmbed(FakeEmbedder):
+    """Fails, but only once somebody else is holding the claim it was given."""
+
+    def __init__(self, session: AsyncSession, candidate_id: UUID) -> None:
+        super().__init__(RuntimeError("the embedder is down"))
+        self._session = session
+        self._candidate_id = candidate_id
+
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        await _claimed_by_somebody_else(self._session, self._candidate_id)
+        return await super().embed(texts)
+
+
+async def test_an_account_deleted_while_it_was_embedding_keeps_no_chunks(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, database: Database
+) -> None:
+    """The one write nothing else undoes. The queue row is gone with the account, so no rebuild
+    is ever enqueued to clear these, and the eligibility view hides them from every reader."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await browser.put(PROFILE, json=A_FULL_PROFILE)
+
+    await a_reembed_worker(database, DeletingEmbedder(browser)).run_once()
+
+    assert await profile_chunks(db_session, candidate_id) == []
+    assert await embedding_jobs(db_session, candidate_id) == []
+
+
+async def test_a_worker_whose_claim_was_swept_writes_no_chunks(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, database: Database
+) -> None:
+    """Two writers on one candidate's chunks is a race on their uniqueness constraint, and the
+    loser's vectors describe whatever the profile looked like before the current worker read it."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await browser.put(PROFILE, json=A_FULL_PROFILE)
+    stale = StolenMidEmbed(db_session, database, candidate_id)
+
+    await a_reembed_worker(database, stale, stuck_after_seconds=60).run_once()
+
+    chunks = await profile_chunks(db_session, candidate_id)
+    assert chunks != []
+    assert {chunk.embedding_model for chunk in chunks} == {FakeEmbedder.model}
+
+
+async def test_a_worker_whose_claim_was_swept_does_not_release_it(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, database: Database
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await browser.put(PROFILE, json=A_FULL_PROFILE)
+    stale = LosingItsClaimMidEmbed(db_session, candidate_id)
+
+    await a_reembed_worker(database, stale).run_once()
+
+    [job] = await embedding_jobs(db_session, candidate_id)
+    assert job.claimed_at is not None, "the claim belongs to the worker still working"
+    assert job.attempts == 2
+    assert job.error_message is None
 
 
 async def test_a_dirty_profile_becomes_chunks_and_a_clean_job(
@@ -266,5 +367,15 @@ async def _abandon_the_claim(
         update(CandidateEmbeddingJob)
         .where(CandidateEmbeddingJob.candidate_id == candidate_id)
         .values(claimed_at=datetime.now(UTC) - claimed_ago, attempts=1)
+    )
+    await session.commit()
+
+
+async def _claimed_by_somebody_else(session: AsyncSession, candidate_id: UUID) -> None:
+    """What a sweep and a second claim leave behind: a fresh claim, one attempt further on."""
+    await session.execute(
+        update(CandidateEmbeddingJob)
+        .where(CandidateEmbeddingJob.candidate_id == candidate_id)
+        .values(claimed_at=datetime.now(UTC), attempts=2, error_message=None)
     )
     await session.commit()
