@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 
 from sync_core import get_logger
-from sync_core.models import CandidateProfileChunk
+from sync_core.models import CandidateProfileChunk, EmbeddingModel
 from sync_rag.chunks import chunks_of
 from sync_rag.embedding import EMBEDDING_DIMENSIONS, EmbeddingError
 from sync_rag.profile import current_profile
@@ -56,6 +57,7 @@ class ProfileEmbedding:
     async def swap(
         self, session: AsyncSession, candidate_id: UUID, chunks: Sequence[EmbeddedChunk]
     ) -> None:
+        await self._establish_the_model(session)
         await session.execute(
             delete(CandidateProfileChunk).where(CandidateProfileChunk.candidate_id == candidate_id)
         )
@@ -71,6 +73,25 @@ class ProfileEmbedding:
                 )
                 for index, chunk in enumerate(chunks)
             ]
+        )
+
+    async def _establish_the_model(self, session: AsyncSession) -> None:
+        """One model for the whole corpus, so every distance the index ranks means the same thing.
+
+        The first deployment to write a chunk decides it. Changing it means deleting every chunk
+        and the row, which is the re-embed that has to happen anyway — so the alternative to this
+        refusal is a ranking computed across two models that reports no error at all.
+        """
+        established = await session.scalar(select(EmbeddingModel.model))
+        if established is not None and established != self._embedder.model:
+            raise EmbeddingError(
+                f"the corpus was embedded with {established!r} and this worker is running "
+                f"{self._embedder.model!r}: delete every chunk before changing model"
+            )
+        await session.execute(
+            insert(EmbeddingModel)
+            .values(model=self._embedder.model)
+            .on_conflict_do_nothing(index_elements=["model"])
         )
 
 

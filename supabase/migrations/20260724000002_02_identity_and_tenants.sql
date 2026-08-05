@@ -70,6 +70,8 @@ create index candidates_current_cv_id_idx on candidates (current_cv_id);
 create index candidates_total_experience_idx on candidates (total_experience_years);
 create index candidates_searchable_idx on candidates (id)
   where is_searchable and deleted_at is null;
+create index candidates_directory_idx on candidates (created_at desc, id desc)
+  where is_searchable and deleted_at is null;
 
 create table recruiters (
   id           uuid primary key,

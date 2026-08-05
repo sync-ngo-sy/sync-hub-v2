@@ -29,6 +29,7 @@ from sync_api.crm import (
     TalentPoolService,
 )
 from sync_api.cvs import CvService
+from sync_api.discovery import CandidateDirectoryService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
 from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService
@@ -117,6 +118,15 @@ def get_candidate_profile_service(session: SessionDep) -> CandidateProfileServic
 
 CandidateProfileServiceDep = Annotated[
     CandidateProfileService, Depends(get_candidate_profile_service)
+]
+
+
+def get_candidate_directory_service(session: SessionDep) -> CandidateDirectoryService:
+    return CandidateDirectoryService(session)
+
+
+CandidateDirectoryServiceDep = Annotated[
+    CandidateDirectoryService, Depends(get_candidate_directory_service)
 ]
 
 

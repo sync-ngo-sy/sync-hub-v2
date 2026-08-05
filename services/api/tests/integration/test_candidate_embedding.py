@@ -379,3 +379,4 @@ async def _claimed_by_somebody_else(session: AsyncSession, candidate_id: UUID) -
         .values(claimed_at=datetime.now(UTC), attempts=2, error_message=None)
     )
     await session.commit()
+
