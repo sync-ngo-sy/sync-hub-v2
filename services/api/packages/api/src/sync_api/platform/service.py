@@ -14,7 +14,7 @@ from sync_api.problems import (
     Problem,
 )
 from sync_api.tenants import Member
-from sync_api.tenants.provisioning import provision_tenant, slug_taken
+from sync_api.tenants.provisioning import SharedCommit, provision_tenant, slug_taken
 from sync_core import get_logger, transaction
 from sync_core.models import (
     Application,
@@ -93,12 +93,22 @@ class PlatformService:
         return [_tenant_from(row) for row in rows.tuples()]
 
     async def create_tenant(
-        self, *, name: str, slug: str, email: str, full_name: str
+        self,
+        *,
+        name: str,
+        slug: str,
+        email: str,
+        full_name: str,
+        in_the_same_commit: SharedCommit | None = None,
     ) -> CreatedTenant:
         """A Tenant and the admin who will run it, who is invited rather than given a password.
 
         Both refusals are asked before the invitation goes out, so a request that cannot succeed
         never puts a link in somebody's inbox. The constraints stay the backstop for the race.
+
+        `in_the_same_commit` is for a caller with a record of its own to keep — the Access request
+        queue writes its decision there, so the decision and the Tenant land together or not at
+        all. The invitation is the only step outside it, and the compensation below takes that back.
         """
         await self._refuse_a_taken_slug(slug)
         user = await invite_identity(
@@ -106,7 +116,12 @@ class PlatformService:
         )
         async with identity_undone_unless_taken(self._gotrue, user.id):
             tenant = await provision_tenant(
-                self._db, admin_id=user.id, name=name, slug=slug, full_name=full_name
+                self._db,
+                admin_id=user.id,
+                name=name,
+                slug=slug,
+                full_name=full_name,
+                in_the_same_commit=in_the_same_commit,
             )
 
         logger.info("platform.tenant_created", tenant_id=str(tenant.id), profile_id=str(user.id))
