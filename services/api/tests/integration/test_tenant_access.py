@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import asyncio
+from typing import TYPE_CHECKING
+from uuid import UUID
+
+import pytest
 from httpx import AsyncClient
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_core.models import RecruiterRole
+from sync_api.problems import LAST_TENANT_ADMIN_PROBLEM_TYPE, Problem
+from sync_api.tenants import TenantService
+from sync_core.models import Recruiter, RecruiterRole
+from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.candidates import a_confirmed_candidate, sign_in
+from tests.support.harness import app_of
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import (
     a_teammate,
@@ -15,7 +25,17 @@ from tests.support.tenants import (
     set_tenant_active,
 )
 
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+
+    from sync_api.tenants import Member
+    from sync_core import Database
+
 TENANT_SCOPED_ROUTES = ("/v1/tenants/me", "/v1/tenants/me/members")
+
+#: Long enough for a removal to reach its check against a local database, which takes a handful
+#: of round trips. With the admin set locked it is still waiting when this elapses.
+LONG_ENOUGH_TO_REACH_THE_CHECK = 0.5
 
 
 async def test_any_recruiter_can_read_the_tenant_and_its_roster(
@@ -222,6 +242,74 @@ async def test_an_admin_may_step_down_once_someone_else_can_run_the_tenant(
     assert response.status_code == 200, response.text
     assert response.json()["role"] == RecruiterRole.RECRUITER.value
     assert (await invite(browser, email=an_invitee_address())).status_code == 403
+
+
+async def test_an_admin_cannot_be_removed_while_the_other_one_is_being_removed(
+    browser: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+) -> None:
+    """Two removals at once, each reading a roster the other is halfway through changing.
+
+    A Tenant left with no active admin cannot be repaired from its own side — every route that
+    could appoint one needs an active admin to call it — and the platform has no operation that
+    reaches into a Tenant's roster either. So this is the one place the check has to hold under
+    concurrency, and holding a lock on the row being changed is not enough to make it.
+
+    Driven below HTTP because what has to overlap is the transactions, not the requests.
+    """
+    await an_admin(browser, mailbox)
+    teammate = await a_teammate(browser, other_browser, mailbox, role=RecruiterRole.ADMIN)
+    roster = (await browser.get("/v1/tenants/me/members")).json()
+    tenant_id = UUID((await browser.get("/v1/tenants/me")).json()["id"])
+    founder = next(member for member in roster if member["id"] != teammate["id"])
+
+    async with database.session() as in_flight:
+        # The other admin's removal, mid-transaction: changed, locked, and invisible to anyone
+        # who has not asked to wait for it.
+        await in_flight.execute(
+            update(Recruiter).where(Recruiter.id == UUID(teammate["id"])).values(is_active=False)
+        )
+        removing = asyncio.create_task(
+            _deactivate(database, app_of(browser), tenant_id, UUID(founder["id"]))
+        )
+        await asyncio.wait([removing], timeout=LONG_ENOUGH_TO_REACH_THE_CHECK)
+        await in_flight.commit()
+
+    with pytest.raises(Problem) as refused:
+        await removing
+
+    assert refused.value.type == LAST_TENANT_ADMIN_PROBLEM_TYPE
+    assert await _active_admins(db_session, tenant_id) == 1
+
+
+async def _deactivate(
+    database: Database, app: FastAPI, tenant_id: UUID, recruiter_id: UUID
+) -> Member:
+    async with database.session() as session:
+        tenants = TenantService(
+            session,
+            app.state.authentication.gotrue,
+            recruiter_portal_url=RECRUITER_PORTAL_URL,
+        )
+        return await tenants.change_member(
+            tenant_id=tenant_id, recruiter_id=recruiter_id, is_active=False
+        )
+
+
+async def _active_admins(session: AsyncSession, tenant_id: UUID) -> int:
+    total = await session.scalar(
+        select(func.count())
+        .select_from(Recruiter)
+        .where(
+            Recruiter.tenant_id == tenant_id,
+            Recruiter.role == RecruiterRole.ADMIN,
+            Recruiter.is_active.is_(True),
+        )
+    )
+    return int(total or 0)
 
 
 async def test_an_admin_cannot_change_another_tenants_member(

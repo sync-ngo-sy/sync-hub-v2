@@ -94,11 +94,16 @@ create table access_requests (
   created_at timestamptz not null default now(),
   decided_at timestamptz,
 
+  -- A converted request is not required to still *have* its Tenant: the FK above nulls this
+  -- column when a Tenant is deleted, and insisting on it here would make every
+  -- `delete from tenants` a constraint violation — no Tenant opened by mistake could ever be
+  -- removed. `decided_at` is what separates a decided request from a waiting one, and only
+  -- `dismissed` is held to naming no Tenant at all.
   constraint access_requests_decision check (
     case status
       when 'pending'   then decided_at is null     and tenant_id is null
       when 'dismissed' then decided_at is not null and tenant_id is null
-      when 'converted' then decided_at is not null and tenant_id is not null
+      when 'converted' then decided_at is not null
     end
   )
 );
