@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, ge=1)
     database_max_overflow: int = Field(default=5, ge=0)
     database_echo: bool = False
+    database_statement_timeout_ms: int = Field(default=15_000, ge=0)
 
     supabase_url: AnyHttpUrl
     supabase_service_role_key: SecretStr

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from uuid import UUID
 
@@ -10,9 +11,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_core.models import JobSkill
+from sync_core.profile import MAX_PARAGRAPH_LENGTH
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import (
     TENANT_JOBS,
+    a_closed_job,
     a_created_job,
     a_job,
     an_application,
@@ -147,6 +150,16 @@ async def test_a_job_moves_through_its_lifecycle(browser: AsyncClient, mailbox: 
         assert moved.json()["status"] == status
 
 
+async def test_a_description_too_long_to_index_is_a_validation_error(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+
+    refused = await post_job(browser, a_job(description="x" * (MAX_PARAGRAPH_LENGTH + 1)))
+
+    assert refused.status_code == 422, refused.text
+
+
 async def test_a_job_cannot_skip_from_draft_to_closed(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
@@ -169,6 +182,23 @@ async def test_an_archived_job_is_archived_for_good(browser: AsyncClient, mailbo
 
     assert refused.status_code == 409, refused.text
     assert (await read_job(browser, job["id"]))["status"] == "archived"
+
+
+async def test_two_status_changes_at_once_cannot_republish_an_archived_job(
+    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    await a_teammate(browser, other_browser, mailbox)
+    job = await a_closed_job(browser)
+
+    archiving, publishing = await asyncio.gather(
+        change_job(browser, job["id"], status="archived"),
+        change_job(other_browser, job["id"], status="published"),
+    )
+
+    assert {archiving.status_code, publishing.status_code} <= {200, 409}
+    settled = (await read_job(browser, job["id"]))["status"]
+    assert settled == "archived", "an archived job came back published"
 
 
 async def test_restating_the_status_a_job_already_has_changes_nothing(

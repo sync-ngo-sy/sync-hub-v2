@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
-
 from sync_api.problems import (
     RECRUITER_DEACTIVATED_PROBLEM_TYPE,
     RECRUITER_ONLY_PROBLEM_TYPE,
@@ -13,12 +11,10 @@ from sync_api.problems import (
     Problem,
 )
 from sync_core import get_logger
-from sync_core.models import AccountType, Recruiter, RecruiterRole, Tenant
+from sync_core.models import AccountType, RecruiterRole
 
 if TYPE_CHECKING:
     from uuid import UUID
-
-    from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth import ActingProfile
 
@@ -43,29 +39,22 @@ class ActingRecruiter:
         return self.role is RecruiterRole.ADMIN
 
 
-async def acting_recruiter(session: AsyncSession, profile: ActingProfile) -> ActingRecruiter:
+def acting_recruiter(profile: ActingProfile) -> ActingRecruiter:
     if profile.account_type is not AccountType.RECRUITER:
         raise _recruiter_only()
 
-    row = (
-        await session.execute(
-            select(Recruiter.role, Recruiter.is_active, Tenant)
-            .join(Tenant, Tenant.id == Recruiter.tenant_id)
-            .where(Recruiter.id == profile.id)
-        )
-    ).first()
-    if row is None:
+    membership = profile.membership
+    if membership is None:
         logger.error("tenants.recruiter_row_missing", profile_id=str(profile.id))
         raise _recruiter_only()
 
-    role, is_active, tenant = row
-    if not is_active:
+    if not membership.is_active:
         raise Problem(
             status=403,
             type=RECRUITER_DEACTIVATED_PROBLEM_TYPE,
             detail="Your access to this tenant has been turned off by an admin.",
         )
-    if not tenant.is_active:
+    if not membership.tenant.is_active:
         raise Problem(
             status=403,
             type=TENANT_SUSPENDED_PROBLEM_TYPE,
@@ -74,8 +63,10 @@ async def acting_recruiter(session: AsyncSession, profile: ActingProfile) -> Act
 
     return ActingRecruiter(
         profile=profile,
-        tenant=TenantSummary(id=tenant.id, name=tenant.name, slug=tenant.slug),
-        role=role,
+        tenant=TenantSummary(
+            id=membership.tenant.id, name=membership.tenant.name, slug=membership.tenant.slug
+        ),
+        role=membership.role,
     )
 
 

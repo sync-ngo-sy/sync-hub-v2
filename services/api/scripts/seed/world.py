@@ -350,6 +350,7 @@ class World:
                     account_type=AccountType.CANDIDATE,
                     avatar_url=None,
                     phone=person.profile.phone,
+                    has_account_row=True,
                 )
             )
 
@@ -766,6 +767,7 @@ class World:
                     account_type=AccountType.RECRUITER,
                     avatar_url=None,
                     phone=None,
+                    has_account_row=True,
                 ),
                 tenant=TenantSummary(
                     id=self._seeded.tenants[tenant.key], name=tenant.name, slug=tenant.slug

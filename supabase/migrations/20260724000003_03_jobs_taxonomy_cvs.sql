@@ -59,12 +59,20 @@ create table jobs (
   updated_at timestamptz not null default now(),
 
   foreign key (tenant_id, created_by_recruiter_id) references recruiters (tenant_id, id),
-  unique (tenant_id, id)
+  unique (tenant_id, id),
+
+  constraint jobs_title_length       check (length(title)       <= 200),
+  constraint jobs_description_length check (length(description) <= 5000)
 );
 create index jobs_location_key_idx     on jobs (location_key);
-create index jobs_tenant_status_idx    on jobs (tenant_id, status);
 create index jobs_created_by_idx        on jobs (created_by_recruiter_id);
 create index jobs_status_expires_at_idx on jobs (status, expires_at);
+
+create index jobs_tenant_created_idx        on jobs (tenant_id, created_at desc, id desc);
+create index jobs_tenant_status_created_idx on jobs (tenant_id, status, created_at desc, id desc);
+
+create index jobs_published_created_idx on jobs (created_at desc, id desc)
+  where status = 'published';
 
 create table job_skills (
   id          uuid primary key default gen_random_uuid(),
@@ -131,12 +139,24 @@ create table cvs (
   created_at timestamptz not null default now(),
   deleted_at timestamptz,
 
-  unique (candidate_id, id)
+  unique (candidate_id, id),
+
+  constraint cvs_ready_has_a_parse check (
+    parsing_status <> 'ready' or (parsed_cv_data is not null and parsed_at is not null)
+  ),
+  constraint cvs_failure_has_a_reason check (
+    parsing_status <> 'failed' or parsing_error is not null
+  )
 );
 -- Partial, so the same file can be re-uploaded after a soft-delete.
 create unique index cvs_candidate_file_hash_active_uidx
   on cvs (candidate_id, file_hash) where deleted_at is null;
 create index cvs_candidate_parsing_status_idx on cvs (candidate_id, parsing_status);
+
+alter table cvs
+  add constraint cvs_detected_language_fk
+  foreign key (detected_language) references languages (code);
+create index cvs_detected_language_idx on cvs (detected_language);
 
 create table ingestion_jobs (
   id     uuid primary key default gen_random_uuid(),
@@ -154,6 +174,7 @@ create table ingestion_jobs (
 );
 create index ingestion_jobs_claim_idx on ingestion_jobs (available_at)
   where status in ('pending', 'processing');
+create index ingestion_jobs_status_created_idx on ingestion_jobs (status, created_at);
 
 alter table candidates
   add constraint candidates_preferred_language_fk

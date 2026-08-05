@@ -20,7 +20,7 @@ from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
 from sync_api.candidates import refuse_incomplete_profile, whole_candidate
 from sync_api.jobs import PublicTenant
-from sync_api.jobs.access import WITH_LOCATION, location_name, open_job
+from sync_api.jobs.access import WITH_LOCATION, location_name, lock_the_criteria, open_job
 from sync_api.jobs.criteria import questions_of
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
@@ -65,14 +65,17 @@ class ApplicationService:
     ) -> Application:
         """The core transaction: an Application is never observable without its verdict."""
         job, tenant = await open_job(self._db, new.job_id)
-        refuse_unusable_answers(await questions_of(self._db, job.id), new.answers)
-        criteria = await screening_criteria_of(self._db, job)
         await self._refuse_duplicate(candidate.id, job.id)
 
         application_id = uuid4()
-        answers = answer_rows(application_id, job.id, new.answers)
         try:
             async with transaction(self._db):
+                await lock_the_criteria(self._db, job)
+                questions = await questions_of(self._db, job.id)
+                refuse_unusable_answers(questions, new.answers)
+                criteria = await screening_criteria_of(self._db, job, questions)
+                answers = answer_rows(application_id, job.id, new.answers)
+
                 # Under the candidate row's lock, and so inside the transaction: every writer of
                 # a profile queues on that row, and a save landing between these checks and the
                 # copy below would otherwise Snapshot a profile nobody ever judged as complete.
