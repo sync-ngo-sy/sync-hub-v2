@@ -23,11 +23,16 @@ create table applications (
   unique (candidate_id, job_id),
   unique (job_id, id),
   unique (tenant_id, id),
-  unique (id, candidate_id)
+  unique (id, candidate_id),
+
+  constraint applications_disqualification_has_a_reason check (
+    qualification_status <> 'disqualified' or qualification_reason is not null
+  )
 );
 create index applications_job_status_idx       on applications (job_id, status);
 create index applications_job_tracked_link_idx on applications (job_id, tracked_link_id);
 create index applications_cv_id_idx            on applications (cv_id);
+create index applications_job_applied_at_idx   on applications (job_id, applied_at desc, id desc);
 
 create table application_profile_snapshots (
   application_id uuid primary key references applications (id) on delete cascade,
@@ -40,6 +45,12 @@ create table application_profile_snapshots (
 
   unmapped_skills text[] not null default '{}',
 
+  -- The Candidate's Total experience as it stood the day they applied, copied rather than
+  -- recomputed: a verdict reached today can be re-explained years later from the Snapshot
+  -- alone, and Screening does no arithmetic over dates at all.
+  total_experience_years int not null
+    constraint asnap_total_experience_nonneg check (total_experience_years >= 0),
+
   captured_at timestamptz not null default now()
 );
 
@@ -50,7 +61,9 @@ create table application_experiences (
   company_name text,
   job_title    text not null,
 
-  start_year  int,
+  -- Dated as strictly as the live entry it was frozen from: a Snapshot cannot contain something
+  -- a profile could not.
+  start_year  int not null,
   start_month int,
   end_year    int,
   end_month   int,
@@ -59,6 +72,7 @@ create table application_experiences (
   description text,
   sort_order  int not null default 0,
 
+  constraint aexp_finished_work_has_an_end check (is_current or end_year is not null),
   constraint aexp_start_month_range check (start_month is null or start_month between 1 and 12),
   constraint aexp_end_month_range   check (end_month   is null or end_month   between 1 and 12),
   constraint aexp_start_year_range  check (start_year  is null or start_year  between 1900 and 2100),
@@ -175,7 +189,11 @@ create table application_status_history (
   new_status      application_status not null,
 
   reason     text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+
+  constraint ash_human_decision_has_an_author check (
+    change_source = 'system' or changed_by_profile_id is not null
+  )
 );
 create index application_status_history_app_created_idx on application_status_history (application_id, created_at);
 create index application_status_history_changed_by_idx  on application_status_history (changed_by_profile_id);
@@ -188,7 +206,11 @@ create table application_qualification_history (
   qualification_reason text,
   screening_version    text,
 
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+
+  constraint aqh_disqualification_has_a_reason check (
+    qualification_status <> 'disqualified' or qualification_reason is not null
+  )
 );
 create index application_qualification_history_app_created_idx
   on application_qualification_history (application_id, created_at);

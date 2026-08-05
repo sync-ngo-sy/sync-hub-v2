@@ -441,8 +441,18 @@ async def test_one_candidate_takes_one_place_however_many_chunks_they_have(
         db_session,
         label="amina",
         experiences=[
-            {"job_title": "Backend engineer", "company_name": "Acme Payments"},
-            {"job_title": "Backend engineer", "company_name": "Globex"},
+            {
+                "job_title": "Backend engineer",
+                "company_name": "Acme Payments",
+                "start_year": 2021,
+                "is_current": True,
+            },
+            {
+                "job_title": "Backend engineer",
+                "company_name": "Globex",
+                "start_year": 2018,
+                "end_year": 2021,
+            },
         ],
         **A_BACKEND_ENGINEER,
     )

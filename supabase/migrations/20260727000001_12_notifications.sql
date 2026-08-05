@@ -22,7 +22,11 @@ create table notifications (
   foreign key (application_id, recipient_profile_id)
     references applications (id, candidate_id) on delete cascade,
 
-  constraint notifications_payload_type_matches check (payload ->> 'type' = type::text)
+  constraint notifications_payload_type_matches check (payload ->> 'type' = type::text),
+
+  constraint notifications_status_change_has_an_application check (
+    type::text <> 'application_status_changed' or application_id is not null
+  )
 );
 
 create index notifications_recipient_created_idx

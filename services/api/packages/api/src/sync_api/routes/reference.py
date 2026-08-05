@@ -9,6 +9,7 @@ from sqlalchemy import case, select
 from sync_api.dependencies import SessionDep
 from sync_api.errors import openapi_problem
 from sync_api.rate_limit import enforce_public_rate_limit
+from sync_core.models import CanonicalRole as CanonicalRoleRow
 from sync_core.models import Language as LanguageRow
 from sync_core.models import Location as LocationRow
 from sync_core.models import LocationKind, SkillCategory, SkillTaxonomy
@@ -32,6 +33,16 @@ class CanonicalSkill(BaseModel):
     category: str = Field(
         description="What the taxonomy files it under.", examples=["Programming Languages"]
     )
+
+
+class CanonicalRole(BaseModel):
+    """One kind of practitioner the platform has a name for."""
+
+    key: str = Field(
+        description="What a profile stores, and what a filter matches exactly.",
+        examples=["frontend-engineer"],
+    )
+    name: str = Field(description="What to call it on screen.", examples=["Frontend Engineer"])
 
 
 class Language(BaseModel):
@@ -97,6 +108,25 @@ async def list_canonical_skills(session: SessionDep) -> list[CanonicalSkill]:
         .order_by(SkillCategory.name, SkillTaxonomy.canonical_name)
     )
     return [CanonicalSkill(name=name, category=category) for name, category in rows.tuples()]
+
+
+@router.get(
+    "/roles",
+    operation_id="listCanonicalRoles",
+    summary="Every Canonical role the platform has",
+    responses=TOO_MANY,
+)
+async def list_canonical_roles(session: SessionDep) -> list[CanonicalRole]:
+    """The whole taxonomy — a role named any other way cannot be stored, so this is the only
+    list worth offering anyone.
+
+    By name, so a picker reads in the order it displays. A profile stores the key. Fourteen
+    entries: small enough to fetch whole, and there is no search here.
+    """
+    rows = await session.execute(
+        select(CanonicalRoleRow.key, CanonicalRoleRow.name).order_by(CanonicalRoleRow.name)
+    )
+    return [CanonicalRole(key=key, name=name) for key, name in rows.tuples()]
 
 
 @router.get(

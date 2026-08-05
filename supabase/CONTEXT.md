@@ -46,9 +46,12 @@ with no account. Sync is sold, not self-served: nobody creates their own Tenant,
 where every Tenant starts. It is not an account and carries no identity; converting one is
 what creates the Profile. A Platform admin either **converts** it, which opens the Tenant and
 invites the founding admin it named, or **dismisses** it — and either decision takes it off
-the queue for good. One *address* may hold only one pending request, so asking twice is asking
-once and the first ask stands — nothing a stranger sends can rewrite one that is already
-waiting. An address whose request was dismissed may ask again.
+the queue for good. One *address* may hold only one pending request — the same address whatever
+case it was typed in — so asking twice is asking once and the first ask stands; nothing a
+stranger sends can rewrite one that is already waiting. An address whose request was dismissed
+may ask again. The company, the name and the address are the only thing on the platform an
+unauthenticated stranger writes, so the schema holds all three to being real rather than merely
+present: a blank company or name is refused, and so is an address that is not shaped like one.
 _Avoid_: Sign-up, Application (that word belongs to a Candidate applying to a Job), Lead,
 Enquiry, Waitlist entry.
 
@@ -57,7 +60,9 @@ Enquiry, Waitlist entry.
 **Application**:
 A Candidate's immutable submission to one Job. Carries a point-in-time Snapshot of the
 reviewed profile plus the Candidate's answers, and is the authoritative input to
-Screening. One per (Candidate, Job).
+Screening. One per (Candidate, Job). Every move it makes is appended to its history, and a move a
+person decided names the person: only the platform itself moves an Application with nobody behind
+it, so an entry from a Recruiter or a Candidate that names no author is one the schema refuses.
 _Avoid_: Submission, Entry.
 
 **Snapshot**:
@@ -65,7 +70,9 @@ The frozen, candidate-reviewed profile captured when an Application is created �
 experience, education, skills, languages, projects (the `application_*` tables). Distinct
 from the live Candidate profile *and* from the raw AI output in `cvs.parsed_cv_data`; it
 may differ from both. Carries the Candidate's Total experience as it stood that day, so a
-verdict can be re-explained years later from the Snapshot alone. Never edited after creation.
+verdict can be re-explained years later from the Snapshot alone. Never edited after creation —
+and not by convention: a trigger refuses every update and delete on those tables and on the two
+histories, for the backend's service role like anybody else, because RLS does not apply to it.
 _Avoid_: Copy, Archive.
 
 ### Search
@@ -116,9 +123,10 @@ _Avoid_: Comment, Annotation, Memo.
 
 **Tag**:
 A Tenant's own label, unique per scope by name, that files Candidates and Applications.
-A Tag's **scope** — `candidate` or `application` — fixes what it may be put on and never
-changes; the database refuses a Tag on the wrong kind of thing. Deleting a Tag unfiles it
-from everything it was on.
+One name is one Tag however it is capitalised — two spellings would be two piles where the
+Recruiter meant one, and nothing on screen would say why. A Tag's **scope** — `candidate` or
+`application` — fixes what it may be put on and never changes; the database refuses a Tag on the
+wrong kind of thing. Deleting a Tag unfiles it from everything it was on.
 _Avoid_: Label, Category, Keyword.
 
 **Talent pool**:
@@ -154,13 +162,16 @@ _Avoid_: Email (the channel), Notification.
 **Notification**:
 An in-app message to one Profile, carrying a typed payload and a read/unread state — how
 Candidates learn about status changes and CV parse failures. Never delivered externally;
-distinct from a Communication.
+distinct from a Communication. One about a status change names the Application it is about,
+which is what every reader of the table joins on; one about a CV parse names none, because it
+is about a CV.
 _Avoid_: Alert, Push, Message.
 
 **Message template**:
 A Tenant's reusable, named subject/body with placeholders, rendered into a concrete
 Communication when a Recruiter messages an applicant. Saving a reusable draft _is_
-creating a Message template.
+creating a Message template. Its name is unique per Tenant however it is capitalised, for the
+reason a Tag's is: a Recruiter picks one out of a list by its name.
 _Avoid_: Draft, Canned response.
 
 ### Jobs & screening
@@ -168,7 +179,10 @@ _Avoid_: Draft, Canned response.
 **Job**:
 A Tenant's open role that Candidates apply to. Carries the deterministic screening
 criteria — required skills, skill-years, required languages, minimum total experience, and
-yes/no knockout questions — which lock once the Job has its first Application.
+yes/no knockout questions — which lock once the Job has its first Application. It is drafted,
+published, closed while it is being decided, republished, and **archived** for good: archived is
+the one state nothing leads out of, and two status changes arriving at once cannot talk their way
+past that, because each takes the Job's row before reading the status it is about to write.
 _Avoid_: Posting, Vacancy, Listing.
 
 **Tracked link**:
@@ -232,7 +246,10 @@ A candidate document, parsed once by AI into immutable `parsed_cv_data`. The Can
 reviews the parse before it updates a profile or feeds an Application; the raw parse is
 never itself the authoritative profile. A Candidate keeps up to five **active** CVs — ones
 they have not deleted — and deleting is soft: it leaves the Applications made with the CV,
-and the file itself, whole for the Tenants reviewing them.
+and the file itself, whole for the Tenants reviewing them. Its two settled states say what they
+settled on: `ready` carries the parse it was read from, `failed` carries the reason it could not
+be, and the language it was written in is one of the platform's own language codes or nothing —
+never a word the model chose.
 _Avoid_: Resume, Document.
 
 **Current CV**:
@@ -245,7 +262,11 @@ _Avoid_: Default CV, Primary CV, Main CV.
 **Screening**:
 The deterministic verdict — `qualified` / `disqualified` / `review_required` — computed
 from an Application's Snapshot against its Job's criteria. There is no match score; AI
-match assessments are advisory only and never override it.
+match assessments are advisory only and never override it. A verdict that refuses an applicant
+says which criteria refused them, on the Application and in its history alike: the schema will
+not hold a `disqualified` with nothing to show a Recruiter or explain to a Candidate. The
+criteria it measured are read under the Job row's lock, so a Recruiter replacing them cannot
+leave a verdict citing requirements the Job no longer has.
 _Avoid_: Scoring, Ranking, Matching.
 
 **AI match assessment**:

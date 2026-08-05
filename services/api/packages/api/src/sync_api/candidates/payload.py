@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from sync_api.text import (
+    CanonicalRoleKey,
     LanguageCode,
     Line,
     LocationKey,
@@ -18,12 +20,24 @@ from sync_core.profile import (
     LATEST_YEAR,
     MAX_ENTRIES,
     MAX_YEARS_EXPERIENCE,
+    YEARS_EXPERIENCE_DECIMALS,
 )
 
 Year = Annotated[int, Field(ge=EARLIEST_YEAR, le=LATEST_YEAR)]
 Month = Annotated[int, Field(ge=1, le=12)]
 
-YearsOfExperience = Annotated[float, Field(ge=0, le=MAX_YEARS_EXPERIENCE)]
+
+def _to_the_stored_precision(years: float) -> float:
+    return float(
+        Decimal(str(years)).quantize(
+            Decimal(1).scaleb(-YEARS_EXPERIENCE_DECIMALS), rounding=ROUND_HALF_UP
+        )
+    )
+
+
+YearsOfExperience = Annotated[
+    float, Field(ge=0, le=MAX_YEARS_EXPERIENCE), AfterValidator(_to_the_stored_precision)
+]
 
 
 def _deduplicated(names: list[str]) -> list[str]:
@@ -40,6 +54,26 @@ def _section(description: str) -> Any:
     return Field(default_factory=list, max_length=MAX_ENTRIES, description=description)
 
 
+def _refuse_an_end_before_its_start(
+    start_year: int | None, start_month: int | None, end_year: int | None, end_month: int | None
+) -> None:
+    """The `*_ordered` CHECK, restated. Only comparable when both years are known."""
+    if start_year is None or end_year is None:
+        return
+    if (end_year, end_month or 12) < (start_year, start_month or 1):
+        raise ValueError("the end of a period cannot come before its start")
+
+
+def _refuse_an_end_on_current_work(
+    is_current: bool, end_year: int | None, end_month: int | None
+) -> None:
+    """The `cexp_current_has_no_end` CHECK, restated. Holds for a draft as much as for a profile:
+    a job still held is exactly a job with no end, which is what lets the experience rule read
+    one from the other."""
+    if is_current and (end_year is not None or end_month is not None):
+        raise ValueError("a current job cannot have an end date")
+
+
 class DatedRange(BaseModel):
     """Something that ran from roughly one month to roughly another, or still runs."""
 
@@ -50,16 +84,57 @@ class DatedRange(BaseModel):
 
     @model_validator(mode="after")
     def _ends_after_it_starts(self) -> DatedRange:
-        """The `*_ordered` CHECK, restated. Only comparable when both years are known."""
-        if self.start_year is None or self.end_year is None:
-            return self
-        if (self.end_year, self.end_month or 12) < (self.start_year, self.start_month or 1):
-            raise ValueError("the end of a period cannot come before its start")
+        _refuse_an_end_before_its_start(
+            self.start_year, self.start_month, self.end_year, self.end_month
+        )
         return self
 
 
-class ProfileExperience(DatedRange):
-    """One job."""
+class ProfileExperience(BaseModel):
+    """One job, which — unlike a project — is always dated.
+
+    Total experience is one stored number derived from these entries, so a job nobody can date
+    would make that number a lie rather than an approximation. A start year always, and an end
+    year unless the job is still held. That is why these dates are their own type rather than
+    the optional `DatedRange` a project uses.
+    """
+
+    job_title: Line
+    company_name: OptionalLine = None
+    start_year: Year
+    start_month: Month | None = None
+    end_year: Year | None = Field(default=None, description="Absent only on a job still held.")
+    end_month: Month | None = None
+    is_current: bool = Field(default=False, description="A job with no end, still going.")
+    description: OptionalParagraph = None
+
+    @model_validator(mode="after")
+    def _ends_after_it_starts(self) -> ProfileExperience:
+        _refuse_an_end_before_its_start(
+            self.start_year, self.start_month, self.end_year, self.end_month
+        )
+        return self
+
+    @model_validator(mode="after")
+    def _current_work_has_not_ended(self) -> ProfileExperience:
+        _refuse_an_end_on_current_work(self.is_current, self.end_year, self.end_month)
+        return self
+
+    @model_validator(mode="after")
+    def _finished_work_has_an_end(self) -> ProfileExperience:
+        """The `cexp_finished_work_has_an_end` CHECK, restated."""
+        if not self.is_current and self.end_year is None:
+            raise ValueError("a job that is not current has to say what year it ended")
+        return self
+
+
+class DraftExperience(DatedRange):
+    """One job on a draft, where the CV may not have dated it.
+
+    Undated like a draft skill has no years: the candidate fills the dates in at review, and the
+    profile will not save until they have. Dropping the entry instead would throw away the job
+    title, the company and the description the CV did give.
+    """
 
     job_title: Line
     company_name: OptionalLine = None
@@ -67,10 +142,8 @@ class ProfileExperience(DatedRange):
     description: OptionalParagraph = None
 
     @model_validator(mode="after")
-    def _current_work_has_not_ended(self) -> ProfileExperience:
-        """The `cexp_current_has_no_end` CHECK, restated."""
-        if self.is_current and (self.end_year is not None or self.end_month is not None):
-            raise ValueError("a current job cannot have an end date")
+    def _current_work_has_not_ended(self) -> DraftExperience:
+        _refuse_an_end_on_current_work(self.is_current, self.end_year, self.end_month)
         return self
 
 
@@ -155,6 +228,13 @@ class ProfileClaims(BaseModel):
     headline: OptionalLine = Field(default=None, examples=["Backend engineer, 8 years"])
     summary: OptionalParagraph = None
     location_key: LocationKey = None
+    canonical_role_key: CanonicalRoleKey = Field(
+        default=None,
+        description="What kind of practitioner the candidate is, by the key `/roles` lists. "
+        "Chosen from that list or left unset, never typed. CV parsing proposes one; this is "
+        "the candidate's own answer.",
+        examples=["frontend-engineer"],
+    )
     preferred_language_code: LanguageCode | None = Field(
         default=None,
         description="A recruiter search filter, and never read off a CV: the language a "
@@ -165,7 +245,6 @@ class ProfileClaims(BaseModel):
         description="Opt in to cross-tenant Global search. Requires a current, ready CV.",
     )
 
-    experiences: list[ProfileExperience] = _section("Jobs, in the candidate's own order.")
     educations: list[ProfileEducation] = _section("Qualifications, in the candidate's own order.")
     languages: OneEntryPerLanguage = _section("Languages spoken, in the candidate's own order.")
     projects: list[ProfileProject] = _section("Projects, in the candidate's own order.")
@@ -179,8 +258,20 @@ class ProfileClaims(BaseModel):
 class CandidateProfile(ProfileClaims):
     """Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body."""
 
+    experiences: list[ProfileExperience] = _section(
+        "Jobs, in the candidate's own order. Each one dated."
+    )
     skills: OneEntryPerSkill[ProfileSkill] = _section(
         "Canonical skills, in the candidate's own order."
+    )
+    total_experience_years: int = Field(
+        default=0,
+        ge=0,
+        json_schema_extra={"readOnly": True},
+        description="Whole years of work, derived from `experiences` on every save: jobs held "
+        "at once count once, and six months or more round up to a year. Read-only — a `PUT` "
+        "carries it back so a `GET` body stays a valid one, and it is ignored. A wrong number "
+        "is corrected by fixing the work history.",
     )
 
 
@@ -188,9 +279,13 @@ class ProfileDraft(ProfileClaims):
     """A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
 
     Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
-    newly names has no years until the candidate types them.
+    newly names has no years, and a job it never dated has no dates, until the candidate types
+    them.
     """
 
+    experiences: list[DraftExperience] = _section(
+        "Jobs the CV describes, in its own order — those it did not date with their dates null."
+    )
     skills: OneEntryPerSkill[DraftSkill] = _section(
         "Every skill already on the profile, years and all, plus the ones this CV names that "
         "were not there — those with `years_experience` null."

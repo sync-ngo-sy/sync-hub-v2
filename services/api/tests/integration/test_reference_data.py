@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from sync_core.models import Language, Location, SkillTaxonomy
+from sync_core.models import CanonicalRole, Language, Location, SkillTaxonomy
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -132,3 +132,31 @@ async def test_every_location_the_taxonomy_holds_is_offered(
     held = set((await db_session.scalars(select(Location.key))).all())
 
     assert {location["key"] for location in await read_locations(visitor)} == held
+
+
+async def read_roles(client: AsyncClient) -> list[dict[str, str]]:
+    response = await client.get("/v1/roles")
+    assert response.status_code == 200
+    return response.json()
+
+
+async def test_a_visitor_reads_every_canonical_role_by_key_and_name(visitor: AsyncClient) -> None:
+    roles = await read_roles(visitor)
+
+    assert {"key": "frontend-engineer", "name": "Frontend Engineer"} in roles
+    assert {"key": "ui-ux-designer", "name": "UI/UX Designer"} in roles
+
+
+async def test_canonical_roles_arrive_sorted_by_name(visitor: AsyncClient) -> None:
+    roles = await read_roles(visitor)
+
+    assert [role["name"] for role in roles] == sorted(role["name"] for role in roles)
+
+
+async def test_every_canonical_role_the_taxonomy_holds_is_offered(
+    visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The picker filters in the browser, so a role missing here cannot be chosen at all."""
+    held = set((await db_session.scalars(select(CanonicalRole.key))).all())
+
+    assert {role["key"] for role in await read_roles(visitor)} == held

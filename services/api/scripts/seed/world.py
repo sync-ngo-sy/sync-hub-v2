@@ -75,6 +75,7 @@ from sync_core import transaction
 from sync_core.models import (
     AccountType,
     Candidate,
+    CanonicalRole,
     IngestionJob,
     IngestionStatus,
     JobStatus,
@@ -87,7 +88,7 @@ from sync_core.models import (
     Tenant,
 )
 from sync_ingestion import CvIngestion
-from sync_ingestion.review import reviewable
+from sync_ingestion.review import Vocabularies, reviewable
 from sync_parsers import (
     CvFile,
     ParsedCv,
@@ -349,6 +350,7 @@ class World:
                     account_type=AccountType.CANDIDATE,
                     avatar_url=None,
                     phone=person.profile.phone,
+                    has_account_row=True,
                 )
             )
 
@@ -414,6 +416,7 @@ class World:
             email=person.email,
             phone=profile.phone,
             detected_language="en",
+            canonical_role=profile.canonical_role_key,
             headline=(
                 f"{profile.headline} (from the CV)"
                 if drift and profile.headline
@@ -467,8 +470,7 @@ class World:
             ],
             unmapped_skills=[*profile.unmapped_skills, *(["Terraform Cloud"] if drift else [])],
         )
-        taxonomy, languages = await self._vocabulary()
-        return reviewable(parsed, taxonomy=taxonomy, languages=languages)
+        return reviewable(parsed, await self._vocabulary())
 
     async def _settle_ingestion(self, cv_id: UUID, *, ok: bool) -> None:
         """Close the queue row the `ingest_on_upload` trigger opened.
@@ -765,6 +767,7 @@ class World:
                     account_type=AccountType.RECRUITER,
                     avatar_url=None,
                     phone=None,
+                    has_account_row=True,
                 ),
                 tenant=TenantSummary(
                     id=self._seeded.tenants[tenant.key], name=tenant.name, slug=tenant.slug
@@ -778,13 +781,15 @@ class World:
             return None
         return await self._db.scalar(select(Location.name).where(Location.key == key))
 
-    async def _vocabulary(self) -> tuple[dict[str, str], dict[str, str]]:
-        """The spellings a parse is normalised against: Canonical skills, and language codes."""
+    async def _vocabulary(self) -> Vocabularies:
+        """The spellings a parse is normalised against: skills, roles and language codes."""
         skills = list(await self._db.scalars(select(SkillTaxonomy.canonical_name)))
+        roles = list(await self._db.scalars(select(CanonicalRole.key)))
         codes = list(await self._db.scalars(select(Language.code)))
-        return (
-            {name.lower(): name for name in skills},
-            {code.lower(): code for code in codes},
+        return Vocabularies(
+            taxonomy={name.lower(): name for name in skills},
+            roles={key.lower(): key for key in roles},
+            languages={code.lower(): code for code in codes},
         )
 
 

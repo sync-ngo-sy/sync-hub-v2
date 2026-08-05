@@ -278,6 +278,7 @@ AMINA: Final = SeededCandidate(
             "it. Currently leading a ledger rewrite in Python and PostgreSQL."
         ),
         location_key="sy-damascus",
+        canonical_role_key="backend-engineer",
         preferred_language_code="en",
         is_searchable=True,
         experiences=[
@@ -366,6 +367,7 @@ BASHIR: Final = SeededCandidate(
             "and TypeScript, and cares more about the empty state than the happy path."
         ),
         location_key="sy-aleppo",
+        canonical_role_key="frontend-engineer",
         preferred_language_code="en",
         is_searchable=True,
         experiences=[
@@ -448,6 +450,7 @@ KARIM: Final = SeededCandidate(
             "everything, alerts that mean something, and a pager that mostly stays quiet."
         ),
         location_key="sy-latakia",
+        canonical_role_key="devops-engineer",
         preferred_language_code="en",
         is_searchable=True,
         experiences=[
@@ -520,6 +523,7 @@ LAYLA: Final = SeededCandidate(
             "chart and a written caveat to a model nobody can explain."
         ),
         location_key="sy-homs",
+        canonical_role_key="data-scientist",
         preferred_language_code="en",
         is_searchable=True,
         experiences=[
@@ -585,6 +589,7 @@ NADIA: Final = SeededCandidate(
         ),
         # Outside Syria, so the place taxonomy answers with a country rather than a governorate.
         location_key="lb",
+        canonical_role_key="ui-ux-designer",
         preferred_language_code="ar",
         is_searchable=True,
         experiences=[
@@ -653,8 +658,8 @@ NADIA: Final = SeededCandidate(
     ],
 )
 
-#: A junior with one dated job and one undated one: the Snapshot cannot show he clears a
-#: years-of-work bar, and cannot show he fails it either, which is what `review_required` is for.
+#: A junior with a year and a half of work behind him: short of most years-of-work bars, and
+#: short of them plainly — a dated profile leaves nothing to wonder about.
 FADI: Final = SeededCandidate(
     key="fadi",
     email="fadi.chalhoub@example.com",
@@ -665,6 +670,7 @@ FADI: Final = SeededCandidate(
         headline="Junior full-stack developer",
         summary="A year and a half in, and reading everything. Wants a team that reviews code.",
         location_key="sy-damascus",
+        canonical_role_key="fullstack-engineer",
         preferred_language_code="ar",
         is_searchable=True,
         experiences=[
@@ -676,11 +682,14 @@ FADI: Final = SeededCandidate(
                 is_current=True,
                 description="Ships small features across a Django backend and a React frontend.",
             ),
-            # Undated on purpose: the one honest route to a `review_required` verdict.
             Held(
                 job_title="Intern",
                 company_name="Damascus Chamber of Commerce",
-                description="Three months on an internal inventory tool. Dates not to hand.",
+                start_year=2024,
+                start_month=6,
+                end_year=2024,
+                end_month=8,
+                description="Three months on an internal inventory tool.",
             ),
         ],
         educations=[
@@ -735,6 +744,7 @@ HIBA: Final = SeededCandidate(
             "and Playwright, mostly."
         ),
         location_key="sy-rif-dimashq",
+        canonical_role_key="qa-engineer",
         preferred_language_code="ar",
         is_searchable=False,
         experiences=[
@@ -749,7 +759,11 @@ HIBA: Final = SeededCandidate(
             Held(
                 job_title="QA Tester",
                 company_name="Damascus Chamber of Commerce",
-                description="Manual test passes on an internal portal. Dates not to hand.",
+                start_year=2021,
+                start_month=3,
+                end_year=2023,
+                end_month=1,
+                description="Manual test passes on an internal portal.",
             ),
         ],
         educations=[
@@ -791,6 +805,7 @@ ZIAD: Final = SeededCandidate(
         headline="Mobile engineer, 4 years",
         summary="iOS and Android, and the API in between when nobody else will write it.",
         location_key="sy-tartus",
+        canonical_role_key="mobile-engineer",
         preferred_language_code="ar",
         is_searchable=False,
         experiences=[
@@ -1422,8 +1437,8 @@ APPLICATIONS: Final = (
         notes=[
             (
                 "yusuf",
-                "Undated internship is why screening asked for "
-                "a human. React work looks fine for the level.",
+                "Eighteen months of work, so short of the bar on paper. "
+                "React work looks fine for the level.",
             ),
         ],
         tags=[

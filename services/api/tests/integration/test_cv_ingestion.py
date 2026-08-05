@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
 from httpx import AsyncClient
@@ -18,13 +19,126 @@ from tests.support.cvs import CVS, an_uploaded_cv, cv_row, ingestion_job, some_b
 from tests.support.embedders import FakeEmbedder
 from tests.support.extractors import FakeExtractor, a_parse
 from tests.support.mailbox import Mailbox
+from tests.support.notifications import my_notifications
 from tests.support.profiles import my_id, my_profile_draft
 from tests.support.senders import CapturingSender
 from tests.support.worker import an_ingestion_worker
 
+if TYPE_CHECKING:
+    from sync_parsers import CvFile, ParsedCv, Vocabulary
+
 
 class UnavailableError(Exception):
     pass
+
+
+class StolenMidParse:
+    """Loses its claim while the provider is still working on the document.
+
+    A parse that outruns the stuck threshold is swept and handed to a second worker, which
+    parses the same CV to completion. Whatever this one eventually answers — a parse, a blip,
+    or a last-attempt failure — arrives holding a claim somebody else now owns.
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        database: Database,
+        storage: Storage,
+        cv_id: str,
+        answer: ParsedCv | Exception,
+    ) -> None:
+        self._session = session
+        self._database = database
+        self._storage = storage
+        self._cv_id = cv_id
+        self._answer = answer
+
+    async def extract(self, file: CvFile, vocabulary: Vocabulary) -> ParsedCv:
+        await _abandon_the_claim(self._session, self._cv_id, claimed_ago=timedelta(minutes=5))
+        successor = an_ingestion_worker(
+            self._database, self._storage, FakeExtractor(), stuck_after_seconds=60
+        )
+        assert await successor.sweep() == 1
+        assert await successor.run_once() is True, "the successor never claimed the released job"
+        if isinstance(self._answer, Exception):
+            raise self._answer
+        return self._answer
+
+
+async def test_a_worker_whose_claim_was_swept_cannot_write_its_parse(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    stale = StolenMidParse(
+        db_session, database, storage, cv["id"], a_parse(full_name="A Parse Nobody Waited For")
+    )
+
+    await an_ingestion_worker(database, storage, stale, stuck_after_seconds=60).run_once()
+
+    row = await cv_row(db_session, cv["id"])
+    assert row.parsed_cv_data is not None
+    assert row.parsed_cv_data["full_name"] == "Amina Haddad"
+    assert (await ingestion_job(db_session, cv["id"])).status is IngestionStatus.COMPLETED
+
+
+async def test_a_worker_whose_claim_was_swept_cannot_requeue_the_job(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    """Otherwise a finished CV is parsed a third time, and the provider is paid for it again."""
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    stale = StolenMidParse(
+        db_session, database, storage, cv["id"], UnavailableError("OpenAI answered late")
+    )
+    worker = an_ingestion_worker(database, storage, stale, stuck_after_seconds=60)
+
+    await worker.run_once()
+
+    job = await ingestion_job(db_session, cv["id"])
+    assert job.status is IngestionStatus.COMPLETED
+    assert job.error_message is None
+    assert await worker.run_once() is False, "a settled job must not be claimable again"
+
+
+async def test_a_cv_cannot_be_failed_while_it_holds_a_complete_parse(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    """The worst shape of the race: the Candidate disappears from search holding a good parse,
+    cannot make the CV current again, and is told a CV that parsed correctly has failed."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    cv = await an_uploaded_cv(browser)
+    stale = StolenMidParse(
+        db_session, database, storage, cv["id"], UnavailableError("still down, on the last attempt")
+    )
+
+    await an_ingestion_worker(
+        database, storage, stale, max_attempts=1, stuck_after_seconds=60
+    ).run_once()
+
+    row = await cv_row(db_session, cv["id"])
+    assert row.parsing_status is CvParsingStatus.READY
+    assert row.parsing_error is None
+    assert row.parsed_cv_data is not None
+    assert await my_notifications(browser) == [], "nobody is told a CV that parsed has failed"
+    db_session.expire_all()
+    candidate = await db_session.get(Candidate, candidate_id)
+    assert candidate is not None
+    assert str(candidate.current_cv_id) == cv["id"]
 
 
 async def test_a_claimed_cv_becomes_ready_with_its_parse(

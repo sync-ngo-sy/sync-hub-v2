@@ -20,10 +20,10 @@ def violated_constraint(exc: IntegrityError) -> str | None:
 
 
 def refuse_duplicate(
-    clash: IntegrityError, constraint: str, *, problem_type: str, detail: str
+    clash: IntegrityError, constraint: str, *also: str, problem_type: str, detail: str
 ) -> NoReturn:
     """A uniqueness a caller can walk into by choosing a name is a 409. Anything else the
     database refused is a bug of ours, and keeps being an error."""
-    if violated_constraint(clash) != constraint:
+    if violated_constraint(clash) not in {constraint, *also}:
         raise clash
     raise Problem(status=409, type=problem_type, detail=detail) from clash

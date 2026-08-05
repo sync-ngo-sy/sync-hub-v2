@@ -12,6 +12,15 @@ create table locations (
   kind location_kind not null
 );
 
+-- What kind of practitioner a Candidate is, as a closed list, keyed like `locations` and for
+-- the same reason: filtering by it is an equality on `key`, never a guess at the words somebody
+-- used about themselves. Unlike a Canonical skill it is a judgement rather than a reading — CV
+-- parsing proposes one and the Candidate confirms it — but it is still chosen, never typed.
+create table canonical_roles (
+  key  text primary key,      -- 'frontend-engineer'
+  name text not null unique   -- what a picker shows, so no two rows may share one
+);
+
 create table skill_categories (
   id         uuid primary key default gen_random_uuid(),
   name       text not null unique,
@@ -50,12 +59,20 @@ create table jobs (
   updated_at timestamptz not null default now(),
 
   foreign key (tenant_id, created_by_recruiter_id) references recruiters (tenant_id, id),
-  unique (tenant_id, id)
+  unique (tenant_id, id),
+
+  constraint jobs_title_length       check (length(title)       <= 200),
+  constraint jobs_description_length check (length(description) <= 5000)
 );
 create index jobs_location_key_idx     on jobs (location_key);
-create index jobs_tenant_status_idx    on jobs (tenant_id, status);
 create index jobs_created_by_idx        on jobs (created_by_recruiter_id);
 create index jobs_status_expires_at_idx on jobs (status, expires_at);
+
+create index jobs_tenant_created_idx        on jobs (tenant_id, created_at desc, id desc);
+create index jobs_tenant_status_created_idx on jobs (tenant_id, status, created_at desc, id desc);
+
+create index jobs_published_created_idx on jobs (created_at desc, id desc)
+  where status = 'published';
 
 create table job_skills (
   id          uuid primary key default gen_random_uuid(),
@@ -122,12 +139,24 @@ create table cvs (
   created_at timestamptz not null default now(),
   deleted_at timestamptz,
 
-  unique (candidate_id, id)
+  unique (candidate_id, id),
+
+  constraint cvs_ready_has_a_parse check (
+    parsing_status <> 'ready' or (parsed_cv_data is not null and parsed_at is not null)
+  ),
+  constraint cvs_failure_has_a_reason check (
+    parsing_status <> 'failed' or parsing_error is not null
+  )
 );
 -- Partial, so the same file can be re-uploaded after a soft-delete.
 create unique index cvs_candidate_file_hash_active_uidx
   on cvs (candidate_id, file_hash) where deleted_at is null;
 create index cvs_candidate_parsing_status_idx on cvs (candidate_id, parsing_status);
+
+alter table cvs
+  add constraint cvs_detected_language_fk
+  foreign key (detected_language) references languages (code);
+create index cvs_detected_language_idx on cvs (detected_language);
 
 create table ingestion_jobs (
   id     uuid primary key default gen_random_uuid(),
@@ -145,6 +174,7 @@ create table ingestion_jobs (
 );
 create index ingestion_jobs_claim_idx on ingestion_jobs (available_at)
   where status in ('pending', 'processing');
+create index ingestion_jobs_status_created_idx on ingestion_jobs (status, created_at);
 
 alter table candidates
   add constraint candidates_preferred_language_fk
@@ -155,6 +185,11 @@ alter table candidates
   add constraint candidates_location_fk
   foreign key (location_key) references locations (key);
 create index candidates_location_key_idx on candidates (location_key);
+
+alter table candidates
+  add constraint candidates_canonical_role_fk
+  foreign key (canonical_role_key) references canonical_roles (key);
+create index candidates_canonical_role_idx on candidates (canonical_role_key);
 
 alter table candidates
   add constraint candidates_current_cv_fk

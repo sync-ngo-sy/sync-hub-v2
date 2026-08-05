@@ -167,6 +167,11 @@ class ApplicationSnapshot(BaseModel):
         description="Skills the candidate claims that the platform has no Canonical name for. "
         "Screening never read them; a human reading the Application should.",
     )
+    total_experience_years: int = Field(
+        default=0,
+        description="Whole years of work as the profile stood the day this was sent. The number "
+        "Screening measured against the Job's minimum, and the one its verdict cites.",
+    )
 
     experiences: list[ProfileExperience] = Field(default_factory=list)
     educations: list[ProfileEducation] = Field(default_factory=list)

@@ -64,6 +64,8 @@ async def decide(
         changes["status"] = status
     if qualification_status is not None:
         changes["qualification_status"] = qualification_status
+        if qualification_status is QualificationStatus.DISQUALIFIED:
+            changes["qualification_reason"] = "the fixture said so"
     await session.execute(
         update(Application).where(Application.id == application_id).values(**changes)
     )

@@ -90,6 +90,9 @@ create table job_view_events (
 create index job_view_events_job_viewed_idx         on job_view_events (job_id, viewed_at);
 create index job_view_events_link_viewed_idx        on job_view_events (tracked_link_id, viewed_at);
 create index job_view_events_job_link_viewed_idx    on job_view_events (job_id, tracked_link_id, viewed_at);
+create index job_view_events_session_job_idx
+  on job_view_events (session_id, job_id, viewed_at desc, id desc)
+  where tracked_link_id is not null;
 
 create table notes (
   id uuid primary key default gen_random_uuid(),
@@ -130,6 +133,9 @@ create table tenant_tags (
   unique (tenant_id, id),
   unique (id, scope)
 );
+
+create unique index tenant_tags_tenant_scope_name_ci_uidx
+  on tenant_tags (tenant_id, scope, lower(name));
 
 create table candidate_tag_assignments (
   tenant_id    uuid not null,

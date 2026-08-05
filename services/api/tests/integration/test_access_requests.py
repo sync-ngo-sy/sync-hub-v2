@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
+import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.access_requests import AccessRequestService
+from sync_api.auth.gotrue import GoTrueUser
+from sync_api.auth.registration import invite_identity
+from sync_api.platform import service as platform_service
 from sync_core import Settings
-from sync_core.models import AccessRequest, AccessRequestStatus, RecruiterRole, Tenant
+from sync_core.models import (
+    AccessRequest,
+    AccessRequestStatus,
+    Recruiter,
+    RecruiterRole,
+    Tenant,
+)
 from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.access_requests import (
     ASK,
@@ -25,6 +36,9 @@ from tests.support.harness import spa_onto
 from tests.support.mailbox import Mailbox
 from tests.support.platform_admins import a_new_tenant, a_signed_in_platform_admin, create_tenant
 from tests.support.tenants import accept_invite
+
+if TYPE_CHECKING:
+    from sync_api.auth.gotrue import GoTrue
 
 ALREADY_DECIDED: Final = "urn:sync:problem:access-request-already-decided"
 NOT_FOUND: Final = "urn:sync:problem:access-request-not-found"
@@ -73,6 +87,19 @@ async def test_asking_twice_from_one_address_leaves_one_request(
     assert again.status_code == 202, again.text
     recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
     assert recorded.company == ask.company
+
+
+async def test_asking_again_in_another_case_is_still_the_same_address(
+    browser: AsyncClient, db_session: AsyncSession
+) -> None:
+    ask = an_ask()
+    await ask_for_access(browser, ask)
+
+    again = await ask_for_access(browser, replace(ask, email=ask.email.upper()))
+
+    assert again.status_code == 202, again.text
+    recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
+    assert recorded.email == ask.email.lower()
 
 
 async def test_a_malformed_address_is_refused(browser: AsyncClient) -> None:
@@ -190,6 +217,95 @@ async def test_a_converted_request_leaves_the_queue(
     assert recorded.decided_at is not None
     tenant = (await db_session.execute(select(Tenant))).scalar_one()
     assert recorded.tenant_id == tenant.id
+
+
+async def test_a_conversion_that_breaks_at_the_last_step_can_be_tried_again(
+    app: FastAPI,
+    browser: AsyncClient,
+    other_browser: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Recording the decision used to be a transaction of its own, after the Tenant was already
+    committed. A failure there left the Tenant standing with its founding admin invited and the
+    request still pending — and the retry then failed forever on the address already registered,
+    so the ask could never be converted at all."""
+    ask = an_ask()
+    await ask_for_access(other_browser, ask)
+    await a_signed_in_platform_admin(app, browser, db_session)
+    request_id = (await read_queue(browser)).json()[0]["id"]
+
+    async def unrecordable(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("the decision could not be written")
+
+    monkeypatch.setattr(AccessRequestService, "_decide", unrecordable)
+    broke = await convert(browser, request_id, slug=a_slug())
+    assert broke.status_code == 500, broke.text
+
+    assert await db_session.scalar(select(func.count()).select_from(Tenant)) == 0
+    assert [row["id"] for row in (await read_queue(browser)).json()] == [request_id]
+
+    monkeypatch.undo()
+    again = await convert(browser, request_id, slug=a_slug())
+
+    assert again.status_code == 201, again.text
+    assert again.json()["founding_admin"]["email"] == ask.email
+
+
+async def test_a_dismissal_that_lands_mid_conversion_is_not_overwritten(
+    app: FastAPI,
+    browser: AsyncClient,
+    other_browser: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One decision per request, whichever arrives first. Conversion used to read the request,
+    open the Tenant, and then write `converted` over whatever had happened in between."""
+    await ask_for_access(other_browser, an_ask())
+    await a_signed_in_platform_admin(app, browser, db_session)
+    request_id = (await read_queue(browser)).json()[0]["id"]
+
+    async def dismissed_first(
+        gotrue: GoTrue, session: AsyncSession, *, email: str, redirect_to: str
+    ) -> GoTrueUser:
+        assert (await dismiss(browser, request_id)).status_code == 200
+        return await invite_identity(gotrue, session, email=email, redirect_to=redirect_to)
+
+    monkeypatch.setattr(platform_service, "invite_identity", dismissed_first)
+    refused = await convert(browser, request_id, slug=a_slug())
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["type"] == ALREADY_DECIDED
+    assert await db_session.scalar(select(func.count()).select_from(Tenant)) == 0
+    recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
+    assert recorded.status is AccessRequestStatus.DISMISSED
+    assert recorded.tenant_id is None
+
+
+async def test_the_tenant_a_request_became_can_be_deleted_again(
+    app: FastAPI, browser: AsyncClient, other_browser: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A Tenant opened by mistake has to be removable, and the ask it came from stays on record.
+
+    `access_requests.tenant_id` is `on delete set null` precisely so the request survives its
+    Tenant; the decision constraint used to insist a converted request still name one, and the
+    two together made every `delete from tenants` a constraint violation.
+    """
+    await ask_for_access(other_browser, an_ask())
+    await a_signed_in_platform_admin(app, browser, db_session)
+    request_id = (await read_queue(browser)).json()[0]["id"]
+    await convert(browser, request_id, slug=a_slug())
+    tenant = (await db_session.execute(select(Tenant))).scalar_one()
+
+    await db_session.execute(delete(Recruiter).where(Recruiter.tenant_id == tenant.id))
+    await db_session.execute(delete(Tenant).where(Tenant.id == tenant.id))
+    await db_session.commit()
+
+    assert await db_session.scalar(select(func.count()).select_from(Tenant)) == 0
+    recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
+    assert recorded.status is AccessRequestStatus.CONVERTED
+    assert recorded.decided_at is not None
+    assert recorded.tenant_id is None
 
 
 async def test_a_dismissed_request_leaves_the_queue_and_opens_nothing(

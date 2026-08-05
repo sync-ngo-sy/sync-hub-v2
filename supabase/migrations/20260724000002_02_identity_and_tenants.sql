@@ -40,6 +40,14 @@ create table candidates (
 
   location_key text,  -- FK to locations(key) added in migration 03
 
+  canonical_role_key text,  -- FK to canonical_roles(key) added in migration 03
+
+  -- Derived from the experience entries on every profile save and never typed, so there is no
+  -- state where this and the jobs it came from disagree. Whole years: a Recruiter asks for
+  -- three years of work, not for 38 months.
+  total_experience_years int not null default 0
+    constraint candidates_total_experience_nonneg check (total_experience_years >= 0),
+
   unmapped_skills text[] not null default '{}',
 
   preferred_language_code text,  -- FK to languages(code) added in migration 03
@@ -51,10 +59,15 @@ create table candidates (
   deleted_at timestamptz,
 
   foreign key (id, account_type) references profiles (id, account_type) on delete cascade,
-  constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null)
+  constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null),
+
+  constraint candidates_headline_length check (length(headline) <= 200),
+  constraint candidates_summary_length  check (length(summary)  <= 5000)
 );
 
 create index candidates_current_cv_id_idx on candidates (current_cv_id);
+-- A seniority bar is asked for as a range over every Candidate, not read off one row.
+create index candidates_total_experience_idx on candidates (total_experience_years);
 create index candidates_searchable_idx on candidates (id)
   where is_searchable and deleted_at is null;
 
@@ -94,13 +107,22 @@ create table access_requests (
   created_at timestamptz not null default now(),
   decided_at timestamptz,
 
+  -- A converted request is not required to still *have* its Tenant: the FK above nulls this
+  -- column when a Tenant is deleted, and insisting on it here would make every
+  -- `delete from tenants` a constraint violation — no Tenant opened by mistake could ever be
+  -- removed. `decided_at` is what separates a decided request from a waiting one, and only
+  -- `dismissed` is held to naming no Tenant at all.
   constraint access_requests_decision check (
     case status
       when 'pending'   then decided_at is null     and tenant_id is null
       when 'dismissed' then decided_at is not null and tenant_id is null
-      when 'converted' then decided_at is not null and tenant_id is not null
+      when 'converted' then decided_at is not null
     end
-  )
+  ),
+
+  constraint access_requests_company_not_blank   check (btrim(company)   <> ''),
+  constraint access_requests_full_name_not_blank check (btrim(full_name) <> ''),
+  constraint access_requests_email_shape check (email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$')
 );
 
 -- The queue: pending requests, oldest first.
@@ -109,5 +131,7 @@ create index access_requests_pending_idx on access_requests (created_at)
 
 -- Asking twice is asking once. Only while pending — a company dismissed a year ago may ask again,
 -- and one already converted has a Tenant to sign in to.
-create unique index access_requests_one_pending_per_email_idx on access_requests (email)
+create unique index access_requests_one_pending_per_email_idx on access_requests (lower(email))
   where status = 'pending';
+
+create index access_requests_tenant_id_idx on access_requests (tenant_id);

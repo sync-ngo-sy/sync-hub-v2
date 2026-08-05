@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from sync_core.db import POOLER_CONNECT_ARGS, pooler_safe_url
+from sync_core.db import POOLER_CONNECT_ARGS, bound_every_statement, pooler_safe_url
 
 DIRECT = "postgresql+asyncpg://postgres:postgres@127.0.0.1:54322/postgres"
 
@@ -28,6 +28,24 @@ def test_asyncpg_cache_is_off_and_statement_names_are_unique() -> None:
     name_func = POOLER_CONNECT_ARGS["prepared_statement_name_func"]
     assert callable(name_func)
     assert name_func() != name_func()
+
+
+def test_a_statement_timeout_arms_a_listener_on_every_transaction() -> None:
+    engine = create_async_engine(pooler_safe_url(DIRECT))
+
+    bound_every_statement(engine, 15_000)
+
+    assert [listener.__name__ for listener in engine.sync_engine.dispatch.begin] == [
+        "_bound_statements"
+    ]
+
+
+def test_a_statement_timeout_of_zero_arms_nothing() -> None:
+    engine = create_async_engine(pooler_safe_url(DIRECT))
+
+    bound_every_statement(engine, 0)
+
+    assert list(engine.sync_engine.dispatch.begin) == []
 
 
 def test_the_setting_is_not_accepted_as_an_engine_argument() -> None:

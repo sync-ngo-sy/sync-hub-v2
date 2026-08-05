@@ -18,6 +18,7 @@ from tests.support.profiles import (
     embedding_jobs,
     give_a_current_cv,
     my_id,
+    my_profile,
     section_row_counts,
 )
 from tests.support.tenants import an_admin
@@ -30,6 +31,7 @@ A_FULL_PROFILE: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
+    "canonical_role_key": "backend-engineer",
     "preferred_language_code": "ar",
     "is_searchable": False,
     "experiences": [
@@ -86,6 +88,16 @@ A_FULL_PROFILE: dict[str, Any] = {
     "unmapped_skills": ["Kubernetes wrangling"],
 }
 
+
+def as_typed(profile: dict[str, Any]) -> dict[str, Any]:
+    """A profile without the fields the platform derives — what the candidate actually typed.
+
+    `total_experience_years` counts a current job up to today, so it moves on its own; the tests
+    that own it date every job and pin the answer.
+    """
+    return {key: value for key, value in profile.items() if key != "total_experience_years"}
+
+
 ONE_SAVE: dict[str, Any] = a_profile(
     headline="First",
     skills=[{"name": "Python", "years_experience": 8.0}],
@@ -123,8 +135,8 @@ async def test_a_saved_profile_comes_back_exactly_as_it_was_sent(
     saved = await browser.put(PROFILE, json=A_FULL_PROFILE)
 
     assert saved.status_code == 200, saved.text
-    assert saved.json() == A_FULL_PROFILE
-    assert (await browser.get(PROFILE)).json() == A_FULL_PROFILE
+    assert as_typed(saved.json()) == as_typed(A_FULL_PROFILE)
+    assert as_typed((await browser.get(PROFILE)).json()) == as_typed(A_FULL_PROFILE)
 
 
 async def test_the_name_and_phone_are_written_through_to_the_account(
@@ -275,7 +287,7 @@ async def test_a_refused_save_leaves_the_previous_profile_exactly_as_it_was(
     )
 
     assert refused.status_code == 422
-    assert (await browser.get(PROFILE)).json() == A_FULL_PROFILE
+    assert as_typed((await browser.get(PROFILE)).json()) == as_typed(A_FULL_PROFILE)
     assert await section_row_counts(db_session, candidate_id) == {
         "experiences": 2,
         "educations": 1,
@@ -378,7 +390,11 @@ MALFORMED = {
         "body.experiences.0",
     ),
     "a current job with an end date": (
-        {"experiences": [{"job_title": "Engineer", "is_current": True, "end_year": 2024}]},
+        {
+            "experiences": [
+                {"job_title": "Engineer", "start_year": 2020, "is_current": True, "end_year": 2024}
+            ]
+        },
         "body.experiences.0",
     ),
     "a project that ends before it starts": (
@@ -416,7 +432,10 @@ MALFORMED = {
         "body.skills.0.years_experience",
     ),
     "more entries than a section holds": (
-        {"experiences": [{"job_title": "Engineer"}] * (MAX_ENTRIES + 1)},
+        {
+            "experiences": [{"job_title": "Engineer", "start_year": 2020, "end_year": 2021}]
+            * (MAX_ENTRIES + 1)
+        },
         "body.experiences",
     ),
     "more unmapped skills than the section holds": (
@@ -472,3 +491,166 @@ async def test_an_empty_form_field_reads_as_unset(browser: AsyncClient, mailbox:
 
     assert saved.status_code == 200, saved.text
     assert saved.json() == EMPTY_PROFILE
+
+
+def a_job(start: tuple[int, int], end: tuple[int, int] | None, **changes: Any) -> dict[str, Any]:
+    """One finished or current job, dated to the month."""
+    return {
+        "job_title": "Engineer",
+        "company_name": "Acme",
+        "start_year": start[0],
+        "start_month": start[1],
+        "end_year": None if end is None else end[0],
+        "end_month": None if end is None else end[1],
+        "is_current": end is None,
+        "description": None,
+        **changes,
+    }
+
+
+async def test_a_candidate_chooses_a_canonical_role_and_clears_it_again(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    chosen = await browser.put(PROFILE, json=a_profile(canonical_role_key="frontend-engineer"))
+    cleared = await browser.put(PROFILE, json=a_profile(canonical_role_key=None))
+
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["canonical_role_key"] == "frontend-engineer"
+    assert cleared.json()["canonical_role_key"] is None
+
+
+async def test_a_canonical_role_the_platform_does_not_know_is_refused_where_it_was_typed(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await browser.put(PROFILE, json=a_profile(canonical_role_key="rockstar-ninja"))
+
+    assert response.status_code == 422
+    problem = response.json()
+    assert problem["type"] == "urn:sync:problem:unknown-canonical-role"
+    assert [error["location"] for error in problem["errors"]] == ["body.canonical_role_key"]
+
+
+async def test_a_job_with_no_start_year_is_refused_and_the_entry_is_named(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """Total experience is one stored number, so a job nobody can date would make it a lie."""
+    await a_signed_in_candidate(browser, mailbox)
+    undated = a_job((2020, 1), (2021, 6))
+    undated["start_year"] = None
+
+    response = await browser.put(PROFILE, json=a_profile(experiences=[undated]))
+
+    assert response.status_code == 422, response.text
+    assert [error["location"] for error in response.json()["errors"]] == [
+        "body.experiences.0.start_year"
+    ]
+
+
+async def test_a_finished_job_with_no_end_year_is_refused_and_the_entry_is_named(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    unfinished = a_job((2020, 1), None, is_current=False)
+
+    response = await browser.put(PROFILE, json=a_profile(experiences=[unfinished]))
+
+    assert response.status_code == 422, response.text
+    assert [error["location"] for error in response.json()["errors"]] == ["body.experiences.0"]
+
+
+async def test_saving_derives_total_experience_from_the_jobs_that_were_saved(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json=a_profile(experiences=[a_job((2018, 1), (2020, 12))]))
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["total_experience_years"] == 3
+
+
+async def test_two_jobs_held_at_once_are_one_stretch_of_experience(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    both = [a_job((2018, 1), (2020, 12)), a_job((2018, 1), (2020, 12), company_name="Moonlight")]
+
+    saved = await browser.put(PROFILE, json=a_profile(experiences=both))
+
+    assert saved.json()["total_experience_years"] == 3
+
+
+async def test_five_months_of_work_round_down_and_six_round_up(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    five = await browser.put(PROFILE, json=a_profile(experiences=[a_job((2020, 1), (2020, 5))]))
+    six = await browser.put(PROFILE, json=a_profile(experiences=[a_job((2020, 1), (2020, 6))]))
+
+    assert five.json()["total_experience_years"] == 0
+    assert six.json()["total_experience_years"] == 1
+
+
+async def test_a_candidate_cannot_type_their_own_total_experience(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """A wrong number is corrected by fixing the work history, not by overwriting the number."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE,
+        json=a_profile(experiences=[a_job((2020, 1), (2020, 12))], total_experience_years=40),
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["total_experience_years"] == 1
+
+
+async def test_a_save_answers_with_exactly_what_a_read_would(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    body = a_profile(
+        headline="Backend engineer",
+        experiences=[a_job((2018, 1), (2020, 12))],
+        skills=[{"name": "Python", "years_experience": 4.0}],
+        languages=[{"code": "en", "proficiency": "fluent"}],
+    )
+
+    saved = await browser.put(PROFILE, json=body)
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json() == await my_profile(browser)
+
+
+async def test_more_precision_than_the_column_keeps_is_rounded_the_way_it_stores(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE, json=a_profile(skills=[{"name": "Python", "years_experience": 3.25}])
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["skills"] == [{"name": "Python", "years_experience": 3.3}]
+    assert (await my_profile(browser))["skills"] == [{"name": "Python", "years_experience": 3.3}]
+
+
+async def test_correcting_a_date_derives_the_total_again(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    await browser.put(PROFILE, json=a_profile(experiences=[a_job((2018, 1), (2020, 12))]))
+
+    corrected = await browser.put(
+        PROFILE, json=a_profile(experiences=[a_job((2018, 1), (2019, 12))])
+    )
+
+    assert corrected.json()["total_experience_years"] == 2
+    assert (await my_profile(browser))["total_experience_years"] == 2
