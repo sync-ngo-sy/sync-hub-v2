@@ -22,7 +22,7 @@ If a well-known library already does it, add it, If the only library that does i
 
 ### Don't comment
 
-Comments inside the frontend should be zero.
+Comments should be **zero** unless it's **literally impossible** to infer from the code.
 
 refrain from editing the readme.md file unless instructed to.
 
