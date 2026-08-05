@@ -7,7 +7,9 @@ if TYPE_CHECKING:
 
     from sync_parsers.extractor import Vocabulary
 
-PARSED_CV_SCHEMA_VERSION: Final = 1
+#: Stamped on every stored parse. 2 is the schema that proposes a `canonical_role`; a parse
+#: stored as 1 has no opinion about one rather than an empty one.
+PARSED_CV_SCHEMA_VERSION: Final = 2
 
 INSTRUCTIONS: Final = """\
 You are reading one candidate's CV for a recruitment platform. Extract what the document \
@@ -23,8 +25,8 @@ CV's own words. A skill you cannot map belongs there; it does not belong in `ski
 under an approximate name.
 - `years_experience` is only for a figure the CV supports — a stated number, or one that \
 follows from dated jobs where the skill is named. Otherwise null.
-- `canonical_role` is the one exception to the rule above, and the only judgement asked \
-for here: pick the key from the Canonical roles list that best describes the line of work \
+- `canonical_role` is the one exception to the "never infer" rule, and the only judgement \
+asked for here: pick the key from the Canonical roles list that best describes the line of work \
 this CV is about, even though the CV does not use that word. Judge it from the jobs held \
 and the work described, not from a job title alone. Where the CV shows no clear line of \
 work — too little to go on, or an even split between two — answer null; the candidate is \

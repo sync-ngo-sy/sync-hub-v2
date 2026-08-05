@@ -13,6 +13,7 @@ with a known password, so signing in as anybody needs no inbox round trip.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final, cast
 
@@ -51,7 +52,7 @@ from sync_core.models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import AsyncIterator, Iterable, Sequence
     from uuid import UUID
 
     from httpx import AsyncClient
@@ -149,9 +150,7 @@ async def purge(
     # Before the rows go, because the paths are read off them.
     await _empty_storage_of(session, storage, people)
 
-    async with transaction(session):
-        await _lift_the_written_once_guard(session)
-
+    async with transaction(session), without_the_written_once_guard(session):
         # `candidates_current_cv_fk` is ON DELETE RESTRICT: the pointer lets go before the CV
         # can. `is_searchable` goes with it — `candidates_searchable_needs_cv` will not have a
         # Candidate be findable with no CV, and it is right about that.
@@ -251,32 +250,41 @@ async def purge(
     )
 
 
-#: A Snapshot and the two histories refuse updates and deletes, the backend's service role
-#: included — that is the guarantee, not an oversight. Deleting an Application whole is the one
-#: thing that legitimately takes them with it, and only a purge ever does it.
-WRITTEN_ONCE: Final = (
-    "application_profile_snapshots",
-    "application_experiences",
-    "application_educations",
-    "application_skills",
-    "application_languages",
-    "application_projects",
-    "application_answers",
-    "application_qualification_history",
-    "application_status_history",
-)
+#: The trigger a Snapshot and the two histories carry, refusing every update and delete — the
+#: backend's service role included, which is the guarantee rather than an oversight.
+WRITTEN_ONCE: Final = "written_once"
 
 
-async def _lift_the_written_once_guard(session: AsyncSession) -> None:
-    """Turn the immutability triggers off for the rest of this transaction.
+@asynccontextmanager
+async def without_the_written_once_guard(session: AsyncSession) -> AsyncIterator[None]:
+    """Turn the immutability triggers off, and put them back before the transaction commits.
 
-    Named one trigger at a time rather than `DISABLE TRIGGER USER`, so `updated_at` and the
-    re-embed queue go on working; the foreign keys are untouched either way, because a cascade
-    is an internal trigger. `ALTER TABLE` is transactional, so a purge that fails half way
-    leaves the guard exactly where it found it.
+    Deleting an Application whole is the one thing that legitimately takes a Snapshot with it,
+    and only a purge ever does it. Which tables carry the guard is read from the catalogue
+    rather than listed here, so a table added to the Snapshot later is covered by carrying the
+    trigger and by nothing else.
+
+    Putting them back is the whole job: `DISABLE TRIGGER` outlives the transaction that ran it,
+    so a purge that only turned them off would leave every later Snapshot editable. A purge that
+    fails part way rolls the disable back with everything else.
+
+    One named trigger rather than `DISABLE TRIGGER USER`, so `updated_at` and the re-embed queue
+    go on working; the foreign keys are untouched either way, because a cascade is an internal
+    trigger.
     """
-    for table in WRITTEN_ONCE:
-        await session.execute(text(f"alter table {table} disable trigger written_once"))
+    guarded = list(
+        await session.scalars(
+            text("select tgrelid::regclass::text from pg_trigger where tgname = :name"),
+            {"name": WRITTEN_ONCE},
+        )
+    )
+    for table in guarded:
+        await session.execute(text(f"alter table {table} disable trigger {WRITTEN_ONCE}"))
+    try:
+        yield
+    finally:
+        for table in guarded:
+            await session.execute(text(f"alter table {table} enable trigger {WRITTEN_ONCE}"))
 
 
 async def _deleted(session: AsyncSession, statement: Delete) -> int:

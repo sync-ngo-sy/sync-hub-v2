@@ -11,9 +11,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from seed.identities import without_the_written_once_guard
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
+from sync_core import transaction
 from tests.support.applications import (
     a_candidate_who_can_apply,
     an_accepted_application,
@@ -128,3 +130,20 @@ async def test_an_application_can_still_be_made(
     application = await an_application(recruiter, other_browser, mailbox, db_session)
 
     assert application["id"]
+
+
+async def test_lifting_the_guard_to_purge_a_seed_puts_it_back(db_session: AsyncSession) -> None:
+    """`DISABLE TRIGGER` outlives the transaction that ran it, so a purge that only turned the
+    guard off would leave every later Snapshot editable and nothing would say so."""
+    async with transaction(db_session), without_the_written_once_guard(db_session):
+        assert await _guards_in_force(db_session) == 0
+
+    assert await _guards_in_force(db_session) == len(WRITTEN_ONCE)
+
+
+async def _guards_in_force(session: AsyncSession) -> int:
+    session.expire_all()
+    enabled = await session.scalar(
+        text("select count(*) from pg_trigger where tgname = 'written_once' and tgenabled = 'O'")
+    )
+    return int(enabled or 0)

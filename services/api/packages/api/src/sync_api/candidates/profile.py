@@ -48,6 +48,7 @@ from sync_core.models import (
 from sync_core.profile import as_decimal
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,7 +113,7 @@ class CandidateProfileService:
             candidate.is_searchable = profile.is_searchable
             # Derived here and never read off the request: whatever a caller sends is ignored,
             # so the number and the jobs it came from cannot disagree.
-            candidate.total_experience_years = derived_experience(profile)
+            candidate.total_experience_years = derived_experience(profile.experiences)
             candidate.unmapped_skills = profile.unmapped_skills
             for section in (
                 delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
@@ -289,18 +290,17 @@ def _rows_for(candidate_id: UUID, profile: CandidateProfile, skills: dict[str, U
     return rows
 
 
-def derived_experience(profile: CandidateProfile) -> int:
-    """The profile's Total experience, from the jobs it carries and the day it is being saved."""
+def derived_experience(jobs: Sequence[ProfileExperience]) -> int:
+    """Total experience from the jobs a profile carries, as of the day it is being saved."""
     return total_experience_years(
         [
             WorkPeriod(
-                start_year=entry.start_year,
-                start_month=entry.start_month,
-                end_year=entry.end_year,
-                end_month=entry.end_month,
-                is_current=entry.is_current,
+                start_year=job.start_year,
+                start_month=job.start_month,
+                end_year=job.end_year,
+                end_month=job.end_month,
             )
-            for entry in profile.experiences
+            for job in jobs
         ],
         business_today(),
     )

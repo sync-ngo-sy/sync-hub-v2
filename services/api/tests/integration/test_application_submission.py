@@ -7,6 +7,7 @@ from uuid import uuid4
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.applications.screening import SCREENING_VERSION
 from sync_core.communications import ApplicationConfirmation, payload_of
 from sync_core.models import (
     ApplicationStatus,
@@ -94,7 +95,7 @@ async def test_one_submission_writes_the_whole_application(
     assert history.change_source is StatusChangeSource.CANDIDATE
     [verdict] = await qualification_history_of(db_session, application["id"])
     assert verdict.qualification_status is QualificationStatus.QUALIFIED
-    assert verdict.screening_version == "1"
+    assert verdict.screening_version == SCREENING_VERSION
 
 
 async def test_the_snapshot_is_copied_from_the_live_profile(

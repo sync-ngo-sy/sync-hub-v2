@@ -82,18 +82,13 @@ safety net.
 _Avoid_: Toast (this outlives one), banner, undo bar.
 
 **What you do**:
-The editor's name for the Candidate's **Canonical role** — the kind of practitioner they are,
-picked from the platform's list or left on "Not saying". A CV proposes one into the form like any
-other filled field, and it is still the Candidate's Save that claims it. Called by what it asks
-rather than by its wire name, because "role" on a page about jobs reads as the job being applied
-for.
+The editor's name for the Candidate's **Canonical role** — called by what it asks rather than by
+its wire name, because "role" on a page about jobs reads as the job being applied for. A picker
+over the platform's list, or "Not saying". A CV proposes one into the form like any other filled
+field, and it is still the Candidate's Save that claims it. **Total experience** appears here
+too, above the jobs it is derived from and with no field to type it into: correcting a date is
+how it changes, and the editor says so rather than leaving somebody hunting for one.
 _Avoid_: Role, Job title, Discipline, Position.
-
-**Total experience**:
-The whole years of work the API derived from the jobs listed, shown above them and never
-editable. It is recomputed on every save, so correcting a date is how it changes — there is no
-field to type it into, and the editor says as much rather than leaving somebody hunting for one.
-_Avoid_: Years of experience (that phrase belongs to one skill), seniority.
 
 **Other skills**:
 The skills a Candidate claims that the platform has no Canonical name for — `unmapped_skills` on

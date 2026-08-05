@@ -1,7 +1,7 @@
 """How long somebody has worked, from the jobs they list. One implementation, one answer.
 
-Screening measured this from an Application's Snapshot and a Candidate's profile derives it on
-every save; both readings have to agree forever, so the rule lives here rather than in either.
+Screening measured this from an Application's Snapshot until the number was stored; a Candidate's
+profile derives it on every save. One rule, so the two can never disagree.
 """
 
 from __future__ import annotations
@@ -23,6 +23,22 @@ MONTHS_A_YEAR: Final = 12
 BUSINESS_TIMEZONE: Final = ZoneInfo("Asia/Damascus")
 
 
+@dataclass(frozen=True, slots=True)
+class WorkPeriod:
+    """One job as a profile dates it, and nothing else about it.
+
+    A job with no end is one still held, which is the only reading either side allows: an entry
+    is `is_current` exactly when it has no end year, enforced by `cexp_current_has_no_end` and
+    `cexp_finished_work_has_an_end` together. Every date an entry is required to have is
+    required here too, so there is no such thing as a period this cannot measure.
+    """
+
+    start_year: int
+    start_month: int | None
+    end_year: int | None
+    end_month: int | None
+
+
 def business_today(now: datetime | None = None) -> date:
     """Today where the platform's people are, which is the day their work is measured against."""
     return (now or datetime.now(UTC)).astimezone(BUSINESS_TIMEZONE).date()
@@ -36,53 +52,33 @@ def total_experience_years(periods: Iterable[WorkPeriod], today: date) -> int:
     dates behind it do not have. The rounding loosens Screening on purpose: 31 months now
     clears a three-year bar.
     """
-    months, _undated = months_worked(periods, today)
-    return (months + MONTHS_A_YEAR // 2) // MONTHS_A_YEAR
+    return (months_worked(periods, today) + MONTHS_A_YEAR // 2) // MONTHS_A_YEAR
 
 
-@dataclass(frozen=True, slots=True)
-class WorkPeriod:
-    """One job as a profile or a Snapshot dates it, and nothing else about it."""
-
-    start_year: int | None
-    start_month: int | None
-    end_year: int | None
-    end_month: int | None
-    is_current: bool
+def months_worked(periods: Iterable[WorkPeriod], today: date) -> int:
+    """Months of work, overlapping jobs merged rather than added up: two at once is one year a
+    year, not two."""
+    return sum(end - start + 1 for start, end in _merged(_months_of(periods, today)))
 
 
-def months_worked(periods: Iterable[WorkPeriod], today: date) -> tuple[int, bool]:
-    """Months of work and whether anything was left out for want of dates.
+def _months_of(periods: Iterable[WorkPeriod], today: date) -> list[tuple[int, int]]:
+    """Each job as the inclusive months it ran for.
 
-    Overlapping jobs are merged rather than added up: two at once is one year a year, not two.
-    """
-    dated, undated = [], False
-    for period in periods:
-        months = _months_of(period, today)
-        if months is None:
-            undated = True
-        else:
-            dated.append(months)
-    return sum(end - start + 1 for start, end in _merged(dated)), undated
-
-
-def _months_of(period: WorkPeriod, today: date) -> tuple[int, int] | None:
-    """A job as the inclusive months it ran for, or nothing if the dates cannot say.
-
-    A missing month runs to the edge of its year — the reading `aexp_ordered` already takes,
+    A missing month runs to the edge of its year — the reading `cexp_ordered` already takes,
     where `coalesce(start_month,1)` and `coalesce(end_month,12)` decide whether a year-only
     period is even valid. A year is the unit a year-only entry was given in.
     """
-    if period.start_year is None:
-        return None
-    start = _month_index(period.start_year, period.start_month or 1)
-    if period.is_current:
-        end = _month_index(today.year, today.month)
-    elif period.end_year is None:
-        return None
-    else:
-        end = _month_index(period.end_year, period.end_month or 12)
-    return None if end < start else (start, end)
+    months = []
+    for period in periods:
+        start = _month_index(period.start_year, period.start_month or 1)
+        end = (
+            _month_index(today.year, today.month)
+            if period.end_year is None
+            else _month_index(period.end_year, period.end_month or 12)
+        )
+        if end >= start:
+            months.append((start, end))
+    return months
 
 
 def _merged(periods: list[tuple[int, int]]) -> Iterator[tuple[int, int]]:

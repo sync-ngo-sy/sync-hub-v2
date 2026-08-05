@@ -88,6 +88,7 @@ A_FULL_PROFILE: dict[str, Any] = {
     "unmapped_skills": ["Kubernetes wrangling"],
 }
 
+
 def as_typed(profile: dict[str, Any]) -> dict[str, Any]:
     """A profile without the fields the platform derives — what the candidate actually typed.
 

@@ -49,7 +49,6 @@ export function locationGroups(locations: Location[] | undefined): ComboboxOptio
   return groups;
 }
 
-/** A Canonical role reads as its name and saves as its key. One flat list, already by name. */
 export function roleOptions(roles: CanonicalRole[] | undefined): ComboboxOption[] {
   return (roles ?? []).map((role) => ({ value: role.key, label: role.name }));
 }

@@ -11,7 +11,10 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 #: Recorded on every verdict, so a rule change can be told from a data change afterwards.
-SCREENING_VERSION: Final = "1"
+#: "2" is the rule reading one stored Total experience instead of measuring dates: it rounds to
+#: whole years, which lets work that fell just short of a bar clear it, and it no longer sends
+#: undatable work to a human, because a Snapshot can no longer hold any.
+SCREENING_VERSION: Final = "2"
 
 #: `language_proficiency` is an unordered enum in Postgres; this is the order it means.
 _PROFICIENCIES: Final = (

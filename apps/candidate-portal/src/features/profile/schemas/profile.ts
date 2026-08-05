@@ -57,8 +57,6 @@ const YEAR_MESSAGE = `Enter a year between ${EARLIEST_YEAR} and ${LATEST_YEAR}.`
 const optionalYear = optionalNumber(EARLIEST_YEAR, LATEST_YEAR, YEAR_MESSAGE);
 const optionalMonth = optionalNumber(1, 12, 'Enter a month between 1 and 12.');
 
-/** A job is always dated — Total experience is derived from these, and a job nobody can date
- * would make that one number a lie. The API refuses an undated one; this says so in the field. */
 const requiredYear = z
   .string()
   .trim()
@@ -149,7 +147,6 @@ const experience = z
       });
       return;
     }
-    // The `cexp_finished_work_has_an_end` CHECK, restated.
     if (!entry.is_current && entry.end_year === null) {
       ctx.addIssue({
         code: 'custom',
@@ -219,8 +216,6 @@ export const profileSchema = z
     canonical_role_key: optionalLine,
     preferred_language_code: optionalLanguageCode,
     is_searchable: z.boolean(),
-    /** Derived by the API from the jobs below and refused as an input, so it rides along
-     * unchanged: a saved profile is a valid body to send back. */
     total_experience_years: z.number(),
     experiences: section(experience, 'jobs'),
     educations: section(education, 'qualifications'),
@@ -325,8 +320,6 @@ export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileF
     canonical_role_key: orEmpty(profile.canonical_role_key),
     preferred_language_code: orEmpty(profile.preferred_language_code),
     is_searchable: profile.is_searchable,
-    // A draft carries no total: it is derived from jobs that have not been saved yet, and the
-    // form only ever shows it back.
     total_experience_years:
       'total_experience_years' in profile ? profile.total_experience_years : 0,
     experiences: (profile.experiences ?? []).map((entry) => ({

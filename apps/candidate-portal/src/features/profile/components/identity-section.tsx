@@ -14,7 +14,6 @@ import { ProfileSection } from './profile-section';
 /** Having no preference is a choice, so it is on the list rather than left to a blank field. */
 const NO_PREFERENCE = { value: '', label: 'No preference' };
 
-/** Claiming no line of work is a choice too, and the one a CV that could not tell leaves you on. */
 const NO_ROLE = { value: '', label: 'Not saying' };
 
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {

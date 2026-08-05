@@ -191,17 +191,22 @@ async def screened(
         .where(ApplicationLanguage.application_id == application_id)
         .order_by(ApplicationLanguage.sort_order)
     )
+    # Read back rather than passed in: a verdict is drawn from the frozen row, so if the freeze
+    # did not happen there is no number to judge by — and screening somebody as having no work
+    # would be a wrong verdict rather than a missing one.
     total_experience_years = await session.scalar(
         select(ApplicationProfileSnapshot.total_experience_years).where(
             ApplicationProfileSnapshot.application_id == application_id
         )
     )
+    if total_experience_years is None:  # pragma: no cover — written in this transaction
+        raise LookupError(f"no snapshot for application {application_id}")
     return Snapshot(
         skills=tuple(
             SnapshotSkill(taxonomy_id=taxonomy_id, years_experience=years)
             for taxonomy_id, years in skills.tuples()
         ),
-        total_experience_years=total_experience_years or 0,
+        total_experience_years=total_experience_years,
         languages=tuple(
             SnapshotLanguage(code=code, proficiency=proficiency)
             for code, proficiency in languages.tuples()

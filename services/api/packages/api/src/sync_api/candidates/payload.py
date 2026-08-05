@@ -51,6 +51,16 @@ def _refuse_an_end_before_its_start(
         raise ValueError("the end of a period cannot come before its start")
 
 
+def _refuse_an_end_on_current_work(
+    is_current: bool, end_year: int | None, end_month: int | None
+) -> None:
+    """The `cexp_current_has_no_end` CHECK, restated. Holds for a draft as much as for a profile:
+    a job still held is exactly a job with no end, which is what lets the experience rule read
+    one from the other."""
+    if is_current and (end_year is not None or end_month is not None):
+        raise ValueError("a current job cannot have an end date")
+
+
 class DatedRange(BaseModel):
     """Something that ran from roughly one month to roughly another, or still runs."""
 
@@ -94,9 +104,7 @@ class ProfileExperience(BaseModel):
 
     @model_validator(mode="after")
     def _current_work_has_not_ended(self) -> ProfileExperience:
-        """The `cexp_current_has_no_end` CHECK, restated."""
-        if self.is_current and (self.end_year is not None or self.end_month is not None):
-            raise ValueError("a current job cannot have an end date")
+        _refuse_an_end_on_current_work(self.is_current, self.end_year, self.end_month)
         return self
 
     @model_validator(mode="after")
@@ -122,8 +130,7 @@ class DraftExperience(DatedRange):
 
     @model_validator(mode="after")
     def _current_work_has_not_ended(self) -> DraftExperience:
-        if self.is_current and (self.end_year is not None or self.end_month is not None):
-            raise ValueError("a current job cannot have an end date")
+        _refuse_an_end_on_current_work(self.is_current, self.end_year, self.end_month)
         return self
 
 
