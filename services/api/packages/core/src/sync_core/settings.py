@@ -66,7 +66,8 @@ class Settings(BaseSettings):
     #: shared, so a single query with a bad plan does not merely answer slowly — it holds a
     #: connection that endpoints with nothing to do with it are queueing for. Well above the
     #: slowest query this service issues, and far below "indefinitely", which is what no timeout
-    #: means. Zero switches it off.
+    #: means. Applied per transaction rather than per connection, because the transaction pooler
+    #: drops connection settings — see `sync_core.db.bound_every_statement`. Zero switches it off.
     database_statement_timeout_ms: int = Field(default=15_000, ge=0)
 
     supabase_url: AnyHttpUrl

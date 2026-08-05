@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from sqlalchemy import event
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from sqlalchemy.engine import URL
+    from sqlalchemy.engine import URL, Connection
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
     from sync_core.settings import Settings
 
@@ -35,24 +37,34 @@ POOLER_CONNECT_ARGS = {
 }
 
 
-def connect_args(statement_timeout_ms: int) -> dict[str, object]:
-    """The pooler-safe arguments, plus the ceiling a single statement may run for.
+def bound_every_statement(engine: AsyncEngine, statement_timeout_ms: int) -> None:
+    """Give every transaction on this engine a ceiling on how long one statement may run.
 
-    Set on the connection rather than per transaction, so it costs no round trip and applies to
-    the reads that never open one explicitly. `server_settings` reaches Postgres in asyncpg's
-    startup message, which the transaction pooler forwards — exercised through the real pooler
-    in `tests/integration/test_transaction_pooler.py`, because a startup parameter a pooler
-    refuses is a deployment that cannot connect at all rather than one that runs without a
-    timeout.
+    `SET LOCAL`, inside each transaction, rather than a setting on the connection — because the
+    deployed path is a transaction pooler. A `statement_timeout` in asyncpg's startup message
+    reaches the pooler and stops there, and a plain `SET` would apply to whichever server
+    connection the pooler happened to hand out and be gone by the next transaction. Only what is
+    set *within* the transaction is set on the connection actually running it.
+    `tests/integration/test_transaction_pooler.py` is what established that: it asserted the
+    startup parameter had survived the pooler, and it had not.
+
+    The cost is one statement per transaction, and it is worth paying. The pool is small and
+    shared, so a query with a bad plan does not merely answer slowly — it holds a connection that
+    endpoints with nothing to do with it are queueing for, which is how one slow read takes an
+    unrelated page down with it.
 
     Zero leaves it unset, which is Postgres' own default: a statement runs until it finishes.
     """
     if statement_timeout_ms <= 0:
-        return dict(POOLER_CONNECT_ARGS)
-    return {
-        **POOLER_CONNECT_ARGS,
-        "server_settings": {"statement_timeout": f"{statement_timeout_ms}ms"},
-    }
+        return
+
+    # Interpolated because `SET` takes no parameters. The value is an `int` from settings, so
+    # there is nothing here a caller could shape.
+    bound = f"set local statement_timeout = '{int(statement_timeout_ms)}ms'"
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def _bound_statements(connection: Connection) -> None:
+        connection.exec_driver_sql(bound)
 
 
 class Database:
@@ -63,8 +75,9 @@ class Database:
             pool_size=settings.database_pool_size,
             max_overflow=settings.database_max_overflow,
             pool_pre_ping=True,
-            connect_args=connect_args(settings.database_statement_timeout_ms),
+            connect_args=POOLER_CONNECT_ARGS,
         )
+        bound_every_statement(self._engine, settings.database_statement_timeout_ms)
         self._session_factory = async_sessionmaker(
             self._engine,
             expire_on_commit=False,

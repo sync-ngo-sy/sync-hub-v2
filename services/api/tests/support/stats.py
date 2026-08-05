@@ -64,6 +64,11 @@ async def decide(
         changes["status"] = status
     if qualification_status is not None:
         changes["qualification_status"] = qualification_status
+        # A refusal names what refused it — `applications_disqualification_has_a_reason`. Screening
+        # writes the reason with the status, and so does this, rather than writing a verdict the
+        # schema will not hold and no Recruiter could have read.
+        if qualification_status is QualificationStatus.DISQUALIFIED:
+            changes["qualification_reason"] = "the fixture said so"
     await session.execute(
         update(Application).where(Application.id == application_id).values(**changes)
     )
