@@ -1,6 +1,6 @@
 # DNS records
 
-DNS is the one part of the hosting design that is not infrastructure-as-code (ADR-0012, #86). The
+DNS is the one part of the hosting design that is not infrastructure-as-code (ADR-0016, #86). The
 nameservers stay at the existing provider — this was going to be a migration to Cloudflare and no
 longer is, because reachability probing found no user-facing reason to move and moving would put
 Workspace mail at risk. **No nameserver change. Nothing about mail is touched.**

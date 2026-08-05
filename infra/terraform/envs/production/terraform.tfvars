@@ -74,7 +74,7 @@ services = {
 
   # The Platform Portal: static files, and the only service behind the gate. In europe-west1
   # rather than Frankfurt because it needs a sync.ngo hostname for the session cookie to attach
-  # at all, and domain mappings do not exist in europe-west3 — the whole chain is in ADR-0012.
+  # at all, and domain mappings do not exist in europe-west3 — the whole chain is in ADR-0016.
   admin-portal = {
     image           = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/admin-portal@sha256:0000000000000000000000000000000000000000000000000000000000000000"
     service_account = "runtime@sync-ngo-prod.iam.gserviceaccount.com"

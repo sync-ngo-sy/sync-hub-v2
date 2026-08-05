@@ -1,6 +1,6 @@
 # The Platform Portal as a container, which exists for one reason: Identity-Aware Proxy protects
 # Cloud Run and cannot protect Firebase Hosting, so the one portal we gate has to be a service.
-# The other two are static sites on Hosting. See ADR-0012.
+# The other two are static sites on Hosting. See ADR-0016.
 #
 # Build context is the repository root, not this directory — the app depends on workspace packages:
 #   docker build -f apps/admin-portal/Dockerfile \

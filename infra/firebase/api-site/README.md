@@ -5,7 +5,7 @@ job is a rewrite, and this site's rewrite sends every path to the API's Cloud Ru
 
 The rewrite is not a preference. Cloud Run custom domain mappings do not exist in `europe-west3`,
 and a load balancer's fixed monthly charge is the thing the whole hosting design avoids — so a
-Hosting rewrite is the free way for `api.sync.ngo` to reach a service in Frankfurt. ADR-0012.
+Hosting rewrite is the free way for `api.sync.ngo` to reach a service in Frankfurt. ADR-0016.
 
 The consequence to keep in mind: there is now a CDN in front of the API. Firebase Hosting does not
 cache a dynamic response that does not ask to be cached, so the default is safe, but an endpoint

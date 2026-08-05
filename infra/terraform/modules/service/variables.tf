@@ -119,7 +119,7 @@ variable "domain" {
   description = <<-EOT
     Hostname mapped straight to the service, with no load balancer. Mappings exist in only ten
     regions and europe-west3 is not one of them, so a service setting this is deployed to a region
-    that has them -- see ADR-0012.
+    that has them -- see ADR-0016.
   EOT
   type        = string
   default     = null

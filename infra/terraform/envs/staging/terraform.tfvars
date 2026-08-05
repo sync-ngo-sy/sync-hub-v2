@@ -77,7 +77,7 @@ services = {
 
   # The Platform Portal: static files, and the only service behind the gate. In europe-west1
   # rather than Frankfurt because it needs a sync.ngo hostname for the session cookie to attach
-  # at all, and domain mappings do not exist in europe-west3 — the whole chain is in ADR-0012.
+  # at all, and domain mappings do not exist in europe-west3 — the whole chain is in ADR-0016.
   #
   # Gated in staging too. Serving it from Cloud Run in both environments is what makes that
   # possible — everyone who tests staging has a sync.ngo Workspace account, and a gate that only

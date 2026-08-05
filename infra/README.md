@@ -6,7 +6,7 @@
 | `terraform/` | OpenTofu configuration, state bucket, per-environment roots |
 | `firebase/` | Public directories for the two Hosting sites that serve no files of their own |
 
-The design these implement is ADR-0012. Bringing an environment up, in order, including the steps
+The design these implement is ADR-0016. Bringing an environment up, in order, including the steps
 that stay out of Terraform because they carry secrets: `docs/deploy/runbook-first-deploy.md`.
 Hostnames and their records: `docs/deploy/dns-records.md`.
 

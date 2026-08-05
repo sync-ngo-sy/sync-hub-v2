@@ -113,7 +113,7 @@ resource "google_iap_web_cloud_run_service_iam_member" "access" {
   member                 = each.value
 }
 
-# A mapping, not a load balancer: the forwarding-rule charge is the thing ADR-0012 exists to
+# A mapping, not a load balancer: the forwarding-rule charge is the thing ADR-0016 exists to
 # avoid. Google issues and renews the certificate. The DNS record it needs is added by hand (#86).
 resource "google_cloud_run_domain_mapping" "this" {
   count = var.domain == null ? 0 : 1

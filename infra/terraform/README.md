@@ -79,7 +79,7 @@ also `public` has a decorative gate. Only the Platform Portal uses it.
 
 `domain` maps a hostname straight to a service with no load balancer, and mappings exist in ten
 regions of which `europe-west3` is not one. That is why the Platform Portal's service sets
-`region = "europe-west1"` while everything else stays in Frankfurt; ADR-0012 has the reasoning, and
+`region = "europe-west1"` while everything else stays in Frankfurt; ADR-0016 has the reasoning, and
 it ends in a cookie rather than in latency.
 
 Resources created by hand before this existed — the workload identity pool and provider, the

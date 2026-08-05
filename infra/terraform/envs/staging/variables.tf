@@ -28,7 +28,7 @@ variable "services" {
     image           = string
     service_account = string
     # Per service, because the Platform Portal has to sit in a region that has domain mappings
-    # while the API and worker stay next to the database. ADR-0012.
+    # while the API and worker stay next to the database. ADR-0016.
     region             = optional(string)
     min_instances      = optional(number, 0)
     max_instances      = optional(number, 2)

@@ -1,6 +1,6 @@
 # Runbook: bringing an environment up
 
-The order that works, and why each step is where it is. ADR-0012 is the design this executes.
+The order that works, and why each step is where it is. ADR-0016 is the design this executes.
 
 Everything here is Terraform except the steps marked **out of band**, which are out of band for one
 reason: they carry secret values, and Terraform state is stored in plaintext.
@@ -126,7 +126,7 @@ tofu apply -var='images={api="…/api:'$SHA'",worker="…/worker:'$SHA'",admin-p
 
 Three services: the API, the worker, and the Platform Portal's static server. The first two are in
 Frankfurt next to the database; the third is in `europe-west1` because it needs a mapped hostname and
-mappings do not exist in Frankfurt (ADR-0012).
+mappings do not exist in Frankfurt (ADR-0016).
 
 ## 6. Static portals
 
