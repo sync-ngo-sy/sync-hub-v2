@@ -117,6 +117,27 @@ docker build -f apps/admin-portal/Dockerfile \
   -t $REGISTRY/admin-portal-staging:$SHA .
 ```
 
+## 4a. Domain ownership — **out of band**
+
+The Platform Portal's hostname is a Cloud Run domain mapping, and Google refuses to create one for
+a domain the caller has not proved it owns. Check first, because an unverified domain fails the
+apply halfway — the service is created and the mapping is not:
+
+```bash
+gcloud domains list-user-verified --project sync-ngo-staging
+```
+
+Empty output means nothing is verified yet. Verifying is a Search Console step: add the TXT record
+it gives you for `sync.ngo` at the registrar, alongside the records in
+`docs/deploy/dns-records.md`.
+
+Then the part that is easy to miss: **the identity doing the apply has to be a verified owner**,
+not just the person who verified. The pipeline applies as `deployer@…`, so that service account
+has to be added as an owner of the verified property in Search Console. Otherwise this works from a
+workstation and fails in CI, which is the worst shape a failure can take.
+
+Firebase Hosting's custom domains are unaffected — Hosting does its own verification per site.
+
 ## 5. Services
 
 ```bash
