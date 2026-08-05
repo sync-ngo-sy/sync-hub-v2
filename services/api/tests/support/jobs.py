@@ -74,8 +74,6 @@ async def a_published_job(browser: AsyncClient, **changes: Any) -> dict[str, Any
 
 
 async def a_closed_job(browser: AsyncClient, **changes: Any) -> dict[str, Any]:
-    """A Job that has been live and is not now — the one state both `published` and `archived`
-    are still reachable from."""
     job = await a_published_job(browser, **changes)
     closed = await change_job(browser, job["id"], status="closed")
     assert closed.status_code == 200, closed.text

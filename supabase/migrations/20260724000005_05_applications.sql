@@ -25,9 +25,6 @@ create table applications (
   unique (tenant_id, id),
   unique (id, candidate_id),
 
-  -- A verdict that refuses an applicant says which criteria refused them. Screening writes the
-  -- reason with the status; without this, a `disqualified` row with nothing to show is a
-  -- Recruiter reading "not qualified" and a Candidate nobody can explain the decision to.
   constraint applications_disqualification_has_a_reason check (
     qualification_status <> 'disqualified' or qualification_reason is not null
   )
@@ -35,11 +32,6 @@ create table applications (
 create index applications_job_status_idx       on applications (job_id, status);
 create index applications_job_tracked_link_idx on applications (job_id, tracked_link_id);
 create index applications_cv_id_idx            on applications (cv_id);
--- A Job's applicant list pages on `(applied_at desc, id desc)` within the one Job. Nothing led
--- with `job_id` in that order, so the planner reached for the tenant-wide index instead
--- (`applications_tenant_applied_at_idx`, migration 18) — already sorted, but keyed on the Tenant.
--- Paging one Job's applicants therefore walked the Tenant's entire application history, testing
--- the Job id row by row and discarding everything belonging to another Job.
 create index applications_job_applied_at_idx   on applications (job_id, applied_at desc, id desc);
 
 create table application_profile_snapshots (
@@ -199,9 +191,6 @@ create table application_status_history (
   reason     text,
   created_at timestamptz not null default now(),
 
-  -- A decision a person made names the person. `system` is the one source with nobody behind it;
-  -- for the other two the column was nullable, so the record of who moved an Application could
-  -- be written empty — and an audit trail that cannot name an author is not one.
   constraint ash_human_decision_has_an_author check (
     change_source = 'system' or changed_by_profile_id is not null
   )
@@ -219,8 +208,6 @@ create table application_qualification_history (
 
   created_at timestamptz not null default now(),
 
-  -- The same rule as on `applications`, on the history that has to re-explain the verdict years
-  -- later: a refusal names what refused.
   constraint aqh_disqualification_has_a_reason check (
     qualification_status <> 'disqualified' or qualification_reason is not null
   )

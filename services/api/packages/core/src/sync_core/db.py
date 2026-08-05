@@ -38,28 +38,9 @@ POOLER_CONNECT_ARGS = {
 
 
 def bound_every_statement(engine: AsyncEngine, statement_timeout_ms: int) -> None:
-    """Give every transaction on this engine a ceiling on how long one statement may run.
-
-    `SET LOCAL`, inside each transaction, rather than a setting on the connection — because the
-    deployed path is a transaction pooler. A `statement_timeout` in asyncpg's startup message
-    reaches the pooler and stops there, and a plain `SET` would apply to whichever server
-    connection the pooler happened to hand out and be gone by the next transaction. Only what is
-    set *within* the transaction is set on the connection actually running it.
-    `tests/integration/test_transaction_pooler.py` is what established that: it asserted the
-    startup parameter had survived the pooler, and it had not.
-
-    The cost is one statement per transaction, and it is worth paying. The pool is small and
-    shared, so a query with a bad plan does not merely answer slowly — it holds a connection that
-    endpoints with nothing to do with it are queueing for, which is how one slow read takes an
-    unrelated page down with it.
-
-    Zero leaves it unset, which is Postgres' own default: a statement runs until it finishes.
-    """
     if statement_timeout_ms <= 0:
         return
 
-    # Interpolated because `SET` takes no parameters. The value is an `int` from settings, so
-    # there is nothing here a caller could shape.
     bound = f"set local statement_timeout = '{int(statement_timeout_ms)}ms'"
 
     @event.listens_for(engine.sync_engine, "begin")

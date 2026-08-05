@@ -47,8 +47,6 @@ async def test_two_tags_of_one_scope_cannot_share_a_name(recruiter: AsyncClient)
 async def test_two_tags_of_one_scope_cannot_share_a_name_in_another_case_either(
     recruiter: AsyncClient,
 ) -> None:
-    """A Tag is what a Recruiter files by, so two spellings of one name are two piles where they
-    meant one — and nothing on screen would say why "Urgent" did not find what "urgent" holds."""
     await a_tag(recruiter, name="Arabic speaker", scope="candidate")
 
     refused = await create_tag(recruiter, name="arabic SPEAKER", scope="candidate")

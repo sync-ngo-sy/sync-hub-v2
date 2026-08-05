@@ -101,15 +101,6 @@ async def test_the_schema_is_reachable_through_the_pooler(pooled_database: Datab
 async def test_the_statement_timeout_reaches_the_connection_behind_the_pooler(
     pooled_database: Database, settings: Settings
 ) -> None:
-    """The reason the ceiling is set per transaction rather than per connection.
-
-    Asked for as a connection setting it does not arrive at all: a `statement_timeout` in
-    asyncpg's startup message reaches the pooler and stops there, and this test is what
-    established that — it read back 0. `SET LOCAL` is issued inside the transaction, on whichever
-    server connection is running it, which is the only one that can be bounded. Without this the
-    deployed path would quietly have no ceiling while the direct one had one.
-    """
-    # `pg_settings.setting` rather than `show`, which renders 15000ms as "15s".
     reading = text("select setting from pg_settings where name = 'statement_timeout'")
     async with pooled_database.session() as session:
         applied = (await session.execute(reading)).scalar_one()

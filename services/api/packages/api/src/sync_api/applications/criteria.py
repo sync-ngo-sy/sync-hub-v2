@@ -25,12 +25,7 @@ if TYPE_CHECKING:
 async def screening_criteria_of(
     session: AsyncSession, job: Job, questions: Sequence[JobApplicationQuestion] | None = None
 ) -> Criteria:
-    """The Job's bar, in the shape Screening measures against.
-
-    `questions` for a caller that has already read them — a submission validates the answers
-    against the same list this screens by, and reading it twice was two identical statements one
-    after the other. Left out, they are read here.
-    """
+    """The Job's bar, in the shape Screening measures against."""
     return Criteria(
         minimum_total_experience_years=job.minimum_total_experience_years,
         skills=await _skills(session, job.id),

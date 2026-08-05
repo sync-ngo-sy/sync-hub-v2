@@ -152,9 +152,5 @@ create table candidate_embedding_jobs (
   updated_at timestamptz not null default now()
 );
 create index candidate_embedding_jobs_claim_idx on candidate_embedding_jobs (updated_at) where dirty;
--- The sweep, which is a different question from the claim: in-flight jobs whose worker stopped
--- answering, oldest claim first. It reads `claimed_at`, which the index above does not carry, so
--- it sequentially scanned a table holding one permanent row per Candidate. Partial on the column
--- it also orders by, and only in-flight rows have a `claimed_at` at all.
 create index candidate_embedding_jobs_stuck_idx on candidate_embedding_jobs (claimed_at)
   where claimed_at is not null;

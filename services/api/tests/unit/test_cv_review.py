@@ -122,9 +122,6 @@ def test_the_language_a_cv_is_written_in_is_kept_by_its_code() -> None:
 
 
 def test_a_detected_language_the_platform_has_no_code_for_records_nothing() -> None:
-    """The column is a foreign key to `languages`, and a model asked for ISO 639-1 will
-    occasionally answer "arabic". Stored as typed, that labelled a CV in a language the platform
-    cannot name — and, now, one the schema will not accept."""
     parse = reviewed(detected_language="arabic")
 
     assert parse.detected_language is None

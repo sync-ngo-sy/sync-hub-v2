@@ -153,9 +153,6 @@ async def test_a_job_moves_through_its_lifecycle(browser: AsyncClient, mailbox: 
 async def test_a_description_too_long_to_index_is_a_validation_error(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """A Job's title and description are what its search vector is built from, and a tsvector
-    raises past about a megabyte rather than truncating. So the length is refused where a caller
-    can be told about it, rather than reaching a trigger and coming back as a 500."""
     await an_admin(browser, mailbox)
 
     refused = await post_job(browser, a_job(description="x" * (MAX_PARAGRAPH_LENGTH + 1)))
@@ -190,15 +187,10 @@ async def test_an_archived_job_is_archived_for_good(browser: AsyncClient, mailbo
 async def test_two_status_changes_at_once_cannot_republish_an_archived_job(
     browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Archiving is final, and the lifecycle check is a read of `status` then a write of it. Both
-    changes take the Job row's lock, so the second one reads what the first one wrote instead of
-    passing a check it was entitled to fail."""
     await an_admin(browser, mailbox)
     await a_teammate(browser, other_browser, mailbox)
     job = await a_closed_job(browser)
 
-    # From `closed`, either move is allowed on its own — and whichever lands first, the Job ends
-    # up archived: archiving a published Job is legal, publishing an archived one is not.
     archiving, publishing = await asyncio.gather(
         change_job(browser, job["id"], status="archived"),
         change_job(other_browser, job["id"], status="published"),

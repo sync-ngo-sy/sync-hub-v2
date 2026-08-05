@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: Two ways one name is unique: exactly, and case-insensitively. Either refusal is the same 409.
 NAME_CONSTRAINTS: Final = (
     "tenant_tags_tenant_id_scope_name_key",
     "tenant_tags_tenant_scope_name_ci_uidx",

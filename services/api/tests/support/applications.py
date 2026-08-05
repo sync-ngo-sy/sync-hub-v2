@@ -103,8 +103,6 @@ async def a_candidate_with_a_stored_cv(
         .where(Cv.id == UUID(uploaded["id"]))
         .values(
             parsing_status=CvParsingStatus.READY,
-            # A ready CV carries the parse it was read from; the schema holds it to that, and
-            # this stands in for the worker run the test is skipping.
             parsed_cv_data=a_parse().model_dump(mode="json"),
             parsed_at=datetime.now(UTC),
         )
@@ -122,11 +120,6 @@ async def a_candidate_with_a_stored_cv(
 async def a_whole_application(
     recruiter: AsyncClient, browser: AsyncClient, mailbox: Mailbox, session: AsyncSession
 ) -> dict[str, Any]:
-    """One Application with everything hanging off it — Snapshot, answers, both histories.
-
-    What a test of the floor underneath an Application needs: a published Job, a Candidate who
-    can apply to it, and a submission that really went through the pipeline.
-    """
     job = await a_published_job(recruiter)
     await a_candidate_who_can_apply(browser, mailbox, session)
     return await an_accepted_application(browser, job["id"])

@@ -92,8 +92,6 @@ async def test_asking_twice_from_one_address_leaves_one_request(
 async def test_asking_again_in_another_case_is_still_the_same_address(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """An address is the same address however it is typed. An operator working this queue seeing
-    one company waiting twice cannot tell which of the two to act on."""
     ask = an_ask()
     await ask_for_access(browser, ask)
 

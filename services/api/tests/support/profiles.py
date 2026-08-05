@@ -114,13 +114,6 @@ async def give_a_current_cv(
 
 
 def _settled(parsing_status: CvParsingStatus) -> dict[str, Any]:
-    """What `cvs_ready_has_a_parse` and `cvs_failure_has_a_reason` hold a settled CV to.
-
-    A CV handed straight to a test skips the worker that would have written these, and the two
-    settled states are exactly the ones that mean something was read or could not be: a `ready`
-    row with nothing parsed is a state the platform never produces, so the schema no longer
-    accepts one and neither does this.
-    """
     if parsing_status is CvParsingStatus.READY:
         return {"parsed_cv_data": a_parse().model_dump(mode="json"), "parsed_at": datetime.now(UTC)}
     if parsing_status is CvParsingStatus.FAILED:

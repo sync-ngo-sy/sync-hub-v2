@@ -27,7 +27,6 @@ class ActingPlatformAdmin:
 
 
 def acting_platform_admin(profile: ActingProfile) -> ActingPlatformAdmin:
-    """No query of its own: the Profile was read with its `platform_admins` row alongside it."""
     if profile.account_type is not AccountType.PLATFORM_ADMIN:
         raise _platform_admin_only()
 

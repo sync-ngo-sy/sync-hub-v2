@@ -25,7 +25,6 @@ class ActingCandidate:
 
 
 def acting_candidate(profile: ActingProfile) -> ActingCandidate:
-    """No query of its own: the Profile was read with its `candidates` row alongside it."""
     if profile.account_type is not AccountType.CANDIDATE:
         raise _candidate_only()
 

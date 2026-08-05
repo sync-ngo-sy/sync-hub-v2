@@ -40,8 +40,6 @@ class ActingRecruiter:
 
 
 def acting_recruiter(profile: ActingProfile) -> ActingRecruiter:
-    """No query of its own: the Profile was read with its `recruiters` row and Tenant alongside
-    it, which is one join rather than the second round trip this used to make on every request."""
     if profile.account_type is not AccountType.RECRUITER:
         raise _recruiter_only()
 

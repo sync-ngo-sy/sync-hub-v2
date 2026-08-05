@@ -28,13 +28,7 @@ def location_name(job: Job) -> str | None:
 async def own_job(
     session: AsyncSession, tenant_id: UUID, job_id: UUID, *, lock: bool = False
 ) -> Job:
-    """The tenant's own Job. Another tenant's Job and a nonexistent one are the same 404.
-
-    `lock` takes the row `FOR UPDATE`, which a caller about to read the status and then write it
-    needs: the lifecycle is a check followed by an act, and nothing in the schema serializes the
-    two. Without it, two status changes decided at once both pass the check each was entitled to
-    fail, and an archived Job comes back published through a transition the state machine forbids.
-    """
+    """The tenant's own Job. Another tenant's Job and a nonexistent one are the same 404."""
     query = select(Job).where(Job.id == job_id, Job.tenant_id == tenant_id).options(*WITH_LOCATION)
     if lock:
         query = query.with_for_update()
@@ -50,19 +44,6 @@ async def own_job(
 
 
 async def lock_the_criteria(session: AsyncSession, job: Job) -> None:
-    """Hold the Job's row until this transaction ends, and re-read the one criterion stored on it.
-
-    The Job row is what the Job's criteria are locked under. Replacing them takes it, and
-    screening an Application against them takes it, so the two cannot interleave: without it, a
-    replacement committed between Screening reading the criteria and writing its verdict leaves a
-    verdict citing requirements the Job no longer has. The trigger that freezes criteria once a
-    Job has Applications cannot catch that on its own — at the moment it fires, the Application
-    being screened does not exist yet.
-
-    Only `minimum_total_experience_years` is re-read, because it is the one criterion living on
-    this row. Refreshing the whole Job would expire the Location loaded with it, and the next
-    reader of that is a payload, under asyncio, where a lazy load raises rather than loads.
-    """
     await session.refresh(job, ["minimum_total_experience_years"], with_for_update=True)
 
 

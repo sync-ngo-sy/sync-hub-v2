@@ -50,9 +50,6 @@ if TYPE_CHECKING:
     from sqlalchemy import Executable, ScalarSelect
     from sqlalchemy.ext.asyncio import AsyncSession
 
-
-#: Every frozen section carries `application_id` and `sort_order`; naming them all is what lets
-#: code handed one of them read those two columns off it, as `LiveSection` does for the live side.
 type FrozenSection = (
     type[ApplicationExperience]
     | type[ApplicationEducation]
@@ -86,24 +83,8 @@ class Twin:
 
 @dataclass(frozen=True, slots=True)
 class Reading[EntryT: BaseModel]:
-    """One section on the way back out: the payload a reader gets, and one jsonb array holding
-    every row of it in order.
-
-    A whole Snapshot used to be six statements — the scalar row, then one per section — and six
-    round trips is what reading an Application mostly cost. These are scalar subqueries, so all
-    six travel in one statement and Postgres answers each by the same index it used before.
-
-    The projection is generated from `payload.model_fields`, for the reason `Twin` lists its
-    columns once: a field added to the payload is read without anyone remembering to add it here,
-    and a field with nowhere to read from raises on the spot rather than coming back empty.
-
-    Generic in the payload, so the section that builds the projection is the section that
-    validates what comes back: reading one column into another's payload does not type-check.
-    """
-
     payload: type[EntryT]
     frozen: FrozenSection
-    #: Payload field -> where it reads, for every field the frozen table does not spell the same.
     named: Mapping[str, Any] = field(default_factory=dict)
 
     def of(self, application_id: UUID) -> ScalarSelect[Any]:
@@ -117,13 +98,10 @@ class Reading[EntryT: BaseModel]:
         )
 
     def entries(self, aggregated: object) -> list[EntryT]:
-        """`jsonb_agg` over no rows is NULL, which is a section with nothing in it."""
         rows = cast("list[dict[str, Any]]", aggregated) if aggregated else []
         return [self.payload.model_validate(entry) for entry in rows]
 
     def _reads(self, name: str) -> Any:
-        """`getattr` rather than a `.get` with a fallback: a payload field naming no column is a
-        mapping somebody forgot, and an `AttributeError` says so where a null would not."""
         return self.named[name] if name in self.named else getattr(self.frozen, name)
 
 
@@ -200,10 +178,6 @@ SECTIONS: Final = (
     ),
 )
 
-# The read side of the same five sections. Only two need telling where a field comes from: a
-# language's `code` is spelled `language_code` on the row, and a skill's `name` is not on the row
-# at all — the Snapshot froze the taxonomy id, and the Canonical name is read through it, so a
-# skill renamed in the taxonomy reads the same on an old Application as on a new one.
 EXPERIENCES: Final = Reading(payload=ProfileExperience, frozen=ApplicationExperience)
 EDUCATIONS: Final = Reading(payload=ProfileEducation, frozen=ApplicationEducation)
 SKILLS: Final = Reading(
@@ -293,13 +267,8 @@ async def screened(
 
 
 async def snapshot_of(session: AsyncSession, application_id: UUID) -> ApplicationSnapshot:
-    """The frozen data back out, whole and in one statement. What a Recruiter reviews and what an
-    assessment reads — neither of them ever the live profile it was copied from.
-
-    The scalar row and all five sections ride together: six round trips for one Application's
-    frozen profile was most of what reading an Application cost, and every one of them was keyed
-    on the same id.
-    """
+    """The frozen data back out, whole. What a Recruiter reviews and what an assessment
+    reads — neither of them ever the live profile it was copied from."""
     row = (
         await session.execute(
             select(

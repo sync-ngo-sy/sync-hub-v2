@@ -31,8 +31,6 @@ def test_asyncpg_cache_is_off_and_statement_names_are_unique() -> None:
 
 
 def test_a_statement_timeout_arms_a_listener_on_every_transaction() -> None:
-    """Bound per transaction, not per connection: a transaction pooler drops connection settings,
-    which is what the pooler test found out. See `bound_every_statement`."""
     engine = create_async_engine(pooler_safe_url(DIRECT))
 
     bound_every_statement(engine, 15_000)
@@ -43,7 +41,6 @@ def test_a_statement_timeout_arms_a_listener_on_every_transaction() -> None:
 
 
 def test_a_statement_timeout_of_zero_arms_nothing() -> None:
-    """Postgres' own default, for a deployment that wants no ceiling at all."""
     engine = create_async_engine(pooler_safe_url(DIRECT))
 
     bound_every_statement(engine, 0)

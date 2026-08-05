@@ -28,13 +28,6 @@ Month = Annotated[int, Field(ge=1, le=12)]
 
 
 def _to_the_stored_precision(years: float) -> float:
-    """`numeric(4,1)` keeps one decimal place, so 3.25 is stored as 3.3 whatever was typed.
-
-    Rounded here rather than left to the column, so the number this API answers with is the
-    number it holds: the reply to a save is what was written, not a re-read of it, and the two
-    can only be the same if the rounding happens before the write. `ROUND_HALF_UP` because that
-    is what Postgres' `numeric` does, and `round()` would disagree with it on exactly 3.25.
-    """
     return float(
         Decimal(str(years)).quantize(
             Decimal(1).scaleb(-YEARS_EXPERIENCE_DECIMALS), rounding=ROUND_HALF_UP

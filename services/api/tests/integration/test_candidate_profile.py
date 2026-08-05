@@ -614,8 +614,6 @@ async def test_a_candidate_cannot_type_their_own_total_experience(
 async def test_a_save_answers_with_exactly_what_a_read_would(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """The reply to a save is what was written rather than a re-read of it, so the two agreeing is
-    the property worth pinning: the same profile read back has to be the same profile."""
     await a_signed_in_candidate(browser, mailbox)
     body = a_profile(
         headline="Backend engineer",
@@ -633,8 +631,6 @@ async def test_a_save_answers_with_exactly_what_a_read_would(
 async def test_more_precision_than_the_column_keeps_is_rounded_the_way_it_stores(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Years are held to one decimal place. Rounded where the request arrives rather than by the
-    column, so what the save answers with is what a read of it will say."""
     await a_signed_in_candidate(browser, mailbox)
 
     saved = await browser.put(

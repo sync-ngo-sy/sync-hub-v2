@@ -85,13 +85,6 @@ async def test_signup_refuses_an_address_that_is_already_registered(
 async def test_the_identity_provider_stores_every_address_lowercased(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """The invariant `sync_api.auth.identities.by_address` rests on, held to rather than assumed.
-
-    That lookup matches `auth.users.email` exactly, because the one index there is on the plain
-    column and wrapping it in `lower()` made every signup and every password reset scan the whole
-    user table. Exact only finds a mixed-case address if nothing stores one — so if GoTrue ever
-    stops normalizing, this fails here rather than as a signup that lets an address through twice.
-    """
     signup = a_signup()
     mixed = signup.email.upper()
     await sign_up(browser, Signup(email=mixed, password=signup.password, full_name="Amina"))
@@ -104,8 +97,6 @@ async def test_the_identity_provider_stores_every_address_lowercased(
 async def test_signup_refuses_an_address_that_is_already_registered_in_another_case(
     browser: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """One address is one account, whatever case it is typed in — the second ask has to be the
-    same 409, which is what makes the exact-match lookup safe."""
     signup = a_signup()
     await sign_up(browser, signup)
 

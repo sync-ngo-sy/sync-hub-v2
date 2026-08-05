@@ -57,12 +57,6 @@ logger = get_logger(__name__)
 
 UNAUTHENTICATED_DETAIL: Final = "Sign in to continue."
 
-#: Everything every authenticated request reads about its caller, in one statement: the Profile,
-#: the confirmed address that only `auth.users` has, and the row of the child table the Profile's
-#: `account_type` pins. All three children are outer-joined because which one to read is only
-#: known once the Profile is in hand, and all three join on the Profile's own primary key — so
-#: the two that turn out to be irrelevant cost an index lookup each, against a whole round trip
-#: for asking afterwards. `Tenant` rides along with `recruiters`, whose `tenant_id` is NOT NULL.
 ACTING_PROFILE: Final = (
     select(
         Profile,
@@ -84,8 +78,6 @@ ACTING_PROFILE: Final = (
 
 @dataclass(frozen=True, slots=True)
 class ActingTenant:
-    """The Tenant a Recruiter acts inside, as the Profile's own query already read it."""
-
     id: UUID
     name: str
     slug: str
@@ -94,8 +86,6 @@ class ActingTenant:
 
 @dataclass(frozen=True, slots=True)
 class ActingMembership:
-    """A Recruiter's own row: the role they hold, whether they still hold it, and where."""
-
     role: RecruiterRole
     is_active: bool
     tenant: ActingTenant
@@ -109,15 +99,7 @@ class ActingProfile:
     account_type: AccountType
     avatar_url: str | None
     phone: str | None
-    #: Whether the one child table `account_type` pins — `candidates`, `recruiters` or
-    #: `platform_admins` — holds a row for this Profile. "Account" here is the discriminator's own
-    #: word and not a synonym for Profile, which the vocabulary reserves. Read in the Profile's own
-    #: query rather than by the access check that wants it: they share a primary key, so asking
-    #: separately made two round trips out of one join, on every authenticated request. False is a
-    #: Profile with no child row, which the schema's composite FK makes impossible — the access
-    #: checks still refuse it rather than assume, because if it happens it is a bug of ours.
     has_account_row: bool = False
-    #: Set for a Recruiter and nothing else: the only child row that carries facts of its own.
     membership: ActingMembership | None = None
 
 

@@ -70,21 +70,15 @@ class ApplicationService:
         application_id = uuid4()
         try:
             async with transaction(self._db):
-                # Under the Job row's lock, and so inside the transaction: replacing criteria
-                # takes the same row, so the requirements this verdict cites cannot be deleted
-                # between being read here and the verdict being written below.
                 await lock_the_criteria(self._db, job)
-                # Read once and used twice. Validating the answers and screening them are two
-                # questions about the same list of questions, and asking for it twice was two
-                # identical statements one after the other.
                 questions = await questions_of(self._db, job.id)
                 refuse_unusable_answers(questions, new.answers)
                 criteria = await screening_criteria_of(self._db, job, questions)
                 answers = answer_rows(application_id, job.id, new.answers)
 
-                # Under the candidate row's lock too: every writer of a profile queues on that
-                # row, and a save landing between these checks and the copy below would otherwise
-                # Snapshot a profile nobody ever judged as complete.
+                # Under the candidate row's lock, and so inside the transaction: every writer of
+                # a profile queues on that row, and a save landing between these checks and the
+                # copy below would otherwise Snapshot a profile nobody ever judged as complete.
                 held, _identity = await whole_candidate(self._db, candidate.id, lock=True)
                 cv_id = self._held_cv(held)
                 await refuse_incomplete_profile(self._db, candidate.id)

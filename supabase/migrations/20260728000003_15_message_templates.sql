@@ -24,9 +24,6 @@ create table message_templates (
 -- `unique (tenant_id, name)` is already the index the listing reads in order.
 create index message_templates_created_by_idx on message_templates (created_by_recruiter_id);
 
--- And one name is one template however it is capitalised, for the same reason a Tag's name is
--- (migration 06): a Recruiter picking a template from a list is picking by name, and two rows
--- reading the same are two rows they cannot tell apart.
 create unique index message_templates_tenant_name_ci_uidx
   on message_templates (tenant_id, lower(name));
 

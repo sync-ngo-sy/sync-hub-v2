@@ -127,11 +127,6 @@ class CandidateProfileService:
             self._db.add_all(_rows_for(candidate_id, profile, skills))
 
         logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
-        # The reply is what was written, not a re-read of it. Every field on the way out either
-        # arrived on the request and was stored as it came — the skill names are the taxonomy's
-        # own spellings, and the years are already rounded to the precision the column keeps —
-        # or was derived here, which is `total_experience_years` and nothing else. Reading it back
-        # was six more round trips to be told what this method had just decided.
         return profile.model_copy(update={"total_experience_years": derived})
 
     async def _candidate(
@@ -208,12 +203,7 @@ async def whole_candidate(
 
 async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
     """A profile too thin to judge an Application by. Named, because "422" alone sends nobody
-    anywhere.
-
-    Three yes/no questions, one statement. They were three `count(*)`s — each one a round trip,
-    each one counting rows to find out whether there were any — inside the submission's own
-    transaction, where they hold the candidate row's lock while they wait.
-    """
+    anywhere."""
     row = (
         await session.execute(
             select(
@@ -239,7 +229,6 @@ async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -
 
 
 def _has_a_section(section: LiveSection, candidate_id: UUID) -> ColumnElement[bool]:
-    """`exists`, not `count`: the question is whether there is one, and it stops at the first."""
     return exists().where(section.candidate_id == candidate_id)
 
 

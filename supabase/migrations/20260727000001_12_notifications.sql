@@ -24,14 +24,6 @@ create table notifications (
 
   constraint notifications_payload_type_matches check (payload ->> 'type' = type::text),
 
-  -- A move is a move *of an Application*, and `application_id` is the column every reader of this
-  -- table joins and filters on. It was nullable because a `cv_parse_failed` Notification is about
-  -- a CV and names none — so the column stays nullable, and the one type that cannot mean
-  -- anything without it is held to carrying it.
-  --
-  -- Compared as text, like the constraint above it, because `application_status_changed` is not a
-  -- value of this enum yet: migration 14 adds it. An enum literal here would be a value Postgres
-  -- cannot resolve at the moment this table is created.
   constraint notifications_status_change_has_an_application check (
     type::text <> 'application_status_changed' or application_id is not null
   )

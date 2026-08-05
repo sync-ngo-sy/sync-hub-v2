@@ -219,13 +219,6 @@ def _text(value: str | None, limit: int) -> str | None:
 
 
 def _known_code(value: str | None, known: Mapping[str, str]) -> str | None:
-    """The language the document is written in, as one of the platform's own codes or not at all.
-
-    Held to the closed list like every other code a parse names, and for the same reason: the
-    column is a foreign key to `languages`, and a model asked for ISO 639-1 will occasionally
-    answer "arabic" or "ar-SY". Those used to be stored as typed, which left a Candidate's CV
-    labelled in a language the platform cannot name — so an unrecognized answer records nothing.
-    """
     return known.get((value or "").strip().lower())
 
 

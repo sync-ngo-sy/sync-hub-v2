@@ -24,11 +24,6 @@ type LiveSection = (
     | type[CandidateProject]
 )
 
-# The live profile, one row at a time. The frozen twin of each section reads the same payloads
-# through `sync_api.applications.snapshot.READINGS`, which projects them straight out of Postgres
-# in one statement — a Snapshot is read whole or not at all, and a live profile is read a section
-# at a time by the code that edits it.
-
 
 def an_experience(row: CandidateExperience) -> ProfileExperience:
     return ProfileExperience(
