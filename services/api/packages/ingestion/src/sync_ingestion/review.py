@@ -48,7 +48,7 @@ def reviewable(parsed: ParsedCv, known: Vocabularies) -> ParsedCv:
         full_name=_line(parsed.full_name),
         email=_line(parsed.email),
         phone=_line(parsed.phone),
-        detected_language=_code(parsed.detected_language),
+        detected_language=_known_code(parsed.detected_language, known.languages),
         canonical_role=_role(parsed.canonical_role, known.roles),
         headline=_line(parsed.headline),
         summary=_paragraph(parsed.summary),
@@ -218,9 +218,8 @@ def _text(value: str | None, limit: int) -> str | None:
     return trimmed or None
 
 
-def _code(value: str | None) -> str | None:
-    lowered = _text(value, MAX_LINE_LENGTH)
-    return lowered.lower() if lowered else None
+def _known_code(value: str | None, known: Mapping[str, str]) -> str | None:
+    return known.get((value or "").strip().lower())
 
 
 def _year(value: int | None) -> int | None:

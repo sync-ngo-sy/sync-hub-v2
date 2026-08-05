@@ -115,6 +115,18 @@ def test_a_language_the_platform_has_no_code_for_is_dropped() -> None:
     assert [language.code for language in parse.languages] == ["en"]
 
 
+def test_the_language_a_cv_is_written_in_is_kept_by_its_code() -> None:
+    parse = reviewed(detected_language=" AR ")
+
+    assert parse.detected_language == "ar"
+
+
+def test_a_detected_language_the_platform_has_no_code_for_records_nothing() -> None:
+    parse = reviewed(detected_language="arabic")
+
+    assert parse.detected_language is None
+
+
 def test_a_language_claimed_twice_becomes_one_entry() -> None:
     parse = reviewed(
         languages=[

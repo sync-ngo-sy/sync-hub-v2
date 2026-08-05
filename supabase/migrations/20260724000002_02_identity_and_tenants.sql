@@ -59,7 +59,10 @@ create table candidates (
   deleted_at timestamptz,
 
   foreign key (id, account_type) references profiles (id, account_type) on delete cascade,
-  constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null)
+  constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null),
+
+  constraint candidates_headline_length check (length(headline) <= 200),
+  constraint candidates_summary_length  check (length(summary)  <= 5000)
 );
 
 create index candidates_current_cv_id_idx on candidates (current_cv_id);
@@ -115,7 +118,11 @@ create table access_requests (
       when 'dismissed' then decided_at is not null and tenant_id is null
       when 'converted' then decided_at is not null
     end
-  )
+  ),
+
+  constraint access_requests_company_not_blank   check (btrim(company)   <> ''),
+  constraint access_requests_full_name_not_blank check (btrim(full_name) <> ''),
+  constraint access_requests_email_shape check (email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$')
 );
 
 -- The queue: pending requests, oldest first.
@@ -124,5 +131,7 @@ create index access_requests_pending_idx on access_requests (created_at)
 
 -- Asking twice is asking once. Only while pending — a company dismissed a year ago may ask again,
 -- and one already converted has a Tenant to sign in to.
-create unique index access_requests_one_pending_per_email_idx on access_requests (email)
+create unique index access_requests_one_pending_per_email_idx on access_requests (lower(email))
   where status = 'pending';
+
+create index access_requests_tenant_id_idx on access_requests (tenant_id);

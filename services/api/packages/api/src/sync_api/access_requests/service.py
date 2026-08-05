@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from sync_api.problems import (
@@ -58,7 +58,7 @@ class AccessRequestService:
                 insert(AccessRequest)
                 .values(company=company, full_name=full_name, email=address)
                 .on_conflict_do_nothing(
-                    index_elements=[AccessRequest.email],
+                    index_elements=[func.lower(AccessRequest.email)],
                     index_where=AccessRequest.status == AccessRequestStatus.PENDING,
                 )
                 .returning(AccessRequest.id)

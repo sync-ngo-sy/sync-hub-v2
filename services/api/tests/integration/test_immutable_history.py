@@ -8,7 +8,7 @@ point is that the floor holds when somebody goes around the front door.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 from seed.identities import without_the_written_once_guard
@@ -16,11 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 from sync_core import transaction
-from tests.support.applications import (
-    a_candidate_who_can_apply,
-    an_accepted_application,
-)
-from tests.support.jobs import a_published_job
+from tests.support.applications import a_whole_application
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -41,19 +37,11 @@ WRITTEN_ONCE = (
 )
 
 
-async def an_application(
-    recruiter: AsyncClient, browser: AsyncClient, mailbox: Mailbox, session: AsyncSession
-) -> dict[str, Any]:
-    job = await a_published_job(recruiter)
-    await a_candidate_who_can_apply(browser, mailbox, session)
-    return await an_accepted_application(browser, job["id"])
-
-
 async def test_a_snapshot_row_cannot_be_updated(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
     """The one that matters most: a Total experience nobody can raise after the fact."""
-    application = await an_application(recruiter, other_browser, mailbox, db_session)
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
     with pytest.raises(DBAPIError, match="written once"):
         await db_session.execute(
@@ -69,7 +57,7 @@ async def test_a_snapshot_row_cannot_be_updated(
 async def test_a_snapshot_row_cannot_be_deleted(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    application = await an_application(recruiter, other_browser, mailbox, db_session)
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
     with pytest.raises(DBAPIError, match="written once"):
         await db_session.execute(
@@ -82,7 +70,7 @@ async def test_a_snapshot_row_cannot_be_deleted(
 async def test_the_frozen_work_history_a_verdict_cites_cannot_be_edited(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    application = await an_application(recruiter, other_browser, mailbox, db_session)
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
     with pytest.raises(DBAPIError, match="written once"):
         await db_session.execute(
@@ -95,7 +83,7 @@ async def test_the_frozen_work_history_a_verdict_cites_cannot_be_edited(
 async def test_the_record_of_what_was_decided_cannot_be_rewritten(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    application = await an_application(recruiter, other_browser, mailbox, db_session)
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
     with pytest.raises(DBAPIError, match="written once"):
         await db_session.execute(
@@ -127,7 +115,7 @@ async def test_an_application_can_still_be_made(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
     """Inserts are untouched — a Snapshot is written once, and each hop of the pipeline appends."""
-    application = await an_application(recruiter, other_browser, mailbox, db_session)
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
     assert application["id"]
 

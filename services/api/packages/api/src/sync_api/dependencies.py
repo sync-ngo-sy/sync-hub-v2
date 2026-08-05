@@ -104,8 +104,8 @@ async def get_current_profile(
 CurrentProfileDep = Annotated[ActingProfile, Depends(get_current_profile)]
 
 
-async def get_acting_candidate(profile: CurrentProfileDep, session: SessionDep) -> ActingCandidate:
-    return await acting_candidate(session, profile)
+def get_acting_candidate(profile: CurrentProfileDep) -> ActingCandidate:
+    return acting_candidate(profile)
 
 
 ActingCandidateDep = Annotated[ActingCandidate, Depends(get_acting_candidate)]
@@ -167,17 +167,15 @@ def get_tenant_service(
 TenantServiceDep = Annotated[TenantService, Depends(get_tenant_service)]
 
 
-async def get_acting_recruiter(profile: CurrentProfileDep, session: SessionDep) -> ActingRecruiter:
-    return await acting_recruiter(session, profile)
+def get_acting_recruiter(profile: CurrentProfileDep) -> ActingRecruiter:
+    return acting_recruiter(profile)
 
 
 ActingRecruiterDep = Annotated[ActingRecruiter, Depends(get_acting_recruiter)]
 
 
-async def get_acting_platform_admin(
-    profile: CurrentProfileDep, session: SessionDep
-) -> ActingPlatformAdmin:
-    return await acting_platform_admin(session, profile)
+def get_acting_platform_admin(profile: CurrentProfileDep) -> ActingPlatformAdmin:
+    return acting_platform_admin(profile)
 
 
 PlatformAdminDep = Annotated[ActingPlatformAdmin, Depends(get_acting_platform_admin)]
