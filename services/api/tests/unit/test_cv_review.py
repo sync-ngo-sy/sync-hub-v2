@@ -5,6 +5,7 @@ import pytest
 from sync_core.models import LanguageProficiency
 from sync_core.profile import MAX_ENTRIES, MAX_LINE_LENGTH, MAX_PARAGRAPH_LENGTH
 from sync_ingestion import reviewable
+from sync_ingestion.review import Vocabularies
 from sync_parsers import (
     ParsedCv,
     ParsedEducation,
@@ -15,12 +16,15 @@ from sync_parsers import (
 )
 from tests.support.extractors import a_parse
 
-TAXONOMY = {"python": "Python", "postgresql": "PostgreSQL", "react": "React"}
-LANGUAGES = {"en": "en", "ar": "ar"}
+KNOWN = Vocabularies(
+    taxonomy={"python": "Python", "postgresql": "PostgreSQL", "react": "React"},
+    roles={"backend-engineer": "backend-engineer", "frontend-engineer": "frontend-engineer"},
+    languages={"en": "en", "ar": "ar"},
+)
 
 
 def reviewed(**changes: object) -> ParsedCv:
-    return reviewable(a_parse(**changes), taxonomy=TAXONOMY, languages=LANGUAGES)
+    return reviewable(a_parse(**changes), KNOWN)
 
 
 def an_experience(**changes: object) -> ParsedExperience:

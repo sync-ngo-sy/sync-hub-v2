@@ -7,10 +7,17 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select, update
 
 from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
-from sync_core.models import Candidate, Cv, CvParsingStatus, Language, SkillTaxonomy
+from sync_core.models import (
+    Candidate,
+    CanonicalRole,
+    Cv,
+    CvParsingStatus,
+    Language,
+    SkillTaxonomy,
+)
 from sync_core.notifications import CvParseFailed, notify
 from sync_core.storage import cv_media_type_of
-from sync_ingestion.review import reviewable
+from sync_ingestion.review import Vocabularies, reviewable
 from sync_parsers import (
     PARSED_CV_SCHEMA_VERSION,
     CvFile,
@@ -59,7 +66,7 @@ class CvIngestion:
                 raise CvUnparseableError(f"cv {cv_id} no longer exists")
             storage_path = cv.storage_path
             filename, media_type = _describe(cv.display_name, storage_path)
-            vocabulary, taxonomy, languages = await _vocabulary(session)
+            vocabulary, known = await _vocabulary(session)
 
         content = await self._fetch(filename, cv_id, storage_path=storage_path)
         try:
@@ -72,7 +79,7 @@ class CvIngestion:
         except ExtractionError as unavailable:
             raise IngestionUnavailableError(str(unavailable)) from unavailable
 
-        return reviewable(parsed, taxonomy=taxonomy, languages=languages)
+        return reviewable(parsed, known)
 
     async def store(self, session: AsyncSession, cv_id: UUID, parsed: ParsedCv) -> None:
         await session.execute(
@@ -150,11 +157,15 @@ def _describe(display_name: str, storage_path: str) -> tuple[str, str]:
     return filename, media_type
 
 
-async def _vocabulary(session: AsyncSession) -> tuple[Vocabulary, dict[str, str], dict[str, str]]:
+async def _vocabulary(session: AsyncSession) -> tuple[Vocabulary, Vocabularies]:
     skills = list(await session.scalars(select(SkillTaxonomy.canonical_name)))
+    roles = list(await session.scalars(select(CanonicalRole.key)))
     codes = list(await session.scalars(select(Language.code)))
     return (
-        Vocabulary(canonical_skills=skills, language_codes=codes),
-        {name.lower(): name for name in skills},
-        {code.lower(): code for code in codes},
+        Vocabulary(canonical_skills=skills, canonical_roles=roles, language_codes=codes),
+        Vocabularies(
+            taxonomy={name.lower(): name for name in skills},
+            roles={key.lower(): key for key in roles},
+            languages={code.lower(): code for code in codes},
+        ),
     )

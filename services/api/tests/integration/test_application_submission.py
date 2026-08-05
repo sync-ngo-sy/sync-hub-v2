@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from uuid import uuid4
 
 from httpx import AsyncClient
@@ -670,3 +671,83 @@ async def test_the_first_application_freezes_what_the_job_screens_on(
 
     assert refused.status_code == 409, refused.text
     assert refused.json()["type"] == "urn:sync:problem:job-criteria-locked"
+
+
+A_DECADE_OF_WORK: list[dict[str, Any]] = [
+    {
+        "job_title": "Engineer",
+        "company_name": "Globex",
+        "start_year": 2015,
+        "start_month": 1,
+        "end_year": 2024,
+        "end_month": 12,
+        "is_current": False,
+        "description": None,
+    }
+]
+
+
+async def test_an_application_freezes_the_total_experience_the_profile_had(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, experiences=A_DECADE_OF_WORK
+    )
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert snapshot.profile.total_experience_years == 10
+
+
+async def test_a_profile_saved_after_applying_does_not_move_a_frozen_total(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Copied, not recomputed: the Application carries the number as it stood that day."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, experiences=A_DECADE_OF_WORK
+    )
+    application = await an_accepted_application(other_browser, job["id"])
+
+    await a_saved_profile(other_browser, a_filled_profile(experiences=[AN_EXPERIENCE]))
+
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert snapshot.profile.total_experience_years == 10
+
+
+async def test_too_little_experience_is_refused_citing_the_frozen_number(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    job = await a_job_screening_on(recruiter, minimum_total_experience_years=10.0)
+    await a_candidate_who_can_apply(
+        other_browser,
+        mailbox,
+        db_session,
+        experiences=[{**A_DECADE_OF_WORK[0], "start_year": 2023, "end_year": 2024}],
+    )
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    stored = await stored_application(db_session, application["id"])
+    assert stored.qualification_status is QualificationStatus.DISQUALIFIED
+    assert stored.qualification_reason is not None
+    assert "10.0 years of work" in stored.qualification_reason
+    assert "has 2" in stored.qualification_reason
+
+
+async def test_work_the_snapshot_counts_clears_the_bar(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    job = await a_job_screening_on(recruiter, minimum_total_experience_years=5.0)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, experiences=A_DECADE_OF_WORK
+    )
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    stored = await stored_application(db_session, application["id"])
+    assert stored.qualification_status is QualificationStatus.QUALIFIED

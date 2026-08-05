@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -104,11 +103,7 @@ class ApplicationService:
                         new_status=ApplicationStatus.NEW,
                     )
                 )
-                verdict = screen(
-                    criteria,
-                    await screened(self._db, application_id, answers),
-                    today=datetime.now(UTC).date(),
-                )
+                verdict = screen(criteria, await screened(self._db, application_id, answers))
                 application.qualification_status = verdict.status
                 application.qualification_reason = verdict.reason
                 self._db.add(

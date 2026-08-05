@@ -109,6 +109,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "listApplicationTags",
         "listCandidateNotes",
         "listCandidateTags",
+        "listCanonicalRoles",
         "listCanonicalSkills",
         "listJobApplications",
         "listJobs",

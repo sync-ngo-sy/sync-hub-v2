@@ -40,6 +40,12 @@ create table application_profile_snapshots (
 
   unmapped_skills text[] not null default '{}',
 
+  -- The Candidate's Total experience as it stood the day they applied, copied rather than
+  -- recomputed: a verdict reached today can be re-explained years later from the Snapshot
+  -- alone, and Screening does no arithmetic over dates at all.
+  total_experience_years int not null
+    constraint asnap_total_experience_nonneg check (total_experience_years >= 0),
+
   captured_at timestamptz not null default now()
 );
 
@@ -50,7 +56,9 @@ create table application_experiences (
   company_name text,
   job_title    text not null,
 
-  start_year  int,
+  -- Dated as strictly as the live entry it was frozen from: a Snapshot cannot contain something
+  -- a profile could not.
+  start_year  int not null,
   start_month int,
   end_year    int,
   end_month   int,
@@ -59,6 +67,7 @@ create table application_experiences (
   description text,
   sort_order  int not null default 0,
 
+  constraint aexp_finished_work_has_an_end check (is_current or end_year is not null),
   constraint aexp_start_month_range check (start_month is null or start_month between 1 and 12),
   constraint aexp_end_month_range   check (end_month   is null or end_month   between 1 and 12),
   constraint aexp_start_year_range  check (start_year  is null or start_year  between 1900 and 2100),

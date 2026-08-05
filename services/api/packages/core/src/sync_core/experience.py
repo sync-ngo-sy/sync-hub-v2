@@ -7,11 +7,37 @@ every save; both readings have to agree forever, so the rule lives here rather t
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Final
+from zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from datetime import date
+
+MONTHS_A_YEAR: Final = 12
+
+#: Where the platform's people are. Deriving in UTC would credit somebody a month less through
+#: the last three hours of every month here, which is enough to cross a rounding threshold and
+#: change the number a Recruiter filters on. Syria has kept a single offset since 2022.
+BUSINESS_TIMEZONE: Final = ZoneInfo("Asia/Damascus")
+
+
+def business_today(now: datetime | None = None) -> date:
+    """Today where the platform's people are, which is the day their work is measured against."""
+    return (now or datetime.now(UTC)).astimezone(BUSINESS_TIMEZONE).date()
+
+
+def total_experience_years(periods: Iterable[WorkPeriod], today: date) -> int:
+    """Whole years of work: jobs held at once counted once, six months or more rounding up.
+
+    Whole years because that is the question a Recruiter asks — three years of work, not 38
+    months — and because a stored number nobody can edit should not pretend to a precision the
+    dates behind it do not have. The rounding loosens Screening on purpose: 31 months now
+    clears a three-year bar.
+    """
+    months, _undated = months_worked(periods, today)
+    return (months + MONTHS_A_YEAR // 2) // MONTHS_A_YEAR
 
 
 @dataclass(frozen=True, slots=True)

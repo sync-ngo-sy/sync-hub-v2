@@ -4,12 +4,10 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final
 
-from sync_core.experience import WorkPeriod, months_worked
 from sync_core.models import LanguageProficiency, QualificationStatus, SkillImportance
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from datetime import date
     from uuid import UUID
 
 #: Recorded on every verdict, so a rule change can be told from a data change afterwards.
@@ -23,10 +21,6 @@ _PROFICIENCIES: Final = (
     LanguageProficiency.FLUENT,
     LanguageProficiency.NATIVE,
 )
-
-_MONTHS_A_YEAR: Final = Decimal(12)
-
-_ONE_DECIMAL: Final = Decimal("0.1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +84,9 @@ class Snapshot:
     """The immutable application data a verdict is drawn from, and nothing else."""
 
     skills: tuple[SnapshotSkill, ...] = ()
-    experiences: tuple[WorkPeriod, ...] = ()
+    #: Frozen at submission from the Candidate's profile, never re-derived here: Screening
+    #: compares one number to another and does no arithmetic over dates at all.
+    total_experience_years: int = 0
     languages: tuple[SnapshotLanguage, ...] = ()
     answers: tuple[SnapshotAnswer, ...] = ()
 
@@ -109,13 +105,13 @@ class _Finding:
     reason: str
 
 
-def screen(criteria: Criteria, snapshot: Snapshot, *, today: date) -> Verdict:
+def screen(criteria: Criteria, snapshot: Snapshot) -> Verdict:
     """Judge one Application against one Job's criteria. Deterministic, and no score.
 
     A rule that fails outright refuses the applicant; one that cannot be answered from the
     Snapshot asks for a human. The first kind outranks the second.
     """
-    findings = list(_findings(criteria, snapshot, today))
+    findings = list(_findings(criteria, snapshot))
     refused = [finding for finding in findings if finding.settled]
     if refused:
         return Verdict(status=QualificationStatus.DISQUALIFIED, reason=_reason(refused))
@@ -124,9 +120,9 @@ def screen(criteria: Criteria, snapshot: Snapshot, *, today: date) -> Verdict:
     return Verdict(status=QualificationStatus.QUALIFIED)
 
 
-def _findings(criteria: Criteria, snapshot: Snapshot, today: date) -> Iterator[_Finding]:
+def _findings(criteria: Criteria, snapshot: Snapshot) -> Iterator[_Finding]:
     yield from _skill_findings(criteria, snapshot)
-    yield from _experience_findings(criteria, snapshot, today)
+    yield from _experience_findings(criteria, snapshot)
     yield from _language_findings(criteria, snapshot)
     yield from _knockout_findings(criteria, snapshot)
 
@@ -183,25 +179,16 @@ def _spoken(answer: bool) -> str:
     return "yes" if answer else "no"
 
 
-def _experience_findings(criteria: Criteria, snapshot: Snapshot, today: date) -> Iterator[_Finding]:
-    """Undated work is only a problem where it could have carried the applicant over the bar."""
+def _experience_findings(criteria: Criteria, snapshot: Snapshot) -> Iterator[_Finding]:
+    """One number against another. Dates are mandatory on an experience entry, so "short of the
+    bar only because some work could not be dated" is no longer a state that exists."""
     wanted = criteria.minimum_total_experience_years
-    if wanted is None:
+    if wanted is None or snapshot.total_experience_years >= wanted:
         return
-    months, undated = months_worked(snapshot.experiences, today)
-    years = Decimal(months) / _MONTHS_A_YEAR
-    if years >= wanted:
-        return
-    measured = f"{years.quantize(_ONE_DECIMAL)}"
-    if undated:
-        yield _doubted(
-            f"the role asks for {wanted} years of work and the application dates only "
-            f"{measured} of its own"
-        )
-    else:
-        yield _refused(
-            f"the role asks for {wanted} years of work and the application has {measured}"
-        )
+    yield _refused(
+        f"the role asks for {wanted} years of work and the application has "
+        f"{snapshot.total_experience_years}"
+    )
 
 
 def _refused(reason: str) -> _Finding:

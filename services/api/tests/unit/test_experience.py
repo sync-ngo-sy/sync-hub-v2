@@ -1,8 +1,13 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
-from sync_core.experience import WorkPeriod, months_worked
+from sync_core.experience import (
+    WorkPeriod,
+    business_today,
+    months_worked,
+    total_experience_years,
+)
 
 TODAY = date(2026, 7, 27)
 
@@ -89,3 +94,37 @@ def test_an_undated_job_does_not_stop_the_dated_ones_counting() -> None:
     months, undated = months_worked(mixed, TODAY)
 
     assert (months, undated) == (12, True)
+
+
+def test_a_finished_job_is_measured_in_whole_years() -> None:
+    assert total_experience_years((a_job((2018, 1), (2020, 12)),), TODAY) == 3
+
+
+def test_five_months_round_down_and_six_round_up() -> None:
+    five = total_experience_years((a_job((2020, 1), (2020, 5)),), TODAY)
+    six = total_experience_years((a_job((2020, 1), (2020, 6)),), TODAY)
+
+    assert (five, six) == (0, 1)
+
+
+def test_thirty_one_months_clear_a_three_year_bar() -> None:
+    """The rounding loosens Screening on purpose, and this is the case it was decided on."""
+    assert total_experience_years((a_job((2020, 1), (2022, 7)),), TODAY) == 3
+
+
+def test_the_day_work_is_measured_against_is_the_one_in_the_business_timezone() -> None:
+    """Three hours ahead of UTC, so the last hours of a month here are already the next one
+    there — and a month is enough to cross a rounding threshold."""
+    last_hours_of_june = datetime(2026, 6, 30, 22, 0, tzinfo=UTC)
+
+    assert business_today(last_hours_of_june) == date(2026, 7, 1)
+
+
+def test_deriving_in_utc_at_a_month_boundary_would_lose_a_year() -> None:
+    still_held = (a_job((2025, 2), None),)
+    last_hours_of_june = datetime(2026, 6, 30, 22, 0, tzinfo=UTC)
+
+    in_business_hours = total_experience_years(still_held, business_today(last_hours_of_june))
+
+    assert total_experience_years(still_held, last_hours_of_june.date()) == 1
+    assert in_business_hours == 2

@@ -14,9 +14,9 @@ with a known password, so signing in as anybody needs no inbox round trip.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
-from sqlalchemy import CursorResult, Delete, delete, or_, select, update
+from sqlalchemy import CursorResult, Delete, delete, or_, select, text, update
 
 from sync_api.auth.gotrue import sdk_client
 from sync_core import transaction
@@ -150,6 +150,8 @@ async def purge(
     await _empty_storage_of(session, storage, people)
 
     async with transaction(session):
+        await _lift_the_written_once_guard(session)
+
         # `candidates_current_cv_fk` is ON DELETE RESTRICT: the pointer lets go before the CV
         # can. `is_searchable` goes with it — `candidates_searchable_needs_cv` will not have a
         # Candidate be findable with no CV, and it is right about that.
@@ -247,6 +249,34 @@ async def purge(
         jobs=jobs,
         cvs=cvs,
     )
+
+
+#: A Snapshot and the two histories refuse updates and deletes, the backend's service role
+#: included — that is the guarantee, not an oversight. Deleting an Application whole is the one
+#: thing that legitimately takes them with it, and only a purge ever does it.
+WRITTEN_ONCE: Final = (
+    "application_profile_snapshots",
+    "application_experiences",
+    "application_educations",
+    "application_skills",
+    "application_languages",
+    "application_projects",
+    "application_answers",
+    "application_qualification_history",
+    "application_status_history",
+)
+
+
+async def _lift_the_written_once_guard(session: AsyncSession) -> None:
+    """Turn the immutability triggers off for the rest of this transaction.
+
+    Named one trigger at a time rather than `DISABLE TRIGGER USER`, so `updated_at` and the
+    re-embed queue go on working; the foreign keys are untouched either way, because a cascade
+    is an internal trigger. `ALTER TABLE` is transactional, so a purge that fails half way
+    leaves the guard exactly where it found it.
+    """
+    for table in WRITTEN_ONCE:
+        await session.execute(text(f"alter table {table} disable trigger written_once"))
 
 
 async def _deleted(session: AsyncSession, statement: Delete) -> int:
