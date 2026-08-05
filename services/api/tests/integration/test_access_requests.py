@@ -89,6 +89,21 @@ async def test_asking_twice_from_one_address_leaves_one_request(
     assert recorded.company == ask.company
 
 
+async def test_asking_again_in_another_case_is_still_the_same_address(
+    browser: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An address is the same address however it is typed. An operator working this queue seeing
+    one company waiting twice cannot tell which of the two to act on."""
+    ask = an_ask()
+    await ask_for_access(browser, ask)
+
+    again = await ask_for_access(browser, replace(ask, email=ask.email.upper()))
+
+    assert again.status_code == 202, again.text
+    recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
+    assert recorded.email == ask.email.lower()
+
+
 async def test_a_malformed_address_is_refused(browser: AsyncClient) -> None:
     refused = await ask_for_access(browser, replace(an_ask(), email="not-an-address"))
 

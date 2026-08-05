@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import delete, exists, func, select
 from sqlalchemy.exc import IntegrityError
 
-from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
+from sync_api.jobs.access import WITH_LOCATION, location_name, lock_the_criteria, own_job
 from sync_api.jobs.criteria import criteria_of
 from sync_api.jobs.payload import JobPage, JobSummary, JobView
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
@@ -118,7 +118,10 @@ class JobService:
     ) -> JobView:
         await refuse_unknown_location(self._db, changes.location_key, at="body.location_key")
         async with transaction(self._db):
-            job = await own_job(self._db, recruiter.tenant.id, job_id)
+            # Locked, because the lifecycle below is a read of `status` and then a write of it.
+            # Two changes arriving together would otherwise both pass the check each was
+            # entitled to fail — the losing one being "archived, and now published again".
+            job = await own_job(self._db, recruiter.tenant.id, job_id, lock=True)
             changed = changes.model_dump(exclude_unset=True)
             if "status" in changed:
                 _refuse_impossible_move(job.status, JobStatus(changed["status"]))
@@ -141,6 +144,7 @@ class JobService:
 
         try:
             async with transaction(self._db):
+                await lock_the_criteria(self._db, job)
                 for section in (
                     delete(JobSkill).where(JobSkill.job_id == job_id),
                     delete(JobLanguage).where(JobLanguage.job_id == job_id),

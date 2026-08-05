@@ -73,6 +73,16 @@ async def a_published_job(browser: AsyncClient, **changes: Any) -> dict[str, Any
     return body
 
 
+async def a_closed_job(browser: AsyncClient, **changes: Any) -> dict[str, Any]:
+    """A Job that has been live and is not now — the one state both `published` and `archived`
+    are still reachable from."""
+    job = await a_published_job(browser, **changes)
+    closed = await change_job(browser, job["id"], status="closed")
+    assert closed.status_code == 200, closed.text
+    body: dict[str, Any] = closed.json()
+    return body
+
+
 async def create_link(
     browser: AsyncClient, job_id: str, name: str = "LinkedIn campaign", **changes: Any
 ) -> Response:

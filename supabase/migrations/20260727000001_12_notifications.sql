@@ -22,7 +22,15 @@ create table notifications (
   foreign key (application_id, recipient_profile_id)
     references applications (id, candidate_id) on delete cascade,
 
-  constraint notifications_payload_type_matches check (payload ->> 'type' = type::text)
+  constraint notifications_payload_type_matches check (payload ->> 'type' = type::text),
+
+  -- A move is a move *of an Application*, and `application_id` is the column every reader of this
+  -- table joins and filters on. It was nullable because a `cv_parse_failed` Notification is about
+  -- a CV and names none — so the column stays nullable, and the one type that cannot mean
+  -- anything without it is held to carrying it.
+  constraint notifications_status_change_has_an_application check (
+    type <> 'application_status_changed' or application_id is not null
+  )
 );
 
 create index notifications_recipient_created_idx

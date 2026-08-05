@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, Field, model_validator
@@ -19,12 +20,31 @@ from sync_core.profile import (
     LATEST_YEAR,
     MAX_ENTRIES,
     MAX_YEARS_EXPERIENCE,
+    YEARS_EXPERIENCE_DECIMALS,
 )
 
 Year = Annotated[int, Field(ge=EARLIEST_YEAR, le=LATEST_YEAR)]
 Month = Annotated[int, Field(ge=1, le=12)]
 
-YearsOfExperience = Annotated[float, Field(ge=0, le=MAX_YEARS_EXPERIENCE)]
+
+def _to_the_stored_precision(years: float) -> float:
+    """`numeric(4,1)` keeps one decimal place, so 3.25 is stored as 3.3 whatever was typed.
+
+    Rounded here rather than left to the column, so the number this API answers with is the
+    number it holds: the reply to a save is what was written, not a re-read of it, and the two
+    can only be the same if the rounding happens before the write. `ROUND_HALF_UP` because that
+    is what Postgres' `numeric` does, and `round()` would disagree with it on exactly 3.25.
+    """
+    return float(
+        Decimal(str(years)).quantize(
+            Decimal(1).scaleb(-YEARS_EXPERIENCE_DECIMALS), rounding=ROUND_HALF_UP
+        )
+    )
+
+
+YearsOfExperience = Annotated[
+    float, Field(ge=0, le=MAX_YEARS_EXPERIENCE), AfterValidator(_to_the_stored_precision)
+]
 
 
 def _deduplicated(names: list[str]) -> list[str]:

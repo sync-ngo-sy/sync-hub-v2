@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
@@ -19,6 +19,7 @@ from sync_core.models import (
     Cv,
     CvParsingStatus,
 )
+from tests.support.extractors import a_parse
 
 if TYPE_CHECKING:
     from httpx import AsyncClient, Response
@@ -101,6 +102,7 @@ async def give_a_current_cv(
         storage_path=f"{candidate_id}/{cv_id}.pdf",
         file_hash=f"hash-{cv_id}",  # unique: one candidate may be given several CVs
         parsing_status=parsing_status,
+        **_settled(parsing_status),
     )
     session.add(cv)
     await session.flush()
@@ -109,6 +111,21 @@ async def give_a_current_cv(
     )
     await session.commit()
     return cv.id
+
+
+def _settled(parsing_status: CvParsingStatus) -> dict[str, Any]:
+    """What `cvs_ready_has_a_parse` and `cvs_failure_has_a_reason` hold a settled CV to.
+
+    A CV handed straight to a test skips the worker that would have written these, and the two
+    settled states are exactly the ones that mean something was read or could not be: a `ready`
+    row with nothing parsed is a state the platform never produces, so the schema no longer
+    accepts one and neither does this.
+    """
+    if parsing_status is CvParsingStatus.READY:
+        return {"parsed_cv_data": a_parse().model_dump(mode="json"), "parsed_at": datetime.now(UTC)}
+    if parsing_status is CvParsingStatus.FAILED:
+        return {"parsing_error": "the fixture said so"}
+    return {}
 
 
 async def make_no_cv_current(session: AsyncSession, candidate_id: UUID) -> None:

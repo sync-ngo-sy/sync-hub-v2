@@ -35,6 +35,26 @@ POOLER_CONNECT_ARGS = {
 }
 
 
+def connect_args(statement_timeout_ms: int) -> dict[str, object]:
+    """The pooler-safe arguments, plus the ceiling a single statement may run for.
+
+    Set on the connection rather than per transaction, so it costs no round trip and applies to
+    the reads that never open one explicitly. `server_settings` reaches Postgres in asyncpg's
+    startup message, which the transaction pooler forwards — exercised through the real pooler
+    in `tests/integration/test_transaction_pooler.py`, because a startup parameter a pooler
+    refuses is a deployment that cannot connect at all rather than one that runs without a
+    timeout.
+
+    Zero leaves it unset, which is Postgres' own default: a statement runs until it finishes.
+    """
+    if statement_timeout_ms <= 0:
+        return dict(POOLER_CONNECT_ARGS)
+    return {
+        **POOLER_CONNECT_ARGS,
+        "server_settings": {"statement_timeout": f"{statement_timeout_ms}ms"},
+    }
+
+
 class Database:
     def __init__(self, settings: Settings) -> None:
         self._engine = create_async_engine(
@@ -43,7 +63,7 @@ class Database:
             pool_size=settings.database_pool_size,
             max_overflow=settings.database_max_overflow,
             pool_pre_ping=True,
-            connect_args=POOLER_CONNECT_ARGS,
+            connect_args=connect_args(settings.database_statement_timeout_ms),
         )
         self._session_factory = async_sessionmaker(
             self._engine,

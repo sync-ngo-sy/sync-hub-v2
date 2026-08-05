@@ -96,3 +96,17 @@ async def test_the_schema_is_reachable_through_the_pooler(pooled_database: Datab
         result = await session.execute(text("select count(*) from languages"))
 
     assert result.scalar_one() > 0
+
+
+async def test_the_statement_timeout_survives_the_pooler(
+    pooled_database: Database, settings: Settings
+) -> None:
+    """The timeout travels in asyncpg's startup message, and a pooler is entitled to refuse a
+    startup parameter it does not recognize. This is where we find out that it does not: the
+    alternative is a deployment whose connections either fail or quietly run without a ceiling."""
+    # `pg_settings.setting` rather than `show`, which renders 15000ms as "15s".
+    reading = text("select setting from pg_settings where name = 'statement_timeout'")
+    async with pooled_database.session() as session:
+        applied = (await session.execute(reading)).scalar_one()
+
+    assert int(applied) == settings.database_statement_timeout_ms

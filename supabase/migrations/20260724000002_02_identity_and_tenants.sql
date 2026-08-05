@@ -59,7 +59,15 @@ create table candidates (
   deleted_at timestamptz,
 
   foreign key (id, account_type) references profiles (id, account_type) on delete cascade,
-  constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null)
+  constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null),
+
+  -- Bounded because both feed `candidates.search_vector` (migration 08), and a tsvector has a
+  -- hard ceiling of its own: past about a megabyte of text, building one raises rather than
+  -- truncating, so an unbounded column here would turn "save my profile" into a 500. The numbers
+  -- are the API's own `Line` and `Paragraph` caps (`sync_core.profile`), restated where the row
+  -- is written so no writer can get past them.
+  constraint candidates_headline_length check (length(headline) <= 200),
+  constraint candidates_summary_length  check (length(summary)  <= 5000)
 );
 
 create index candidates_current_cv_id_idx on candidates (current_cv_id);
@@ -115,7 +123,18 @@ create table access_requests (
       when 'dismissed' then decided_at is not null and tenant_id is null
       when 'converted' then decided_at is not null
     end
-  )
+  ),
+
+  -- The three columns hold nothing but what a stranger typed, and `not null` is no guard against
+  -- a stranger: a space is a value. The company is what the Tenant gets *called* on conversion
+  -- and the name is who gets invited, so an empty one is a queue row an operator cannot act on.
+  -- The API refuses all three already; this is the same refusal where the row is written, which
+  -- is the only place a future writer of this table cannot forget it.
+  constraint access_requests_company_not_blank   check (btrim(company)   <> ''),
+  constraint access_requests_full_name_not_blank check (btrim(full_name) <> ''),
+  -- Shape, not deliverability — no schema can know whether an address exists. Enough to refuse
+  -- whitespace, an address with no domain, and one with spaces in the middle.
+  constraint access_requests_email_shape check (email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$')
 );
 
 -- The queue: pending requests, oldest first.
@@ -124,5 +143,14 @@ create index access_requests_pending_idx on access_requests (created_at)
 
 -- Asking twice is asking once. Only while pending — a company dismissed a year ago may ask again,
 -- and one already converted has a Tenant to sign in to.
-create unique index access_requests_one_pending_per_email_idx on access_requests (email)
+--
+-- On `lower(email)`, because an address is the same address whatever it is typed in, and two
+-- pending rows for one company is exactly what an operator working this queue must not see. The
+-- backend lowercases before writing, so this closes the gap for anything that does not.
+create unique index access_requests_one_pending_per_email_idx on access_requests (lower(email))
   where status = 'pending';
+
+-- The one foreign key in the schema that had no index behind it. Nothing reads Access requests by
+-- Tenant; what needs it is `delete from tenants`, which has to prove no request points at the row
+-- it is removing and could only do that by scanning.
+create index access_requests_tenant_id_idx on access_requests (tenant_id);

@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, ge=1)
     database_max_overflow: int = Field(default=5, ge=0)
     database_echo: bool = False
+    #: How long one statement may run before Postgres cancels it. The pool above is small and
+    #: shared, so a single query with a bad plan does not merely answer slowly — it holds a
+    #: connection that endpoints with nothing to do with it are queueing for. Well above the
+    #: slowest query this service issues, and far below "indefinitely", which is what no timeout
+    #: means. Zero switches it off.
+    database_statement_timeout_ms: int = Field(default=15_000, ge=0)
 
     supabase_url: AnyHttpUrl
     supabase_service_role_key: SecretStr

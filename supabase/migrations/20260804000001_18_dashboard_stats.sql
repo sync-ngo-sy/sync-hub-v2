@@ -23,8 +23,8 @@ comment on column jobs.published_at is
 
 create index jobs_tenant_published_at_idx on jobs (tenant_id, published_at);
 
--- The tenant-wide reads. `applications` is indexed per Job (`applications_job_status_idx`), which
--- is what a Job's own triage list pages on, but the Dashboard asks across every Job of a tenant —
+-- The tenant-wide reads. `applications` is indexed per Job (`applications_job_applied_at_idx`),
+-- which is what a Job's own triage list pages on, but the Dashboard asks across every Job —
 -- and the only index leading with `tenant_id` was the `(tenant_id, id)` unique constraint, whose
 -- second column is no help to either question below.
 

@@ -22,7 +22,11 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-NAME_CONSTRAINT: Final = "message_templates_tenant_id_name_key"
+#: Two ways one name is unique: exactly, and case-insensitively. Either refusal is the same 409.
+NAME_CONSTRAINTS: Final = (
+    "message_templates_tenant_id_name_key",
+    "message_templates_tenant_name_ci_uidx",
+)
 
 
 class MessageTemplateService:
@@ -104,7 +108,7 @@ def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:
     """A template is what a recruiter picks by name, so two of one name is a clean 409."""
     refuse_duplicate(
         clash,
-        NAME_CONSTRAINT,
+        *NAME_CONSTRAINTS,
         problem_type=MESSAGE_TEMPLATE_NAME_TAKEN_PROBLEM_TYPE,
         detail=f"This tenant already has a message template called “{name}”.",
     )

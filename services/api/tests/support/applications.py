@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
@@ -24,6 +25,7 @@ from sync_core.models import (
 )
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv
+from tests.support.extractors import a_parse
 from tests.support.jobs import TENANT_JOBS, a_published_job, read_job, set_criteria
 from tests.support.profiles import a_filled_profile, a_saved_profile, give_a_current_cv, my_id
 
@@ -97,7 +99,15 @@ async def a_candidate_with_a_stored_cv(
     await a_signed_in_candidate(browser, mailbox, label)
     uploaded = await an_uploaded_cv(browser)
     await session.execute(
-        update(Cv).where(Cv.id == UUID(uploaded["id"])).values(parsing_status=CvParsingStatus.READY)
+        update(Cv)
+        .where(Cv.id == UUID(uploaded["id"]))
+        .values(
+            parsing_status=CvParsingStatus.READY,
+            # A ready CV carries the parse it was read from; the schema holds it to that, and
+            # this stands in for the worker run the test is skipping.
+            parsed_cv_data=a_parse().model_dump(mode="json"),
+            parsed_at=datetime.now(UTC),
+        )
     )
     await session.execute(
         update(Candidate)
@@ -107,6 +117,19 @@ async def a_candidate_with_a_stored_cv(
     await session.commit()
     await a_saved_profile(browser, a_filled_profile())
     return UUID(uploaded["id"])
+
+
+async def a_whole_application(
+    recruiter: AsyncClient, browser: AsyncClient, mailbox: Mailbox, session: AsyncSession
+) -> dict[str, Any]:
+    """One Application with everything hanging off it — Snapshot, answers, both histories.
+
+    What a test of the floor underneath an Application needs: a published Job, a Candidate who
+    can apply to it, and a submission that really went through the pipeline.
+    """
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(browser, mailbox, session)
+    return await an_accepted_application(browser, job["id"])
 
 
 def a_submission(job_id: str | UUID, **changes: Any) -> dict[str, Any]:

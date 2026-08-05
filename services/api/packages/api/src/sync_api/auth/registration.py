@@ -3,10 +3,11 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.auth.gotrue import EmailAlreadyRegisteredError, WeakPasswordError
+from sync_api.auth.identities import by_address
 from sync_api.integrity import violated_constraint
 from sync_api.problems import (
     EMAIL_ALREADY_REGISTERED_PROBLEM_TYPE,
@@ -85,7 +86,7 @@ async def identity_undone_unless_taken(gotrue: GoTrue, user_id: UUID) -> AsyncGe
 
 
 async def _email_is_taken(session: AsyncSession, email: str) -> bool:
-    found = await session.scalar(select(User.id).where(func.lower(User.email) == email.lower()))
+    found = await session.scalar(select(User.id).where(*by_address(email)))
     return found is not None
 
 

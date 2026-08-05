@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from sync_api.problems import (
@@ -57,8 +57,10 @@ class AccessRequestService:
             recorded = await self._db.scalar(
                 insert(AccessRequest)
                 .values(company=company, full_name=full_name, email=address)
+                # `lower(email)`, naming the index as it is spelled: one pending request per
+                # address regardless of case, which is the same address however it was typed.
                 .on_conflict_do_nothing(
-                    index_elements=[AccessRequest.email],
+                    index_elements=[func.lower(AccessRequest.email)],
                     index_where=AccessRequest.status == AccessRequestStatus.PENDING,
                 )
                 .returning(AccessRequest.id)

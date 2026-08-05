@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from sync_api.auth.gotrue import (
     EmailNotConfirmedError,
@@ -18,6 +18,7 @@ from sync_api.auth.gotrue import (
     SessionAlreadyEndedError,
     WeakPasswordError,
 )
+from sync_api.auth.identities import by_address
 from sync_api.auth.registration import (
     create_identity,
     identity_undone_on_failure,
@@ -34,9 +35,19 @@ from sync_api.problems import (
     Problem,
 )
 from sync_core import get_logger
-from sync_core.models import AccountType, Candidate, Profile, User
+from sync_core.models import (
+    AccountType,
+    Candidate,
+    PlatformAdmin,
+    Profile,
+    Recruiter,
+    RecruiterRole,
+    Tenant,
+    User,
+)
 
 if TYPE_CHECKING:
+    from sqlalchemy import Row
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth.gotrue import GoTrue, GoTrueSession
@@ -45,6 +56,49 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 UNAUTHENTICATED_DETAIL: Final = "Sign in to continue."
+
+#: Everything every authenticated request reads about its caller, in one statement: the Profile,
+#: the confirmed address that only `auth.users` has, and the row of the child table the Profile's
+#: `account_type` pins. All three children are outer-joined because which one to read is only
+#: known once the Profile is in hand, and all three join on the Profile's own primary key — so
+#: the two that turn out to be irrelevant cost an index lookup each, against a whole round trip
+#: for asking afterwards. `Tenant` rides along with `recruiters`, whose `tenant_id` is NOT NULL.
+ACTING_PROFILE: Final = (
+    select(
+        Profile,
+        User.email,
+        Candidate.id.label("candidate_row"),
+        Recruiter.id.label("recruiter_row"),
+        Recruiter.role,
+        Recruiter.is_active.label("recruiter_is_active"),
+        PlatformAdmin.id.label("platform_admin_row"),
+        Tenant,
+    )
+    .join(User, User.id == Profile.id)
+    .outerjoin(Candidate, Candidate.id == Profile.id)
+    .outerjoin(Recruiter, Recruiter.id == Profile.id)
+    .outerjoin(PlatformAdmin, PlatformAdmin.id == Profile.id)
+    .outerjoin(Tenant, Tenant.id == Recruiter.tenant_id)
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ActingTenant:
+    """The Tenant a Recruiter acts inside, as the Profile's own query already read it."""
+
+    id: UUID
+    name: str
+    slug: str
+    is_active: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ActingMembership:
+    """A Recruiter's own row: the role they hold, whether they still hold it, and where."""
+
+    role: RecruiterRole
+    is_active: bool
+    tenant: ActingTenant
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +109,16 @@ class ActingProfile:
     account_type: AccountType
     avatar_url: str | None
     phone: str | None
+    #: Whether the one child table `account_type` pins — `candidates`, `recruiters` or
+    #: `platform_admins` — holds a row for this Profile. "Account" here is the discriminator's own
+    #: word and not a synonym for Profile, which the vocabulary reserves. Read in the Profile's own
+    #: query rather than by the access check that wants it: they share a primary key, so asking
+    #: separately made two round trips out of one join, on every authenticated request. False is a
+    #: Profile with no child row, which the schema's composite FK makes impossible — the access
+    #: checks still refuse it rather than assume, because if it happens it is a bug of ours.
+    has_account_row: bool = False
+    #: Set for a Recruiter and nothing else: the only child row that carries facts of its own.
+    membership: ActingMembership | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +159,7 @@ class AuthService:
             account_type=AccountType.CANDIDATE,
             avatar_url=None,
             phone=None,
+            has_account_row=True,
         )
 
     async def confirm_email(self, token_hash: str) -> SignedIn:
@@ -156,9 +221,7 @@ class AuthService:
 
     async def request_password_reset(self, email: str) -> None:
         account_type = await self._db.scalar(
-            select(Profile.account_type)
-            .join(User, User.id == Profile.id)
-            .where(func.lower(User.email) == email.lower())
+            select(Profile.account_type).join(User, User.id == Profile.id).where(*by_address(email))
         )
         if account_type == AccountType.RECRUITER:
             redirect_to = self._recruiter_portal_url
@@ -215,24 +278,45 @@ class AuthService:
     async def _load_profile(self, profile_id: UUID) -> ActingProfile:
         row = (
             await self._db.execute(
-                select(Profile, User.email)
-                .join(User, User.id == Profile.id)
-                .where(Profile.id == profile_id, Profile.deleted_at.is_(None))
+                ACTING_PROFILE.where(Profile.id == profile_id, Profile.deleted_at.is_(None))
             )
         ).first()
         if row is None:
             logger.warning("auth.profile_missing", profile_id=str(profile_id))
             raise _unauthenticated("the token names no live profile")
 
-        profile, email = row
+        profile: Profile = row.Profile
         return ActingProfile(
             id=profile.id,
-            email=email or "",
+            email=row.email or "",
             full_name=profile.full_name,
             account_type=profile.account_type,
             avatar_url=profile.avatar_url,
             phone=profile.phone,
+            has_account_row=_has_account_row(profile.account_type, row),
+            membership=_membership_of(row),
         )
+
+
+def _has_account_row(account_type: AccountType, row: Row[Any]) -> bool:
+    if account_type is AccountType.CANDIDATE:
+        return row.candidate_row is not None
+    if account_type is AccountType.RECRUITER:
+        return row.recruiter_row is not None
+    return row.platform_admin_row is not None
+
+
+def _membership_of(row: Row[Any]) -> ActingMembership | None:
+    if row.recruiter_row is None:
+        return None
+    tenant: Tenant = row.Tenant
+    return ActingMembership(
+        role=row.role,
+        is_active=row.recruiter_is_active,
+        tenant=ActingTenant(
+            id=tenant.id, name=tenant.name, slug=tenant.slug, is_active=tenant.is_active
+        ),
+    )
 
 
 def _unauthenticated(reason: object) -> Problem:

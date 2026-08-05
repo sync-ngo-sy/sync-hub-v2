@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from sync_api.candidates.payload import (
     ProfileEducation,
     ProfileExperience,
@@ -16,14 +14,6 @@ from sync_core.models import (
     CandidateSkill,
 )
 
-if TYPE_CHECKING:
-    from sync_core.models import (
-        ApplicationEducation,
-        ApplicationExperience,
-        ApplicationLanguage,
-        ApplicationProject,
-    )
-
 #: Every live section carries `candidate_id` and `sort_order`; naming them all is what lets code
 #: handed one of them read those two columns off it.
 type LiveSection = (
@@ -34,11 +24,13 @@ type LiveSection = (
     | type[CandidateProject]
 )
 
-# A Snapshot section and the live section it was copied from carry the same fields, so one
-# reading of a row serves the profile a Candidate edits and the frozen one a Recruiter reads.
+# The live profile, one row at a time. The frozen twin of each section reads the same payloads
+# through `sync_api.applications.snapshot.READINGS`, which projects them straight out of Postgres
+# in one statement — a Snapshot is read whole or not at all, and a live profile is read a section
+# at a time by the code that edits it.
 
 
-def an_experience(row: CandidateExperience | ApplicationExperience) -> ProfileExperience:
+def an_experience(row: CandidateExperience) -> ProfileExperience:
     return ProfileExperience(
         job_title=row.job_title,
         company_name=row.company_name,
@@ -51,7 +43,7 @@ def an_experience(row: CandidateExperience | ApplicationExperience) -> ProfileEx
     )
 
 
-def an_education(row: CandidateEducation | ApplicationEducation) -> ProfileEducation:
+def an_education(row: CandidateEducation) -> ProfileEducation:
     return ProfileEducation(
         institution=row.institution,
         degree=row.degree,
@@ -61,11 +53,11 @@ def an_education(row: CandidateEducation | ApplicationEducation) -> ProfileEduca
     )
 
 
-def a_language(row: CandidateLanguage | ApplicationLanguage) -> ProfileLanguage:
+def a_language(row: CandidateLanguage) -> ProfileLanguage:
     return ProfileLanguage(code=row.language_code, proficiency=row.proficiency)
 
 
-def a_project(row: CandidateProject | ApplicationProject) -> ProfileProject:
+def a_project(row: CandidateProject) -> ProfileProject:
     return ProfileProject(
         name=row.name,
         description=row.description,

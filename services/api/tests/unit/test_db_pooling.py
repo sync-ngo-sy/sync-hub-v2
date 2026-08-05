@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from sync_core.db import POOLER_CONNECT_ARGS, pooler_safe_url
+from sync_core.db import POOLER_CONNECT_ARGS, connect_args, pooler_safe_url
 
 DIRECT = "postgresql+asyncpg://postgres:postgres@127.0.0.1:54322/postgres"
 
@@ -28,6 +28,19 @@ def test_asyncpg_cache_is_off_and_statement_names_are_unique() -> None:
     name_func = POOLER_CONNECT_ARGS["prepared_statement_name_func"]
     assert callable(name_func)
     assert name_func() != name_func()
+
+
+def test_a_statement_timeout_is_carried_by_every_connection() -> None:
+    assert connect_args(15_000)["server_settings"] == {"statement_timeout": "15000ms"}
+
+
+def test_a_statement_timeout_of_zero_leaves_the_setting_alone() -> None:
+    """Postgres' own default, for a deployment that wants no ceiling at all."""
+    assert "server_settings" not in connect_args(0)
+
+
+def test_the_timeout_does_not_displace_the_pooler_arguments() -> None:
+    assert connect_args(15_000)["statement_cache_size"] == 0
 
 
 def test_the_setting_is_not_accepted_as_an_engine_argument() -> None:

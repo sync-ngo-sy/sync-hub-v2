@@ -5,12 +5,10 @@ from typing import TYPE_CHECKING
 
 from sync_api.problems import PLATFORM_ADMIN_ONLY_PROBLEM_TYPE, Problem
 from sync_core import get_logger
-from sync_core.models import AccountType, PlatformAdmin
+from sync_core.models import AccountType
 
 if TYPE_CHECKING:
     from uuid import UUID
-
-    from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth import ActingProfile
 
@@ -28,13 +26,12 @@ class ActingPlatformAdmin:
         return self.profile.id
 
 
-async def acting_platform_admin(
-    session: AsyncSession, profile: ActingProfile
-) -> ActingPlatformAdmin:
+def acting_platform_admin(profile: ActingProfile) -> ActingPlatformAdmin:
+    """No query of its own: the Profile was read with its `platform_admins` row alongside it."""
     if profile.account_type is not AccountType.PLATFORM_ADMIN:
         raise _platform_admin_only()
 
-    if await session.get(PlatformAdmin, profile.id) is None:
+    if not profile.has_account_row:
         logger.error("platform.admin_row_missing", profile_id=str(profile.id))
         raise _platform_admin_only()
 

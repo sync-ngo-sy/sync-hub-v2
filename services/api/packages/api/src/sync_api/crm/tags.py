@@ -23,7 +23,11 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-NAME_CONSTRAINT: Final = "tenant_tags_tenant_id_scope_name_key"
+#: Two ways one name is unique: exactly, and case-insensitively. Either refusal is the same 409.
+NAME_CONSTRAINTS: Final = (
+    "tenant_tags_tenant_id_scope_name_key",
+    "tenant_tags_tenant_scope_name_ci_uidx",
+)
 
 
 class TagService:
@@ -74,7 +78,7 @@ def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:
     """A Tag is what a recruiter files by, so two of one name in one scope is a clean 409."""
     refuse_duplicate(
         clash,
-        NAME_CONSTRAINT,
+        *NAME_CONSTRAINTS,
         problem_type=TAG_NAME_TAKEN_PROBLEM_TYPE,
         detail=f"This tenant already has a tag called “{name}” in that scope.",
     )

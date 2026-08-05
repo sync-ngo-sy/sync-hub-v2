@@ -44,6 +44,32 @@ async def test_two_tags_of_one_scope_cannot_share_a_name(recruiter: AsyncClient)
     assert len(await tags_of(recruiter)) == 1
 
 
+async def test_two_tags_of_one_scope_cannot_share_a_name_in_another_case_either(
+    recruiter: AsyncClient,
+) -> None:
+    """A Tag is what a Recruiter files by, so two spellings of one name are two piles where they
+    meant one — and nothing on screen would say why "Urgent" did not find what "urgent" holds."""
+    await a_tag(recruiter, name="Arabic speaker", scope="candidate")
+
+    refused = await create_tag(recruiter, name="arabic SPEAKER", scope="candidate")
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["type"] == TAG_NAME_TAKEN
+    assert len(await tags_of(recruiter)) == 1
+
+
+async def test_a_tag_cannot_be_renamed_onto_a_siblings_name_in_another_case(
+    recruiter: AsyncClient,
+) -> None:
+    await a_tag(recruiter, name="Arabic speaker", scope="candidate")
+    second = await a_tag(recruiter, name="Second interview", scope="candidate")
+
+    refused = await rename_tag(recruiter, second["id"], name="ARABIC SPEAKER")
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["type"] == TAG_NAME_TAKEN
+
+
 async def test_one_name_can_mean_one_thing_of_a_candidate_and_another_of_an_application(
     recruiter: AsyncClient,
 ) -> None:
