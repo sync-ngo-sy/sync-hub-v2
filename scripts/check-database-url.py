@@ -38,6 +38,8 @@ from sync_core.db import POOLER_CONNECT_ARGS, pooler_safe_url
 from sync_core.settings import AsyncPostgresDsn
 
 SECRET = "SYNC_DATABASE_URL"
+#: Supabase's pooler answers transaction mode here and session mode on 5432.
+TRANSACTION_MODE_PORT = 6543
 
 
 def read_secret(project: str) -> str:
@@ -86,8 +88,12 @@ async def connect(url: str) -> None:
 
             # Twice, deliberately: one statement reused across pooled connections is the failure
             # transaction-mode pooling produces, and it does not show up on a single query.
+            #
+            # The cast is not decoration. Without it asyncpg has nothing to infer the parameter's
+            # type from and asks for a string, which is a bug this check itself shipped with.
+            probe = text("select cast(:n as integer)")
             for _ in range(2):
-                await connection.execute(text("select 1 where :x = :x"), {"x": 1})
+                await connection.execute(probe, {"n": 1})
             print("  prepared statements reusable")
     finally:
         await engine.dispose()
@@ -120,7 +126,26 @@ def main() -> None:
     parts = urlsplit(url)
     host = parts.hostname or ""
     if "pooler" in host:
-        print(f"  pooler        {host}:{parts.port}")
+        # The pooler answers on two ports and they are not interchangeable. 6543 is transaction
+        # mode: a server connection is held for one transaction and then returned. 5432 is session
+        # mode, which holds one for the whole client session -- so a scaled-out Cloud Run service
+        # occupies a server connection per instance whether or not it is doing anything, which is
+        # precisely the exhaustion the pooler was chosen to avoid.
+        if parts.port == TRANSACTION_MODE_PORT:
+            print(f"  pooler        {host}:{parts.port}  (transaction mode)")
+        else:
+            print(f"  points at     {redacted(url)}")
+            sys.exit(
+                "\n".join(
+                    [
+                        f"  SESSION MODE  {host}:{parts.port} is the pooler, but in session mode.",
+                        "                Transaction mode is port 6543. Session mode holds a",
+                        "                server connection for the whole client session, so every",
+                        "                idle Cloud Run instance still occupies one. ADR-0016 and",
+                        "                #88 both specify the transaction pooler.",
+                    ]
+                )
+            )
     else:
         print(f"  points at     {redacted(url)}")
         sys.exit(
