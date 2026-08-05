@@ -16,7 +16,7 @@ Multi-context — root `CONTEXT-MAP.md` pointing to a `CONTEXT.md` per workspace
 
 ### Don't comment
 
-Comments inside the frontend should be zero.
+Comments should be **zero** unless it's **literally impossible** to infer from the code.
 
 ### PR
 
