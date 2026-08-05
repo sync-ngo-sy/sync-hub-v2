@@ -44,3 +44,6 @@ supabase/.temp/
 .superpowers/
 .omo/
 .worktrees/
+
+# Reachability probe output — contains the tester public IP; never commit (repo is public)
+reachability-report*.txt
