@@ -25,11 +25,15 @@ def location_name(job: Job) -> str | None:
     return job.location.name if job.location else None
 
 
-async def own_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> Job:
+async def own_job(
+    session: AsyncSession, tenant_id: UUID, job_id: UUID, *, lock: bool = False
+) -> Job:
     """The tenant's own Job. Another tenant's Job and a nonexistent one are the same 404."""
-    job = await session.scalar(
-        select(Job).where(Job.id == job_id, Job.tenant_id == tenant_id).options(*WITH_LOCATION)
-    )
+    query = select(Job).where(Job.id == job_id, Job.tenant_id == tenant_id).options(*WITH_LOCATION)
+    if lock:
+        query = query.with_for_update()
+
+    job = await session.scalar(query)
     if job is None:
         raise Problem(
             status=404,
@@ -37,6 +41,10 @@ async def own_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> Job:
             detail="No job of this tenant has that id.",
         )
     return job
+
+
+async def lock_the_criteria(session: AsyncSession, job: Job) -> None:
+    await session.refresh(job, ["minimum_total_experience_years"], with_for_update=True)
 
 
 def public_jobs() -> Select[tuple[Job, Tenant]]:

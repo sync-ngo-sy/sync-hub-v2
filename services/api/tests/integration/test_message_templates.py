@@ -58,6 +58,17 @@ async def test_a_second_template_of_the_same_name_is_refused(recruiter: AsyncCli
     assert clash.json()["type"] == MESSAGE_TEMPLATE_NAME_TAKEN
 
 
+async def test_a_second_template_of_the_same_name_in_another_case_is_refused_too(
+    recruiter: AsyncClient,
+) -> None:
+    saved = await a_saved_template(recruiter)
+
+    clash = await create_template(recruiter, name=saved["name"].upper())
+
+    assert clash.status_code == 409, clash.text
+    assert clash.json()["type"] == MESSAGE_TEMPLATE_NAME_TAKEN
+
+
 async def test_two_tenants_may_each_have_a_template_of_the_same_name(
     recruiter: AsyncClient, rival: AsyncClient
 ) -> None:
