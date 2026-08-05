@@ -33,6 +33,23 @@ exception tag were all created by hand before this configuration existed. They a
 need `terraform import` when the stack that owns them is written — until then, do not let a plan talk
 you into recreating them.
 
+## 1a. The domain-sharing exception
+
+The API and the worker are publicly invocable, which Domain Restricted Sharing forbids unless the
+project carries the exception tag. Production has carried it since #76; a new environment does not.
+
+```bash
+./scripts/attach-drs-exception.sh --check sync-ngo-staging   # guards only, no cloud calls
+./scripts/attach-drs-exception.sh sync-ngo-staging
+```
+
+The script refuses any project not listed in `infra/org-policies/exception-projects.txt`, in every
+mode, so granting the exception means a reviewed commit rather than a command someone ran. If the
+`--check` run refuses, that is the gate working: add the project there first.
+
+Skipping this produces a confusing failure much later — the service creates fine and the `allUsers`
+invoker binding is refused on its own.
+
 ## 2. Secret containers, then secret values — **out of band**
 
 ```bash
