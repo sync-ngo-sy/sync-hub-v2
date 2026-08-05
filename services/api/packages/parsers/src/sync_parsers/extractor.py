@@ -19,6 +19,7 @@ class CvFile:
 @dataclass(frozen=True, slots=True)
 class Vocabulary:
     canonical_skills: Sequence[str]
+    canonical_roles: Sequence[str]
     language_codes: Sequence[str]
 
 

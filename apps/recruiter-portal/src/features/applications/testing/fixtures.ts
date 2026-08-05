@@ -57,6 +57,7 @@ export const AMAL_REVIEW: ApplicationReview = {
     full_name: 'Amal Haddad',
     phone: '+963 11 555 0101',
     headline: 'Field logistics lead',
+    total_experience_years: 9,
     summary: 'Nine years moving relief cargo across northern Syria.',
     location: 'Aleppo',
     unmapped_skills: ['Convoy planning', 'Customs clearance'],

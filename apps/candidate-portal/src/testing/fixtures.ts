@@ -305,8 +305,10 @@ export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   headline: 'Field coordinator, 6 years',
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
+  canonical_role_key: 'project-manager',
   preferred_language_code: 'ar',
   is_searchable: false,
+  total_experience_years: 6,
   experiences: [
     {
       job_title: 'Field Coordinator',
@@ -348,6 +350,7 @@ export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
 export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
   full_name: 'Lina Khoury',
   is_searchable: false,
+  total_experience_years: 0,
 };
 
 /**
@@ -362,7 +365,12 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   location_key: null,
   preferred_language_code: null,
   experiences: [
-    { job_title: 'Backend engineer', company_name: 'Levant Digital', is_current: true },
+    {
+      job_title: 'Backend engineer',
+      company_name: 'Levant Digital',
+      start_year: 2021,
+      is_current: true,
+    },
   ],
   skills: [
     { name: 'Python', years_experience: 3 },
@@ -458,6 +466,13 @@ export const LOCATIONS: components['schemas']['Location'][] = [
   { key: 'sy-damascus', name: 'Damascus', group: 'Syria' },
   { key: 'sy-rif-dimashq', name: 'Rif Dimashq', group: 'Syria' },
   { key: 'lb', name: 'Lebanon', group: 'Outside Syria' },
+];
+
+export const CANONICAL_ROLES: components['schemas']['CanonicalRole'][] = [
+  { key: 'backend-engineer', name: 'Backend Engineer' },
+  { key: 'frontend-engineer', name: 'Frontend Engineer' },
+  { key: 'project-manager', name: 'Project Manager' },
+  { key: 'ui-ux-designer', name: 'UI/UX Designer' },
 ];
 
 export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {

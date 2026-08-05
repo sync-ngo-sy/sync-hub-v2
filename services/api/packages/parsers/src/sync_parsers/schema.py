@@ -78,6 +78,13 @@ class ParsedCv(ParsedModel):
         description="The language the CV itself is written in, as an ISO 639-1 code."
     )
 
+    canonical_role: str | None = Field(
+        description="The one Canonical role key that best describes this person's line of work, "
+        "from the list given, or null where the CV does not make one clear. The single "
+        "judgement this schema asks for.",
+        examples=["backend-engineer"],
+    )
+
     headline: str | None = Field(
         description="The one-line professional title the CV leads with, if it has one.",
         examples=["Backend engineer, 8 years"],

@@ -41,6 +41,15 @@ LocationKey = Annotated[
     ),
 ]
 
+CanonicalRoleKey = Annotated[
+    OptionalLine,
+    Field(
+        description="A key from the platform's `canonical_roles` table, which `/v1/roles` lists. "
+        "Null says nobody has claimed a role, not that the CV was silent.",
+        examples=["frontend-engineer"],
+    ),
+]
+
 #: Read-only, and never a way to set one: a Location is chosen by key and named by the taxonomy.
 LocationName = Annotated[
     str | None,

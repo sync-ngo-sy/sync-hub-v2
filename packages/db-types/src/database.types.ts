@@ -205,7 +205,7 @@ export type Database = {
           job_title: string;
           sort_order: number;
           start_month: number | null;
-          start_year: number | null;
+          start_year: number;
         };
         Insert: {
           application_id: string;
@@ -218,7 +218,7 @@ export type Database = {
           job_title: string;
           sort_order?: number;
           start_month?: number | null;
-          start_year?: number | null;
+          start_year: number;
         };
         Update: {
           application_id?: string;
@@ -231,7 +231,7 @@ export type Database = {
           job_title?: string;
           sort_order?: number;
           start_month?: number | null;
-          start_year?: number | null;
+          start_year?: number;
         };
         Relationships: [
           {
@@ -288,6 +288,7 @@ export type Database = {
           location: string | null;
           phone: string | null;
           summary: string | null;
+          total_experience_years: number;
           unmapped_skills: string[];
         };
         Insert: {
@@ -298,6 +299,7 @@ export type Database = {
           location?: string | null;
           phone?: string | null;
           summary?: string | null;
+          total_experience_years: number;
           unmapped_skills?: string[];
         };
         Update: {
@@ -308,6 +310,7 @@ export type Database = {
           location?: string | null;
           phone?: string | null;
           summary?: string | null;
+          total_experience_years?: number;
           unmapped_skills?: string[];
         };
         Relationships: [
@@ -735,7 +738,7 @@ export type Database = {
           job_title: string;
           sort_order: number;
           start_month: number | null;
-          start_year: number | null;
+          start_year: number;
           updated_at: string;
         };
         Insert: {
@@ -750,7 +753,7 @@ export type Database = {
           job_title: string;
           sort_order?: number;
           start_month?: number | null;
-          start_year?: number | null;
+          start_year: number;
           updated_at?: string;
         };
         Update: {
@@ -765,7 +768,7 @@ export type Database = {
           job_title?: string;
           sort_order?: number;
           start_month?: number | null;
-          start_year?: number | null;
+          start_year?: number;
           updated_at?: string;
         };
         Relationships: [
@@ -1060,6 +1063,7 @@ export type Database = {
       candidates: {
         Row: {
           account_type: Database['public']['Enums']['account_type'];
+          canonical_role_key: string | null;
           created_at: string;
           current_cv_id: string | null;
           deleted_at: string | null;
@@ -1070,11 +1074,13 @@ export type Database = {
           preferred_language_code: string | null;
           search_vector: unknown;
           summary: string | null;
+          total_experience_years: number;
           unmapped_skills: string[];
           updated_at: string;
         };
         Insert: {
           account_type?: Database['public']['Enums']['account_type'];
+          canonical_role_key?: string | null;
           created_at?: string;
           current_cv_id?: string | null;
           deleted_at?: string | null;
@@ -1085,11 +1091,13 @@ export type Database = {
           preferred_language_code?: string | null;
           search_vector?: unknown;
           summary?: string | null;
+          total_experience_years?: number;
           unmapped_skills?: string[];
           updated_at?: string;
         };
         Update: {
           account_type?: Database['public']['Enums']['account_type'];
+          canonical_role_key?: string | null;
           created_at?: string;
           current_cv_id?: string | null;
           deleted_at?: string | null;
@@ -1100,10 +1108,18 @@ export type Database = {
           preferred_language_code?: string | null;
           search_vector?: unknown;
           summary?: string | null;
+          total_experience_years?: number;
           unmapped_skills?: string[];
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'candidates_canonical_role_fk';
+            columns: ['canonical_role_key'];
+            isOneToOne: false;
+            referencedRelation: 'canonical_roles';
+            referencedColumns: ['key'];
+          },
           {
             foreignKeyName: 'candidates_current_cv_fk';
             columns: ['id', 'current_cv_id'];
@@ -1133,6 +1149,21 @@ export type Database = {
             referencedColumns: ['code'];
           },
         ];
+      };
+      canonical_roles: {
+        Row: {
+          key: string;
+          name: string;
+        };
+        Insert: {
+          key: string;
+          name: string;
+        };
+        Update: {
+          key?: string;
+          name?: string;
+        };
+        Relationships: [];
       };
       communications: {
         Row: {

@@ -119,6 +119,41 @@ create trigger forbid_deleted_current_cv before update of current_cv_id on candi
   for each row when (new.current_cv_id is not null)
   execute function forbid_deleted_current_cv();
 
+-- A Snapshot is the frozen profile an Application was judged from, and the two histories are
+-- the record of what was decided and when. All of it was guarded by convention only, which is
+-- no guard at all against this platform's own backend: it holds the service role, so RLS does
+-- not apply to it. A trigger does — it fires for the service role like anybody else.
+--
+-- Inserts are untouched: a Snapshot is written once, and each hop of the pipeline appends.
+create function forbid_rewriting_history() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  raise exception '% is written once and never rewritten: % refused', tg_table_name, tg_op
+    using errcode = 'check_violation';
+end;
+$$;
+
+create trigger written_once before update or delete on application_profile_snapshots
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_experiences
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_educations
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_skills
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_languages
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_projects
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_answers
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_qualification_history
+  for each row execute function forbid_rewriting_history();
+create trigger written_once before update or delete on application_status_history
+  for each row execute function forbid_rewriting_history();
+
 create function forbid_locked_job_criteria() returns trigger
 language plpgsql
 set search_path = ''

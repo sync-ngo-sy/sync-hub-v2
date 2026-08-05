@@ -301,6 +301,12 @@ class Candidate(Base):
         CheckConstraint(
             "account_type = 'candidate'::account_type", name="candidates_account_type_check"
         ),
+        CheckConstraint("total_experience_years >= 0", name="candidates_total_experience_nonneg"),
+        ForeignKeyConstraint(
+            ["canonical_role_key"],
+            ["public.canonical_roles.key"],
+            name="candidates_canonical_role_fk",
+        ),
         ForeignKeyConstraint(
             ["id", "account_type"],
             ["public.profiles.id", "public.profiles.account_type"],
@@ -322,6 +328,7 @@ class Candidate(Base):
             name="candidates_preferred_language_fk",
         ),
         PrimaryKeyConstraint("id", name="candidates_pkey"),
+        Index("candidates_canonical_role_idx", "canonical_role_key"),
         Index("candidates_current_cv_id_idx", "current_cv_id"),
         Index("candidates_location_key_idx", "location_key"),
         Index("candidates_preferred_language_idx", "preferred_language_code"),
@@ -331,6 +338,7 @@ class Candidate(Base):
             "id",
             postgresql_where="(is_searchable AND (deleted_at IS NULL))",
         ),
+        Index("candidates_total_experience_idx", "total_experience_years"),
         {"schema": "public"},
     )
 
@@ -343,6 +351,9 @@ class Candidate(Base):
         ),
         nullable=False,
         server_default=text("'candidate'::account_type"),
+    )
+    total_experience_years: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
     )
     unmapped_skills: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]")
@@ -360,14 +371,28 @@ class Candidate(Base):
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     location_key: Mapped[str | None] = mapped_column(Text)
+    canonical_role_key: Mapped[str | None] = mapped_column(Text)
     preferred_language_code: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
 
+    canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
     cv: Mapped[Optional["Cv"]] = relationship("Cv", foreign_keys=[id, current_cv_id], viewonly=True)
     location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
     language: Mapped[Optional["Language"]] = relationship("Language", viewonly=True)
+
+
+class CanonicalRole(Base):
+    __tablename__ = "canonical_roles"
+    __table_args__ = (
+        PrimaryKeyConstraint("key", name="canonical_roles_pkey"),
+        UniqueConstraint("name", name="canonical_roles_name_key"),
+        {"schema": "public"},
+    )
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class Cv(Base):
@@ -634,6 +659,7 @@ class CandidateExperience(Base):
         CheckConstraint(
             "end_year IS NULL OR end_year >= 1900 AND end_year <= 2100", name="cexp_end_year_range"
         ),
+        CheckConstraint("is_current OR end_year IS NOT NULL", name="cexp_finished_work_has_an_end"),
         CheckConstraint(
             "start_month IS NULL OR start_month >= 1 AND start_month <= 12",
             name="cexp_start_month_range",
@@ -663,6 +689,7 @@ class CandidateExperience(Base):
     )
     candidate_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     job_title: Mapped[str] = mapped_column(Text, nullable=False)
+    start_year: Mapped[int] = mapped_column(Integer, nullable=False)
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -672,7 +699,6 @@ class CandidateExperience(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     company_name: Mapped[str | None] = mapped_column(Text)
-    start_year: Mapped[int | None] = mapped_column(Integer)
     start_month: Mapped[int | None] = mapped_column(Integer)
     end_year: Mapped[int | None] = mapped_column(Integer)
     end_month: Mapped[int | None] = mapped_column(Integer)
@@ -1662,6 +1688,7 @@ class ApplicationExperience(Base):
         CheckConstraint(
             "end_year IS NULL OR end_year >= 1900 AND end_year <= 2100", name="aexp_end_year_range"
         ),
+        CheckConstraint("is_current OR end_year IS NOT NULL", name="aexp_finished_work_has_an_end"),
         CheckConstraint(
             "start_month IS NULL OR start_month >= 1 AND start_month <= 12",
             name="aexp_start_month_range",
@@ -1691,10 +1718,10 @@ class ApplicationExperience(Base):
     )
     application_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     job_title: Mapped[str] = mapped_column(Text, nullable=False)
+    start_year: Mapped[int] = mapped_column(Integer, nullable=False)
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     company_name: Mapped[str | None] = mapped_column(Text)
-    start_year: Mapped[int | None] = mapped_column(Integer)
     start_month: Mapped[int | None] = mapped_column(Integer)
     end_year: Mapped[int | None] = mapped_column(Integer)
     end_month: Mapped[int | None] = mapped_column(Integer)
@@ -1742,6 +1769,7 @@ class ApplicationLanguage(Base):
 class ApplicationProfileSnapshot(Base):
     __tablename__ = "application_profile_snapshots"
     __table_args__ = (
+        CheckConstraint("total_experience_years >= 0", name="asnap_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["application_id"],
             ["public.applications.id"],
@@ -1757,6 +1785,7 @@ class ApplicationProfileSnapshot(Base):
     unmapped_skills: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]")
     )
+    total_experience_years: Mapped[int] = mapped_column(Integer, nullable=False)
     captured_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )

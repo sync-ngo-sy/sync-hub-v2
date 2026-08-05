@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from sync_parsers import ParsedSkill
+from sync_parsers import ParsedExperience, ParsedSkill
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import a_read_cv, an_uploaded_cv
 from tests.support.extractors import FakeExtractor, a_parse
@@ -15,6 +15,7 @@ from tests.support.profiles import (
     my_id,
     my_profile,
     my_profile_draft,
+    save_profile,
     section_row_counts,
 )
 from tests.support.tenants import an_admin
@@ -184,3 +185,98 @@ def _with_years_filled_in(draft: dict[str, Any]) -> dict[str, Any]:
         **draft,
         "skills": [{**skill, "years_experience": 5.0} for skill in draft["skills"]],
     }
+
+
+async def test_a_cv_proposes_a_canonical_role_into_the_draft(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    """The one judgement the parse is asked for, and still only a proposal: the draft is a form
+    the candidate confirms, changes or clears before anything is stored."""
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await a_read_cv(browser, database, storage)
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["canonical_role_key"] == "backend-engineer"
+
+
+async def test_a_cv_that_supports_no_role_proposes_none(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await a_read_cv(
+        browser, database, storage, extractor=FakeExtractor(a_parse(canonical_role=None))
+    )
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["canonical_role_key"] is None
+
+
+async def test_a_role_the_taxonomy_does_not_have_is_not_proposed(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    """A key nobody could save is worse than no proposal at all."""
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await a_read_cv(
+        browser, database, storage, extractor=FakeExtractor(a_parse(canonical_role="rockstar"))
+    )
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["canonical_role_key"] is None
+
+
+async def test_a_vague_cv_leaves_the_role_the_candidate_already_claimed(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    await a_saved_profile(browser, a_profile(canonical_role_key="ui-ux-designer"))
+    cv = await a_read_cv(
+        browser, database, storage, extractor=FakeExtractor(a_parse(canonical_role=None))
+    )
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["canonical_role_key"] == "ui-ux-designer"
+
+
+async def test_a_job_the_cv_never_dated_reaches_the_draft_undated(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    """Like a skill with no years: the candidate dates it at review, and the profile will not
+    save until they have. Dropping it would throw away the job title the CV did give."""
+    await a_signed_in_candidate(browser, mailbox)
+    undated = a_parse(
+        experiences=[
+            ParsedExperience(
+                job_title="Intern",
+                company_name="Damascus Chamber of Commerce",
+                start_year=None,
+                start_month=None,
+                end_year=None,
+                end_month=None,
+                is_current=False,
+                description=None,
+            )
+        ]
+    )
+    cv = await a_read_cv(browser, database, storage, extractor=FakeExtractor(undated))
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["experiences"] == [
+        {
+            "job_title": "Intern",
+            "company_name": "Damascus Chamber of Commerce",
+            "start_year": None,
+            "start_month": None,
+            "end_year": None,
+            "end_month": None,
+            "is_current": False,
+            "description": None,
+        }
+    ]
+
+    refused = await save_profile(browser, a_profile(experiences=draft["experiences"]))
+    assert refused.status_code == 422, refused.text

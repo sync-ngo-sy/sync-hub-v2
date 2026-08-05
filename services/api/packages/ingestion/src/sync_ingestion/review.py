@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sync_core import get_logger
@@ -28,22 +29,34 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-def reviewable(
-    parsed: ParsedCv, *, taxonomy: Mapping[str, str], languages: Mapping[str, str]
-) -> ParsedCv:
-    skills, demoted = _skills(parsed.skills, taxonomy)
+@dataclass(frozen=True, slots=True)
+class Vocabularies:
+    """Every closed list a parse is held to, each keyed by its own lowercased spelling.
+
+    A model asked for a key from a list will occasionally answer with one that is nearly it;
+    everything the platform stores by key is matched back here rather than trusted.
+    """
+
+    taxonomy: Mapping[str, str]
+    roles: Mapping[str, str]
+    languages: Mapping[str, str]
+
+
+def reviewable(parsed: ParsedCv, known: Vocabularies) -> ParsedCv:
+    skills, demoted = _skills(parsed.skills, known.taxonomy)
     reviewed = ParsedCv(
         full_name=_line(parsed.full_name),
         email=_line(parsed.email),
         phone=_line(parsed.phone),
         detected_language=_code(parsed.detected_language),
+        canonical_role=_role(parsed.canonical_role, known.roles),
         headline=_line(parsed.headline),
         summary=_paragraph(parsed.summary),
         location=_line(parsed.location),
         experiences=_experiences(parsed.experiences),
         educations=_educations(parsed.educations),
         skills=skills,
-        languages=_languages(parsed.languages, languages),
+        languages=_languages(parsed.languages, known.languages),
         projects=_projects(parsed.projects),
         unmapped_skills=_unmapped([*parsed.unmapped_skills, *demoted]),
     )
@@ -82,6 +95,12 @@ def _skills(
             known, ParsedSkill(name=known, years_experience=_years(skill.years_experience))
         )
     return list(canonical.values())[:MAX_ENTRIES], demoted
+
+
+def _role(key: str | None, known: Mapping[str, str]) -> str | None:
+    """The proposed Canonical role, or nothing: a key the taxonomy does not have is dropped
+    rather than shown to the candidate as a choice they cannot save."""
+    return known.get((key or "").strip().lower())
 
 
 def _languages(
