@@ -42,8 +42,18 @@ cd infra/terraform/envs/staging && tofu init && tofu plan
 The `gcs` backend authenticates with application default credentials, which are separate
 from your `gcloud` login: `gcloud auth application-default login`.
 
-`terraform.tfvars` in each environment carries what differs. `services` and `secret_ids` are
-empty until #88 and #84 fill them, so a plan today reports no changes.
+`terraform.tfvars` in each environment carries what differs: three services — the API, the
+worker, and the Platform Portal's static server — plus the secret containers they read.
+
+Images are pinned in `terraform.tfvars` so a plan run by hand still means something, and
+overridden per apply by the pipeline:
+
+```bash
+tofu apply -var='images={api="…/api:'$SHA'",worker="…/worker:'$SHA'"}'
+```
+
+Staging pins tags and production pins digests, because production promotes the artifact staging
+validated rather than rebuilding it (#91).
 
 ## Two conventions
 
@@ -59,6 +69,18 @@ hand — see #86. Nothing is missing by accident.
 
 `public = true` on a service binds `allUsers` as invoker, which only works in a project
 carrying the domain-sharing exception tag — see `infra/org-policies/`.
+
+The worker is `public = true` on purpose, not by oversight. The database webhook that announces an
+enqueue is Postgres calling out, and Postgres cannot mint a Google identity token, so
+`X-Worker-Secret` stands in for IAM. Its endpoints fail closed when the secret is unset.
+
+`iap = true` requires the service to stay private — IAP becomes the caller, so a service that is
+also `public` has a decorative gate. Only the Platform Portal uses it.
+
+`domain` maps a hostname straight to a service with no load balancer, and mappings exist in ten
+regions of which `europe-west3` is not one. That is why the Platform Portal's service sets
+`region = "europe-west1"` while everything else stays in Frankfurt; ADR-0012 has the reasoning, and
+it ends in a cookie rather than in latency.
 
 Resources created by hand before this existed — the workload identity pool and provider, the
 applier service account, the exception tag — are not in state yet and need `terraform import`

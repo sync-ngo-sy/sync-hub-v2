@@ -18,6 +18,9 @@ locals {
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
+    # The Platform Portal's gate, and the schedule that guarantees the queue drains.
+    "iap.googleapis.com",
+    "cloudscheduler.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "sts.googleapis.com",
