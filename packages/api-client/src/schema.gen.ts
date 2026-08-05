@@ -725,6 +725,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every Canonical role the platform has
+         * @description The whole taxonomy — a role named any other way cannot be stored, so this is the only
+         *     list worth offering anyone.
+         *
+         *     By name, so a picker reads in the order it displays. A profile stores the key. Fourteen
+         *     entries: small enough to fetch whole, and there is no search here.
+         */
+        get: operations["listCanonicalRoles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/languages": {
         parameters: {
             query?: never;
@@ -1794,6 +1818,12 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
              */
             unmapped_skills?: string[];
+            /**
+             * Total Experience Years
+             * @description Whole years of work as the profile stood the day this was sent. The number Screening measured against the Job's minimum, and the one its verdict cites.
+             * @default 0
+             */
+            total_experience_years: number;
             /** Experiences */
             experiences?: components["schemas"]["ProfileExperience"][];
             /** Educations */
@@ -1974,6 +2004,12 @@ export interface components {
              */
             location_key?: string | null;
             /**
+             * Canonical Role Key
+             * @description What kind of practitioner the candidate is, by the key `/roles` lists. Chosen from that list or left unset, never typed. CV parsing proposes one; this is the candidate's own answer.
+             * @example frontend-engineer
+             */
+            canonical_role_key?: string | null;
+            /**
              * Preferred Language Code
              * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
              */
@@ -1984,11 +2020,6 @@ export interface components {
              * @default false
              */
             is_searchable: boolean;
-            /**
-             * Experiences
-             * @description Jobs, in the candidate's own order.
-             */
-            experiences?: components["schemas"]["ProfileExperience"][];
             /**
              * Educations
              * @description Qualifications, in the candidate's own order.
@@ -2009,8 +2040,37 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
+            /**
+             * Experiences
+             * @description Jobs, in the candidate's own order. Each one dated.
+             */
+            experiences?: components["schemas"]["ProfileExperience"][];
             /** @description Canonical skills, in the candidate's own order. */
             skills?: components["schemas"]["OneEntryPerSkill_ProfileSkill__MaxLen_max_length_50_"];
+            /**
+             * Total Experience Years
+             * @description Whole years of work, derived from `experiences` on every save: jobs held at once count once, and six months or more round up to a year. Read-only — a `PUT` carries it back so a `GET` body stays a valid one, and it is ignored. A wrong number is corrected by fixing the work history.
+             * @default 0
+             */
+            readonly total_experience_years: number;
+        };
+        /**
+         * CanonicalRole
+         * @description One kind of practitioner the platform has a name for.
+         */
+        CanonicalRole: {
+            /**
+             * Key
+             * @description What a profile stores, and what a filter matches exactly.
+             * @example frontend-engineer
+             */
+            key: string;
+            /**
+             * Name
+             * @description What to call it on screen.
+             * @example Frontend Engineer
+             */
+            name: string;
         };
         /**
          * CanonicalSkill
@@ -2252,6 +2312,36 @@ export interface components {
              * @description The caller's current password, confirming the deletion.
              */
             password: string;
+        };
+        /**
+         * DraftExperience
+         * @description One job on a draft, where the CV may not have dated it.
+         *
+         *     Undated like a draft skill has no years: the candidate fills the dates in at review, and the
+         *     profile will not save until they have. Dropping the entry instead would throw away the job
+         *     title, the company and the description the CV did give.
+         */
+        DraftExperience: {
+            /** Start Year */
+            start_year?: number | null;
+            /** Start Month */
+            start_month?: number | null;
+            /** End Year */
+            end_year?: number | null;
+            /** End Month */
+            end_month?: number | null;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name?: string | null;
+            /**
+             * Is Current
+             * @description A job with no end, still going.
+             * @default false
+             */
+            is_current: boolean;
+            /** Description */
+            description?: string | null;
         };
         /**
          * DraftSkill
@@ -3244,7 +3334,8 @@ export interface components {
          * @description A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
          *
          *     Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
-         *     newly names has no years until the candidate types them.
+         *     newly names has no years, and a job it never dated has no dates, until the candidate types
+         *     them.
          */
         ProfileDraft: {
             /**
@@ -3268,6 +3359,12 @@ export interface components {
              */
             location_key?: string | null;
             /**
+             * Canonical Role Key
+             * @description What kind of practitioner the candidate is, by the key `/roles` lists. Chosen from that list or left unset, never typed. CV parsing proposes one; this is the candidate's own answer.
+             * @example frontend-engineer
+             */
+            canonical_role_key?: string | null;
+            /**
              * Preferred Language Code
              * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
              */
@@ -3278,11 +3375,6 @@ export interface components {
              * @default false
              */
             is_searchable: boolean;
-            /**
-             * Experiences
-             * @description Jobs, in the candidate's own order.
-             */
-            experiences?: components["schemas"]["ProfileExperience"][];
             /**
              * Educations
              * @description Qualifications, in the candidate's own order.
@@ -3303,6 +3395,11 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
+            /**
+             * Experiences
+             * @description Jobs the CV describes, in its own order — those it did not date with their dates null.
+             */
+            experiences?: components["schemas"]["DraftExperience"][];
             /** @description Every skill already on the profile, years and all, plus the ones this CV names that were not there — those with `years_experience` null. */
             skills?: components["schemas"]["OneEntryPerSkill_DraftSkill__MaxLen_max_length_50_"];
         };
@@ -3324,21 +3421,29 @@ export interface components {
         };
         /**
          * ProfileExperience
-         * @description One job.
+         * @description One job, which — unlike a project — is always dated.
+         *
+         *     Total experience is one stored number derived from these entries, so a job nobody can date
+         *     would make that number a lie rather than an approximation. A start year always, and an end
+         *     year unless the job is still held. That is why these dates are their own type rather than
+         *     the optional `DatedRange` a project uses.
          */
         ProfileExperience: {
-            /** Start Year */
-            start_year?: number | null;
-            /** Start Month */
-            start_month?: number | null;
-            /** End Year */
-            end_year?: number | null;
-            /** End Month */
-            end_month?: number | null;
             /** Job Title */
             job_title: string;
             /** Company Name */
             company_name?: string | null;
+            /** Start Year */
+            start_year: number;
+            /** Start Month */
+            start_month?: number | null;
+            /**
+             * End Year
+             * @description Absent only on a job still held.
+             */
+            end_year?: number | null;
+            /** End Month */
+            end_month?: number | null;
             /**
              * Is Current
              * @description A job with no end, still going.
@@ -6478,6 +6583,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CanonicalSkill"][];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Too many requests from this address. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listCanonicalRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CanonicalRole"][];
                 };
             };
             /** @description The request did not match the expected shape. */

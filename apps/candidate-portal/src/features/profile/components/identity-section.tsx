@@ -4,18 +4,23 @@ import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import type { Control } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
+import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { useLocations } from '@/features/reference/hooks/use-locations';
-import { languageOptions, locationGroups } from '@/features/reference/options';
+import { languageOptions, locationGroups, roleOptions } from '@/features/reference/options';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
 
 /** Having no preference is a choice, so it is on the list rather than left to a blank field. */
 const NO_PREFERENCE = { value: '', label: 'No preference' };
 
+/** Claiming no line of work is a choice too, and the one a CV that could not tell leaves you on. */
+const NO_ROLE = { value: '', label: 'Not saying' };
+
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {
   const known = useLanguages();
   const places = useLocations();
+  const roles = useCanonicalRoles();
 
   return (
     <ProfileSection title="About you" description="The first thing a recruiter reads.">
@@ -50,6 +55,28 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
             list={places}
             options={locationGroups(places.data)}
             value={value || null}
+            onChange={onChange}
+            onBlur={onBlur}
+            aria-describedby={aria['aria-describedby']}
+            aria-invalid={aria['aria-invalid']}
+          />
+        )}
+      </FormField>
+
+      <FormField
+        control={control}
+        name="canonical_role_key"
+        label="What you do"
+        description="The kind of work you are looking for. Recruiters filter on it."
+      >
+        {({ value, onChange, onBlur, id, ...aria }) => (
+          <ReferencePicker
+            id={id}
+            className="sm:max-w-60"
+            noun="role"
+            list={roles}
+            options={[NO_ROLE, ...roleOptions(roles.data)]}
+            value={value}
             onChange={onChange}
             onBlur={onBlur}
             aria-describedby={aria['aria-describedby']}

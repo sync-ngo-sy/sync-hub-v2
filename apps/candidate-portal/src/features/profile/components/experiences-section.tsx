@@ -3,17 +3,21 @@ import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { Briefcase } from 'lucide-react';
-import { type Control, useFieldArray } from 'react-hook-form';
+import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { BLANK_EXPERIENCE, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
 import { ProfileSection } from './profile-section';
+import { TotalExperience } from './total-experience';
 
 export function ExperiencesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'experiences' });
+  const saved = useWatch({ control, name: 'total_experience_years' });
 
   return (
     <ProfileSection title="Experience" description="Newest first, or whatever order suits you.">
+      <TotalExperience years={saved} />
+
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Job ${index + 1}`}
