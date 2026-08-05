@@ -66,12 +66,23 @@ printf '%s' "$VALUE" | gcloud secrets versions add SYNC_DATABASE_URL --project s
 
 | Secret | Where the value comes from |
 | --- | --- |
-| `SYNC_DATABASE_URL` | The **transaction pooler** connection string, as `postgresql+asyncpg://…`. Not the direct connection: many short-lived Cloud Run instances against a direct connection is how the connection limit gets exhausted. |
+| `SYNC_DATABASE_URL` | The **transaction pooler** connection string with its scheme rewritten to `postgresql+asyncpg://`. Copy it from the dashboard's transaction-pooler entry rather than assembling it — the username is `postgres.<project-ref>`, not `postgres`, and the port is the pooler's. Not the direct connection: many short-lived Cloud Run instances against a direct connection is how the connection limit gets exhausted. Prepared statements are already disabled for this in `sync_core/db.py`, which is what a transaction-mode pooler requires. |
 | `SYNC_SUPABASE_SERVICE_ROLE_KEY` | Database project API settings. |
 | `SYNC_SUPABASE_ANON_KEY` | Database project API settings. |
 | `SYNC_WORKER_SHARED_SECRET` | Generated here: `openssl rand -hex 32`. Shared with the schedule and the database webhook below. |
 | `SYNC_RESEND_API_KEY` | Resend. The worker refuses to start without it. |
 | `SYNC_OPENAI_API_KEY` | OpenAI. Without it the worker logs parses it cannot do and the API answers 503 on search and assessment. |
+
+## 2a. Repository secrets — **out of band**
+
+Google needs none: the pipeline federates. Supabase has no federated identity, so three repository
+secrets exist and reach nothing in Google.
+
+```bash
+gh secret set SUPABASE_ACCESS_TOKEN
+gh secret set SUPABASE_STAGING_DB_PASSWORD
+gh secret set SUPABASE_PRODUCTION_DB_PASSWORD
+```
 
 ## 3. Database
 
