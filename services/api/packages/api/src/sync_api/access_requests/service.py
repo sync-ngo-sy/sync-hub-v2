@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from sync_api.problems import (
@@ -84,15 +84,26 @@ class AccessRequestService:
 
         Nothing is retyped: the company, the name and the address all come from the row. The
         address is the one thing the visitor could not tell us, because it is ours to hand out.
+
+        The decision is written inside the transaction that provisions the Tenant, so the two
+        land together or not at all. Anything else leaves a state nobody can get out of: a
+        conversion that fails after the Tenant is committed keeps the request pending, and
+        retrying it then fails forever on the address already being registered.
         """
         request = await self._pending_request(request_id)
+
+        async def record_the_decision(session: AsyncSession, tenant_id: UUID) -> None:
+            await self._decide(
+                session, request_id, AccessRequestStatus.CONVERTED, tenant_id=tenant_id
+            )
+
         created = await self._platform.create_tenant(
             name=request.company,
             slug=slug,
             email=request.email,
             full_name=request.full_name,
+            in_the_same_commit=record_the_decision,
         )
-        await self._decide(request, AccessRequestStatus.CONVERTED, tenant_id=created.tenant.id)
 
         logger.info(
             "access_requests.converted",
@@ -105,12 +116,15 @@ class AccessRequestService:
         """Take a request off the queue without opening anything. The row stays, so the same
         company asking again is visibly a second ask rather than a first one."""
         request = await self._pending_request(request_id)
-        await self._decide(request, AccessRequestStatus.DISMISSED)
+        async with transaction(self._db):
+            await self._decide(self._db, request_id, AccessRequestStatus.DISMISSED)
 
         logger.info("access_requests.dismissed", access_request_id=str(request_id))
         return _request_from(request)
 
     async def _pending_request(self, request_id: UUID) -> AccessRequest:
+        """Read the ask so the operator is refused before anybody is invited. Not a lock, and not
+        relied on as one: `_decide` is what settles which of two decisions actually happened."""
         request = await self._db.get(AccessRequest, request_id)
         if request is None:
             raise Problem(
@@ -119,24 +133,42 @@ class AccessRequestService:
                 detail="No access request with that id.",
             )
         if request.status is not AccessRequestStatus.PENDING:
-            raise Problem(
-                status=409,
-                type=ACCESS_REQUEST_ALREADY_DECIDED_PROBLEM_TYPE,
-                detail="This access request has already been dealt with.",
-            )
+            raise _already_decided()
         return request
 
     async def _decide(
         self,
-        request: AccessRequest,
+        session: AsyncSession,
+        request_id: UUID,
         status: AccessRequestStatus,
         *,
         tenant_id: UUID | None = None,
     ) -> None:
-        async with transaction(self._db):
-            request.status = status
-            request.tenant_id = tenant_id
-            request.decided_at = datetime.now(UTC)
+        """Take the request and write the decision, refusing if somebody decided it first.
+
+        `status = pending` in the WHERE clause is the lock: Postgres re-checks it under the row
+        lock it takes, so of two decisions arriving together exactly one matches a row. The other
+        matches none, raises, and takes its caller's whole transaction down with it.
+        """
+        decided = await session.execute(
+            update(AccessRequest)
+            .where(
+                AccessRequest.id == request_id,
+                AccessRequest.status == AccessRequestStatus.PENDING,
+            )
+            .values(status=status, tenant_id=tenant_id, decided_at=datetime.now(UTC))
+            .returning(AccessRequest.id)
+        )
+        if decided.one_or_none() is None:
+            raise _already_decided()
+
+
+def _already_decided() -> Problem:
+    return Problem(
+        status=409,
+        type=ACCESS_REQUEST_ALREADY_DECIDED_PROBLEM_TYPE,
+        detail="This access request has already been dealt with.",
+    )
 
 
 def _request_from(row: AccessRequest) -> AccessRequestRecord:

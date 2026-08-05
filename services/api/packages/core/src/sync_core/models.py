@@ -506,7 +506,7 @@ class AccessRequest(Base):
     __tablename__ = "access_requests"
     __table_args__ = (
         CheckConstraint(
-            "\nCASE status\n    WHEN 'pending'::access_request_status THEN decided_at IS NULL AND tenant_id IS NULL\n    WHEN 'dismissed'::access_request_status THEN decided_at IS NOT NULL AND tenant_id IS NULL\n    WHEN 'converted'::access_request_status THEN decided_at IS NOT NULL AND tenant_id IS NOT NULL\n    ELSE NULL::boolean\nEND",
+            "\nCASE status\n    WHEN 'pending'::access_request_status THEN decided_at IS NULL AND tenant_id IS NULL\n    WHEN 'dismissed'::access_request_status THEN decided_at IS NOT NULL AND tenant_id IS NULL\n    WHEN 'converted'::access_request_status THEN decided_at IS NOT NULL\n    ELSE NULL::boolean\nEND",
             name="access_requests_decision",
         ),
         ForeignKeyConstraint(

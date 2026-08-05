@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from sync_api.auth.registration import identity_undone_unless_taken, invite_identity
 from sync_api.problems import (
@@ -86,6 +86,7 @@ class TenantService:
         is_active: bool | None = None,
     ) -> Member:
         async with transaction(self._db):
+            await self._lock_the_admins(tenant_id)
             recruiter = await self._db.get(Recruiter, recruiter_id)
             if recruiter is None or recruiter.tenant_id != tenant_id:
                 raise Problem(
@@ -111,17 +112,29 @@ class TenantService:
         )
         return await self._member(recruiter_id)
 
-    async def _has_an_active_admin(self, tenant_id: UUID) -> bool:
-        total = await self._db.scalar(
-            select(func.count())
-            .select_from(Recruiter)
-            .where(
-                Recruiter.tenant_id == tenant_id,
-                Recruiter.role == RecruiterRole.ADMIN,
-                Recruiter.is_active.is_(True),
-            )
+    async def _lock_the_admins(self, tenant_id: UUID) -> None:
+        """Take the whole admin set before the roster is measured.
+
+        The check below asks whether any of these rows is left, and a transaction holding only the
+        row it is changing reads the admin somebody else is removing at that same moment as still
+        active. Two admins deactivated at once then both pass, and the Tenant is left with none —
+        which it cannot recover from on its own, because every route that could appoint an admin
+        needs an active admin to call it, and no platform operation reaches a Tenant's roster
+        either.
+
+        Ordered by id, so two of these queue up behind each other instead of deadlocking.
+        """
+        await self._db.execute(
+            ACTIVE_ADMINS.where(Recruiter.tenant_id == tenant_id)
+            .order_by(Recruiter.id)
+            .with_for_update()
         )
-        return bool(total)
+
+    async def _has_an_active_admin(self, tenant_id: UUID) -> bool:
+        found = await self._db.scalar(
+            ACTIVE_ADMINS.where(Recruiter.tenant_id == tenant_id).limit(1)
+        )
+        return found is not None
 
     async def _member(self, recruiter_id: UUID) -> Member:
         rows = await self._db.execute(MEMBER_QUERY.where(Recruiter.id == recruiter_id))
@@ -132,6 +145,12 @@ MEMBER_QUERY = (
     select(Recruiter.id, Profile.full_name, User.email, Recruiter.role, Recruiter.is_active)
     .join(Profile, Profile.id == Recruiter.id)
     .join(User, User.id == Recruiter.id)
+)
+
+#: One query for both halves of the invariant: the rows the check reads are exactly the rows
+#: locked before it, which is the only reason the check means anything under concurrency.
+ACTIVE_ADMINS = select(Recruiter.id).where(
+    Recruiter.role == RecruiterRole.ADMIN, Recruiter.is_active.is_(True)
 )
 
 
