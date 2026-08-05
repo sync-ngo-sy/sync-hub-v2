@@ -12,11 +12,11 @@ from sync_api.applications.screening import (
     SkillCriterion,
     Snapshot,
     SnapshotAnswer,
-    SnapshotExperience,
     SnapshotLanguage,
     SnapshotSkill,
     screen,
 )
+from sync_core.experience import WorkPeriod
 from sync_core.models import LanguageProficiency, QualificationStatus, SkillImportance
 
 TODAY = date(2026, 7, 27)
@@ -131,8 +131,8 @@ def test_an_optional_skill_never_disqualifies() -> None:
     assert verdict.status is QualificationStatus.QUALIFIED
 
 
-def a_job_lasting(start: tuple[int, int], end: tuple[int, int] | None) -> SnapshotExperience:
-    return SnapshotExperience(
+def a_job_lasting(start: tuple[int, int], end: tuple[int, int] | None) -> WorkPeriod:
+    return WorkPeriod(
         start_year=start[0],
         start_month=start[1],
         end_year=None if end is None else end[0],
@@ -190,7 +190,7 @@ def test_a_job_with_no_dates_leaves_the_total_uncomputable() -> None:
     snapshot = Snapshot(
         experiences=(
             a_job_lasting((2024, 1), (2025, 12)),
-            SnapshotExperience(
+            WorkPeriod(
                 start_year=None, start_month=None, end_year=None, end_month=None, is_current=False
             ),
         )
@@ -205,7 +205,7 @@ def test_an_undated_job_is_beside_the_point_once_the_bar_is_already_cleared() ->
     snapshot = Snapshot(
         experiences=(
             a_job_lasting((2015, 1), (2025, 12)),
-            SnapshotExperience(
+            WorkPeriod(
                 start_year=None, start_month=None, end_year=None, end_month=None, is_current=False
             ),
         )
@@ -219,7 +219,7 @@ def test_an_undated_job_is_beside_the_point_once_the_bar_is_already_cleared() ->
 def test_a_finished_job_with_no_end_date_cannot_be_measured() -> None:
     snapshot = Snapshot(
         experiences=(
-            SnapshotExperience(
+            WorkPeriod(
                 start_year=2020, start_month=1, end_year=None, end_month=None, is_current=False
             ),
         )

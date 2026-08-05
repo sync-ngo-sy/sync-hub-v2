@@ -9,7 +9,6 @@ from sync_api.applications.payload import AnsweredQuestion, ApplicationSnapshot
 from sync_api.applications.screening import (
     Snapshot,
     SnapshotAnswer,
-    SnapshotExperience,
     SnapshotLanguage,
     SnapshotSkill,
 )
@@ -25,6 +24,7 @@ from sync_api.candidates import (
     an_education,
     an_experience,
 )
+from sync_core.experience import WorkPeriod
 from sync_core.models import (
     ApplicationAnswer,
     ApplicationEducation,
@@ -191,7 +191,7 @@ async def screened(
             for taxonomy_id, years in skills.tuples()
         ),
         experiences=tuple(
-            SnapshotExperience(
+            WorkPeriod(
                 start_year=row.start_year,
                 start_month=row.start_month,
                 end_year=row.end_year,

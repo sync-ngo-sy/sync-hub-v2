@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final
 
+from sync_core.experience import WorkPeriod, months_worked
 from sync_core.models import LanguageProficiency, QualificationStatus, SkillImportance
 
 if TYPE_CHECKING:
@@ -73,15 +74,6 @@ class SnapshotSkill:
 
 
 @dataclass(frozen=True, slots=True)
-class SnapshotExperience:
-    start_year: int | None
-    start_month: int | None
-    end_year: int | None
-    end_month: int | None
-    is_current: bool
-
-
-@dataclass(frozen=True, slots=True)
 class SnapshotLanguage:
     code: str
     proficiency: LanguageProficiency
@@ -98,7 +90,7 @@ class Snapshot:
     """The immutable application data a verdict is drawn from, and nothing else."""
 
     skills: tuple[SnapshotSkill, ...] = ()
-    experiences: tuple[SnapshotExperience, ...] = ()
+    experiences: tuple[WorkPeriod, ...] = ()
     languages: tuple[SnapshotLanguage, ...] = ()
     answers: tuple[SnapshotAnswer, ...] = ()
 
@@ -196,7 +188,7 @@ def _experience_findings(criteria: Criteria, snapshot: Snapshot, today: date) ->
     wanted = criteria.minimum_total_experience_years
     if wanted is None:
         return
-    months, undated = _months_worked(snapshot.experiences, today)
+    months, undated = months_worked(snapshot.experiences, today)
     years = Decimal(months) / _MONTHS_A_YEAR
     if years >= wanted:
         return
@@ -210,58 +202,6 @@ def _experience_findings(criteria: Criteria, snapshot: Snapshot, today: date) ->
         yield _refused(
             f"the role asks for {wanted} years of work and the application has {measured}"
         )
-
-
-def _months_worked(experiences: tuple[SnapshotExperience, ...], today: date) -> tuple[int, bool]:
-    """Months of work and whether anything was left out for want of dates.
-
-    Overlapping jobs are merged rather than added up: two at once is one year a year, not two.
-    """
-    periods, undated = [], False
-    for experience in experiences:
-        period = _period(experience, today)
-        if period is None:
-            undated = True
-        else:
-            periods.append(period)
-    return sum(end - start + 1 for start, end in _merged(periods)), undated
-
-
-def _period(experience: SnapshotExperience, today: date) -> tuple[int, int] | None:
-    """A job as the inclusive months it ran for, or nothing if the Snapshot cannot say.
-
-    A missing month runs to the edge of its year — the reading `aexp_ordered` already takes,
-    where `coalesce(start_month,1)` and `coalesce(end_month,12)` decide whether a year-only
-    period is even valid. A year is the unit a year-only entry was given in.
-    """
-    if experience.start_year is None:
-        return None
-    start = _month_index(experience.start_year, experience.start_month or 1)
-    if experience.is_current:
-        end = _month_index(today.year, today.month)
-    elif experience.end_year is None:
-        return None
-    else:
-        end = _month_index(experience.end_year, experience.end_month or 12)
-    return None if end < start else (start, end)
-
-
-def _merged(periods: list[tuple[int, int]]) -> Iterator[tuple[int, int]]:
-    merged: tuple[int, int] | None = None
-    for start, end in sorted(periods):
-        if merged is None:
-            merged = (start, end)
-        elif start <= merged[1] + 1:
-            merged = (merged[0], max(merged[1], end))
-        else:
-            yield merged
-            merged = (start, end)
-    if merged is not None:
-        yield merged
-
-
-def _month_index(year: int, month: int) -> int:
-    return year * 12 + month
 
 
 def _refused(reason: str) -> _Finding:
