@@ -14,16 +14,10 @@ Default five-role vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`
 
 Multi-context — root `CONTEXT-MAP.md` pointing to a `CONTEXT.md` per workspace package. See `docs/agents/domain.md`.
 
-### Reach for an established dependency
-
-If a well-known library already does it, add it, If the only library that does it is somebody's weekend project, do not add it. You are allowed to add dependencies.
-
 ### Don't comment
 
 Comments inside the frontend should be zero.
 
-refrain from editing the readme.md file unless instructed to.
-
 ### PR
 
-When you open a PR, talk in plain English.
+When you open a **PR**, talk in plain English and explain like you are talking to a junior developer.
