@@ -38,20 +38,40 @@ class ProfileEmbedding:
         self._embedder = embedder
 
     async def rebuild(self, candidate_id: UUID) -> list[EmbeddedChunk]:
+        """Every chunk of the current profile, embedding only the text that is new.
+
+        A profile is rebuilt whole on every change, but most of it is usually the same words as
+        before — adding one skill leaves the identity, the jobs and the education untouched. The
+        text a chunk is made of is what its vector means, so identical text can keep the vector it
+        already had, and only what actually changed reaches the model.
+        """
         async with self._database.session() as session:
             profile = await current_profile(session, candidate_id)
-        if profile is None:
-            logger.warning("embedding.candidate_gone", candidate_id=str(candidate_id))
-            return []
+            if profile is None:
+                logger.warning("embedding.candidate_gone", candidate_id=str(candidate_id))
+                return []
+            chunks = chunks_of(profile)
+            if not chunks:
+                return []
+            already = await self._already_embedded(session, candidate_id)
 
-        chunks = chunks_of(profile)
-        if not chunks:
-            return []
-
-        vectors = await self._embedder.embed([chunk.text for chunk in chunks])
+        fresh = [chunk.text for chunk in chunks if chunk.text not in already]
+        written = dict(zip(fresh, await self._embedder.embed(fresh), strict=True)) if fresh else {}
+        logger.info(
+            "embedding.profile_rebuilt",
+            candidate_id=str(candidate_id),
+            embedded=len(fresh),
+            reused=len(chunks) - len(fresh),
+        )
         return [
-            EmbeddedChunk(chunk_type=chunk.chunk_type, text=chunk.text, embedding=_checked(vector))
-            for chunk, vector in zip(chunks, vectors, strict=True)
+            EmbeddedChunk(
+                chunk_type=chunk.chunk_type,
+                text=chunk.text,
+                embedding=_checked(written[chunk.text])
+                if chunk.text in written
+                else already[chunk.text],
+            )
+            for chunk in chunks
         ]
 
     async def swap(
@@ -74,6 +94,17 @@ class ProfileEmbedding:
                 for index, chunk in enumerate(chunks)
             ]
         )
+
+    async def _already_embedded(
+        self, session: AsyncSession, candidate_id: UUID
+    ) -> dict[str, list[float]]:
+        stored = await session.execute(
+            select(CandidateProfileChunk.chunk_text, CandidateProfileChunk.embedding).where(
+                CandidateProfileChunk.candidate_id == candidate_id,
+                CandidateProfileChunk.embedding_model == self._embedder.model,
+            )
+        )
+        return {text: [float(value) for value in vector] for text, vector in stored.tuples()}
 
     async def _establish_the_model(self, session: AsyncSession) -> None:
         """One model for the whole corpus, so every distance the index ranks means the same thing.

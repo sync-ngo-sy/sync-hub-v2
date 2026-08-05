@@ -380,3 +380,47 @@ async def _claimed_by_somebody_else(session: AsyncSession, candidate_id: UUID) -
     )
     await session.commit()
 
+
+async def test_only_the_chunks_whose_text_changed_reach_the_embedder(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, database: Database
+) -> None:
+    """A profile is rebuilt whole on every change, but a chunk's text is what its vector means —
+    so adding one skill should cost one embedding, not a whole profile's worth."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await browser.put(PROFILE, json=A_FULL_PROFILE)
+    embedder = FakeEmbedder()
+    worker = a_reembed_worker(database, embedder)
+    await worker.run_once()
+    first = await profile_chunks(db_session, candidate_id)
+    assert len(embedder.calls) == 1
+
+    await browser.put(
+        PROFILE,
+        json={**A_FULL_PROFILE, "skills": [{"name": "Python", "years_experience": 9.0}]},
+    )
+    await worker.run_once()
+
+    assert embedder.calls[1] == ["Skills\nPython (9 years)"]
+    unchanged = {chunk.chunk_text: list(chunk.embedding) for chunk in first}
+    rebuilt = await profile_chunks(db_session, candidate_id)
+    reused = [chunk for chunk in rebuilt if chunk.chunk_text in unchanged]
+    assert len(reused) == len(rebuilt) - 1
+    assert all(list(chunk.embedding) == unchanged[chunk.chunk_text] for chunk in reused)
+
+
+async def test_a_profile_that_did_not_change_costs_no_embedding_at_all(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, database: Database
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await browser.put(PROFILE, json=A_FULL_PROFILE)
+    embedder = FakeEmbedder()
+    worker = a_reembed_worker(database, embedder)
+    await worker.run_once()
+
+    await browser.put(PROFILE, json=A_FULL_PROFILE)
+    await worker.run_once()
+
+    assert len(embedder.calls) == 1
+    assert await profile_chunks(db_session, candidate_id) != []
