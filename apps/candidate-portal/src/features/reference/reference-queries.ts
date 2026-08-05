@@ -18,6 +18,10 @@ export const locationsQuery = api.queryOptions('get', '/v1/locations', undefined
   ...REFERENCE_CACHE,
 });
 
+export const canonicalRolesQuery = api.queryOptions('get', '/v1/roles', undefined, {
+  ...REFERENCE_CACHE,
+});
+
 /** Warmed by the profile route, so a saved value is never read back as its raw code while the
  * list that names it is still on the wire. A taxonomy that will not load is not worth failing a
  * whole page for — the picker says so itself — so this settles either way. */
@@ -27,5 +31,6 @@ export function warmReferenceData(queryClient: QueryClient): Promise<unknown> {
     settled(queryClient.ensureQueryData(canonicalSkillsQuery)),
     settled(queryClient.ensureQueryData(languagesQuery)),
     settled(queryClient.ensureQueryData(locationsQuery)),
+    settled(queryClient.ensureQueryData(canonicalRolesQuery)),
   ]);
 }

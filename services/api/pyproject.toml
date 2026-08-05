@@ -61,6 +61,9 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 filterwarnings = ["error"]
+# `scripts/` is importable, so the seed's own helpers can be tested rather than only run: the
+# purge lifts the Snapshot's immutability triggers, and nothing but a test says it puts them back.
+pythonpath = ["scripts"]
 markers = [
     # Hits the real OpenAI API: needs a key, costs money, and is not deterministic. Run it
     # deliberately with `-m ai_live`; everything else parses with the fake extractor.
@@ -79,6 +82,9 @@ addopts = "-ra --strict-markers --strict-config -m 'not ai_live and not email_li
 # inference, so it is a separate decision, not this one.
 [tool.pyright]
 include = ["packages", "scripts", "tests"]
+# `seed` is a package under `scripts/`, imported as `seed.*` by the seed scripts themselves and
+# by the test that holds the purge to putting the Snapshot's triggers back.
+extraPaths = ["scripts"]
 typeCheckingMode = "standard"
 reportMissingParameterType = "error"
 reportMissingTypeArgument = "error"

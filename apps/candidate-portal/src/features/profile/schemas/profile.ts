@@ -52,12 +52,20 @@ const optionalNumber = (low: number, high: number, message: string) =>
     )
     .transform((raw) => (raw === '' ? null : Number(raw)));
 
-const optionalYear = optionalNumber(
-  EARLIEST_YEAR,
-  LATEST_YEAR,
-  `Enter a year between ${EARLIEST_YEAR} and ${LATEST_YEAR}.`,
-);
+const YEAR_MESSAGE = `Enter a year between ${EARLIEST_YEAR} and ${LATEST_YEAR}.`;
+
+const optionalYear = optionalNumber(EARLIEST_YEAR, LATEST_YEAR, YEAR_MESSAGE);
 const optionalMonth = optionalNumber(1, 12, 'Enter a month between 1 and 12.');
+
+const requiredYear = z
+  .string()
+  .trim()
+  .min(1, 'Enter the year.')
+  .refine(
+    (raw) => /^\d+$/.test(raw) && Number(raw) >= EARLIEST_YEAR && Number(raw) <= LATEST_YEAR,
+    YEAR_MESSAGE,
+  )
+  .transform(Number);
 
 const LANGUAGE_CODE_MESSAGE = `A language code is ${MIN_LANGUAGE_CODE} to ${MAX_LANGUAGE_CODE} characters.`;
 const isLanguageCode = (raw: string) =>
@@ -125,6 +133,7 @@ const experience = z
     job_title: line('Enter the job title.'),
     company_name: optionalLine,
     ...period,
+    start_year: requiredYear,
     is_current: z.boolean(),
     description: optionalParagraph,
   })
@@ -135,6 +144,14 @@ const experience = z
         code: 'custom',
         path: [endOf(entry)],
         message: 'A current job has no end date.',
+      });
+      return;
+    }
+    if (!entry.is_current && entry.end_year === null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['end_year'],
+        message: 'Enter the year it ended, or tick “I still work here”.',
       });
       return;
     }
@@ -196,8 +213,10 @@ export const profileSchema = z
     headline: optionalLine,
     summary: optionalParagraph,
     location_key: optionalLine,
+    canonical_role_key: optionalLine,
     preferred_language_code: optionalLanguageCode,
     is_searchable: z.boolean(),
+    total_experience_years: z.number(),
     experiences: section(experience, 'jobs'),
     educations: section(education, 'qualifications'),
     skills: section(skill, 'skills'),
@@ -298,8 +317,11 @@ export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileF
     headline: orEmpty(profile.headline),
     summary: orEmpty(profile.summary),
     location_key: orEmpty(profile.location_key),
+    canonical_role_key: orEmpty(profile.canonical_role_key),
     preferred_language_code: orEmpty(profile.preferred_language_code),
     is_searchable: profile.is_searchable,
+    total_experience_years:
+      'total_experience_years' in profile ? profile.total_experience_years : 0,
     experiences: (profile.experiences ?? []).map((entry) => ({
       job_title: entry.job_title,
       company_name: orEmpty(entry.company_name),

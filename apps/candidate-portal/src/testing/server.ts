@@ -5,11 +5,12 @@ import { listsCvs } from '@/features/cvs/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
 import { countsUnread, listsNotifications } from '@/features/notifications/testing/handlers';
 import {
+  hasCanonicalRoles,
   hasCanonicalSkills,
   hasLanguages,
   hasLocations,
 } from '@/features/reference/testing/handlers';
-import { CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
+import { CANONICAL_ROLES, CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
 
 /**
  * The bell lives in the account shell, so every signed-in render asks what it should say. These
@@ -30,6 +31,7 @@ export const server = setupServer(
   ...hasCanonicalSkills(CANONICAL_SKILLS),
   ...hasLanguages(LANGUAGES),
   ...hasLocations(LOCATIONS),
+  ...hasCanonicalRoles(CANONICAL_ROLES),
   ...listsCvs([]),
   ...listsApplications([]),
   ...listsJobs([]),

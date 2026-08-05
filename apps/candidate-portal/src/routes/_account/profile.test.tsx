@@ -261,6 +261,35 @@ describe('the profile editor', () => {
     expect(sent.body?.location_key).toBe('sy-rif-dimashq');
   });
 
+  it('saves the kind of work chosen by its name as its key', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByLabelText('What you do'));
+    await user.click(screen.getByRole('option', { name: 'Frontend Engineer' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.canonical_role_key).toBe('frontend-engineer');
+  });
+
+  it('lets the candidate claim no kind of work at all', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.click(screen.getByLabelText('What you do'));
+    await user.click(screen.getByRole('option', { name: 'Not saying' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.canonical_role_key).toBeNull();
+  });
+
+  it('shows the total experience the API derived, with no way to type one', async () => {
+    await openProfile();
+
+    expect(screen.getByText('6 years')).toBeVisible();
+    expect(screen.queryByLabelText('Total experience')).toBeNull();
+  });
+
   it('saves the preferred language chosen by name as its code', async () => {
     const { user, sent } = await openProfileThatSaves();
 

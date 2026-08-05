@@ -40,6 +40,14 @@ create table candidates (
 
   location_key text,  -- FK to locations(key) added in migration 03
 
+  canonical_role_key text,  -- FK to canonical_roles(key) added in migration 03
+
+  -- Derived from the experience entries on every profile save and never typed, so there is no
+  -- state where this and the jobs it came from disagree. Whole years: a Recruiter asks for
+  -- three years of work, not for 38 months.
+  total_experience_years int not null default 0
+    constraint candidates_total_experience_nonneg check (total_experience_years >= 0),
+
   unmapped_skills text[] not null default '{}',
 
   preferred_language_code text,  -- FK to languages(code) added in migration 03
@@ -55,6 +63,8 @@ create table candidates (
 );
 
 create index candidates_current_cv_id_idx on candidates (current_cv_id);
+-- A seniority bar is asked for as a range over every Candidate, not read off one row.
+create index candidates_total_experience_idx on candidates (total_experience_years);
 create index candidates_searchable_idx on candidates (id)
   where is_searchable and deleted_at is null;
 

@@ -81,6 +81,15 @@ there is nothing to put back and it costs nothing; for a profile written by hand
 safety net.
 _Avoid_: Toast (this outlives one), banner, undo bar.
 
+**What you do**:
+The editor's name for the Candidate's **Canonical role** — called by what it asks rather than by
+its wire name, because "role" on a page about jobs reads as the job being applied for. A picker
+over the platform's list, or "Not saying". A CV proposes one into the form like any other filled
+field, and it is still the Candidate's Save that claims it. **Total experience** appears here
+too, above the jobs it is derived from and with no field to type it into: correcting a date is
+how it changes, and the editor says so rather than leaving somebody hunting for one.
+_Avoid_: Role, Job title, Discipline, Position.
+
 **Other skills**:
 The skills a Candidate claims that the platform has no Canonical name for — `unmapped_skills` on
 the wire. Recruiters read them; Screening never does, which is why the editor keeps them in a
@@ -91,8 +100,8 @@ _Avoid_: Unmapped skills (the wire's word, not the reader's), custom skills, fre
 
 **Reference data**:
 The platform's fixed lists — Canonical skills with their categories, languages with their names
-and codes, and Locations under their heading — read from endpoints of their own and held for the
-session. Every field the API constrains is a picker over one of these rather than a text box, so
+and codes, Locations under their heading, and Canonical roles — read from endpoints of their own
+and held for the session. Every field the API constrains is a picker over one of these rather than a text box, so
 a profile the API would refuse cannot be typed. Each list is small enough to fetch whole and
 filter in the browser; nothing is searched server-side, and a picker shows the language's name
 while the profile stores its code — the same for a Location, which reads as its name and is

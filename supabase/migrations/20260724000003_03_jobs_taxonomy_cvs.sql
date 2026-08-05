@@ -12,6 +12,15 @@ create table locations (
   kind location_kind not null
 );
 
+-- What kind of practitioner a Candidate is, as a closed list, keyed like `locations` and for
+-- the same reason: filtering by it is an equality on `key`, never a guess at the words somebody
+-- used about themselves. Unlike a Canonical skill it is a judgement rather than a reading — CV
+-- parsing proposes one and the Candidate confirms it — but it is still chosen, never typed.
+create table canonical_roles (
+  key  text primary key,      -- 'frontend-engineer'
+  name text not null unique   -- what a picker shows, so no two rows may share one
+);
+
 create table skill_categories (
   id         uuid primary key default gen_random_uuid(),
   name       text not null unique,
@@ -155,6 +164,11 @@ alter table candidates
   add constraint candidates_location_fk
   foreign key (location_key) references locations (key);
 create index candidates_location_key_idx on candidates (location_key);
+
+alter table candidates
+  add constraint candidates_canonical_role_fk
+  foreign key (canonical_role_key) references canonical_roles (key);
+create index candidates_canonical_role_idx on candidates (canonical_role_key);
 
 alter table candidates
   add constraint candidates_current_cv_fk

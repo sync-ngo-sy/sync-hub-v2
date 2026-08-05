@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 
 from sync_api.problems import (
+    UNKNOWN_CANONICAL_ROLE_PROBLEM_TYPE,
     UNKNOWN_CANONICAL_SKILL_PROBLEM_TYPE,
     UNKNOWN_LANGUAGE_PROBLEM_TYPE,
     UNKNOWN_LOCATION_PROBLEM_TYPE,
     InvalidField,
     Problem,
 )
-from sync_core.models import Language, Location, SkillTaxonomy
+from sync_core.models import CanonicalRole, Language, Location, SkillTaxonomy
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -94,6 +95,29 @@ async def refuse_unknown_location(session: AsyncSession, key: str | None, *, at:
         ],
         problem_type=UNKNOWN_LOCATION_PROBLEM_TYPE,
         detail="A location has to be one the platform lists.",
+    )
+
+
+async def refuse_unknown_canonical_role(session: AsyncSession, key: str | None, *, at: str) -> None:
+    """Refuse a Canonical role key the taxonomy does not have, located as `refuse_unknown_location`.
+
+    A role is proposed by CV parsing and confirmed by the Candidate, but it is still chosen from
+    a list: an unknown key is a bug or a forged request, never a Candidate typing their own.
+    """
+    if key is None:
+        return
+    if await session.scalar(select(CanonicalRole.key).where(CanonicalRole.key == key)) is not None:
+        return
+    _refuse_unknown(
+        [
+            InvalidField(
+                location=at,
+                message=f"“{key}” is not a Canonical role.",
+                type="unknown_canonical_role",
+            )
+        ],
+        problem_type=UNKNOWN_CANONICAL_ROLE_PROBLEM_TYPE,
+        detail="A role has to be one of the platform's Canonical roles.",
     )
 
 

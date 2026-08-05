@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sync_api.candidates.payload import (
+    DraftExperience,
     DraftSkill,
     ProfileDraft,
     ProfileEducation,
-    ProfileExperience,
     ProfileLanguage,
     ProfileProject,
 )
@@ -41,6 +41,10 @@ def draft_of(
     document is written in rather than a preference; the third is a choice from a list, which
     the free text a CV gives its address in is not — "Damascus, Syria" names no Location on its
     own, and guessing which one it meant is how the wrong governorate gets saved.
+
+    The Canonical role is the one thing the CV is allowed to propose into a choice from a list,
+    because it is a judgement the parse is asked to make. A CV that supports none leaves
+    whatever the candidate has already claimed: a vague CV is not a reason to unsay it.
     """
     return ProfileDraft(
         full_name=parsed.full_name or full_name,
@@ -48,11 +52,12 @@ def draft_of(
         headline=parsed.headline,
         summary=parsed.summary,
         location_key=candidate.location_key,
+        canonical_role_key=parsed.canonical_role or candidate.canonical_role_key,
         preferred_language_code=candidate.preferred_language_code,
         is_searchable=candidate.is_searchable,
         unmapped_skills=list(parsed.unmapped_skills),
         experiences=[
-            ProfileExperience(
+            DraftExperience(
                 job_title=entry.job_title,
                 company_name=entry.company_name,
                 start_year=entry.start_year,

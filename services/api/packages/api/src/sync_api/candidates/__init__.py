@@ -3,6 +3,7 @@ from sync_api.candidates.deletion import DELETED_NAME, CandidateDeletion
 from sync_api.candidates.draft import draft_of
 from sync_api.candidates.payload import (
     CandidateProfile,
+    DraftExperience,
     DraftSkill,
     ProfileDraft,
     ProfileEducation,
@@ -33,6 +34,7 @@ __all__ = [
     "CandidateDeletion",
     "CandidateProfile",
     "CandidateProfileService",
+    "DraftExperience",
     "DraftSkill",
     "LiveSection",
     "ProfileDraft",
