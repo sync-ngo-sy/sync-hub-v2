@@ -32,7 +32,11 @@ services = {
       SYNC_CORS_ALLOWED_ORIGINS = "https://jobs-staging.sync.ngo,https://app-staging.sync.ngo,https://admin-staging.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app-staging.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin-staging.sync.ngo"
-      SYNC_EMAIL_FROM           = "Sync staging <noreply@sync.ngo>"
+      # Resend's sandbox sender, which needs no verified domain. Sending as @sync.ngo would need
+      # DKIM and SPF records on the domain that carries the organisation's Workspace mail, and #86
+      # is explicit that mail records stay untouched. Production sends from a subdomain instead, so
+      # the root domain's SPF and DMARC are never involved — see the note in production's tfvars.
+      SYNC_EMAIL_FROM = "Sync staging <onboarding@resend.dev>"
     }
 
     secret_env = {
@@ -62,7 +66,8 @@ services = {
     env = {
       SYNC_ENVIRONMENT  = "staging"
       SYNC_SUPABASE_URL = "https://qjsqmtemyhvtnurohckb.supabase.co"
-      SYNC_EMAIL_FROM   = "Sync staging <noreply@sync.ngo>"
+      # The sender is the worker's business, not the API's — see the note above it.
+      SYNC_EMAIL_FROM = "Sync staging <onboarding@resend.dev>"
     }
 
     secret_env = {

@@ -57,3 +57,14 @@ Fill these in as each domain is attached, so the zone can be reconstructed from 
 
 Untouched, deliberately. After any DNS work, verify delivery in both directions before calling the
 change done: the whole reason DNS stayed where it is was to avoid risking mail.
+
+The platform's own outbound mail is the one thing that comes close, so it is kept at arm's length.
+Production sends as `noreply@send.sync.ngo`, and `send.sync.ngo` gets its own DKIM and SPF records
+for the sending provider. The alternative — sending as `@sync.ngo` — means editing the SPF record
+that carries Workspace mail, on the root domain, which is exactly the risk this whole design
+declined to take. Staging does not send from the domain at all; it uses the provider's sandbox
+sender, which needs no records.
+
+| Hostname | Type | Purpose |
+| --- | --- | --- |
+| `send.sync.ngo` | TXT (SPF), CNAME (DKIM) | Outbound platform mail. Values come from Resend. Root domain untouched. |

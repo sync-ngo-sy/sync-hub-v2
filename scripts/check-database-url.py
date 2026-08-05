@@ -77,7 +77,9 @@ async def connect(url: str) -> None:
                     text("select current_user, current_database(), inet_server_port()")
                 )
             ).one()
-            print(f"  connected     user={row[0]} database={row[1]} server_port={row[2]}")
+            # inet_server_port() is Postgres's own port behind the pooler, so it reads 5432 even
+            # on a transaction-mode connection. Labelled to stop that looking like a contradiction.
+            print(f"  connected     user={row[0]} database={row[1]} backend_port={row[2]}")
 
             counting = text(
                 "select count(*) from information_schema.tables where table_schema = 'public'"

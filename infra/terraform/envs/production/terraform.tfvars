@@ -31,7 +31,12 @@ services = {
       SYNC_CORS_ALLOWED_ORIGINS = "https://jobs.sync.ngo,https://app.sync.ngo,https://admin.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin.sync.ngo"
-      SYNC_EMAIL_FROM           = "Sync <noreply@sync.ngo>"
+      # A subdomain, not the root domain, and this is a mail-safety decision rather than a
+      # cosmetic one. Verifying a sender in Resend means DKIM and SPF records; putting them on
+      # sync.ngo itself means editing the SPF record that carries the organisation's Workspace
+      # mail, which #86 forbids touching. A subdomain gets its own records and cannot affect it.
+      # Nothing sends from here until send.sync.ngo is verified — until then this address bounces.
+      SYNC_EMAIL_FROM = "Sync <noreply@send.sync.ngo>"
     }
 
     secret_env = {
@@ -59,7 +64,8 @@ services = {
     env = {
       SYNC_ENVIRONMENT  = "production"
       SYNC_SUPABASE_URL = "https://skmsobeqyljduzkjmokr.supabase.co"
-      SYNC_EMAIL_FROM   = "Sync <noreply@sync.ngo>"
+      # The sender is the worker's business, not the API's — see the note above it.
+      SYNC_EMAIL_FROM = "Sync <noreply@send.sync.ngo>"
     }
 
     secret_env = {
