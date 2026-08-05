@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final
+from dataclasses import dataclass, field
+from itertools import chain
+from typing import TYPE_CHECKING, Any, Final, cast
 
-from sqlalchemy import insert, literal, select
+from sqlalchemy import func, insert, literal, select
+from sqlalchemy.dialects.postgresql import JSONB, aggregate_order_by
 
 from sync_api.applications.payload import AnsweredQuestion, ApplicationSnapshot
 from sync_api.applications.screening import (
@@ -19,10 +21,6 @@ from sync_api.candidates import (
     ProfileLanguage,
     ProfileProject,
     ProfileSkill,
-    a_language,
-    a_project,
-    an_education,
-    an_experience,
 )
 from sync_core.models import (
     ApplicationAnswer,
@@ -32,7 +30,6 @@ from sync_core.models import (
     ApplicationProfileSnapshot,
     ApplicationProject,
     ApplicationSkill,
-    Base,
     Candidate,
     CandidateEducation,
     CandidateExperience,
@@ -46,11 +43,20 @@ from sync_core.models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from uuid import UUID
 
-    from sqlalchemy import Executable
+    from pydantic import BaseModel
+    from sqlalchemy import Executable, ScalarSelect
     from sqlalchemy.ext.asyncio import AsyncSession
+
+type FrozenSection = (
+    type[ApplicationExperience]
+    | type[ApplicationEducation]
+    | type[ApplicationSkill]
+    | type[ApplicationLanguage]
+    | type[ApplicationProject]
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +65,7 @@ class Twin:
     sides, which is what keeps the copy mechanical and kills the add-a-column-forget-to-map-it
     bug — so one list of names serves the `INSERT` and the `SELECT` alike."""
 
-    frozen: type[Base]
+    frozen: FrozenSection
     live: LiveSection
     columns: tuple[str, ...]
 
@@ -73,6 +79,30 @@ class Twin:
             .where(self.live.candidate_id == candidate_id)
             .order_by(self.live.sort_order),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class Reading[EntryT: BaseModel]:
+    payload: type[EntryT]
+    frozen: FrozenSection
+    named: Mapping[str, Any] = field(default_factory=dict)
+
+    def of(self, application_id: UUID) -> ScalarSelect[Any]:
+        entry = func.jsonb_build_object(
+            *chain.from_iterable((name, self._reads(name)) for name in self.payload.model_fields)
+        )
+        return (
+            select(func.jsonb_agg(aggregate_order_by(entry, self.frozen.sort_order), type_=JSONB))
+            .where(self.frozen.application_id == application_id)
+            .scalar_subquery()
+        )
+
+    def entries(self, aggregated: object) -> list[EntryT]:
+        rows = cast("list[dict[str, Any]]", aggregated) if aggregated else []
+        return [self.payload.model_validate(entry) for entry in rows]
+
+    def _reads(self, name: str) -> Any:
+        return self.named[name] if name in self.named else getattr(self.frozen, name)
 
 
 #: `email` is deliberately absent from the scalar row: only `auth.users` has a confirmed one. So
@@ -148,6 +178,24 @@ SECTIONS: Final = (
     ),
 )
 
+EXPERIENCES: Final = Reading(payload=ProfileExperience, frozen=ApplicationExperience)
+EDUCATIONS: Final = Reading(payload=ProfileEducation, frozen=ApplicationEducation)
+SKILLS: Final = Reading(
+    payload=ProfileSkill,
+    frozen=ApplicationSkill,
+    named={
+        "name": select(SkillTaxonomy.canonical_name)
+        .where(SkillTaxonomy.id == ApplicationSkill.taxonomy_id)
+        .scalar_subquery()
+    },
+)
+LANGUAGES: Final = Reading(
+    payload=ProfileLanguage,
+    frozen=ApplicationLanguage,
+    named={"code": ApplicationLanguage.language_code},
+)
+PROJECTS: Final = Reading(payload=ProfileProject, frozen=ApplicationProject)
+
 
 def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
     """The live profile frozen, as six column-listed `INSERT … SELECT`s.
@@ -221,9 +269,22 @@ async def screened(
 async def snapshot_of(session: AsyncSession, application_id: UUID) -> ApplicationSnapshot:
     """The frozen data back out, whole. What a Recruiter reviews and what an assessment
     reads — neither of them ever the live profile it was copied from."""
-    captured = await session.get(ApplicationProfileSnapshot, application_id)
-    if captured is None:  # pragma: no cover — written in the submission transaction
+    row = (
+        await session.execute(
+            select(
+                ApplicationProfileSnapshot,
+                EXPERIENCES.of(application_id).label("experiences"),
+                EDUCATIONS.of(application_id).label("educations"),
+                SKILLS.of(application_id).label("skills"),
+                LANGUAGES.of(application_id).label("languages"),
+                PROJECTS.of(application_id).label("projects"),
+            ).where(ApplicationProfileSnapshot.application_id == application_id)
+        )
+    ).first()
+    if row is None:  # pragma: no cover — written in the submission transaction
         raise LookupError(f"no snapshot for application {application_id}")
+
+    captured: ApplicationProfileSnapshot = row.ApplicationProfileSnapshot
     return ApplicationSnapshot(
         full_name=captured.full_name,
         phone=captured.phone,
@@ -232,11 +293,11 @@ async def snapshot_of(session: AsyncSession, application_id: UUID) -> Applicatio
         location=captured.location,
         unmapped_skills=captured.unmapped_skills,
         total_experience_years=captured.total_experience_years,
-        experiences=await _experiences(session, application_id),
-        educations=await _educations(session, application_id),
-        skills=await _skills(session, application_id),
-        languages=await _languages(session, application_id),
-        projects=await _projects(session, application_id),
+        experiences=EXPERIENCES.entries(row.experiences),
+        educations=EDUCATIONS.entries(row.educations),
+        skills=SKILLS.entries(row.skills),
+        languages=LANGUAGES.entries(row.languages),
+        projects=PROJECTS.entries(row.projects),
     )
 
 
@@ -258,49 +319,3 @@ async def answers_of(session: AsyncSession, application_id: UUID) -> list[Answer
         )
         for answer, question in rows.tuples()
     ]
-
-
-async def _experiences(session: AsyncSession, application_id: UUID) -> list[ProfileExperience]:
-    rows = await session.scalars(
-        select(ApplicationExperience)
-        .where(ApplicationExperience.application_id == application_id)
-        .order_by(ApplicationExperience.sort_order)
-    )
-    return [an_experience(row) for row in rows]
-
-
-async def _educations(session: AsyncSession, application_id: UUID) -> list[ProfileEducation]:
-    rows = await session.scalars(
-        select(ApplicationEducation)
-        .where(ApplicationEducation.application_id == application_id)
-        .order_by(ApplicationEducation.sort_order)
-    )
-    return [an_education(row) for row in rows]
-
-
-async def _languages(session: AsyncSession, application_id: UUID) -> list[ProfileLanguage]:
-    rows = await session.scalars(
-        select(ApplicationLanguage)
-        .where(ApplicationLanguage.application_id == application_id)
-        .order_by(ApplicationLanguage.sort_order)
-    )
-    return [a_language(row) for row in rows]
-
-
-async def _projects(session: AsyncSession, application_id: UUID) -> list[ProfileProject]:
-    rows = await session.scalars(
-        select(ApplicationProject)
-        .where(ApplicationProject.application_id == application_id)
-        .order_by(ApplicationProject.sort_order)
-    )
-    return [a_project(row) for row in rows]
-
-
-async def _skills(session: AsyncSession, application_id: UUID) -> list[ProfileSkill]:
-    rows = await session.execute(
-        select(SkillTaxonomy.canonical_name, ApplicationSkill.years_experience)
-        .join(SkillTaxonomy, SkillTaxonomy.id == ApplicationSkill.taxonomy_id)
-        .where(ApplicationSkill.application_id == application_id)
-        .order_by(ApplicationSkill.sort_order)
-    )
-    return [ProfileSkill(name=name, years_experience=float(years)) for name, years in rows.tuples()]

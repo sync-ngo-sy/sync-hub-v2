@@ -379,6 +379,34 @@ async def test_a_save_racing_a_submission_cannot_snapshot_a_profile_nobody_judge
         assert applying.json()["type"] == "urn:sync:problem:incomplete-profile"
 
 
+async def test_criteria_replaced_mid_submission_cannot_leave_a_verdict_citing_nothing(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)  # no criteria yet, so this profile passes
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+
+    replacing, applying = await asyncio.gather(
+        set_criteria(
+            recruiter,
+            job["id"],
+            skills=[{"name": "Kubernetes", "importance": "required", "minimum_years": None}],
+        ),
+        apply_to(other_browser, job["id"]),
+    )
+
+    assert applying.status_code == 201, applying.text
+    verdict = (await stored_application(db_session, applying.json()["id"])).qualification_status
+    if replacing.status_code == 200:
+        assert verdict is QualificationStatus.DISQUALIFIED
+    else:
+        assert replacing.status_code == 409, replacing.text
+        assert replacing.json()["type"] == "urn:sync:problem:job-criteria-locked"
+        assert verdict is QualificationStatus.QUALIFIED
+
+
 async def test_every_required_question_has_to_be_answered(
     recruiter: AsyncClient,
     other_browser: AsyncClient,

@@ -152,3 +152,5 @@ create table candidate_embedding_jobs (
   updated_at timestamptz not null default now()
 );
 create index candidate_embedding_jobs_claim_idx on candidate_embedding_jobs (updated_at) where dirty;
+create index candidate_embedding_jobs_stuck_idx on candidate_embedding_jobs (claimed_at)
+  where claimed_at is not null;

@@ -96,3 +96,13 @@ async def test_the_schema_is_reachable_through_the_pooler(pooled_database: Datab
         result = await session.execute(text("select count(*) from languages"))
 
     assert result.scalar_one() > 0
+
+
+async def test_the_statement_timeout_reaches_the_connection_behind_the_pooler(
+    pooled_database: Database, settings: Settings
+) -> None:
+    reading = text("select setting from pg_settings where name = 'statement_timeout'")
+    async with pooled_database.session() as session:
+        applied = (await session.execute(reading)).scalar_one()
+
+    assert int(applied) == settings.database_statement_timeout_ms

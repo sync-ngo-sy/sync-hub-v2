@@ -5,12 +5,10 @@ from typing import TYPE_CHECKING
 
 from sync_api.problems import CANDIDATE_ONLY_PROBLEM_TYPE, Problem
 from sync_core import get_logger
-from sync_core.models import AccountType, Candidate
+from sync_core.models import AccountType
 
 if TYPE_CHECKING:
     from uuid import UUID
-
-    from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth import ActingProfile
 
@@ -26,11 +24,11 @@ class ActingCandidate:
         return self.profile.id
 
 
-async def acting_candidate(session: AsyncSession, profile: ActingProfile) -> ActingCandidate:
+def acting_candidate(profile: ActingProfile) -> ActingCandidate:
     if profile.account_type is not AccountType.CANDIDATE:
         raise _candidate_only()
 
-    if await session.get(Candidate, profile.id) is None:
+    if not profile.has_account_row:
         logger.error("candidates.candidate_row_missing", profile_id=str(profile.id))
         raise _candidate_only()
 

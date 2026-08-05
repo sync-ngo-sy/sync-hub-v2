@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import ColumnElement, delete, exists, select
 
 from sync_api.candidates.payload import (
     CandidateProfile,
@@ -113,7 +113,8 @@ class CandidateProfileService:
             candidate.is_searchable = profile.is_searchable
             # Derived here and never read off the request: whatever a caller sends is ignored,
             # so the number and the jobs it came from cannot disagree.
-            candidate.total_experience_years = derived_experience(profile.experiences)
+            derived = derived_experience(profile.experiences)
+            candidate.total_experience_years = derived
             candidate.unmapped_skills = profile.unmapped_skills
             for section in (
                 delete(CandidateExperience).where(CandidateExperience.candidate_id == candidate_id),
@@ -126,7 +127,7 @@ class CandidateProfileService:
             self._db.add_all(_rows_for(candidate_id, profile, skills))
 
         logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
-        return await self.profile(candidate_id)
+        return profile.model_copy(update={"total_experience_years": derived})
 
     async def _candidate(
         self, candidate_id: UUID, *, lock: bool = False
@@ -179,25 +180,44 @@ async def whole_candidate(
 ) -> tuple[Candidate, Profile]:
     """The two rows one profile is spread across: the claims, and the identity.
 
-    `lock` takes the candidate row `FOR UPDATE`. Every writer of a profile queues on that row,
-    so a reader that is about to copy the profile somewhere should take it too.
+    One statement, because the two share a primary key — `candidates.id` *is* `profiles.id` — so
+    asking for them separately was two round trips for one index lookup's worth of work.
+
+    `lock` takes the candidate row `FOR UPDATE`, and only that row: every writer of a profile
+    queues on it, so a reader about to copy the profile somewhere should take it too. The
+    identity comes along unlocked, as it did before.
     """
-    candidate = await session.get(Candidate, candidate_id, with_for_update=lock)
-    identity = await session.get(Profile, candidate_id)
-    if candidate is None or identity is None:  # pragma: no cover — `acting_candidate` refused this
+    query = (
+        select(Candidate, Profile)
+        .join(Profile, Profile.id == Candidate.id)
+        .where(Candidate.id == candidate_id)
+    )
+    if lock:
+        query = query.with_for_update(of=Candidate)
+
+    found = (await session.execute(query)).tuples().first()
+    if found is None:  # pragma: no cover — `acting_candidate` refused this
         raise LookupError(f"no candidate row for {candidate_id}")
-    return candidate, identity
+    return found
 
 
 async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
     """A profile too thin to judge an Application by. Named, because "422" alone sends nobody
     anywhere."""
+    row = (
+        await session.execute(
+            select(
+                _has_a_section(CandidateSkill, candidate_id).label("skills"),
+                _has_a_section(CandidateExperience, candidate_id).label("experiences"),
+                _has_a_section(CandidateEducation, candidate_id).label("educations"),
+            )
+        )
+    ).one()
+
     missing = []
-    if not await _section_count(session, CandidateSkill, candidate_id):
+    if not row.skills:
         missing.append("at least one skill")
-    if not await _section_count(session, CandidateExperience, candidate_id) and not (
-        await _section_count(session, CandidateEducation, candidate_id)
-    ):
+    if not row.experiences and not row.educations:
         missing.append("either a job or a qualification")
     if missing:
         raise Problem(
@@ -208,11 +228,8 @@ async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -
         )
 
 
-async def _section_count(session: AsyncSession, section: LiveSection, candidate_id: UUID) -> int:
-    count = await session.scalar(
-        select(func.count()).select_from(section).where(section.candidate_id == candidate_id)
-    )
-    return int(count or 0)
+def _has_a_section(section: LiveSection, candidate_id: UUID) -> ColumnElement[bool]:
+    return exists().where(section.candidate_id == candidate_id)
 
 
 async def stated_skills(session: AsyncSession, candidate_id: UUID) -> list[ProfileSkill]:

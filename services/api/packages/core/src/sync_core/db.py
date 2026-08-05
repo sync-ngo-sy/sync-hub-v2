@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from sqlalchemy import event
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from sqlalchemy.engine import URL
+    from sqlalchemy.engine import URL, Connection
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
     from sync_core.settings import Settings
 
@@ -35,6 +37,17 @@ POOLER_CONNECT_ARGS = {
 }
 
 
+def bound_every_statement(engine: AsyncEngine, statement_timeout_ms: int) -> None:
+    if statement_timeout_ms <= 0:
+        return
+
+    bound = f"set local statement_timeout = '{int(statement_timeout_ms)}ms'"
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def _bound_statements(connection: Connection) -> None:
+        connection.exec_driver_sql(bound)
+
+
 class Database:
     def __init__(self, settings: Settings) -> None:
         self._engine = create_async_engine(
@@ -45,6 +58,7 @@ class Database:
             pool_pre_ping=True,
             connect_args=POOLER_CONNECT_ARGS,
         )
+        bound_every_statement(self._engine, settings.database_statement_timeout_ms)
         self._session_factory = async_sessionmaker(
             self._engine,
             expire_on_commit=False,

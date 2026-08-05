@@ -611,6 +611,37 @@ async def test_a_candidate_cannot_type_their_own_total_experience(
     assert saved.json()["total_experience_years"] == 1
 
 
+async def test_a_save_answers_with_exactly_what_a_read_would(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    body = a_profile(
+        headline="Backend engineer",
+        experiences=[a_job((2018, 1), (2020, 12))],
+        skills=[{"name": "Python", "years_experience": 4.0}],
+        languages=[{"code": "en", "proficiency": "fluent"}],
+    )
+
+    saved = await browser.put(PROFILE, json=body)
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json() == await my_profile(browser)
+
+
+async def test_more_precision_than_the_column_keeps_is_rounded_the_way_it_stores(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE, json=a_profile(skills=[{"name": "Python", "years_experience": 3.25}])
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["skills"] == [{"name": "Python", "years_experience": 3.3}]
+    assert (await my_profile(browser))["skills"] == [{"name": "Python", "years_experience": 3.3}]
+
+
 async def test_correcting_a_date_derives_the_total_again(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:

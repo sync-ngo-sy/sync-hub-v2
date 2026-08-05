@@ -14,6 +14,7 @@ from sync_api.jobs.criteria import questions_of
 from sync_core.models import JobLanguage, JobSkill, Language, SkillTaxonomy
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,13 +22,17 @@ if TYPE_CHECKING:
     from sync_core.models import Job, JobApplicationQuestion
 
 
-async def screening_criteria_of(session: AsyncSession, job: Job) -> Criteria:
+async def screening_criteria_of(
+    session: AsyncSession, job: Job, questions: Sequence[JobApplicationQuestion] | None = None
+) -> Criteria:
     """The Job's bar, in the shape Screening measures against."""
     return Criteria(
         minimum_total_experience_years=job.minimum_total_experience_years,
         skills=await _skills(session, job.id),
         languages=await _languages(session, job.id),
-        knockouts=_knockouts(await questions_of(session, job.id)),
+        knockouts=_knockouts(
+            await questions_of(session, job.id) if questions is None else questions
+        ),
     )
 
 
@@ -64,7 +69,7 @@ async def _languages(session: AsyncSession, job_id: UUID) -> tuple[LanguageCrite
     )
 
 
-def _knockouts(questions: list[JobApplicationQuestion]) -> tuple[KnockoutQuestion, ...]:
+def _knockouts(questions: Sequence[JobApplicationQuestion]) -> tuple[KnockoutQuestion, ...]:
     """A question only screens where the Recruiter said which answer gets past it."""
     return tuple(
         KnockoutQuestion(
