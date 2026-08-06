@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
@@ -14,7 +15,7 @@ from sync_api.app import create_app
 from sync_core import Database, Settings
 from sync_core.models import Profile
 from sync_core.searchable import CandidateFilters
-from sync_rag import CandidateSearch
+from sync_rag import EMBEDDING_DIMENSIONS, CandidateSearch
 from sync_rag.search import _page
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.crm import save_to_pool
@@ -108,19 +109,53 @@ def named(matches: list[dict[str, Any]]) -> list[str]:
 #: whole difference this change is about.
 FILLER_CHUNKS = 2000
 
-PAD_THE_CORPUS = text("""
+#: How many of the filler chunks rank *above* the one Candidate a filter keeps. Comfortably more
+#: than the default `hnsw.ef_search` of 40, so a scan that does not widen sees nothing but
+#: rejected rows and answers "nobody matched" -- the regression this corpus exists to catch.
+OUTRANKING_CHUNKS = 150
+
+#: Components either side of zero, so the vectors spread over the sphere the way real embeddings
+#: do. `random()` gave every component a positive one, which left all two thousand pointing into
+#: the same corner and near-parallel under cosine distance: one tight blob whose HNSW graph held
+#: no edge out to a real profile's vectors, so the walk could not reach them and a filtered
+#: search came back empty. Unseeded, it also rebuilt a different graph on every run. The
+#: arithmetic is the usual hashed sine -- a deterministic stand-in for noise.
+PAD_THE_CORPUS = text(f"""
 insert into candidate_profile_chunks
   (candidate_id, chunk_type, chunk_text, chunk_index, embedding, embedding_model)
 select :candidate_id, 'experience', 'filler ' || i, 100000 + i,
-       (select array_agg(random())::vector(768) from generate_series(1, 768)),
+       (select array_agg(
+          case when d = :echoed and i <= :ahead then 30.0 else noise - 0.5 end
+          order by d)::vector({EMBEDDING_DIMENSIONS})
+        from generate_series(1, {EMBEDDING_DIMENSIONS}) d,
+             lateral (select sin(i * 12.9898 + d * 78.233) * 43758.5453 as spun) s,
+             lateral (select spun - floor(spun) as noise) n),
        (select model from embedding_models)
 from generate_series(1, :chunks) i
 """)
 
 
-async def a_corpus_of(session: AsyncSession, candidate_id: UUID, chunks: int) -> None:
-    """Vectors nobody wrote a profile for, so the ranking has something to be a ranking of."""
-    await session.execute(PAD_THE_CORPUS, {"candidate_id": candidate_id, "chunks": chunks})
+async def a_corpus_of(
+    session: AsyncSession,
+    embedder: FakeEmbedder,
+    candidate_id: UUID,
+    chunks: int,
+    *,
+    echoing: str = "",
+    ahead: int = 0,
+) -> None:
+    """Vectors nobody wrote a profile for, so the ranking has something to be a ranking of.
+    `ahead` of them lean hard on the one dimension `echoing` occupies and so outrank any real
+    profile that only mentions it, which is what puts a wall of rejected rows in front of the
+    Candidate a filter keeps."""
+    echoed = 1
+    if ahead:
+        (weighted,) = await embedder.embed([echoing])
+        echoed = 1 + weighted.index(max(weighted))
+    await session.execute(
+        PAD_THE_CORPUS,
+        {"candidate_id": candidate_id, "chunks": chunks, "ahead": ahead, "echoed": echoed},
+    )
     await session.execute(text("analyze candidate_profile_chunks"))
     await session.commit()
 
@@ -714,7 +749,9 @@ async def test_a_filter_that_rejects_most_of_the_corpus_still_answers(
         **{**A_FRONTEND_ENGINEER, "location_key": "sy-aleppo"},
     )
     await drain(a_reembed_worker(database, embedder))
-    await a_corpus_of(db_session, lina.id, FILLER_CHUNKS)
+    await a_corpus_of(
+        db_session, embedder, lina.id, FILLER_CHUNKS, echoing="engineer", ahead=OUTRANKING_CHUNKS
+    )
 
     assert named(await found(recruiter, q="engineer", location_key="sy-damascus")) == [
         str(amina.id)
@@ -755,14 +792,16 @@ async def test_the_search_reaches_its_vector_index_rather_than_every_chunk(
     embedder: FakeEmbedder,
 ) -> None:
     """The query used to deduplicate before it ranked, which made the index unusable and cost a
-    distance for every chunk on the platform."""
+    distance for every chunk on the platform. Only the scan that ranks is at stake, hence the
+    anchored name: `candidate_search_profiles` gates on a chunk existing, and Postgres is free to
+    read the table for that once the page is down to a handful of rows."""
     amina = await a_candidate_with(
         searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
     )
     await drain(a_reembed_worker(database, embedder))
-    await a_corpus_of(db_session, amina.id, FILLER_CHUNKS)
+    await a_corpus_of(db_session, embedder, amina.id, FILLER_CHUNKS)
 
     plan = await how_a_search_runs(db_session, embedder)
 
     assert "candidate_profile_chunks_embedding_hnsw" in plan
-    assert "Seq Scan on candidate_profile_chunks" not in plan
+    assert not re.search(r"Seq Scan on candidate_profile_chunks$", plan, re.MULTILINE)
