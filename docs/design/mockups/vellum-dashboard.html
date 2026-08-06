@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vellum — Sync Hub visual reference</title>
+<style>
+@font-face{font-family:'Geist';src:url('assets/geist.woff2') format('woff2');font-weight:100 900;font-display:swap}
+
+.dir{font-family:'Geist',ui-sans-serif,-apple-system,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Geist',ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;background:#6b6b70;color:#f2f2f4;-webkit-font-smoothing:antialiased;padding-bottom:70px}
+
+.bar{position:sticky;top:0;z-index:40;background:rgba(38,38,42,.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.1);padding:11px 26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar .id{display:flex;align-items:baseline;gap:11px;margin-right:auto}
+.bar .id .l{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#a8a8b0}
+.bar .id .n{font-size:19px;font-weight:640;letter-spacing:-.01em}
+.bar .id .h{font-size:13.5px;color:#b8b8c0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.seg{display:inline-flex;background:rgba(0,0,0,.34);border-radius:8px;padding:3px;gap:3px}
+.seg button{font:inherit;font-size:13.5px;font-weight:540;color:#d3d3d8;background:transparent;border:0;padding:6px 15px;border-radius:6px;cursor:pointer}
+.seg button.on{background:#f2f2f4;color:#232326}
+.lbl{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#a8a8b0}
+
+.wrap{max-width:1240px;margin:0 auto;padding:24px 26px 0}
+.lede{font-size:15px;line-height:1.6;color:#dcdce0;max-width:900px;margin-bottom:20px}
+.lede strong{color:#fff}
+.sec{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#b0b0b8;margin:34px 0 12px}
+.hint{font-size:13.5px;color:#c4c4cc;line-height:1.55;margin:-4px 0 12px;max-width:900px}
+.hint em{color:#fff;font-style:normal;font-weight:560}
+.hint code,.sec code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:rgba(0,0,0,.28);padding:1px 5px;border-radius:4px;text-transform:none;letter-spacing:0}
+.frame{border-radius:12px;overflow:hidden;box-shadow:0 20px 46px -14px rgba(0,0,0,.5)}
+
+.two{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.note{background:rgba(0,0,0,.22);border-radius:10px;padding:13px 16px}
+.note-k{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#a8a8b0;margin-bottom:5px}
+.note-v{font-size:14px;line-height:1.55;color:#e4e4e8}
+.note-v em{color:#fff;font-style:normal;font-weight:560}
+
+/* where the deep teal now lands */
+.uses{background:rgba(0,0,0,.22);border-radius:10px;overflow:hidden}
+.use{display:flex;gap:16px;align-items:flex-start;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.use:last-child{border-bottom:0}
+.use .num{width:22px;height:22px;border-radius:6px;background:#104C44;color:#8FD3C6;display:grid;place-items:center;font-size:12px;font-weight:640;flex:0 0 22px;margin-top:1px}
+.use .w{width:190px;flex:0 0 190px;font-size:14px;font-weight:600;color:#fff}
+.use .y{flex:1 1 0;font-size:13.5px;line-height:1.55;color:#d0d0d6}
+
+.pals{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.pal{background:rgba(0,0,0,.22);border-radius:10px;padding:14px 16px}
+.pal-h{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#a8a8b0;margin-bottom:10px}
+.pal-r{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:13px}
+.pal-sw{width:17px;height:17px;border-radius:4px;flex:0 0 17px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.pal-r code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#d8d8de;margin-right:auto}
+.pal-v{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#9e9ea8}
+
+.szgrid{display:flex;gap:18px}
+.sz{flex:1 1 0;background:#FBFAF8;color:#1A1714;border-radius:10px;padding:18px 20px 20px}
+.sz.now{background:#EDECEA}
+.sz .badge{display:inline-block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;padding:3px 8px;border-radius:5px;margin-bottom:14px}
+.sz.now .badge{background:#D8D6D2;color:#57524C}
+.sz.next .badge{background:#E7F1ED;color:#0F6E63}
+.sz .row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sz .cap{font-size:12.5px;color:#77706A;width:104px;flex:0 0 104px}
+.i-now{height:32px;padding:0 10px;font-size:14px;border:1px solid #D5CEC4;border-radius:8px;background:#FDFBF7;display:flex;align-items:center;color:#8B847D;width:224px}
+.i-next{height:36px;padding:0 12px;font-size:15px;border:1px solid #D5CEC4;border-radius:10px;background:#FDFBF7;display:flex;align-items:center;color:#8B847D;width:224px}
+.b-now{height:32px;padding:0 12px;font-size:14px;border-radius:8px;background:#1B7F77;color:#FBF9F5;display:inline-flex;align-items:center;font-weight:500}
+.b-next{height:36px;padding:0 15px;font-size:14.5px;border-radius:10px;background:#0F6459;color:#FBF9F5;display:inline-flex;align-items:center;font-weight:540}
+.t-now{font-size:14px}.t-now .m{font-size:13px;color:#77706A}
+.t-next{font-size:15px}.t-next .m{font-size:14px;color:#4A443E}
+
+/* ══════════════ VELLUM TOKENS ══════════════ */
+.dir[data-theme="light"]{
+  /* One warm ramp, three steps, no white anywhere. Canvas → card → input, each
+     lighter than the last but all the same temperature. */
+  --bg:#EFEBE4; --card:#FAF7F2; --input-bg:#FDFBF7;
+  --deep:#125650; --deep-fg:#FBF9F5;          /* the panel colour, promoted to a token */
+  --sidebar:var(--deep);
+  --fg:#1A1714; --secondary-fg:#4A443E; --muted-fg:#6E6862;
+  --border:#E2DCD1; --input-border:#D5CDC0;
+  /* the tint is the brand green diluted into the paper (9% of --jewel over --card),
+     so it can never read as a foreign cool patch on a warm page */
+  --accent:#E5EBE5; --accent-fg:#0F6E63; --accent-strong:#0D6459;
+  --primary:#0F6459; --primary-fg:#FBF9F5;
+  --jewel:#0F6E63;
+  --secondary:#E8E3DA;
+  --shadow:0 1px 2px rgba(41,33,24,.05),0 5px 14px -4px rgba(41,33,24,.07);
+  --ring:rgba(15,100,89,.26);
+  --rail-fg:#DCEAE8; --rail-active-bg:rgba(251,249,245,.14); --rail-active-fg:#FBF9F5;
+  --rail-border:#1D6259; --rail-label:#B6D0CC; --rail-word:#FBF9F5;
+}
+
+/* dark: exactly as it was — warm graphite rail, bright teal actions. No deep-teal panel here. */
+.dir[data-theme="dark"]{
+  --bg:#1C1A17; --card:#252220;
+  --deep:#171512; --deep-fg:#F2EFEA;
+  --sidebar:#171512;
+  --fg:#F2EFEA; --secondary-fg:#C3BCB4; --muted-fg:#A39C94;
+  --border:#332F2B; --input-border:#3D3833; --input-bg:#1F1D1A;
+  --primary:#23A092; --primary-fg:#08201D;
+  --jewel:#23A092;
+  --accent:rgba(45,175,160,.16); --accent-fg:#55C6B6; --accent-strong:#74D5C7;
+  --secondary:#2B2724;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 5px 16px -4px rgba(0,0,0,.5);
+  --ring:rgba(35,160,146,.35);
+  --rail-fg:#A39C94; --rail-active-bg:rgba(45,175,160,.16); --rail-active-fg:#55C6B6;
+  --rail-border:#282421; --rail-label:#7A736D; --rail-word:#F2EFEA;
+}
+.dir{--radius:10px;font-size:15px}
+
+/* ══════════════ app ══════════════ */
+.app{display:flex;background:var(--bg);color:var(--fg);min-height:620px}
+.rail{width:212px;flex:0 0 212px;background:var(--sidebar);border-right:1px solid var(--rail-border);padding:16px 12px;display:flex;flex-direction:column;gap:3px;color:var(--rail-fg)}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 20px}
+.logo{width:26px;height:26px;object-fit:contain}
+.brand .word{font-size:16px;font-weight:640;letter-spacing:-.01em;color:var(--rail-word)}
+.nav-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;font-weight:600;color:var(--rail-label);padding:16px 8px 6px}
+.nav{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:var(--radius);font-size:15px;font-weight:520;color:var(--rail-fg);cursor:default}
+.nav svg{width:18px;height:18px;flex:0 0 18px;opacity:.9}
+.nav.on{background:var(--rail-active-bg);color:var(--rail-active-fg);font-weight:560}
+
+.main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--border);background:var(--card)}
+.topbar .title{font-size:22px;font-weight:640;letter-spacing:-.015em;margin-right:auto}
+.input{height:36px;border:1px solid var(--input-border);background:var(--input-bg);border-radius:var(--radius);padding:0 12px;font:inherit;font-size:14.5px;color:var(--fg);display:flex;align-items:center;gap:8px}
+.input.w{width:240px}
+.input.fwd{width:100%}
+.input .ph{color:var(--muted-fg)}
+.input svg{width:16px;height:16px;opacity:.6;flex:0 0 16px}
+.input.focused{border-color:var(--deep);box-shadow:0 0 0 3px var(--ring)}
+.btn{height:36px;padding:0 15px;border-radius:var(--radius);font:inherit;font-size:14.5px;font-weight:540;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid transparent;cursor:default;white-space:nowrap}
+.btn svg{width:16px;height:16px}
+.btn.primary{background:var(--primary);color:var(--primary-fg)}
+.btn.outline{background:transparent;border-color:var(--input-border);color:var(--fg)}
+.btn.full{width:100%}
+
+.body{padding:22px;display:flex;flex-direction:column;gap:18px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.stat .k{font-size:13.5px;font-weight:540;color:var(--secondary-fg);display:flex;align-items:center;gap:9px}
+.tile{width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;flex:0 0 26px}
+.tile svg{width:14px;height:14px}
+.stat .v{font-size:32px;font-weight:470;letter-spacing:-.015em;margin-top:12px;font-variant-numeric:tabular-nums;line-height:1}
+.stat .d{font-size:13.5px;color:var(--muted-fg);margin-top:8px}
+.stat .d b{color:var(--accent-fg);font-weight:560}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:10px;padding:15px 20px;border-bottom:1px solid var(--border)}
+.panel-head h3{font-size:16px;font-weight:640;letter-spacing:-.005em;margin-right:auto}
+.panel-head .link{font-size:13.5px;font-weight:540;color:var(--accent-fg)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11.5px;font-weight:640;text-transform:uppercase;letter-spacing:.09em;
+   color:var(--secondary-fg);padding:13px 20px 11px;border-bottom:1px solid var(--border)}
+td{padding:14px 20px;border-bottom:1px solid var(--border);font-size:14.5px}
+tr:last-child td{border-bottom:0}
+.person{display:flex;align-items:center;gap:11px}
+.av{position:relative;width:34px;height:34px;border-radius:50%;flex:0 0 34px;overflow:hidden;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:13.5px;font-weight:600}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.person .nm{font-weight:560;line-height:1.35;color:var(--fg)}
+.person .rl{font-size:14px;color:var(--secondary-fg);line-height:1.35}
+.val{color:var(--fg);font-weight:500}
+.num{font-variant-numeric:tabular-nums}
+/* ── Status: a mark and a label. One green ramp plus two other hues, total.
+   Shape does work colour cannot: New is a hollow ring (arrived, untouched),
+   and the ended states carry a circle-×. The four filled greens gain CHROMA
+   toward Hired (38 -> 75 -> 114 -> 141) rather than losing light — past a point
+   a dark green just reads black, which is the opposite of "greener". ── */
+.dir[data-theme="light"] .s-new      {--dot:#7E776F}
+.dir[data-theme="light"] .s-review   {--dot:#A8730F}
+.dir[data-theme="light"] .s-short    {--dot:#41675F}
+.dir[data-theme="light"] .s-interview{--dot:#2A7568}
+.dir[data-theme="light"] .s-offer    {--dot:#128470}
+.dir[data-theme="light"] .s-hired    {--dot:#099680}
+.dir[data-theme="light"] .s-rejected {--dot:#8A8379}
+.dir[data-theme="light"] .s-withdrawn{--dot:#9A938B}
+
+.dir[data-theme="dark"] .s-new      {--dot:#9A938B}
+.dir[data-theme="dark"] .s-review   {--dot:#E8B94D}
+.dir[data-theme="dark"] .s-short    {--dot:#3E9184}
+.dir[data-theme="dark"] .s-interview{--dot:#35B0A0}
+.dir[data-theme="dark"] .s-offer    {--dot:#4CCBB8}
+.dir[data-theme="dark"] .s-hired    {--dot:#77E0CD}
+.dir[data-theme="dark"] .s-rejected {--dot:#9A938B}
+.dir[data-theme="dark"] .s-withdrawn{--dot:#7D766E}
+
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:540;
+  white-space:nowrap;color:var(--fg)}
+.chip::before{content:'';width:8px;height:8px;border-radius:2px;flex:0 0 8px;background:var(--dot)}
+/* nothing has happened yet, so the mark is empty */
+.s-new::before{background:transparent;box-shadow:inset 0 0 0 2px var(--dot)}
+.s-rejected::before,.s-withdrawn::before{display:none}
+.chip svg{width:13px;height:13px;color:var(--dot)}
+
+/* auth */
+.auth{background:var(--bg);padding:52px 22px;display:flex;justify-content:center}
+.auth-card{width:404px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.auth-crown{background:var(--deep);padding:20px 32px;display:flex;align-items:center;gap:11px}
+.auth-crown .logo{width:28px;height:28px}
+.auth-crown .word{font-size:16px;font-weight:640;color:var(--deep-fg);letter-spacing:-.01em}
+.auth-in{padding:28px 32px 32px}
+.auth-card h2{font-size:23px;font-weight:640;letter-spacing:-.02em;color:var(--fg)}
+.auth-card .sub{font-size:14.5px;color:var(--secondary-fg);margin-top:6px;line-height:1.5}
+.fld{margin-top:18px}
+.fld label{display:block;font-size:13.5px;font-weight:560;color:var(--fg);margin-bottom:7px}
+.auth-in .btn{margin-top:22px}
+.auth-foot{font-size:13.5px;color:var(--muted-fg);text-align:center;margin-top:18px}
+.auth-foot b{color:var(--accent-fg);font-weight:560}
+
+.strip{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* type ramp */
+.ramp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 22px 18px}
+.rrow{display:flex;gap:20px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--border)}
+.rrow:last-child{border-bottom:0}
+.rtok{width:220px;flex:0 0 220px}
+.rtok code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--fg);font-weight:560}
+.rtok .rname{font-size:13px;color:var(--muted-fg);margin-top:3px}
+.rfor{flex:1 1 0;font-size:14px;color:var(--secondary-fg);line-height:1.55}
+.rdemo{flex:0 0 300px;width:300px}
+.d-primary{font-size:15px;font-weight:560;color:var(--fg)}
+.d-secondary{font-size:14px;color:var(--secondary-fg)}
+.d-muted{font-size:13.5px;color:var(--muted-fg)}
+
+
+
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="id"><span class="l">Visual reference</span><span class="n">Vellum</span><span class="h">aesthetics only — not a layout proposal</span></div>
+  <span class="lbl">Theme</span>
+  <div class="seg">
+    <button id="btn-light" class="on" onclick="setTheme('light')">Light</button>
+    <button id="btn-dark" onclick="setTheme('dark')">Dark</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <p class="lede">The agreed system: <strong>Geist</strong>, one family. Status as a <strong>dot and a label</strong> — no pill, no fill. The panel colour promoted to a token, <strong>--deep</strong>, carrying weight in five places. Warm paper canvas and cards, so nothing on the page is white except the inside of an input. Everything renders <strong>at true size</strong>.</p>
+
+  <div class="two" style="margin-bottom:6px">
+    <div class="note"><div class="note-k">A four-step teal</div><div class="note-v"><em>--deep #104C44</em> surfaces · <em>--primary #0F5C52</em> solid actions · <em>--jewel #0F6E63</em> marks and charts · <em>--accent-foreground #0F6E63</em> links and tinted text. Each step has one job, so nothing competes for the same element.</div></div>
+    <div class="note"><div class="note-k">Dark theme, restored</div><div class="note-v">Exactly as it was: warm graphite rail <em>#171512</em>, bright teal actions <em>#23A092</em>. The deep-teal panel is a <em>light-theme</em> device — at night the rail simply recedes instead of colouring.</div></div>
+  </div>
+
+  <div class="sec">Recruiter dashboard</div>
+  <div class="frame"><div class="dir" data-theme="light" id="dir">
+    <div class="app">
+      <div class="rail">
+        <div class="brand"><img class="logo" src="assets/logo.png" alt="Sync Hub"><div class="word">Sync Hub</div></div>
+        <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Jobs</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Candidates</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Talent pool</div>
+        <div class="nav-label">Workspace</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Templates</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10.6 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 4.6h.09a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <div class="title">Dashboard</div>
+          <div class="input w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span class="ph">Search candidates</span></div>
+          <div class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New job</div>
+        </div>
+        <div class="body">
+          <div class="stats">
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>Awaiting review</div><div class="v">248</div><div class="d"><b>+18</b> since Monday</div></div>
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>Open jobs</div><div class="v">17</div><div class="d">4 closing this week</div></div>
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>Applications</div><div class="v">1,394</div><div class="d"><b>+12.4%</b> vs last month</div></div>
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></span>Talent pool</div><div class="v">612</div><div class="d"><b>+31</b> this month</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Recent applications</h3><span class="link">View all</span></div>
+            <table>
+              <thead><tr><th>Candidate</th><th>Job</th><th>Experience</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><div class="person"><div class="av"><span>LH</span></div><div><div class="nm">Layla Haddad</div><div class="rl">Senior Frontend Engineer</div></div></div></td><td class="val">Frontend Engineer</td><td class="val num">7 yrs</td><td><span class="chip s-hired">Hired</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>OK</span></div><div><div class="nm">Omar Khalil</div><div class="rl">Product Designer</div></div></div></td><td class="val">Product Designer</td><td class="val num">5 yrs</td><td><span class="chip s-interview">Interview</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>RA</span></div><div><div class="nm">Rana Aziz</div><div class="rl">Data Analyst</div></div></div></td><td class="val">Data Analyst</td><td class="val num">3 yrs</td><td><span class="chip s-review">In review</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>YN</span></div><div><div class="nm">Yousef Nasr</div><div class="rl">Backend Engineer</div></div></div></td><td class="val">Backend Engineer</td><td class="val num">9 yrs</td><td><span class="chip s-new">New</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>MS</span></div><div><div class="nm">Maya Suleiman</div><div class="rl">QA Engineer</div></div></div></td><td class="val">QA Engineer</td><td class="val num">2 yrs</td><td><span class="chip s-rejected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Rejected</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+        <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Jobs</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Candidates</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Talent pool</div>
+        <div class="nav-label">Workspace</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Templates</div>
+        <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10.6 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 4.6h.09a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <div class="title">Dashboard</div>
+          <div class="input w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span class="ph">Search candidates</span></div>
+          <div class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New job</div>
+        </div>
+        <div class="body">
+          <div class="stats">
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>Awaiting review</div><div class="v">248</div><div class="d"><b>+18</b> since Monday</div></div>
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>Open jobs</div><div class="v">17</div><div class="d">4 closing this week</div></div>
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>Applications</div><div class="v">1,394</div><div class="d"><b>+12.4%</b> vs last month</div></div>
+            <div class="stat"><div class="k"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg></span>Talent pool</div><div class="v">612</div><div class="d"><b>+31</b> this month</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Recent applications</h3><span class="link">View all</span></div>
+            <table>
+              <thead><tr><th>Candidate</th><th>Job</th><th>Experience</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><div class="person"><div class="av"><span>LH</span></div><div><div class="nm">Layla Haddad</div><div class="rl">Senior Frontend Engineer</div></div></div></td><td class="val">Frontend Engineer</td><td class="val num">7 yrs</td><td><span class="chip s-hired">Hired</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>OK</span></div><div><div class="nm">Omar Khalil</div><div class="rl">Product Designer</div></div></div></td><td class="val">Product Designer</td><td class="val num">5 yrs</td><td><span class="chip s-interview">Interview</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>RA</span></div><div><div class="nm">Rana Aziz</div><div class="rl">Data Analyst</div></div></div></td><td class="val">Data Analyst</td><td class="val num">3 yrs</td><td><span class="chip s-review">In review</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>YN</span></div><div><div class="nm">Yousef Nasr</div><div class="rl">Backend Engineer</div></div></div></td><td class="val">Backend Engineer</td><td class="val num">9 yrs</td><td><span class="chip s-new">New</span></td></tr>
+                <tr><td><div class="person"><div class="av"><span>MS</span></div><div><div class="nm">Maya Suleiman</div><div class="rl">QA Engineer</div></div></div></td><td class="val">QA Engineer</td><td class="val num">2 yrs</td><td><span class="chip s-rejected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Rejected</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="sec">Where the panel colour appears</div>
+  <p class="hint">Four places, all light-theme. Each is one line to pull back if it stops earning its keep.</p>
+  <div class="uses">
+    <div class="use"><span class="num">1</span><span class="w">The rail</span><span class="y">A coloured panel rather than an off-white one, at <code style="font-family:ui-monospace,monospace;font-size:12px">--deep #104C44</code>. Still the deepest surface on the page.</span></div>
+    <div class="use"><span class="num">2</span><span class="w">Primary buttons</span><span class="y">“New job” and “Sign in” sit one step above the rail at <code style="font-family:ui-monospace,monospace;font-size:12px">--primary #0F5C52</code>. The rail recedes, the action advances.</span></div>
+    <div class="use"><span class="num">3</span><span class="w">Sign-in crown</span><span class="y">The auth card wears a deep band with the logo, so the first screen anyone sees is unmistakably branded.</span></div>
+    <div class="use"><span class="num">4</span><span class="w">Stat tiles &amp; focus rings</span><span class="y">A small tinted square behind each figure’s icon, and every focused input rings in the brand. Low volume, high frequency.</span></div>
+  </div>
+
+  <div class="sec">Sign in</div>
+  <div class="frame"><div class="dir" data-theme="light" id="dir2">
+    <div class="auth">
+      <div class="auth-card">
+        <div class="auth-crown"><img class="logo" src="assets/logo.png" alt=""><span class="word">Sync Hub</span></div>
+        <div class="auth-in">
+          <h2>Sign in</h2>
+          <p class="sub">Use the work address your workspace was set up with.</p>
+          <div class="fld"><label>Work email</label><div class="input fwd"><span class="ph">name@company.com</span></div></div>
+          <div class="fld"><label>Password</label><div class="input fwd focused"><span class="ph">••••••••••••</span></div></div>
+          <div class="btn primary full">Sign in</div>
+          <p class="auth-foot">No workspace yet? <b>Request access</b></p>
+        </div>
+      </div>
+    </div>
+  </div></div>
+          <div class="fld"><label>Password</label><div class="input fwd focused"><span class="ph">••••••••••••</span></div></div>
+          <div class="btn primary full">Sign in</div>
+          <p class="auth-foot">No workspace yet? <b>Request access</b></p>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="sec">Text hierarchy — what <code>muted</code> is actually for</div>
+  <p class="hint">Kept from the last round, since you were right about it: one grey was doing three jobs. Job titles and years of experience moved up a step, table headers moved up two.</p>
+  <div class="frame"><div class="dir" data-theme="light" id="dir3"><div class="ramp">
+    <div class="rrow"><div class="rtok"><code>--foreground</code><div class="rname">Primary</div></div>
+      <div class="rfor">What a recruiter came to read: names, figures, years of experience, table cell values, headings.</div>
+      <div class="rdemo"><div class="d-primary">Layla Haddad · 7 years · Frontend Engineer</div></div></div>
+    <div class="rrow"><div class="rtok"><code>--secondary-foreground</code><div class="rname">Supporting</div></div>
+      <div class="rfor">Structure and attribution: the role under a name, field labels, section headings. Present, not competing.</div>
+      <div class="rdemo"><div class="d-secondary">Senior Frontend Engineer</div></div></div>
+    <div class="rrow"><div class="rtok"><code>--muted-foreground</code><div class="rname">Tertiary</div></div>
+      <div class="rfor">Genuinely disposable: placeholders, relative timestamps, “since Monday” deltas, empty-state copy. If it vanished, nobody would file a bug.</div>
+      <div class="rdemo"><div class="d-muted">Search candidates… · 2 days ago</div></div></div>
+  </div></div></div>
+
+  <div class="sec">Status</div>
+  <p class="hint">One green ramp plus two other hues, and shape doing work that colour cannot. <strong style="color:#fff">New</strong> is a hollow ring — nothing has happened yet, so the mark is empty. <strong style="color:#fff">In review</strong> is the one amber, because “this needs you” is the only state that should ever pull your eye. The <strong style="color:#fff">four filled greens</strong> gain saturation along the pipeline rather than getting darker — Hired is the <em>greenest</em> mark on the row, not the blackest. <strong style="color:#fff">Rejected and Withdrawn</strong> drop the mark for a circle-× in slate. Colour is never the only signal, and red stays reserved for irreversible buttons.</p>
+  <div class="frame"><div class="dir" data-theme="light" id="dir4"><div class="strip">
+    <span class="chip s-new">New</span> <span class="chip s-review">In review</span> <span class="chip s-short">Shortlisted</span> <span class="chip s-interview">Interview</span>
+    <span class="chip s-offer">Offer</span> <span class="chip s-hired">Hired</span>
+    <span class="chip s-rejected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Rejected</span> <span class="chip s-withdrawn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>Withdrawn</span>
+  </div></div></div>
+
+  <div class="sec">Point 22 — today vs proposed</div>
+  <div class="szgrid">
+    <div class="sz now"><span class="badge">Today</span>
+      <div class="row"><span class="cap">Input · 32px</span><div class="i-now">name@company.com</div></div>
+      <div class="row"><span class="cap">Button · 32px</span><div class="b-now">Continue</div></div>
+      <div class="row"><span class="cap">Body · 14 / 13</span><div class="t-now">Layla Haddad<div class="m">Senior Frontend Engineer · 7 yrs</div></div></div>
+    </div>
+    <div class="sz next"><span class="badge">Proposed</span>
+      <div class="row"><span class="cap">Input · 36px</span><div class="i-next">name@company.com</div></div>
+      <div class="row"><span class="cap">Button · 36px</span><div class="b-next">Continue</div></div>
+      <div class="row"><span class="cap">Body · 15 / 14</span><div class="t-next">Layla Haddad<div class="m">Senior Frontend Engineer · 7 yrs</div></div></div>
+    </div>
+  </div>
+
+  <div class="sec">Tokens</div>
+  <div class="pals">
+    <div class="pal"><div class="pal-h">Light</div>
+      <div class="pal-r"><span class="pal-sw" style="background:#EFEBE3"></span><code>--background</code><span class="pal-v">#EFEBE3</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#F9F6F0"></span><code>--card</code><span class="pal-v">#F9F6F0</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#104C44"></span><code>--deep &nbsp;(new)</code><span class="pal-v">#104C44</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#104C44"></span><code>--sidebar</code><span class="pal-v">var(--deep)</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#0F5C52"></span><code>--primary</code><span class="pal-v">#0F5C52</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#0F6E63"></span><code>--jewel</code><span class="pal-v">#0F6E63</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#E7F1ED"></span><code>--accent</code><span class="pal-v">#E7F1ED</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#0F6E63"></span><code>--accent-foreground</code><span class="pal-v">#0F6E63</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#1A1714"></span><code>--foreground</code><span class="pal-v">#1A1714</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#4A443E"></span><code>--secondary-foreground</code><span class="pal-v">#4A443E</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#6E6862"></span><code>--muted-foreground</code><span class="pal-v">#6E6862</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#E0DACF"></span><code>--border</code><span class="pal-v">#E0DACF</span></div>
+    </div>
+    <div class="pal"><div class="pal-h">Dark — unchanged from the original</div>
+      <div class="pal-r"><span class="pal-sw" style="background:#1C1A17"></span><code>--background</code><span class="pal-v">#1C1A17</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#252220"></span><code>--card</code><span class="pal-v">#252220</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#171512"></span><code>--deep</code><span class="pal-v">#171512</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#171512"></span><code>--sidebar</code><span class="pal-v">#171512</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#23A092"></span><code>--primary</code><span class="pal-v">#23A092</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#23A092"></span><code>--jewel</code><span class="pal-v">#23A092</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#2C3B38"></span><code>--accent</code><span class="pal-v">teal @ 16%</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#55C6B6"></span><code>--accent-foreground</code><span class="pal-v">#55C6B6</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#F2EFEA"></span><code>--foreground</code><span class="pal-v">#F2EFEA</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#C3BCB4"></span><code>--secondary-foreground</code><span class="pal-v">#C3BCB4</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#A39C94"></span><code>--muted-foreground</code><span class="pal-v">#A39C94</span></div>
+      <div class="pal-r"><span class="pal-sw" style="background:#332F2B"></span><code>--border</code><span class="pal-v">#332F2B</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var SURFACES=['dir','dir2','dir3','dir4'];
+function setTheme(t){
+  SURFACES.forEach(function(id){var e=document.getElementById(id);if(e)e.setAttribute('data-theme',t)});
+  document.getElementById('btn-light').classList.toggle('on',t==='light');
+  document.getElementById('btn-dark').classList.toggle('on',t==='dark');
+}
+
+</script>
+</body>
+</html>
