@@ -1,0 +1,228 @@
+/* ============================================================================
+   Vellum — token values for packages/ui/src/styles/globals.css
+   ============================================================================
+   Supersedes the token values in docs/superpowers/specs/2026-07-29-frontend-design.md §8.
+
+   This file is VALUES ONLY. It does not change layout, component structure, or
+   where anything sits on a page. Read docs/design/vellum.md for the rules that
+   govern how these are used, and for the handful of changes that are not tokens.
+
+   Every colour pairing here was measured; the evidence table is in vellum.md.
+   ========================================================================= */
+
+
+/* ── 1. @theme inline ─────────────────────────────────────────────────────
+   Tailwind merges @theme blocks, so this can be pasted as-is next to the
+   existing one, or folded into it. */
+
+@theme inline {
+  /* NEW mappings */
+  --color-deep: var(--deep);
+  --color-deep-foreground: var(--deep-foreground);
+  --color-input-background: var(--input-background);
+  --color-sidebar-label: var(--sidebar-label);
+
+  --color-status-new: var(--status-new);
+  --color-status-review: var(--status-review);
+  --color-status-shortlisted: var(--status-shortlisted);
+  --color-status-interview: var(--status-interview);
+  --color-status-offer: var(--status-offer);
+  --color-status-hired: var(--status-hired);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-withdrawn: var(--status-withdrawn);
+
+  /* CHANGED — these three currently borrow from the main palette, which worked
+     while the rail was near-white. The rail is now dark green in light theme,
+     so borrowed values disappear against it. Replace the existing lines. */
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+/* REMOVE from the existing @theme inline block: the eight --color-chip-*
+   mappings. Status is no longer a filled pill, so it no longer needs a
+   background/foreground pair per state. */
+
+
+/* ── 2. Changes to the existing @theme block ──────────────────────────────── */
+
+@theme {
+  /* Point 22: the dense app text was 14/13px, which is what made every surface
+     feel squashed. One step up on each. */
+  --text-dense: 0.9375rem;          /* was 0.875rem  (14px -> 15px) */
+  --text-dense--line-height: 1.5;
+
+  --text-meta: 0.875rem;            /* was 0.8125rem (13px -> 14px) */
+  --text-meta--line-height: 1.5;
+
+  --text-title: 1rem;               /* was 0.9375rem (15px -> 16px) */
+  --text-title--line-height: 1.4;
+  --text-title--font-weight: 640;
+
+  /* Bigger but lighter. A 32px figure at weight 560 shouts on warm paper; the
+     size carries the emphasis and the weight comes off. */
+  --text-figure: 2rem;              /* was 1.8125rem */
+  --text-figure--line-height: 1;
+  --text-figure--letter-spacing: -0.015em;
+  --text-figure--font-weight: 470;  /* was 560 */
+
+  /* Unchanged: --font-weight-normal 450, medium 560, semibold 640,
+     and the display / h1 / h2 / h3 / reading steps. */
+}
+
+
+/* ── 3. Light theme ───────────────────────────────────────────────────────── */
+
+:root {
+  /* Surfaces: one warm ramp, three steps, no pure white anywhere. Canvas ->
+     card -> input, each lighter than the last, all the same temperature. The
+     old set mixed a warm canvas with a cool white input, which is what made
+     the light theme feel incoherent next to the dark one. */
+  --background: #EFEBE4;
+  --foreground: #1A1714;
+  --card: #FAF7F2;
+  --card-foreground: #1A1714;
+  --popover: #FAF7F2;
+  --popover-foreground: #1A1714;
+  --input-background: #FDFBF7;      /* NEW — --input is the BORDER in this system */
+
+  /* The panel colour, promoted to a token of its own. Rail and sign-in crown. */
+  --deep: #125650;                  /* NEW */
+  --deep-foreground: #FBF9F5;       /* NEW */
+
+  /* Solid actions sit one step above the panel, so the rail recedes and the
+     action advances. */
+  --primary: #0F6459;
+  --primary-foreground: #FBF9F5;
+
+  /* The three-step text ramp. --secondary-foreground is the one that was
+     missing in practice: table headers and the role under a name were falling
+     back to --muted-foreground, which left nothing reading as secondary. */
+  --secondary: #E8E3DA;
+  --secondary-foreground: #4A443E;
+  --muted: #ECE7DF;
+  --muted-foreground: #6E6862;
+
+  /* The tint is the brand green diluted into the paper (9% of --accent-foreground
+     over --card). Derived rather than picked, so it can never read as a foreign
+     cool patch on a warm page. */
+  --accent: #E5EBE5;
+  --accent-foreground: #0F6E63;
+
+  --border: #E2DCD1;
+  --input: #D5CDC0;                 /* input BORDER, per the existing convention */
+  --ring: #0F6459;                  /* consumed as ring-ring/50 by the primitives */
+  --radius: 0.625rem;               /* was 0.5rem */
+
+  --chart-1: #0F6459;
+  --chart-2: #128470;
+  --chart-3: #2A9C88;
+  --chart-4: #66C2B2;
+  --chart-5: #D8D2C6;
+
+  /* The rail is dark in light theme, so every sidebar value is now explicit
+     rather than borrowed from the main palette. */
+  --sidebar: #125650;               /* tracks --deep */
+  --sidebar-foreground: #DCEAE8;
+  --sidebar-accent: rgba(251, 249, 245, 0.14);
+  --sidebar-accent-foreground: #FBF9F5;
+  --sidebar-primary: #FBF9F5;
+  --sidebar-border: #1D6259;
+  --sidebar-label: #B6D0CC;         /* NEW — the "Workspace" section label */
+
+  /* Status marks. One green ramp plus two other hues, total. The ramp gains
+     CHROMA toward hired (38 -> 75 -> 114 -> 141) rather than losing light:
+     past a point a dark green just reads black, which is the opposite of
+     "greener". Amber is the only warm hue and is reserved for the one state
+     that should pull the eye. */
+  --status-new: #7E776F;            /* hollow ring — see vellum.md */
+  --status-review: #A8730F;         /* the only amber */
+  --status-shortlisted: #41675F;
+  --status-interview: #2A7568;
+  --status-offer: #128470;
+  --status-hired: #099680;
+  --status-rejected: #8A8379;
+  --status-withdrawn: #9A938B;
+
+  /* NOT re-derived for the warm canvas — carried over from the current set.
+     They still pass, but if any of these become prominent, re-measure them
+     against #FAF7F2 rather than the old #FFFFFF card. */
+  --destructive: #9F3129;
+  --destructive-foreground: #FBF9F5;
+  --destructive-muted: #FBEAEA;
+  --success: #E7F5EC;
+  --success-foreground: #1E6B45;
+  --warning: #FCF1DC;
+  --warning-foreground: #8A5A0A;
+  --info: #E9F1FB;
+  --info-foreground: #1E4E8C;
+}
+
+
+/* ── 4. Dark theme ────────────────────────────────────────────────────────
+   Deliberately unchanged from what ships today, apart from the new tokens.
+   The dark rail stays warm graphite: the deep-green panel is a LIGHT-theme
+   device. At night the rail recedes instead of colouring. */
+
+.dark {
+  --background: #1C1A17;
+  --foreground: #F2EFEA;
+  --card: #252220;
+  --card-foreground: #F2EFEA;
+  --popover: #252220;
+  --popover-foreground: #F2EFEA;
+  --input-background: #1F1D1A;
+
+  --deep: #171512;
+  --deep-foreground: #F2EFEA;
+
+  --primary: #23A092;
+  --primary-foreground: #08201D;
+
+  --secondary: #2B2724;
+  --secondary-foreground: #C3BCB4;
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: #A39C94;
+
+  --accent: rgba(45, 175, 160, 0.16);
+  --accent-foreground: #55C6B6;
+
+  --border: #332F2B;
+  --input: #3D3833;
+  --ring: #23A092;
+  --radius: 0.625rem;
+
+  --chart-1: #23A092;
+  --chart-2: #35B0A0;
+  --chart-3: #4CCBB8;
+  --chart-4: #77E0CD;
+  --chart-5: #4A4542;
+
+  --sidebar: #171512;
+  --sidebar-foreground: #A39C94;
+  --sidebar-accent: rgba(45, 175, 160, 0.16);
+  --sidebar-accent-foreground: #55C6B6;
+  --sidebar-primary: #23A092;
+  --sidebar-border: #282421;
+  --sidebar-label: #7A736D;
+
+  /* Same structure as light: ramp gains brightness and chroma toward hired. */
+  --status-new: #9A938B;
+  --status-review: #E8B94D;
+  --status-shortlisted: #3E9184;
+  --status-interview: #35B0A0;
+  --status-offer: #4CCBB8;
+  --status-hired: #77E0CD;
+  --status-rejected: #9A938B;
+  --status-withdrawn: #7D766E;
+
+  --destructive: #F0938A;
+  --destructive-foreground: #131211;
+  --destructive-muted: rgba(224, 94, 84, 0.18);
+  --success: rgba(74, 179, 126, 0.16);
+  --success-foreground: #6FD19B;
+  --warning: rgba(217, 155, 42, 0.16);
+  --warning-foreground: #E8B94D;
+  --info: rgba(74, 130, 216, 0.16);
+  --info-foreground: #7FB0F0;
+}
