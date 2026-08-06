@@ -10,6 +10,10 @@ export const AMINA: MatchedCandidate = {
   location_key: 'sy-aleppo',
   location_name: 'Aleppo',
   preferred_language_code: 'ar',
+  canonical_role_key: 'backend-engineer',
+  canonical_role_name: 'Backend Engineer',
+  total_experience_years: 8,
+  in_talent_pool: false,
   matched_section: 'experience',
   matched_text: 'Ran the payment platform at Hand in Hand for four years.',
 };
@@ -23,6 +27,10 @@ export const YOUSSEF: MatchedCandidate = {
   location_key: 'sy-damascus',
   location_name: 'Damascus',
   preferred_language_code: 'en',
+  canonical_role_key: null,
+  canonical_role_name: null,
+  total_experience_years: 3,
+  in_talent_pool: false,
   matched_section: 'skills',
   matched_text: 'Triage, wound care, cold-chain handling.',
 };

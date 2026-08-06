@@ -4,11 +4,13 @@ from typing import TYPE_CHECKING
 
 from sync_api.search.payload import CandidateMatches, MatchedCandidate
 from sync_core import get_logger
-from sync_rag import CandidateSearch, ChunkType, SearchFilters
+from sync_rag import CandidateSearch, ChunkType
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from sync_api.tenants import ActingRecruiter
+    from sync_core.searchable import CandidateFilters
     from sync_rag import CandidateMatch, Embedder
 
 logger = get_logger(__name__)
@@ -20,34 +22,33 @@ class CandidateSearchService:
 
     async def matches(
         self,
+        recruiter: ActingRecruiter,
         query: str,
         *,
-        location_key: str | None,
-        language_code: str | None,
+        filters: CandidateFilters,
         keywords: str | None,
         limit: int,
+        offset: int,
     ) -> CandidateMatches:
-        found = await self._search.find(
+        ranked = await self._search.find(
             query,
-            filters=SearchFilters(
-                location_key=location_key, language_code=language_code, keywords=keywords
-            ),
+            tenant_id=recruiter.tenant.id,
+            filters=filters,
+            keywords=keywords,
             limit=limit,
+            offset=offset,
         )
-        logger.info("search.candidates_searched", results=len(found))
-        return CandidateMatches(items=[_as_payload(match) for match in found])
+        logger.info("search.candidates_searched", results=len(ranked.matches))
+        return CandidateMatches(
+            items=[_as_payload(match) for match in ranked.matches],
+            has_more=ranked.has_more,
+            depth_reached=ranked.depth_reached,
+        )
 
 
 def _as_payload(match: CandidateMatch) -> MatchedCandidate:
-    return MatchedCandidate(
-        candidate_id=match.candidate_id,
-        full_name=match.full_name,
-        avatar_url=match.avatar_url,
-        headline=match.headline,
-        summary=match.summary,
-        location_key=match.location_key,
-        location_name=match.location_name,
-        preferred_language_code=match.preferred_language_code,
+    return MatchedCandidate.of(
+        match,
         matched_section=ChunkType(match.chunk_type) if match.chunk_type else None,
         matched_text=match.chunk_text,
     )

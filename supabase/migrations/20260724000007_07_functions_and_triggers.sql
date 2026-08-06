@@ -29,7 +29,7 @@ as $$
 declare
   cid uuid;
 begin
-  if tg_table_name = 'candidates' then
+  if tg_table_name in ('candidates', 'profiles') then
     cid := coalesce(new.id, old.id);
   else
     cid := coalesce(new.candidate_id, old.candidate_id);
@@ -48,6 +48,11 @@ $$;
 
 create trigger reembed_on_change after insert or update on candidates
   for each row execute function enqueue_candidate_reembed();
+
+create trigger reembed_on_rename after update of full_name on profiles
+  for each row
+  when (new.account_type = 'candidate' and new.full_name is distinct from old.full_name)
+  execute function enqueue_candidate_reembed();
 create trigger reembed_on_change after insert or update or delete on candidate_experiences
   for each row execute function enqueue_candidate_reembed();
 create trigger reembed_on_change after insert or update or delete on candidate_educations
@@ -118,6 +123,30 @@ $$;
 create trigger forbid_deleted_current_cv before update of current_cv_id on candidates
   for each row when (new.current_cv_id is not null)
   execute function forbid_deleted_current_cv();
+
+create function forbid_searchable_without_a_readable_cv() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if not exists (
+    select 1 from public.cvs
+    where id = new.current_cv_id
+      and candidate_id = new.id
+      and parsing_status = 'ready'
+      and deleted_at is null
+  ) then
+    raise exception 'candidate % cannot be searchable: their current CV has not been read',
+      new.id using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger forbid_searchable_without_a_readable_cv
+  before insert or update of is_searchable, current_cv_id on candidates
+  for each row when (new.is_searchable)
+  execute function forbid_searchable_without_a_readable_cv();
 
 -- A Snapshot is the frozen profile an Application was judged from, and the two histories are
 -- the record of what was decided and when. All of it was guarded by convention only, which is

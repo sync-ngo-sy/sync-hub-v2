@@ -121,6 +121,14 @@ create table candidate_languages (
 create index candidate_languages_language_idx   on candidate_languages (language_code, candidate_id);
 create index candidate_languages_sort_order_idx on candidate_languages (candidate_id, sort_order);
 
+-- The unique index on a constant is what allows exactly one row: every distance the HNSW
+-- index ranks has to have come out of the same model, and nothing else says so.
+create table embedding_models (
+  model          text primary key,
+  established_at timestamptz not null default now()
+);
+create unique index embedding_models_holds_one_model on embedding_models ((true));
+
 create table candidate_profile_chunks (
   id           uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references candidates (id) on delete cascade,
@@ -129,8 +137,10 @@ create table candidate_profile_chunks (
   chunk_text  text not null,
   chunk_index int not null,
 
-  embedding       vector(768),
-  embedding_model text not null,
+  embedding       vector(768) not null,
+  embedding_model text not null references embedding_models (model),
+
+  search_vector tsvector generated always as (to_tsvector('english', chunk_text)) stored,
 
   created_at timestamptz not null default now(),
 
@@ -138,6 +148,8 @@ create table candidate_profile_chunks (
 );
 create index candidate_profile_chunks_embedding_hnsw
   on candidate_profile_chunks using hnsw (embedding vector_cosine_ops);
+create index candidate_profile_chunks_search_idx
+  on candidate_profile_chunks using gin (search_vector);
 
 create table candidate_embedding_jobs (
   candidate_id uuid primary key references candidates (id) on delete cascade,

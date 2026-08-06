@@ -48,7 +48,7 @@ export function findsCandidates(items: MatchedCandidate[], asked?: AskedSearch[]
         language: query.get('language'),
         keywords: query.get('keywords'),
       });
-      return response(200).json({ items });
+      return response(200).json({ items, has_more: false, depth_reached: false });
     }),
   ];
 }
