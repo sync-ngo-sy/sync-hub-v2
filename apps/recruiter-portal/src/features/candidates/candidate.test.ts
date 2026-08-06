@@ -17,6 +17,10 @@ const MATCH: MatchedCandidate = {
   location_key: 'sy-aleppo',
   location_name: 'Aleppo',
   preferred_language_code: 'ar',
+  canonical_role_key: 'backend-engineer',
+  canonical_role_name: 'Backend Engineer',
+  total_experience_years: 8,
+  in_talent_pool: false,
   matched_section: 'experience',
   matched_text: 'Ran the payment platform at Hand in Hand.',
 };
@@ -50,6 +54,8 @@ describe('the card a search hit hands the Candidate view', () => {
     const card = matchedCard({
       candidate_id: MATCH.candidate_id,
       full_name: 'Amina Haddad',
+      total_experience_years: 0,
+      in_talent_pool: false,
       matched_text: '',
     });
 

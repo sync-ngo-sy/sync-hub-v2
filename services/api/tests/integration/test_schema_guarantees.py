@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from sync_core.models import CvParsingStatus
 from tests.support.applications import a_whole_application
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_created_job
@@ -185,3 +186,112 @@ async def test_a_job_description_too_long_for_a_search_vector_is_refused(
             {"long": "x" * 5001, "id": job["id"]},
         )
     await db_session.rollback()
+
+
+async def test_a_chunk_cannot_exist_without_an_embedding(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """A chunk with no vector is invisible to search and still satisfied the gate that decided
+    whether its Candidate was searchable at all."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await db_session.execute(text("insert into embedding_models (model) values ('a-model')"))
+
+    with pytest.raises(IntegrityError, match="embedding"):
+        await db_session.execute(
+            text(
+                "insert into candidate_profile_chunks "
+                "(candidate_id, chunk_text, chunk_index, embedding_model) "
+                "values (:id, 'anything', 0, 'a-model')"
+            ),
+            {"id": candidate_id},
+        )
+    await db_session.rollback()
+
+
+async def test_the_corpus_holds_one_embedding_model_at_a_time(db_session: AsyncSession) -> None:
+    """Distances are only comparable within one model, and the index ranks them all together."""
+    await db_session.execute(text("insert into embedding_models (model) values ('first-model')"))
+
+    with pytest.raises(IntegrityError, match="embedding_models_holds_one_model"):
+        await db_session.execute(
+            text("insert into embedding_models (model) values ('second-model')")
+        )
+    await db_session.rollback()
+
+
+async def test_a_chunk_cannot_name_a_model_the_corpus_has_not_established(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+
+    with pytest.raises(IntegrityError, match="embedding_model"):
+        await db_session.execute(
+            text(
+                "insert into candidate_profile_chunks "
+                "(candidate_id, chunk_text, chunk_index, embedding, embedding_model) "
+                "values (:id, 'anything', 0, array_fill(0.0::real, array[768])::vector, 'nobodys')"
+            ),
+            {"id": candidate_id},
+        )
+    await db_session.rollback()
+
+
+async def test_a_candidate_whose_cv_was_never_read_cannot_become_searchable(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """`candidates_searchable_needs_cv` only asks that a CV exists, which a failed parse
+    satisfies — so they would be told they were discoverable and appear nowhere."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id, parsing_status=CvParsingStatus.UPLOADED)
+
+    with pytest.raises(IntegrityError, match="current CV has not been read"):
+        await db_session.execute(
+            text("update candidates set is_searchable = true where id = :id"), {"id": candidate_id}
+        )
+    await db_session.rollback()
+
+
+async def test_correcting_a_candidates_name_enqueues_a_re_embed(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """A name lives on `profiles`, and it is the first line of the identity chunk."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await db_session.execute(
+        text("update candidate_embedding_jobs set dirty = false where candidate_id = :id"),
+        {"id": candidate_id},
+    )
+    await db_session.commit()
+
+    await db_session.execute(
+        text("update profiles set full_name = 'Amina Haddād' where id = :id"), {"id": candidate_id}
+    )
+    await db_session.commit()
+
+    dirty = await db_session.scalar(
+        text("select dirty from candidate_embedding_jobs where candidate_id = :id"),
+        {"id": candidate_id},
+    )
+    assert dirty is True
+
+
+async def test_renaming_a_recruiter_enqueues_nothing(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """A recruiter has no profile to embed, and `candidate_embedding_jobs` has no row to key
+    against them — so the trigger firing at all would be a foreign key violation."""
+    await an_admin(browser, mailbox)
+
+    await db_session.execute(
+        text(
+            "update profiles set full_name = 'Rana Khalil' "
+            "where account_type = 'recruiter'::account_type"
+        )
+    )
+    await db_session.commit()
+
+    queued = await db_session.scalar(text("select count(*) from candidate_embedding_jobs"))
+    assert queued == 0

@@ -600,6 +600,13 @@ export type Database = {
             foreignKeyName: 'applications_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'applications_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -668,6 +675,13 @@ export type Database = {
             foreignKeyName: 'candidate_educations_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'candidate_educations_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -709,6 +723,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'candidate_embedding_jobs_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: true;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
           {
             foreignKeyName: 'candidate_embedding_jobs_candidate_id_fkey';
             columns: ['candidate_id'];
@@ -776,6 +797,13 @@ export type Database = {
             foreignKeyName: 'candidate_experiences_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'candidate_experiences_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -818,6 +846,13 @@ export type Database = {
             foreignKeyName: 'candidate_languages_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'candidate_languages_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -844,9 +879,10 @@ export type Database = {
           chunk_text: string;
           chunk_type: string | null;
           created_at: string;
-          embedding: string | null;
+          embedding: string;
           embedding_model: string;
           id: string;
+          search_vector: unknown;
         };
         Insert: {
           candidate_id: string;
@@ -854,9 +890,10 @@ export type Database = {
           chunk_text: string;
           chunk_type?: string | null;
           created_at?: string;
-          embedding?: string | null;
+          embedding: string;
           embedding_model: string;
           id?: string;
+          search_vector?: unknown;
         };
         Update: {
           candidate_id?: string;
@@ -864,11 +901,19 @@ export type Database = {
           chunk_text?: string;
           chunk_type?: string | null;
           created_at?: string;
-          embedding?: string | null;
+          embedding?: string;
           embedding_model?: string;
           id?: string;
+          search_vector?: unknown;
         };
         Relationships: [
+          {
+            foreignKeyName: 'candidate_profile_chunks_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
           {
             foreignKeyName: 'candidate_profile_chunks_candidate_id_fkey';
             columns: ['candidate_id'];
@@ -882,6 +927,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'candidates';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'candidate_profile_chunks_embedding_model_fkey';
+            columns: ['embedding_model'];
+            isOneToOne: false;
+            referencedRelation: 'embedding_models';
+            referencedColumns: ['model'];
           },
         ];
       };
@@ -936,6 +988,13 @@ export type Database = {
             foreignKeyName: 'candidate_projects_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'candidate_projects_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -974,6 +1033,13 @@ export type Database = {
           years_experience?: number;
         };
         Relationships: [
+          {
+            foreignKeyName: 'candidate_skills_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
           {
             foreignKeyName: 'candidate_skills_candidate_id_fkey';
             columns: ['candidate_id'];
@@ -1027,6 +1093,13 @@ export type Database = {
             foreignKeyName: 'candidate_tag_assignments_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'candidate_tag_assignments_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -1072,7 +1145,6 @@ export type Database = {
           is_searchable: boolean;
           location_key: string | null;
           preferred_language_code: string | null;
-          search_vector: unknown;
           summary: string | null;
           total_experience_years: number;
           unmapped_skills: string[];
@@ -1089,7 +1161,6 @@ export type Database = {
           is_searchable?: boolean;
           location_key?: string | null;
           preferred_language_code?: string | null;
-          search_vector?: unknown;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1106,7 +1177,6 @@ export type Database = {
           is_searchable?: boolean;
           location_key?: string | null;
           preferred_language_code?: string | null;
-          search_vector?: unknown;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1250,6 +1320,13 @@ export type Database = {
             foreignKeyName: 'communications_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'communications_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -1334,6 +1411,13 @@ export type Database = {
             foreignKeyName: 'cvs_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'cvs_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -1344,7 +1428,29 @@ export type Database = {
             referencedRelation: 'candidates';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'cvs_detected_language_fk';
+            columns: ['detected_language'];
+            isOneToOne: false;
+            referencedRelation: 'languages';
+            referencedColumns: ['code'];
+          },
         ];
+      };
+      embedding_models: {
+        Row: {
+          established_at: string;
+          model: string;
+        };
+        Insert: {
+          established_at?: string;
+          model: string;
+        };
+        Update: {
+          established_at?: string;
+          model?: string;
+        };
+        Relationships: [];
       };
       ingestion_jobs: {
         Row: {
@@ -1741,6 +1847,13 @@ export type Database = {
             foreignKeyName: 'notes_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'notes_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -1991,6 +2104,13 @@ export type Database = {
             foreignKeyName: 'talent_pool_members_candidate_id_fkey';
             columns: ['candidate_id'];
             isOneToOne: false;
+            referencedRelation: 'candidate_directory_profiles';
+            referencedColumns: ['candidate_id'];
+          },
+          {
+            foreignKeyName: 'talent_pool_members_candidate_id_fkey';
+            columns: ['candidate_id'];
+            isOneToOne: false;
             referencedRelation: 'candidate_search_profiles';
             referencedColumns: ['candidate_id'];
           },
@@ -2129,18 +2249,68 @@ export type Database = {
       };
     };
     Views: {
-      candidate_search_profiles: {
+      candidate_directory_profiles: {
         Row: {
           avatar_url: string | null;
           candidate_id: string | null;
+          canonical_role_key: string | null;
+          canonical_role_name: string | null;
+          created_at: string | null;
           full_name: string | null;
           headline: string | null;
           location_key: string | null;
           location_name: string | null;
           preferred_language_code: string | null;
           summary: string | null;
+          total_experience_years: number | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'candidates_canonical_role_fk';
+            columns: ['canonical_role_key'];
+            isOneToOne: false;
+            referencedRelation: 'canonical_roles';
+            referencedColumns: ['key'];
+          },
+          {
+            foreignKeyName: 'candidates_location_fk';
+            columns: ['location_key'];
+            isOneToOne: false;
+            referencedRelation: 'locations';
+            referencedColumns: ['key'];
+          },
+          {
+            foreignKeyName: 'candidates_preferred_language_fk';
+            columns: ['preferred_language_code'];
+            isOneToOne: false;
+            referencedRelation: 'languages';
+            referencedColumns: ['code'];
+          },
+        ];
+      };
+      candidate_search_profiles: {
+        Row: {
+          avatar_url: string | null;
+          candidate_id: string | null;
+          canonical_role_key: string | null;
+          canonical_role_name: string | null;
+          created_at: string | null;
+          full_name: string | null;
+          headline: string | null;
+          location_key: string | null;
+          location_name: string | null;
+          preferred_language_code: string | null;
+          summary: string | null;
+          total_experience_years: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'candidates_canonical_role_fk';
+            columns: ['canonical_role_key'];
+            isOneToOne: false;
+            referencedRelation: 'canonical_roles';
+            referencedColumns: ['key'];
+          },
           {
             foreignKeyName: 'candidates_location_fk';
             columns: ['location_key'];
