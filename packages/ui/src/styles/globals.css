@@ -44,8 +44,19 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
+
+  /* --input is the border drawn around a field; --input-background is the surface inside
+     it, which is the lightest thing on a page. Two tokens, not one, because the field's
+     edge and its fill move independently. */
   --color-input: var(--input);
+  --color-input-background: var(--input-background);
   --color-ring: var(--ring);
+
+  /* The panel green, promoted to a surface token: the rail in light theme, and the crown
+     of the sign-in card. --primary sits one step above it, so a rail recedes while a
+     solid action advances. */
+  --color-deep: var(--deep);
+  --color-deep-foreground: var(--deep-foreground);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -56,13 +67,22 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
-  /* The earlier mockup set carried no sidebar-specific values for these three, but its
-     Dashboard fixed the pairings: active nav text is --accent-foreground, its indicator bar
-     --primary, and every sidebar rule --border. Vellum, which supersedes that set, does
-     name all three itself, and adds a --sidebar-label. */
-  --color-sidebar-accent-foreground: var(--accent-foreground);
-  --color-sidebar-primary: var(--primary);
-  --color-sidebar-border: var(--border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-label: var(--sidebar-label);
+
+  /* One colour per application_status, and no foreground to pair it with: a status is a
+     mark beside a plain label, so the only thing that takes a status colour is the mark
+     itself. */
+  --color-status-new: var(--status-new);
+  --color-status-review: var(--status-review);
+  --color-status-shortlisted: var(--status-shortlisted);
+  --color-status-interview: var(--status-interview);
+  --color-status-offer: var(--status-offer);
+  --color-status-hired: var(--status-hired);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-withdrawn: var(--status-withdrawn);
 
   --color-chip-shortlisted: var(--chip-shortlisted);
   --color-chip-shortlisted-foreground: var(--chip-shortlisted-foreground);
@@ -76,88 +96,115 @@
 
 @theme {
   /* Tailwind's stock 400/500/600 is a visibly lighter register than the mockups fix, so
-     the three named weights are re-pointed here. They are not the whole vocabulary: the
-     landing mockup also carries 500, the h3 step below sets 600 directly, and the vellum
-     mockup uses 470, 520 and 540. */
+     the three general-purpose weights are re-pointed. The other four are named for the
+     single job each one does. These seven lines are the only place a weight is written as
+     a number: every type step below points at one of them, and so does every component. */
   --font-weight-normal: 450;
+  --font-weight-figure: 470;
+  --font-weight-nav: 520;
+  --font-weight-status-label: 540;
   --font-weight-medium: 560;
+  --font-weight-section: 600;
   --font-weight-semibold: 640;
 
   --text-display: clamp(3.75rem, 2.5rem + 5.2vw, 6.5rem);
   --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.02em;
-  --text-display--font-weight: 640;
+  --text-display--font-weight: var(--font-weight-semibold);
 
   /* The mockups fix display, h2 and h3; this step is interpolated between the
      first two and should be re-derived when a design pins an h1. */
   --text-h1: clamp(2rem, 1.5rem + 2vw, 3rem);
   --text-h1--line-height: 1.1;
   --text-h1--letter-spacing: -0.02em;
-  --text-h1--font-weight: 640;
+  --text-h1--font-weight: var(--font-weight-semibold);
 
   --text-h2: clamp(1.6rem, 1.4rem + 0.6vw, 2.1rem);
   --text-h2--line-height: 1.2;
   --text-h2--letter-spacing: -0.01em;
-  --text-h2--font-weight: 640;
+  --text-h2--font-weight: var(--font-weight-semibold);
 
   --text-h3: clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
   --text-h3--line-height: 1.3;
   --text-h3--letter-spacing: -0.01em;
-  --text-h3--font-weight: 600;
+  --text-h3--font-weight: var(--font-weight-section);
 
   --text-reading: 1rem;
   --text-reading--line-height: 1.55;
 
-  --text-dense: 0.875rem;
+  --text-dense: 0.9375rem;
   --text-dense--line-height: 1.5;
 
   /* The dense app-chrome steps, transcribed from the Dashboard mockup, which is desktop-only
      and fixes them at one size each. They sit below the h2/h3 ramp the editorial landing
      uses, so they are named for what they label rather than as heading levels: the page
-     title (26px, eased to 22px on a phone), a card heading (15px), the figure on a stat card
-     (29px), and the meta line under or beside either (13px). */
+     title (26px, eased to 22px on a phone), a card heading (16px), the figure on a stat card
+     (32px), and the meta line under or beside either (14px). */
   --text-page-title: clamp(1.375rem, 1.15rem + 1vw, 1.625rem);
   --text-page-title--line-height: 1.2;
   --text-page-title--letter-spacing: -0.01em;
-  --text-page-title--font-weight: 640;
+  --text-page-title--font-weight: var(--font-weight-semibold);
 
-  --text-title: 0.9375rem;
+  --text-title: 1rem;
   --text-title--line-height: 1.4;
-  --text-title--font-weight: 640;
+  --text-title--font-weight: var(--font-weight-semibold);
 
-  --text-figure: 1.8125rem;
+  /* Bigger but lighter: at this size the figure carries its own emphasis, and weight on
+     top of it shouts. If it ever reads too strong, take the weight down further rather
+     than lightening the colour, which would add a grey outside the three-step ramp. */
+  --text-figure: 2rem;
   --text-figure--line-height: 1;
-  --text-figure--letter-spacing: -0.02em;
-  --text-figure--font-weight: 560;
+  --text-figure--letter-spacing: -0.015em;
+  --text-figure--font-weight: var(--font-weight-figure);
 
-  --text-meta: 0.8125rem;
+  --text-meta: 0.875rem;
   --text-meta--line-height: 1.5;
-  --text-meta--font-weight: 450;
+  --text-meta--font-weight: var(--font-weight-normal);
 
-  /* The mockups carry the same near-zero card shadow in both themes, so it is one value
-     rather than a :root/.dark pair. */
+  /* Carried over from the earlier mockups, which used one near-zero shadow in both
+     themes. Vellum's reference page draws a heavier pair, one per theme, but its token
+     file does not carry a shadow, so this stays one value until a design pins two. */
   --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04);
 }
 
+/* One warm ramp, three steps, no pure white anywhere: canvas -> card -> input, each
+   lighter than the last and all the same temperature. */
 :root {
-  --background: #FAFAF9;
-  --foreground: #1C1917;
-  --card: #FFFFFF;
-  --card-foreground: #1C1917;
-  --popover: #FFFFFF;
-  --popover-foreground: #1C1917;
-  --primary: #1B7F77;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F5F5F4;
-  --secondary-foreground: #44403C;
-  --muted: #F0EFED;
-  --muted-foreground: #78716C;
-  --accent: #EAF5F3;
-  --accent-foreground: #166B65;
+  --background: #EFEBE4;
+  --foreground: #1A1714;
+  --card: #FAF7F2;
+  --card-foreground: #1A1714;
+  --popover: #FAF7F2;
+  --popover-foreground: #1A1714;
+  --input-background: #FDFBF7;
+
+  --deep: #125650;
+  --deep-foreground: #FBF9F5;
+  --primary: #0F6459;
+  --primary-foreground: #FBF9F5;
+
+  /* The three-step text ramp. --secondary-foreground is the step that was missing in
+     practice: table headers and the role under a name fell back to --muted-foreground,
+     which left nothing on the page reading as merely secondary. */
+  --secondary: #E8E3DA;
+  --secondary-foreground: #4A443E;
+  --muted: #ECE7DF;
+  --muted-foreground: #6E6862;
+
+  /* The tint is the brand green diluted into the paper — 9% of --accent-foreground over
+     --card — so it is derived rather than picked and can never read as a foreign cool
+     patch on a warm page. #0F6E63 is the floor for --accent-foreground: it paints 13-14px
+     text at 5.7:1 on --card, and one step lighter fails AA. If something using it reads
+     too dark, the fix is larger text or a fill, not a lighter green. */
+  --accent: #E5EBE5;
+  --accent-foreground: #0F6E63;
+
   /* --destructive is the red itself: shadcn primitives use it as text and as the
-     base of a /10 wash. --destructive-muted keeps the flat tint §8 first named. */
+     base of a /10 wash. --destructive-muted keeps the flat tint §8 first named. These
+     four pairs were not re-derived for the warm canvas; re-measure any of them against
+     #FAF7F2 rather than the old #FFFFFF card if it ever becomes prominent. */
   --destructive: #9F3129;
-  --destructive-foreground: #FFFFFF;
+  --destructive-foreground: #FBF9F5;
   --destructive-muted: #FBEAEA;
   --success: #E7F5EC;
   --success-foreground: #1E6B45;
@@ -165,18 +212,41 @@
   --warning-foreground: #8A5A0A;
   --info: #E9F1FB;
   --info-foreground: #1E4E8C;
-  --border: #E7E5E4;
-  --input: #D9D6D3;
-  --ring: #1D867E;
-  --radius: 0.5rem;
-  --chart-1: #1D867E;
-  --chart-2: #339E95;
-  --chart-3: #4DBFB4;
-  --chart-4: #7ED1C8;
-  --chart-5: #D6D3D1;
-  --sidebar: #F6F5F3;
-  --sidebar-foreground: #44403C;
-  --sidebar-accent: #EAF5F3;
+
+  --border: #E2DCD1;
+  --input: #D5CDC0;
+  --ring: #0F6459;
+  --radius: 0.625rem;
+
+  --chart-1: #0F6459;
+  --chart-2: #128470;
+  --chart-3: #2A9C88;
+  --chart-4: #66C2B2;
+  --chart-5: #D8D2C6;
+
+  /* The rail is dark green in light theme, so every sidebar value is explicit: anything
+     borrowed from the main palette was picked to sit on paper and disappears here. */
+  --sidebar: #125650;
+  --sidebar-foreground: #DCEAE8;
+  --sidebar-accent: rgba(251, 249, 245, 0.14);
+  --sidebar-accent-foreground: #FBF9F5;
+  --sidebar-primary: #FBF9F5;
+  --sidebar-border: #1D6259;
+  --sidebar-label: #B6D0CC;
+
+  /* The ramp gains chroma toward hired (38 -> 75 -> 114 -> 141) rather than losing light:
+     past a point a dark green just reads black, which is the opposite of greener. Amber
+     is the only warm hue and belongs to the one state that should pull the eye. New and
+     the two terminal states sit outside the ramp — they are not stages of progress. */
+  --status-new: #7E776F;
+  --status-review: #A8730F;
+  --status-shortlisted: #41675F;
+  --status-interview: #2A7568;
+  --status-offer: #128470;
+  --status-hired: #099680;
+  --status-rejected: #8A8379;
+  --status-withdrawn: #9A938B;
+
   --chip-shortlisted: #DCF0EC;
   --chip-shortlisted-foreground: #125F59;
   --chip-interview: #CBE9E3;
@@ -187,21 +257,30 @@
   --chip-hired-foreground: #FFFFFF;
 }
 
+/* The dark rail stays warm graphite rather than taking --deep: the green panel is a
+   light-theme device, and at night the rail should recede instead of colouring. */
 .dark {
-  --background: #131211;
-  --foreground: #F5F5F4;
-  --card: #1C1A19;
-  --card-foreground: #F5F5F4;
-  --popover: #1C1A19;
-  --popover-foreground: #F5F5F4;
-  --primary: #0E8177;
-  --primary-foreground: #FFFFFF;
-  --secondary: #211E1C;
-  --secondary-foreground: #D6D3D1;
+  --background: #1C1A17;
+  --foreground: #F2EFEA;
+  --card: #252220;
+  --card-foreground: #F2EFEA;
+  --popover: #252220;
+  --popover-foreground: #F2EFEA;
+  --input-background: #1F1D1A;
+
+  --deep: #171512;
+  --deep-foreground: #F2EFEA;
+  --primary: #23A092;
+  --primary-foreground: #08201D;
+
+  --secondary: #2B2724;
+  --secondary-foreground: #C3BCB4;
   --muted: rgba(255, 255, 255, 0.06);
-  --muted-foreground: #A29E9A;
-  --accent: rgba(63, 181, 168, 0.16);
-  --accent-foreground: #3FB5A8;
+  --muted-foreground: #A39C94;
+
+  --accent: rgba(45, 175, 160, 0.16);
+  --accent-foreground: #55C6B6;
+
   --destructive: #F0938A;
   --destructive-foreground: #131211;
   --destructive-muted: rgba(224, 94, 84, 0.18);
@@ -211,18 +290,35 @@
   --warning-foreground: #E8B94D;
   --info: rgba(74, 130, 216, 0.16);
   --info-foreground: #7FB0F0;
-  --border: #2A2827;
-  --input: #332F2D;
-  --ring: #3FB5A8;
-  --radius: 0.5rem;
-  --chart-1: #2BA89D;
-  --chart-2: #3FB5A8;
-  --chart-3: #63C9BD;
-  --chart-4: #93DAD1;
+
+  --border: #332F2B;
+  --input: #3D3833;
+  --ring: #23A092;
+  --radius: 0.625rem;
+
+  --chart-1: #23A092;
+  --chart-2: #35B0A0;
+  --chart-3: #4CCBB8;
+  --chart-4: #77E0CD;
   --chart-5: #4A4542;
-  --sidebar: #100F0D;
-  --sidebar-foreground: #D6D3D1;
-  --sidebar-accent: rgba(63, 181, 168, 0.16);
+
+  --sidebar: #171512;
+  --sidebar-foreground: #A39C94;
+  --sidebar-accent: rgba(45, 175, 160, 0.16);
+  --sidebar-accent-foreground: #55C6B6;
+  --sidebar-primary: #23A092;
+  --sidebar-border: #282421;
+  --sidebar-label: #7A736D;
+
+  --status-new: #9A938B;
+  --status-review: #E8B94D;
+  --status-shortlisted: #3E9184;
+  --status-interview: #35B0A0;
+  --status-offer: #4CCBB8;
+  --status-hired: #77E0CD;
+  --status-rejected: #9A938B;
+  --status-withdrawn: #7D766E;
+
   --chip-shortlisted: rgba(63, 181, 168, 0.12);
   --chip-shortlisted-foreground: #52C2B5;
   --chip-interview: rgba(63, 181, 168, 0.17);
