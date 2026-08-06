@@ -16,14 +16,11 @@ export interface ComboboxOptionGroup {
 interface ComboboxBaseProps {
   options: ComboboxOption[] | ComboboxOptionGroup[];
   placeholder?: string;
-  /** One sentence, shown in place of the list when the query matches nothing. */
   emptyMessage?: string;
-  /** While true the panel says the list is still arriving, never that it is empty. */
   loading?: boolean;
   loadingMessage?: string;
   disabled?: boolean;
   id?: string;
-  /** Fires when the field itself is left, so a form can answer it without waiting for submit. */
   onBlur?: FocusEventHandler<HTMLInputElement>;
   className?: string;
   'aria-label'?: string;
@@ -49,7 +46,6 @@ export type ComboboxProps = SingleComboboxProps | MultipleComboboxProps;
 
 type Selection = ComboboxOption | ComboboxOption[] | null;
 
-/** The primitive names a group by `value` and nests its options under `items`. */
 interface PrimitiveGroup {
   value: string;
   items: ComboboxOption[];
@@ -62,13 +58,10 @@ function isGrouped(
   return first !== undefined && 'options' in first;
 }
 
-/** A value the options don't cover keeps its place in the selection rather than vanishing —
- * the list may still be arriving — and wears the value itself until its label turns up. */
 function optionFor(options: ComboboxOption[], value: string): ComboboxOption {
   return options.find((option) => option.value === value) ?? { value, label: value };
 }
 
-/** The primitive selects whole option objects; consumers only ever handle the values. */
 function toSelection(
   options: ComboboxOption[],
   value: string | string[] | null | undefined,

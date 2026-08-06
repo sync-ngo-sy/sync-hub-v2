@@ -95,8 +95,6 @@ describe('the workspace chrome', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
-    // The cache is emptied once the landing has actually taken over, a chunk-load after the
-    // address changes.
     await waitFor(() =>
       expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toBeUndefined(),
     );

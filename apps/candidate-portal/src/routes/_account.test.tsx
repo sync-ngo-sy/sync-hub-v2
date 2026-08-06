@@ -82,7 +82,6 @@ describe('the account chrome', () => {
     expect(within(nav).getByRole('link', { name: 'Jobs' })).not.toHaveAttribute('aria-current');
   });
 
-  // CVs were a destination of their own until they became the profile's first section.
   it('offers no CVs tab, because there is no page to send it to', async () => {
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
 

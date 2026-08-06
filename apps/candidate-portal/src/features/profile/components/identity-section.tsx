@@ -11,7 +11,6 @@ import { languageOptions, locationGroups, roleOptions } from '@/features/referen
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
 
-/** Having no preference is a choice, so it is on the list rather than left to a blank field. */
 const NO_PREFERENCE = { value: '', label: 'No preference' };
 
 const NO_ROLE = { value: '', label: 'Not saying' };

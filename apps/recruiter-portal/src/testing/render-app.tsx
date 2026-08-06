@@ -16,8 +16,6 @@ export async function renderApp(path = '/') {
     </QueryClientProvider>,
   );
 
-  // Two waits, because a route reaches `idle` while its lazily-imported component is still on
-  // the wire — leaving the skeleton on screen for a caller that asked for the page.
   await waitFor(() => expect(router.state.status).toBe('idle'));
   await waitFor(() => expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull());
 

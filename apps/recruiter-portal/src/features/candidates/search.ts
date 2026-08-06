@@ -29,7 +29,6 @@ export function searchQuery(filters: CandidateSearchFilters) {
   };
 }
 
-/** An unset filter is left off the address rather than left blank in it. */
 export function searchAddress(filters: CandidateSearchFilters) {
   return {
     q: set(filters.q),

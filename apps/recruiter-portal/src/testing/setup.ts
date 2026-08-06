@@ -5,7 +5,6 @@ import { server } from './server';
 
 configure({ asyncUtilTimeout: 5_000 });
 
-// jsdom ships neither, and the theme and the responsive chrome both read them.
 window.matchMedia ??= (query: string) =>
   ({
     matches: false,
@@ -18,7 +17,6 @@ window.matchMedia ??= (query: string) =>
     dispatchEvent: vi.fn(),
   }) as unknown as MediaQueryList;
 
-// jsdom defines scrollTo only to throw "not implemented", so this replaces rather than fills in.
 window.scrollTo = vi.fn();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));

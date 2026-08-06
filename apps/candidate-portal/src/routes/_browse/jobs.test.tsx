@@ -30,7 +30,6 @@ describe('browsing jobs', () => {
     expect(
       within(developer).getByText('Levant Digital · Damascus · Remote · Full time'),
     ).toBeVisible();
-    // Neither location nor employment type: the meta line carries only what the Job has.
     const pharmacist = within(list).getByRole('link', { name: /Pharmacist/ });
     expect(within(pharmacist).getByText('Sham Care')).toBeVisible();
   });
@@ -48,7 +47,6 @@ describe('browsing jobs', () => {
     await waitFor(() =>
       expect(within(list).getByRole('link', { name: /Logistics Officer/ })).toBeVisible(),
     );
-    // Appended, not replaced: the first page is still above the one just fetched.
     expect(within(list).getAllByRole('link')).toHaveLength(
       PUBLIC_JOBS.length + MORE_PUBLIC_JOBS.length,
     );

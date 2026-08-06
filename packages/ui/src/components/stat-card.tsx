@@ -12,7 +12,6 @@ const TREND_TONE: Record<TrendTone, { color: string; icon?: LucideIcon }> = {
   neutral: { color: 'text-muted-foreground' },
 };
 
-/** The card StatCard and its skeleton share, so the two cannot drift apart. */
 export function StatCardShell({ className, children, ...props }: ComponentProps<typeof Card>) {
   return (
     <Card className={cn(cardSurface, 'gap-0', className)} {...props}>
@@ -24,8 +23,6 @@ export function StatCardShell({ className, children, ...props }: ComponentProps<
 interface StatCardProps {
   label: string;
   value: ReactNode;
-  /** A `positive` tone carries the trend icon, so it never rests on color; the others say it
-   * in words, as the mockup does. */
   trend?: { label: string; tone?: TrendTone };
   className?: string;
 }

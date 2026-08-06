@@ -23,7 +23,6 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
   );
 }
 
-/** The last resort: the shell itself failed, so a reload is the only way out. */
 export function AppCrash({ error }: ErrorComponentProps) {
   useEffect(() => reportError(error, { boundary: 'app-shell' }), [error]);
 

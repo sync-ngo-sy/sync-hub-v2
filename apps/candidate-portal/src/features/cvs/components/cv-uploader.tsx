@@ -11,9 +11,7 @@ import { cvUpload, useUploadCv } from '../hooks/use-upload-cv';
 
 interface CvUploaderProps {
   slotsLeft: number;
-  /** With none kept, the uploader *is* the list's empty state rather than a bar above it. */
   hasCvs: boolean;
-  /** The CV the API took, so whoever is waiting for its parse knows which one to watch. */
   onUploaded: (cv: Cv) => void;
 }
 
@@ -31,8 +29,6 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
       toast.success(`“${cv.display_name}” uploaded. We're reading it now.`);
     } catch (error) {
       const message = problemMessage(error, "Couldn't upload that file. Try again.");
-      // A refused file is about the file, so it belongs beside the picker. A fault on our
-      // side is nobody's file, and goes to Sonner instead (§7.2, §7.3).
       if (isClientError(error)) setRefusal(message);
       else toast.error(message);
     } finally {
@@ -42,7 +38,6 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
 
   async function choose(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    // Cleared so that picking the same file twice still fires a change event.
     event.target.value = '';
     if (!file) return;
 
@@ -103,7 +98,6 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
       {uploading ? <UploadProgress name={uploading} /> : null}
 
       {refusal ? (
-        // Gray rather than red: `--destructive` is reserved for irreversible actions (§8).
         <Alert className="bg-muted">
           <CircleAlert aria-hidden="true" />
           <AlertTitle>That file did not go through</AlertTitle>
@@ -125,10 +119,6 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
   );
 }
 
-/**
- * Indeterminate on purpose: the request goes through `openapi-fetch` (ADR-0008), and `fetch`
- * cannot report how many bytes have left the browser. A percentage here would be invented.
- */
 function UploadProgress({ name }: { name: string }) {
   return (
     <div className="space-y-1.5">

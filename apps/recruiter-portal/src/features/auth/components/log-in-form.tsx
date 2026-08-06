@@ -27,7 +27,6 @@ export function LogInForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
     try {
       onSignedIn(await logIn.mutateAsync({ body: values }));
     } catch (error) {
-      // Credentials are a field problem, not a toast: it belongs beside what the reader typed.
       setError('password', {
         message: problemMessage(error, "Couldn't sign you in. Try again."),
       });

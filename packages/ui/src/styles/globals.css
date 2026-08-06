@@ -56,9 +56,10 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
-  /* The approved set carries no sidebar-specific values for these three, but the
-     Dashboard mockup fixes the pairings: active nav text is --accent-foreground,
-     its indicator bar --primary, and every sidebar rule --border. */
+  /* The earlier mockup set carried no sidebar-specific values for these three, but its
+     Dashboard fixed the pairings: active nav text is --accent-foreground, its indicator bar
+     --primary, and every sidebar rule --border. Vellum, which supersedes that set, does
+     name all three itself, and adds a --sidebar-label. */
   --color-sidebar-accent-foreground: var(--accent-foreground);
   --color-sidebar-primary: var(--primary);
   --color-sidebar-border: var(--border);
@@ -74,8 +75,10 @@
 }
 
 @theme {
-  /* Both approved mockups render at these three weights; Tailwind's stock 400/500/600
-     is a visibly lighter register than the design they fix. */
+  /* Tailwind's stock 400/500/600 is a visibly lighter register than the mockups fix, so
+     the three named weights are re-pointed here. They are not the whole vocabulary: the
+     landing mockup also carries 500, the h3 step below sets 600 directly, and the vellum
+     mockup uses 470, 520 and 540. */
   --font-weight-normal: 450;
   --font-weight-medium: 560;
   --font-weight-semibold: 640;

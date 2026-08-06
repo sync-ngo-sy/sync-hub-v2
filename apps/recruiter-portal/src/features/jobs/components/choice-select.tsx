@@ -17,8 +17,6 @@ export interface ChoiceField<Value extends string> {
   'aria-invalid'?: boolean;
 }
 
-/** Every closed set a Job carries, rendered the same way: the whole set on screen, in the
- * order the map lists it, and nowhere to type a value that is not in it. */
 export function ChoiceSelect<Value extends string>({
   field,
   items,

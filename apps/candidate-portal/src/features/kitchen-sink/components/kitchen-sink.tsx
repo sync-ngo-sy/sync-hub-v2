@@ -169,7 +169,6 @@ interface DemoApplication {
   status: string;
 }
 
-/** The candidate list register: one row per Application, never a table (§10). */
 const APPLICATIONS: DemoApplication[] = [
   {
     job: 'Field Coordinator, Aleppo',
@@ -181,7 +180,6 @@ const APPLICATIONS: DemoApplication[] = [
   { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'negative', status: 'Not selected' },
 ];
 
-/** Spelled out rather than interpolated, so Tailwind's scanner can see every class. */
 const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
   ['card', 'bg-card'],

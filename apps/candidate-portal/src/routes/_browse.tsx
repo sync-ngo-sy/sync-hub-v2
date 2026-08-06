@@ -9,8 +9,6 @@ import { AppCrash } from '@/features/shell/components/route-error';
 export const Route = createFileRoute('/_browse')({
   beforeLoad: async ({ context }) => {
     const profile = await ensureCurrentProfile(context.queryClient);
-    // Browsing is open to anyone, so no session is turned away here. A recruiter still is:
-    // candidate chrome around a recruiter's account would misrepresent where they are.
     if (profile && !isCandidate(profile)) throw redirect({ to: '/wrong-portal' });
     return { profile };
   },

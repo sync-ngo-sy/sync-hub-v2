@@ -73,11 +73,6 @@ const REOPEN: PipelineMove = {
   success: `Reopened for review — ${TOLD}`,
 };
 
-/** This mirrors what the API will accept, so the card offers no button the server refuses: an
- * undecided Application moves freely among the undecided stages and into either decision, a
- * rejected one has the single way back, and `hired` and `withdrawn` are the end. Keyed by the
- * generated union, so a status the platform adds fails to compile until its moves are spelled
- * out. Offered forwards first, then the decisions, then the way back — nearest first. */
 const PIPELINE_MOVES: Record<PipelineStatus, PipelineMove[]> = {
   new: [TO_REVIEWING, TO_SHORTLISTED, TO_INTERVIEW, TO_OFFER, TO_HIRED, TO_REJECTED],
   reviewing: [TO_SHORTLISTED, TO_INTERVIEW, TO_OFFER, TO_HIRED, TO_REJECTED, BACK_TO_NEW],
@@ -163,7 +158,6 @@ export interface HistoryLine {
   detail: string;
 }
 
-/** The first entry has no previous status, because it is the submission rather than a move. */
 export function historyLine(entry: StatusHistoryEntry): HistoryLine {
   const by = CHANGED_BY[entry.source];
   if (!entry.previous_status) return { title: 'Applied', detail: by };

@@ -18,7 +18,6 @@ function entry(label: string) {
   return within(screen.getByRole('group', { name: label }));
 }
 
-/** The criteria tab, open and saveable — `sent.body` is the whole set the form put back. */
 async function openCriteriaThatSaves(job: JobView) {
   const sent: { body?: JobCriteria } = {};
   server.use(

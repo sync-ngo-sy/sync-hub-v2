@@ -37,7 +37,6 @@ function panel(name: string) {
   return within(screen.getByRole('region', { name }));
 }
 
-/** Everything answering, which is the starting point for most of these. */
 function aWorkingDashboard() {
   return [
     ...signedInAs(RECRUITER),
@@ -48,7 +47,6 @@ function aWorkingDashboard() {
 }
 
 describe('the Dashboard', () => {
-  // Only the clock: the rows render relative times, and MSW and user events keep real timers.
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(TODAY);
@@ -183,7 +181,6 @@ describe('the Dashboard', () => {
 
     expect(await jobs.findByText('18 applications')).toBeVisible();
     expect(jobs.getByText('9 applications')).toBeVisible();
-    // The draft has none, so its row says when it was last touched instead.
     expect(jobs.getByText(/^Updated/)).toBeVisible();
   });
 
@@ -235,7 +232,6 @@ describe('the Dashboard', () => {
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
-    // A count of channels on a link to a page of links would describe neither.
     expect(await sources.findByRole('link', { name: 'All links' })).toBeVisible();
   });
 
@@ -300,7 +296,6 @@ describe('the Dashboard', () => {
     const { user } = await renderApp('/dashboard');
     const recent = panel('Recent applications');
     expect(await recent.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
-    // The counts beside it are a different read, and they answered.
     expect(screen.getByText('78% pass rate')).toBeVisible();
 
     server.use(...listsTenantApplications(RECENT));
@@ -322,7 +317,6 @@ describe('the Dashboard', () => {
     const stats = within(await screen.findByRole('region', { name: 'Hiring at a glance' }));
     expect(await stats.findByRole('alert')).toBeVisible();
     expect(await panel('Where applicants find you').findByRole('alert')).toBeVisible();
-    // And nothing else on the page went with them.
     expect(await panel('Recent applications').findByText('Dima Sabbagh')).toBeVisible();
     expect(panel('Your jobs').getByText('Field Coordinator')).toBeVisible();
   });
@@ -358,7 +352,6 @@ describe('the Dashboard', () => {
     await renderApp('/dashboard');
 
     expect(await screen.findByRole('status', { name: 'Loading the counts' })).toBeVisible();
-    // The Jobs panel does not wait on the counts beside it.
     expect(panel('Your jobs').getByText('Field Coordinator')).toBeVisible();
 
     held.arrive();

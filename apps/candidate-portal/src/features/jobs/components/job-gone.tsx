@@ -2,7 +2,6 @@ import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { SearchX } from 'lucide-react';
 
-/** A closed role and a dead link are the same dead end, so both get the same one way out. */
 function Gone({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-6 py-16 text-center">

@@ -22,8 +22,6 @@ export function NotificationsPage() {
         </div>
       ) : null}
 
-      {/* Only when there is nothing on screen: a page already holding notifications answers a
-          failed Load more at the button, not with a panel that disowns the list above it. */}
       {notifications.isError && !notifications.data ? (
         <ErrorCard
           title="Couldn't load your notifications"

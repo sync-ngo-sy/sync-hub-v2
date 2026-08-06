@@ -44,7 +44,6 @@ export const MOVE_REFUSED: components['schemas']['ProblemDetail'] = {
   detail: 'A shortlisted application cannot become new.',
 };
 
-/** Everything a Snapshot can carry, so a test that hides a section says so by taking it away. */
 export const AMAL_REVIEW: ApplicationReview = {
   id: AMAL.id,
   job: { id: FIELD_COORDINATOR.id, title: FIELD_COORDINATOR.title },

@@ -17,7 +17,6 @@ export function failsToServeStats(problem: Problem) {
   return [http.get(STATS, ({ response }) => response(500).json(problem))];
 }
 
-/** Holds the counts until the caller lets them arrive, so a test can see the skeletons. */
 export function holdsStats(stats: TenantStats) {
   const gate = holding();
   return {

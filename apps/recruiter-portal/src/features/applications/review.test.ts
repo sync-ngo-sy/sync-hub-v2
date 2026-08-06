@@ -13,8 +13,6 @@ const targets = (status: Parameters<typeof pipelineMoves>[0]) =>
   pipelineMoves(status).map((move) => move.target);
 
 describe('the Pipeline moves offered from a status', () => {
-  /** Written out from the API's own MOVES table in `applications/pipeline.py`, every row of it,
-   * so the two can be compared by eye and a drift on either side shows up here. */
   it('offers every other undecided stage and both decisions while it is undecided', () => {
     expect(targets('new')).toEqual([
       'reviewing',

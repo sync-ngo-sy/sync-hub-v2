@@ -8,10 +8,6 @@ export function signedInAs(profile: Profile) {
   return [http.get('/v1/auth/me', ({ response }) => response(200).json(profile))];
 }
 
-/**
- * A dead session also has to answer the refresh the client attempts before giving up,
- * or MSW sees an unhandled request instead of the expiry path.
- */
 export function signedOut() {
   return [
     http.get('/v1/auth/me', ({ response }) => response(401).json(NO_SESSION)),
@@ -35,7 +31,6 @@ export function logsOut() {
   return [http.post('/v1/auth/logout', ({ response }) => response(204).empty())];
 }
 
-/** `onRequest` is how a test proves local validation never got as far as the API. */
 export function signsUp(profile: Profile, onRequest?: () => void) {
   return [
     http.post('/v1/auth/signup', ({ response }) => {

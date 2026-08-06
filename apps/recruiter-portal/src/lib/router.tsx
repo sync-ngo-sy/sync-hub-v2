@@ -34,9 +34,6 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
   onSessionExpired(() => {
     if (redirecting) return;
     redirecting = true;
-    // Expiry can be raised mid-navigation, and navigating out from under an in-flight load
-    // deadlocks the router — so wait for it to settle. By then a guard may already have sent
-    // the visitor to sign in, which is why this re-checks where we ended up.
     whenSettled(router, () => {
       redirecting = false;
       const { pathname, href } = router.state.location;
@@ -46,8 +43,6 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
         return;
       }
       redirecting = true;
-      // Drop the dead session before navigating: the login route re-reads the profile, and a
-      // cached "still signed in" answer would bounce the visitor straight back.
       queryClient.clear();
       void router
         .navigate({ to: '/login', search: { returnTo: href }, replace: true })

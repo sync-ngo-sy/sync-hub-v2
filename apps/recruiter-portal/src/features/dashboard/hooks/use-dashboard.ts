@@ -33,11 +33,6 @@ export function recentApplicationsQuery() {
   });
 }
 
-/**
- * Three reads for four panels: the stat cards and the Sources chart share one, the recent
- * Applications and the Jobs overview have their own. Each panel speaks its own refusal, so one
- * endpoint failing blanks that panel and no more of the page.
- */
 export function useDashboard(): DashboardRead {
   const tenant = api.useQuery('get', '/v1/tenants/me', {});
   const stats = useQuery(statsQuery());

@@ -28,8 +28,6 @@ export function BrowseJobs({ signedIn, filters, onFiltersChange }: BrowseJobsPro
 
       {jobs.isPending ? (
         <div role="status" aria-label="Loading jobs">
-          {/* Enough rows to fill a phone, not the twenty a page holds: the rest would be a wall
-              of grey below the fold. */}
           <ListSkeleton rows={6} />
         </div>
       ) : null}
