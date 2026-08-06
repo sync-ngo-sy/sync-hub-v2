@@ -277,16 +277,39 @@ class User(Base):
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
 
-t_candidate_search_profiles = Table(
-    "candidate_search_profiles",
+t_candidate_directory_profiles = Table(
+    "candidate_directory_profiles",
     Base.metadata,
     Column("candidate_id", Uuid),
+    Column("created_at", DateTime(True)),
     Column("full_name", Text),
     Column("avatar_url", Text),
     Column("headline", Text),
     Column("summary", Text),
     Column("location_key", Text),
     Column("location_name", Text),
+    Column("canonical_role_key", Text),
+    Column("canonical_role_name", Text),
+    Column("total_experience_years", Integer),
+    Column("preferred_language_code", Text),
+    schema="public",
+)
+
+
+t_candidate_search_profiles = Table(
+    "candidate_search_profiles",
+    Base.metadata,
+    Column("candidate_id", Uuid),
+    Column("created_at", DateTime(True)),
+    Column("full_name", Text),
+    Column("avatar_url", Text),
+    Column("headline", Text),
+    Column("summary", Text),
+    Column("location_key", Text),
+    Column("location_name", Text),
+    Column("canonical_role_key", Text),
+    Column("canonical_role_name", Text),
+    Column("total_experience_years", Integer),
     Column("preferred_language_code", Text),
     schema="public",
 )
@@ -301,6 +324,8 @@ class Candidate(Base):
         CheckConstraint(
             "account_type = 'candidate'::account_type", name="candidates_account_type_check"
         ),
+        CheckConstraint("length(headline) <= 200", name="candidates_headline_length"),
+        CheckConstraint("length(summary) <= 5000", name="candidates_summary_length"),
         CheckConstraint("total_experience_years >= 0", name="candidates_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["canonical_role_key"],
@@ -330,9 +355,14 @@ class Candidate(Base):
         PrimaryKeyConstraint("id", name="candidates_pkey"),
         Index("candidates_canonical_role_idx", "canonical_role_key"),
         Index("candidates_current_cv_id_idx", "current_cv_id"),
+        Index(
+            "candidates_directory_idx",
+            "created_at",
+            "id",
+            postgresql_where="(is_searchable AND (deleted_at IS NULL))",
+        ),
         Index("candidates_location_key_idx", "location_key"),
         Index("candidates_preferred_language_idx", "preferred_language_code"),
-        Index("candidates_search_idx", "search_vector", postgresql_using="gin"),
         Index(
             "candidates_searchable_idx",
             "id",
@@ -374,7 +404,6 @@ class Candidate(Base):
     canonical_role_key: Mapped[str | None] = mapped_column(Text)
     preferred_language_code: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
 
     canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
@@ -398,11 +427,22 @@ class CanonicalRole(Base):
 class Cv(Base):
     __tablename__ = "cvs"
     __table_args__ = (
+        CheckConstraint(
+            "parsing_status <> 'failed'::cv_parsing_status OR parsing_error IS NOT NULL",
+            name="cvs_failure_has_a_reason",
+        ),
+        CheckConstraint(
+            "parsing_status <> 'ready'::cv_parsing_status OR parsed_cv_data IS NOT NULL AND parsed_at IS NOT NULL",
+            name="cvs_ready_has_a_parse",
+        ),
         ForeignKeyConstraint(
             ["candidate_id"],
             ["public.candidates.id"],
             ondelete="CASCADE",
             name="cvs_candidate_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["detected_language"], ["public.languages.code"], name="cvs_detected_language_fk"
         ),
         PrimaryKeyConstraint("id", name="cvs_pkey"),
         UniqueConstraint("candidate_id", "id", name="cvs_candidate_id_id_key"),
@@ -414,6 +454,7 @@ class Cv(Base):
             unique=True,
         ),
         Index("cvs_candidate_parsing_status_idx", "candidate_id", "parsing_status"),
+        Index("cvs_detected_language_idx", "detected_language"),
         {"schema": "public"},
     )
 
@@ -447,6 +488,21 @@ class Cv(Base):
 
     candidate: Mapped["Candidate"] = relationship(
         "Candidate", foreign_keys=[candidate_id], viewonly=True
+    )
+    language: Mapped[Optional["Language"]] = relationship("Language", viewonly=True)
+
+
+class EmbeddingModel(Base):
+    __tablename__ = "embedding_models"
+    __table_args__ = (
+        PrimaryKeyConstraint("model", name="embedding_models_pkey"),
+        Index("embedding_models_holds_one_model", unique=True),
+        {"schema": "public"},
+    )
+
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    established_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
     )
 
 
@@ -534,6 +590,12 @@ class AccessRequest(Base):
             "\nCASE status\n    WHEN 'pending'::access_request_status THEN decided_at IS NULL AND tenant_id IS NULL\n    WHEN 'dismissed'::access_request_status THEN decided_at IS NOT NULL AND tenant_id IS NULL\n    WHEN 'converted'::access_request_status THEN decided_at IS NOT NULL\n    ELSE NULL::boolean\nEND",
             name="access_requests_decision",
         ),
+        CheckConstraint("btrim(company) <> ''::text", name="access_requests_company_not_blank"),
+        CheckConstraint("btrim(full_name) <> ''::text", name="access_requests_full_name_not_blank"),
+        CheckConstraint(
+            "email ~ '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'::text",
+            name="access_requests_email_shape",
+        ),
         ForeignKeyConstraint(
             ["tenant_id"],
             ["public.tenants.id"],
@@ -543,7 +605,6 @@ class AccessRequest(Base):
         PrimaryKeyConstraint("id", name="access_requests_pkey"),
         Index(
             "access_requests_one_pending_per_email_idx",
-            "email",
             postgresql_where="(status = 'pending'::access_request_status)",
             unique=True,
         ),
@@ -552,6 +613,7 @@ class AccessRequest(Base):
             "created_at",
             postgresql_where="(status = 'pending'::access_request_status)",
         ),
+        Index("access_requests_tenant_id_idx", "tenant_id"),
         {"schema": "public"},
     )
 
@@ -630,6 +692,11 @@ class CandidateEmbeddingJob(Base):
         ),
         PrimaryKeyConstraint("candidate_id", name="candidate_embedding_jobs_pkey"),
         Index("candidate_embedding_jobs_claim_idx", "updated_at", postgresql_where="dirty"),
+        Index(
+            "candidate_embedding_jobs_stuck_idx",
+            "claimed_at",
+            postgresql_where="(claimed_at IS NOT NULL)",
+        ),
         {"schema": "public"},
     )
 
@@ -758,6 +825,11 @@ class CandidateProfileChunk(Base):
             ondelete="CASCADE",
             name="candidate_profile_chunks_candidate_id_fkey",
         ),
+        ForeignKeyConstraint(
+            ["embedding_model"],
+            ["public.embedding_models.model"],
+            name="candidate_profile_chunks_embedding_model_fkey",
+        ),
         PrimaryKeyConstraint("id", name="candidate_profile_chunks_pkey"),
         UniqueConstraint(
             "candidate_id",
@@ -770,6 +842,7 @@ class CandidateProfileChunk(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
             postgresql_using="hnsw",
         ),
+        Index("candidate_profile_chunks_search_idx", "search_vector", postgresql_using="gin"),
         {"schema": "public"},
     )
 
@@ -779,14 +852,18 @@ class CandidateProfileChunk(Base):
     candidate_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding: Mapped[Any] = mapped_column(VECTOR(768), nullable=False)
     embedding_model: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
     chunk_type: Mapped[str | None] = mapped_column(Text)
-    embedding: Mapped[Any | None] = mapped_column(VECTOR(768))
+    search_vector: Mapped[Any | None] = mapped_column(
+        TSVECTOR, Computed("to_tsvector('english'::regconfig, chunk_text)", persisted=True)
+    )
 
     candidate: Mapped["Candidate"] = relationship("Candidate", viewonly=True)
+    embedding_model_: Mapped["EmbeddingModel"] = relationship("EmbeddingModel", viewonly=True)
 
 
 class CandidateProject(Base):
@@ -851,6 +928,7 @@ class IngestionJob(Base):
             "available_at",
             postgresql_where="(status = ANY (ARRAY['pending'::ingestion_status, 'processing'::ingestion_status]))",
         ),
+        Index("ingestion_jobs_status_created_idx", "status", "created_at"),
         {"schema": "public"},
     )
 
@@ -948,6 +1026,7 @@ class TenantTag(Base):
         UniqueConstraint("id", "scope", name="tenant_tags_id_scope_key"),
         UniqueConstraint("tenant_id", "id", name="tenant_tags_tenant_id_id_key"),
         UniqueConstraint("tenant_id", "scope", "name", name="tenant_tags_tenant_id_scope_name_key"),
+        Index("tenant_tags_tenant_scope_name_ci_uidx", "tenant_id", "scope", unique=True),
         {"schema": "public"},
     )
 
@@ -1150,6 +1229,8 @@ class CandidateTagAssignment(Base):
 class Job(Base):
     __tablename__ = "jobs"
     __table_args__ = (
+        CheckConstraint("length(description) <= 5000", name="jobs_description_length"),
+        CheckConstraint("length(title) <= 200", name="jobs_title_length"),
         CheckConstraint(
             "minimum_total_experience_years IS NULL OR minimum_total_experience_years >= 0::numeric",
             name="jobs_min_experience_nonneg",
@@ -1167,10 +1248,17 @@ class Job(Base):
         UniqueConstraint("tenant_id", "id", name="jobs_tenant_id_id_key"),
         Index("jobs_created_by_idx", "created_by_recruiter_id"),
         Index("jobs_location_key_idx", "location_key"),
+        Index(
+            "jobs_published_created_idx",
+            "created_at",
+            "id",
+            postgresql_where="(status = 'published'::job_status)",
+        ),
         Index("jobs_search_idx", "search_vector", postgresql_using="gin"),
         Index("jobs_status_expires_at_idx", "status", "expires_at"),
+        Index("jobs_tenant_created_idx", "tenant_id", "created_at", "id"),
         Index("jobs_tenant_published_at_idx", "tenant_id", "published_at"),
-        Index("jobs_tenant_status_idx", "tenant_id", "status"),
+        Index("jobs_tenant_status_created_idx", "tenant_id", "status", "created_at", "id"),
         {"schema": "public"},
     )
 
@@ -1236,6 +1324,7 @@ class MessageTemplate(Base):
         PrimaryKeyConstraint("id", name="message_templates_pkey"),
         UniqueConstraint("tenant_id", "name", name="message_templates_tenant_id_name_key"),
         Index("message_templates_created_by_idx", "created_by_recruiter_id"),
+        Index("message_templates_tenant_name_ci_uidx", "tenant_id", unique=True),
         {"schema": "public"},
     )
 
@@ -1451,6 +1540,10 @@ class TrackedJobLink(Base):
 class Application(Base):
     __tablename__ = "applications"
     __table_args__ = (
+        CheckConstraint(
+            "qualification_status <> 'disqualified'::qualification_status OR qualification_reason IS NOT NULL",
+            name="applications_disqualification_has_a_reason",
+        ),
         ForeignKeyConstraint(
             ["candidate_id", "cv_id"],
             ["public.cvs.candidate_id", "public.cvs.id"],
@@ -1475,6 +1568,7 @@ class Application(Base):
         UniqueConstraint("job_id", "id", name="applications_job_id_id_key"),
         UniqueConstraint("tenant_id", "id", name="applications_tenant_id_id_key"),
         Index("applications_cv_id_idx", "cv_id"),
+        Index("applications_job_applied_at_idx", "job_id", "applied_at", "id"),
         Index("applications_job_status_idx", "job_id", "status"),
         Index("applications_job_tracked_link_idx", "job_id", "tracked_link_id"),
         Index("applications_tenant_applied_at_idx", "tenant_id", "applied_at", "id"),
@@ -1539,6 +1633,14 @@ class JobViewEvent(Base):
         Index("job_view_events_job_link_viewed_idx", "job_id", "tracked_link_id", "viewed_at"),
         Index("job_view_events_job_viewed_idx", "job_id", "viewed_at"),
         Index("job_view_events_link_viewed_idx", "tracked_link_id", "viewed_at"),
+        Index(
+            "job_view_events_session_job_idx",
+            "session_id",
+            "job_id",
+            "viewed_at",
+            "id",
+            postgresql_where="(tracked_link_id IS NOT NULL)",
+        ),
         {"schema": "public"},
     )
 
@@ -1842,6 +1944,10 @@ class ApplicationProject(Base):
 class ApplicationQualificationHistory(Base):
     __tablename__ = "application_qualification_history"
     __table_args__ = (
+        CheckConstraint(
+            "qualification_status <> 'disqualified'::qualification_status OR qualification_reason IS NOT NULL",
+            name="aqh_disqualification_has_a_reason",
+        ),
         ForeignKeyConstraint(
             ["application_id"],
             ["public.applications.id"],
@@ -1907,6 +2013,10 @@ class ApplicationSkill(Base):
 class ApplicationStatusHistory(Base):
     __tablename__ = "application_status_history"
     __table_args__ = (
+        CheckConstraint(
+            "change_source = 'system'::status_change_source OR changed_by_profile_id IS NOT NULL",
+            name="ash_human_decision_has_an_author",
+        ),
         ForeignKeyConstraint(
             ["application_id"],
             ["public.applications.id"],
@@ -2211,6 +2321,10 @@ class Notification(Base):
     __table_args__ = (
         CheckConstraint(
             "(payload ->> 'type'::text) = type::text", name="notifications_payload_type_matches"
+        ),
+        CheckConstraint(
+            "type::text <> 'application_status_changed'::text OR application_id IS NOT NULL",
+            name="notifications_status_change_has_an_application",
         ),
         ForeignKeyConstraint(
             ["application_id", "recipient_profile_id"],

@@ -23,6 +23,7 @@ from sync_api.routes import (
     auth,
     candidates,
     cvs,
+    directory,
     health,
     jobs,
     notifications,
@@ -139,6 +140,7 @@ def create_app(
     app.include_router(platform.router, prefix=API_PREFIX)
     app.include_router(candidates.router, prefix=API_PREFIX)
     app.include_router(cvs.router, prefix=API_PREFIX)
+    app.include_router(directory.router, prefix=API_PREFIX)
     app.include_router(notifications.router, prefix=API_PREFIX)
     app.include_router(reference.router, prefix=API_PREFIX)
     app.include_router(search.router, prefix=API_PREFIX)

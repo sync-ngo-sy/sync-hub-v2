@@ -12,6 +12,7 @@ from sync_api.applications import (
     MatchAssessmentService,
 )
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
+from sync_api.candidate_directory import CandidateDirectoryService
 from sync_api.candidates import (
     ActingCandidate,
     CandidateDeletion,
@@ -117,6 +118,15 @@ def get_candidate_profile_service(session: SessionDep) -> CandidateProfileServic
 
 CandidateProfileServiceDep = Annotated[
     CandidateProfileService, Depends(get_candidate_profile_service)
+]
+
+
+def get_candidate_directory_service(session: SessionDep) -> CandidateDirectoryService:
+    return CandidateDirectoryService(session)
+
+
+CandidateDirectoryServiceDep = Annotated[
+    CandidateDirectoryService, Depends(get_candidate_directory_service)
 ]
 
 
