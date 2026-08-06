@@ -28,4 +28,9 @@ a searchable candidate.
 - Correctness depends on two things: per-candidate coalescing, and the atomic chunk swap
   (so search never sees a half-embedded profile).
 - There is a brief window after an edit where the candidate is not yet re-embedded — the
-  same window the version-gated design produced.
+  same window the version-gated design produced. The Candidate directory serves the base
+  eligibility projection precisely so that window does not hide somebody from a filter that
+  never needed a vector.
+- The swap rewrites every chunk, but only chunks whose *text* changed reach the embedder: a
+  chunk's text is what its vector means, so identical text keeps the vector it had. That is only
+  sound because `embedding_models` holds one model for the whole corpus.

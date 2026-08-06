@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
+from uuid import UUID, uuid4
 
 import pytest
 from asgi_lifespan import LifespanManager
 from httpx import AsyncClient
-from sqlalchemy import update
+from sqlalchemy import text, update
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.app import create_app
 from sync_core import Database, Settings
 from sync_core.models import Profile
+from sync_core.searchable import CandidateFilters
+from sync_rag import EMBEDDING_DIMENSIONS, CandidateSearch
+from sync_rag.search import _page
 from tests.support.candidates import a_signed_in_candidate
+from tests.support.crm import save_to_pool
 from tests.support.embedders import FakeEmbedder
 from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.mailbox import Mailbox
@@ -28,6 +35,7 @@ A_BACKEND_ENGINEER: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
     "summary": "Builds payment systems in Python and PostgreSQL.",
     "location_key": "sy-damascus",
+    "canonical_role_key": "backend-engineer",
     "preferred_language_code": "ar",
     "skills": [
         {"name": "Python", "years_experience": 8.0},
@@ -47,6 +55,7 @@ A_FRONTEND_ENGINEER: dict[str, Any] = {
     "headline": "Frontend engineer",
     "summary": "Builds React interfaces.",
     "location_key": "sy-damascus",
+    "canonical_role_key": "frontend-engineer",
     "preferred_language_code": "en",
     "skills": [
         {"name": "React", "years_experience": 4.0},
@@ -58,6 +67,7 @@ A_GRAPHIC_DESIGNER: dict[str, Any] = {
     "headline": "Graphic designer",
     "summary": "Brand identity and print work.",
     "location_key": "fr",
+    "canonical_role_key": "graphic-designer",
     "preferred_language_code": "fr",
     "skills": [{"name": "Figma", "years_experience": 5.0}],
 }
@@ -93,6 +103,79 @@ async def found(recruiter: AsyncClient, **query: Any) -> list[dict[str, Any]]:
 
 def named(matches: list[dict[str, Any]]) -> list[str]:
     return [match["candidate_id"] for match in matches]
+
+
+#: Enough for the planner to prefer the vector index over reading the table, which is the
+#: whole difference this change is about.
+FILLER_CHUNKS = 2000
+
+#: How many of the filler chunks rank *above* the one Candidate a filter keeps. Comfortably more
+#: than the default `hnsw.ef_search` of 40, so a scan that does not widen sees nothing but
+#: rejected rows and answers "nobody matched" -- the regression this corpus exists to catch.
+OUTRANKING_CHUNKS = 150
+
+#: Components either side of zero, so the vectors spread over the sphere the way real embeddings
+#: do. `random()` gave every component a positive one, which left all two thousand pointing into
+#: the same corner and near-parallel under cosine distance: one tight blob whose HNSW graph held
+#: no edge out to a real profile's vectors, so the walk could not reach them and a filtered
+#: search came back empty. Unseeded, it also rebuilt a different graph on every run. The
+#: arithmetic is the usual hashed sine -- a deterministic stand-in for noise.
+PAD_THE_CORPUS = text(f"""
+insert into candidate_profile_chunks
+  (candidate_id, chunk_type, chunk_text, chunk_index, embedding, embedding_model)
+select :candidate_id, 'experience', 'filler ' || i, 100000 + i,
+       (select array_agg(
+          case when d = :echoed and i <= :ahead then 30.0 else noise - 0.5 end
+          order by d)::vector({EMBEDDING_DIMENSIONS})
+        from generate_series(1, {EMBEDDING_DIMENSIONS}) d,
+             lateral (select sin(i * 12.9898 + d * 78.233) * 43758.5453 as spun) s,
+             lateral (select spun - floor(spun) as noise) n),
+       (select model from embedding_models)
+from generate_series(1, :chunks) i
+""")
+
+
+async def a_corpus_of(
+    session: AsyncSession,
+    embedder: FakeEmbedder,
+    candidate_id: UUID,
+    chunks: int,
+    *,
+    echoing: str = "",
+    ahead: int = 0,
+) -> None:
+    """Vectors nobody wrote a profile for, so the ranking has something to be a ranking of.
+    `ahead` of them lean hard on the one dimension `echoing` occupies and so outrank any real
+    profile that only mentions it, which is what puts a wall of rejected rows in front of the
+    Candidate a filter keeps."""
+    echoed = 1
+    if ahead:
+        (weighted,) = await embedder.embed([echoing])
+        echoed = 1 + weighted.index(max(weighted))
+    await session.execute(
+        PAD_THE_CORPUS,
+        {"candidate_id": candidate_id, "chunks": chunks, "ahead": ahead, "echoed": echoed},
+    )
+    await session.execute(text("analyze candidate_profile_chunks"))
+    await session.commit()
+
+
+async def how_a_search_runs(session: AsyncSession, embedder: FakeEmbedder) -> str:
+    (embedded,) = await embedder.embed(["backend engineer"])
+    statement = _page(
+        embedded,
+        tenant_id=uuid4(),
+        filters=CandidateFilters(),
+        keywords=None,
+        wanted=21,
+        offset=0,
+    )
+    written = statement.compile(
+        dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+    )
+    await session.execute(text("set local hnsw.iterative_scan = strict_order"))
+    explained = await session.execute(text(f"explain (costs off) {written}"))
+    return "\n".join(str(line) for (line,) in explained)
 
 
 async def test_the_closest_profile_comes_first_with_the_fragment_that_matched(
@@ -200,7 +283,11 @@ async def test_a_result_never_carries_an_email_or_a_phone_number(
         "summary",
         "location_key",
         "location_name",
+        "canonical_role_key",
+        "canonical_role_name",
+        "total_experience_years",
         "preferred_language_code",
+        "in_talent_pool",
         "matched_section",
         "matched_text",
     }
@@ -459,3 +546,262 @@ async def test_one_candidate_takes_one_place_however_many_chunks_they_have(
     await drain(a_reembed_worker(database, embedder))
 
     assert named(await found(recruiter, **FOR_A_BACKEND_ENGINEER)) == [str(amina.id)]
+
+
+async def test_a_keyword_finds_someone_who_only_listed_it_as_a_skill(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """The filter used to read a headline and a summary, so "PostgreSQL" found nobody."""
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    await a_candidate_with(searching, mailbox, db_session, label="lina", **A_FRONTEND_ENGINEER)
+    await drain(a_reembed_worker(database, embedder))
+
+    assert named(await found(recruiter, q="engineer", keywords="PostgreSQL")) == [str(amina.id)]
+
+
+async def test_a_keyword_finds_someone_who_only_wrote_it_into_a_job_description(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    amina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="amina",
+        experiences=[
+            {
+                "job_title": "Engineer",
+                "company_name": "Acme",
+                "start_year": 2019,
+                "end_year": 2024,
+                "is_current": False,
+                "description": "Ran the settlement pipeline on Kubernetes.",
+            }
+        ],
+        **A_BACKEND_ENGINEER,
+    )
+    await a_candidate_with(searching, mailbox, db_session, label="lina", **A_FRONTEND_ENGINEER)
+    await drain(a_reembed_worker(database, embedder))
+
+    assert named(await found(recruiter, q="engineer", keywords="Kubernetes")) == [str(amina.id)]
+
+
+async def test_a_keyword_can_exclude(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    lina = await a_candidate_with(
+        searching, mailbox, db_session, label="lina", **A_FRONTEND_ENGINEER
+    )
+    await drain(a_reembed_worker(database, embedder))
+
+    both = set(named(await found(recruiter, q="engineer")))
+    assert both == {str(amina.id), str(lina.id)}
+    assert named(await found(recruiter, q="engineer", keywords="-React")) == [str(amina.id)]
+
+
+async def test_the_fact_filters_narrow_a_search_without_reordering_it(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    lina = await a_candidate_with(
+        searching, mailbox, db_session, label="lina", **A_FRONTEND_ENGINEER
+    )
+    await drain(a_reembed_worker(database, embedder))
+
+    ranked = named(await found(recruiter, q="engineer"))
+    assert set(ranked) == {str(amina.id), str(lina.id)}
+    assert named(await found(recruiter, q="engineer", role="backend-engineer")) == [str(amina.id)]
+    assert named(await found(recruiter, q="engineer", skill="React")) == [str(lina.id)]
+    assert named(await found(recruiter, q="engineer", skill="React:4")) == [str(lina.id)]
+    assert await found(recruiter, q="engineer", skill="React:5") == []
+    assert named(await found(recruiter, q="engineer", min_total_experience=0)) == ranked
+
+
+async def test_a_search_result_says_who_is_already_in_the_talent_pool(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    await a_candidate_with(searching, mailbox, db_session, label="lina", **A_FRONTEND_ENGINEER)
+    await drain(a_reembed_worker(database, embedder))
+    saved = await save_to_pool(recruiter, amina.id)
+    assert saved.status_code == 200, saved.text
+
+    pooled = {
+        match["candidate_id"]: match["in_talent_pool"]
+        for match in await found(recruiter, q="engineer")
+    }
+
+    assert pooled[str(amina.id)] is True
+    assert set(pooled.values()) == {True, False}
+
+
+async def test_a_search_pages_beyond_the_first(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    for label, profile in (
+        ("amina", A_BACKEND_ENGINEER),
+        ("lina", A_FRONTEND_ENGINEER),
+        ("yusuf", A_GRAPHIC_DESIGNER),
+    ):
+        await a_candidate_with(searching, mailbox, db_session, label=label, **profile)
+    await drain(a_reembed_worker(database, embedder))
+
+    ranked = named(await found(recruiter, q="engineer or designer"))
+    assert len(ranked) == 3
+
+    pages = [
+        named(await found(recruiter, q="engineer or designer", limit=1, offset=at))
+        for at in range(3)
+    ]
+
+    assert [row for page in pages for row in page] == ranked
+
+
+async def test_a_search_says_when_it_has_reached_its_depth(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """Depth is what stops a ranking pretending to be a list. Two, so three people cross it."""
+    for label, profile in (
+        ("amina", A_BACKEND_ENGINEER),
+        ("lina", A_FRONTEND_ENGINEER),
+        ("yusuf", A_GRAPHIC_DESIGNER),
+    ):
+        await a_candidate_with(searching, mailbox, db_session, label=label, **profile)
+    await drain(a_reembed_worker(database, embedder))
+    shallow = CandidateSearch(db_session, embedder, depth=2)
+
+    asked = {
+        "tenant_id": uuid4(),
+        "filters": CandidateFilters(),
+        "keywords": None,
+        "limit": 1,
+    }
+    first = await shallow.find("engineer or designer", offset=0, **asked)
+    second = await shallow.find("engineer or designer", offset=1, **asked)
+
+    assert len(first.matches) == 1
+    assert first.has_more and not first.depth_reached
+    assert len(second.matches) == 1
+    assert second.has_more and second.depth_reached
+
+
+async def test_a_filter_that_rejects_most_of_the_corpus_still_answers(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """pgvector applies a filter to rows the index has already ordered, so a selective one has to
+    be able to look past a great many rejections rather than come back empty."""
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    lina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="lina",
+        **{**A_FRONTEND_ENGINEER, "location_key": "sy-aleppo"},
+    )
+    await drain(a_reembed_worker(database, embedder))
+    await a_corpus_of(
+        db_session, embedder, lina.id, FILLER_CHUNKS, echoing="engineer", ahead=OUTRANKING_CHUNKS
+    )
+
+    assert named(await found(recruiter, q="engineer", location_key="sy-damascus")) == [
+        str(amina.id)
+    ]
+
+
+async def test_a_search_says_whether_there_is_another_page(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    for label, profile in (
+        ("amina", A_BACKEND_ENGINEER),
+        ("lina", A_FRONTEND_ENGINEER),
+        ("yusuf", A_GRAPHIC_DESIGNER),
+    ):
+        await a_candidate_with(searching, mailbox, db_session, label=label, **profile)
+    await drain(a_reembed_worker(database, embedder))
+
+    partial = await recruiter.get(SEARCH, params={"q": "engineer or designer", "limit": 1})
+    whole = await recruiter.get(SEARCH, params={"q": "engineer or designer", "limit": 20})
+
+    assert partial.json()["has_more"] is True
+    assert partial.json()["depth_reached"] is False
+    assert whole.json()["has_more"] is False
+    assert whole.json()["depth_reached"] is False
+
+
+async def test_the_search_reaches_its_vector_index_rather_than_every_chunk(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    """The query used to deduplicate before it ranked, which made the index unusable and cost a
+    distance for every chunk on the platform. Only the scan that ranks is at stake, hence the
+    anchored name: `candidate_search_profiles` gates on a chunk existing, and Postgres is free to
+    read the table for that once the page is down to a handful of rows."""
+    amina = await a_candidate_with(
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+    )
+    await drain(a_reembed_worker(database, embedder))
+    await a_corpus_of(db_session, embedder, amina.id, FILLER_CHUNKS)
+
+    plan = await how_a_search_runs(db_session, embedder)
+
+    assert "candidate_profile_chunks_embedding_hnsw" in plan
+    assert not re.search(r"Seq Scan on candidate_profile_chunks$", plan, re.MULTILINE)

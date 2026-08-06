@@ -16,7 +16,17 @@ if TYPE_CHECKING:
     from tests.support.mailbox import Mailbox
 
 SEARCH: Final = "/v1/search/candidates"
+DIRECTORY: Final = "/v1/directory/candidates"
 PROFILE: Final = "/v1/candidates/me/profile"
+
+UNKNOWN_CANONICAL_SKILL: Final = "urn:sync:problem:unknown-canonical-skill"
+UNKNOWN_LOCATION: Final = "urn:sync:problem:unknown-location"
+UNKNOWN_CANONICAL_ROLE: Final = "urn:sync:problem:unknown-canonical-role"
+MALFORMED_SKILL_FILTER: Final = "urn:sync:problem:malformed-skill-filter"
+
+
+def a_candidate_record(candidate_id: UUID | str) -> str:
+    return f"{DIRECTORY}/{candidate_id}"
 
 
 @dataclass(frozen=True, slots=True)

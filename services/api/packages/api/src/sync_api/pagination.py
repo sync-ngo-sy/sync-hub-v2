@@ -14,7 +14,7 @@ from sync_api.problems import INVALID_CURSOR_PROBLEM_TYPE, Problem
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from sqlalchemy.orm import InstrumentedAttribute
+    from sqlalchemy import SQLColumnExpression
 
 DEFAULT_PAGE_SIZE: Final = 20
 
@@ -54,8 +54,8 @@ class Cursor:
 def newest_first[Selected: tuple[Any, ...]](
     query: Select[Selected],
     *,
-    created_at: InstrumentedAttribute[datetime],
-    id_: InstrumentedAttribute[UUID],
+    created_at: SQLColumnExpression[datetime],
+    id_: SQLColumnExpression[UUID],
     cursor: str | None,
     limit: int,
 ) -> Select[Selected]:

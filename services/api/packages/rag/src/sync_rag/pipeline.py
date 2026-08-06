@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 
 from sync_core import get_logger
-from sync_core.models import CandidateProfileChunk
+from sync_core.models import CandidateProfileChunk, EmbeddingModel
 from sync_rag.chunks import chunks_of
 from sync_rag.embedding import EMBEDDING_DIMENSIONS, EmbeddingError
 from sync_rag.profile import current_profile
@@ -37,25 +38,41 @@ class ProfileEmbedding:
         self._embedder = embedder
 
     async def rebuild(self, candidate_id: UUID) -> list[EmbeddedChunk]:
+        """The text a chunk is made of is what its vector means, so identical text keeps the
+        vector it already had and only what changed reaches the model."""
         async with self._database.session() as session:
             profile = await current_profile(session, candidate_id)
-        if profile is None:
-            logger.warning("embedding.candidate_gone", candidate_id=str(candidate_id))
-            return []
+            if profile is None:
+                logger.warning("embedding.candidate_gone", candidate_id=str(candidate_id))
+                return []
+            chunks = chunks_of(profile)
+            if not chunks:
+                return []
+            already = await self._already_embedded(session, candidate_id)
 
-        chunks = chunks_of(profile)
-        if not chunks:
-            return []
-
-        vectors = await self._embedder.embed([chunk.text for chunk in chunks])
+        fresh = [chunk.text for chunk in chunks if chunk.text not in already]
+        written = dict(zip(fresh, await self._embedder.embed(fresh), strict=True)) if fresh else {}
+        logger.info(
+            "embedding.profile_rebuilt",
+            candidate_id=str(candidate_id),
+            embedded=len(fresh),
+            reused=len(chunks) - len(fresh),
+        )
         return [
-            EmbeddedChunk(chunk_type=chunk.chunk_type, text=chunk.text, embedding=_checked(vector))
-            for chunk, vector in zip(chunks, vectors, strict=True)
+            EmbeddedChunk(
+                chunk_type=chunk.chunk_type,
+                text=chunk.text,
+                embedding=_checked(written[chunk.text])
+                if chunk.text in written
+                else already[chunk.text],
+            )
+            for chunk in chunks
         ]
 
     async def swap(
         self, session: AsyncSession, candidate_id: UUID, chunks: Sequence[EmbeddedChunk]
     ) -> None:
+        await self._establish_the_model(session)
         await session.execute(
             delete(CandidateProfileChunk).where(CandidateProfileChunk.candidate_id == candidate_id)
         )
@@ -71,6 +88,36 @@ class ProfileEmbedding:
                 )
                 for index, chunk in enumerate(chunks)
             ]
+        )
+
+    async def _already_embedded(
+        self, session: AsyncSession, candidate_id: UUID
+    ) -> dict[str, list[float]]:
+        stored = await session.execute(
+            select(CandidateProfileChunk.chunk_text, CandidateProfileChunk.embedding).where(
+                CandidateProfileChunk.candidate_id == candidate_id,
+                CandidateProfileChunk.embedding_model == self._embedder.model,
+            )
+        )
+        return {text: [float(value) for value in vector] for text, vector in stored.tuples()}
+
+    async def _establish_the_model(self, session: AsyncSession) -> None:
+        """One model for the whole corpus, so every distance the index ranks means the same thing.
+
+        The first deployment to write a chunk decides it. Changing it means deleting every chunk
+        and the row, which is the re-embed that has to happen anyway — so the alternative to this
+        refusal is a ranking computed across two models that reports no error at all.
+        """
+        established = await session.scalar(select(EmbeddingModel.model))
+        if established is not None and established != self._embedder.model:
+            raise EmbeddingError(
+                f"the corpus was embedded with {established!r} and this worker is running "
+                f"{self._embedder.model!r}: delete every chunk before changing model"
+            )
+        await session.execute(
+            insert(EmbeddingModel)
+            .values(model=self._embedder.model)
+            .on_conflict_do_nothing(index_elements=["model"])
         )
 
 
