@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.tenants import ActingRecruiter
-    from sync_core.discovery import CandidateFilters
+    from sync_core.searchable import CandidateFilters
     from sync_rag import CandidateMatch, Embedder
 
 logger = get_logger(__name__)
@@ -47,19 +47,8 @@ class CandidateSearchService:
 
 
 def _as_payload(match: CandidateMatch) -> MatchedCandidate:
-    return MatchedCandidate(
-        candidate_id=match.candidate_id,
-        full_name=match.full_name,
-        avatar_url=match.avatar_url,
-        headline=match.headline,
-        summary=match.summary,
-        location_key=match.location_key,
-        location_name=match.location_name,
-        canonical_role_key=match.canonical_role_key,
-        canonical_role_name=match.canonical_role_name,
-        total_experience_years=match.total_experience_years,
-        preferred_language_code=match.preferred_language_code,
-        in_talent_pool=match.in_talent_pool,
+    return MatchedCandidate.of(
+        match,
         matched_section=ChunkType(match.chunk_type) if match.chunk_type else None,
         matched_text=match.chunk_text,
     )

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from sync_api.discovery.payload import DiscoveredCandidate
+from sync_api.candidate_directory.payload import SearchableCandidate
 from sync_rag import ChunkType
 
 
-class MatchedCandidate(DiscoveredCandidate):
+class MatchedCandidate(SearchableCandidate):
     """One Searchable Candidate, with the profile fragment that matched."""
 
     matched_section: ChunkType | None = Field(

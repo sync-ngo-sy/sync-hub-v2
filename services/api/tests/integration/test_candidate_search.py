@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_api.app import create_app
 from sync_core import Database, Settings
-from sync_core.discovery import CandidateFilters
 from sync_core.models import Profile
+from sync_core.searchable import CandidateFilters
 from sync_rag import CandidateSearch
 from sync_rag.search import _page
 from tests.support.candidates import a_signed_in_candidate
@@ -693,7 +693,7 @@ async def test_a_search_says_when_it_has_reached_its_depth(
     assert second.has_more and second.depth_reached
 
 
-async def test_a_search_filtered_to_a_small_population_still_fills_a_page(
+async def test_a_filter_that_rejects_most_of_the_corpus_still_answers(
     searching: FastAPI,
     recruiter: AsyncClient,
     mailbox: Mailbox,
@@ -701,17 +701,49 @@ async def test_a_search_filtered_to_a_small_population_still_fills_a_page(
     database: Database,
     embedder: FakeEmbedder,
 ) -> None:
-    """pgvector filters after the index gives it rows, so without the iterative scan a selective
-    filter leaves a handful of survivors and reads exactly like nobody matching."""
+    """pgvector applies a filter to rows the index has already ordered, so a selective one has to
+    be able to look past a great many rejections rather than come back empty."""
     amina = await a_candidate_with(
         searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
     )
+    lina = await a_candidate_with(
+        searching,
+        mailbox,
+        db_session,
+        label="lina",
+        **{**A_FRONTEND_ENGINEER, "location_key": "sy-aleppo"},
+    )
     await drain(a_reembed_worker(database, embedder))
-    await a_corpus_of(db_session, amina.id, FILLER_CHUNKS)
+    await a_corpus_of(db_session, lina.id, FILLER_CHUNKS)
 
     assert named(await found(recruiter, q="engineer", location_key="sy-damascus")) == [
         str(amina.id)
     ]
+
+
+async def test_a_search_says_whether_there_is_another_page(
+    searching: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    embedder: FakeEmbedder,
+) -> None:
+    for label, profile in (
+        ("amina", A_BACKEND_ENGINEER),
+        ("lina", A_FRONTEND_ENGINEER),
+        ("yusuf", A_GRAPHIC_DESIGNER),
+    ):
+        await a_candidate_with(searching, mailbox, db_session, label=label, **profile)
+    await drain(a_reembed_worker(database, embedder))
+
+    partial = await recruiter.get(SEARCH, params={"q": "engineer or designer", "limit": 1})
+    whole = await recruiter.get(SEARCH, params={"q": "engineer or designer", "limit": 20})
+
+    assert partial.json()["has_more"] is True
+    assert partial.json()["depth_reached"] is False
+    assert whole.json()["has_more"] is False
+    assert whole.json()["depth_reached"] is False
 
 
 async def test_the_search_reaches_its_vector_index_rather_than_every_chunk(

@@ -5,9 +5,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query
 
+from sync_api.candidate_directory import CandidateDirectoryPage, CandidateRecord
+from sync_api.candidate_directory.filters import CandidateFiltersDep
 from sync_api.dependencies import ActingRecruiterDep, CandidateDirectoryServiceDep
-from sync_api.discovery import CandidateDirectoryPage, CandidateRecord
-from sync_api.discovery.filters import CandidateFiltersDep
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail

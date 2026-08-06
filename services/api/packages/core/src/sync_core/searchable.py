@@ -56,7 +56,6 @@ class CandidateFilters:
 
 
 def narrowed_to(profiles: TableClause, filters: CandidateFilters) -> list[ColumnElement[bool]]:
-    """Every filter as a hard predicate, so naming more of them can only narrow the answer."""
     predicates: list[ColumnElement[bool]] = []
     if filters.location_key:
         predicates.append(profiles.c.location_key == filters.location_key)

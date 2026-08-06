@@ -79,9 +79,9 @@ _Avoid_: Copy, Archive.
 
 **Searchable**:
 A Candidate's explicit opt-in (`is_searchable`) to be found by any Tenant — through Global
-search and through the Candidate directory alike; it is one opt-in, not two. It needs a current
-CV that was actually *read*: a document that failed to parse would leave somebody told they were
-discoverable and appearing nowhere. Being found is not the same as being contacted: no list of
+search and through the Candidate directory alike; it is one opt-in, not two. Opting in needs a current CV that was actually *read*: a
+document that failed to parse would otherwise leave somebody told they could be found and
+appearing nowhere. Being found is not the same as being contacted: no list of
 Candidates ever carries a phone or an email, and a Tenant reads either only by opening one
 Candidate's profile, one at a time.
 _Avoid_: Public, Listed, Visible.

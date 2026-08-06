@@ -38,13 +38,8 @@ class ProfileEmbedding:
         self._embedder = embedder
 
     async def rebuild(self, candidate_id: UUID) -> list[EmbeddedChunk]:
-        """Every chunk of the current profile, embedding only the text that is new.
-
-        A profile is rebuilt whole on every change, but most of it is usually the same words as
-        before — adding one skill leaves the identity, the jobs and the education untouched. The
-        text a chunk is made of is what its vector means, so identical text can keep the vector it
-        already had, and only what actually changed reaches the model.
-        """
+        """The text a chunk is made of is what its vector means, so identical text keeps the
+        vector it already had and only what changed reaches the model."""
         async with self._database.session() as session:
             profile = await current_profile(session, candidate_id)
             if profile is None:

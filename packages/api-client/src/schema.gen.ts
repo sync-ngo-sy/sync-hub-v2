@@ -615,6 +615,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/directory/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Searchable Candidates by fact, newest first
+         * @description Everyone in Damascus, everyone with React and TypeScript, everyone with five years of work.
+         *
+         *     No query written in words: every filter is a yes or a no, so naming more of them only ever
+         *     narrows the answer, and the whole result can be paged to the end.
+         *
+         *     A Candidate whose re-embedding is still queued is here even though Global search cannot see
+         *     them yet — being findable by fact does not wait on a vector. No result carries an email or a
+         *     phone number.
+         */
+        get: operations["listDirectoryCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/directory/candidates/{candidate_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Candidate's whole profile, with their contact details
+         * @description Skills, work history, education, languages and projects, read directly rather than found.
+         *
+         *     The one place a phone number and an email address are readable, one Candidate at a time. A
+         *     Candidate outside this Tenant's reach answers exactly as one that does not exist.
+         */
+        get: operations["readDirectoryCandidate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/notifications": {
         parameters: {
             query?: never;
@@ -789,56 +839,6 @@ export interface paths {
          *     matches that this search will not reach, so ask a narrower question rather than paging on.
          */
         get: operations["searchCandidates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/directory/candidates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Searchable Candidates by fact, newest first
-         * @description Everyone in Damascus, everyone with React and TypeScript, everyone with five years of work.
-         *
-         *     No query written in words: every filter is a yes or a no, so naming more of them only ever
-         *     narrows the answer, and the whole result can be paged to the end.
-         *
-         *     A Candidate whose re-embedding is still queued is here even though Global search cannot see
-         *     them yet — being findable by fact does not wait on a vector. No result carries an email or a
-         *     phone number.
-         */
-        get: operations["listDirectoryCandidates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/directory/candidates/{candidate_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * One Candidate's whole profile, with their contact details
-         * @description Skills, work history, education, languages and projects, read directly rather than found.
-         *
-         *     The one place a phone number and an email address are readable, one Candidate at a time. A
-         *     Candidate outside this Tenant's reach answers exactly as one that does not exist.
-         */
-        get: operations["readDirectoryCandidate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2027,11 +2027,12 @@ export interface components {
         };
         /**
          * CandidateDirectoryPage
-         * @description One page of the Candidate directory, newest first.
+         * @description One page of the Candidate directory, newest first. It carries no phone and no email: a
+         *     Tenant reads either by opening one Candidate, never off a list.
          */
         CandidateDirectoryPage: {
             /** Items */
-            items: components["schemas"]["DiscoveredCandidate"][];
+            items: components["schemas"]["SearchableCandidate"][];
             /**
              * Next Cursor
              * @description Send back as `cursor` for the following page. Null on the last page.
@@ -2453,52 +2454,6 @@ export interface components {
              * @description The caller's current password, confirming the deletion.
              */
             password: string;
-        };
-        /**
-         * DiscoveredCandidate
-         * @description One Candidate as a list shows them: no phone and no email, which only a profile carries.
-         */
-        DiscoveredCandidate: {
-            /**
-             * Candidate Id
-             * Format: uuid
-             */
-            candidate_id: string;
-            /** Full Name */
-            full_name?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
-            /** Headline */
-            headline?: string | null;
-            /** Summary */
-            summary?: string | null;
-            /** Location Key */
-            location_key?: string | null;
-            /**
-             * Location Name
-             * @description What `location_key` is called. Null when there is no Location.
-             * @example Aleppo
-             */
-            location_name?: string | null;
-            /** Canonical Role Key */
-            canonical_role_key?: string | null;
-            /**
-             * Canonical Role Name
-             * @description What `canonical_role_key` is called.
-             */
-            canonical_role_name?: string | null;
-            /**
-             * Total Experience Years
-             * @description Whole years of work, derived from their own history.
-             */
-            total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
-            /**
-             * In Talent Pool
-             * @description Whether the acting Tenant has already saved them. Nobody else's pool.
-             */
-            in_talent_pool: boolean;
         };
         /**
          * DraftExperience
@@ -3937,6 +3892,52 @@ export interface components {
              * @description Which criteria decided it. Null until Screening has run.
              */
             reason?: string | null;
+        };
+        /**
+         * SearchableCandidate
+         * @description The facts about one Searchable Candidate that both ways of finding people answer with.
+         */
+        SearchableCandidate: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Full Name */
+            full_name?: string | null;
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /** Headline */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Location Key */
+            location_key?: string | null;
+            /**
+             * Location Name
+             * @description What `location_key` is called. Null when there is no Location.
+             * @example Aleppo
+             */
+            location_name?: string | null;
+            /** Canonical Role Key */
+            canonical_role_key?: string | null;
+            /**
+             * Canonical Role Name
+             * @description What `canonical_role_key` is called.
+             */
+            canonical_role_name?: string | null;
+            /**
+             * Total Experience Years
+             * @description Whole years of work, derived from their own history.
+             */
+            total_experience_years: number;
+            /** Preferred Language Code */
+            preferred_language_code?: string | null;
+            /**
+             * In Talent Pool
+             * @description Whether the acting Tenant has already saved them. Nobody else's pool.
+             */
+            in_talent_pool: boolean;
         };
         /** SetTenantStatusRequest */
         SetTenantStatusRequest: {
@@ -6567,6 +6568,144 @@ export interface operations {
             };
         };
     };
+    listDirectoryCandidates: {
+        parameters: {
+            query?: {
+                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
+                location_key?: string | null;
+                /** @description A Candidate's preferred language code. */
+                language?: string | null;
+                /** @description A Canonical role's key, from `/v1/roles`. */
+                role?: string | null;
+                /** @description Whole years of work, at least this many. */
+                min_total_experience?: number | null;
+                /** @description A Canonical skill's exact name, optionally with the years asked of it after a colon. Repeat it to name more, and a Candidate has to have all of them. */
+                skill?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateDirectoryPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description A filter names a Location, a Canonical role, a language or a Canonical skill the platform does not have. The refusal names the offending one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    readDirectoryCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateRecord"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No Candidate this tenant can reach has that id — they have neither applied to one of its Jobs nor opted in to Global search. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listMyNotifications: {
         parameters: {
             query?: {
@@ -6987,144 +7126,6 @@ export interface operations {
             };
             /** @description Global search is not configured on this deployment. */
             503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-        };
-    };
-    listDirectoryCandidates: {
-        parameters: {
-            query?: {
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
-                cursor?: string | null;
-                /** @description How many to return. */
-                limit?: number;
-                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
-                location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
-                /** @description A Canonical role's key, from `/v1/roles`. */
-                role?: string | null;
-                /** @description Whole years of work, at least this many. */
-                min_total_experience?: number | null;
-                /** @description A Canonical skill's exact name, optionally with the years asked of it after a colon. Repeat it to name more, and a Candidate has to have all of them. */
-                skill?: string[] | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CandidateDirectoryPage"];
-                };
-            };
-            /** @description There is no valid session. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description A filter names a Location, a Canonical role, a language or a Canonical skill the platform does not have. The refusal names the offending one. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
-                };
-            };
-            /** @description Something went wrong on the server. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-        };
-    };
-    readDirectoryCandidate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                candidate_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CandidateRecord"];
-                };
-            };
-            /** @description There is no valid session. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description No Candidate this tenant can reach has that id — they have neither applied to one of its Jobs nor opted in to Global search. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The request did not match the expected shape. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
-                };
-            };
-            /** @description Something went wrong on the server. */
-            500: {
                 headers: {
                     [name: string]: unknown;
                 };

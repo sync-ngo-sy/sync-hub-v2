@@ -12,6 +12,7 @@ from sync_api.applications import (
     MatchAssessmentService,
 )
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
+from sync_api.candidate_directory import CandidateDirectoryService
 from sync_api.candidates import (
     ActingCandidate,
     CandidateDeletion,
@@ -29,7 +30,6 @@ from sync_api.crm import (
     TalentPoolService,
 )
 from sync_api.cvs import CvService
-from sync_api.discovery import CandidateDirectoryService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
 from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService

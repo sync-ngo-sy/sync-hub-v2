@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import func, literal, literal_column, select, text
 from sqlalchemy.orm import aliased
 
-from sync_core.discovery import DIRECTORY_PROFILES, SEARCH_PROFILES, narrowed_to, pooled_by
 from sync_core.models import CandidateProfileChunk
+from sync_core.searchable import DIRECTORY_PROFILES, SEARCH_PROFILES, narrowed_to, pooled_by
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from sqlalchemy import ColumnElement, Select, SQLColumnExpression, Subquery
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_core.discovery import CandidateFilters
+    from sync_core.searchable import CandidateFilters
     from sync_rag.embedding import Embedder
 
 #: The most Candidates one search reaches. Pages are offsets inside this depth: a cursor on
@@ -25,7 +25,9 @@ if TYPE_CHECKING:
 MAX_SEARCH_DEPTH: Final = 200
 
 #: Chunks scanned per Candidate wanted. A profile is a handful of fragments and the closest
-#: fragments of different people interleave, so this reaches the depth with room to spare.
+#: fragments of different people interleave, so this normally reaches the depth with room to
+#: spare — but somebody with a very long history can hold a whole budget on their own, which is
+#: why running out of budget is reported rather than read as "nobody else matched".
 CHUNKS_PER_CANDIDATE: Final = 10
 
 #: Inlined, not bound: as a parameter it reaches the driver as a `regconfig` with no codec.
@@ -96,11 +98,23 @@ class CandidateSearch:
             )
         ).all()
         rows = found[: max(wanted - offset, 0)]
+        more = len(found) > len(rows) or _ran_out_of_budget(found, wanted)
         return RankedCandidates(
             matches=[_match(row) for row in rows],
-            has_more=len(found) > len(rows),
-            depth_reached=len(found) > len(rows) and wanted >= self._depth,
+            has_more=more,
+            depth_reached=more and wanted >= self._depth,
         )
+
+
+def _ran_out_of_budget(found: Sequence[Any], wanted: int) -> bool:
+    """Whether the scan stopped because it had scanned enough chunks rather than because it had
+    run out of Candidates who match. Both leave a short page; only one of them means there is
+    nothing more to find."""
+    return bool(found) and found[0].scanned >= _budget(wanted)
+
+
+def _budget(wanted: int) -> int:
+    return (wanted + 1) * CHUNKS_PER_CANDIDATE
 
 
 def _match(row: Any) -> CandidateMatch:
@@ -134,20 +148,11 @@ def _page(
     reachable = _reachable(embedded, filters=filters, keywords=keywords, wanted=wanted)
     return (
         select(
-            reachable.c.candidate_id,
             reachable.c.chunk_type,
             reachable.c.chunk_text,
-            SEARCH_PROFILES.c.full_name,
-            SEARCH_PROFILES.c.avatar_url,
-            SEARCH_PROFILES.c.headline,
-            SEARCH_PROFILES.c.summary,
-            SEARCH_PROFILES.c.location_key,
-            SEARCH_PROFILES.c.location_name,
-            SEARCH_PROFILES.c.canonical_role_key,
-            SEARCH_PROFILES.c.canonical_role_name,
-            SEARCH_PROFILES.c.total_experience_years,
-            SEARCH_PROFILES.c.preferred_language_code,
-            pooled_by(reachable.c.candidate_id, tenant_id).label("in_talent_pool"),
+            reachable.c.scanned,
+            *SEARCH_PROFILES.c,
+            pooled_by(SEARCH_PROFILES.c.candidate_id, tenant_id).label("in_talent_pool"),
         )
         .join_from(
             reachable,
@@ -175,17 +180,18 @@ def _reachable(
             distance,
         )
         .where(
-            _discoverable(CandidateProfileChunk.candidate_id, filters),
+            _eligible(CandidateProfileChunk.candidate_id, filters),
             *_mentioning(keywords),
         )
         .order_by(distance)
-        .limit((wanted + 1) * CHUNKS_PER_CANDIDATE)
+        .limit(_budget(wanted))
         .subquery("scanned")
     )
+    counted = select(scanned, func.count().over().label("scanned")).subquery("counted")
     best = (
-        select(scanned)
-        .distinct(scanned.c.candidate_id)
-        .order_by(scanned.c.candidate_id, scanned.c.distance)
+        select(counted)
+        .distinct(counted.c.candidate_id)
+        .order_by(counted.c.candidate_id, counted.c.distance)
         .subquery("best")
     )
     return (
@@ -196,19 +202,10 @@ def _reachable(
     )
 
 
-def _discoverable(
+def _eligible(
     candidate_id: SQLColumnExpression[UUID], filters: CandidateFilters
 ) -> ColumnElement[bool]:
-    """Eligibility and every filter, as a scalar subquery rather than a join.
-
-    A join gives the planner a way in through the Candidate rather than the vector index, and it
-    takes it — the whole query then computes a distance for every chunk of everyone who passes
-    the filter. As a scalar subquery this cannot be pulled up, so it stays what pgvector expects:
-    a filter applied to the rows the index scan has already ordered.
-
-    The base projection, not the chunk-gated one: what makes this Global search rather than the
-    directory is that it is scanning chunks at all, so a Candidate with none is already absent.
-    """
+    """A scalar subquery rather than a join, and load-bearing: see ADR-0015's first amendment."""
     return (
         select(literal(1))
         .select_from(DIRECTORY_PROFILES)

@@ -14,14 +14,13 @@ from sync_api.vocabulary import (
     refuse_unknown_languages,
     refuse_unknown_location,
 )
-from sync_core.discovery import CandidateFilters, RequiredSkill
 from sync_core.profile import MAX_LINE_LENGTH, MAX_YEARS_EXPERIENCE
+from sync_core.searchable import CandidateFilters, RequiredSkill
 
 MAX_SKILL_FILTERS: Final = 20
 
 MAX_TOTAL_EXPERIENCE_FILTER: Final = 100
 
-#: `React:3` — a Canonical skill name and, after the last colon, the years asked of it.
 YEARS_SEPARATOR: Final = ":"
 
 SkillFilter = Annotated[

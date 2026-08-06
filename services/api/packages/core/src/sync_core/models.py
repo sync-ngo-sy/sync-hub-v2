@@ -842,7 +842,6 @@ class CandidateProfileChunk(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
             postgresql_using="hnsw",
         ),
-        Index("candidate_profile_chunks_model_idx", "embedding_model"),
         Index("candidate_profile_chunks_search_idx", "search_vector", postgresql_using="gin"),
         {"schema": "public"},
     )

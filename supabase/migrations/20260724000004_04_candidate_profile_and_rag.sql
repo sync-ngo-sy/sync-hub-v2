@@ -150,7 +150,6 @@ create index candidate_profile_chunks_embedding_hnsw
   on candidate_profile_chunks using hnsw (embedding vector_cosine_ops);
 create index candidate_profile_chunks_search_idx
   on candidate_profile_chunks using gin (search_vector);
-create index candidate_profile_chunks_model_idx on candidate_profile_chunks (embedding_model);
 
 create table candidate_embedding_jobs (
   candidate_id uuid primary key references candidates (id) on delete cascade,

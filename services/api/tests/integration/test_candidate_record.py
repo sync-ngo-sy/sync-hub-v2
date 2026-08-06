@@ -22,6 +22,13 @@ if TYPE_CHECKING:
 
     from tests.support.mailbox import Mailbox
 
+
+def _said(problem: dict[str, Any]) -> dict[str, Any]:
+    """What the answer says, without the two fields that name this request rather than its
+    subject — an `instance` holding the id asked for cannot be the same for two ids."""
+    return {key: problem[key] for key in ("type", "title", "status", "detail")}
+
+
 A_WHOLE_PROFILE: dict[str, Any] = {
     "headline": "Backend engineer",
     "summary": "Builds payment systems.",
@@ -111,7 +118,7 @@ async def test_a_candidate_outside_the_tenants_reach_reads_as_absent(
     assert unreachable.status_code == 404, unreachable.text
     assert nobody.status_code == 404, nobody.text
     assert unreachable.json()["type"] == CANDIDATE_NOT_FOUND
-    assert unreachable.json() == nobody.json()
+    assert _said(unreachable.json()) == _said(nobody.json())
 
 
 async def test_an_applicant_who_is_not_searchable_is_still_readable(

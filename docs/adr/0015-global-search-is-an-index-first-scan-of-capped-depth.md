@@ -23,3 +23,35 @@ Redis, which is a whole service, its operations and a TTL policy nobody has chos
 a stack that runs an API, a worker and Postgres. Depth is capped rather than unbounded
 because recall through an approximate index decays as you page into it, so an endpoint that
 offered page fifty would be promising an accuracy it does not have.
+
+
+## Amendment: eligibility is a scalar subquery, never a join
+
+Implementing this found that *where the eligibility and the filters go* decides whether any of
+the above happens at all. Joining `candidate_search_profiles` into the scan — the obvious
+reading of "then joined back to Candidates" — hands Postgres a second way in, and it takes it:
+it drives from `candidates`, walks every chunk of everyone who passes the filter, and sorts.
+`EXISTS (...)` is pulled up into that same join, with or without a `LIMIT 1` inside it. Measured
+on 12,000 chunks: 24.6 ms with the join, 19.1 ms with `EXISTS`, and 3.6 ms with a scalar
+subquery, which is the only one of the three whose plan contains
+`Index Scan using candidate_profile_chunks_embedding_hnsw`.
+
+So eligibility and every filter are a scalar subquery in the `WHERE` clause, which Postgres
+cannot pull up and therefore evaluates against rows the index has already ordered — which is
+exactly the shape `hnsw.iterative_scan` exists to widen. The join back to Candidates happens
+afterwards, on the one page being returned. This is load-bearing rather than stylistic, and
+nothing about the *results* changes when it is broken, so
+`test_the_search_reaches_its_vector_index_rather_than_every_chunk` asserts the query plan.
+
+The scan reads the base eligibility projection, `candidate_directory_profiles`, rather than the
+chunk-gated `candidate_search_profiles`: scanning chunks already implies having them, and the
+gate would cost a bitmap scan per surviving row.
+
+## Amendment: a short page says so
+
+The depth is a number of Candidates, but the scan that finds them is bounded in *chunks*. One
+Candidate with a very long history can hold the whole budget on their own, so a page can come
+back short while more people match further down the index. The scan therefore reports how many
+chunks it read, and a page that ran out of budget answers `has_more` — the alternative is the
+exact failure this ADR set out to avoid, an endpoint implying there is nothing more when there
+is.

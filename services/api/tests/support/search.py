@@ -19,7 +19,6 @@ SEARCH: Final = "/v1/search/candidates"
 DIRECTORY: Final = "/v1/directory/candidates"
 PROFILE: Final = "/v1/candidates/me/profile"
 
-CANDIDATE_NOT_FOUND: Final = "urn:sync:problem:candidate-not-found"
 UNKNOWN_CANONICAL_SKILL: Final = "urn:sync:problem:unknown-canonical-skill"
 UNKNOWN_LOCATION: Final = "urn:sync:problem:unknown-location"
 UNKNOWN_CANONICAL_ROLE: Final = "urn:sync:problem:unknown-canonical-role"
