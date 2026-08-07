@@ -6,16 +6,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@sync/ui/components/ui/sheet';
+import { useSidebarRail } from '@sync/ui/hooks/use-sidebar-rail';
 import { Menu } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import type { Profile } from '@/features/auth/current-profile';
-import { useSidebarRail } from '@/features/shell/hooks/use-sidebar-rail';
 import { Brand } from './brand';
 import { Sidebar } from './sidebar';
 
+const RAIL_STORAGE_KEY = 'sync-recruiter-sidebar';
+
 export function AppShell({ profile, children }: { profile: Profile; children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { collapsed, toggle } = useSidebarRail();
+  const { collapsed, toggle } = useSidebarRail(RAIL_STORAGE_KEY);
 
   return (
     <div

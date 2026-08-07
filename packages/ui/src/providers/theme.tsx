@@ -2,12 +2,10 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo, useSta
 
 export type Theme = 'light' | 'dark';
 
-export const THEME_STORAGE_KEY = 'sync-candidate-theme';
-
-function preferredTheme(): Theme {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+function preferredTheme(storageKey: string): Theme {
+  const stored = localStorage.getItem(storageKey);
   if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function paint(theme: Theme): void {
@@ -22,18 +20,26 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+interface ThemeProviderProps {
+  storageKey: string;
+  children: ReactNode;
+}
+
+export function ThemeProvider({ storageKey, children }: ThemeProviderProps) {
   const [theme, remember] = useState<Theme>(() => {
-    const initial = preferredTheme();
+    const initial = preferredTheme(storageKey);
     paint(initial);
     return initial;
   });
 
-  const setTheme = useCallback((next: Theme) => {
-    localStorage.setItem(THEME_STORAGE_KEY, next);
-    paint(next);
-    remember(next);
-  }, []);
+  const setTheme = useCallback(
+    (next: Theme) => {
+      localStorage.setItem(storageKey, next);
+      paint(next);
+      remember(next);
+    },
+    [storageKey],
+  );
 
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
