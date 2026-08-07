@@ -208,7 +208,7 @@ describe('tenant operations', () => {
     );
 
     const { user } = await renderApp('/tenants');
-    await user.click(screen.getByRole('button', { name: 'Use dark theme' }));
+    await user.click(screen.getByRole('button', { name: 'Switch to dark theme' }));
     await user.click(screen.getByRole('button', { name: 'Actions for Aman Foundation' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Resend invite' }));
 

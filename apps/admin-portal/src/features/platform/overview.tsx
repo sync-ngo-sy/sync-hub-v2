@@ -1,4 +1,4 @@
-import { StatCard } from '@sync/ui/components/stat-card';
+import { StatBand } from '@sync/ui/components/stat-band';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -18,11 +18,10 @@ export function PlatformOverview() {
     <section>
       <h1 className="font-heading text-h2">Platform overview</h1>
       {data ? (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {statLabels.map(([key, label]) => (
-            <StatCard key={key} label={label} value={data[key]} />
-          ))}
-        </div>
+        <StatBand
+          className="mt-(--space-section)"
+          items={statLabels.map(([key, label]) => ({ label, value: data[key] }))}
+        />
       ) : null}
     </section>
   );
