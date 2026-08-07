@@ -56,7 +56,7 @@ export function TalentPoolPage({ onCandidateOpen }: TalentPoolPageProps) {
   const [dropping, setDropping] = useState<PooledCandidate | null>(null);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader title="Talent pool" description={DESCRIPTION} />
 
       <DataTable

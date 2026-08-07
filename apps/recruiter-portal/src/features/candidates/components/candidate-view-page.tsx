@@ -46,7 +46,7 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
   const language = languageName(languages.data, card.preferredLanguageCode);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <div className="space-y-4">
         <Link
           to="/candidates"
@@ -64,8 +64,8 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
-        <div className="space-y-6">
+      <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
+        <div className="space-y-(--space-grid)">
           <ReviewCard title="Profile" hint={PROFILE_HINT}>
             <div className="space-y-4">
               <p className="whitespace-pre-wrap text-dense text-foreground">
@@ -92,7 +92,7 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
           </WidgetBoundary>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-(--space-grid)">
           <WidgetBoundary name="Talent pool">
             <TalentPoolCard candidateId={card.id} candidateName={card.fullName} />
           </WidgetBoundary>

@@ -10,7 +10,7 @@ export function NotificationsPage() {
   const notifications = useMyNotifications();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Notifications"
         description="Everything the platform has told you, newest first. Opening one marks it read."
