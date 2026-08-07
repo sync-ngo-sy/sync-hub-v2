@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 from uuid import uuid4
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +17,10 @@ from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
 from tests.support.messaging import (
     MESSAGE_TEMPLATE_NOT_FOUND,
+    VALIDATION_ERROR,
     a_saved_template,
     a_sent_message,
+    read_template,
     send_message,
 )
 from tests.support.profiles import (
@@ -31,6 +34,11 @@ from tests.support.worker import a_communications_worker
 
 if TYPE_CHECKING:
     from sync_core.models import Communication
+
+AN_EDIT: Final[dict[str, str]] = {
+    "subject": "Could we meet on Tuesday?",
+    "body": "Hi Amina,\n\nTuesday at ten, at our office?\n\nAcme",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +176,94 @@ async def test_a_template_deleted_afterwards_leaves_the_sent_words_untouched(
     row = await _the_message(db_session, applicant.application["id"])
     assert row.payload["body"] == sent["body"]
     assert row.status is CommunicationStatus.QUEUED, "still deliverable, and still auditable"
+
+
+async def test_a_send_may_bring_its_own_words_instead_of_the_templates(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    applicant = await an_applicant(recruiter, other_browser, mailbox, db_session)
+    template = await a_saved_template(recruiter)
+
+    sent = await a_sent_message(recruiter, applicant.application["id"], template["id"], AN_EDIT)
+
+    assert sent["subject"] == AN_EDIT["subject"]
+    assert sent["body"] == AN_EDIT["body"]
+    row = await _the_message(db_session, applicant.application["id"])
+    assert row.payload["subject"] == AN_EDIT["subject"]
+    assert row.payload["template_name"] == template["name"], "still sent from this template"
+
+
+async def test_the_template_is_untouched_however_often_an_edited_send_goes(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    applicant = await an_applicant(recruiter, other_browser, mailbox, db_session)
+    template = await a_saved_template(recruiter)
+
+    await a_sent_message(recruiter, applicant.application["id"], template["id"], AN_EDIT)
+    await a_sent_message(
+        recruiter,
+        applicant.application["id"],
+        template["id"],
+        {"subject": "Wednesday then?", "body": "Wednesday works for us too."},
+    )
+
+    saved = await read_template(recruiter, template["id"])
+    assert saved.json()["subject"] == template["subject"]
+    assert saved.json()["body"] == template["body"]
+
+
+async def test_a_placeholder_an_edited_send_writes_resolves_like_the_templates_own(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    applicant = await an_applicant(recruiter, other_browser, mailbox, db_session)
+    template = await a_saved_template(recruiter)
+
+    sent = await a_sent_message(
+        recruiter,
+        applicant.application["id"],
+        template["id"],
+        {
+            "subject": "{{ job_title }}, on Tuesday?",
+            "body": "Hi {{ candidate_name }},\n\nTuesday?\n\n{{ tenant_name }}",
+        },
+    )
+
+    assert sent["subject"] == f"{applicant.job_title}, on Tuesday?"
+    assert sent["body"] == "Hi Amina Haddad,\n\nTuesday?\n\nAcme Recruiting"
+
+
+@pytest.mark.parametrize("field", ["subject", "body"])
+async def test_an_edited_send_cannot_name_a_placeholder_no_send_could_fill(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    field: str,
+) -> None:
+    applicant = await an_applicant(recruiter, other_browser, mailbox, db_session)
+    template = await a_saved_template(recruiter)
+
+    refused = await send_message(
+        recruiter,
+        applicant.application["id"],
+        template["id"],
+        {**AN_EDIT, field: f"Hello {{{{ salary }}}} — {AN_EDIT[field]}"},
+    )
+
+    assert refused.status_code == 422, refused.text
+    problem = refused.json()
+    assert problem["type"] == VALIDATION_ERROR
+    assert [error["location"] for error in problem["errors"]] == [f"body.edited.{field}"]
+    assert len(await communications_of(db_session, applicant.application["id"])) == 1
 
 
 async def test_another_tenants_applicant_cannot_be_written_to(

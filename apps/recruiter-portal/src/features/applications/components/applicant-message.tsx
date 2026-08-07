@@ -1,6 +1,9 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormField } from '@sync/ui/components/form-field';
 import { SkeletonText } from '@sync/ui/components/skeletons';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
+import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
 import {
   Select,
@@ -9,19 +12,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@sync/ui/components/ui/select';
+import { Textarea } from '@sync/ui/components/ui/textarea';
 import { Link } from '@tanstack/react-router';
 import { CircleAlert, Send } from 'lucide-react';
 import { useId, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { useMessageTemplates } from '@/features/templates/hooks/use-message-templates';
+import type { MessageTemplate } from '@/features/templates/message-template';
 import { messagePreview } from '@/features/templates/preview';
+import { type MessageWords, messageWordsSchema } from '@/features/templates/schemas/message-words';
 import { useMyTenant } from '@/features/tenant/hooks/use-my-tenant';
 import { problemDetail } from '@/lib/api-problem';
 import { useMessageApplicant } from '../hooks/use-application-actions';
 
 const SENT = 'Message queued — the candidate will have it shortly.';
 const NOT_SENT = 'This message was not sent. Nothing reached the candidate.';
+
+const NO_WORDS: MessageWords = { subject: '', body: '' };
+
+const AS_SAVED =
+  'The name here is the Snapshot’s. The send greets the candidate by the name on their profile today.';
+const AS_EDITED = 'These words go exactly as they read here. The template keeps its own.';
 
 interface ApplicantMessageProps {
   applicationId: string;
@@ -40,37 +53,50 @@ export function ApplicantMessage({
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const pickerId = useId();
+  const form = useForm<MessageWords>({
+    resolver: zodResolver(messageWordsSchema),
+    defaultValues: NO_WORDS,
+  });
 
   const available = templates.data ?? [];
   const picked = available.find((template) => template.id === templateId) ?? null;
+  const edited = form.formState.isDirty;
 
-  const preview =
-    picked && tenant.data
-      ? messagePreview(picked, {
-          candidate_name: candidateName,
-          job_title: jobTitle,
-          tenant_name: tenant.data.name,
-        })
-      : null;
+  function resolved(template: MessageTemplate): MessageWords {
+    return messagePreview(template, {
+      candidate_name: candidateName,
+      job_title: jobTitle,
+      tenant_name: tenant.data?.name ?? '',
+    });
+  }
 
-  async function send(chosen: string) {
+  function choose(chosen: string | null) {
+    setFailure(null);
+    setTemplateId(chosen);
+    const template = available.find((each) => each.id === chosen);
+    form.reset(template ? resolved(template) : NO_WORDS);
+  }
+
+  const send = form.handleSubmit(async (words) => {
+    if (!picked) return;
     setFailure(null);
     try {
       await sending.mutateAsync({
         params: { path: { application_id: applicationId } },
-        body: { template_id: chosen },
+        body: { template_id: picked.id, edited: edited ? words : null },
       });
       toast.success(SENT);
       setTemplateId(null);
+      form.reset(NO_WORDS);
     } catch (error) {
       setFailure(problemDetail(error, NOT_SENT));
     }
-  }
+  });
 
   return (
     <ReviewCard
       title="Message the applicant"
-      hint="One email, in words your Tenant has already agreed on."
+      hint="One email. Start from a template, change what you like — the template stays as it is."
     >
       {templates.isPending || tenant.isPending ? (
         <SkeletonText lines={3} />
@@ -93,10 +119,7 @@ export function ApplicantMessage({
                 label: template.name,
               }))}
               value={templateId}
-              onValueChange={(value) => {
-                setFailure(null);
-                setTemplateId(value);
-              }}
+              onValueChange={choose}
             >
               <SelectTrigger id={pickerId} className="w-full">
                 <SelectValue placeholder="Pick a template" />
@@ -119,35 +142,26 @@ export function ApplicantMessage({
             </Alert>
           ) : null}
 
-          {picked && preview ? (
-            <>
-              <article
-                aria-label="Message preview"
-                className="space-y-2 rounded-lg border border-border bg-muted/40 p-3"
-              >
-                <p className="font-medium text-dense text-foreground">{preview.subject}</p>
-                <p className="whitespace-pre-wrap text-dense text-muted-foreground">
-                  {preview.body}
-                </p>
-              </article>
+          {picked ? (
+            <form onSubmit={send} noValidate className="space-y-4">
+              <FormField control={form.control} name="subject" label="Subject">
+                {(field) => <Input {...field} value={field.value} />}
+              </FormField>
 
-              <p className="text-meta text-muted-foreground">
-                The name here is the Snapshot’s. The send greets the candidate by the name on their
-                profile today.
-              </p>
+              <FormField control={form.control} name="body" label="Message">
+                {(field) => <Textarea {...field} value={field.value} rows={10} />}
+              </FormField>
 
-              <Button
-                className="w-full"
-                disabled={sending.isPending}
-                onClick={() => void send(picked.id)}
-              >
+              <p className="text-meta text-muted-foreground">{edited ? AS_EDITED : AS_SAVED}</p>
+
+              <Button type="submit" className="w-full" disabled={sending.isPending}>
                 <Send aria-hidden="true" />
                 {sending.isPending ? 'Sending…' : 'Send this message'}
               </Button>
-            </>
+            </form>
           ) : (
             <p className="text-dense text-muted-foreground">
-              Pick a template to read it before you send it.
+              Pick a template to read and edit it before you send it.
             </p>
           )}
         </div>

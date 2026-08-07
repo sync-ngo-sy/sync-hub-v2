@@ -25,7 +25,8 @@ class OutreachService:
     """A Recruiter writing one applicant from one of the Tenant's Message templates.
 
     Placeholders resolve here, once, and the resolved words are what the Communication carries —
-    so what a Candidate was sent outlives the template being rewritten.
+    so what a Candidate was sent outlives the template being rewritten. A send may bring its own
+    words instead of the template's; they are read the same way and the template stays as saved.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -44,12 +45,13 @@ class OutreachService:
             job_title=applied.job.title,
             tenant_name=applied.tenant_name,
         )
+        words = outgoing.edited or template
         payload = RecruiterMessage(
             application_id=application.id,
             tenant_name=applied.tenant_name,
             template_name=template.name,
-            subject=resolved.fill(template.subject),
-            body=resolved.fill(template.body),
+            subject=resolved.fill(words.subject),
+            body=resolved.fill(words.body),
         )
         async with transaction(self._db):
             communication = await enqueue_email(
@@ -70,6 +72,7 @@ class OutreachService:
             application_id=str(application.id),
             template_id=str(template.id),
             tenant_id=str(recruiter.tenant.id),
+            edited=outgoing.edited is not None,
         )
         return QueuedMessage(
             id=communication.id,
