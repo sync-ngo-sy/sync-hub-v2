@@ -1,11 +1,16 @@
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 
-export function Brand({ className }: { className?: string }) {
+export function Brand({ className, nameHidden }: { className?: string; nameHidden?: boolean }) {
   return (
     <Link to="/" className={cn('flex items-center gap-2.5', className)}>
       <img src="/logo.png" alt="" className="h-6 w-auto" />
-      <span className="font-heading text-[15px] font-semibold tracking-tight text-current">
+      <span
+        className={cn(
+          'font-heading text-[15px] font-semibold tracking-tight text-current',
+          nameHidden && 'sr-only',
+        )}
+      >
         Sync
       </span>
     </Link>

@@ -52,7 +52,7 @@ export function MessageTemplatesPage() {
   const [deleting, setDeleting] = useState<MessageTemplate | null>(null);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Templates"
         description="The Message templates your Recruiters reuse when they write an applicant."

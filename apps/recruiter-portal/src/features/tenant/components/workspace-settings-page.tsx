@@ -15,7 +15,7 @@ interface WorkspaceSettingsPageProps {
 
 export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: WorkspaceSettingsPageProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Settings"
         description="Your team, the Tags they file by, and the Tenant they all work for."

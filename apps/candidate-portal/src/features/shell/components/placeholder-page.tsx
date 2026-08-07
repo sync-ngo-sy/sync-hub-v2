@@ -3,7 +3,7 @@ import { Card, CardContent } from '@sync/ui/components/ui/card';
 
 export function PlaceholderPage({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader title={title} description={description} />
       <Card>
         <CardContent className="py-10 text-center text-dense text-muted-foreground">
