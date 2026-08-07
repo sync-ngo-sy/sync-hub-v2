@@ -15,6 +15,11 @@ _MAY_USE = f"May use {as_written(KNOWN)}."
 
 
 def _only_fillable(written: str) -> str:
+    """Refuse a placeholder no send could fill, wherever it is written.
+
+    A template hears it as it is saved and an edited send as it is sent, so the vocabulary only
+    ever grows where it is declared rather than wherever somebody typed a new name.
+    """
     unknown = unknown_in(written)
     if unknown:
         raise ValueError(f"names {as_written(unknown)}, which no message can fill. {_MAY_USE}")
@@ -26,11 +31,7 @@ FillableParagraph = Annotated[Paragraph, AfterValidator(_only_fillable)]
 
 
 class _TemplateText(BaseModel):
-    """The words of a Message template, and the one rule they have to obey.
-
-    A placeholder no send could fill is refused as it is written — here for a template, and
-    again for one send's own words — so the vocabulary can only grow where it is defined.
-    """
+    """The words of a Message template: what a Tenant files it under, and what it says."""
 
     name: Line = Field(
         description="What the Tenant files it under. Unique per Tenant.",

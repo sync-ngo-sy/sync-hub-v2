@@ -19,9 +19,9 @@ import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ReviewCard } from '@/features/shell/components/review-card';
+import { messageDraft } from '@/features/templates/draft';
 import { useMessageTemplates } from '@/features/templates/hooks/use-message-templates';
 import type { MessageTemplate } from '@/features/templates/message-template';
-import { messagePreview } from '@/features/templates/preview';
 import { type MessageWords, messageWordsSchema } from '@/features/templates/schemas/message-words';
 import { useMyTenant } from '@/features/tenant/hooks/use-my-tenant';
 import { problemDetail } from '@/lib/api-problem';
@@ -60,13 +60,14 @@ export function ApplicantMessage({
 
   const available = templates.data ?? [];
   const picked = available.find((template) => template.id === templateId) ?? null;
+  const tenantName = tenant.data?.name;
   const edited = form.formState.isDirty;
 
-  function resolved(template: MessageTemplate): MessageWords {
-    return messagePreview(template, {
+  function opens(template: MessageTemplate, filledBy: string): MessageWords {
+    return messageDraft(template, {
       candidate_name: candidateName,
       job_title: jobTitle,
-      tenant_name: tenant.data?.name ?? '',
+      tenant_name: filledBy,
     });
   }
 
@@ -74,16 +75,15 @@ export function ApplicantMessage({
     setFailure(null);
     setTemplateId(chosen);
     const template = available.find((each) => each.id === chosen);
-    form.reset(template ? resolved(template) : NO_WORDS);
+    form.reset(template && tenantName ? opens(template, tenantName) : NO_WORDS);
   }
 
-  const send = form.handleSubmit(async (words) => {
-    if (!picked) return;
+  async function send(from: MessageTemplate, words: MessageWords) {
     setFailure(null);
     try {
       await sending.mutateAsync({
         params: { path: { application_id: applicationId } },
-        body: { template_id: picked.id, edited: edited ? words : null },
+        body: { template_id: from.id, edited: edited ? words : null },
       });
       toast.success(SENT);
       setTemplateId(null);
@@ -91,14 +91,14 @@ export function ApplicantMessage({
     } catch (error) {
       setFailure(problemDetail(error, NOT_SENT));
     }
-  });
+  }
 
   return (
     <ReviewCard
       title="Message the applicant"
       hint="One email. Start from a template, change what you like — the template stays as it is."
     >
-      {templates.isPending || tenant.isPending ? (
+      {templates.isPending || !tenantName ? (
         <SkeletonText lines={3} />
       ) : available.length === 0 ? (
         <div className="space-y-3">
@@ -143,7 +143,11 @@ export function ApplicantMessage({
           ) : null}
 
           {picked ? (
-            <form onSubmit={send} noValidate className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit((words) => send(picked, words))}
+              noValidate
+              className="space-y-4"
+            >
               <FormField control={form.control} name="subject" label="Subject">
                 {(field) => <Input {...field} value={field.value} />}
               </FormField>

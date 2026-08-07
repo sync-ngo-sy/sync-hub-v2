@@ -38,7 +38,7 @@ const REJECTION = {
   body: 'Hi Amal Haddad,\n\nWe are moving other applicants forward.\n\nAman Relief',
 };
 
-const FROM_THE_TEMPLATE =
+const AS_SAVED =
   'The name here is the Snapshot’s. The send greets the candidate by the name on their profile today.';
 const AS_EDITED = 'These words go exactly as they read here. The template keeps its own.';
 
@@ -135,7 +135,7 @@ describe('the draft a template opens', () => {
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
     await pick(user, 'Interview invitation');
 
-    expect(await widget().findByText(FROM_THE_TEMPLATE)).toBeVisible();
+    expect(await widget().findByText(AS_SAVED)).toBeVisible();
   });
 
   it('re-reads the draft when a different template is picked', async () => {
@@ -190,6 +190,31 @@ describe('editing the draft before it goes', () => {
     );
   });
 
+  it('carries the whole draft once anything in it is edited, the greeting included', async () => {
+    const asked: OutgoingMessage[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...listsMessageTemplates(TEMPLATES),
+      ...messagesApplicant(QUEUED_MESSAGE, asked),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+    await pick(user, 'Interview invitation');
+    await user.type(await widget().findByLabelText('Subject'), ' Tuesday?');
+
+    await user.click(widget().getByRole('button', { name: 'Send this message' }));
+
+    await waitFor(() =>
+      expect(asked).toEqual([
+        {
+          template_id: INTERVIEW_INVITATION.id,
+          edited: { subject: `${INVITATION.subject} Tuesday?`, body: INVITATION.body },
+        },
+      ]),
+    );
+  });
+
   it('says the edited words go exactly as they read', async () => {
     server.use(
       ...signedInAs(RECRUITER),
@@ -202,10 +227,10 @@ describe('editing the draft before it goes', () => {
     await user.type(await widget().findByLabelText('Subject'), ' Tuesday?');
 
     expect(await widget().findByText(AS_EDITED)).toBeVisible();
-    expect(widget().queryByText(FROM_THE_TEMPLATE)).toBeNull();
+    expect(widget().queryByText(AS_SAVED)).toBeNull();
   });
 
-  it('leaves the saved template as it was, however many edited sends go', async () => {
+  it('never writes to the saved template, however many edited sends go', async () => {
     const onRevise = vi.fn();
     const onCreate = vi.fn();
     server.use(
@@ -249,7 +274,7 @@ describe('editing the draft before it goes', () => {
     await pick(user, 'Thanks, but not this time');
 
     await waitFor(() => expect(subjectField()).toHaveValue(REJECTION.subject));
-    expect(widget().getByText(FROM_THE_TEMPLATE)).toBeVisible();
+    expect(widget().getByText(AS_SAVED)).toBeVisible();
   });
 
   it('refuses a placeholder no message can fill, without asking the API', async () => {
@@ -267,11 +292,12 @@ describe('editing the draft before it goes', () => {
 
     await user.click(widget().getByRole('button', { name: 'Send this message' }));
 
-    expect(
-      await widget().findByText(
-        'Nothing can fill {{ salary }}. Use {{ candidate_name }}, {{ job_title }} or {{ tenant_name }}.',
-      ),
-    ).toBeVisible();
+    const refusal =
+      'Nothing can fill {{ salary }}. Use {{ candidate_name }}, {{ job_title }} or {{ tenant_name }}.';
+    expect(await widget().findByText(refusal)).toBeVisible();
+    expect(subjectField()).toHaveAccessibleDescription(refusal);
+    expect(subjectField()).toBeInvalid();
+    expect(messageField()).toBeValid();
     expect(asked).toEqual([]);
   });
 
