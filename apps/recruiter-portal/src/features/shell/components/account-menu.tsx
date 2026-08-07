@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@sync/ui/components/ui/dropdown-menu';
+import { cn } from '@sync/ui/lib/utils';
 import { ChevronsUpDown, LogOut } from 'lucide-react';
 import type { Profile } from '@/features/auth/current-profile';
 import { useLogOut } from '@/features/auth/hooks/use-log-out';
@@ -18,13 +19,16 @@ function initials(fullName: string): string {
     .join('');
 }
 
-export function AccountMenu({ profile }: { profile: Profile }) {
+export function AccountMenu({ profile, collapsed }: { profile: Profile; collapsed?: boolean }) {
   const logOut = useLogOut();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+        className={cn(
+          'flex min-w-0 items-center rounded-lg p-1 text-left outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
+          collapsed ? 'justify-center' : 'flex-1 gap-2.5',
+        )}
         aria-label={`Account: ${profile.full_name}`}
       >
         <Avatar>
@@ -33,13 +37,19 @@ export function AccountMenu({ profile }: { profile: Profile }) {
             {initials(profile.full_name)}
           </AvatarFallback>
         </Avatar>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium text-sidebar-foreground">
-            {profile.full_name}
-          </span>
-          <span className="block truncate text-xs text-sidebar-foreground">{profile.email}</span>
-        </span>
-        <ChevronsUpDown className="size-4 shrink-0 text-sidebar-label" />
+        {collapsed ? null : (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-medium text-sidebar-foreground">
+                {profile.full_name}
+              </span>
+              <span className="block truncate text-xs text-sidebar-foreground">
+                {profile.email}
+              </span>
+            </span>
+            <ChevronsUpDown className="size-4 shrink-0 text-sidebar-label" />
+          </>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-56">
         <DropdownMenuItem

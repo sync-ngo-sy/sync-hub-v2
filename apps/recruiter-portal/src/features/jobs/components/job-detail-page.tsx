@@ -69,7 +69,7 @@ export function JobDetailPage({
   const state = jobState(job.status);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <div className="space-y-4">
         <Link to="/jobs" className={buttonVariants({ variant: 'link', size: 'sm' })}>
           Back to Jobs

@@ -14,7 +14,7 @@ import { TenantStatusDialog } from './tenant-status-dialog';
 
 const tenantColumns: DataTableColumn<PlatformTenant>[] = [
   { accessorKey: 'name', header: 'Tenant' },
-  { accessorKey: 'slug', header: 'Address' },
+  { accessorKey: 'slug', header: 'Address', meta: { priority: 'hidden' } },
   { accessorKey: 'plan', header: 'Plan', cell: ({ row }) => tenantPlanLabel(row.original.plan) },
   { accessorKey: 'member_count', header: 'Members' },
   {

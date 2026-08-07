@@ -14,7 +14,7 @@ interface CandidateSearchPageProps {
 
 export function CandidateSearchPage({ filters, onFiltersChange }: CandidateSearchPageProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader title="Candidates" description={DESCRIPTION} />
 
       <CandidateFilters filters={filters} onSearch={onFiltersChange} />

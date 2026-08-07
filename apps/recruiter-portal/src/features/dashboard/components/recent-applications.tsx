@@ -34,6 +34,7 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'received',
     header: 'Received',
+    meta: { priority: 'hidden' },
     cell: ({ row }) => (
       <time
         dateTime={row.original.applied_at}

@@ -71,6 +71,7 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   {
     id: 'expires',
     header: 'Expires',
+    meta: { priority: 'hidden' },
     cell: ({ row }) =>
       row.original.expires_at ? (
         <time
@@ -150,7 +151,7 @@ export function TenantTrackedLinksPage({
   const hidden = hiddenByDate(arrived, filter);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader title="Tracked links" description={DESCRIPTION} />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
