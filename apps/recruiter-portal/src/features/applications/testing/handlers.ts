@@ -346,11 +346,10 @@ export function holdsMatchAssessment(initial: MatchAssessment[], written: MatchA
   };
 }
 
-export function messagesApplicant(queued: QueuedMessage, asked?: string[]) {
+export function messagesApplicant(queued: QueuedMessage, asked?: OutgoingMessage[]) {
   return [
     http.post(MESSAGES_PATH, async ({ request, response }) => {
-      const { template_id } = (await request.json()) as OutgoingMessage;
-      asked?.push(template_id);
+      asked?.push((await request.json()) as OutgoingMessage);
       return response(201).json(queued);
     }),
   ];
