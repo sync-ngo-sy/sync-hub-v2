@@ -5,7 +5,6 @@ export const email = z
   .min(1, 'Enter your email.')
   .pipe(z.email('Enter a valid email address.'));
 
-/** The bounds the API's `Password` enforces. */
 export const newPassword = z
   .string()
   .min(8, 'Use at least 8 characters.')

@@ -27,8 +27,6 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
   const undeletableId = useId();
 
   async function download() {
-    // Opened on the click itself: asking for the link takes a round trip, and by the time it
-    // lands the user gesture has expired and Safari blocks the window.
     const tab = window.open('', '_blank');
     if (tab) tab.opener = null;
     try {
@@ -62,8 +60,6 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
   }
 
   return (
-    // Framed like the entries in every other section: a card inside a card reads as a page
-    // inside a page.
     <div className="min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -84,8 +80,6 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
       </div>
 
       {hasFailed(cv) && cv.parsing_error ? (
-        // Gray, not red: `--destructive` is reserved for irreversible actions, and the icon
-        // is what carries the signal (§8).
         <Alert className="bg-muted">
           <CircleX aria-hidden="true" />
           <AlertTitle>Why it could not be read</AlertTitle>
@@ -137,8 +131,6 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
           type="button"
           variant="ghost"
           size="sm"
-          // The API refuses outright, so the reason is on screen before the click rather
-          // than in a toast after it.
           disabled={cv.is_current}
           aria-describedby={cv.is_current ? undeletableId : undefined}
           aria-label={`Delete “${cv.display_name}”`}

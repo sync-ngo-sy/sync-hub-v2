@@ -21,7 +21,6 @@ import type { ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
 
-/** Aliased so a portal can define columns without taking TanStack Table as a dependency. */
 export type DataTableColumn<TRow> = ColumnDef<TRow>;
 
 export interface DataTableRowAction {
@@ -52,8 +51,6 @@ export interface DataTableProps<TRow> {
 const SKELETON_ROW_KEYS = placeholderKeys(5, 'skeleton-row');
 const count = new Intl.NumberFormat();
 
-// A sticky cell needs separated borders to keep its own hairline while the rest of the row
-// scrolls under it, so the row border moves onto the cells.
 const CELL_BORDER = 'border-b border-border';
 const LEAD_COLUMN = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-card';
 

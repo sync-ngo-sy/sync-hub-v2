@@ -26,8 +26,6 @@ export function LogInForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
       onSignedIn(await logIn.mutateAsync({ body: values }));
     } catch (error) {
       const message = problemMessage(error, "Couldn't sign you in. Try again.");
-      // Rejected credentials belong beside what the reader typed. A server fault or a dead
-      // connection is nobody's field, so it goes to Sonner instead (§7.2, §7.3).
       if (isClientError(error)) {
         setError('password', { message });
         return;

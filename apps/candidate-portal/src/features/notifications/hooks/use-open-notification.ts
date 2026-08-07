@@ -6,11 +6,6 @@ import { isUnread, type Notification } from '../notification';
 import { myNotificationsQuery } from './use-my-notifications';
 import { unreadCountQuery } from './use-unread-count';
 
-/**
- * Reading a notification is a side effect of opening it, not an action the reader asked for — so it
- * never toasts and never stands in the way of the navigation the click was really about. There is
- * no mark-all counterpart, deliberately: the API cannot do one atomically.
- */
 export function useOpenNotification() {
   const queryClient = useQueryClient();
 

@@ -26,7 +26,6 @@ function table() {
   return within(screen.getByRole('table', { name: 'Tracked links' }));
 }
 
-/** The link's name alone: its cell carries when it was minted underneath. */
 async function rowNames() {
   const rows = await screen.findAllByRole('row');
   return rows
@@ -247,7 +246,6 @@ describe('the Tracked links page', () => {
     const { user } = await renderApp('/tracked-links');
     await table().findByText('WhatsApp groups');
 
-    // Long enough that the first letters settle and navigate while the rest are still arriving.
     await user.type(screen.getByLabelText('Search by name'), 'whatsapp groups');
 
     await waitFor(() =>

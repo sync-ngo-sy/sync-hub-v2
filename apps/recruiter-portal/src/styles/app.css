@@ -1,6 +1,5 @@
 @import "@sync/ui/globals.css";
 
-/* The recruiter portal is the dense surface; the candidate portal keeps the reading size. */
 @layer base {
   body {
     @apply text-dense;

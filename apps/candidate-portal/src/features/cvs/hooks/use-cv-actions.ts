@@ -18,8 +18,6 @@ export function useDeleteCv() {
   });
 }
 
-/** A command rather than a read: the link is signed and short-lived, so every click asks the
- * API for a new one instead of reusing whatever a cache is still holding. */
 export function useCvDownloadLink() {
   return useMutation({
     mutationFn: async (cvId: string) => {

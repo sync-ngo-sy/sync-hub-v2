@@ -1,8 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { DESTINATIONS } from '@/features/shell/nav';
 
-/** Repositioned rather than rendered twice: a second copy would double every destination in
- * the accessible tree. */
 export function PrimaryNav() {
   return (
     <nav

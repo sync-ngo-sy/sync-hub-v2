@@ -6,8 +6,6 @@ type TenantTrackedLink = components['schemas']['TenantTrackedLink'];
 
 const PATH = '/v1/tenants/me/tracked-links';
 
-/** Stands in for the endpoint's own narrowing: a substring of the name, ignoring case, and the
- * `is_active` column. Expiry is deliberately not filtered here — the page does that itself. */
 function narrow(links: TenantTrackedLink[], q: string | null, active: string | null) {
   const asked = (q ?? '').toLowerCase();
   return links
@@ -43,8 +41,6 @@ export function failsToListTenantTrackedLinks(problem: Problem) {
   return [http.get(PATH, ({ response }) => response(500).json(problem))];
 }
 
-/** Records the search terms the page actually asked for, which is how a debounce is observed:
- * a typed word should reach the endpoint once, not once per letter. */
 export function recordsSearches(links: TenantTrackedLink[], asked: (string | null)[]) {
   return [
     http.get(PATH, ({ query, response }) => {

@@ -5,9 +5,7 @@ import type { ReactNode } from 'react';
 import { MAX_ENTRIES } from '../schemas/profile';
 
 interface EntryListProps {
-  /** The keys `useFieldArray` hands out, so an entry keeps its inputs while its neighbours move. */
   ids: string[];
-  /** Names one entry — "Job 2" — for its heading and for its Remove button. */
   label: (index: number) => string;
   icon: LucideIcon;
   addLabel: string;

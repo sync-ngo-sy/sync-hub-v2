@@ -1,7 +1,6 @@
 import { SkeletonText } from '@sync/ui/components/skeletons';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 
-/** Shaped like the header and opening block of {@link JobDetail}, so the swap moves nothing. */
 export function JobDetailSkeleton() {
   return (
     <div role="status" aria-label="Loading this role" className="space-y-10">

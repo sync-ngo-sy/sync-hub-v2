@@ -19,7 +19,6 @@ export const talentPoolQuery = queryOptions({
     }),
 });
 
-/** Settled rather than awaited: a pool that will not load is the pool card's to report. */
 export function warmTalentPool(queryClient: QueryClient): Promise<PooledCandidate[]> {
   return queryClient.ensureQueryData(talentPoolQuery).catch(() => []);
 }
@@ -36,7 +35,6 @@ function savedCandidatesPrefix() {
   return savedCandidatesFirstPageQuery().queryKey.slice(0, 2);
 }
 
-/** Settled rather than awaited: a page that will not load is the list's own to report. */
 export function warmSavedCandidates(queryClient: QueryClient): Promise<PoolPage | undefined> {
   return queryClient.ensureQueryData(savedCandidatesFirstPageQuery()).catch(() => undefined);
 }

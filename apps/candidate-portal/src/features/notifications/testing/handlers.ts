@@ -17,7 +17,6 @@ export function countsUnread(unread: number) {
   ];
 }
 
-/** Successive answers to the same poll: the last one is repeated once the counts run out. */
 export function countsUnreadInTurn(...counts: number[]) {
   let call = 0;
   return [
@@ -35,7 +34,6 @@ export function faultsOnCountingUnread(problem: Problem) {
   ];
 }
 
-/** One page, with nothing after it. */
 export function listsNotifications(items: Notification[]) {
   return [
     http.get('/v1/notifications', ({ response }) =>
@@ -44,8 +42,6 @@ export function listsNotifications(items: Notification[]) {
   ];
 }
 
-/** Successive answers to the same list request: the last one is repeated once the batches run
- * out, which is how a test sees what an invalidation went and fetched. */
 export function listsNotificationsInTurn(...batches: Notification[][]) {
   let call = 0;
   return [
@@ -57,7 +53,6 @@ export function listsNotificationsInTurn(...batches: Notification[][]) {
   ];
 }
 
-/** The newest page arrives, the one after it faults: what a failed Load more actually looks like. */
 export function faultsOnTheNextPage(items: Notification[], problem: Problem) {
   return [
     http.get('/v1/notifications', ({ query, response }) =>
@@ -68,10 +63,6 @@ export function faultsOnTheNextPage(items: Notification[], problem: Problem) {
   ];
 }
 
-/**
- * Cursor-keyed pages, as the API hands them over: the cursor names the page that follows, and
- * the last page is the only one that answers with none.
- */
 export function listsNotificationPages(...pages: Notification[][]) {
   return [
     http.get('/v1/notifications', ({ query, response }) => {
@@ -89,8 +80,6 @@ export function faultsOnListingNotifications(problem: Problem) {
   return [http.get('/v1/notifications', ({ response }) => response(500).json(problem))];
 }
 
-/** Answers with the notification it was asked about, now carrying a read time — and 404s for an
- * id that belongs to nobody, exactly as the API does. */
 export function marksRead(notifications: Notification[], onRequest?: (id: string) => void) {
   return [
     http.post('/v1/notifications/{notification_id}/read', ({ params, response }) => {

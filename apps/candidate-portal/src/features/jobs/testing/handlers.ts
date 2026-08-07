@@ -18,10 +18,6 @@ export function publishesNothing() {
   return listsJobs([]);
 }
 
-/**
- * Cursor-paged, one page per array: the handler answers whichever page the `cursor` it was
- * given names, so Load-more is exercised through the same round-trip the API asks for.
- */
 export function pagesJobs(pages: JobSummary[][], onQuery?: AskedQuery) {
   return [
     http.get('/v1/jobs', ({ response, query, request }) => {
@@ -53,7 +49,6 @@ export function filtersJobs(items: JobSummary[], onQuery?: AskedQuery) {
   ];
 }
 
-/** Never answers, so the pending list can be looked at. */
 export function withholdsJobs() {
   return [
     http.get('/v1/jobs', async ({ response }) => {
@@ -79,7 +74,6 @@ export function faultsOnJob(problem: Problem) {
   return [http.get('/v1/jobs/{job_id}', ({ response }) => response(500).json(problem))];
 }
 
-/** The `onView` spy is how a test proves the API counted the arrival, not the page. */
 export function resolvesTrackedLink(job: Job, onView?: (token: string) => void) {
   return [
     http.get('/v1/jobs/by-link/{token}', ({ response, params }) => {

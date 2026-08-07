@@ -28,14 +28,11 @@ interface FormFieldProps<TFieldValues extends FieldValues, TName extends FieldPa
   name: TName;
   label: ReactNode;
   description?: ReactNode;
-  /** `horizontal` leads with the control, as checkboxes and switches want. */
   orientation?: 'vertical' | 'horizontal';
   className?: string;
   children: (field: FormFieldControl<TFieldValues, TName>) => ReactNode;
 }
 
-/** The control gets an `aria-describedby` resolving to whichever of the description and error
- * is on screen. */
 export function FormField<TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>>({
   control,
   name,
