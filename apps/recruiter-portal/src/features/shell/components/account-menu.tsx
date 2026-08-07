@@ -34,12 +34,12 @@ export function AccountMenu({ profile }: { profile: Profile }) {
           </AvatarFallback>
         </Avatar>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium text-foreground">
+          <span className="block truncate text-[13px] font-medium text-sidebar-foreground">
             {profile.full_name}
           </span>
-          <span className="block truncate text-xs text-muted-foreground">{profile.email}</span>
+          <span className="block truncate text-xs text-sidebar-foreground">{profile.email}</span>
         </span>
-        <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+        <ChevronsUpDown className="size-4 shrink-0 text-sidebar-label" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-56">
         <DropdownMenuItem

@@ -16,7 +16,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
   const { theme, toggle } = useTheme();
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[220px_1fr]">
-      <aside className="border-r border-border bg-sidebar px-4 py-6">
+      <aside className="border-r border-sidebar-border bg-sidebar px-4 py-6 text-sidebar-foreground">
         <Link to="/overview" className="mb-8 block font-heading text-lg font-semibold">
           Sync Platform
         </Link>
@@ -26,19 +26,19 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
               key={to}
               to={to}
               activeProps={{ 'aria-current': 'page' }}
-              className="block rounded-md px-3 py-2 hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent"
+              className="block rounded-md px-3 py-2 hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
             >
               {label}
             </Link>
           ))}
         </nav>
-        <div className="mt-8 border-t pt-4 text-sm text-muted-foreground">{profile.full_name}</div>
+        <div className="mt-8 border-t border-sidebar-border pt-4 text-sm">{profile.full_name}</div>
         <div className="mt-3 flex gap-2">
-          <Button variant="outline" size="sm" onClick={toggle}>
+          <Button variant="sidebar" size="sm" onClick={toggle}>
             Use {theme === 'light' ? 'dark' : 'light'} theme
           </Button>
           <Button
-            variant="outline"
+            variant="sidebar"
             size="sm"
             disabled={logOut.isPending}
             onClick={() => logOut.mutate({})}
