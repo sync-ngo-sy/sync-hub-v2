@@ -14,8 +14,8 @@ const TREND_TONE: Record<TrendTone, { color: string; icon?: LucideIcon }> = {
 
 export function StatCardShell({ className, children, ...props }: ComponentProps<typeof Card>) {
   return (
-    <Card className={cn(cardSurface, 'gap-0', className)} {...props}>
-      <CardContent className="flex flex-col gap-2.5">{children}</CardContent>
+    <Card className={cn(cardSurface, 'gap-0 py-4', className)} {...props}>
+      <CardContent className="flex flex-col gap-2.5 px-[18px]">{children}</CardContent>
     </Card>
   );
 }

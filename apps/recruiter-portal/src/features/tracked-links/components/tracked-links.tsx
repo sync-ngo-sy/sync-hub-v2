@@ -48,6 +48,7 @@ const COLUMNS: DataTableColumn<TrackedLink>[] = [
   {
     accessorKey: 'created_at',
     header: 'Minted',
+    meta: { priority: 'hidden' },
     cell: ({ row }) => (
       <time dateTime={row.original.created_at} title={absoluteDateTime(row.original.created_at)}>
         {relativeTime(row.original.created_at)}

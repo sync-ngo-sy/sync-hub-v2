@@ -5,16 +5,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sync/ui/components/ui/tooltip';
-import { microLabel } from '@sync/ui/lib/micro-label';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useId } from 'react';
+import { LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react';
 import type { Profile } from '@/features/auth/current-profile';
+import { useLogOut } from '@/features/auth/hooks';
 import { DESTINATIONS, type Destination } from '@/features/shell/nav';
-import { AccountMenu } from './account-menu';
-import { Brand } from './brand';
-import { ThemeToggle } from './theme-toggle';
+import { useTheme } from '@/lib/theme';
 
 interface SidebarProps {
   profile: Profile;
@@ -24,7 +21,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }: SidebarProps) {
-  const labelId = useId();
+  const logOut = useLogOut();
+  const { theme, setTheme } = useTheme();
+  const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
   return (
     <TooltipProvider>
@@ -32,10 +31,15 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
         <div
           className={cn(
             'mb-8 flex items-center gap-2',
-            collapsed ? 'flex-col px-2' : 'justify-between px-5',
+            collapsed ? 'flex-col px-2' : 'justify-between px-4',
           )}
         >
-          <Brand nameHidden={collapsed} />
+          <Link to="/overview" className="font-heading text-lg font-semibold">
+            <span className={collapsed ? 'sr-only' : undefined}>Sync Platform</span>
+            <span aria-hidden="true" className={collapsed ? undefined : 'hidden'}>
+              S
+            </span>
+          </Link>
           {onToggleRail ? (
             <Button
               variant="sidebar"
@@ -48,20 +52,7 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
           ) : null}
         </div>
 
-        <nav
-          aria-labelledby={labelId}
-          className={cn('flex flex-1 flex-col gap-0.5', collapsed ? 'px-2' : 'px-3')}
-        >
-          <p
-            id={labelId}
-            className={cn(
-              microLabel,
-              'pb-1.5 font-section text-sidebar-label',
-              collapsed ? 'sr-only' : 'px-2',
-            )}
-          >
-            Workspace
-          </p>
+        <nav aria-label="Platform" className={cn('flex-1 space-y-1', collapsed ? 'px-2' : 'px-3')}>
           {DESTINATIONS.map((destination) => (
             <NavLink
               key={destination.to}
@@ -74,12 +65,30 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
 
         <div
           className={cn(
-            'mt-4 flex items-center gap-2 border-t border-sidebar-border pt-4',
-            collapsed ? 'mx-2 flex-col' : 'mx-3',
+            'mt-4 border-t border-sidebar-border pt-4',
+            collapsed ? 'mx-2' : 'mx-3 text-sm',
           )}
         >
-          <AccountMenu profile={profile} collapsed={collapsed} />
-          <ThemeToggle variant="sidebar" />
+          {collapsed ? null : <p className="mb-3 truncate">{profile.full_name}</p>}
+          <div className={cn('flex gap-2', collapsed ? 'flex-col items-center' : 'items-center')}>
+            <Button
+              variant="sidebar"
+              size="icon"
+              aria-label={`Switch to ${nextTheme} theme`}
+              onClick={() => setTheme(nextTheme)}
+            >
+              {theme === 'dark' ? <Sun /> : <Moon />}
+            </Button>
+            <Button
+              variant="sidebar"
+              size="icon"
+              aria-label="Sign out"
+              disabled={logOut.isPending}
+              onClick={() => logOut.mutate({})}
+            >
+              <LogOut />
+            </Button>
+          </div>
         </div>
       </div>
     </TooltipProvider>
@@ -99,11 +108,11 @@ function NavLink({ destination: { to, label, icon: Icon }, collapsed, onNavigate
       onClick={onNavigate}
       activeProps={{ 'aria-current': 'page' }}
       className={cn(
-        'group relative flex items-center rounded-lg p-2.5 text-dense font-nav text-sidebar-foreground hover:bg-sidebar-accent/60 aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground aria-[current=page]:before:absolute aria-[current=page]:before:inset-y-2 aria-[current=page]:before:left-0 aria-[current=page]:before:w-0.75 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-sidebar-primary',
+        'flex items-center rounded-md p-2.5 text-dense hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground',
         collapsed ? 'justify-center' : 'gap-2.5',
       )}
     >
-      <Icon className="size-4.5 shrink-0 text-sidebar-foreground/90 group-aria-[current=page]:text-sidebar-accent-foreground" />
+      <Icon className="size-4.5 shrink-0" />
       <span className={collapsed ? 'sr-only' : undefined}>{label}</span>
     </Link>
   );

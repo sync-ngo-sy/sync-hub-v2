@@ -14,12 +14,30 @@ import {
   TableHeader,
   TableRow,
 } from '@sync/ui/components/ui/table';
+import { useMediaQuery } from '@sync/ui/hooks/use-media-query';
+import { microLabel } from '@sync/ui/lib/micro-label';
 import { cn } from '@sync/ui/lib/utils';
-import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import {
+  type Cell,
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  type Row,
+  type RowData,
+  useReactTable,
+} from '@tanstack/react-table';
 import { CircleAlert, type LucideIcon, MoreHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
+
+export type ColumnPriority = 'primary' | 'secondary' | 'hidden';
+
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    priority?: ColumnPriority;
+  }
+}
 
 export type DataTableColumn<TRow> = ColumnDef<TRow>;
 
@@ -54,6 +72,19 @@ const count = new Intl.NumberFormat();
 const CELL_BORDER = 'border-b border-border';
 const LEAD_COLUMN = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-card';
 
+/* A table is a grid of comparisons, and a phone is too narrow to compare across. Below
+   md every row becomes a card instead, built from the same column definitions. */
+const COMPACT = '(max-width: 47.999rem)';
+
+function priorityOf<TRow>(cell: Cell<TRow, unknown>, index: number): ColumnPriority {
+  return cell.column.columnDef.meta?.priority ?? (index === 0 ? 'primary' : 'secondary');
+}
+
+function termOf<TRow>(cell: Cell<TRow, unknown>): string {
+  const { header } = cell.column.columnDef;
+  return typeof header === 'string' ? header : cell.column.id;
+}
+
 export function DataTable<TRow>({
   label,
   columns,
@@ -68,6 +99,8 @@ export function DataTable<TRow>({
   loadMore,
   className,
 }: DataTableProps<TRow>) {
+  const compact = useMediaQuery(COMPACT);
+
   const table = useReactTable({
     data,
     columns,
@@ -80,6 +113,7 @@ export function DataTable<TRow>({
 
   const rows = table.getRowModel().rows;
   const skeletonCellKeys = placeholderKeys(columns.length + (rowActions ? 1 : 0), 'cell');
+  const loadingFirstPage = isLoading && rows.length === 0;
 
   if (error && rows.length === 0) {
     return (
@@ -97,83 +131,94 @@ export function DataTable<TRow>({
 
   return (
     <div className={className}>
-      <Table aria-label={label} className="border-separate border-spacing-0">
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header, index) => (
-                <TableHead
-                  key={header.id}
-                  className={cn(CELL_BORDER, 'bg-card', index === 0 && LEAD_COLUMN)}
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
-              {rowActions ? (
-                <TableHead className={cn(CELL_BORDER, 'w-px bg-card')}>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              ) : null}
-            </TableRow>
-          ))}
-        </TableHeader>
+      {compact ? (
+        <CardList
+          label={label}
+          rows={rows}
+          rowLabel={rowLabel}
+          onRowOpen={onRowOpen}
+          rowActions={rowActions}
+          isLoading={loadingFirstPage}
+        />
+      ) : (
+        <Table aria-label={label} className="border-separate border-spacing-0">
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header, index) => (
+                  <TableHead
+                    key={header.id}
+                    className={cn(CELL_BORDER, 'bg-card', index === 0 && LEAD_COLUMN)}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+                {rowActions ? (
+                  <TableHead className={cn(CELL_BORDER, 'w-px bg-card')}>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableHeader>
 
-        <TableBody>
-          {isLoading && rows.length === 0
-            ? SKELETON_ROW_KEYS.map((rowKey) => (
-                <TableRow key={rowKey} aria-hidden="true">
-                  {skeletonCellKeys.map((cellKey) => (
-                    <TableCell key={`${rowKey}-${cellKey}`} className={CELL_BORDER}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            : rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={onRowOpen ? 'cursor-pointer' : undefined}
-                  onClick={onRowOpen ? () => onRowOpen(row.original) : undefined}
-                >
-                  {row.getVisibleCells().map((cell, index) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cn(CELL_BORDER, index === 0 && cn(LEAD_COLUMN, 'font-medium'))}
-                    >
-                      {index === 0 && onRowOpen ? (
-                        <button
-                          type="button"
-                          aria-label={`Open ${rowLabel(row.original)}`}
-                          className="rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onRowOpen(row.original);
-                          }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </button>
-                      ) : (
-                        flexRender(cell.column.columnDef.cell, cell.getContext())
-                      )}
-                    </TableCell>
-                  ))}
-                  {rowActions ? (
-                    <TableCell
-                      className={cn(CELL_BORDER, 'text-end')}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <RowActions
-                        label={rowLabel(row.original)}
-                        actions={rowActions(row.original)}
-                      />
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-        </TableBody>
-      </Table>
+          <TableBody>
+            {loadingFirstPage
+              ? SKELETON_ROW_KEYS.map((rowKey) => (
+                  <TableRow key={rowKey} aria-hidden="true">
+                    {skeletonCellKeys.map((cellKey) => (
+                      <TableCell key={`${rowKey}-${cellKey}`} className={CELL_BORDER}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className={onRowOpen ? 'cursor-pointer' : undefined}
+                    onClick={onRowOpen ? () => onRowOpen(row.original) : undefined}
+                  >
+                    {row.getVisibleCells().map((cell, index) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(CELL_BORDER, index === 0 && cn(LEAD_COLUMN, 'font-medium'))}
+                      >
+                        {index === 0 && onRowOpen ? (
+                          <button
+                            type="button"
+                            aria-label={`Open ${rowLabel(row.original)}`}
+                            className="rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onRowOpen(row.original);
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </button>
+                        ) : (
+                          flexRender(cell.column.columnDef.cell, cell.getContext())
+                        )}
+                      </TableCell>
+                    ))}
+                    {rowActions ? (
+                      <TableCell
+                        className={cn(CELL_BORDER, 'text-end')}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <RowActions
+                          label={rowLabel(row.original)}
+                          actions={rowActions(row.original)}
+                        />
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                ))}
+          </TableBody>
+        </Table>
+      )}
 
-      {isLoading && rows.length === 0 ? null : (
+      {loadingFirstPage ? null : (
         <div className="flex flex-wrap items-center justify-between gap-3 py-3">
           <p className="text-meta tabular-nums text-muted-foreground">
             {`${count.format(rows.length)} shown`}
@@ -195,6 +240,92 @@ export function DataTable<TRow>({
   );
 }
 
+interface CardListProps<TRow> {
+  label: string;
+  rows: Row<TRow>[];
+  rowLabel: (row: TRow) => string;
+  onRowOpen?: (row: TRow) => void;
+  rowActions?: (row: TRow) => DataTableRowAction[];
+  isLoading: boolean;
+}
+
+function CardList<TRow>({
+  label,
+  rows,
+  rowLabel,
+  onRowOpen,
+  rowActions,
+  isLoading,
+}: CardListProps<TRow>) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-(--space-grid)" aria-hidden="true">
+        {SKELETON_ROW_KEYS.map((rowKey) => (
+          <div
+            key={rowKey}
+            className="rounded-lg border border-border bg-card p-(--space-card) shadow-card"
+          >
+            <Skeleton className="h-4 w-2/5" />
+            <Skeleton className="mt-3 h-3 w-4/5" />
+            <Skeleton className="mt-2 h-3 w-3/5" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <ul aria-label={label} className="flex flex-col gap-(--space-grid)">
+      {rows.map((row) => {
+        const cells = row.getVisibleCells();
+        const lead = cells.find((cell, index) => priorityOf(cell, index) === 'primary');
+        const details = cells.filter(
+          (cell, index) => priorityOf(cell, index) === 'secondary' && cell !== lead,
+        );
+        const actions = rowActions?.(row.original);
+
+        return (
+          <li
+            key={row.id}
+            className="rounded-lg border border-border bg-card p-(--space-card) shadow-card"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 font-medium text-dense text-foreground">
+                {lead && onRowOpen ? (
+                  <button
+                    type="button"
+                    aria-label={`Open ${rowLabel(row.original)}`}
+                    className="rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    onClick={() => onRowOpen(row.original)}
+                  >
+                    {flexRender(lead.column.columnDef.cell, lead.getContext())}
+                  </button>
+                ) : lead ? (
+                  flexRender(lead.column.columnDef.cell, lead.getContext())
+                ) : null}
+              </div>
+              {actions ? <RowActions label={rowLabel(row.original)} actions={actions} /> : null}
+            </div>
+
+            {details.length > 0 ? (
+              <dl className="mt-3 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-border pt-3">
+                {details.map((cell) => (
+                  <div key={cell.id} className="col-span-2 grid grid-cols-subgrid items-baseline">
+                    <dt className={cn(microLabel, 'text-muted-foreground')}>{termOf(cell)}</dt>
+                    <dd className="min-w-0 text-dense text-foreground">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function RowActions({ label, actions }: { label: string; actions: DataTableRowAction[] }) {
   if (actions.length === 0) {
     return null;
@@ -204,7 +335,7 @@ function RowActions({ label, actions }: { label: string; actions: DataTableRowAc
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Actions for ${label}`}
-        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>

@@ -82,7 +82,7 @@ export function JobsPage({ status, onStatusChange, onJobOpen }: JobsPageProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Jobs"
         description="Draft, publish and close the roles your Tenant is hiring for."

@@ -13,7 +13,7 @@ export function ApplicationsPage() {
   const applications = useMyApplications();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader title="My Applications" description="Everywhere you've applied, newest first." />
 
       {applications.isPending ? (

@@ -15,7 +15,7 @@ export function AccountSettingsPage({ profile }: { profile: Profile }) {
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Account settings"
         description="Review the details attached to your Sync account."

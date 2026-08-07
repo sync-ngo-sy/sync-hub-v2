@@ -10,13 +10,14 @@ const bars = viewsRanked([
 ]);
 
 describe('the link views chart', () => {
-  it('sizes the container recharts measures, or the chart draws nothing', () => {
+  it('draws each bar as a share of the busiest link', () => {
     const { container } = render(<LinkViewsChart bars={bars} />);
 
-    const wrapper = container.querySelector<HTMLElement>('.recharts-wrapper');
+    const widths = [...container.querySelectorAll<HTMLElement>('span[style*="width"]')].map(
+      (fill) => fill.style.width,
+    );
 
-    expect(wrapper).not.toBeNull();
-    expect(Number.parseFloat(wrapper?.style.height ?? '')).toBeGreaterThan(0);
+    expect(widths).toEqual(['100%', `${(281 / 342) * 100}%`, `${(190 / 342) * 100}%`]);
   });
 
   it('speaks every bar it draws', () => {

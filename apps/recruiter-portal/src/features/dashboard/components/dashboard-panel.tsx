@@ -1,11 +1,5 @@
 import { ChartCardShell } from '@sync/ui/components/chart-card';
-import {
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-} from '@sync/ui/components/ui/card';
+import { CardContent, CardDescription, CardFooter, CardHeader } from '@sync/ui/components/ui/card';
 import { type ReactNode, useId } from 'react';
 
 interface DashboardPanelProps {
@@ -29,13 +23,15 @@ export function DashboardPanel({
     <section aria-labelledby={headingId}>
       <ChartCardShell>
         <CardHeader>
-          <h2 id={headingId} className="font-heading text-title text-foreground">
-            {title}
-          </h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 id={headingId} className="font-heading text-title text-foreground">
+              {title}
+            </h2>
+            {action ? <span className="shrink-0">{action}</span> : null}
+          </div>
           {description ? (
             <CardDescription className="text-meta">{description}</CardDescription>
           ) : null}
-          {action ? <CardAction>{action}</CardAction> : null}
         </CardHeader>
         <CardContent>{children}</CardContent>
         {footer ? (
