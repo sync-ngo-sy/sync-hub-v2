@@ -4,10 +4,6 @@ type ProblemDetail = components['schemas']['ProblemDetail'];
 type InvalidField = components['schemas']['InvalidField'];
 type ApiProblem = Partial<ProblemDetail & components['schemas']['ValidationProblemDetail']>;
 
-/**
- * `openapi-react-query` rejects with the parsed body, so a failed call arrives as the API's
- * problem document — or, when the request never reached the API, as whatever `fetch` threw.
- */
 function problemBody(error: unknown): ApiProblem | null {
   return typeof error === 'object' && error !== null && !(error instanceof Error)
     ? (error as ApiProblem)
@@ -39,11 +35,6 @@ export function problemMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-/**
- * For the places that put a refusal beside the control that caused it, where the caller's own
- * sentence names that control and the problem's `title` — an HTTP phrase like "Conflict" —
- * would say less than the fallback it would otherwise win against.
- */
 export function problemDetail(error: unknown, fallback: string): string {
   const detail = problemBody(error)?.detail;
   return typeof detail === 'string' && detail !== '' ? detail : fallback;

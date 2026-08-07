@@ -4,7 +4,6 @@ import { Link } from '@tanstack/react-router';
 import { Briefcase } from 'lucide-react';
 import { NOTHING_PUBLISHED } from '../job';
 
-/** The one action differs by reader: a visitor has an account to make, a Candidate a CV to keep. */
 export function NothingPublished({ signedIn }: { signedIn: boolean }) {
   return (
     <EmptyState

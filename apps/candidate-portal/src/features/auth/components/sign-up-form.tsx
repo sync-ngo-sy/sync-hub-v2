@@ -27,7 +27,6 @@ export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void
       onSignedUp(values.email);
     } catch (error) {
       const message = problemMessage(error, "Couldn't create your account. Try again.");
-      // Named rejections only. Rate limiting is a 4xx too, and it belongs to nobody's field.
       if (isProblem(error, EMAIL_TAKEN_PROBLEM)) {
         setError('email', { message });
         return;

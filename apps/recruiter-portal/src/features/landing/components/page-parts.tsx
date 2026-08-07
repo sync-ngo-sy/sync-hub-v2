@@ -9,7 +9,5 @@ export function Wrap({ className, children }: { className?: string; children: Re
   );
 }
 
-/** The landing's whole motion budget: one entrance, and the browser sits it out for a reader who
- * asked for less. */
 export const RISE =
   'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 motion-safe:fill-mode-both';

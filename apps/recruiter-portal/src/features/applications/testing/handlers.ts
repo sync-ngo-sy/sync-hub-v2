@@ -81,7 +81,6 @@ export function failsToGetApplication(problem: Problem) {
   return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
 }
 
-/** Moves the Application for real, so a test reads the page the way a Recruiter would. */
 export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
   let current = review;
   return [
@@ -374,7 +373,6 @@ export function holdsMessage(queued: QueuedMessage) {
   };
 }
 
-/** Holds the page open until the caller lets it arrive, so a test can see the skeleton. */
 export function holdsJobApplications(items: ApplicationSummary[]) {
   const gate = holding();
   return {

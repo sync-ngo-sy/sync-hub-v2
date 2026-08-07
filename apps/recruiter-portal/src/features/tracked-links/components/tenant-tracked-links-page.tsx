@@ -24,7 +24,6 @@ import { CopyAddressButton } from './copy-address-button';
 const DESCRIPTION =
   'Every link your Tenant has minted, across every Job, and the Job views each one brought.';
 
-/** Long enough that typing a word is one request rather than five. */
 const SETTLE_MS = 300;
 
 const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
@@ -92,12 +91,6 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   },
 ];
 
-/**
- * Four different nothings, which read as four different sentences. A search that matched none is
- * not a Tenant with no links, and neither is a page of links the state filter happened to hide —
- * that last one is only ever the date-sorted filters, and it says so rather than claiming the
- * Tenant has nothing.
- */
 function emptyMessage({
   q,
   filter,
@@ -126,10 +119,6 @@ interface TenantTrackedLinksPageProps {
   onFilterChange: (filter: LinkFilter) => void;
 }
 
-/**
- * The tenant's links, reported across every Job. It does not manage them: renaming, minting and
- * turning one off stay on the Job that owns it, which is where the row leads.
- */
 export function TenantTrackedLinksPage({
   q,
   filter,

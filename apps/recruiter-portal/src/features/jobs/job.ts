@@ -9,8 +9,6 @@ export type JobChanges = components['schemas']['JobChanges'];
 export type EmploymentType = components['schemas']['EmploymentType'];
 export type WorkMode = components['schemas']['WorkMode'];
 
-/** Keyed by the generated union, so a value the platform adds fails to compile until it has a
- * word here. The pickers are these maps, in this order. */
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   full_time: 'Full time',
   part_time: 'Part time',

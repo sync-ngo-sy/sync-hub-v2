@@ -9,7 +9,6 @@ import { cardSurface } from '@sync/ui/lib/card-surface';
 import { cn } from '@sync/ui/lib/utils';
 import type { ComponentProps, ReactNode } from 'react';
 
-/** The card ChartCard and its skeleton share, so the two cannot drift apart. */
 export function ChartCardShell({ className, ...props }: ComponentProps<typeof Card>) {
   return <Card className={cn(cardSurface, className)} {...props} />;
 }
@@ -18,7 +17,6 @@ interface ChartCardProps {
   title: string;
   description?: string;
   action?: ReactNode;
-  /** The chart itself — its data and its charting library live in the feature (ADR-0009). */
   children: ReactNode;
   className?: string;
 }

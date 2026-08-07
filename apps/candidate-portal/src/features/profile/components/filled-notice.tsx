@@ -8,7 +8,6 @@ interface FilledNoticeProps {
   onDismiss: () => void;
 }
 
-/** Names the CV that spoke, leaves the reading to the fields themselves, and keeps one way back. */
 export function FilledNotice({ cvName, onUndo, onDismiss }: FilledNoticeProps) {
   return (
     <Alert>

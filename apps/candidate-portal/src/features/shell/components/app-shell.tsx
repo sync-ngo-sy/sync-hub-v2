@@ -21,7 +21,6 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
         </div>
       </header>
 
-      {/* pb-24 clears the fixed tab bar, which only exists below `md`. */}
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-24 md:max-w-5xl md:px-6 md:pt-10 md:pb-16">
         {children}
       </main>

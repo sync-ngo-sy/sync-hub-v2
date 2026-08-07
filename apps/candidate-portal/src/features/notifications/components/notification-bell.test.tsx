@@ -141,7 +141,6 @@ describe('the bell dropdown', () => {
     const retry = await screen.findByRole('menuitem', {
       name: "Couldn't load these. Try again",
     });
-    // Reached by keyboard, not just visible: a plain button inside a menu is unreachable (§7.9).
     await user.keyboard('{ArrowDown}');
     expect(retry).toHaveFocus();
   });
@@ -166,8 +165,6 @@ describe('the bell dropdown', () => {
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_FAILURE_NOTIFICATION.id));
     await waitFor(() => expect(bell(2)).toBeVisible());
 
-    // The list was marked stale too, so reopening the dropdown refetches it and the one just
-    // opened stops reading as unread — where a list nobody invalidated would still be cached.
     await user.click(bell(2));
     await waitFor(() => {
       const item = screen.getByRole('menuitem', { name: /Couldn't read/ });

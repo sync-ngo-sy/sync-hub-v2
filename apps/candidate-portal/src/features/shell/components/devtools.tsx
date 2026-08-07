@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 
-/** Dev server only — a production build folds the ternary away and never emits the chunk. */
 const ReactQueryDevtools =
   import.meta.env.MODE === 'development'
     ? lazy(() =>

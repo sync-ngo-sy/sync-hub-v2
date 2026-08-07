@@ -1,7 +1,6 @@
 import { cn } from '@sync/ui/lib/utils';
 import type { ComponentProps, ReactNode } from 'react';
 
-/** The frame PageHeader and its skeleton share, so the two cannot drift apart. */
 export function PageHeaderShell({
   actions,
   className,

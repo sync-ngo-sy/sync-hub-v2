@@ -8,8 +8,6 @@ import {
 
 const optionalLine = z.string().trim().max(200, 'Keep this to 200 characters or fewer.');
 
-// Each fixed set the API owns, plus the blank that means the recruiter has not said yet. The
-// values come off the label maps, which are keyed by the generated client's own unions.
 const employmentType = ['', ...Object.keys(EMPLOYMENT_TYPE_LABELS)] as ['', ...EmploymentType[]];
 const workMode = ['', ...Object.keys(WORK_MODE_LABELS)] as ['', ...WorkMode[]];
 

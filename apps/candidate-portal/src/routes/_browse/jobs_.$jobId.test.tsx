@@ -34,7 +34,6 @@ describe('a Job detail page', () => {
     const skills = screen.getByRole('list', { name: 'Skills' });
     expect(within(skills).getByText('TypeScript')).toBeVisible();
     expect(within(skills).getByText('Required · 3+ years')).toBeVisible();
-    // No minimum years on this one, so the row says how much it matters and stops there.
     expect(within(skills).getByText('React')).toBeVisible();
     expect(within(skills).getByText('Preferred')).toBeVisible();
 
@@ -48,7 +47,6 @@ describe('a Job detail page', () => {
     for (const question of PUBLIC_JOB.questions) {
       expect(within(questions).getByText(question.question_text)).toBeVisible();
     }
-    // The shape of the answer, so a reader knows a yes/no from a paragraph before starting.
     expect(within(questions).getByText('Yes or no · Required')).toBeVisible();
     expect(within(questions).getByText('Short answer · Optional')).toBeVisible();
   });
@@ -62,7 +60,6 @@ describe('a Job detail page', () => {
     await renderApp(`/jobs/${BARE_PUBLIC_JOB.id}`);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Pharmacist' })).toBeVisible();
-    // Zero years is no requirement at all, so neither the line nor the section it would open shows.
     expect(screen.queryByText(/years total experience/)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'What this role asks for' })).toBeNull();
   });
@@ -204,7 +201,6 @@ describe('a Job detail page', () => {
     expect(await screen.findByText("This page didn't load")).toBeVisible();
     expect(screen.getByText(SERVER_FAULT.detail as string)).toBeVisible();
     expect(screen.getByRole('banner')).toBeVisible();
-    // Not the app-shell boundary: nothing is wrong with Sync, only with this one page.
     expect(screen.queryByText("Sync didn't start")).toBeNull();
     expect(consoleError).toHaveBeenCalledWith('[route]', expect.objectContaining({ status: 500 }));
   });

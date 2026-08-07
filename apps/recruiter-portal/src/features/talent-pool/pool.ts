@@ -11,11 +11,6 @@ export function droppedSays(fullName: string): string {
   return `${fullName} dropped from your talent pool`;
 }
 
-/**
- * The pool is read whole because there is no way to ask whether one Candidate is in it, and a
- * button that cannot say would rather not be shown. A cap keeps a misbehaving cursor from
- * reading forever; a repeated one stops it sooner, which is the way it would actually break.
- */
 export const MAX_POOL_PAGES = 50;
 
 export async function readWholePool(
