@@ -83,8 +83,8 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
     accessorKey: 'candidate',
     header: 'Candidate',
     cell: ({ row }) => (
-      <span className="flex items-center gap-2">
-        <Avatar size="sm">
+      <span className="flex items-center gap-2.5">
+        <Avatar size="row">
           <AvatarFallback>{initials(row.original.candidate)}</AvatarFallback>
         </Avatar>
         {row.original.candidate}
@@ -220,12 +220,25 @@ function Pickers() {
 const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
   ['card', 'bg-card'],
+  ['input', 'bg-input-background'],
   ['muted', 'bg-muted'],
   ['accent', 'bg-accent'],
   ['primary', 'bg-primary'],
   ['secondary', 'bg-secondary'],
+  ['deep', 'bg-deep'],
   ['sidebar', 'bg-sidebar'],
   ['destructive', 'bg-destructive'],
+];
+
+const STATUSES: [label: string, swatch: string][] = [
+  ['new', 'bg-status-new'],
+  ['review', 'bg-status-review'],
+  ['shortlisted', 'bg-status-shortlisted'],
+  ['interview', 'bg-status-interview'],
+  ['offer', 'bg-status-offer'],
+  ['hired', 'bg-status-hired'],
+  ['rejected', 'bg-status-rejected'],
+  ['withdrawn', 'bg-status-withdrawn'],
 ];
 
 export default function KitchenSink() {
@@ -250,11 +263,23 @@ export default function KitchenSink() {
         ))}
       </Section>
 
+      <Section title="Status colours">
+        {STATUSES.map(([label, swatch]) => (
+          <div key={label} className="space-y-1.5">
+            <div className={`size-8 rounded-sm ${swatch}`} />
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+        ))}
+      </Section>
+
       <Section title="Buttons">
         <Button>Create job</Button>
         <Button variant="secondary">Secondary</Button>
         <Button variant="outline">Outline</Button>
         <Button variant="ghost">Ghost</Button>
+        <span className="rounded-lg bg-sidebar p-2">
+          <Button variant="sidebar">Sidebar</Button>
+        </span>
         <Button variant="link">Link</Button>
         <Button variant="destructive">Delete workspace</Button>
         <Button disabled>Disabled</Button>
