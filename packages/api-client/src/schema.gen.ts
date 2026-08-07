@@ -1315,8 +1315,9 @@ export interface paths {
          * Email the applicant from a Message template
          * @description Placeholders resolve against this Application, and the response is the exact words queued.
          *
-         *     Each send is its own decision: the same template twice is two messages. The Candidate's
-         *     verified address is the sender's to resolve, not this request's.
+         *     Each send is its own decision: the same template twice is two messages. A send may carry its
+         *     own wording in place of the template's, which changes nothing about the saved template. The
+         *     Candidate's verified address is the sender's to resolve, not this request's.
          */
         post: operations["messageApplicant"];
         delete?: never;
@@ -2503,6 +2504,31 @@ export interface components {
             years_experience?: number | null;
         };
         /**
+         * EditedMessage
+         * @description One send's own words, standing in for the template's. The template is not touched.
+         *
+         *     Placeholders are still resolved and still limited to the known names: a recruiter may
+         *     rewrite the sentences for one applicant without inventing anything a send cannot fill.
+         */
+        EditedMessage: {
+            /**
+             * Subject
+             * @description The subject line to send in place of the template's. May use `{{ candidate_name }}`, `{{ job_title }}`, `{{ tenant_name }}`.
+             * @example An interview for Field Coordinator on Tuesday?
+             */
+            subject: string;
+            /**
+             * Body
+             * @description The message to send in place of the template's. May use `{{ candidate_name }}`, `{{ job_title }}`, `{{ tenant_name }}`. A blank line parts paragraphs.
+             * @example Hi Amal Haddad,
+             *
+             *     Could you meet us on Tuesday?
+             *
+             *     Aman Relief
+             */
+            body: string;
+        };
+        /**
          * EmploymentType
          * @enum {string}
          */
@@ -3357,7 +3383,7 @@ export interface components {
         OneEntryPerSkill_ProfileSkill__MaxLen_max_length_50_: components["schemas"]["ProfileSkill"][];
         /**
          * OutgoingMessage
-         * @description Which of the Tenant's Message templates to write this applicant from.
+         * @description Which of the Tenant's Message templates to write this applicant from, and in what words.
          */
         OutgoingMessage: {
             /**
@@ -3366,6 +3392,8 @@ export interface components {
              * @description A Message template of the recruiter's own Tenant.
              */
             template_id: string;
+            /** @description This send's own wording. Null sends the template as it is saved. */
+            edited?: components["schemas"]["EditedMessage"] | null;
         };
         /** PasswordResetRequest */
         PasswordResetRequest: {

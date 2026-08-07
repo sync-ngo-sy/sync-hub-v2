@@ -136,16 +136,20 @@ failed, no model configured) lands beside the button in the server's own words.
 _Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
 
 **Applicant message**:
-One email a Recruiter sends an applicant from a Message template, picked and read in full on the
-Application review before it goes. The preview resolves the Placeholder vocabulary against this
-Application, this Job and this Tenant, so a Recruiter reads sentences rather than the template's
-braces — the portal fills them itself, because the API resolves them only at send and there would
-be nothing to preview from. Reading the Tenant's own name is what that costs, and this is the only
-place the portal asks for it. One placeholder the preview cannot promise: the API greets the
-Candidate by the name on their profile at send, while the portal has only the Snapshot's, so the
-preview says which of the two it showed rather than implying they are always the same. Each send
-is its own decision: the picker empties afterwards so the same words don't go twice by accident,
-and a refused send keeps the preview so the Recruiter can try the same message again.
+One email a Recruiter sends an applicant from a Message template, opened as an editable draft on
+the Application review. Picking a template fills a Subject and a Message field with the Placeholder
+vocabulary already resolved against this Application, this Job and this Tenant — the portal resolves
+them itself, because the API resolves them only at send and there would be nothing to open from.
+Reading the Tenant's own name is what that costs, and this is the only place the portal asks for it.
+The draft is the Recruiter's to rewrite for this one applicant and nothing more: the send carries
+the edited words, the saved template is never written to, and picking another template throws the
+edit away. An untouched draft sends the template itself, which is why the note beneath it says the
+greeting will come from the profile at send while the draft shows the Snapshot's name; edit
+anything and the note says instead that these exact words are what goes. What cannot be introduced
+here is a new Placeholder: an unfillable name is refused beside the field before anything is asked
+of the API, and growing the vocabulary stays the template editor's business. Each send is its own
+decision: the picker empties afterwards so the same words don't go twice by accident, and a refused
+send keeps the draft so the Recruiter can try the same message again.
 _Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
 **Tracked links tab**:
@@ -280,10 +284,13 @@ client; these are rows).
 **Placeholder vocabulary**:
 The `{{ … }}` names a Message template may use — `candidate_name`, `job_title`,
 `tenant_name` — which one send fills with this Candidate, this Job and this Tenant. The
-backend owns the set and refuses an unfillable name at save time, but it publishes no list
-of them, so this portal carries its own copy: the template editor has to name the three in
-its help text before a Recruiter can use them, and once the list is here, refusing a bad
-one beside the field costs nothing. Unlike Reference data, this is a mirrored constant
+backend owns the set and refuses an unfillable name wherever one is written — saving a
+template, or sending an edited Applicant message — but it publishes no list of them, so this
+portal carries its own copy: the template editor has to name the three in its help text
+before a Recruiter can use them, and once the list is here, refusing a bad one beside the
+field costs nothing, in the editor and in the draft alike. The draft only refuses; it never
+advertises the three, because growing the vocabulary is the editor's business and a resolved
+draft has no braces left in it. Unlike Reference data, this is a mirrored constant
 rather than rows — if the platform ever adds a placeholder, this copy is the one thing that
 does not learn about it, and the API's refusal is the backstop that still lands under the
 right field.
