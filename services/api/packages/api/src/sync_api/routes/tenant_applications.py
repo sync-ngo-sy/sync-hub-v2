@@ -207,8 +207,9 @@ async def message_applicant(
 ) -> QueuedMessage:
     """Placeholders resolve against this Application, and the response is the exact words queued.
 
-    Each send is its own decision: the same template twice is two messages. The Candidate's
-    verified address is the sender's to resolve, not this request's.
+    Each send is its own decision: the same template twice is two messages. A send may carry its
+    own wording in place of the template's, which changes nothing about the saved template. The
+    Candidate's verified address is the sender's to resolve, not this request's.
     """
     return await outreach.send(recruiter, application_id, body)
 
