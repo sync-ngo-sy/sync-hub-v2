@@ -42,7 +42,7 @@ export function ApplicationSnapshot({ snapshot }: { snapshot: Snapshot }) {
           Nothing else was on the profile when this Application was sent.
         </p>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-(--space-section)">
           {contact.length > 0 || snapshot.summary ? (
             <div className="space-y-2">
               {contact.length > 0 ? (

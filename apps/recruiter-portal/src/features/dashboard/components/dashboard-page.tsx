@@ -21,7 +21,7 @@ export function DashboardPage({ onJobOpen, onApplicationOpen }: DashboardPagePro
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Dashboard"
         description={tenantName}
@@ -35,10 +35,10 @@ export function DashboardPage({ onJobOpen, onApplicationOpen }: DashboardPagePro
 
       <ActivityStats stats={stats} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
+      <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
         <RecentApplications applications={applications} onApplicationOpen={onApplicationOpen} />
 
-        <div className="space-y-6">
+        <div className="space-y-(--space-grid)">
           <SourcesCard stats={stats} />
           <JobsOverview jobs={jobs} onJobOpen={onJobOpen} onCreateJob={() => setCreating(true)} />
         </div>

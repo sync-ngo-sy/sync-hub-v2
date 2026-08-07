@@ -2,7 +2,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Inbox } from 'lucide-react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataTable, type DataTableColumn, type DataTableProps } from './data-table';
 import { StatusChip } from './status-chip';
 
@@ -173,10 +173,67 @@ describe('DataTable', () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it('pins the lead column so a phone can scroll the rest of the row', () => {
+  it('pins the lead column so a narrow tablet can scroll the rest of the row', () => {
     renderTable();
 
     expect(screen.getByRole('columnheader', { name: 'Candidate' })).toHaveClass('max-lg:sticky');
     expect(screen.getByRole('cell', { name: 'Lina Khoury' })).toHaveClass('max-lg:sticky');
+  });
+});
+
+describe('DataTable on a narrow viewport', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('trades the grid for one card per row, keeping the lead cell as the title', () => {
+    renderTable();
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    const list = screen.getByRole('list', { name: 'Applications' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText('Lina Khoury')).toBeInTheDocument();
+  });
+
+  it('turns the remaining columns into labelled detail rows', () => {
+    renderTable();
+
+    const [first] = within(screen.getByRole('list', { name: 'Applications' })).getAllByRole(
+      'listitem',
+    );
+    expect(first).toHaveTextContent('Job');
+    expect(first).toHaveTextContent('Field Coordinator');
+    expect(first).toHaveTextContent('Status');
+  });
+
+  it('drops the columns a card has no room for', () => {
+    renderTable({
+      columns: [
+        { accessorKey: 'candidate', header: 'Candidate' },
+        { accessorKey: 'job', header: 'Job', meta: { priority: 'hidden' } },
+      ],
+    });
+
+    expect(screen.getByText('Lina Khoury')).toBeInTheDocument();
+    expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+  });
+
+  it('still opens a row, and still counts what is shown', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({ onRowOpen });
+
+    await user.click(screen.getByRole('button', { name: 'Open Yara Salloum' }));
+
+    expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(APPLICATIONS[1]);
+    expect(screen.getByText('2 shown')).toBeInTheDocument();
   });
 });

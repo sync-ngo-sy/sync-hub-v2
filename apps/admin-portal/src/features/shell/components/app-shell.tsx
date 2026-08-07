@@ -1,53 +1,55 @@
 import { Button } from '@sync/ui/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@sync/ui/components/ui/sheet';
 import { Link } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { Menu } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import type { Profile } from '@/features/auth/current-profile';
-import { useLogOut } from '@/features/auth/hooks';
-import { useTheme } from '@/lib/theme';
-
-const destinations = [
-  { to: '/overview' as const, label: 'Overview' },
-  { to: '/access-requests' as const, label: 'Access requests' },
-  { to: '/tenants' as const, label: 'Tenants' },
-];
+import { useSidebarRail } from '@/features/shell/hooks/use-sidebar-rail';
+import { Sidebar } from './sidebar';
 
 export function AppShell({ profile, children }: { profile: Profile; children: ReactNode }) {
-  const logOut = useLogOut();
-  const { theme, toggle } = useTheme();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { collapsed, toggle } = useSidebarRail();
+
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[220px_1fr]">
-      <aside className="border-r border-sidebar-border bg-sidebar px-4 py-6 text-sidebar-foreground">
-        <Link to="/overview" className="mb-8 block font-heading text-lg font-semibold">
+    <div
+      className={
+        collapsed
+          ? 'min-h-dvh lg:grid lg:grid-cols-[4rem_minmax(0,1fr)]'
+          : 'min-h-dvh lg:grid lg:grid-cols-[14rem_minmax(0,1fr)]'
+      }
+    >
+      <aside className="sticky top-0 hidden h-dvh border-r border-sidebar-border lg:block">
+        <Sidebar profile={profile} collapsed={collapsed} onToggleRail={toggle} />
+      </aside>
+
+      <header className="flex items-center gap-3 border-b border-border px-(--space-gutter) py-3 lg:hidden">
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetTrigger
+            render={<Button variant="outline" size="icon" aria-label="Open navigation" />}
+          >
+            <Menu />
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <SheetDescription className="sr-only">
+              Move between the Platform's sections.
+            </SheetDescription>
+            <Sidebar profile={profile} onNavigate={() => setDrawerOpen(false)} />
+          </SheetContent>
+        </Sheet>
+        <Link to="/overview" className="font-heading text-base font-semibold">
           Sync Platform
         </Link>
-        <nav aria-label="Platform" className="space-y-1">
-          {destinations.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              activeProps={{ 'aria-current': 'page' }}
-              className="block rounded-md px-3 py-2 hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-8 border-t border-sidebar-border pt-4 text-sm">{profile.full_name}</div>
-        <div className="mt-3 flex gap-2">
-          <Button variant="sidebar" size="sm" onClick={toggle}>
-            Use {theme === 'light' ? 'dark' : 'light'} theme
-          </Button>
-          <Button
-            variant="sidebar"
-            size="sm"
-            disabled={logOut.isPending}
-            onClick={() => logOut.mutate({})}
-          >
-            Sign out
-          </Button>
-        </div>
-      </aside>
-      <main className="min-w-0 px-5 py-8 lg:px-12">{children}</main>
+      </header>
+
+      <main className="min-w-0 px-(--space-gutter) py-(--space-section) lg:pb-16">{children}</main>
     </div>
   );
 }

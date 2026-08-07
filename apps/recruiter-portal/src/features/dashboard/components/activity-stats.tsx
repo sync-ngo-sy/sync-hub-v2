@@ -1,5 +1,4 @@
-import { StatCardSkeleton } from '@sync/ui/components/skeletons';
-import { StatCard } from '@sync/ui/components/stat-card';
+import { StatBand, StatBandSkeleton } from '@sync/ui/components/stat-band';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { problemMessage } from '@/lib/api-problem';
 import {
@@ -11,8 +10,7 @@ import {
 } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 
-const GRID = 'grid gap-5 sm:grid-cols-2 xl:grid-cols-4';
-const SKELETON_KEYS = ['open', 'week', 'waiting', 'qualified'];
+const SKELETON_LABELS = ['Open jobs', 'Applications this week', 'Awaiting review', 'Qualified'];
 
 function orDash(value: number | undefined): string {
   return value === undefined ? '—' : String(value);
@@ -21,10 +19,8 @@ function orDash(value: number | undefined): string {
 export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
   if (!stats.error && stats.isPending) {
     return (
-      <div className={GRID} role="status" aria-label="Loading the counts">
-        {SKELETON_KEYS.map((key) => (
-          <StatCardSkeleton key={key} />
-        ))}
+      <div role="status" aria-label="Loading the counts">
+        <StatBandSkeleton labels={SKELETON_LABELS} />
       </div>
     );
   }
@@ -40,30 +36,32 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
         />
       ) : null}
 
-      <div className={GRID}>
-        <StatCard
-          label="Open jobs"
-          value={orDash(counted?.jobs.published)}
-          trend={counted && openedThisWeek(counted.jobs.published_last_week)}
-        />
-        <StatCard
-          label="Applications this week"
-          value={orDash(counted?.applications.last_7d)}
-          trend={
-            counted && weekOnWeek(counted.applications.last_7d, counted.applications.previous_7d)
-          }
-        />
-        <StatCard
-          label="Awaiting review"
-          value={orDash(counted?.applications.by_stage.new)}
-          trend={counted && awaitingReview(counted.applications.by_stage.new)}
-        />
-        <StatCard
-          label="Qualified by screening"
-          value={orDash(counted?.applications.by_qualification.qualified)}
-          trend={counted && passRate(counted.applications.pass_rate)}
-        />
-      </div>
+      <StatBand
+        items={[
+          {
+            label: 'Open jobs',
+            value: orDash(counted?.jobs.published),
+            trend: counted ? openedThisWeek(counted.jobs.published_last_week) : undefined,
+          },
+          {
+            label: 'Applications this week',
+            value: orDash(counted?.applications.last_7d),
+            trend: counted
+              ? weekOnWeek(counted.applications.last_7d, counted.applications.previous_7d)
+              : undefined,
+          },
+          {
+            label: 'Awaiting review',
+            value: orDash(counted?.applications.by_stage.new),
+            trend: counted ? awaitingReview(counted.applications.by_stage.new) : undefined,
+          },
+          {
+            label: 'Qualified by screening',
+            value: orDash(counted?.applications.by_qualification.qualified),
+            trend: counted ? passRate(counted.applications.pass_rate) : undefined,
+          },
+        ]}
+      />
     </section>
   );
 }
