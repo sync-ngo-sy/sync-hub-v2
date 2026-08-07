@@ -98,8 +98,6 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
   );
 }
 
-/** The API answers one page and offers no cursor, so a full page is a ceiling rather than a
- * total, and saying "20 matches" of an unknown many would be a lie. */
 function howMany(shown: number): string {
   if (shown >= SEARCH_LIMIT) {
     return `The closest ${shown}. Narrow the search to reach past them.`;

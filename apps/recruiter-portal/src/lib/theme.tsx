@@ -2,7 +2,6 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo, useSta
 
 export type Theme = 'light' | 'dark';
 
-/** The pre-paint script in `index.html` reads the same key; keep the two in step. */
 export const THEME_STORAGE_KEY = 'sync-recruiter-theme';
 
 function preferredTheme(): Theme {

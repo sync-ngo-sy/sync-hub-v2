@@ -41,7 +41,6 @@ describe('the contact the environment configures', () => {
     });
   });
 
-  // Offering nothing beats offering a dead link, and beats refusing to render the portal at all.
   it('offers no channel it has not been configured with', () => {
     expect(contactChannels({ whatsapp: '', email: '' })).toEqual({ whatsapp: null, email: null });
   });

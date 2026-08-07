@@ -8,7 +8,6 @@ const MEDIA_TYPE_BY_EXTENSION: Record<string, string> = {
 
 const MEDIA_TYPES = Object.values(MEDIA_TYPE_BY_EXTENSION);
 
-/** What the file picker offers, so the reader meets the constraint before they choose. */
 export const CV_FILE_ACCEPT = [...Object.keys(MEDIA_TYPE_BY_EXTENSION), ...MEDIA_TYPES].join(',');
 
 export const CV_FORMATS = 'PDF, DOC or DOCX';
@@ -20,10 +19,6 @@ function extensionOf(name: string): string {
   return dot === -1 ? '' : name.slice(dot).toLowerCase();
 }
 
-/**
- * The same three rules the API applies, so a file that would bounce never costs an upload —
- * declared type first, extension second, exactly as `_media_type_of` does server-side.
- */
 export function rejectionFor(file: File): string | null {
   const declared = file.type.split(';')[0]?.trim().toLowerCase() ?? '';
   const accepted =

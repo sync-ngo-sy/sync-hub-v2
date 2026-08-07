@@ -37,9 +37,6 @@ const PALEST_STEP = 'var(--chart-4)';
 const RAMP = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', PALEST_STEP];
 const SPOKEN_AT_MOST = 8;
 
-/** Anything countable, ranked and given the chart's ramp. Both charts draw the same bars — the
- * Job's own links here, the tenant's merged channels on the Dashboard — so the ordering and the
- * colours are decided once. */
 export function viewsRanked(rows: Omit<LinkViews, 'fill'>[]): LinkViews[] {
   return [...rows]
     .sort((one, other) => other.views - one.views || one.name.localeCompare(other.name))
@@ -72,15 +69,10 @@ export type LinkFilter = 'all' | 'live' | 'expired' | 'off';
 
 interface FilterRule {
   label: string;
-  /** What the endpoint narrows on. Undefined asks for every link. */
   active?: boolean;
-  /** What is left for the row's own date to settle, once the endpoint has answered. */
   kind?: LinkStateKind;
 }
 
-/** One table rather than a switch in each direction: what the endpoint is asked and what the
- * page then keeps are the same decision read twice. `live` and `expired` are both switched on,
- * so both ask for the same rows and are told apart by the date each row already carries. */
 export const LINK_FILTERS: Record<LinkFilter, FilterRule> = {
   all: { label: 'All' },
   live: { label: 'Live', active: true, kind: 'live' },
@@ -104,8 +96,6 @@ export function linksMatching(
   return links.filter((link) => trackedLinkState(link, now).kind === kind);
 }
 
-/** True when the endpoint answered with links but the row's own date hid all of them — which
- * only the two date-sorted filters can do, and which is not the same as having none. */
 export function hiddenByDate(links: TenantTrackedLink[], filter: LinkFilter): boolean {
   return links.length > 0 && linksMatching(links, filter).length === 0;
 }

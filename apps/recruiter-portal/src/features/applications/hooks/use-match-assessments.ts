@@ -4,7 +4,6 @@ export const ASSESSMENTS_PAGE_SIZE = 5;
 
 const PATH = '/v1/tenants/me/applications/{application_id}/assessments';
 
-/** One shape for both, so the key an answered request invalidates is the key the list reads. */
 function init(applicationId: string) {
   return {
     params: {

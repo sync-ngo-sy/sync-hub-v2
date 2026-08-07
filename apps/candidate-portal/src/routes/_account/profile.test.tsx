@@ -43,7 +43,6 @@ async function openProfile() {
   return renderApp('/profile');
 }
 
-/** The profile, open and saveable — `sent.body` is the whole-profile body the form put back. */
 async function openProfileThatSaves(saved: CandidateProfile = CANDIDATE_PROFILE) {
   const sent: { body?: CandidateProfile } = {};
   server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
@@ -257,7 +256,6 @@ describe('the profile editor', () => {
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
-    // Not 'sy-damascus': the two are separate places, and the one chosen is the one saved.
     expect(sent.body?.location_key).toBe('sy-rif-dimashq');
   });
 

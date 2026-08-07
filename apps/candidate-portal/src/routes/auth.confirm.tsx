@@ -11,8 +11,6 @@ import { pageTitle } from '@/lib/page-title';
 export const Route = createFileRoute('/auth/confirm')({
   validateSearch: z.object({ token_hash: z.string().optional() }),
   loaderDeps: ({ search }) => ({ tokenHash: search.token_hash }),
-  // Redeeming from the loader, not an effect: the router runs it once per arrival, where
-  // StrictMode would spend the token twice.
   loader: async ({ context, deps }) => {
     if (!deps.tokenHash) return;
     const { data, error } = await client.POST('/v1/auth/confirm-email', {
@@ -22,8 +20,6 @@ export const Route = createFileRoute('/auth/confirm')({
       rememberCurrentProfile(context.queryClient, data);
       throw redirect({ to: '/applications' });
     }
-    // Only the API saying so makes this a dead link. Anything else — a fault, rate limiting —
-    // is the error boundary's retry, not an invitation to sign in.
     if (!isProblem(error, DEAD_LINK_PROBLEM)) throw error;
   },
   pendingComponent: () => <AuthScreen title="Confirming your email…" />,

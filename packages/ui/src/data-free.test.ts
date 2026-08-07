@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 const SOURCE_ROOT = join(import.meta.dirname, '.');
 
-/** Anything that would make a component know the API exists (ADR-0009). */
 const FORBIDDEN = [
   /from ['"]@sync\/api-client/,
   /from ['"]@tanstack\/react-query/,
@@ -12,7 +11,6 @@ const FORBIDDEN = [
   /\bfetch\s*\(/,
 ];
 
-/** The shipped sources only: a test is free to name `fetch` while proving something else. */
 function shippedSources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);

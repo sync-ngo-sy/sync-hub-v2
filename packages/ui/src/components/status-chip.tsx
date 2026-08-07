@@ -15,8 +15,6 @@ export const STATUS_TONES = [
 
 export type StatusTone = (typeof STATUS_TONES)[number];
 
-/** The founder-revised scheme: teal deepens along the pipeline, everything else is gray, and
- * nothing is red — so the two states a reader must not miss carry an icon instead. */
 const TONE: Record<StatusTone, { surface: string; icon?: LucideIcon }> = {
   positive: { surface: 'bg-accent text-accent-foreground' },
   shortlisted: { surface: 'bg-chip-shortlisted text-chip-shortlisted-foreground' },

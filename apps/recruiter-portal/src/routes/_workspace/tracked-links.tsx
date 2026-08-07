@@ -12,14 +12,6 @@ export const Route = createFileRoute('/_workspace/tracked-links')({
   component: TrackedLinksRoute,
 });
 
-/**
- * The search and the state live in the address, so a search is a link somebody can send and a
- * reload keeps what was being looked at. An empty term and the `all` state are left out rather
- * than written as empty values.
- *
- * Both callbacks are held steady, because the page debounces against them: a fresh function each
- * render would restart the settling timer on every keystroke's re-render.
- */
 function TrackedLinksRoute() {
   const { q, state } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });

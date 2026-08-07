@@ -21,8 +21,6 @@ describe('checking a CV before it is uploaded', () => {
     expect(rejectionFor(aFile('lina-khoury.doc', { type: 'application/msword' }))).toBeNull();
   });
 
-  // The API guesses from the extension when the browser declares nothing, so this does too —
-  // otherwise a file the API would take is refused here for no reason the reader can see.
   it('accepts a file the browser declared no type for, going by its extension', () => {
     expect(rejectionFor(aFile('lina-khoury.pdf'))).toBeNull();
   });

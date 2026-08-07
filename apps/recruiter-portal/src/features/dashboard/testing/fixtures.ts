@@ -91,7 +91,6 @@ export const NOTHING_YET: TenantStats = {
   sources_total: 0,
 };
 
-/** A Tenant mid-season, carrying the mockup's own numbers so the cards can be read against it. */
 export const A_BUSY_WEEK: TenantStats = {
   jobs: { total: 15, draft: 3, published: 12, closed: 0, archived: 0, published_last_week: 2 },
   applications: {

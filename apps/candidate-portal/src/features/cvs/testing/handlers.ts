@@ -11,7 +11,6 @@ export function listsCvs(cvs: Cv[]) {
   return [http.get('/v1/candidates/me/cvs', ({ response }) => response(200).json(cvs))];
 }
 
-/** Successive answers to the same poll: the last one is repeated once the batches run out. */
 export function listsCvsInTurn(...batches: Cv[][]) {
   let call = 0;
   return [
@@ -27,11 +26,6 @@ export function faultsOnListingCvs(problem: Problem) {
   return [http.get('/v1/candidates/me/cvs', ({ response }) => response(500).json(problem))];
 }
 
-/**
- * The body is deliberately never read: jsdom cannot drain a `FormData` request through MSW,
- * and awaiting it hangs the handler. What went into the multipart body is asserted where it is
- * built instead, in `use-upload-cv.test.ts`.
- */
 export function acceptsUpload(cv: Cv, onRequest?: (contentType: string | null) => void) {
   return [
     http.post('/v1/candidates/me/cvs', ({ request, response }) => {
@@ -41,7 +35,6 @@ export function acceptsUpload(cv: Cv, onRequest?: (contentType: string | null) =
   ];
 }
 
-/** Never answers, so the upload can be looked at while it is still in flight. */
 export function withholdsUpload() {
   return [
     http.post('/v1/candidates/me/cvs', async ({ response }) => {
@@ -90,7 +83,6 @@ export function refusesDelete(problem: Problem) {
   ];
 }
 
-/** A fresh signed link per call, which is how a test proves none was reused. */
 export function linksDownloadInTurn(...urls: string[]) {
   let call = 0;
   return [

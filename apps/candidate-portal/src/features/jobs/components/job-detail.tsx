@@ -16,7 +16,6 @@ import { ApplyCta } from './apply-cta';
 interface JobDetailProps {
   job: Job;
   signedIn: boolean;
-  /** Where sign-in should come back to — this Job's own address, whichever route reached it. */
   returnTo: string;
 }
 

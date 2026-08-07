@@ -2,10 +2,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { myCvsQuery } from './use-my-cvs';
 
-/**
- * `format: binary` generates as `string`, so the declared body can never hold the file. The
- * serializer closes over the real one and builds the multipart request the API reads.
- */
 export function cvUpload(file: File) {
   return {
     body: { file: file.name },

@@ -19,8 +19,6 @@ function JobRow({ job }: { job: JobSummary }) {
     <Link
       to="/jobs/$jobId"
       params={{ jobId: job.id }}
-      // Reading a Job counts a view, and a hover is not a read: preloading here would bill
-      // every row a passing cursor crossed to the employer's view count.
       preload={false}
       className="group flex items-center justify-between gap-6 py-5"
     >

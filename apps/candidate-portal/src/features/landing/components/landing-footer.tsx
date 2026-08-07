@@ -6,7 +6,6 @@ import { Wrap } from './editorial';
 
 const LINK = 'block text-dense text-secondary-foreground hover:text-foreground';
 
-/** Only destinations that exist: a footer full of pages nobody built is worse than a short one. */
 export function LandingFooter() {
   return (
     <footer className="pt-14 pb-8">

@@ -22,8 +22,6 @@ import { jobFormRejection } from '../rejection';
 import { type JobFormValues, jobFormSchema } from '../schemas/job';
 import { ChoiceSelect } from './choice-select';
 
-/** The blank leads, and is what a Job nobody has decided about yet shows — a select has no
- * empty state of its own, and the first value would otherwise read as a choice. */
 const EMPLOYMENT_TYPES = { '': 'Not set', ...EMPLOYMENT_TYPE_LABELS };
 const WORK_MODES = { '': 'Not set', ...WORK_MODE_LABELS };
 

@@ -12,10 +12,6 @@ import type { Profile } from '@/features/auth/current-profile';
 import { Brand } from './brand';
 import { Sidebar } from './sidebar';
 
-/**
- * Desktop-first: the sidebar is a real grid column from `lg` up, and the same component
- * fills a drawer below it, so a phone loses the rail but nothing else.
- */
 export function AppShell({ profile, children }: { profile: Profile; children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 

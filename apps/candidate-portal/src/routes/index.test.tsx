@@ -75,7 +75,6 @@ describe('the candidate landing', () => {
 
     const index = await screen.findByRole('list', { name: 'Newest roles' });
 
-    // Newest first, as the API orders them, each row leading to that Job.
     expect(
       within(index)
         .getAllByRole('link')
@@ -86,7 +85,6 @@ describe('the candidate landing', () => {
     expect(
       within(developer).getByText('Levant Digital · Damascus · Remote · Full time'),
     ).toBeVisible();
-    // Neither location nor employment type: the meta line carries only what the Job has.
     const pharmacist = within(index).getByRole('link', { name: /Pharmacist/ });
     expect(within(pharmacist).getByText('Sham Care')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Browse all jobs' })).toHaveAttribute('href', '/jobs');
@@ -144,8 +142,6 @@ describe('the candidate landing', () => {
     await renderApp('/');
 
     const headline = await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT });
-    // The animated headline carries the sentence twice — once for assistive tech, once as the
-    // characters it reveals. Static text carries it exactly once, with nothing hidden.
     expect(headline.textContent).toBe(HEADLINE_TEXT);
     expect(headline.querySelector('[style*="hidden"]')).toBeNull();
   });

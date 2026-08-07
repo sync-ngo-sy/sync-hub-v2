@@ -5,11 +5,6 @@ import { said } from '@/lib/said';
 export type MatchedCandidate = components['schemas']['MatchedCandidate'];
 export type MatchedSection = components['schemas']['ChunkType'];
 
-/**
- * What a Candidate view has to go on. No endpoint reads one Candidate's profile for a Recruiter,
- * so the person on screen is whatever the list that found them carried — a search hit knows the
- * most, a talent-pool row three fields, and neither carries an address or a phone number.
- */
 export interface CandidateCard {
   id: string;
   fullName: string;

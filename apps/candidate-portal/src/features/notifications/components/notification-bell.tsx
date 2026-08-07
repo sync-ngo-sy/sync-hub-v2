@@ -28,7 +28,6 @@ export function NotificationBell() {
       >
         <Bell />
         {count > 0 ? (
-          // The number is decoration: the trigger's own name already carries it in words.
           <span
             aria-hidden="true"
             className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.625rem] leading-4 font-semibold text-primary-foreground"
@@ -44,8 +43,6 @@ export function NotificationBell() {
   );
 }
 
-/** Mounted with the dropdown, so the list is fetched when a reader asks for it rather than on
- * every page the bell sits on. */
 function Recent() {
   const notifications = useMyNotifications();
   const open = useOpenNotification();
@@ -59,8 +56,6 @@ function Recent() {
         </div>
       ) : null}
 
-      {/* A menu item rather than a button in a panel: anything a keyboard has to reach inside a
-          menu has to be one of its items. */}
       {notifications.isError && !notifications.data ? (
         <DropdownMenuItem closeOnClick={false} onClick={() => void notifications.refetch()}>
           Couldn't load these. Try again

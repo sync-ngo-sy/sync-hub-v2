@@ -12,8 +12,6 @@ export const Route = createFileRoute('/_workspace')({
     if (!profile) {
       throw redirect({ to: '/login', search: { returnTo: location.href } });
     }
-    // Turned away here rather than in the component, so none of the workspace's own
-    // loaders ever run for an account that does not belong in it.
     if (profile.account_type !== 'recruiter') {
       throw redirect({ to: '/wrong-portal' });
     }

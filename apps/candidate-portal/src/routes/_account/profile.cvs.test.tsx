@@ -42,13 +42,11 @@ import { server } from '@/testing/server';
 
 type CandidateProfile = components['schemas']['CandidateProfile'];
 
-/** The CV that {@link PROCESSING_CV} becomes once the platform has read it. */
 const PARSED_CV = { ...PROCESSING_CV, parsing_status: 'ready' as const, detected_language: 'en' };
 
 const FILLED_HEADLINE = CV_DRAFT.headline as string;
 const OWN_HEADLINE = CANDIDATE_PROFILE.headline as string;
 
-/** The profile, with whatever the test needs the CVs and the draft endpoint to say. */
 async function openProfile(handlers: HttpHandler[] = [], profile = CANDIDATE_PROFILE) {
   server.use(...signedInAs(CANDIDATE), ...hasProfile(profile), ...handlers);
   return renderApp('/profile');
@@ -89,7 +87,6 @@ async function fillFrom(user: UserEvent, cv: { display_name: string }) {
 }
 
 describe('the CVs on the profile', () => {
-  // Upload first, everything below fills in — so the reading order is the order of events.
   it('is the page’s first section, above the fields it fills', async () => {
     await openProfile([...listsCvs([READY_CV])]);
 
@@ -122,7 +119,6 @@ describe('the CVs on the profile', () => {
 
     expect(await screen.findByText("Couldn't load your CVs")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible();
-    // The fields are still there to edit: one section failing is not the page failing.
     expect(headline()).toHaveValue(OWN_HEADLINE);
   });
 });
@@ -150,8 +146,6 @@ describe('uploading a CV from the profile', () => {
     ).toBeVisible();
   });
 
-  // The picker itself is the first constraint; `rejectionFor` is the second, and is unit-tested
-  // in `file-check.test.ts` — a browser file dialog can still be talked into "All files".
   it('offers only the formats the platform reads', async () => {
     await openProfile([...listsCvs([])]);
 
@@ -297,7 +291,6 @@ describe('switching the current CV', () => {
     await user.click(await screen.findByRole('button', { name: 'Make it current' }));
 
     expect(await screen.findByText(/it cannot be the current one/)).toBeVisible();
-    // Still asking, rather than closing on a switch that did not happen.
     expect(screen.getByRole('button', { name: 'Make it current' })).toBeVisible();
   });
 
@@ -354,7 +347,6 @@ describe('deleting a CV', () => {
     );
   });
 
-  // The API refuses this outright, so the reader is told before they act, not after.
   it('says why the current CV cannot go, before offering to delete it', async () => {
     await openProfile([...listsCvs([CURRENT_CV, READY_CV])]);
 
@@ -400,7 +392,6 @@ describe('downloading the original file', () => {
     await waitFor(() => expect(tabs[1]?.location.href).toBe('https://files.test/second'));
   });
 
-  // Opened on the click, not after the link lands, or Safari treats it as an unrequested popup.
   it('opens the tab while the click is still the reason for it', async () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     const { user } = await openProfile([
@@ -426,7 +417,6 @@ describe('a CV filling the form', () => {
     ]);
     await pick(user, aPdf());
 
-    // The parse is on screen before anything below it moves.
     expect(await screen.findByText('Reading')).toBeVisible();
     expect(headline()).toHaveValue(OWN_HEADLINE);
 
@@ -434,8 +424,6 @@ describe('a CV filling the form', () => {
     expect(saved).not.toHaveBeenCalled();
   });
 
-  // Twice would take the way back with it: the second fill's snapshot would be the form the
-  // first one had already filled.
   it('fills once for one parse, however often the list is polled after it', async () => {
     const asked = vi.fn();
     const { user } = await openProfile([
@@ -451,7 +439,6 @@ describe('a CV filling the form', () => {
   });
 
   it('leaves the fields alone while the CV is still being read', async () => {
-    // No draft handler: a fill attempted before the parse lands would be an unhandled request.
     const { user } = await openProfile([
       ...listsCvsInTurn([], [PROCESSING_CV]),
       ...acceptsUpload(PROCESSING_CV),
@@ -508,7 +495,6 @@ describe('a CV filling the form', () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);
 
-    // 3.5 is what the candidate typed; the draft says 3. Theirs wins.
     expect(entry('Skill 1').getByLabelText('Skill')).toHaveValue('Python');
     expect(entry('Skill 1').getByLabelText('Years')).toHaveValue('3.5');
     expect(entry('Skill 2').getByLabelText('Skill')).toHaveValue('Kubernetes');
@@ -556,8 +542,6 @@ describe('a CV filling the form', () => {
     expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Sphere Standards');
   });
 
-  // A CV names a place in prose and prints no settings; the profile holds a Location the
-  // candidate picked, and choices only they can make.
   it('never moves the candidate or changes their settings', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);
@@ -641,8 +625,6 @@ describe('a CV filling the form', () => {
     expect(screen.queryByText('That CV did not fill the form')).toBeNull();
   });
 
-  // A refusal is about one attempt. Left up, it goes on accusing a CV of something that is no
-  // longer true of the profile in front of it.
   it('drops a refusal once the profile has been saved', async () => {
     const { user } = await openProfile([
       ...listsCvs([READY_CV]),
@@ -663,7 +645,6 @@ describe('a CV filling the form', () => {
   });
 });
 
-// The one run the ticket asks for end to end, rather than a link of it at a time.
 describe('uploading a CV and saving what it filled', () => {
   it('reads the file, fills the fields, saves nothing until asked, and keeps what it saved', async () => {
     const sent: { body?: CandidateProfile } = {};
@@ -725,8 +706,6 @@ describe('undoing a fill', () => {
     expect(screen.queryByText(/The fields below now say/)).toBeNull();
   });
 
-  // Nothing was written, so there is nothing to put back but the fields, and the form must not
-  // go on claiming changes the candidate has just taken back.
   it('leaves a profile that was untouched before the fill reading as saved', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);

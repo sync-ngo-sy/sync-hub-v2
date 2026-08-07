@@ -217,7 +217,6 @@ function Pickers() {
   );
 }
 
-/** Spelled out rather than interpolated, so Tailwind's scanner can see every class. */
 const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
   ['card', 'bg-card'],

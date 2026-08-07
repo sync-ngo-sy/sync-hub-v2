@@ -7,7 +7,6 @@ type Problem = components['schemas']['ProblemDetail'];
 
 const ADDED_AT = '2026-08-03T12:00:00Z';
 
-/** Cursor-paged the way the API is; the cursor is the index the next page starts at. */
 function page(pool: PooledCandidate[], cursor: string | null, limit: number) {
   const from = cursor === null ? 0 : Number(cursor);
   const to = from + limit;

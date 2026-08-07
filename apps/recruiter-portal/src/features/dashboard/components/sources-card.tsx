@@ -13,8 +13,6 @@ import { DashboardPanel } from './dashboard-panel';
 
 const LinkViewsChart = lazy(() => import('@/features/tracked-links/components/link-views-chart'));
 
-/** Where a tenant's Job views came from, ranked. The API merges its tracked links by name and
- * returns only what fits here, so the card draws what it is given and links to the rest. */
 export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
   const sources = stats.data?.sources ?? [];
 

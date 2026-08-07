@@ -8,7 +8,6 @@ configure({ asyncUtilTimeout: 5_000 });
 
 window.matchMedia ??= stubMatchMedia(() => false);
 
-// jsdom defines scrollTo only to throw "not implemented", so this replaces rather than fills in.
 window.scrollTo = vi.fn();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
