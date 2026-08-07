@@ -22,7 +22,8 @@ interface SidebarProps {
 
 export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }: SidebarProps) {
   const logOut = useLogOut();
-  const { theme, toggle } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
   return (
     <TooltipProvider>
@@ -73,8 +74,8 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
             <Button
               variant="sidebar"
               size="icon"
-              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-              onClick={toggle}
+              aria-label={`Switch to ${nextTheme} theme`}
+              onClick={() => setTheme(nextTheme)}
             >
               {theme === 'dark' ? <Sun /> : <Moon />}
             </Button>
