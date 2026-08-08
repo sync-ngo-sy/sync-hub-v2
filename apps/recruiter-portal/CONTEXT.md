@@ -238,6 +238,14 @@ everything filed under it and cannot change its scope; deleting unfiles it from 
 Application it was on, which is what the confirmation says — and a Tag a colleague has already
 deleted counts as deleted, since that is what was asked for.
 _Avoid_: Tag settings, taxonomy, label manager.
+
+**Tag list**:
+The Tenant's Tags on one thing, read rather than changed, where a row has one line to say them in.
+The first two show; the rest collapse behind a count that opens a card on hover, on focus, and on
+a click — hover alone would hide them from a keyboard and from a touch screen, and a row that grew
+to fit a long list would cost every other row its scannability. Opening the card is not a click on
+the row it sits in, so reading who somebody is filed under never navigates away from the list.
+_Avoid_: Chips, pills (a soft pill is the Tag picker's removable one; this list removes nothing).
 **Candidates page**:
 The Workspace's one way past its own applicants, over every Candidate on the platform who has
 opted into being found. It is two sub-tabs and not one page with a switch, because the backend
@@ -302,18 +310,38 @@ pool rather than patching it in the browser.
 _Avoid_: Bookmarks, favourites, shortlist (a shortlist is a Pipeline status).
 
 **Talent pool page**:
-The saved Candidates as a list rather than as an answer about one of them — most recently saved
-first, paged by cursor the way the API pages it, because a page is what the list shows and only
-the membership question ever needs the pool whole. The two readings are two cache entries of one
-endpoint, so a save or a drop made anywhere re-reads both, the copy nobody is watching included:
-that copy is what a route loader reads next, and it hands back what it has rather than waiting.
+The saved Candidates as a list rather than as an answer about one of them — paged by cursor the
+way the API pages it, because a page is what the list shows and only the membership question ever
+needs the pool whole. The two readings are two cache entries of one endpoint, so a save or a drop
+made anywhere re-reads both, the copy nobody is watching included: that copy is what a route loader
+reads next, and it hands back what it has rather than waiting. A row says who the person is today:
+their photo, their headline, the Canonical role they put themselves under, their whole years of
+work, where they are, and the Tenant's own Tags on them. Only the day they were saved is history.
+Nothing on a row is worked out in the browser — a fact the API does not send is not shown, and a
+fact it sends as null reads as a dash rather than as a guess.
+_Avoid_: Saved list, shortlist page.
+
+**Narrowing and ordering the pool**:
+A pool that has grown is worked by two controls, and both are answered by the API rather than by
+sieving a page in the browser — the list is paged, so a browser could only ever narrow or reorder
+the rows that happen to have arrived. The search box matches words against names and headlines and
+never reaches outside the pool; the Candidate and Saved columns each turn around on a click, which
+is the four orders the API offers. Both live in the address, and the default of either — no words,
+most recently saved first — is written as silence, so a plain `/talent-pool` and a shared link mean
+the same page. Each narrowing is a cache entry of its own, which is why a drop re-reads rather than
+patches: the row has to leave every reading, not only the one on screen. A search that reaches
+nobody says so in the words that were searched for and offers the whole pool back, which is a
+different dead end from a pool with nobody in it, and says so.
+_Avoid_: Filters (the pool takes words, not the Candidates page's yes-or-no facts).
+
+**Talent pool row actions**:
 A row opens the Candidate view, which reads the person by id like every other way in.
-Dropping asks first here although the card does not: the action is one line in a row menu rather
-than a button that has just told you the state. What it costs is what the asking says — the
-Tenant's notes and Tags on them survive, but nothing points at that Candidate any more until a
+Dropping asks first here although the Talent pool card does not: the action is one line in a row
+menu rather than a button that has just told you the state. What it costs is what the asking says —
+the Tenant's notes and Tags on them survive, but nothing points at that Candidate any more until a
 search finds them again, which is the sense in which a drop is reversible rather than destructive.
 The empty pool points at candidate search, since search is the only way to fill it.
-_Avoid_: Saved list, shortlist page.
+_Avoid_: Row menu, kebab (name what it does, not what it looks like).
 
 **Reference data**:
 The platform's fixed lists — Canonical skills with their categories, languages with their

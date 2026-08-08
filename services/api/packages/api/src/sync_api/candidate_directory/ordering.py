@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Final
+from typing import Any, Final
 
-from sync_api.pagination import SortCursor
+from sync_api.pagination import Ordering, SortCursor
 from sync_core.searchable import DIRECTORY_PROFILES
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from sqlalchemy import SQLColumnExpression
 
 
 class DirectoryOrder(StrEnum):
@@ -25,16 +19,6 @@ class DirectoryOrder(StrEnum):
     NAME_REVERSED = "name_reversed"
     MOST_EXPERIENCE = "most_experience"
     LEAST_EXPERIENCE = "least_experience"
-
-
-@dataclass(frozen=True, slots=True)
-class Ordering:
-    column: SQLColumnExpression[Any]
-    descending: bool
-    #: The cursor's written-out value, read back into something the column compares against.
-    read: Callable[[str], Any]
-    #: One row's value for this column, written out for the cursor.
-    wrote: Callable[[Any], str]
 
 
 _ADDED: Final = DIRECTORY_PROFILES.c.created_at

@@ -2,10 +2,44 @@ import type { components } from '@sync/api-client';
 
 export type PooledCandidate = components['schemas']['PooledCandidate'];
 export type PoolPage = components['schemas']['TalentPoolPage'];
+export type TalentPoolOrder = components['schemas']['TalentPoolOrder'];
 
 export const POOL_PAGE_SIZE = 100;
 
+export const DEFAULT_ORDER: TalentPoolOrder = 'newest';
+
+const ORDERS: TalentPoolOrder[] = ['newest', 'oldest', 'name', 'name_reversed'];
+
+/** What the page is looking at: the words it was narrowed by, and the order it reads in. */
+export interface PoolReading {
+  q: string;
+  order: TalentPoolOrder;
+}
+
+export function orderFrom(value: string | undefined): TalentPoolOrder {
+  return ORDERS.find((order) => order === value) ?? DEFAULT_ORDER;
+}
+
+export function poolQuery(reading: PoolReading) {
+  return { q: reading.q.trim() || undefined, sort: reading.order };
+}
+
+/** Only what narrows or reorders the list is worth an address; the default of either is silence. */
+export function poolAddress(reading: PoolReading) {
+  return {
+    q: reading.q.trim() || undefined,
+    sort: reading.order === DEFAULT_ORDER ? undefined : reading.order,
+  };
+}
+
 export const DROP_REFUSED = "That Candidate couldn't be dropped. Your talent pool is as it was.";
+
+export const NOBODY_SAVED =
+  'Nobody saved yet — search reaches every Candidate on the platform who has opted into being found.';
+
+export function nobodyMatches(q: string): string {
+  return `Nobody in your talent pool reads as “${q.trim()}”. The words are matched against names and headlines.`;
+}
 
 export function droppedSays(fullName: string): string {
   return `${fullName} dropped from your talent pool`;

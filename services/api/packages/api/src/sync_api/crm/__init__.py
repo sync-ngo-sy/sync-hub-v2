@@ -12,7 +12,7 @@ from sync_api.crm.payload import (
     TalentPoolPage,
 )
 from sync_api.crm.tags import TagService
-from sync_api.crm.talent_pool import TalentPoolService
+from sync_api.crm.talent_pool import TalentPoolOrder, TalentPoolService
 
 __all__ = [
     "ABOUT_APPLICATIONS",
@@ -30,6 +30,7 @@ __all__ = [
     "TagAssignmentService",
     "TagChanges",
     "TagService",
+    "TalentPoolOrder",
     "TalentPoolPage",
     "TalentPoolService",
 ]

@@ -196,6 +196,18 @@ def _windowed[Selected: tuple[Any, ...]](
     return ordered.where(row < mark if descending else row > mark)
 
 
+@dataclass(frozen=True, slots=True)
+class Ordering:
+    """One answerable order: the column it runs on, which way, and how its cursor is written."""
+
+    column: SQLColumnExpression[Any]
+    descending: bool
+    #: The cursor's written-out value, read back into something the column compares against.
+    read: Callable[[str], Any]
+    #: One row's value for this column, written out for the cursor.
+    wrote: Callable[[Any], str]
+
+
 def ordered_by[Selected: tuple[Any, ...]](
     query: Select[Selected],
     *,
