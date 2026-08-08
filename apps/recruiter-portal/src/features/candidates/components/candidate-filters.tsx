@@ -4,6 +4,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { ReferenceMultiPicker } from '@/features/reference/components/reference-multi-picker';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { useLocations } from '@/features/reference/hooks/use-locations';
@@ -20,7 +21,7 @@ function values(filters: CandidateSearchFilters): CandidateSearchValues {
   return {
     q: filters.q,
     location: filters.location ?? '',
-    language: filters.language ?? '',
+    languages: filters.languages ?? [],
     keywords: filters.keywords ?? '',
   };
 }
@@ -63,14 +64,19 @@ export function CandidateFilters({ filters, onSearch }: CandidateFiltersProps) {
           )}
         </FormField>
 
-        <FormField control={form.control} name="language" label="Preferred language">
+        <FormField
+          control={form.control}
+          name="languages"
+          label="Languages"
+          description="Anyone who speaks at least one of these."
+        >
           {({ value, onChange, onBlur, id, ...aria }) => (
-            <ReferencePicker
+            <ReferenceMultiPicker
               id={id}
               noun="language"
               list={languages}
-              options={languageOptions(languages.data)}
-              value={value || null}
+              options={languageOptions(languages.data, value)}
+              value={value}
               onChange={onChange}
               onBlur={onBlur}
               aria-describedby={aria['aria-describedby']}
@@ -94,7 +100,7 @@ export function CandidateFilters({ filters, onSearch }: CandidateFiltersProps) {
           type="button"
           variant="ghost"
           onClick={() => {
-            form.reset({ q: '', location: '', language: '', keywords: '' });
+            form.reset({ q: '', location: '', languages: [], keywords: '' });
             onSearch({ q: '' });
           }}
         >

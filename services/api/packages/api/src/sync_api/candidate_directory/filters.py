@@ -19,12 +19,21 @@ from sync_core.searchable import CandidateFilters, RequiredSkill
 
 MAX_SKILL_FILTERS: Final = 20
 
+MAX_LANGUAGE_FILTERS: Final = 20
+
 MAX_TOTAL_EXPERIENCE_FILTER: Final = 100
+
+MAX_LANGUAGE_CODE_LENGTH: Final = 8
 
 YEARS_SEPARATOR: Final = ":"
 
 SkillFilter = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
+]
+
+LanguageFilter = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LANGUAGE_CODE_LENGTH),
 ]
 
 
@@ -40,8 +49,13 @@ async def candidate_filters(
         ),
     ] = None,
     language: Annotated[
-        str | None,
-        Query(max_length=8, description="A Candidate's preferred language code."),
+        list[LanguageFilter] | None,
+        Query(
+            max_length=MAX_LANGUAGE_FILTERS,
+            description="A language code, from `/v1/languages`. Repeat it to name more, and a "
+            "Candidate who speaks any one of them is a match.",
+            examples=[["ar", "en"]],
+        ),
     ] = None,
     role: Annotated[
         str | None,
@@ -71,17 +85,19 @@ async def candidate_filters(
     ] = None,
 ) -> CandidateFilters:
     named = list(skill or ())
+    spoken = tuple(language or ())
     await refuse_unknown_location(session, location_key, at="query.location_key")
     await refuse_unknown_canonical_role(session, role, at="query.role")
-    if language is not None:
-        await refuse_unknown_languages(session, {"query.language": language})
+    await refuse_unknown_languages(
+        session, {f"query.language.{position}": code for position, code in enumerate(spoken)}
+    )
     wanted = [_asked(position, raw) for position, raw in enumerate(named)]
     taxonomy = await canonical_skill_ids(
         session, {f"query.skill.{position}": name for position, (name, _) in enumerate(wanted)}
     )
     return CandidateFilters(
         location_key=location_key,
-        language_code=language,
+        language_codes=spoken,
         canonical_role_key=role,
         minimum_total_experience_years=min_total_experience,
         skills=tuple(

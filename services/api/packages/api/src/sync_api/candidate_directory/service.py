@@ -93,7 +93,6 @@ class CandidateDirectoryService:
             canonical_role_key=profile.canonical_role_key,
             canonical_role_name=found.canonical_role_name,
             total_experience_years=profile.total_experience_years,
-            preferred_language_code=profile.preferred_language_code,
             in_talent_pool=found.in_talent_pool,
             phone=profile.phone,
             email=found.email,

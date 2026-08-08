@@ -26,7 +26,6 @@ A_FULL_PROFILE: dict[str, Any] = a_profile(
     headline="Backend engineer, 8 years",
     summary="Builds boring payment systems that stay up.",
     location_key="sy-damascus",
-    preferred_language_code="ar",
     experiences=[
         {
             "job_title": "Senior Backend Engineer",

@@ -102,15 +102,14 @@ async def test_a_re_import_keeps_the_years_the_candidate_typed(
 async def test_the_settings_come_from_the_candidate_and_never_from_the_cv(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """`detected_language` is the language the document happens to be written in — this CV is in
-    English — and not a preference."""
+    """The address a CV gives is free text naming no Location, so the candidate's choice stands."""
     await a_signed_in_candidate(browser, mailbox)
-    await a_saved_profile(browser, a_filled_profile(preferred_language_code="ar"))
+    await a_saved_profile(browser, a_filled_profile(location_key="sy-aleppo"))
     cv = await a_read_cv(browser, database, storage)
 
     draft = await a_draft_of(browser, cv["id"])
 
-    assert draft["preferred_language_code"] == "ar"
+    assert draft["location_key"] == "sy-aleppo"
     assert draft["is_searchable"] is False
 
 

@@ -18,6 +18,7 @@ from tests.support.search import (
     SEARCH,
     UNKNOWN_CANONICAL_ROLE,
     UNKNOWN_CANONICAL_SKILL,
+    UNKNOWN_LANGUAGE,
     UNKNOWN_LOCATION,
     a_candidate_with,
 )
@@ -36,7 +37,7 @@ A_DAMASCUS_BACKEND: dict[str, Any] = {
     "headline": "Backend engineer",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
-    "preferred_language_code": "ar",
+    "languages": [{"code": "ar", "proficiency": "native"}],
     "skills": [
         {"name": "Python", "years_experience": 8.0},
         {"name": "PostgreSQL", "years_experience": 6.0},
@@ -59,7 +60,10 @@ AN_ALEPPO_FRONTEND: dict[str, Any] = {
     "headline": "Frontend engineer",
     "location_key": "sy-aleppo",
     "canonical_role_key": "frontend-engineer",
-    "preferred_language_code": "en",
+    "languages": [
+        {"code": "ar", "proficiency": "native"},
+        {"code": "en", "proficiency": "fluent"},
+    ],
     "skills": [
         {"name": "React", "years_experience": 4.0},
         {"name": "TypeScript", "years_experience": 1.0},
@@ -82,7 +86,7 @@ A_PARIS_DESIGNER: dict[str, Any] = {
     "headline": "Graphic designer",
     "location_key": "fr",
     "canonical_role_key": "graphic-designer",
-    "preferred_language_code": "fr",
+    "languages": [{"code": "fr", "proficiency": "native"}],
     "skills": [{"name": "Figma", "years_experience": 5.0}],
     "experiences": [
         {
@@ -109,7 +113,6 @@ LISTED_KEYS = {
     "canonical_role_key",
     "canonical_role_name",
     "total_experience_years",
-    "preferred_language_code",
     "in_talent_pool",
 }
 
@@ -181,6 +184,42 @@ async def test_naming_two_skills_answers_with_the_people_who_have_both(
     people = await three_candidates(app, mailbox, db_session)
 
     assert named(await listed(recruiter, skill=["React", "TypeScript"])) == [people["lina"]]
+
+
+async def test_naming_two_languages_answers_with_everyone_who_speaks_either(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    people = await three_candidates(app, mailbox, db_session)
+
+    assert named(await listed(recruiter, language=["ar", "fr"])) == [
+        people["yusuf"],
+        people["lina"],
+        people["amina"],
+    ]
+
+
+async def test_a_language_filter_reads_the_languages_a_candidate_lists(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Lina lists Arabic and English; naming either finds her, and one she never listed does not."""
+    people = await three_candidates(app, mailbox, db_session)
+
+    assert people["lina"] in named(await listed(recruiter, language="ar"))
+    assert named(await listed(recruiter, language="en")) == [people["lina"]]
+    assert named(await listed(recruiter, language="de")) == []
+
+
+async def test_a_language_the_platform_does_not_know_is_refused(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await three_candidates(app, mailbox, db_session)
+
+    response = await recruiter.get(DIRECTORY, params={"language": ["en", "zz"]})
+
+    assert response.status_code == 422
+    problem = response.json()
+    assert problem["type"] == UNKNOWN_LANGUAGE
+    assert [error["location"] for error in problem["errors"]] == ["query.language.1"]
     assert await listed(recruiter, skill=["React", "Python"]) == []
 
 

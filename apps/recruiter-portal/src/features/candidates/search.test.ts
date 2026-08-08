@@ -29,18 +29,23 @@ describe('what the API is asked for', () => {
 
   it('sends each hard filter under the name the API knows it by', () => {
     expect(
-      searchQuery({ q: 'nurse', location: 'sy-aleppo', language: 'ar', keywords: 'triage' }),
+      searchQuery({
+        q: 'nurse',
+        location: 'sy-aleppo',
+        languages: ['ar', 'en'],
+        keywords: 'triage',
+      }),
     ).toEqual({
       q: 'nurse',
       location_key: 'sy-aleppo',
-      language: 'ar',
+      language: ['ar', 'en'],
       keywords: 'triage',
       limit: 20,
     });
   });
 
   it('leaves an unset filter out rather than sending it empty', () => {
-    expect(searchQuery({ q: 'nurse', location: '', keywords: '   ' })).toEqual({
+    expect(searchQuery({ q: 'nurse', location: '', languages: [], keywords: '   ' })).toEqual({
       q: 'nurse',
       location_key: undefined,
       language: undefined,
@@ -54,7 +59,9 @@ describe('how many hard filters are narrowing the results', () => {
   it('counts the filters, never the words themselves', () => {
     expect(hardFilterCount(ASKED)).toBe(0);
     expect(hardFilterCount({ ...ASKED, location: 'sy-aleppo' })).toBe(1);
-    expect(hardFilterCount({ ...ASKED, location: 'sy-aleppo', language: 'ar' })).toBe(2);
+    expect(hardFilterCount({ ...ASKED, location: 'sy-aleppo', languages: ['ar'] })).toBe(2);
+    expect(hardFilterCount({ ...ASKED, languages: ['ar', 'en', 'fr'] })).toBe(1);
+    expect(hardFilterCount({ ...ASKED, languages: [] })).toBe(0);
     expect(hardFilterCount({ ...ASKED, location: '', keywords: 'triage' })).toBe(1);
   });
 });
@@ -67,13 +74,13 @@ describe('what a search with no matches says', () => {
   });
 
   it('names the filter as the thing to loosen when there is one', () => {
-    expect(noMatchesMessage({ ...ASKED, language: 'ar' })).toBe(
+    expect(noMatchesMessage({ ...ASKED, languages: ['ar'] })).toBe(
       'No Searchable Candidate matches those words with that filter.',
     );
   });
 
   it('speaks of them in the plural when there are several', () => {
-    expect(noMatchesMessage({ ...ASKED, language: 'ar', keywords: 'triage' })).toBe(
+    expect(noMatchesMessage({ ...ASKED, languages: ['ar'], keywords: 'triage' })).toBe(
       'No Searchable Candidate matches those words with those filters.',
     );
   });

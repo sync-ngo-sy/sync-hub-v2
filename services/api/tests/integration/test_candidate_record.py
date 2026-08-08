@@ -35,7 +35,6 @@ A_WHOLE_PROFILE: dict[str, Any] = {
     "phone": "+963115550134",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
-    "preferred_language_code": "ar",
     "skills": [{"name": "Python", "years_experience": 8.0}],
     "languages": [{"code": "ar", "proficiency": "native"}],
     "educations": [

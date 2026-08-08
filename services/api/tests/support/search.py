@@ -22,6 +22,7 @@ PROFILE: Final = "/v1/candidates/me/profile"
 UNKNOWN_CANONICAL_SKILL: Final = "urn:sync:problem:unknown-canonical-skill"
 UNKNOWN_LOCATION: Final = "urn:sync:problem:unknown-location"
 UNKNOWN_CANONICAL_ROLE: Final = "urn:sync:problem:unknown-canonical-role"
+UNKNOWN_LANGUAGE: Final = "urn:sync:problem:unknown-language"
 MALFORMED_SKILL_FILTER: Final = "urn:sync:problem:malformed-skill-filter"
 
 

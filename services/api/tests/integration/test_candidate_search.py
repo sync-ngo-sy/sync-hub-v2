@@ -36,7 +36,6 @@ A_BACKEND_ENGINEER: dict[str, Any] = {
     "summary": "Builds payment systems in Python and PostgreSQL.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
-    "preferred_language_code": "ar",
     "skills": [
         {"name": "Python", "years_experience": 8.0},
         {"name": "PostgreSQL", "years_experience": 6.0},
@@ -56,7 +55,6 @@ A_FRONTEND_ENGINEER: dict[str, Any] = {
     "summary": "Builds React interfaces.",
     "location_key": "sy-damascus",
     "canonical_role_key": "frontend-engineer",
-    "preferred_language_code": "en",
     "skills": [
         {"name": "React", "years_experience": 4.0},
         {"name": "TypeScript", "years_experience": 3.0},
@@ -68,9 +66,15 @@ A_GRAPHIC_DESIGNER: dict[str, Any] = {
     "summary": "Brand identity and print work.",
     "location_key": "fr",
     "canonical_role_key": "graphic-designer",
-    "preferred_language_code": "fr",
     "skills": [{"name": "Figma", "years_experience": 5.0}],
 }
+
+ARABIC: list[dict[str, Any]] = [{"code": "ar", "proficiency": "native"}]
+ARABIC_AND_ENGLISH: list[dict[str, Any]] = [
+    {"code": "ar", "proficiency": "native"},
+    {"code": "en", "proficiency": "fluent"},
+]
+FRENCH: list[dict[str, Any]] = [{"code": "fr", "proficiency": "native"}]
 
 FOR_A_BACKEND_ENGINEER = {"q": "backend engineer python payment systems"}
 
@@ -286,7 +290,6 @@ async def test_a_result_never_carries_an_email_or_a_phone_number(
         "canonical_role_key",
         "canonical_role_name",
         "total_experience_years",
-        "preferred_language_code",
         "in_talent_pool",
         "matched_section",
         "matched_text",
@@ -387,13 +390,18 @@ async def test_the_filters_narrow_the_results_together(
     embedder: FakeEmbedder,
 ) -> None:
     amina = await a_candidate_with(
-        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
+        searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER, languages=ARABIC
     )
     lina = await a_candidate_with(
-        searching, mailbox, db_session, label="lina", **A_FRONTEND_ENGINEER
+        searching,
+        mailbox,
+        db_session,
+        label="lina",
+        **A_FRONTEND_ENGINEER,
+        languages=ARABIC_AND_ENGLISH,
     )
     yusuf = await a_candidate_with(
-        searching, mailbox, db_session, label="yusuf", **A_GRAPHIC_DESIGNER
+        searching, mailbox, db_session, label="yusuf", **A_GRAPHIC_DESIGNER, languages=FRENCH
     )
     await drain(a_reembed_worker(database, embedder))
     everyone = {str(amina.id), str(lina.id), str(yusuf.id)}
@@ -404,6 +412,10 @@ async def test_the_filters_narrow_the_results_together(
         str(lina.id),
     }
     assert set(named(await found(recruiter, q="engineer", language="fr"))) == {str(yusuf.id)}
+    assert set(named(await found(recruiter, q="engineer or designer", language=["en", "fr"]))) == {
+        str(lina.id),
+        str(yusuf.id),
+    }
     assert named(
         await found(recruiter, q="engineer", location_key="sy-damascus", language="en")
     ) == [str(lina.id)]

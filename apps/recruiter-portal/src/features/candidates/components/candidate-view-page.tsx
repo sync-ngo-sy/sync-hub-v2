@@ -1,8 +1,6 @@
 import { PageHeader } from '@sync/ui/components/page-header';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { useLanguages } from '@/features/reference/hooks/use-languages';
-import { languageName } from '@/features/reference/options';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
@@ -42,9 +40,6 @@ interface CandidateViewPageProps {
 }
 
 export function CandidateViewPage({ card, evidence, filters }: CandidateViewPageProps) {
-  const languages = useLanguages();
-  const language = languageName(languages.data, card.preferredLanguageCode);
-
   return (
     <div className="space-y-(--space-section)">
       <div className="space-y-4">
@@ -57,10 +52,7 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
         </Link>
         <div className="flex items-center gap-4">
           <CandidateAvatar card={card} size="lg" />
-          <PageHeader
-            title={card.fullName}
-            description={candidateMeta(card, language) || undefined}
-          />
+          <PageHeader title={card.fullName} description={candidateMeta(card) || undefined} />
         </div>
       </div>
 
@@ -76,10 +68,6 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
                 <div>
                   <dt className="text-meta text-muted-foreground">Location</dt>
                   <dd>{card.locationName ?? 'Not said'}</dd>
-                </div>
-                <div>
-                  <dt className="text-meta text-muted-foreground">Preferred language</dt>
-                  <dd>{language ?? 'Not said'}</dd>
                 </div>
               </dl>
 

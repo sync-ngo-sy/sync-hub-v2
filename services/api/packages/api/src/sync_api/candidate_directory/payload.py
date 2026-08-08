@@ -32,7 +32,6 @@ class SearchableCandidate(BaseModel):
     total_experience_years: int = Field(
         description="Whole years of work, derived from their own history."
     )
-    preferred_language_code: str | None = None
     in_talent_pool: bool = Field(
         description="Whether the acting Tenant has already saved them. Nobody else's pool."
     )
@@ -50,7 +49,6 @@ class SearchableCandidate(BaseModel):
             canonical_role_key=found.canonical_role_key,
             canonical_role_name=found.canonical_role_name,
             total_experience_years=found.total_experience_years,
-            preferred_language_code=found.preferred_language_code,
             in_talent_pool=found.in_talent_pool,
             **rest,
         )

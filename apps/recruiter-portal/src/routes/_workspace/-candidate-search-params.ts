@@ -4,7 +4,7 @@ import type { CandidateSearchFilters } from '@/features/candidates/search';
 export const candidateSearchParams = z.object({
   q: z.string().optional().catch(undefined),
   location: z.string().optional().catch(undefined),
-  language: z.string().optional().catch(undefined),
+  languages: z.array(z.string()).optional().catch(undefined),
   keywords: z.string().optional().catch(undefined),
 });
 
@@ -14,7 +14,7 @@ export function filtersFrom(params: CandidateSearchParams): CandidateSearchFilte
   return {
     q: params.q ?? '',
     location: params.location,
-    language: params.language,
+    languages: params.languages,
     keywords: params.keywords,
   };
 }

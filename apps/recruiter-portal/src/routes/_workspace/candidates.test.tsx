@@ -15,6 +15,8 @@ import { server } from '@/testing/server';
 
 const AT = '/candidates';
 
+const LANGUAGES_IN_URL = encodeURIComponent(JSON.stringify(['ar', 'en']));
+
 function results() {
   return within(screen.getByRole('list', { name: 'Matching Candidates' }));
 }
@@ -64,12 +66,12 @@ describe('the candidate search page', () => {
       q: 'backend engineer',
       keywords: 'payments',
       location_key: null,
-      language: null,
+      language: [],
     });
     expect(router.state.location.search).toEqual({ q: 'backend engineer', keywords: 'payments' });
   });
 
-  it('picks a Location and a language from the platform’s own lists, not from typing', async () => {
+  it('picks a Location and languages from the platform’s own lists, not from typing', async () => {
     const asked: AskedSearch[] = [];
     server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA], asked));
 
@@ -80,8 +82,10 @@ describe('the candidate search page', () => {
     await user.click(screen.getByLabelText('Location'));
     await user.click(await screen.findByRole('option', { name: 'Aleppo' }));
 
-    await user.click(screen.getByLabelText('Preferred language'));
+    await user.click(screen.getByLabelText('Languages'));
     await user.click(await screen.findByRole('option', { name: 'Arabic' }));
+    await user.click(screen.getByLabelText('Languages'));
+    await user.click(await screen.findByRole('option', { name: 'English' }));
 
     await user.click(screen.getByRole('button', { name: 'Search' }));
 
@@ -89,14 +93,30 @@ describe('the candidate search page', () => {
     expect(asked[0]).toEqual({
       q: 'nurse',
       location_key: 'sy-aleppo',
-      language: 'ar',
+      language: ['ar', 'en'],
       keywords: null,
     });
     expect(router.state.location.search).toEqual({
       q: 'nurse',
       location: 'sy-aleppo',
-      language: 'ar',
+      languages: ['ar', 'en'],
     });
+  });
+
+  it('drops a language from the filter without touching the rest of it', async () => {
+    const asked: AskedSearch[] = [];
+    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA], asked));
+
+    const { user } = await renderApp(`${AT}?q=nurse&languages=${LANGUAGES_IN_URL}`);
+
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(asked[0]?.language).toEqual(['ar', 'en']);
+
+    await user.click(screen.getByRole('button', { name: 'Remove Arabic' }));
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => expect(asked).toHaveLength(2));
+    expect(asked[1]).toMatchObject({ q: 'nurse', language: ['en'] });
   });
 
   it('renders each match with what it says about the person and the fragment that matched', async () => {
@@ -107,7 +127,7 @@ describe('the candidate search page', () => {
     expect(await screen.findByText('2 matches, closest first.')).toBeVisible();
 
     const amina = within(results().getByRole('link', { name: 'Amina Haddad' }));
-    expect(amina.getByText('Backend engineer, 8 years · Aleppo · Prefers Arabic')).toBeVisible();
+    expect(amina.getByText('Backend engineer, 8 years · Aleppo')).toBeVisible();
     expect(
       amina.getByText('Ran the payment platform at Hand in Hand for four years.'),
     ).toBeVisible();
@@ -137,13 +157,15 @@ describe('the candidate search page', () => {
     const asked: AskedSearch[] = [];
     server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA], asked));
 
-    await renderApp(`${AT}?q=nurse&location=sy-aleppo&language=ar&keywords=triage`);
+    await renderApp(
+      `${AT}?q=nurse&location=sy-aleppo&languages=${LANGUAGES_IN_URL}&keywords=triage`,
+    );
 
     await waitFor(() => expect(asked).toHaveLength(1));
     expect(asked[0]).toEqual({
       q: 'nurse',
       location_key: 'sy-aleppo',
-      language: 'ar',
+      language: ['ar', 'en'],
       keywords: 'triage',
     });
     expect(screen.getByLabelText('Who are you looking for?')).toHaveValue('nurse');
@@ -166,7 +188,7 @@ describe('the candidate search page', () => {
   it('points at the filters when they are what is narrowing an empty result', async () => {
     server.use(...signedInAs(RECRUITER), ...findsCandidates([]));
 
-    await renderApp(`${AT}?q=nurse&location=sy-aleppo&language=ar`);
+    await renderApp(`${AT}?q=nurse&location=sy-aleppo&languages=${LANGUAGES_IN_URL}`);
 
     expect(
       await screen.findByText('No Searchable Candidate matches those words with those filters.'),
