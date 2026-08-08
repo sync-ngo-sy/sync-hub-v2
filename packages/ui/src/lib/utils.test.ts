@@ -4,7 +4,7 @@ import { cn } from './utils';
 
 describe('cn', () => {
   it('keeps a colour that a named type step is merged with', () => {
-    expect(cn(buttonVariants(), 'h-10 px-4 text-dense')).toContain('text-primary-foreground');
+    expect(cn(buttonVariants(), 'h-10 px-4 text-dense')).toContain('text-primary-solid-foreground');
   });
 
   it('still lets one type step replace another', () => {

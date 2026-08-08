@@ -28,6 +28,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+
+  --color-primary-solid: var(--primary-solid);
+  --color-primary-solid-foreground: var(--primary-solid-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -45,16 +48,12 @@
   --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
 
-  /* --input is the border drawn around a field; --input-background is the surface inside
-     it, which is the lightest thing on a page. Two tokens, not one, because the field's
-     edge and its fill move independently. */
+  --color-table-header: var(--table-header);
+
   --color-input: var(--input);
   --color-input-background: var(--input-background);
   --color-ring: var(--ring);
 
-  /* The panel green, promoted to a surface token: the rail in light theme, and the crown
-     of the sign-in card. --primary sits one step above it, so a rail recedes while a
-     solid action advances. */
   --color-deep: var(--deep);
   --color-deep-foreground: var(--deep-foreground);
 
@@ -72,9 +71,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-label: var(--sidebar-label);
 
-  /* One colour per application_status, and no foreground to pair it with: a status is a
-     mark beside a plain label, so the only thing that takes a status colour is the mark
-     itself. */
   --color-status-new: var(--status-new);
   --color-status-review: var(--status-review);
   --color-status-shortlisted: var(--status-shortlisted);
@@ -92,13 +88,14 @@
   --color-chip-offer-foreground: var(--chip-offer-foreground);
   --color-chip-hired: var(--chip-hired);
   --color-chip-hired-foreground: var(--chip-hired-foreground);
+
+  --shadow-sm: var(--elevation-sm);
+  --shadow-card: var(--elevation-card);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
 }
 
 @theme {
-  /* Tailwind's stock 400/500/600 is a visibly lighter register than the mockups fix, so
-     the three general-purpose weights are re-pointed. The other four are named for the
-     single job each one does. These seven lines are the only place a weight is written as
-     a number: every type step below points at one of them, and so does every component. */
   --font-weight-normal: 450;
   --font-weight-figure: 470;
   --font-weight-nav: 520;
@@ -112,8 +109,6 @@
   --text-display--letter-spacing: -0.02em;
   --text-display--font-weight: var(--font-weight-semibold);
 
-  /* The mockups fix display, h2 and h3; this step is interpolated between the
-     first two and should be re-derived when a design pins an h1. */
   --text-h1: clamp(2rem, 1.5rem + 2vw, 3rem);
   --text-h1--line-height: 1.1;
   --text-h1--letter-spacing: -0.02em;
@@ -135,11 +130,6 @@
   --text-dense: 0.9375rem;
   --text-dense--line-height: 1.5;
 
-  /* The dense app-chrome steps, transcribed from the Dashboard mockup, which is desktop-only
-     and fixes them at one size each. They sit below the h2/h3 ramp the editorial landing
-     uses, so they are named for what they label rather than as heading levels: the page
-     title (26px, eased to 22px on a phone), a card heading (16px), the figure on a stat card
-     (32px), and the meta line under or beside either (14px). */
   --text-page-title: clamp(1.375rem, 1.15rem + 1vw, 1.625rem);
   --text-page-title--line-height: 1.2;
   --text-page-title--letter-spacing: -0.01em;
@@ -149,9 +139,6 @@
   --text-title--line-height: 1.4;
   --text-title--font-weight: var(--font-weight-semibold);
 
-  /* Bigger but lighter: at this size the figure carries its own emphasis, and weight on
-     top of it shouts. If it ever reads too strong, take the weight down further rather
-     than lightening the colour, which would add a grey outside the three-step ramp. */
   --text-figure: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
   --text-figure--line-height: 1;
   --text-figure--letter-spacing: -0.015em;
@@ -161,18 +148,6 @@
   --text-meta--line-height: 1.5;
   --text-meta--font-weight: var(--font-weight-normal);
 
-  /* Carried over from the earlier mockups, which used one near-zero shadow in both
-     themes. Vellum's reference page draws a heavier pair, one per theme, but its token
-     file does not carry a shadow, so this stays one value until a design pins two. */
-  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04);
-
-  /* Every gutter, gap and card inset on an app page reads one of these five, and each
-     one interpolates with the viewport rather than stepping once at lg. A breakpoint
-     step is what made 1100px and 1920px identical: there was no rule between the two.
-     The lower bound is the phone value, the upper bound the value the mockups fix at
-     desktop, and the vw term carries a page smoothly between them. The floors and
-     ceilings are what the design pins; the slopes exist only to join them, so re-derive
-     a slope from its two bounds rather than tuning it on its own. */
   --space-gutter: clamp(1.25rem, 0.55rem + 2.2vw, 3rem);
   --space-section: clamp(1.5rem, 1.1rem + 1.4vw, 2.5rem);
   --space-grid: clamp(1rem, 0.7rem + 0.9vw, 1.5rem);
@@ -180,166 +155,164 @@
   --space-card-gap: clamp(0.75rem, 0.55rem + 0.6vw, 1rem);
 }
 
-/* One warm ramp, three steps, no pure white anywhere: canvas -> card -> input, each
-   lighter than the last and all the same temperature. */
 :root {
-  --background: #EFEBE4;
-  --foreground: #1A1714;
-  --card: #FAF7F2;
-  --card-foreground: #1A1714;
-  --popover: #FAF7F2;
-  --popover-foreground: #1A1714;
-  --input-background: #FDFBF7;
+  --background: #EDECE6;
+  --foreground: #333028;
+  --card: #F9F8F2;
+  --card-foreground: #333028;
+  --popover: #FBFAF5;
+  --popover-foreground: #333028;
+  --input-background: #FDFCF7;
 
-  --deep: #125650;
-  --deep-foreground: #FBF9F5;
-  --primary: #0F6459;
-  --primary-foreground: #FBF9F5;
+  --deep: #005349;
+  --deep-foreground: #F8F5EF;
+  --primary: #00675B;
+  --primary-foreground: #FBF8F3;
 
-  /* The three-step text ramp. --secondary-foreground is the step that was missing in
-     practice: table headers and the role under a name fell back to --muted-foreground,
-     which left nothing on the page reading as merely secondary. */
-  --secondary: #E8E3DA;
-  --secondary-foreground: #4A443E;
-  --muted: #ECE7DF;
-  --muted-foreground: #6E6862;
+  --primary-solid: #00675B;
+  --primary-solid-foreground: #FBF8F3;
 
-  /* The tint is the brand green diluted into the paper — 9% of --accent-foreground over
-     --card — so it is derived rather than picked and can never read as a foreign cool
-     patch on a warm page. #0F6E63 is the floor for --accent-foreground: it paints 13-14px
-     text at 5.7:1 on --card, and one step lighter fails AA. If something using it reads
-     too dark, the fix is larger text or a fill, not a lighter green. */
-  --accent: #E5EBE5;
-  --accent-foreground: #0F6E63;
+  --secondary: #E3E1DA;
+  --secondary-foreground: #525048;
+  --muted-foreground: #5F5E56;
 
-  /* --destructive is the red itself: shadcn primitives use it as text and as the
-     base of a /10 wash. --destructive-muted keeps the flat tint §8 first named. These
-     four pairs were not re-derived for the warm canvas; re-measure any of them against
-     #FAF7F2 rather than the old #FFFFFF card if it ever becomes prominent. */
-  --destructive: #9F3129;
-  --destructive-foreground: #FBF9F5;
-  --destructive-muted: #FBEAEA;
-  --success: #E7F5EC;
-  --success-foreground: #1E6B45;
-  --warning: #FCF1DC;
-  --warning-foreground: #8A5A0A;
-  --info: #E9F1FB;
-  --info-foreground: #1E4E8C;
+  --muted: rgba(44, 42, 32, 0.082);
 
-  --border: #E2DCD1;
-  --input: #D5CDC0;
-  --ring: #0F6459;
+  --accent: #DCEFEB;
+  --accent-foreground: #006D61;
+
+  --destructive: #9F3028;
+  --destructive-foreground: #FBF8F3;
+  --destructive-muted: #FEE9E6;
+  --success: #E2F4E8;
+  --success-foreground: #176D45;
+  --warning: #F8EDDD;
+  --warning-foreground: #875B00;
+  --info: #E4F0FF;
+  --info-foreground: #285D9B;
+
+  --border: #D2D0C9;
+  --input: #BFBDB3;
+  --ring: #00675B;
   --radius: 0.625rem;
+  --table-header: #F2F0EB;
 
-  --chart-1: #0F6459;
-  --chart-2: #128470;
-  --chart-3: #2A9C88;
-  --chart-4: #66C2B2;
-  --chart-5: #D8D2C6;
+  --chart-1: #005A50;
+  --chart-2: #007A6D;
+  --chart-3: #229A8B;
+  --chart-4: #56B8A9;
+  --chart-5: #CAC7BD;
 
-  /* The rail is dark green in light theme, so every sidebar value is explicit: anything
-     borrowed from the main palette was picked to sit on paper and disappears here. */
-  --sidebar: #125650;
-  --sidebar-foreground: #DCEAE8;
-  --sidebar-accent: rgba(251, 249, 245, 0.14);
-  --sidebar-accent-foreground: #FBF9F5;
-  --sidebar-primary: #FBF9F5;
-  --sidebar-border: #1D6259;
-  --sidebar-label: #B6D0CC;
+  --sidebar: #005349;
+  --sidebar-foreground: #D9E8E5;
+  --sidebar-accent: rgba(250, 248, 244, 0.15);
+  --sidebar-accent-foreground: #FCFAF6;
+  --sidebar-primary: #FCFAF6;
+  --sidebar-border: #256C62;
+  --sidebar-label: #A9C7C1;
 
-  /* The ramp gains chroma toward hired (38 -> 75 -> 114 -> 141) rather than losing light:
-     past a point a dark green just reads black, which is the opposite of greener. Amber
-     is the only warm hue and belongs to the one state that should pull the eye. New and
-     the two terminal states sit outside the ramp — they are not stages of progress. */
-  --status-new: #7E776F;
-  --status-review: #A8730F;
-  --status-shortlisted: #41675F;
-  --status-interview: #2A7568;
-  --status-offer: #128470;
-  --status-hired: #099680;
-  --status-rejected: #8A8379;
-  --status-withdrawn: #9A938B;
+  --status-new: #6D6C64;
+  --status-review: #946400;
+  --status-shortlisted: #4B726B;
+  --status-interview: #256E63;
+  --status-offer: #00675B;
+  --status-hired: #005D53;
+  --status-rejected: #7C7B73;
+  --status-withdrawn: #8A8982;
 
-  --chip-shortlisted: #DCF0EC;
-  --chip-shortlisted-foreground: #125F59;
-  --chip-interview: #CBE9E3;
-  --chip-interview-foreground: #0F544F;
-  --chip-offer: #BEE3DC;
-  --chip-offer-foreground: #0B4A45;
-  --chip-hired: #12615B;
-  --chip-hired-foreground: #FFFFFF;
+  --chip-shortlisted: #D8F0EB;
+  --chip-shortlisted-foreground: #006056;
+  --chip-interview: #C4E9E1;
+  --chip-interview-foreground: #00574D;
+  --chip-offer: #B1E2D8;
+  --chip-offer-foreground: #004E45;
+  --chip-hired: #005D53;
+  --chip-hired-foreground: #F1F9F7;
+
+  --elevation-sm: 0 1px 2px 0 rgb(48 46 36 / 0.05);
+  --elevation-card: 0 1px 2px -1px rgb(48 46 36 / 0.07), 0 2px 6px -2px rgb(48 46 36 / 0.06);
+  --elevation-md: 0 2px 4px -2px rgb(48 46 36 / 0.08), 0 6px 16px -4px rgb(48 46 36 / 0.10);
+  --elevation-lg: 0 4px 8px -4px rgb(48 46 36 / 0.10), 0 16px 40px -8px rgb(48 46 36 / 0.16);
 }
 
-/* The dark rail stays warm graphite rather than taking --deep: the green panel is a
-   light-theme device, and at night the rail should recede instead of colouring. */
 .dark {
-  --background: #1C1A17;
-  --foreground: #F2EFEA;
-  --card: #252220;
-  --card-foreground: #F2EFEA;
-  --popover: #252220;
-  --popover-foreground: #F2EFEA;
-  --input-background: #1F1D1A;
+  --background: #181713;
+  --foreground: #F0EEE9;
+  --card: #282622;
+  --card-foreground: #F0EEE9;
+  --popover: #2C2A26;
+  --popover-foreground: #F0EEE9;
+  --input-background: #1F1E1A;
 
-  --deep: #171512;
-  --deep-foreground: #F2EFEA;
-  --primary: #23A092;
-  --primary-foreground: #08201D;
+  --deep: #0C0B08;
+  --deep-foreground: #F0EEE9;
 
-  --secondary: #2B2724;
-  --secondary-foreground: #C3BCB4;
-  --muted: rgba(255, 255, 255, 0.06);
-  --muted-foreground: #A39C94;
+  --primary: #20A897;
+  --primary-foreground: #031310;
 
-  --accent: rgba(45, 175, 160, 0.16);
-  --accent-foreground: #55C6B6;
+  --primary-solid: #016D61;
+  --primary-solid-foreground: #EDFAF7;
 
-  --destructive: #F0938A;
-  --destructive-foreground: #131211;
-  --destructive-muted: rgba(224, 94, 84, 0.18);
-  --success: rgba(74, 179, 126, 0.16);
-  --success-foreground: #6FD19B;
-  --warning: rgba(217, 155, 42, 0.16);
-  --warning-foreground: #E8B94D;
-  --info: rgba(74, 130, 216, 0.16);
-  --info-foreground: #7FB0F0;
+  --secondary: #373530;
+  --secondary-foreground: #CAC7BE;
+  --muted: rgba(252, 251, 247, 0.06);
+  --muted-foreground: #ADABA2;
 
-  --border: #332F2B;
-  --input: #3D3833;
-  --ring: #23A092;
+  --accent: rgba(45, 190, 172, 0.12);
+  --accent-foreground: #59C9B8;
+
+  --destructive: #EC8D81;
+  --destructive-foreground: #120F0B;
+  --destructive-muted: rgba(224, 94, 84, 0.20);
+  --success: rgba(74, 179, 126, 0.18);
+  --success-foreground: #68CC96;
+  --warning: rgba(217, 155, 42, 0.18);
+  --warning-foreground: #EEB150;
+  --info: rgba(74, 130, 216, 0.18);
+  --info-foreground: #7DB1F1;
+
+  --border: #403F39;
+  --input: #4E4C45;
+  --ring: #20A897;
   --radius: 0.625rem;
+  --table-header: #33322D;
 
-  --chart-1: #23A092;
-  --chart-2: #35B0A0;
-  --chart-3: #4CCBB8;
-  --chart-4: #77E0CD;
-  --chart-5: #4A4542;
+  --chart-1: #018E7F;
+  --chart-2: #20A897;
+  --chart-3: #43C2B0;
+  --chart-4: #6FDAC9;
+  --chart-5: #4F4D47;
 
-  --sidebar: #171512;
-  --sidebar-foreground: #A39C94;
-  --sidebar-accent: rgba(45, 175, 160, 0.16);
-  --sidebar-accent-foreground: #55C6B6;
-  --sidebar-primary: #23A092;
-  --sidebar-border: #282421;
-  --sidebar-label: #928f8c;
+  --sidebar: #0C0B08;
+  --sidebar-foreground: #A7A59C;
+  --sidebar-accent: rgba(45, 190, 172, 0.18);
+  --sidebar-accent-foreground: #61CFBE;
+  --sidebar-primary: #20A897;
+  --sidebar-border: #292823;
+  --sidebar-label: #8B8981;
 
-  --status-new: #9A938B;
-  --status-review: #E8B94D;
-  --status-shortlisted: #3E9184;
-  --status-interview: #35B0A0;
-  --status-offer: #4CCBB8;
-  --status-hired: #77E0CD;
-  --status-rejected: #9A938B;
-  --status-withdrawn: #7D766E;
+  --status-new: #A6A49B;
+  --status-review: #EEB150;
+  --status-shortlisted: #44887D;
+  --status-interview: #3CA092;
+  --status-offer: #40B7A7;
+  --status-hired: #53CDBB;
+  --status-rejected: #8E8C85;
+  --status-withdrawn: #7B7973;
 
-  --chip-shortlisted: rgba(63, 181, 168, 0.12);
-  --chip-shortlisted-foreground: #52C2B5;
-  --chip-interview: rgba(63, 181, 168, 0.17);
-  --chip-interview-foreground: #6ED0C4;
-  --chip-offer: rgba(63, 181, 168, 0.22);
-  --chip-offer-foreground: #8DDBCF;
-  --chip-hired: #4DBFB4;
-  --chip-hired-foreground: #0B2C29;
+  --chip-shortlisted: rgba(63, 190, 176, 0.14);
+  --chip-shortlisted-foreground: #63BEAF;
+  --chip-interview: rgba(63, 190, 176, 0.19);
+  --chip-interview-foreground: #6BCBBC;
+  --chip-offer: rgba(63, 190, 176, 0.25);
+  --chip-offer-foreground: #75D9C9;
+  --chip-hired: #1D9A8B;
+  --chip-hired-foreground: #00110E;
+
+  --elevation-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+  --elevation-card: 0 1px 2px -1px rgb(0 0 0 / 0.40), 0 2px 6px -2px rgb(0 0 0 / 0.30);
+  --elevation-md: 0 2px 4px -2px rgb(0 0 0 / 0.40), 0 6px 16px -4px rgb(0 0 0 / 0.45);
+  --elevation-lg: 0 4px 8px -4px rgb(0 0 0 / 0.45), 0 16px 40px -8px rgb(0 0 0 / 0.60);
 }
 
 @layer base {
