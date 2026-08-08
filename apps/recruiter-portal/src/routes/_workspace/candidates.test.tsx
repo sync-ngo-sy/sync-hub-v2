@@ -84,10 +84,10 @@ describe('the candidate search page', () => {
 
     await user.click(screen.getByLabelText('Languages'));
     await user.click(await screen.findByRole('option', { name: 'Arabic' }));
-    await user.click(screen.getByLabelText('Languages'));
     await user.click(await screen.findByRole('option', { name: 'English' }));
+    await user.keyboard('{Escape}');
 
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await user.click(await screen.findByRole('button', { name: 'Search' }));
 
     await waitFor(() => expect(asked).toHaveLength(1));
     expect(asked[0]).toEqual({
