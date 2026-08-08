@@ -32,7 +32,6 @@ A_FULL_PROFILE: dict[str, Any] = {
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
-    "preferred_language_code": "ar",
     "is_searchable": False,
     "experiences": [
         {
@@ -249,7 +248,7 @@ async def test_a_skill_outside_the_taxonomy_is_refused_and_named(
     assert [error["location"] for error in problem["errors"]] == ["body.skills.1.name"]
 
 
-async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appears(
+async def test_a_language_the_platform_does_not_know_is_refused(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
@@ -257,7 +256,6 @@ async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appe
     response = await browser.put(
         PROFILE,
         json=a_profile(
-            preferred_language_code="zz",
             languages=[
                 {"code": "en", "proficiency": "fluent"},
                 {"code": "qq", "proficiency": "beginner"},
@@ -268,10 +266,7 @@ async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appe
     assert response.status_code == 422
     problem = response.json()
     assert problem["type"] == "urn:sync:problem:unknown-language"
-    assert [error["location"] for error in problem["errors"]] == [
-        "body.languages.1.code",
-        "body.preferred_language_code",
-    ]
+    assert [error["location"] for error in problem["errors"]] == ["body.languages.1.code"]
 
 
 async def test_a_refused_save_leaves_the_previous_profile_exactly_as_it_was(

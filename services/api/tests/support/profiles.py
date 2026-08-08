@@ -141,7 +141,6 @@ EMPTY_PROFILE: dict[str, Any] = {
     "summary": None,
     "location_key": None,
     "canonical_role_key": None,
-    "preferred_language_code": None,
     "is_searchable": False,
     "total_experience_years": 0,
     "experiences": [],

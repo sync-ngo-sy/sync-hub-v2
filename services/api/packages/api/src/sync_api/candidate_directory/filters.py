@@ -7,24 +7,40 @@ from fastapi import Depends, Query
 from pydantic import StringConstraints
 
 from sync_api.dependencies import SessionDep
-from sync_api.problems import MALFORMED_SKILL_FILTER_PROBLEM_TYPE, InvalidField, Problem
+from sync_api.problems import (
+    MALFORMED_LANGUAGE_FILTER_PROBLEM_TYPE,
+    MALFORMED_SKILL_FILTER_PROBLEM_TYPE,
+    InvalidField,
+    Problem,
+)
 from sync_api.vocabulary import (
     canonical_skill_ids,
     refuse_unknown_canonical_role,
     refuse_unknown_languages,
     refuse_unknown_location,
 )
+from sync_core.models import LanguageProficiency
 from sync_core.profile import MAX_LINE_LENGTH, MAX_YEARS_EXPERIENCE
-from sync_core.searchable import CandidateFilters, RequiredSkill
+from sync_core.searchable import CandidateFilters, RequiredLanguage, RequiredSkill
 
 MAX_SKILL_FILTERS: Final = 20
 
+MAX_LANGUAGE_FILTERS: Final = 20
+
 MAX_TOTAL_EXPERIENCE_FILTER: Final = 100
 
-YEARS_SEPARATOR: Final = ":"
+#: A code and the longest proficiency, with the separator between them.
+MAX_LANGUAGE_FILTER_LENGTH: Final = 32
+
+FILTER_SEPARATOR: Final = ":"
 
 SkillFilter = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
+]
+
+LanguageFilter = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LANGUAGE_FILTER_LENGTH),
 ]
 
 
@@ -40,8 +56,14 @@ async def candidate_filters(
         ),
     ] = None,
     language: Annotated[
-        str | None,
-        Query(max_length=8, description="A Candidate's preferred language code."),
+        list[LanguageFilter] | None,
+        Query(
+            max_length=MAX_LANGUAGE_FILTERS,
+            description="A language code, from `/v1/languages`, optionally with the least "
+            "proficiency that will do after a colon. Repeat it to name more, and a Candidate "
+            "has to speak all of them.",
+            examples=[["ar:native", "en:intermediate"]],
+        ),
     ] = None,
     role: Annotated[
         str | None,
@@ -71,17 +93,20 @@ async def candidate_filters(
     ] = None,
 ) -> CandidateFilters:
     named = list(skill or ())
+    spoken = [_spoken(position, raw) for position, raw in enumerate(language or ())]
     await refuse_unknown_location(session, location_key, at="query.location_key")
     await refuse_unknown_canonical_role(session, role, at="query.role")
-    if language is not None:
-        await refuse_unknown_languages(session, {"query.language": language})
+    await refuse_unknown_languages(
+        session,
+        {f"query.language.{position}": one.code for position, one in enumerate(spoken)},
+    )
     wanted = [_asked(position, raw) for position, raw in enumerate(named)]
     taxonomy = await canonical_skill_ids(
         session, {f"query.skill.{position}": name for position, (name, _) in enumerate(wanted)}
     )
     return CandidateFilters(
         location_key=location_key,
-        language_code=language,
+        languages=tuple(spoken),
         canonical_role_key=role,
         minimum_total_experience_years=min_total_experience,
         skills=tuple(
@@ -93,8 +118,39 @@ async def candidate_filters(
 CandidateFiltersDep = Annotated[CandidateFilters, Depends(candidate_filters)]
 
 
+def _spoken(position: int, raw: str) -> RequiredLanguage:
+    code, separator, tail = raw.strip().rpartition(FILTER_SEPARATOR)
+    if not separator:
+        return RequiredLanguage(code=tail)
+    return RequiredLanguage(code=code, minimum_proficiency=_proficiency(position, tail))
+
+
+def _proficiency(position: int, tail: str) -> LanguageProficiency:
+    try:
+        return LanguageProficiency(tail)
+    except ValueError:
+        raise _unspeakable(position, tail) from None
+
+
+def _unspeakable(position: int, tail: str) -> Problem:
+    spoken = ", ".join(level.value for level in LanguageProficiency)
+    return Problem(
+        status=422,
+        type=MALFORMED_LANGUAGE_FILTER_PROBLEM_TYPE,
+        detail="A language filter is a language code, optionally followed by a colon and the "
+        "least proficiency that will do.",
+        errors=[
+            InvalidField(
+                location=f"query.language.{position}",
+                message=f"“{tail}” is not a proficiency. One of: {spoken}.",
+                type="malformed_language_filter",
+            ).model_dump()
+        ],
+    )
+
+
 def _asked(position: int, raw: str) -> tuple[str, Decimal | None]:
-    name, separator, tail = raw.strip().rpartition(YEARS_SEPARATOR)
+    name, separator, tail = raw.strip().rpartition(FILTER_SEPARATOR)
     if not separator:
         return tail, None
     years = _years(position, tail)

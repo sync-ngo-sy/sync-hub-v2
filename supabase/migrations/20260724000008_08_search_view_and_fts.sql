@@ -13,7 +13,12 @@ create view candidate_directory_profiles with (security_invoker = true) as
     c.canonical_role_key,
     role.name as canonical_role_name,
     c.total_experience_years,
-    c.preferred_language_code
+    -- Correlated rather than joined: a join to a child table would multiply the row per
+    -- language and leave every other column to a group by.
+    (select coalesce(array_agg(lang.name order by cl.sort_order, lang.name), '{}')
+       from candidate_languages cl
+       join languages lang on lang.code = cl.language_code
+      where cl.candidate_id = c.id) as language_names
   from candidates c
   join profiles p on p.id = c.id
   join cvs cv     on cv.id = c.current_cv_id

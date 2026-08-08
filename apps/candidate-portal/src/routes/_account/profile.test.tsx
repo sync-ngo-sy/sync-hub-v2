@@ -61,7 +61,6 @@ describe('the profile editor', () => {
     expect(screen.getByLabelText('Full name')).toHaveValue(CANDIDATE_PROFILE.full_name);
     expect(screen.getByLabelText('Headline')).toHaveValue('Field coordinator, 6 years');
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
-    expect(screen.getByLabelText('Preferred language')).toHaveValue('Arabic');
     expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).not.toBeChecked();
 
     const job = entry('Job 1');
@@ -287,28 +286,6 @@ describe('the profile editor', () => {
     const experience = within(screen.getByRole('region', { name: 'Experience' }));
     expect(experience.getByText('6 years')).toBeVisible();
     expect(screen.queryByLabelText('Total experience')).toBeNull();
-  });
-
-  it('saves the preferred language chosen by name as its code', async () => {
-    const { user, sent } = await openProfileThatSaves();
-
-    await user.click(screen.getByLabelText('Preferred language'));
-    await user.click(screen.getByRole('option', { name: 'French' }));
-    await save(user);
-
-    expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(sent.body?.preferred_language_code).toBe('fr');
-  });
-
-  it('lets the candidate say they have no preferred language', async () => {
-    const { user, sent } = await openProfileThatSaves();
-
-    await user.click(screen.getByLabelText('Preferred language'));
-    await user.click(screen.getByRole('option', { name: 'No preference' }));
-    await save(user);
-
-    expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(sent.body?.preferred_language_code).toBeNull();
   });
 
   it('says the skill list is missing rather than that there are no skills', async () => {

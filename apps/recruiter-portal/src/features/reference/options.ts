@@ -31,14 +31,6 @@ export function languageOptions(
     .map((language) => ({ value: language.code, label: language.name }));
 }
 
-export function languageName(
-  languages: Language[] | undefined,
-  code: string | null | undefined,
-): string | null {
-  if (!code) return null;
-  return languages?.find((language) => language.code === code)?.name ?? null;
-}
-
 export function locationGroups(locations: Location[] | undefined): ComboboxOptionGroup[] {
   const groups: ComboboxOptionGroup[] = [];
   for (const location of locations ?? []) {

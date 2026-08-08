@@ -1144,7 +1144,6 @@ export type Database = {
           id: string;
           is_searchable: boolean;
           location_key: string | null;
-          preferred_language_code: string | null;
           summary: string | null;
           total_experience_years: number;
           unmapped_skills: string[];
@@ -1160,7 +1159,6 @@ export type Database = {
           id: string;
           is_searchable?: boolean;
           location_key?: string | null;
-          preferred_language_code?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1176,7 +1174,6 @@ export type Database = {
           id?: string;
           is_searchable?: boolean;
           location_key?: string | null;
-          preferred_language_code?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1210,13 +1207,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'locations';
             referencedColumns: ['key'];
-          },
-          {
-            foreignKeyName: 'candidates_preferred_language_fk';
-            columns: ['preferred_language_code'];
-            isOneToOne: false;
-            referencedRelation: 'languages';
-            referencedColumns: ['code'];
           },
         ];
       };
@@ -2258,9 +2248,9 @@ export type Database = {
           created_at: string | null;
           full_name: string | null;
           headline: string | null;
+          language_names: string[] | null;
           location_key: string | null;
           location_name: string | null;
-          preferred_language_code: string | null;
           summary: string | null;
           total_experience_years: number | null;
         };
@@ -2278,13 +2268,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'locations';
             referencedColumns: ['key'];
-          },
-          {
-            foreignKeyName: 'candidates_preferred_language_fk';
-            columns: ['preferred_language_code'];
-            isOneToOne: false;
-            referencedRelation: 'languages';
-            referencedColumns: ['code'];
           },
         ];
       };
@@ -2297,9 +2280,9 @@ export type Database = {
           created_at: string | null;
           full_name: string | null;
           headline: string | null;
+          language_names: string[] | null;
           location_key: string | null;
           location_name: string | null;
-          preferred_language_code: string | null;
           summary: string | null;
           total_experience_years: number | null;
         };
@@ -2317,13 +2300,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'locations';
             referencedColumns: ['key'];
-          },
-          {
-            foreignKeyName: 'candidates_preferred_language_fk';
-            columns: ['preferred_language_code'];
-            isOneToOne: false;
-            referencedRelation: 'languages';
-            referencedColumns: ['code'];
           },
         ];
       };

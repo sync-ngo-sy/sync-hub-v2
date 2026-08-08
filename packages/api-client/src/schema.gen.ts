@@ -2090,11 +2090,6 @@ export interface components {
              */
             canonical_role_key?: string | null;
             /**
-             * Preferred Language Code
-             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
-             */
-            preferred_language_code?: string | null;
-            /**
              * Is Searchable
              * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
              * @default false
@@ -2172,8 +2167,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -3046,8 +3048,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -3552,11 +3561,6 @@ export interface components {
              */
             canonical_role_key?: string | null;
             /**
-             * Preferred Language Code
-             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
-             */
-            preferred_language_code?: string | null;
-            /**
              * Is Searchable
              * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
              * @default false
@@ -3959,8 +3963,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -6605,8 +6616,8 @@ export interface operations {
                 limit?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
+                language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
                 /** @description Whole years of work, at least this many. */
@@ -7092,8 +7103,8 @@ export interface operations {
                 offset?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
+                language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
                 /** @description Whole years of work, at least this many. */

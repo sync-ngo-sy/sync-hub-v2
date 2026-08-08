@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { languageName, languageOptions, locationGroups, skillGroups } from './options';
+import { languageOptions, locationGroups, skillGroups } from './options';
 
 const SKILLS = [
   { name: 'Go', category: 'Programming Languages' },
@@ -66,24 +66,6 @@ const LOCATIONS = [
   { key: 'sy-damascus', name: 'Damascus', group: 'Syria' },
   { key: 'lb', name: 'Lebanon', group: 'Outside Syria' },
 ];
-
-describe('languageName', () => {
-  it('names the language a stored code stands for', () => {
-    expect(languageName(LANGUAGES, 'ar')).toBe('Arabic');
-  });
-
-  it('says nothing for a code the taxonomy does not have', () => {
-    expect(languageName(LANGUAGES, 'ku')).toBeNull();
-  });
-
-  it('says nothing while the taxonomy is still arriving, rather than showing the bare code', () => {
-    expect(languageName(undefined, 'ar')).toBeNull();
-  });
-
-  it('says nothing when there is no code to name', () => {
-    expect(languageName(LANGUAGES, null)).toBeNull();
-  });
-});
 
 describe('locationGroups', () => {
   it('files every place under its heading, in the order the API answered', () => {
