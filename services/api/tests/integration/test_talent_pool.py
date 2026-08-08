@@ -345,16 +345,22 @@ async def test_an_order_the_pool_does_not_offer_is_refused(
     assert refused.status_code == 422, refused.text
 
 
+@pytest.mark.parametrize(("issued_by", "resumed_as"), [("name", "newest"), ("newest", "name")])
 async def test_a_cursor_from_one_order_is_not_a_cursor_for_another(
-    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+    app: FastAPI,
+    recruiter: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    issued_by: str,
+    resumed_as: str,
 ) -> None:
-    """A name reads back as a name and a timestamp as a timestamp, so the wrong pairing is
-    refused rather than answered with a page from an order nobody asked for."""
+    """Both ways round, because a timestamp reads perfectly well as a name — and a name order
+    resuming from one would quietly serve the first page again as though it were the second."""
     await a_pool_of_three(app, recruiter, mailbox, db_session)
-    first = await list_pool(recruiter, limit=1, sort="name")
+    first = await list_pool(recruiter, limit=1, sort=issued_by)
     carried = first.json()["next_cursor"]
 
-    refused = await list_pool(recruiter, limit=1, sort="newest", cursor=carried)
+    refused = await list_pool(recruiter, limit=1, sort=resumed_as, cursor=carried)
 
     assert refused.status_code == 422, refused.text
     assert refused.json()["type"] == INVALID_CURSOR

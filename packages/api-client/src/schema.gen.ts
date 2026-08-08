@@ -3574,7 +3574,7 @@ export interface components {
             total_experience_years: number;
             /**
              * Tags
-             * @description This Tenant's own filing of them, by name. No other tenant's Tags are here.
+             * @description This Tenant's own filing of them. No other tenant's Tags are here.
              */
             tags?: components["schemas"]["Tag"][];
             /**

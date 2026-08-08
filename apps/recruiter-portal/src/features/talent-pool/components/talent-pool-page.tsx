@@ -5,7 +5,11 @@ import { Link } from '@tanstack/react-router';
 import { Star } from 'lucide-react';
 import { useState } from 'react';
 import { pooledCard } from '@/features/candidates/candidate';
-import { CandidateAvatar } from '@/features/candidates/components/candidate-avatar';
+import {
+  CandidateNameCell,
+  NOTHING,
+  yearsOf,
+} from '@/features/candidates/components/candidate-cells';
 import { TagList } from '@/features/crm/components/tag-list';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
@@ -29,31 +33,12 @@ const TO_SEARCH = (
   </Link>
 );
 
-const NOTHING = '—';
-
-function yearsOf(years: number): string {
-  return years === 1 ? '1 year' : `${years} years`;
-}
-
 const COLUMNS: DataTableColumn<PooledCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Candidate',
     meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
-    cell: ({ row }) => {
-      const card = pooledCard(row.original);
-      return (
-        <span className="flex min-w-52 items-center gap-3">
-          <CandidateAvatar card={card} size="sm" />
-          <span className="flex min-w-0 flex-col gap-1">
-            <span>{card.fullName}</span>
-            {card.headline ? (
-              <span className="text-meta font-normal text-muted-foreground">{card.headline}</span>
-            ) : null}
-          </span>
-        </span>
-      );
-    },
+    cell: ({ row }) => <CandidateNameCell card={pooledCard(row.original)} />,
   },
   {
     accessorKey: 'canonical_role_name',

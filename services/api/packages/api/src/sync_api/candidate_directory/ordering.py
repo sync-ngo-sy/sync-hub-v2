@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Final
 
-from sync_api.pagination import Ordering, SortCursor
+from sync_api.pagination import Ordering
 from sync_core.searchable import DIRECTORY_PROFILES
 
 
@@ -42,14 +42,10 @@ def _years(row: Any) -> str:
 
 
 ORDERINGS: Final[dict[DirectoryOrder, Ordering]] = {
-    DirectoryOrder.NEWEST: Ordering(_ADDED, True, datetime.fromisoformat, _added),
-    DirectoryOrder.OLDEST: Ordering(_ADDED, False, datetime.fromisoformat, _added),
-    DirectoryOrder.NAME: Ordering(_NAME, False, str, _name),
-    DirectoryOrder.NAME_REVERSED: Ordering(_NAME, True, str, _name),
-    DirectoryOrder.MOST_EXPERIENCE: Ordering(_YEARS, True, int, _years),
-    DirectoryOrder.LEAST_EXPERIENCE: Ordering(_YEARS, False, int, _years),
+    DirectoryOrder.NEWEST: Ordering("newest", _ADDED, True, datetime.fromisoformat, _added),
+    DirectoryOrder.OLDEST: Ordering("oldest", _ADDED, False, datetime.fromisoformat, _added),
+    DirectoryOrder.NAME: Ordering("name", _NAME, False, str, _name),
+    DirectoryOrder.NAME_REVERSED: Ordering("name_reversed", _NAME, True, str, _name),
+    DirectoryOrder.MOST_EXPERIENCE: Ordering("most_experience", _YEARS, True, int, _years),
+    DirectoryOrder.LEAST_EXPERIENCE: Ordering("least_experience", _YEARS, False, int, _years),
 }
-
-
-def cursor_for(order: DirectoryOrder, row: Any) -> SortCursor:
-    return SortCursor(at=ORDERINGS[order].wrote(row), id=row.candidate_id)

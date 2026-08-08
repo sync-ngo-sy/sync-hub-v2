@@ -37,35 +37,28 @@ function page(pool: PooledCandidate[], asked: Asked) {
   return { items: listed.slice(from, to), next_cursor: to < listed.length ? String(to) : null };
 }
 
-export function holdsTalentPool(pool: PooledCandidate[]) {
-  return [
-    http.get(POOL_PATH, ({ query, response }) =>
-      response(200).json(
-        page(pool, {
-          q: query.get('q'),
-          sort: query.get('sort'),
-          cursor: query.get('cursor'),
-          limit: query.get('limit'),
-        }),
-      ),
+function pages(pool: () => PooledCandidate[]) {
+  return http.get(POOL_PATH, ({ query, response }) =>
+    response(200).json(
+      page(pool(), {
+        q: query.get('q'),
+        sort: query.get('sort'),
+        cursor: query.get('cursor'),
+        limit: query.get('limit'),
+      }),
     ),
-  ];
+  );
+}
+
+export function holdsTalentPool(pool: PooledCandidate[]) {
+  return [pages(() => pool)];
 }
 
 export function keepsTalentPool(pool: PooledCandidate[], asked?: string[]) {
   let current = [...pool];
 
   return [
-    http.get(POOL_PATH, ({ query, response }) =>
-      response(200).json(
-        page(current, {
-          q: query.get('q'),
-          sort: query.get('sort'),
-          cursor: query.get('cursor'),
-          limit: query.get('limit'),
-        }),
-      ),
-    ),
+    pages(() => current),
     http.put(POOL_ENTRY_PATH, ({ params, response }) => {
       asked?.push(`save ${params.candidate_id}`);
       const already = current.find((entry) => entry.candidate_id === params.candidate_id);

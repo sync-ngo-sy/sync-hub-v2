@@ -10,7 +10,6 @@ export const DEFAULT_ORDER: TalentPoolOrder = 'newest';
 
 const ORDERS: TalentPoolOrder[] = ['newest', 'oldest', 'name', 'name_reversed'];
 
-/** What the page is looking at: the words it was narrowed by, and the order it reads in. */
 export interface PoolReading {
   q: string;
   order: TalentPoolOrder;
@@ -24,7 +23,6 @@ export function poolQuery(reading: PoolReading) {
   return { q: reading.q.trim() || undefined, sort: reading.order };
 }
 
-/** Only what narrows or reorders the list is worth an address; the default of either is silence. */
 export function poolAddress(reading: PoolReading) {
   return {
     q: reading.q.trim() || undefined,

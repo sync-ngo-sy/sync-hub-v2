@@ -246,6 +246,7 @@ a click — hover alone would hide them from a keyboard and from a touch screen,
 to fit a long list would cost every other row its scannability. Opening the card is not a click on
 the row it sits in, so reading who somebody is filed under never navigates away from the list.
 _Avoid_: Chips, pills (a soft pill is the Tag picker's removable one; this list removes nothing).
+
 **Candidates page**:
 The Workspace's one way past its own applicants, over every Candidate on the platform who has
 opted into being found. It is two sub-tabs and not one page with a switch, because the backend

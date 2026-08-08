@@ -1,20 +1,19 @@
 import { Badge } from '@sync/ui/components/ui/badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@sync/ui/components/ui/hover-card';
-import { cn } from '@sync/ui/lib/utils';
+
+const FIT_IN_A_ROW = 2;
 
 interface TagListProps {
   label: string;
   names: string[];
-  shown?: number;
-  className?: string;
 }
 
-export function TagList({ label, names, shown = 2, className }: TagListProps) {
-  const upFront = names.slice(0, shown);
-  const rest = names.slice(shown);
+export function TagList({ label, names }: TagListProps) {
+  const upFront = names.slice(0, FIT_IN_A_ROW);
+  const rest = names.slice(FIT_IN_A_ROW);
 
   return (
-    <ul aria-label={label} className={cn('flex flex-wrap items-center gap-1.5', className)}>
+    <ul aria-label={label} className="flex flex-wrap items-center gap-1.5">
       {upFront.map((name) => (
         <li key={name}>
           <Badge variant="secondary" className="max-w-40 truncate">

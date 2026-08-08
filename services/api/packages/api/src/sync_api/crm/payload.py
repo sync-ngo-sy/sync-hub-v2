@@ -86,7 +86,7 @@ class PooledCandidate(BaseModel):
     )
     tags: list[Tag] = Field(
         default_factory=list,
-        description="This Tenant's own filing of them, by name. No other tenant's Tags are here.",
+        description="This Tenant's own filing of them. No other tenant's Tags are here.",
     )
     added_at: datetime = Field(description="When this Tenant first saved them.")
 

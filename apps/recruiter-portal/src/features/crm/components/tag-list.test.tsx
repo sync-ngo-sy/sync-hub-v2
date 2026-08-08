@@ -26,7 +26,17 @@ describe('a list of Tags in a table row', () => {
     expect(screen.queryByText('Referred')).not.toBeInTheDocument();
   });
 
-  it('shows the rest to a keyboard, which never hovers', async () => {
+  it('shows the rest on hover, which is what the count promises', async () => {
+    const user = userEvent.setup();
+    render(<TagList label="Tags on Rana Haddad" names={FOUR} />);
+
+    await user.hover(screen.getByRole('button', { name: '+2 more' }));
+
+    expect(await screen.findByText('Referred')).toBeVisible();
+    expect(screen.getByText('Shortlisted')).toBeVisible();
+  });
+
+  it('shows them to a keyboard as well, which never hovers', async () => {
     const user = userEvent.setup();
     render(<TagList label="Tags on Rana Haddad" names={FOUR} />);
 
@@ -34,12 +44,5 @@ describe('a list of Tags in a table row', () => {
 
     expect(screen.getByRole('button', { name: '+2 more' })).toHaveFocus();
     expect(await screen.findByText('Referred')).toBeVisible();
-    expect(screen.getByText('Shortlisted')).toBeVisible();
-  });
-
-  it('holds nothing back when the row has been given room for more', () => {
-    render(<TagList label="Tags on Rana Haddad" names={FOUR} shown={4} />);
-
-    expect(listed('Tags on Rana Haddad')).toEqual(FOUR);
   });
 });

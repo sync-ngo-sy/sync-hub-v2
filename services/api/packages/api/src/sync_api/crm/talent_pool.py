@@ -11,7 +11,8 @@ from sqlalchemy.dialects.postgresql import insert
 
 from sync_api.crm.access import reachable_candidate
 from sync_api.crm.payload import PooledCandidate, Tag, TalentPoolPage
-from sync_api.pagination import DEFAULT_PAGE_SIZE, Ordering, SortCursor, ordered_by, page_of
+from sync_api.pagination import DEFAULT_PAGE_SIZE, Ordering, cursor_for, ordered_by, page_of
+from sync_api.text import LIKE_ESCAPE, containing
 from sync_core import get_logger, transaction
 from sync_core.models import (
     Candidate,
@@ -39,9 +40,6 @@ LOCATION_NAME: Final = cast("ColumnElement[str | None]", Location.name)
 
 CANONICAL_ROLE_NAME: Final = cast("ColumnElement[str | None]", CanonicalRole.name)
 
-#: `LIKE`'s own way of saying that the character after it is only a character.
-_ESCAPE: Final = "\\"
-
 
 class TalentPoolOrder(StrEnum):
     """How the pool has been asked to order itself. Each value names the answer it gives rather
@@ -62,15 +60,13 @@ def _name(row: Any) -> str:
     return row.full_name
 
 
+_SAVED_ON: Final = TalentPoolMember.added_at
+
 ORDERINGS: Final[dict[TalentPoolOrder, Ordering]] = {
-    TalentPoolOrder.NEWEST: Ordering(
-        TalentPoolMember.added_at, True, datetime.fromisoformat, _saved
-    ),
-    TalentPoolOrder.OLDEST: Ordering(
-        TalentPoolMember.added_at, False, datetime.fromisoformat, _saved
-    ),
-    TalentPoolOrder.NAME: Ordering(Profile.full_name, False, str, _name),
-    TalentPoolOrder.NAME_REVERSED: Ordering(Profile.full_name, True, str, _name),
+    TalentPoolOrder.NEWEST: Ordering("newest", _SAVED_ON, True, datetime.fromisoformat, _saved),
+    TalentPoolOrder.OLDEST: Ordering("oldest", _SAVED_ON, False, datetime.fromisoformat, _saved),
+    TalentPoolOrder.NAME: Ordering("name", Profile.full_name, False, str, _name),
+    TalentPoolOrder.NAME_REVERSED: Ordering("name_reversed", Profile.full_name, True, str, _name),
 }
 
 
@@ -120,16 +116,18 @@ class TalentPoolService:
                     _members().where(
                         TalentPoolMember.tenant_id == recruiter.tenant.id, *_matching(wanted)
                     ),
-                    key=sorting.column,
+                    ordering=sorting,
                     id_=TalentPoolMember.candidate_id,
-                    descending=sorting.descending,
-                    read=sorting.read,
                     cursor=cursor,
                     limit=limit,
                 )
             )
         ).all()
-        rows, next_cursor = page_of(found, limit=limit, cursor_for=lambda row: _cursor(order, row))
+        rows, next_cursor = page_of(
+            found,
+            limit=limit,
+            cursor_for=lambda row: cursor_for(sorting, row, id_=row.candidate_id),
+        )
         filed = await self._filing(recruiter.tenant.id, _ids(rows))
         logger.info("crm.talent_pool_listed", order=order.value, results=len(rows))
         return TalentPoolPage(
@@ -215,28 +213,17 @@ def _matching(wanted: str | None) -> list[ColumnElement[bool]]:
     written = (wanted or "").strip()
     if not written:
         return []
-    anywhere = f"%{_literally(written)}%"
+    anywhere = containing(written)
     return [
         or_(
-            Profile.full_name.ilike(anywhere, escape=_ESCAPE),
-            Candidate.headline.ilike(anywhere, escape=_ESCAPE),
+            Profile.full_name.ilike(anywhere, escape=LIKE_ESCAPE),
+            Candidate.headline.ilike(anywhere, escape=LIKE_ESCAPE),
         )
     ]
 
 
-def _literally(written: str) -> str:
-    """`%` and `_` are `LIKE`'s own wildcards; somebody searching for them means the characters."""
-    for character in (_ESCAPE, "%", "_"):
-        written = written.replace(character, _ESCAPE + character)
-    return written
-
-
 def _ids(rows: Sequence[Any]) -> list[UUID]:
     return [row.candidate_id for row in rows]
-
-
-def _cursor(order: TalentPoolOrder, row: Any) -> SortCursor:
-    return SortCursor(at=ORDERINGS[order].wrote(row), id=row.candidate_id)
 
 
 def _as_payload(row: Any, filed: dict[UUID, list[Tag]]) -> PooledCandidate:
