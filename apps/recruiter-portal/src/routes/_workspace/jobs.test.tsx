@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { listsJobApplications } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
@@ -19,6 +19,7 @@ import {
   refusesJobChange,
   refusesJobCreation,
   refusesJobEdit,
+  sortsJobs,
 } from '@/features/jobs/testing/handlers';
 import { RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -58,6 +59,59 @@ describe('Jobs', () => {
     await waitFor(() => expect(router.state.location.search).toEqual({ status: 'draft' }));
     expect(await screen.findByText('Programme Officer')).toBeVisible();
     expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+  });
+
+  it('shows the views and the applications each Job has drawn', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
+
+    await renderApp('/jobs');
+
+    const busy = within(await screen.findByRole('row', { name: /Field Coordinator/ }));
+    expect(busy.getByText('764')).toBeVisible();
+    expect(busy.getByText('18')).toBeVisible();
+
+    const quiet = within(screen.getByRole('row', { name: /Programme Officer/ }));
+    expect(quiet.getAllByText('0')).toHaveLength(2);
+  });
+
+  it('keeps the chosen order in the URL and sends it to the Jobs API', async () => {
+    const orders: string[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...sortsJobs(
+        {
+          newest: [PROGRAMME_OFFICER, FIELD_COORDINATOR],
+          applications: [FIELD_COORDINATOR, PROGRAMME_OFFICER],
+        },
+        (sort) => orders.push(sort),
+      ),
+    );
+
+    const { router, user } = await renderApp('/jobs');
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+
+    await user.click(screen.getByLabelText('Order'));
+    await user.click(await screen.findByRole('option', { name: 'Most applications' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'applications' }));
+    await waitFor(() => expect(orders).toContain('applications'));
+    await waitFor(() =>
+      expect(screen.getAllByRole('row')[1]).toHaveTextContent('Field Coordinator'),
+    );
+  });
+
+  it('reads an order out of the URL rather than assuming the newest', async () => {
+    const orders: string[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...sortsJobs({ oldest: [PROGRAMME_OFFICER] }, (sort) => orders.push(sort)),
+    );
+
+    await renderApp('/jobs?sort=oldest');
+
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+    expect(orders).toContain('oldest');
+    expect(orders).not.toContain('newest');
   });
 
   it('loads the next cursor page on demand', async () => {

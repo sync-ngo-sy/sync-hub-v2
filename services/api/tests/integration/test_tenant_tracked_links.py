@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.support.jobs import (
     a_published_job,
     a_tracked_link,
     change_link,
+    counted_again,
     follow_link,
 )
 from tests.support.stats import TENANT_TRACKED_LINKS
@@ -49,11 +51,12 @@ async def test_the_same_name_on_two_jobs_stays_two_rows(recruiter: AsyncClient) 
 
 
 async def test_a_row_names_its_job_and_counts_its_traffic(
-    recruiter: AsyncClient, visitor: AsyncClient
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
     job = await a_published_job(recruiter, title="Field Coordinator")
     link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
     await follow_link(visitor, link["token"])
+    await counted_again(db_session, job["id"])
     await follow_link(visitor, link["token"])
 
     [item] = (await recruiter.get(TENANT_TRACKED_LINKS)).json()["items"]
