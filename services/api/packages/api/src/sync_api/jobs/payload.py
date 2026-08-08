@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Annotated, Any, Final
 from uuid import UUID
 
@@ -192,6 +193,10 @@ class JobSummary(BaseModel):
         "unchanged by a later republish.",
     )
     application_count: int = Field(description="How many Applications this Job has received.")
+    view_count: int = Field(
+        description="How many times this Job's page has been read, through a Tracked link or "
+        "not. One browser reading it repeatedly counts once per half hour, per channel."
+    )
 
 
 class JobView(JobSummary):
@@ -205,8 +210,16 @@ class JobView(JobSummary):
     )
 
 
+class JobSort(StrEnum):
+    """The orders the tenant's own Jobs list can be read in."""
+
+    NEWEST = "newest"
+    OLDEST = "oldest"
+    APPLICATIONS = "applications"
+
+
 class JobPage(BaseModel):
-    """One page of the tenant's Jobs, newest first."""
+    """One page of the tenant's Jobs, in the order that was asked for."""
 
     items: list[JobSummary]
     next_cursor: str | None = Field(

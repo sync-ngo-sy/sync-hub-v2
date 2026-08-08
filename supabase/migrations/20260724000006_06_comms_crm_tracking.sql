@@ -20,6 +20,8 @@ create table tracked_job_links (
 );
 create index tracked_job_links_job_active_idx on tracked_job_links (job_id, is_active);
 create index tracked_job_links_created_by_idx on tracked_job_links (created_by_recruiter_id);
+create index tracked_job_links_tenant_created_idx
+  on tracked_job_links (tenant_id, created_at desc, id desc);
 
 alter table applications
   add constraint applications_tracked_link_fk
@@ -90,9 +92,12 @@ create table job_view_events (
 create index job_view_events_job_viewed_idx         on job_view_events (job_id, viewed_at);
 create index job_view_events_link_viewed_idx        on job_view_events (tracked_link_id, viewed_at);
 create index job_view_events_job_link_viewed_idx    on job_view_events (job_id, tracked_link_id, viewed_at);
+-- Two questions share the (session, job) prefix: which link brought this session here, for
+-- attributing an Application, and whether this browser has already been counted for this Job
+-- through this attribution. The second one asks about Direct views too, so this cannot be
+-- partial on `tracked_link_id`, and one row per view is too many writes for a second index.
 create index job_view_events_session_job_idx
-  on job_view_events (session_id, job_id, viewed_at desc, id desc)
-  where tracked_link_id is not null;
+  on job_view_events (session_id, job_id, tracked_link_id, viewed_at desc);
 
 create table notes (
   id uuid primary key default gen_random_uuid(),

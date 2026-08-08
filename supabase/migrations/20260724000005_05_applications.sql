@@ -34,6 +34,11 @@ create index applications_job_tracked_link_idx on applications (job_id, tracked_
 create index applications_cv_id_idx            on applications (cv_id);
 create index applications_job_applied_at_idx   on applications (job_id, applied_at desc, id desc);
 
+-- The tenant-wide reads, which the per-Job indexes above cannot serve: the only other index
+-- leading with `tenant_id` is the `(tenant_id, id)` unique constraint.
+create index applications_tenant_applied_at_idx on applications (tenant_id, applied_at desc, id desc);
+create index applications_tenant_status_idx     on applications (tenant_id, status);
+
 create table application_profile_snapshots (
   application_id uuid primary key references applications (id) on delete cascade,
 
