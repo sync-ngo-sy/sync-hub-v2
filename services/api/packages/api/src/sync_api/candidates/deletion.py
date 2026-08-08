@@ -88,7 +88,6 @@ class CandidateDeletion:
             candidate.headline = None
             candidate.summary = None
             candidate.location_key = None
-            candidate.preferred_language_code = None
             candidate.unmapped_skills = []
             candidate.is_searchable = False
             candidate.deleted_at = now

@@ -13,7 +13,15 @@ from sync_api.candidates.profile import CandidateProfileService
 from sync_api.crm.access import reachable_candidate
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_core import get_logger
-from sync_core.models import Candidate, CanonicalRole, Location, Profile, User
+from sync_core.models import (
+    Candidate,
+    CandidateLanguage,
+    CanonicalRole,
+    Language,
+    Location,
+    Profile,
+    User,
+)
 from sync_core.searchable import DIRECTORY_PROFILES, narrowed_to, pooled_by
 
 if TYPE_CHECKING:
@@ -93,7 +101,7 @@ class CandidateDirectoryService:
             canonical_role_key=profile.canonical_role_key,
             canonical_role_name=found.canonical_role_name,
             total_experience_years=profile.total_experience_years,
-            preferred_language_code=profile.preferred_language_code,
+            language_names=await self._language_names(candidate_id),
             in_talent_pool=found.in_talent_pool,
             phone=profile.phone,
             email=found.email,
@@ -103,6 +111,19 @@ class CandidateDirectoryService:
             languages=profile.languages,
             projects=profile.projects,
         )
+
+    async def _language_names(self, candidate_id: UUID) -> list[str]:
+        """Read here rather than off the directory view, which only holds Searchable Candidates —
+        a Candidate reachable through the Talent pool alone is not in it."""
+        rows = await self._db.scalars(
+            select(Language.name)
+            .join_from(
+                CandidateLanguage, Language, Language.code == CandidateLanguage.language_code
+            )
+            .where(CandidateLanguage.candidate_id == candidate_id)
+            .order_by(CandidateLanguage.sort_order, Language.name)
+        )
+        return list(rows)
 
 
 def _cursor(row: Any) -> Cursor:

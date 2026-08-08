@@ -127,18 +127,13 @@ describe('filling the form from a CV', () => {
   });
 
   it('leaves the settings a CV cannot speak for exactly as the form holds them', () => {
-    const current = aForm({
-      location_key: 'sy-rif-dimashq',
-      preferred_language_code: 'fr',
-      is_searchable: true,
-    });
+    const current = aForm({ location_key: 'sy-rif-dimashq', is_searchable: true });
     const filled = filledFromCv(
       current,
-      aDraft({ location_key: 'sy-aleppo', preferred_language_code: 'ar', is_searchable: false }),
+      aDraft({ location_key: 'sy-aleppo', is_searchable: false }),
     );
 
     expect(filled.location_key).toBe('sy-rif-dimashq');
-    expect(filled.preferred_language_code).toBe('fr');
     expect(filled.is_searchable).toBe(true);
   });
 });

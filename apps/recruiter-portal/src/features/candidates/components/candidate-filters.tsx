@@ -5,11 +5,11 @@ import { Input } from '@sync/ui/components/ui/input';
 import { Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
-import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { useLocations } from '@/features/reference/hooks/use-locations';
-import { languageOptions, locationGroups } from '@/features/reference/options';
+import { locationGroups } from '@/features/reference/options';
 import { type CandidateSearchValues, candidateSearchSchema } from '../schemas/candidate-search';
-import type { CandidateSearchFilters } from '../search';
+import { type CandidateSearchFilters, languagesFrom, languageTokens } from '../search';
+import { LanguageFilter } from './language-filter';
 
 interface CandidateFiltersProps {
   filters: CandidateSearchFilters;
@@ -20,20 +20,21 @@ function values(filters: CandidateSearchFilters): CandidateSearchValues {
   return {
     q: filters.q,
     location: filters.location ?? '',
-    language: filters.language ?? '',
+    languages: languagesFrom(filters.languages),
     keywords: filters.keywords ?? '',
   };
 }
 
 export function CandidateFilters({ filters, onSearch }: CandidateFiltersProps) {
   const places = useLocations();
-  const languages = useLanguages();
   const form = useForm<CandidateSearchValues>({
     resolver: zodResolver(candidateSearchSchema),
     values: values(filters),
   });
 
-  const search = form.handleSubmit((asked) => onSearch(asked));
+  const search = form.handleSubmit((asked) =>
+    onSearch({ ...asked, languages: languageTokens(asked.languages) }),
+  );
 
   return (
     <form onSubmit={search} noValidate aria-label="Candidate search" className="space-y-4">
@@ -63,14 +64,16 @@ export function CandidateFilters({ filters, onSearch }: CandidateFiltersProps) {
           )}
         </FormField>
 
-        <FormField control={form.control} name="language" label="Preferred language">
+        <FormField
+          control={form.control}
+          name="languages"
+          label="Languages"
+          description="Every one of these, at the level you ask for or better."
+        >
           {({ value, onChange, onBlur, id, ...aria }) => (
-            <ReferencePicker
+            <LanguageFilter
               id={id}
-              noun="language"
-              list={languages}
-              options={languageOptions(languages.data)}
-              value={value || null}
+              value={value}
               onChange={onChange}
               onBlur={onBlur}
               aria-describedby={aria['aria-describedby']}
@@ -94,7 +97,7 @@ export function CandidateFilters({ filters, onSearch }: CandidateFiltersProps) {
           type="button"
           variant="ghost"
           onClick={() => {
-            form.reset({ q: '', location: '', language: '', keywords: '' });
+            form.reset({ q: '', location: '', languages: [], keywords: '' });
             onSearch({ q: '' });
           }}
         >

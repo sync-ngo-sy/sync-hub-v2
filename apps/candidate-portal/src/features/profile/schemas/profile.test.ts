@@ -18,7 +18,6 @@ const FILLED: ProfileFormValues = {
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
   canonical_role_key: 'project-manager',
-  preferred_language_code: 'ar',
   is_searchable: false,
   total_experience_years: 6,
   experiences: [
@@ -87,7 +86,6 @@ describe('the profile schema', () => {
         headline: '',
         summary: '',
         location_key: '',
-        preferred_language_code: '',
         experiences: [],
         educations: [],
         skills: [],
@@ -257,10 +255,6 @@ describe('the profile schema', () => {
     expect(
       errorAt('languages.0.code', { ...FILLED, languages: [{ code: 'a', proficiency: 'native' }] }),
     ).toBe('A language code is 2 to 8 characters.');
-    expect(errorAt('preferred_language_code', { ...FILLED, preferred_language_code: 'a' })).toBe(
-      'A language code is 2 to 8 characters.',
-    );
-    expect(profileSchema.safeParse({ ...FILLED, preferred_language_code: '' }).success).toBe(true);
   });
 
   it('caps a section at the number of entries the API stores', () => {
@@ -283,7 +277,6 @@ describe('the profile schema', () => {
       summary: 'Six years of coordination work across Idlib and Aleppo.',
       location_key: 'sy-aleppo',
       canonical_role_key: 'project-manager',
-      preferred_language_code: 'ar',
       is_searchable: false,
       total_experience_years: 6,
       experiences: [
@@ -334,7 +327,6 @@ describe('the profile the API answers with', () => {
     summary: null,
     location_key: null,
     canonical_role_key: null,
-    preferred_language_code: null,
     is_searchable: true,
     total_experience_years: 4,
     experiences: [
@@ -365,7 +357,6 @@ describe('the profile the API answers with', () => {
       headline: '',
       summary: '',
       location_key: '',
-      preferred_language_code: '',
       is_searchable: true,
       experiences: [
         {

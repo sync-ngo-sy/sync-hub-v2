@@ -35,7 +35,7 @@ const NO_SUCH_TAG: Problem = {
 export interface AskedSearch {
   q: string | null;
   location_key: string | null;
-  language: string | null;
+  language: string[];
   keywords: string | null;
 }
 
@@ -45,7 +45,7 @@ export function findsCandidates(items: MatchedCandidate[], asked?: AskedSearch[]
       asked?.push({
         q: query.get('q'),
         location_key: query.get('location_key'),
-        language: query.get('language'),
+        language: query.getAll('language'),
         keywords: query.get('keywords'),
       });
       return response(200).json({ items, has_more: false, depth_reached: false });
