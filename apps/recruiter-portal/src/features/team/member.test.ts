@@ -37,13 +37,13 @@ describe('who on the roster may administer the team', () => {
 
 describe('what the roster says about a colleague’s access', () => {
   it('reads as active while they can sign in', () => {
-    expect(memberAccess(OMAR)).toEqual({ label: 'Active', tone: 'positive' });
+    expect(memberAccess(OMAR)).toEqual({ label: 'Active', tone: 'active' });
   });
 
   it('names the revoked state rather than colouring it', () => {
     expect(memberAccess({ ...OMAR, is_active: false })).toEqual({
       label: 'No access',
-      tone: 'negative',
+      tone: 'ended',
     });
   });
 });

@@ -1,5 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Badge } from '@sync/ui/components/ui/badge';
 import { Button } from '@sync/ui/components/ui/button';
@@ -47,7 +47,7 @@ function columns(profileId: string): DataTableColumn<Member>[] {
       header: 'Access',
       cell: ({ row }) => {
         const access = memberAccess(row.original);
-        return <StatusChip label={access.label} tone={access.tone} />;
+        return <StatusMark label={access.label} tone={access.tone} />;
       },
     },
   ];

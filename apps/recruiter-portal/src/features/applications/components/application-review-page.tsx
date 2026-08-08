@@ -1,5 +1,5 @@
 import { PageHeader } from '@sync/ui/components/page-header';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { ReviewCard } from '@/features/shell/components/review-card';
@@ -96,7 +96,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
 
           <ReviewCard title="Screening">
             <div className="space-y-3">
-              <StatusChip label={verdict.label} tone={verdict.tone} />
+              <StatusMark label={verdict.label} tone={verdict.tone} />
               <p className="text-dense text-muted-foreground">
                 {review.screening.reason ?? 'Screening has not run on this Application yet.'}
               </p>

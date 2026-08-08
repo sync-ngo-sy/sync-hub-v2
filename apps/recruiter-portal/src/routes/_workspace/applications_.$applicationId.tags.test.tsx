@@ -67,6 +67,27 @@ describe('the Tags on the Application review page', () => {
     expect(filed.queryByText('Relocating')).toBeNull();
   });
 
+  it('renders every Tag in the one same soft pill, whatever the word says', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...listsApplicationTags([ARABIC, HAS_A_LICENCE, RELOCATING], VOCABULARY),
+    );
+
+    await openTags();
+
+    const filed = filedUnder();
+    await filed.findByText('Arabic');
+    const pills = ['Arabic', 'Has a driving licence', 'Relocating'].map((name) =>
+      filed.getByText(name),
+    );
+
+    expect(new Set(pills.map((pill) => pill.className)).size).toBe(1);
+    for (const pill of pills) {
+      expect(pill).toHaveClass('bg-secondary');
+    }
+  });
+
   it('says so plainly when the Application is filed under nothing', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 

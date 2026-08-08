@@ -25,9 +25,14 @@ Base UI part directly (the combobox). Owned, linted, and tested like any of our 
 _Avoid_: Widget, composite.
 
 **Status Mark**:
-The rendering of an application status: an 8px mark (hollow ring for `new`, filled for
-progressing states, a circle-x icon for `rejected`/`withdrawn`) beside a plain-text
-label. The only way status appears anywhere; filled status pills do not exist (ADR-0003).
+The rendering of a status: an 8px mark (hollow ring for `new`, filled for progressing
+states, a circle-x icon for `rejected`/`withdrawn`) beside a plain-text label. The only
+way status appears anywhere; filled status pills do not exist (ADR-0003). Its eight
+application tones are the `--status-*` tokens, 1:1 with the database enum. Everything
+else with a state — a Job, a CV, a Tracked link, a colleague's access — takes one of the
+four general tones (`waiting`, `active`, `attention`, `ended`), which say their state by
+mark shape on `--muted-foreground` or `--accent-foreground` and borrow no `--status-*`
+token, so the status vocabulary stays exactly as long as the enum.
 _Avoid_: Chip, status pill, badge.
 
 **Candidate Card**:

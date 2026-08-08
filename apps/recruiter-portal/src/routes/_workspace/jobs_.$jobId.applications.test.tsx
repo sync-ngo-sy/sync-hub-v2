@@ -40,7 +40,7 @@ function segment(name: 'Screening' | 'Pipeline', label: string) {
 }
 
 describe("a Job's Applications tab", () => {
-  it('lists the Applications the API sent, with both chips and a hoverable received time', async () => {
+  it('lists the Applications the API sent, with both marks and a hoverable received time', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(JOB),

@@ -1,31 +1,31 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { ApplicationStatusTone, StatusTone } from '@sync/ui/components/status-mark';
 
 export type ApplicationSummary = components['schemas']['ApplicationSummary'];
 export type PipelineStatus = components['schemas']['ApplicationStatus'];
 export type ScreeningVerdict = components['schemas']['QualificationStatus'];
 
-interface ChipState {
+interface MarkState {
   label: string;
   tone: StatusTone;
 }
 
-const PIPELINE_STATE: Record<PipelineStatus, ChipState> = {
-  new: { label: 'New', tone: 'neutral' },
-  reviewing: { label: 'Reviewing', tone: 'neutral' },
+const PIPELINE_STATE: Record<PipelineStatus, { label: string; tone: ApplicationStatusTone }> = {
+  new: { label: 'New', tone: 'new' },
+  reviewing: { label: 'Reviewing', tone: 'reviewing' },
   shortlisted: { label: 'Shortlisted', tone: 'shortlisted' },
   interview: { label: 'Interview', tone: 'interview' },
   offer: { label: 'Offer', tone: 'offer' },
   hired: { label: 'Hired', tone: 'hired' },
-  rejected: { label: 'Rejected', tone: 'negative' },
-  withdrawn: { label: 'Withdrawn', tone: 'neutral' },
+  rejected: { label: 'Rejected', tone: 'rejected' },
+  withdrawn: { label: 'Withdrawn', tone: 'withdrawn' },
 };
 
-const SCREENING_STATE: Record<ScreeningVerdict, ChipState> = {
-  pending: { label: 'Pending', tone: 'neutral' },
-  qualified: { label: 'Qualified', tone: 'positive' },
-  disqualified: { label: 'Disqualified', tone: 'negative' },
-  review_required: { label: 'Review required', tone: 'review-required' },
+const SCREENING_STATE: Record<ScreeningVerdict, MarkState> = {
+  pending: { label: 'Pending', tone: 'waiting' },
+  qualified: { label: 'Qualified', tone: 'active' },
+  disqualified: { label: 'Disqualified', tone: 'ended' },
+  review_required: { label: 'Review required', tone: 'attention' },
 };
 
 export const PIPELINE_STATUSES = [
@@ -46,11 +46,11 @@ export const SCREENING_VERDICTS = [
   'review_required',
 ] as const satisfies readonly ScreeningVerdict[];
 
-export function pipelineState(status: PipelineStatus): ChipState {
+export function pipelineState(status: PipelineStatus): MarkState {
   return PIPELINE_STATE[status];
 }
 
-export function screeningState(verdict: ScreeningVerdict): ChipState {
+export function screeningState(verdict: ScreeningVerdict): MarkState {
   return SCREENING_STATE[verdict];
 }
 

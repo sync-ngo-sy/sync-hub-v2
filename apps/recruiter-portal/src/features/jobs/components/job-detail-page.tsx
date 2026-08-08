@@ -1,5 +1,5 @@
 import { PageHeader } from '@sync/ui/components/page-header';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
@@ -92,7 +92,7 @@ export function JobDetailPage({
           <div>
             <dt className="sr-only">Status</dt>
             <dd>
-              <StatusChip label={state.label} tone={state.tone} />
+              <StatusMark label={state.label} tone={state.tone} />
             </dd>
           </div>
           <div>

@@ -8,7 +8,7 @@ import { EmptyState } from '@sync/ui/components/empty-state';
 import { FormField } from '@sync/ui/components/form-field';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { ListSkeleton, SkeletonText } from '@sync/ui/components/skeletons';
-import { STATUS_TONES, StatusChip, type StatusTone } from '@sync/ui/components/status-chip';
+import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { Card, CardContent } from '@sync/ui/components/ui/card';
@@ -176,8 +176,8 @@ const APPLICATIONS: DemoApplication[] = [
     tone: 'interview',
     status: 'Interview',
   },
-  { job: 'Logistics Assistant', tenant: 'Hand in Hand', tone: 'neutral', status: 'Submitted' },
-  { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'negative', status: 'Not selected' },
+  { job: 'Logistics Assistant', tenant: 'Hand in Hand', tone: 'new', status: 'Submitted' },
+  { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'rejected', status: 'Not selected' },
 ];
 
 const SURFACES: [label: string, swatch: string][] = [
@@ -251,9 +251,9 @@ export default function KitchenSink() {
         </div>
       </Section>
 
-      <Section title="Status chips">
+      <Section title="Status marks">
         {STATUS_TONES.map((tone) => (
-          <StatusChip key={tone} tone={tone} label={tone} />
+          <StatusMark key={tone} tone={tone} label={tone} />
         ))}
       </Section>
 
@@ -265,7 +265,7 @@ export default function KitchenSink() {
                 <p className="truncate font-medium text-foreground">{job}</p>
                 <p className="truncate text-dense text-muted-foreground">{tenant}</p>
               </div>
-              <StatusChip tone={tone} label={status} />
+              <StatusMark tone={tone} label={status} />
             </div>
           ))}
         </div>

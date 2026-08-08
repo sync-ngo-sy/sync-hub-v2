@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { StatusTone } from '@sync/ui/components/status-mark';
 import { env } from '@/lib/env';
 
 export type TrackedLink = components['schemas']['TrackedLink'];
@@ -19,11 +19,11 @@ interface TrackedLinkState {
 }
 
 export function trackedLinkState(link: TrackedLink, now: Date = new Date()): TrackedLinkState {
-  if (!link.is_active) return { kind: 'off', label: 'Off', tone: 'neutral' };
+  if (!link.is_active) return { kind: 'off', label: 'Off', tone: 'ended' };
   if (link.expires_at && new Date(link.expires_at) <= now) {
-    return { kind: 'expired', label: 'Expired', tone: 'neutral' };
+    return { kind: 'expired', label: 'Expired', tone: 'ended' };
   }
-  return { kind: 'live', label: 'Live', tone: 'positive' };
+  return { kind: 'live', label: 'Live', tone: 'active' };
 }
 
 export interface LinkViews {
