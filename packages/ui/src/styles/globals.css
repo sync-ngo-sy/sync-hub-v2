@@ -156,13 +156,13 @@
 }
 
 :root {
-  --background: #EDE8DF;
-  --foreground: #221E19;
-  --card: #FBF8F4;
-  --card-foreground: #221E19;
-  --popover: #FDFBF7;
-  --popover-foreground: #221E19;
-  --input-background: #FEFCFA;
+  --background: #EDECE6;
+  --foreground: #333028;
+  --card: #F9F8F2;
+  --card-foreground: #333028;
+  --popover: #FBFAF5;
+  --popover-foreground: #333028;
+  --input-background: #FDFCF7;
 
   --deep: #005349;
   --deep-foreground: #F8F5EF;
@@ -172,13 +172,13 @@
   --primary-solid: #00675B;
   --primary-solid-foreground: #FBF8F3;
 
-  --secondary: #E7E0D5;
-  --secondary-foreground: #4E4840;
-  --muted-foreground: #656057;
+  --secondary: #E3E1DA;
+  --secondary-foreground: #525048;
+  --muted-foreground: #5F5E56;
 
-  --muted: rgba(40, 33, 22, 0.055);
+  --muted: rgba(44, 42, 32, 0.082);
 
-  --accent: #DDEEEB;
+  --accent: #DCEFEB;
   --accent-foreground: #006D61;
 
   --destructive: #9F3028;
@@ -191,17 +191,17 @@
   --info: #E4F0FF;
   --info-foreground: #285D9B;
 
-  --border: #D9D1C5;
-  --input: #C5BCAF;
+  --border: #D2D0C9;
+  --input: #BFBDB3;
   --ring: #00675B;
   --radius: 0.625rem;
-  --table-header: #F3EEE8;
+  --table-header: #F2F0EB;
 
   --chart-1: #005A50;
   --chart-2: #007A6D;
   --chart-3: #229A8B;
   --chart-4: #56B8A9;
-  --chart-5: #CFC6B8;
+  --chart-5: #CAC7BD;
 
   --sidebar: #005349;
   --sidebar-foreground: #D9E8E5;
@@ -211,14 +211,14 @@
   --sidebar-border: #256C62;
   --sidebar-label: #A9C7C1;
 
-  --status-new: #6F6A62;
+  --status-new: #6D6C64;
   --status-review: #946400;
   --status-shortlisted: #4B726B;
   --status-interview: #256E63;
   --status-offer: #00675B;
   --status-hired: #005D53;
-  --status-rejected: #7F7972;
-  --status-withdrawn: #8B8780;
+  --status-rejected: #7C7B73;
+  --status-withdrawn: #8A8982;
 
   --chip-shortlisted: #D8F0EB;
   --chip-shortlisted-foreground: #006056;
@@ -229,23 +229,23 @@
   --chip-hired: #005D53;
   --chip-hired-foreground: #F1F9F7;
 
-  --elevation-sm: 0 1px 2px 0 rgb(34 30 25 / 0.05);
-  --elevation-card: 0 1px 2px -1px rgb(34 30 25 / 0.07), 0 2px 6px -2px rgb(34 30 25 / 0.06);
-  --elevation-md: 0 2px 4px -2px rgb(34 30 25 / 0.08), 0 6px 16px -4px rgb(34 30 25 / 0.10);
-  --elevation-lg: 0 4px 8px -4px rgb(34 30 25 / 0.10), 0 16px 40px -8px rgb(34 30 25 / 0.16);
+  --elevation-sm: 0 1px 2px 0 rgb(48 46 36 / 0.05);
+  --elevation-card: 0 1px 2px -1px rgb(48 46 36 / 0.07), 0 2px 6px -2px rgb(48 46 36 / 0.06);
+  --elevation-md: 0 2px 4px -2px rgb(48 46 36 / 0.08), 0 6px 16px -4px rgb(48 46 36 / 0.10);
+  --elevation-lg: 0 4px 8px -4px rgb(48 46 36 / 0.10), 0 16px 40px -8px rgb(48 46 36 / 0.16);
 }
 
 .dark {
-  --background: #191713;
-  --foreground: #FBF6EF;
-  --card: #292622;
-  --card-foreground: #FBF6EF;
-  --popover: #2D2A25;
-  --popover-foreground: #FBF6EF;
-  --input-background: #201E1A;
+  --background: #181713;
+  --foreground: #F0EEE9;
+  --card: #282622;
+  --card-foreground: #F0EEE9;
+  --popover: #2C2A26;
+  --popover-foreground: #F0EEE9;
+  --input-background: #1F1E1A;
 
-  --deep: #0D0B08;
-  --deep-foreground: #FBF6EF;
+  --deep: #0C0B08;
+  --deep-foreground: #F0EEE9;
 
   --primary: #20A897;
   --primary-foreground: #031310;
@@ -253,12 +253,12 @@
   --primary-solid: #016D61;
   --primary-solid-foreground: #EDFAF7;
 
-  --secondary: #383530;
-  --secondary-foreground: #CEC8BE;
-  --muted: rgba(255, 252, 247, 0.06);
-  --muted-foreground: #ACA69D;
+  --secondary: #373530;
+  --secondary-foreground: #CAC7BE;
+  --muted: rgba(252, 251, 247, 0.06);
+  --muted-foreground: #ADABA2;
 
-  --accent: rgba(45, 190, 172, 0.15);
+  --accent: rgba(45, 190, 172, 0.12);
   --accent-foreground: #59C9B8;
 
   --destructive: #EC8D81;
@@ -271,34 +271,34 @@
   --info: rgba(74, 130, 216, 0.18);
   --info-foreground: #7DB1F1;
 
-  --border: #423E38;
-  --input: #514C45;
+  --border: #403F39;
+  --input: #4E4C45;
   --ring: #20A897;
   --radius: 0.625rem;
-  --table-header: #34312C;
+  --table-header: #33322D;
 
   --chart-1: #018E7F;
   --chart-2: #20A897;
   --chart-3: #43C2B0;
   --chart-4: #6FDAC9;
-  --chart-5: #504C46;
+  --chart-5: #4F4D47;
 
-  --sidebar: #0D0B08;
-  --sidebar-foreground: #A9A49B;
+  --sidebar: #0C0B08;
+  --sidebar-foreground: #A7A59C;
   --sidebar-accent: rgba(45, 190, 172, 0.18);
   --sidebar-accent-foreground: #61CFBE;
   --sidebar-primary: #20A897;
-  --sidebar-border: #2A2723;
-  --sidebar-label: #8E8881;
+  --sidebar-border: #292823;
+  --sidebar-label: #8B8981;
 
-  --status-new: #AAA49B;
+  --status-new: #A6A49B;
   --status-review: #EEB150;
   --status-shortlisted: #44887D;
   --status-interview: #3CA092;
   --status-offer: #40B7A7;
   --status-hired: #53CDBB;
-  --status-rejected: #928D85;
-  --status-withdrawn: #7E7A73;
+  --status-rejected: #8E8C85;
+  --status-withdrawn: #7B7973;
 
   --chip-shortlisted: rgba(63, 190, 176, 0.14);
   --chip-shortlisted-foreground: #63BEAF;
