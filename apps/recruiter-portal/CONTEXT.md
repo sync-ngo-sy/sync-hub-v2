@@ -128,8 +128,7 @@ An AI's reading of how much of what a Job asks for one Application evidences —
 explanation, the strengths and the gaps — asked for on the Application review and read there,
 newest first. Advice, and the page says so: it carries no Status Mark and no colour, because the
 surface already has a Screening verdict and a second marked state would read as a second verdict.
-The
-percentage is spelled out as what it measures rather than shown bare. Asking again appends rather
+The percentage is spelled out as what it measures rather than shown bare. Asking again appends rather
 than replaces, so every past reading stays with the model and prompt version that wrote it, and
 the wait is shown as a wait — the model is slow, nothing is put in the list optimistically, and
 the finished reading arrives only when the API has it. A refusal (asked too often, the model

@@ -10,7 +10,12 @@ interface MarkState {
   tone: StatusTone;
 }
 
-const PIPELINE_STATE: Record<PipelineStatus, { label: string; tone: ApplicationStatusTone }> = {
+interface PipelineState {
+  label: string;
+  tone: ApplicationStatusTone;
+}
+
+const PIPELINE_STATE: Record<PipelineStatus, PipelineState> = {
   new: { label: 'New', tone: 'new' },
   reviewing: { label: 'Reviewing', tone: 'reviewing' },
   shortlisted: { label: 'Shortlisted', tone: 'shortlisted' },
@@ -46,7 +51,7 @@ export const SCREENING_VERDICTS = [
   'review_required',
 ] as const satisfies readonly ScreeningVerdict[];
 
-export function pipelineState(status: PipelineStatus): MarkState {
+export function pipelineState(status: PipelineStatus): PipelineState {
   return PIPELINE_STATE[status];
 }
 

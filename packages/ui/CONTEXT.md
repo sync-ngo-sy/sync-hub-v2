@@ -32,7 +32,7 @@ application tones are the `--status-*` tokens, 1:1 with the database enum. Every
 else with a state — a Job, a CV, a Tracked link, a colleague's access — takes one of the
 four general tones (`waiting`, `active`, `attention`, `ended`), which say their state by
 mark shape on `--muted-foreground` or `--accent-foreground` and borrow no `--status-*`
-token, so the status vocabulary stays exactly as long as the enum.
+token, so the status vocabulary stays exactly as long as the enum (ADR-0004).
 _Avoid_: Chip, status pill, badge.
 
 **Candidate Card**:

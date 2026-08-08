@@ -8,7 +8,7 @@ import {
   type StatusTone,
 } from './status-mark';
 
-const RING = 'shadow-[inset_0_0_0_2px_currentColor]';
+const HOLLOW = 'shadow-[inset_0_0_0_2px_currentColor]';
 const FILLED = 'bg-current';
 
 const PROGRESSING: StatusTone[] = ['reviewing', 'shortlisted', 'interview', 'offer', 'hired'];
@@ -39,7 +39,7 @@ describe('StatusMark', () => {
   it('leaves the New mark hollow, because nothing has happened yet', () => {
     render(<StatusMark tone="new" label="New" />);
 
-    expect(dotOf('New')).toHaveClass(RING);
+    expect(dotOf('New')).toHaveClass(HOLLOW);
     expect(dotOf('New')).not.toHaveClass(FILLED);
   });
 
@@ -103,7 +103,7 @@ describe('StatusMark', () => {
       </>,
     );
 
-    expect(dotOf('Draft')).toHaveClass(RING);
+    expect(dotOf('Draft')).toHaveClass(HOLLOW);
     expect(dotOf('Published')).toHaveClass(FILLED);
     expect(iconOf('Review required')).toHaveClass('lucide-circle-alert');
     expect(iconOf('Closed')).toHaveClass('lucide-circle-x');

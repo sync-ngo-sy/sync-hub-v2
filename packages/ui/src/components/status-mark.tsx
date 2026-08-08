@@ -24,21 +24,21 @@ const FILLED = 'bg-current';
 
 interface Mark {
   color: string;
-  fill?: string;
+  shape?: string;
   icon?: LucideIcon;
 }
 
 const TONE: Record<StatusTone, Mark> = {
-  new: { color: 'text-status-new', fill: HOLLOW },
-  reviewing: { color: 'text-status-review', fill: FILLED },
-  shortlisted: { color: 'text-status-shortlisted', fill: FILLED },
-  interview: { color: 'text-status-interview', fill: FILLED },
-  offer: { color: 'text-status-offer', fill: FILLED },
-  hired: { color: 'text-status-hired', fill: FILLED },
+  new: { color: 'text-status-new', shape: HOLLOW },
+  reviewing: { color: 'text-status-review', shape: FILLED },
+  shortlisted: { color: 'text-status-shortlisted', shape: FILLED },
+  interview: { color: 'text-status-interview', shape: FILLED },
+  offer: { color: 'text-status-offer', shape: FILLED },
+  hired: { color: 'text-status-hired', shape: FILLED },
   rejected: { color: 'text-status-rejected', icon: CircleX },
   withdrawn: { color: 'text-status-withdrawn', icon: CircleX },
-  waiting: { color: 'text-muted-foreground', fill: HOLLOW },
-  active: { color: 'text-accent-foreground', fill: FILLED },
+  waiting: { color: 'text-muted-foreground', shape: HOLLOW },
+  active: { color: 'text-accent-foreground', shape: FILLED },
   attention: { color: 'text-muted-foreground', icon: CircleAlert },
   ended: { color: 'text-muted-foreground', icon: CircleX },
 };
@@ -50,7 +50,7 @@ interface StatusMarkProps {
 }
 
 export function StatusMark({ tone, label, className }: StatusMarkProps) {
-  const { color, fill, icon: Icon } = TONE[tone];
+  const { color, shape, icon: Icon } = TONE[tone];
 
   return (
     <span
@@ -62,7 +62,7 @@ export function StatusMark({ tone, label, className }: StatusMarkProps) {
       {Icon ? (
         <Icon aria-hidden="true" className={cn('size-[13px] shrink-0', color)} />
       ) : (
-        <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-[2px]', color, fill)} />
+        <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-[2px]', color, shape)} />
       )}
       {label}
     </span>
