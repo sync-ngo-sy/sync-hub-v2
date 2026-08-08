@@ -26,17 +26,28 @@ import {
   type RowData,
   useReactTable,
 } from '@tanstack/react-table';
-import { CircleAlert, type LucideIcon, MoreHorizontal } from 'lucide-react';
+import { ArrowDown, ArrowUp, CircleAlert, type LucideIcon, MoreHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
 
 export type ColumnPriority = 'primary' | 'secondary' | 'hidden';
 
+export interface ColumnSort {
+  ascending: string;
+  descending: string;
+}
+
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     priority?: ColumnPriority;
+    sort?: ColumnSort;
   }
+}
+
+export interface DataTableSort {
+  by: string;
+  onChange: (by: string) => void;
 }
 
 export type DataTableColumn<TRow> = ColumnDef<TRow>;
@@ -63,6 +74,7 @@ export interface DataTableProps<TRow> {
   error?: DataTableError;
   empty: { icon: LucideIcon; message: string; action: ReactNode };
   loadMore?: { hasMore: boolean; isLoading?: boolean; onLoadMore: () => void };
+  sort?: DataTableSort;
   className?: string;
 }
 
@@ -97,6 +109,7 @@ export function DataTable<TRow>({
   error,
   empty,
   loadMore,
+  sort,
   className,
 }: DataTableProps<TRow>) {
   const compact = useMediaQuery(COMPACT);
@@ -176,14 +189,24 @@ export function DataTable<TRow>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header, index) => (
-                  <TableHead
-                    key={header.id}
-                    className={cn(CELL_BORDER, 'bg-table-header', index === 0 && LEAD_HEADER)}
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header, index) => {
+                  const sorting = sortingOf(header.column.columnDef.meta?.sort, sort);
+                  return (
+                    <TableHead
+                      key={header.id}
+                      aria-sort={sorting?.direction ?? undefined}
+                      className={cn(CELL_BORDER, 'bg-table-header', index === 0 && LEAD_HEADER)}
+                    >
+                      {sorting ? (
+                        <SortButton {...sorting}>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </SortButton>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </TableHead>
+                  );
+                })}
                 {rowActions ? (
                   <TableHead className={cn(CELL_BORDER, 'w-px bg-table-header')}>
                     <span className="sr-only">Actions</span>
@@ -336,6 +359,45 @@ function CardList<TRow>({
         );
       })}
     </ul>
+  );
+}
+
+interface Sorting {
+  direction: 'ascending' | 'descending' | null;
+  onSort: () => void;
+}
+
+/** Clicking the column that is already sorted turns it around; clicking any other starts it
+ * ascending, which is the direction a reader expects a fresh column to arrive in. */
+function sortingOf(
+  column: ColumnSort | undefined,
+  sort: DataTableSort | undefined,
+): Sorting | null {
+  if (!column || !sort) return null;
+  const direction =
+    sort.by === column.ascending
+      ? 'ascending'
+      : sort.by === column.descending
+        ? 'descending'
+        : null;
+  return {
+    direction,
+    onSort: () => sort.onChange(direction === 'ascending' ? column.descending : column.ascending),
+  };
+}
+
+function SortButton({ direction, onSort, children }: Sorting & { children: ReactNode }) {
+  const Arrow = direction === 'ascending' ? ArrowUp : direction === 'descending' ? ArrowDown : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onSort}
+      className="inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      {children}
+      {Arrow ? <Arrow aria-hidden="true" className="size-3.5" /> : null}
+    </button>
   );
 }
 

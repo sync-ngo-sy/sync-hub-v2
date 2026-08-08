@@ -61,13 +61,14 @@ class SearchableCandidate(BaseModel):
 
 
 class CandidateDirectoryPage(BaseModel):
-    """One page of the Candidate directory, newest first. It carries no phone and no email: a
-    Tenant reads either by opening one Candidate, never off a list."""
+    """One page of the Candidate directory, in the order it was asked for. It carries no phone and
+    no email: a Tenant reads either by opening one Candidate, never off a list."""
 
     items: list[SearchableCandidate]
     next_cursor: str | None = Field(
         default=None,
-        description="Send back as `cursor` for the following page. Null on the last page.",
+        description="Send back as `cursor` for the following page, with the same `sort`. Null on "
+        "the last page.",
     )
 
 

@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   type CandidateSearchFilters,
+  directoryQuery,
   hardFilterCount,
   isAsked,
   languagesFrom,
   languageTokens,
+  noCandidatesMessage,
   noMatchesMessage,
+  orderFrom,
+  searchAddress,
   searchQuery,
+  tabFrom,
 } from './search';
 
 const ASKED: CandidateSearchFilters = { q: 'backend engineer' };
@@ -35,24 +40,111 @@ describe('what the API is asked for', () => {
         q: 'nurse',
         location: 'sy-aleppo',
         languages: ['ar:native', 'en'],
+        skills: ['React', 'TypeScript'],
+        role: 'frontend-engineer',
+        experience: 5,
         keywords: 'triage',
       }),
     ).toEqual({
       q: 'nurse',
       location_key: 'sy-aleppo',
       language: ['ar:native', 'en'],
+      skill: ['React', 'TypeScript'],
+      role: 'frontend-engineer',
+      min_total_experience: 5,
       keywords: 'triage',
       limit: 20,
     });
   });
 
   it('leaves an unset filter out rather than sending it empty', () => {
-    expect(searchQuery({ q: 'nurse', location: '', languages: [], keywords: '   ' })).toEqual({
+    expect(
+      searchQuery({ q: 'nurse', location: '', languages: [], skills: [], keywords: '   ' }),
+    ).toEqual({
       q: 'nurse',
       location_key: undefined,
       language: undefined,
+      skill: undefined,
+      role: undefined,
+      min_total_experience: undefined,
       keywords: undefined,
       limit: 20,
+    });
+  });
+
+  it('drops a number of years nobody could have worked, rather than asking for it', () => {
+    expect(searchQuery({ q: 'nurse', experience: 0 }).min_total_experience).toBeUndefined();
+    expect(searchQuery({ q: 'nurse', experience: -3 }).min_total_experience).toBeUndefined();
+    expect(searchQuery({ q: 'nurse', experience: 101 }).min_total_experience).toBeUndefined();
+    expect(searchQuery({ q: 'nurse', experience: 4.7 }).min_total_experience).toBe(4);
+  });
+});
+
+describe('what the directory is asked for', () => {
+  it('sends the same hard filters, and the order, and no words at all', () => {
+    expect(
+      directoryQuery(
+        {
+          q: 'ignored',
+          location: 'sy-aleppo',
+          languages: ['ar:native'],
+          skills: ['React'],
+          role: 'frontend-engineer',
+          experience: 5,
+          keywords: 'also ignored',
+        },
+        'name',
+      ),
+    ).toEqual({
+      location_key: 'sy-aleppo',
+      language: ['ar:native'],
+      skill: ['React'],
+      role: 'frontend-engineer',
+      min_total_experience: 5,
+      sort: 'name',
+      limit: 20,
+    });
+  });
+});
+
+describe('reading the address back', () => {
+  it('keeps only an order the directory offers, and falls back to the newest', () => {
+    expect(orderFrom('most_experience')).toBe('most_experience');
+    expect(orderFrom('name_reversed')).toBe('name_reversed');
+    expect(orderFrom('cheapest')).toBe('newest');
+    expect(orderFrom(undefined)).toBe('newest');
+  });
+
+  it('opens the tab that was asked for', () => {
+    expect(tabFrom('search', {})).toBe('search');
+    expect(tabFrom('filter', { q: 'nurse' })).toBe('filter');
+  });
+
+  it('reads a link that predates the tabs by what it carries', () => {
+    expect(tabFrom(undefined, { q: 'nurse' })).toBe('search');
+    expect(tabFrom(undefined, {})).toBe('filter');
+    expect(tabFrom(undefined, { q: '   ' })).toBe('filter');
+  });
+
+  it('writes every filter back into the address it came from', () => {
+    const filters: CandidateSearchFilters = {
+      q: 'nurse',
+      location: 'sy-aleppo',
+      languages: ['ar'],
+      skills: ['React'],
+      role: 'frontend-engineer',
+      experience: 5,
+      keywords: 'triage',
+    };
+
+    expect(searchAddress(filters)).toEqual({
+      q: 'nurse',
+      location: 'sy-aleppo',
+      languages: ['ar'],
+      skills: ['React'],
+      role: 'frontend-engineer',
+      experience: 5,
+      keywords: 'triage',
     });
   });
 });
@@ -65,6 +157,30 @@ describe('how many hard filters are narrowing the results', () => {
     expect(hardFilterCount({ ...ASKED, languages: ['ar:native', 'en', 'fr'] })).toBe(1);
     expect(hardFilterCount({ ...ASKED, languages: [] })).toBe(0);
     expect(hardFilterCount({ ...ASKED, location: '', keywords: 'triage' })).toBe(1);
+  });
+
+  it('counts each of the new filters once', () => {
+    expect(hardFilterCount({ ...ASKED, skills: ['React', 'TypeScript'] })).toBe(1);
+    expect(hardFilterCount({ ...ASKED, role: 'frontend-engineer' })).toBe(1);
+    expect(hardFilterCount({ ...ASKED, experience: 5 })).toBe(1);
+    expect(hardFilterCount({ ...ASKED, skills: [], role: '', experience: 0 })).toBe(0);
+  });
+});
+
+describe('what the directory with nothing in it says', () => {
+  it('says the platform is empty when no filter is narrowing anything', () => {
+    expect(noCandidatesMessage({ q: '' })).toBe(
+      'No Candidate on the platform has opted into being found yet.',
+    );
+  });
+
+  it('names the filter to loosen, and speaks of several in the plural', () => {
+    expect(noCandidatesMessage({ q: '', role: 'frontend-engineer' })).toBe(
+      'No Searchable Candidate matches that filter.',
+    );
+    expect(noCandidatesMessage({ q: '', role: 'frontend-engineer', experience: 5 })).toBe(
+      'No Searchable Candidate matches all of those filters.',
+    );
   });
 });
 
