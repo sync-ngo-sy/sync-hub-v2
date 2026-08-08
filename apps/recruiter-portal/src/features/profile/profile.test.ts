@@ -20,7 +20,6 @@ const RECORD: components['schemas']['CandidateRecord'] = {
   canonical_role_key: 'backend-engineer',
   canonical_role_name: 'Backend Engineer',
   total_experience_years: 8,
-  preferred_language_code: 'ar',
   in_talent_pool: false,
   phone: '+963 11 555 0142',
   email: 'amina@example.test',
