@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import delete, update
 
 from sync_api.auth.gotrue import GoTrueUnavailableError, InvalidCredentialsError
+from sync_api.avatars import forget_photos
 from sync_api.candidates.profile import whole_candidate
 from sync_api.problems import INVALID_CREDENTIALS_PROBLEM_TYPE, Problem
 from sync_core import get_logger, transaction
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.auth.gotrue import GoTrue
+    from sync_core import Storage
 
 logger = get_logger(__name__)
 
@@ -45,13 +47,17 @@ class CandidateDeletion:
     while an Application names it — a soft delete is the only shape this can take.
     """
 
-    def __init__(self, session: AsyncSession, gotrue: GoTrue) -> None:
+    def __init__(self, session: AsyncSession, gotrue: GoTrue, avatars: Storage) -> None:
         self._db = session
         self._gotrue = gotrue
+        self._avatars = avatars
 
     async def delete(self, candidate_id: UUID, *, email: str, password: str) -> None:
         await self._confirm(email=email, password=password)
         await self._scrub(candidate_id)
+        # Unlike a CV, which an Application a Tenant received goes on naming, the photo is
+        # served to anyone holding its URL — so scrubbing the row is not enough to unpublish it.
+        await forget_photos(self._avatars, candidate_id)
         await self._ban_the_login(candidate_id)
         logger.info("candidates.account_deleted", candidate_id=str(candidate_id))
 
