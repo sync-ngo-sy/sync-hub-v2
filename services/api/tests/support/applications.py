@@ -113,15 +113,21 @@ async def a_candidate_who_can_apply(
     return applicant.cv_id
 
 
-async def a_candidate_with_a_stored_cv(
-    browser: AsyncClient, mailbox: Mailbox, session: AsyncSession, label: str = "applicant"
-) -> UUID:
-    """The same, with the file really in Storage — which is what a signed link needs."""
-    await a_signed_in_candidate(browser, mailbox, label)
-    uploaded = await an_uploaded_cv(browser)
+async def an_applicant_with_a_stored_cv(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    session: AsyncSession,
+    label: str = "applicant",
+    **changes: Any,
+) -> Applicant:
+    """The same, with the file really in Storage — which is what a signed link needs, and so
+    what reading an Application back insists on."""
+    signup = await a_signed_in_candidate(browser, mailbox, label)
+    candidate_id = await my_id(browser)
+    cv_id = UUID((await an_uploaded_cv(browser))["id"])
     await session.execute(
         update(Cv)
-        .where(Cv.id == UUID(uploaded["id"]))
+        .where(Cv.id == cv_id)
         .values(
             parsing_status=CvParsingStatus.READY,
             parsed_cv_data=a_parse().model_dump(mode="json"),
@@ -129,13 +135,19 @@ async def a_candidate_with_a_stored_cv(
         )
     )
     await session.execute(
-        update(Candidate)
-        .where(Candidate.id == await my_id(browser))
-        .values(current_cv_id=UUID(uploaded["id"]))
+        update(Candidate).where(Candidate.id == candidate_id).values(current_cv_id=cv_id)
     )
     await session.commit()
-    await a_saved_profile(browser, a_filled_profile())
-    return UUID(uploaded["id"])
+    await a_saved_profile(browser, a_filled_profile(**changes))
+    return Applicant(id=candidate_id, signup=signup, cv_id=cv_id)
+
+
+async def a_candidate_with_a_stored_cv(
+    browser: AsyncClient, mailbox: Mailbox, session: AsyncSession, label: str = "applicant"
+) -> UUID:
+    """The same, answering with the stored CV's id — what the Application will name."""
+    applicant = await an_applicant_with_a_stored_cv(browser, mailbox, session, label)
+    return applicant.cv_id
 
 
 async def a_whole_application(
