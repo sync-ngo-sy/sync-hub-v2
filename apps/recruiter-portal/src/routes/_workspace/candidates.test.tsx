@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import {
   AMINA,
+  AMINA_RECORD,
   LISTED_AMINA,
   LISTED_YOUSSEF,
   SEARCH_OFFLINE,
@@ -14,6 +15,7 @@ import {
   failsToSearchCandidates,
   findsCandidates,
   listsDirectoryCandidates,
+  readsCandidate,
 } from '@/features/candidates/testing/handlers';
 import { AMINA_SAVED } from '@/features/talent-pool/testing/fixtures';
 import { holdsTalentPool } from '@/features/talent-pool/testing/handlers';
@@ -254,7 +256,11 @@ describe('the Filter tab', () => {
   });
 
   it('opens the Candidate view from a row, carrying the filters that found them', async () => {
-    server.use(...signedInAs(RECRUITER), ...listsDirectoryCandidates([LISTED_AMINA]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsDirectoryCandidates([LISTED_AMINA]),
+      ...readsCandidate(AMINA_RECORD),
+    );
 
     const { user, router } = await renderApp(`${AT}?role=backend-engineer`);
 
@@ -556,7 +562,11 @@ describe('the AI Search tab', () => {
   });
 
   it('opens the Candidate view from a match, carrying the search that found them', async () => {
-    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
+    );
 
     const { user, router } = await renderApp(`${SEARCHING}&q=engineer&location=sy-aleppo`);
 
@@ -566,5 +576,6 @@ describe('the AI Search tab', () => {
       expect(router.state.location.pathname).toBe(`/candidates/${AMINA.candidate_id}`),
     );
     expect(router.state.location.search).toEqual({ q: 'engineer', location: 'sy-aleppo' });
+    expect(await screen.findByRole('article', { name: 'Amina Haddad' })).toBeVisible();
   });
 });

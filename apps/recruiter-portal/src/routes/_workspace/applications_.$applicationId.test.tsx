@@ -61,7 +61,6 @@ describe('the Application review page', () => {
       snapshot.getByText('Nine years moving relief cargo across northern Syria.'),
     ).toBeVisible();
     expect(snapshot.getByText('Aleppo')).toBeVisible();
-    expect(snapshot.getByText('+963 11 555 0101')).toBeVisible();
 
     expect(snapshot.getByText('Logistics Coordinator')).toBeVisible();
     expect(snapshot.getByText('Hand in Hand')).toBeVisible();
@@ -91,6 +90,60 @@ describe('the Application review page', () => {
       'href',
       'https://example.test/cold-chain',
     );
+  });
+
+  it('tops the frozen profile with the card of who applied', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
+    expect(card.getByText('Logistics Manager')).toBeVisible();
+    expect(card.getByText('Field logistics lead')).toBeVisible();
+    expect(card.getByText('+963 11 555 0101')).toBeVisible();
+    expect(card.getByText('9 years')).toBeVisible();
+    expect(card.getByText('Arabic, English')).toBeVisible();
+  });
+
+  it('reaches the applicant by the address the account confirmed, which no Snapshot holds', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('amal.haddad@example.test')).toBeVisible();
+  });
+
+  it('says on the card itself that this is the person as they applied', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('Snapshot')).toBeVisible();
+    expect(
+      card.getByText(
+        'Who they were when they applied, not who they are today. Only the email and the photo ' +
+          'are read live — everything else here was frozen with the Application.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('names the role they applied as, not whatever they call themselves today', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication({
+        ...REVIEW,
+        snapshot: { ...REVIEW.snapshot, canonical_role: 'Warehouse Officer' },
+      }),
+    );
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('Warehouse Officer')).toBeVisible();
+    expect(card.queryByText('Logistics Manager')).toBeNull();
   });
 
   it('flags the skills Screening could not read, because a human still should', async () => {

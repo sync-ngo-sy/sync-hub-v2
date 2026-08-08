@@ -282,6 +282,7 @@ export type Database = {
       application_profile_snapshots: {
         Row: {
           application_id: string;
+          canonical_role: string | null;
           captured_at: string;
           full_name: string;
           headline: string | null;
@@ -293,6 +294,7 @@ export type Database = {
         };
         Insert: {
           application_id: string;
+          canonical_role?: string | null;
           captured_at?: string;
           full_name: string;
           headline?: string | null;
@@ -304,6 +306,7 @@ export type Database = {
         };
         Update: {
           application_id?: string;
+          canonical_role?: string | null;
           captured_at?: string;
           full_name?: string;
           headline?: string | null;
