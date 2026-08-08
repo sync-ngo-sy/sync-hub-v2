@@ -62,7 +62,7 @@ describe('the Dashboard', () => {
     await renderApp('/dashboard');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
-    expect(screen.getByText('Aman Relief')).toBeVisible();
+    expect(await screen.findByText('Aman Relief')).toBeVisible();
   });
 
   it('shows the counts the API reports, with no arithmetic of its own', async () => {
