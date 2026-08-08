@@ -23,7 +23,7 @@ from sync_core.models import (
     Cv,
     CvParsingStatus,
 )
-from tests.support.candidates import a_signed_in_candidate
+from tests.support.candidates import Signup, a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv
 from tests.support.extractors import a_parse
 from tests.support.jobs import TENANT_JOBS, a_published_job, read_job, set_criteria
@@ -76,6 +76,31 @@ async def a_candidate_with_a_ready_cv(
     return await give_a_current_cv(session, await my_id(browser))
 
 
+@dataclass(frozen=True, slots=True)
+class Applicant:
+    """A Candidate ready to apply, and the account they signed up with — which is where a
+    confirmed address lives, and so the only thing a live email can be checked against."""
+
+    id: UUID
+    signup: Signup
+    cv_id: UUID
+
+
+async def an_applicant_who_can_apply(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    session: AsyncSession,
+    label: str = "applicant",
+    **changes: Any,
+) -> Applicant:
+    """The two things applying insists on: a current CV, and a profile worth judging."""
+    signup = await a_signed_in_candidate(browser, mailbox, label)
+    candidate_id = await my_id(browser)
+    cv_id = await give_a_current_cv(session, candidate_id)
+    await a_saved_profile(browser, a_filled_profile(**changes))
+    return Applicant(id=candidate_id, signup=signup, cv_id=cv_id)
+
+
 async def a_candidate_who_can_apply(
     browser: AsyncClient,
     mailbox: Mailbox,
@@ -83,13 +108,9 @@ async def a_candidate_who_can_apply(
     label: str = "applicant",
     **changes: Any,
 ) -> UUID:
-    """The two things applying insists on: a current CV, and a profile worth judging.
-
-    Answers with the current CV's id — what the Snapshot's Application will name.
-    """
-    cv_id = await a_candidate_with_a_ready_cv(browser, mailbox, session, label)
-    await a_saved_profile(browser, a_filled_profile(**changes))
-    return cv_id
+    """The same, answering with the current CV's id — what the Application will name."""
+    applicant = await an_applicant_who_can_apply(browser, mailbox, session, label, **changes)
+    return applicant.cv_id
 
 
 async def a_candidate_with_a_stored_cv(

@@ -114,6 +114,7 @@ async def test_the_snapshot_is_copied_from_the_live_profile(
     assert snapshot.profile is not None
     assert snapshot.profile.headline == "Backend engineer, 8 years"
     assert snapshot.profile.full_name == "Amina Haddad"
+    assert snapshot.profile.canonical_role == "Backend Engineer"
     assert [row.job_title for row in snapshot.experiences] == ["Senior Engineer"]
     assert [row.institution for row in snapshot.educations] == ["Damascus University"]
     assert [row.name for row in snapshot.projects] == ["Ledger"]

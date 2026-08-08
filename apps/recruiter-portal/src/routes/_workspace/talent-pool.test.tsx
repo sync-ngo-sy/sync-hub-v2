@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
+import { AMINA_RECORD } from '@/features/candidates/testing/fixtures';
+import { readsCandidate } from '@/features/candidates/testing/handlers';
 import {
   AMINA_SAVED,
   RIMA_SAVED,
@@ -92,7 +94,11 @@ describe('the talent pool page', () => {
   });
 
   it('opens the Candidate view from a row', async () => {
-    server.use(...signedInAs(RECRUITER), ...holdsTalentPool([AMINA_SAVED]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...holdsTalentPool([AMINA_SAVED]),
+      ...readsCandidate(AMINA_RECORD),
+    );
 
     const { user, router } = await renderApp(AT);
 
@@ -151,7 +157,11 @@ describe('the talent pool page', () => {
   });
 
   it('drops the Candidate out of every reading of the pool, not only out of the list', async () => {
-    server.use(...signedInAs(RECRUITER), ...keepsTalentPool([AMINA_SAVED]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...keepsTalentPool([AMINA_SAVED]),
+      ...readsCandidate(AMINA_RECORD),
+    );
 
     const { user, router } = await renderApp(AT);
 
@@ -173,9 +183,7 @@ describe('the talent pool page', () => {
       search: {},
     });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'This Candidate can’t be shown' }),
-    ).toBeVisible();
+    expect(await screen.findByText('Amina Haddad is not in your talent pool.')).toBeVisible();
   });
 
   it('keeps the row and the confirmation when a drop is refused', async () => {

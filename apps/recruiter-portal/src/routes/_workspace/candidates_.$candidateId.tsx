@@ -1,44 +1,37 @@
 import { createFileRoute } from '@tanstack/react-router';
-import {
-  listedCard,
-  matchEvidence,
-  matchedCard,
-  pooledCard,
-} from '@/features/candidates/candidate';
+import { matchEvidence } from '@/features/candidates/candidate';
+import { ensureCandidateRecord } from '@/features/candidates/candidate-record';
 import {
   CandidateOutOfReach,
   CandidateViewPage,
 } from '@/features/candidates/components/candidate-view-page';
-import { readDirectoryHits } from '@/features/candidates/hooks/use-candidate-directory';
-import { readSearchHits } from '@/features/candidates/hooks/use-candidate-search';
+import { cachedSearchHits } from '@/features/candidates/hooks/use-candidate-search';
+import { recordProfile } from '@/features/profile/profile';
 import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
 import { warmTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
 import { pageTitle } from '@/lib/page-title';
-import { candidateOrderFrom, candidateSearchParams, filtersFrom } from './-candidate-search-params';
+import { candidateSearchParams, filtersFrom } from './-candidate-search-params';
 
 export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
   validateSearch: candidateSearchParams,
   loaderDeps: ({ search }) => search,
   loader: async ({ context, params, deps }) => {
-    const filters = filtersFrom(deps);
-    const [hits, listed, pool] = await Promise.all([
-      readSearchHits(context.queryClient, filters),
-      readDirectoryHits(context.queryClient, filters, candidateOrderFrom(deps)),
+    const [record] = await Promise.all([
+      ensureCandidateRecord(context.queryClient, params.candidateId),
       warmTalentPool(context.queryClient),
       warmSearchTaxonomies(context.queryClient),
     ]);
 
-    const match = hits.find((hit) => hit.candidate_id === params.candidateId);
-    if (match) return { card: matchedCard(match), evidence: matchEvidence(match) };
+    if (!record) return null;
 
-    const person = listed.find((one) => one.candidate_id === params.candidateId);
-    if (person) return { card: listedCard(person), evidence: null };
+    const hit = cachedSearchHits(context.queryClient, filtersFrom(deps)).find(
+      (match) => match.candidate_id === params.candidateId,
+    );
 
-    const saved = pool.find((entry) => entry.candidate_id === params.candidateId);
-    return saved ? { card: pooledCard(saved), evidence: null } : null;
+    return { record, evidence: hit ? matchEvidence(hit) : null };
   },
   head: ({ loaderData }) => ({
-    meta: [{ title: pageTitle(loaderData?.card.fullName ?? 'Candidate') }],
+    meta: [{ title: pageTitle(loaderData ? recordProfile(loaderData.record).name : 'Candidate') }],
   }),
   component: CandidateRoute,
 });
@@ -49,5 +42,5 @@ function CandidateRoute() {
 
   if (!found) return <CandidateOutOfReach filters={filters} />;
 
-  return <CandidateViewPage card={found.card} evidence={found.evidence} filters={filters} />;
+  return <CandidateViewPage record={found.record} evidence={found.evidence} filters={filters} />;
 }
