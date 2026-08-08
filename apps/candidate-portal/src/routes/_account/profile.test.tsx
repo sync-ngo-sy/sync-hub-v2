@@ -284,7 +284,8 @@ describe('the profile editor', () => {
   it('shows the total experience the API derived, with no way to type one', async () => {
     await openProfile();
 
-    expect(screen.getByText('6 years')).toBeVisible();
+    const experience = within(screen.getByRole('region', { name: 'Experience' }));
+    expect(experience.getByText('6 years')).toBeVisible();
     expect(screen.queryByLabelText('Total experience')).toBeNull();
   });
 
@@ -381,6 +382,39 @@ describe('the profile editor', () => {
 
     expect(await screen.findByText("This page didn't load")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
+});
+
+describe('the Candidate Card on the profile', () => {
+  it('shows the candidate the way a recruiter will read them', async () => {
+    await openProfile();
+
+    const card = within(await screen.findByRole('article', { name: 'Lina Khoury' }));
+    expect(card.getByText('Lina Khoury')).toBeVisible();
+    expect(card.getByText('Project Manager')).toBeVisible();
+    expect(card.getByText(CANDIDATE.email)).toBeVisible();
+    expect(card.getByText('+963 11 555 0100')).toBeVisible();
+    expect(card.getByText('6 years')).toBeVisible();
+    expect(card.getByText('Arabic')).toBeVisible();
+  });
+
+  it('leaves out what the profile does not say, rather than labelling it empty', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...hasProfile({
+        ...CANDIDATE_PROFILE,
+        phone: null,
+        canonical_role_key: null,
+        languages: [],
+      }),
+    );
+    await renderApp('/profile');
+
+    const card = within(await screen.findByRole('article', { name: 'Lina Khoury' }));
+    expect(card.getByText(CANDIDATE.email)).toBeVisible();
+    expect(card.queryByText('Phone')).toBeNull();
+    expect(card.queryByText('Languages')).toBeNull();
+    expect(card.queryByText('Project Manager')).toBeNull();
   });
 });
 
