@@ -36,6 +36,7 @@ from sync_core.models import (
     CandidateLanguage,
     CandidateProject,
     CandidateSkill,
+    CanonicalRole,
     JobApplicationQuestion,
     Location,
     Profile,
@@ -107,18 +108,20 @@ class Reading[EntryT: BaseModel]:
 
 #: `email` is deliberately absent from the scalar row: only `auth.users` has a confirmed one. So
 #: are the settings on `candidates` — freezing a setting would leave someone asking why changing
-#: it changed nothing. `location` is the one column that is not copied across: the Snapshot
-#: freezes what the Location was *called* when the Application was sent, so renaming a
-#: Location — or the Candidate moving — never rewrites an Application already judged.
-#: `total_experience_years` is copied rather than recomputed, which is the whole point of
-#: storing it: an applicant who has not saved their profile lately applies with the number they
-#: last saved, and the verdict can be re-explained from the Snapshot alone forever after.
+#: it changed nothing. `location` and `canonical_role` are the two columns not copied across:
+#: the Snapshot freezes what each was *called* when the Application was sent, so renaming a
+#: Location or a Canonical role — or the Candidate moving, or retraining — never rewrites an
+#: Application already judged. `total_experience_years` is copied rather than recomputed, which
+#: is the whole point of storing it: an applicant who has not saved their profile lately applies
+#: with the number they last saved, and the verdict can be re-explained from the Snapshot alone
+#: forever after.
 SCALARS: Final = (
     "full_name",
     "phone",
     "headline",
     "summary",
     "location",
+    "canonical_role",
     "unmapped_skills",
     "total_experience_years",
 )
@@ -212,11 +215,13 @@ def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
             Candidate.headline,
             Candidate.summary,
             Location.name,
+            CanonicalRole.name,
             Candidate.unmapped_skills,
             Candidate.total_experience_years,
         )
         .join_from(Candidate, Profile, Profile.id == Candidate.id)
         .outerjoin(Location, Location.key == Candidate.location_key)
+        .outerjoin(CanonicalRole, CanonicalRole.key == Candidate.canonical_role_key)
         .where(Candidate.id == candidate_id),
     )
     return [
@@ -291,6 +296,7 @@ async def snapshot_of(session: AsyncSession, application_id: UUID) -> Applicatio
         headline=captured.headline,
         summary=captured.summary,
         location=captured.location,
+        canonical_role=captured.canonical_role,
         unmapped_skills=captured.unmapped_skills,
         total_experience_years=captured.total_experience_years,
         experiences=EXPERIENCES.entries(row.experiences),

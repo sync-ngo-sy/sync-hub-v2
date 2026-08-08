@@ -69,8 +69,16 @@ what the Application says on the left (the Snapshot, the answers, and the Match 
 of them), and on the right the things a Recruiter acts on or against: the Pipeline, the Applicant
 message, the Screening verdict, the CV, and the history. It reads the Snapshot
 rather than the Candidate's live profile, and says so on the page, because the two can differ
-and only one of them is what was reviewed. The CV's link is short-lived and never stored: the
-page re-reads the Application instead of holding on to it.
+and only one of them is what was reviewed. The Candidate Card on top is the one exception, and
+only for the two facts a Snapshot cannot freeze: a confirmed email lives in the authentication
+store alone, and an avatar is a file that moves rather than a value that was once true.
+Everything else on that card — the name, the headline, the Canonical role, the phone, the years,
+the languages — is the frozen one, so nothing a Recruiter reads beside the verdict can drift out
+from under it. The card says as much on itself rather than leaving the Snapshot panel below to
+say it: it is marked `Snapshot` beside the name and names the two live facts underneath, because
+a card that looks identical to the Candidate view's would otherwise read as today's person. The
+CV's link is short-lived and never stored: the page re-reads the Application instead of holding
+on to it.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:
@@ -256,15 +264,17 @@ _Avoid_: Semantic search, smart search, vector search (that is the backend's mec
 tab).
 
 **Candidate view**:
-One person as this Tenant knows them: what the platform will show of their profile, the fragment
+One person as this Tenant knows them: their whole profile with their email and phone, the fragment
 that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
-Talent pool. The page does not yet read a Candidate by id, so it has whatever the list that found
-them carried — it re-runs whichever list that was, the ranking or the directory, from the filters
-in its own address, and falls back to the Talent pool when neither answers. When none of the three
-has them the page says exactly that rather than inventing a profile, because a Candidate who has
-stopped being searchable really is out of reach. The notes and the Tags are the Application review's own interactions, naming a Candidate
-instead of an Application; a Tag offered here is candidate-scoped, which is the other half of the
-same vocabulary.
+Talent pool. The profile is read by id from the directory, so how you arrived changes nothing about
+what you see — a pasted link shows the same person a click from the Talent pool does, and no search
+is re-run to reconstruct them. The matched fragment is the one thing arriving does decide: it is
+read from the search already in hand, and a link opened cold simply has none. When the directory
+answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
+inventing a profile. The profile itself is the shared full-profile component, Candidate Card on top,
+the same one the Application review renders its Snapshot through. The notes and the Tags are the
+Application review's own interactions, naming a Candidate instead of an Application; a Tag offered
+here is candidate-scoped, which is the other half of the same vocabulary.
 _Avoid_: Candidate profile, candidate detail (a Profile is the Candidate's own; this is the
 Tenant's reading of it).
 
@@ -284,7 +294,7 @@ first, paged by cursor the way the API pages it, because a page is what the list
 the membership question ever needs the pool whole. The two readings are two cache entries of one
 endpoint, so a save or a drop made anywhere re-reads both, the copy nobody is watching included:
 that copy is what a route loader reads next, and it hands back what it has rather than waiting.
-A row opens the Candidate view, which finds the person in the pool because no search led there.
+A row opens the Candidate view, which reads the person by id like every other way in.
 Dropping asks first here although the card does not: the action is one line in a row menu rather
 than a button that has just told you the state. What it costs is what the asking says — the
 Tenant's notes and Tags on them survive, but nothing points at that Candidate any more until a
