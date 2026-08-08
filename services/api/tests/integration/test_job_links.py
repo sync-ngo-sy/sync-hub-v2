@@ -1,24 +1,25 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.jobs.browse import VIEW_WINDOW
 from tests.support.jobs import (
     TENANT_JOBS,
     a_created_job,
     a_published_job,
     a_tracked_link,
     change_link,
+    counted_again,
     create_link,
     follow_link,
     job_views,
+    link_report,
     links_of,
     read_job,
     read_public_job,
-    viewed_ago,
 )
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import an_admin
@@ -42,15 +43,15 @@ async def test_a_link_counts_the_traffic_it_brought(
     recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
     job = await a_published_job(recruiter)
-    campaign = await a_tracked_link(recruiter, job["id"], name="LinkedIn campaign")
+    linked_in = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
     quiet = await a_tracked_link(recruiter, job["id"], name="Print flyer")
 
-    await follow_link(visitor, campaign["token"])
-    await viewed_ago(db_session, job["id"], VIEW_WINDOW + timedelta(minutes=1))
-    await follow_link(visitor, campaign["token"])
+    await follow_link(visitor, linked_in["token"])
+    await counted_again(db_session, job["id"])
+    await follow_link(visitor, linked_in["token"])
 
     counted = {link["name"]: link["view_count"] for link in await links_of(recruiter, job["id"])}
-    assert counted == {"LinkedIn campaign": 2, "Print flyer": 0}
+    assert counted == {"LinkedIn post": 2, "Print flyer": 0}
     assert quiet["view_count"] == 0
 
 
@@ -66,12 +67,23 @@ async def test_landing_on_the_same_link_twice_over_is_one_view(
     assert len(await job_views(db_session, job["id"])) == 1
 
 
+async def test_simultaneous_landings_on_one_link_are_one_view(
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    job = await a_published_job(recruiter)
+    warmup = await a_published_job(recruiter, title="Warmup")
+    link = await a_tracked_link(recruiter, job["id"])
+    await read_public_job(visitor, warmup["id"])
+
+    responses = await asyncio.gather(*(follow_link(visitor, link["token"]) for _ in range(8)))
+
+    assert {response.status_code for response in responses} == {200}
+    assert len(await job_views(db_session, job["id"])) == 1
+
+
 async def test_a_link_and_the_open_page_are_two_channels_of_one_job(
     recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """The window is per channel. A browser that read the Job on the board and then followed a
-    campaign link gave the campaign a view, and swallowing it would both understate the link and
-    lose the attribution an Application is later read from."""
     job = await a_published_job(recruiter)
     link = await a_tracked_link(recruiter, job["id"])
 
@@ -97,6 +109,37 @@ async def test_a_jobs_total_counts_the_views_no_link_brought(
 
     assert [item["view_count"] for item in await links_of(recruiter, job["id"])] == [1]
     assert (await read_job(recruiter, job["id"]))["view_count"] == 2
+
+
+async def test_the_link_report_counts_direct_and_link_views_together(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
+
+    await read_public_job(visitor, job["id"])
+    await follow_link(visitor, link["token"])
+
+    report = await link_report(recruiter, job["id"])
+    assert report["direct_view_count"] == 1
+    assert report["view_count"] == 2
+    assert [(item["name"], item["view_count"]) for item in report["items"]] == [
+        ("LinkedIn post", 1)
+    ]
+
+
+async def test_the_link_report_keeps_direct_when_there_are_no_links(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    job = await a_published_job(recruiter)
+
+    await read_public_job(visitor, job["id"])
+
+    assert await link_report(recruiter, job["id"]) == {
+        "items": [],
+        "direct_view_count": 1,
+        "view_count": 1,
+    }
 
 
 async def test_a_link_that_was_turned_off_leads_nowhere(
@@ -156,9 +199,9 @@ async def test_a_link_can_be_reopened_after_it_was_turned_off(
 
 async def test_two_links_of_one_job_cannot_share_a_name(recruiter: AsyncClient) -> None:
     job = await a_published_job(recruiter)
-    await a_tracked_link(recruiter, job["id"], name="LinkedIn campaign")
+    await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
 
-    refused = await create_link(recruiter, job["id"], name="LinkedIn campaign")
+    refused = await create_link(recruiter, job["id"], name="LinkedIn post")
 
     assert refused.status_code == 409, refused.text
     assert refused.json()["type"] == "urn:sync:problem:tracked-link-name-taken"
@@ -166,15 +209,15 @@ async def test_two_links_of_one_job_cannot_share_a_name(recruiter: AsyncClient) 
 
 async def test_a_link_cannot_be_renamed_onto_a_siblings_name(recruiter: AsyncClient) -> None:
     job = await a_published_job(recruiter)
-    await a_tracked_link(recruiter, job["id"], name="LinkedIn campaign")
+    await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
     flyer = await a_tracked_link(recruiter, job["id"], name="Print flyer")
 
-    refused = await change_link(recruiter, job["id"], flyer["id"], name="LinkedIn campaign")
+    refused = await change_link(recruiter, job["id"], flyer["id"], name="LinkedIn post")
 
     assert refused.status_code == 409, refused.text
     assert refused.json()["type"] == "urn:sync:problem:tracked-link-name-taken"
     assert [item["name"] for item in await links_of(recruiter, job["id"])] == [
-        "LinkedIn campaign",
+        "LinkedIn post",
         "Print flyer",
     ]
 

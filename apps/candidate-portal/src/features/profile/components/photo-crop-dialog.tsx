@@ -8,9 +8,9 @@ import {
   DialogTitle,
 } from '@sync/ui/components/ui/dialog';
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { boundingSquare, squareBlob } from '../crop';
+import { boundingSquare, centeredSquare, squareBlob } from '../crop';
 
 const DEFAULT_CROP: Crop = { unit: '%', x: 10, y: 10, width: 80, height: 80 };
 
@@ -36,15 +36,9 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
   }, [file]);
 
   function centreTheCircleOn(event: SyntheticEvent<HTMLImageElement>) {
-    const { naturalWidth, naturalHeight } = event.currentTarget;
-    if (!naturalWidth || !naturalHeight) return;
-    setCrop(
-      centerCrop(
-        makeAspectCrop({ unit: '%', width: 80 }, 1, naturalWidth, naturalHeight),
-        naturalWidth,
-        naturalHeight,
-      ),
-    );
+    const { width, height } = event.currentTarget;
+    if (!width || !height) return;
+    setCrop(centeredSquare(width, height));
   }
 
   async function save() {
@@ -80,13 +74,15 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
             circularCrop
             keepSelection
             minWidth={32}
+            style={{ maxHeight: '50vh' }}
           >
             <img
               ref={photo}
               src={source}
               alt="The one you picked, ready to be framed"
               onLoad={centreTheCircleOn}
-              className="max-h-[50vh] w-full object-contain"
+              className="max-w-full"
+              style={{ maxHeight: '50vh' }}
             />
           </ReactCrop>
         ) : (

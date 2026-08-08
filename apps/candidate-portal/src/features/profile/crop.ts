@@ -19,12 +19,26 @@ export interface PhotoMetrics {
   height: number;
 }
 
+export function centeredSquare(width: number, height: number): Crop {
+  const side = Math.min(width, height) * 0.8;
+  const cropWidth = (side / width) * 100;
+  const cropHeight = (side / height) * 100;
+  return {
+    unit: '%',
+    x: (100 - cropWidth) / 2,
+    y: (100 - cropHeight) / 2,
+    width: cropWidth,
+    height: cropHeight,
+  };
+}
+
 export function boundingSquare(crop: Crop, photo: PhotoMetrics): PixelSquare | null {
   const { naturalWidth, naturalHeight } = photo;
   if (naturalWidth <= 0 || naturalHeight <= 0) return null;
 
-  const across = crop.unit === '%' ? naturalWidth / 100 : naturalWidth / (photo.width || 1);
-  const down = crop.unit === '%' ? naturalHeight / 100 : naturalHeight / (photo.height || 1);
+  const percent = crop.unit === '%';
+  const across = percent ? naturalWidth / 100 : naturalWidth / (photo.width || 1);
+  const down = percent ? naturalHeight / 100 : naturalHeight / (photo.height || 1);
 
   const side = Math.round(Math.min(crop.width * across, crop.height * down));
   if (side <= 0) return null;

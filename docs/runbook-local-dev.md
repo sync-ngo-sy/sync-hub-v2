@@ -27,6 +27,10 @@ It applies everything in `supabase/migrations` to a fresh database. To reset it 
 supabase db reset
 ```
 
+Migration files may be folded while a change is still being consolidated. After pulling such a
+change, reset the local stack so the database is replayed from the current migration set; applying
+only the edited file on top of an older local history does not reproduce a fresh environment.
+
 Read the generated URLs and keys at any time with:
 
 ```bash

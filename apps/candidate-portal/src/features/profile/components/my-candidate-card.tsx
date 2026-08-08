@@ -26,6 +26,7 @@ export function MyCandidateCard() {
         role={role?.name}
         yearsOfExperience={profile.total_experience_years}
         languages={spoken}
+        headingLevel={2}
       />
       <PhotoPicker hasPhoto={Boolean(account.avatar_url)} />
     </div>

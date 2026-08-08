@@ -105,7 +105,7 @@ describe('the Candidate view', () => {
     ).toBeVisible();
   });
 
-  it('never re-runs a search to find them, however they were reached', async () => {
+  it('loads the matched fragment on a cold link without using search to identify them', async () => {
     const searched: AskedSearch[] = [];
     server.use(
       ...signedInAs(RECRUITER),
@@ -115,8 +115,19 @@ describe('the Candidate view', () => {
 
     await renderApp(FOUND_BY);
 
-    expect(searched).toEqual([]);
+    expect(searched).toEqual([
+      {
+        q: 'backend engineer',
+        location_key: null,
+        language: [],
+        skill: [],
+        role: null,
+        min_total_experience: null,
+        keywords: null,
+      },
+    ]);
     expect(screen.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
+    expect(screen.getByText('Matched in their experience')).toBeVisible();
   });
 
   it('keeps the fragment that matched when a search led here', async () => {

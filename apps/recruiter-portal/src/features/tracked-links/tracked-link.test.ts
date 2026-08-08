@@ -1,20 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import type { TrackedLink } from './tracked-link';
+import type { TrackedLink, TrackedLinkReport } from './tracked-link';
 import {
-  directViews,
+  DIRECT,
   trackedLinkAddress,
   trackedLinkState,
-  viewShare,
   viewsPerSource,
   viewsSummary,
 } from './tracked-link';
 
-/** The sources of a Job every one of whose views a link brought, so Direct is not among them. */
 function linksRanked(links: TrackedLink[]) {
-  return viewsPerSource(
-    links,
-    links.reduce((total, one) => total + one.view_count, 0),
-  );
+  return viewsPerSource(report(links)).filter((row) => row.id !== DIRECT);
+}
+
+function report(
+  items: TrackedLink[],
+  directViewCount = 0,
+  viewCount = items.reduce((total, one) => total + one.view_count, 0) + directViewCount,
+): TrackedLinkReport {
+  return { items, direct_view_count: directViewCount, view_count: viewCount };
 }
 
 function link(overrides: Partial<TrackedLink> & { id: string }): TrackedLink {
@@ -123,10 +126,12 @@ describe('the views each link brought', () => {
       ]),
     );
 
-    expect(summary).toBe('Views per source. LinkedIn post: 342 views. Notice board: 1 view.');
+    expect(summary).toBe(
+      'Views per source. LinkedIn post: 342 views, 100%. Notice board: 1 view, 0%.',
+    );
   });
 
-  it('stops reading out after the eighth link rather than listing a whole campaign', () => {
+  it('stops reading out after the eighth link rather than listing every source', () => {
     const summary = viewsSummary(
       linksRanked(
         Array.from({ length: 11 }, (_, index) =>
@@ -135,7 +140,7 @@ describe('the views each link brought', () => {
       ),
     );
 
-    expect(summary).toContain('Link 7: 93 views.');
+    expect(summary).toContain('Link 7: 93 views, 9%.');
     expect(summary).not.toContain('Link 8');
     expect(summary).toContain('And 3 more sources, further down.');
   });
@@ -147,43 +152,38 @@ describe('the views no link brought', () => {
     link({ id: '2', name: 'Notice board', view_count: 20 }),
   ];
 
-  it('is whatever the Job has read past what the links brought', () => {
-    expect(directViews(LINKS, 100)).toBe(20);
-  });
-
-  it('is none when every view came through a link', () => {
-    expect(directViews(LINKS, 80)).toBe(0);
-  });
-
-  it('never goes below none, however the two reads disagree', () => {
-    expect(directViews(LINKS, 50)).toBe(0);
-  });
-
   it('is charted as a source of its own, ranked among the links', () => {
-    const bars = viewsPerSource(LINKS, 100);
+    const bars = viewsPerSource(report(LINKS, 20));
 
-    expect(bars.map((bar) => [bar.name, bar.views])).toEqual([
-      ['LinkedIn post', 60],
-      ['Direct', 20],
-      ['Notice board', 20],
+    expect(bars.map((bar) => [bar.name, bar.views, bar.share])).toEqual([
+      ['LinkedIn post', 60, 60],
+      ['Direct', 20, 20],
+      ['Notice board', 20, 20],
     ]);
   });
 
-  it('is left off the chart when no such traffic arrived', () => {
-    expect(viewsPerSource(LINKS, 80).map((bar) => bar.name)).toEqual([
-      'LinkedIn post',
-      'Notice board',
-    ]);
+  it('is still reported when no such traffic arrived', () => {
+    expect(viewsPerSource(report(LINKS)).find((bar) => bar.name === 'Direct')).toMatchObject({
+      views: 0,
+      share: 0,
+    });
   });
 });
 
 describe('a share of the views', () => {
-  it('is the round percentage of everything the Job has drawn', () => {
-    expect(viewShare(60, 100)).toBe('60%');
-    expect(viewShare(41, 764)).toBe('5%');
+  it('allocates whole percentages that sum to one hundred', () => {
+    const bars = viewsPerSource(
+      report([link({ id: '1', view_count: 1 }), link({ id: '2', view_count: 1 })], 1),
+    );
+
+    expect(bars.reduce((sum, bar) => sum + (bar.share ?? 0), 0)).toBe(100);
+    expect(bars.map((bar) => bar.share).sort()).toEqual([33, 33, 34]);
   });
 
-  it('is nothing at all rather than a division by nothing', () => {
-    expect(viewShare(0, 0)).toBe('—');
+  it('has no percentage before the Job has views', () => {
+    expect(viewsPerSource(report([link({ id: '1' })])).map((bar) => bar.share)).toEqual([
+      null,
+      null,
+    ]);
   });
 });

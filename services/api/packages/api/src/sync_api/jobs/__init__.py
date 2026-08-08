@@ -17,6 +17,7 @@ from sync_api.jobs.payload import (
     TenantTrackedLinkPage,
     TrackedLink,
     TrackedLinkChanges,
+    TrackedLinkReport,
 )
 from sync_api.jobs.service import JobService
 from sync_api.jobs.visitors import Visitor, Visitors
@@ -40,6 +41,7 @@ __all__ = [
     "TenantTrackedLinkPage",
     "TrackedLink",
     "TrackedLinkChanges",
+    "TrackedLinkReport",
     "TrackedLinkService",
     "Visitor",
     "Visitors",

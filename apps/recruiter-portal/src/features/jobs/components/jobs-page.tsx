@@ -3,13 +3,6 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@sync/ui/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { BriefcaseBusiness, CircleAlert, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -30,6 +23,7 @@ import {
   jobMeta,
   jobState,
 } from '../job';
+import { ChoicePicker } from './choice-select';
 import { CreateJobDialog } from './create-job-dialog';
 import { EditJobDialog } from './edit-job-dialog';
 
@@ -138,24 +132,7 @@ export function JobsPage({
           </TabsList>
         </Tabs>
 
-        <Select
-          items={JOB_SORTS}
-          value={sort}
-          onValueChange={(value) => {
-            if (value !== null) onSortChange(value as JobSort);
-          }}
-        >
-          <SelectTrigger aria-label="Order">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.entries(JOB_SORTS) as [JobSort, string][]).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ChoicePicker items={JOB_SORTS} value={sort} onValueChange={onSortChange} label="Order" />
       </div>
 
       {lifecycleFailure ? (
