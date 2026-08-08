@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query
 
-from sync_api.candidate_directory import CandidateDirectoryPage, CandidateRecord
+from sync_api.candidate_directory import CandidateDirectoryPage, CandidateRecord, DirectoryOrder
 from sync_api.candidate_directory.filters import CandidateFiltersDep
 from sync_api.dependencies import ActingRecruiterDep, CandidateDirectoryServiceDep
 from sync_api.errors import openapi_problem
@@ -29,16 +29,23 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["directory"])
 @router.get(
     "/candidates",
     operation_id="listDirectoryCandidates",
-    summary="Searchable Candidates by fact, newest first",
+    summary="Searchable Candidates by fact, in the order you ask for",
     responses={**TENANT_ACCESS_REFUSED, **UNKNOWN_FILTER},
 )
 async def list_directory_candidates(
     recruiter: ActingRecruiterDep,
     directory: CandidateDirectoryServiceDep,
     filters: CandidateFiltersDep,
+    sort: Annotated[
+        DirectoryOrder,
+        Query(
+            description="What order to answer in. Newest first unless you say otherwise, and a "
+            "`cursor` only ever resumes the order it was issued for."
+        ),
+    ] = DirectoryOrder.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
@@ -47,13 +54,15 @@ async def list_directory_candidates(
     """Everyone in Damascus, everyone with React and TypeScript, everyone with five years of work.
 
     No query written in words: every filter is a yes or a no, so naming more of them only ever
-    narrows the answer, and the whole result can be paged to the end.
+    narrows the answer, and the whole result can be paged to the end. Because nothing here is
+    ranked, the order is the caller's to choose — which is what separates this from Global search,
+    where closeness is the order and re-sorting it would be a different question.
 
     A Candidate whose re-embedding is still queued is here even though Global search cannot see
     them yet — being findable by fact does not wait on a vector. No result carries an email or a
     phone number.
     """
-    return await directory.page(recruiter, filters=filters, cursor=cursor, limit=limit)
+    return await directory.page(recruiter, filters=filters, order=sort, cursor=cursor, limit=limit)
 
 
 @router.get(

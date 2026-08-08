@@ -7,6 +7,10 @@ export const canonicalSkillsQuery = api.queryOptions('get', '/v1/skills', undefi
   ...REFERENCE_CACHE,
 });
 
+export const canonicalRolesQuery = api.queryOptions('get', '/v1/roles', undefined, {
+  ...REFERENCE_CACHE,
+});
+
 export const languagesQuery = api.queryOptions('get', '/v1/languages', undefined, {
   ...REFERENCE_CACHE,
 });
@@ -33,5 +37,7 @@ export function warmSearchTaxonomies(queryClient: QueryClient): Promise<unknown>
   return Promise.all([
     settled(queryClient.ensureQueryData(languagesQuery)),
     settled(queryClient.ensureQueryData(locationsQuery)),
+    settled(queryClient.ensureQueryData(canonicalSkillsQuery)),
+    settled(queryClient.ensureQueryData(canonicalRolesQuery)),
   ]);
 }
