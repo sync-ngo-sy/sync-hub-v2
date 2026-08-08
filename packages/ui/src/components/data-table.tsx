@@ -70,10 +70,10 @@ const SKELETON_ROW_KEYS = placeholderKeys(5, 'skeleton-row');
 const count = new Intl.NumberFormat();
 
 const CELL_BORDER = 'border-b border-border';
+const TABLE_CARD = 'overflow-hidden rounded-lg border border-border bg-card shadow-card';
 const LEAD_COLUMN = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-card';
+const LEAD_HEADER = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-table-header';
 
-/* A table is a grid of comparisons, and a phone is too narrow to compare across. Below
-   md every row becomes a card instead, built from the same column definitions. */
 const COMPACT = '(max-width: 47.999rem)';
 
 function priorityOf<TRow>(cell: Cell<TRow, unknown>, index: number): ColumnPriority {
@@ -120,7 +120,7 @@ export function DataTable<TRow>({
       <ErrorNotice
         error={error}
         fallback="Couldn't load this list."
-        className={cn('rounded-lg border border-border px-6 py-8', className)}
+        className={cn('rounded-lg border border-border bg-card px-6 py-8 shadow-card', className)}
       />
     );
   }
@@ -129,9 +129,33 @@ export function DataTable<TRow>({
     return <EmptyState {...empty} className={className} />;
   }
 
-  return (
-    <div className={className}>
-      {compact ? (
+  const footer = loadingFirstPage ? null : (
+    <div
+      className={cn(
+        'flex flex-wrap items-center justify-between gap-3',
+        compact ? 'py-3' : 'border-t border-border bg-table-header px-5 py-3',
+      )}
+    >
+      <p className="text-meta tabular-nums text-muted-foreground">
+        {`${count.format(rows.length)} shown`}
+      </p>
+      {error ? <ErrorNotice error={error} fallback="Couldn't load more." /> : null}
+      {!error && loadMore?.hasMore ? (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loadMore.isLoading}
+          onClick={loadMore.onLoadMore}
+        >
+          {loadMore.isLoading ? 'Loading…' : 'Load more'}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <div className={className}>
         <CardList
           label={label}
           rows={rows}
@@ -140,7 +164,14 @@ export function DataTable<TRow>({
           rowActions={rowActions}
           isLoading={loadingFirstPage}
         />
-      ) : (
+        {footer}
+      </div>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <div className={TABLE_CARD}>
         <Table aria-label={label} className="border-separate border-spacing-0">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -148,13 +179,13 @@ export function DataTable<TRow>({
                 {headerGroup.headers.map((header, index) => (
                   <TableHead
                     key={header.id}
-                    className={cn(CELL_BORDER, 'bg-card', index === 0 && LEAD_COLUMN)}
+                    className={cn(CELL_BORDER, 'bg-table-header', index === 0 && LEAD_HEADER)}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
                 {rowActions ? (
-                  <TableHead className={cn(CELL_BORDER, 'w-px bg-card')}>
+                  <TableHead className={cn(CELL_BORDER, 'w-px bg-table-header')}>
                     <span className="sr-only">Actions</span>
                   </TableHead>
                 ) : null}
@@ -162,7 +193,7 @@ export function DataTable<TRow>({
             ))}
           </TableHeader>
 
-          <TableBody>
+          <TableBody className="[&>tr:last-child>td]:border-b-0">
             {loadingFirstPage
               ? SKELETON_ROW_KEYS.map((rowKey) => (
                   <TableRow key={rowKey} aria-hidden="true">
@@ -216,26 +247,8 @@ export function DataTable<TRow>({
                 ))}
           </TableBody>
         </Table>
-      )}
-
-      {loadingFirstPage ? null : (
-        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <p className="text-meta tabular-nums text-muted-foreground">
-            {`${count.format(rows.length)} shown`}
-          </p>
-          {error ? <ErrorNotice error={error} fallback="Couldn't load more." /> : null}
-          {!error && loadMore?.hasMore ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={loadMore.isLoading}
-              onClick={loadMore.onLoadMore}
-            >
-              {loadMore.isLoading ? 'Loading…' : 'Load more'}
-            </Button>
-          ) : null}
-        </div>
-      )}
+        {footer}
+      </div>
     </div>
   );
 }
