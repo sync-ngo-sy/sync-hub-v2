@@ -1,4 +1,4 @@
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleX, Download, Star, Trash2, Wand2 } from 'lucide-react';
@@ -64,8 +64,8 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-heading text-base font-medium text-foreground">{cv.display_name}</h3>
-          {cv.is_current ? <StatusChip tone="positive" label="Current" /> : null}
-          <StatusChip tone={state.tone} label={state.label} />
+          {cv.is_current ? <StatusMark tone="active" label="Current" /> : null}
+          <StatusMark tone={state.tone} label={state.label} />
         </div>
 
         <p className="text-meta text-muted-foreground">

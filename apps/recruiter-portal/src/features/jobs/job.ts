@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { StatusTone } from '@sync/ui/components/status-mark';
 
 export type Job = components['schemas']['JobView'];
 export type JobSummary = components['schemas']['JobSummary'];
@@ -38,10 +38,10 @@ interface JobState {
 }
 
 const JOB_STATE: Record<JobStatus, JobState> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  published: { label: 'Published', tone: 'positive' },
-  closed: { label: 'Closed', tone: 'neutral' },
-  archived: { label: 'Archived', tone: 'neutral' },
+  draft: { label: 'Draft', tone: 'waiting' },
+  published: { label: 'Published', tone: 'active' },
+  closed: { label: 'Closed', tone: 'ended' },
+  archived: { label: 'Archived', tone: 'ended' },
 };
 
 export function jobState(status: JobStatus): JobState {

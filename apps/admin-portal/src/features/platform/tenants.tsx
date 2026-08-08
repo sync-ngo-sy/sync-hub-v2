@@ -1,6 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button } from '@sync/ui/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
@@ -21,8 +21,8 @@ const tenantColumns: DataTableColumn<PlatformTenant>[] = [
     id: 'status',
     header: 'Status',
     cell: ({ row }) => (
-      <StatusChip
-        tone={row.original.is_active ? 'positive' : 'negative'}
+      <StatusMark
+        tone={row.original.is_active ? 'active' : 'ended'}
         label={row.original.is_active ? 'Active' : 'Suspended'}
       />
     ),
@@ -32,9 +32,9 @@ const tenantColumns: DataTableColumn<PlatformTenant>[] = [
     header: 'Invitation',
     cell: ({ row }) =>
       row.original.invite_pending ? (
-        <StatusChip tone="review-required" label="Invite pending" />
+        <StatusMark tone="attention" label="Invite pending" />
       ) : (
-        <StatusChip tone="neutral" label="Accepted" />
+        <StatusMark tone="active" label="Accepted" />
       ),
   },
 ];

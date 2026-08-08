@@ -1,4 +1,4 @@
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert } from 'lucide-react';
@@ -45,7 +45,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <span className="text-meta text-muted-foreground">Current</span>
-          <StatusChip label={state.label} tone={state.tone} />
+          <StatusMark label={state.label} tone={state.tone} />
         </div>
 
         {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}

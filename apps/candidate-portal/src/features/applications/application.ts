@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { ApplicationStatusTone } from '@sync/ui/components/status-mark';
 import { employmentTypeLabel, workModeLabel } from '@/features/jobs/job';
 
 export type Application = components['schemas']['Application'];
@@ -9,18 +9,18 @@ export type PublicJobQuestion = components['schemas']['PublicJobQuestion'];
 
 interface ApplicationState {
   label: string;
-  tone: StatusTone;
+  tone: ApplicationStatusTone;
 }
 
 const APPLICATION_STATE: Record<ApplicationStatus, ApplicationState> = {
-  new: { label: 'Submitted', tone: 'neutral' },
-  reviewing: { label: 'Reviewing', tone: 'neutral' },
+  new: { label: 'Submitted', tone: 'new' },
+  reviewing: { label: 'Reviewing', tone: 'reviewing' },
   shortlisted: { label: 'Shortlisted', tone: 'shortlisted' },
   interview: { label: 'Interview', tone: 'interview' },
   offer: { label: 'Offer', tone: 'offer' },
   hired: { label: 'Hired', tone: 'hired' },
-  rejected: { label: 'Not selected', tone: 'negative' },
-  withdrawn: { label: 'Withdrawn', tone: 'neutral' },
+  rejected: { label: 'Not selected', tone: 'rejected' },
+  withdrawn: { label: 'Withdrawn', tone: 'withdrawn' },
 };
 
 export function applicationState(status: ApplicationStatus): ApplicationState {

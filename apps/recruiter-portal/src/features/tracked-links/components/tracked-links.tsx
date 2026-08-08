@@ -1,5 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, Link2, Plus } from 'lucide-react';
@@ -42,7 +42,7 @@ const COLUMNS: DataTableColumn<TrackedLink>[] = [
     header: 'Status',
     cell: ({ row }) => {
       const state = trackedLinkState(row.original);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {
