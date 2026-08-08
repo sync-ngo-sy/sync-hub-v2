@@ -74,8 +74,11 @@ only for the two facts a Snapshot cannot freeze: a confirmed email lives in the 
 store alone, and an avatar is a file that moves rather than a value that was once true.
 Everything else on that card — the name, the headline, the Canonical role, the phone, the years,
 the languages — is the frozen one, so nothing a Recruiter reads beside the verdict can drift out
-from under it. The CV's link is short-lived and never stored: the page re-reads the Application
-instead of holding on to it.
+from under it. The card says as much on itself rather than leaving the Snapshot panel below to
+say it: it is marked `Snapshot` beside the name and names the two live facts underneath, because
+a card that looks identical to the Candidate view's would otherwise read as today's person. The
+CV's link is short-lived and never stored: the page re-reads the Application instead of holding
+on to it.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:

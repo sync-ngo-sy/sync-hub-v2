@@ -26,6 +26,8 @@ interface CandidateCardProps {
   headline?: string | null;
   yearsOfExperience?: number | null;
   languages?: string[];
+  mark?: string;
+  note?: string;
   className?: string;
 }
 
@@ -38,6 +40,8 @@ export function CandidateCard({
   headline,
   yearsOfExperience,
   languages,
+  mark,
+  note,
   className,
 }: CandidateCardProps) {
   const nameId = useId();
@@ -69,9 +73,16 @@ export function CandidateCard({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1 space-y-1">
-              <h1 id={nameId} className="truncate font-heading text-page-title text-foreground">
-                {name}
-              </h1>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 id={nameId} className="truncate font-heading text-page-title text-foreground">
+                  {name}
+                </h1>
+                {mark ? (
+                  <span className="rounded-4xl border border-primary/30 bg-background/70 px-2 py-0.5 text-meta text-accent-foreground">
+                    {mark}
+                  </span>
+                ) : null}
+              </div>
               {role ? (
                 <p className="truncate text-meta font-medium text-accent-foreground">{role}</p>
               ) : null}
@@ -91,6 +102,8 @@ export function CandidateCard({
               ))}
             </dl>
           ) : null}
+
+          {note ? <p className="text-meta text-muted-foreground">{note}</p> : null}
         </CardContent>
       </Card>
     </article>

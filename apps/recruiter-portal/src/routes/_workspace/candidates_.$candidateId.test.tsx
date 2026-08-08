@@ -91,6 +91,7 @@ describe('the Candidate view', () => {
     expect(card().getByText('Backend engineer, 8 years')).toBeVisible();
     expect(card().getByText('8 years')).toBeVisible();
     expect(card().getByText('Arabic, English')).toBeVisible();
+    expect(card().queryByText('Snapshot')).toBeNull();
   });
 
   it('says what little there is rather than an empty page', async () => {

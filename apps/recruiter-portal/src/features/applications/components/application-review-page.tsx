@@ -19,6 +19,12 @@ import { MatchAssessments } from './match-assessments';
 const SNAPSHOT_HINT =
   'What the candidate reviewed when they applied — not their profile as it stands today.';
 
+const CARD_MARK = 'Snapshot';
+
+const CARD_NOTE =
+  'Who they were when they applied, not who they are today. Only the email and the photo are ' +
+  'read live — everything else here was frozen with the Application.';
+
 const SNAPSHOT_EMPTY = 'Nothing else was on the profile when this Application was sent.';
 
 export function ApplicationNotFound() {
@@ -53,7 +59,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         >
           Back to {review.job.title}
         </Link>
-        <ProfileCard profile={profile} />
+        <ProfileCard profile={profile} mark={CARD_MARK} note={CARD_NOTE} />
         <dl
           aria-label="Application facts"
           className="flex flex-wrap items-center gap-x-6 gap-y-2 text-dense"

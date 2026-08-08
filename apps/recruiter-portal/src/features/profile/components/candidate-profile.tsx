@@ -11,7 +11,13 @@ import {
   yearsOfExperience,
 } from '../profile';
 
-export function ProfileCard({ profile }: { profile: FullProfile }) {
+interface ProfileCardProps {
+  profile: FullProfile;
+  mark?: string;
+  note?: string;
+}
+
+export function ProfileCard({ profile, mark, note }: ProfileCardProps) {
   const languageName = useLanguageName();
 
   return (
@@ -24,6 +30,8 @@ export function ProfileCard({ profile }: { profile: FullProfile }) {
       headline={profile.headline}
       yearsOfExperience={profile.totalExperienceYears}
       languages={profile.languages.map((language) => languageName(language.code))}
+      mark={mark}
+      note={note}
     />
   );
 }

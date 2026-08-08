@@ -78,25 +78,33 @@ describe('a Candidate read by id, as one profile', () => {
 });
 
 describe('an Application’s frozen profile, as the same profile', () => {
-  it('carries the phone the candidate froze into it', () => {
+  it('carries the phone and the role the candidate froze into it', () => {
     const profile = snapshotProfile(SNAPSHOT, APPLICANT);
 
     expect(profile.phone).toBe('+963 11 555 0101');
+    expect(profile.role).toBe('Logistics Manager');
   });
 
-  it('takes the email, the role and the photo from the applicant as they stand today', () => {
+  it('reads the frozen role even where the account has moved on since', () => {
+    const profile = snapshotProfile(
+      { ...SNAPSHOT, canonical_role: 'Warehouse Officer' },
+      APPLICANT,
+    );
+
+    expect(profile.role).toBe('Warehouse Officer');
+  });
+
+  it('takes the email and the photo from the account as they stand today', () => {
     const profile = snapshotProfile(SNAPSHOT, APPLICANT);
 
     expect(profile.email).toBe('amal@example.test');
-    expect(profile.role).toBe('Logistics Coordinator');
     expect(profile.avatarUrl).toBe('https://cdn.example.test/amal.webp');
   });
 
-  it('says nothing rather than a blank where the account holds none of it', () => {
+  it('says nothing rather than a blank where the account holds neither', () => {
     const profile = snapshotProfile(SNAPSHOT, { id: APPLICANT.id });
 
     expect(profile.email).toBeNull();
-    expect(profile.role).toBeNull();
     expect(profile.avatarUrl).toBeNull();
   });
 

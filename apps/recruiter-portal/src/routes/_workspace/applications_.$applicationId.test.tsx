@@ -115,6 +115,21 @@ describe('the Application review page', () => {
     expect(card.getByText('amal.haddad@example.test')).toBeVisible();
   });
 
+  it('says on the card itself that this is the person as they applied', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('Snapshot')).toBeVisible();
+    expect(
+      card.getByText(
+        'Who they were when they applied, not who they are today. Only the email and the photo ' +
+          'are read live — everything else here was frozen with the Application.',
+      ),
+    ).toBeVisible();
+  });
+
   it('names the role they applied as, not whatever they call themselves today', async () => {
     server.use(
       ...signedInAs(RECRUITER),

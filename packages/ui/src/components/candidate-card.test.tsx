@@ -58,6 +58,19 @@ describe('CandidateCard', () => {
     }
   });
 
+  it('says beside the name and under the facts where the facts came from', () => {
+    render(<CandidateCard {...WHOLE} mark="Snapshot" note="Frozen when they applied." />);
+
+    expect(screen.getByText('Snapshot')).toBeVisible();
+    expect(screen.getByText('Frozen when they applied.')).toBeVisible();
+  });
+
+  it('says nothing about provenance where the card was given none', () => {
+    render(<CandidateCard {...WHOLE} />);
+
+    expect(screen.queryByText('Snapshot')).toBeNull();
+  });
+
   it('omits a field it is not given rather than labelling an empty one', () => {
     render(<CandidateCard {...WHOLE} phone={null} languages={[]} />);
 
