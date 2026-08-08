@@ -11,6 +11,7 @@ export interface CandidateCard {
   headline: string | null;
   summary: string | null;
   locationName: string | null;
+  languageNames: string[];
   avatarUrl: string | null;
 }
 
@@ -32,6 +33,7 @@ export function matchedCard(match: MatchedCandidate): CandidateCard {
     headline: said(match.headline),
     summary: said(match.summary),
     locationName: said(match.location_name),
+    languageNames: match.language_names ?? [],
     avatarUrl: said(match.avatar_url),
   };
 }
@@ -43,12 +45,14 @@ export function pooledCard(pooled: PooledCandidate): CandidateCard {
     headline: said(pooled.headline),
     summary: null,
     locationName: said(pooled.location_name),
+    languageNames: [],
     avatarUrl: null,
   };
 }
 
 export function candidateMeta(card: CandidateCard): string {
-  return [card.headline, card.locationName].filter(Boolean).join(' · ');
+  const spoken = card.languageNames.length > 0 ? `Speaks ${card.languageNames.join(', ')}` : null;
+  return [card.headline, card.locationName, spoken].filter(Boolean).join(' · ');
 }
 
 export interface MatchEvidence {

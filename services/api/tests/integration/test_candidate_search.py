@@ -290,6 +290,7 @@ async def test_a_result_never_carries_an_email_or_a_phone_number(
         "canonical_role_key",
         "canonical_role_name",
         "total_experience_years",
+        "language_names",
         "in_talent_pool",
         "matched_section",
         "matched_text",

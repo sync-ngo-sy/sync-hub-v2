@@ -32,6 +32,11 @@ class SearchableCandidate(BaseModel):
     total_experience_years: int = Field(
         description="Whole years of work, derived from their own history."
     )
+    language_names: list[str] = Field(
+        default_factory=list,
+        description="Every language the Candidate says they speak, by name, in their own order.",
+        examples=[["Arabic", "English"]],
+    )
     in_talent_pool: bool = Field(
         description="Whether the acting Tenant has already saved them. Nobody else's pool."
     )
@@ -49,6 +54,7 @@ class SearchableCandidate(BaseModel):
             canonical_role_key=found.canonical_role_key,
             canonical_role_name=found.canonical_role_name,
             total_experience_years=found.total_experience_years,
+            language_names=found.language_names,
             in_talent_pool=found.in_talent_pool,
             **rest,
         )

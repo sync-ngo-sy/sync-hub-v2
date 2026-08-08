@@ -2248,6 +2248,7 @@ export type Database = {
           created_at: string | null;
           full_name: string | null;
           headline: string | null;
+          language_names: string[] | null;
           location_key: string | null;
           location_name: string | null;
           summary: string | null;
@@ -2279,6 +2280,7 @@ export type Database = {
           created_at: string | null;
           full_name: string | null;
           headline: string | null;
+          language_names: string[] | null;
           location_key: string | null;
           location_name: string | null;
           summary: string | null;

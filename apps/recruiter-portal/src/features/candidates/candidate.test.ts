@@ -16,6 +16,7 @@ const MATCH: MatchedCandidate = {
   summary: 'Builds payment systems.',
   location_key: 'sy-aleppo',
   location_name: 'Aleppo',
+  language_names: ['Arabic', 'English'],
   canonical_role_key: 'backend-engineer',
   canonical_role_name: 'Backend Engineer',
   total_experience_years: 8,
@@ -40,6 +41,7 @@ describe('the card a search hit hands the Candidate view', () => {
       headline: 'Backend engineer, 8 years',
       summary: 'Builds payment systems.',
       locationName: 'Aleppo',
+      languageNames: ['Arabic', 'English'],
       avatarUrl: null,
     });
   });
@@ -60,6 +62,7 @@ describe('the card a search hit hands the Candidate view', () => {
     expect(card.headline).toBeNull();
     expect(card.summary).toBeNull();
     expect(card.locationName).toBeNull();
+    expect(card.languageNames).toEqual([]);
   });
 });
 
@@ -71,14 +74,23 @@ describe('the card a talent-pool row hands the Candidate view', () => {
       headline: 'Backend engineer, 8 years',
       summary: null,
       locationName: 'Aleppo',
+      languageNames: [],
       avatarUrl: null,
     });
   });
 });
 
 describe('the line under a Candidate’s name', () => {
-  it('reads the headline and where they are', () => {
-    expect(candidateMeta(matchedCard(MATCH))).toBe('Backend engineer, 8 years · Aleppo');
+  it('reads the headline, where they are, and the languages they speak', () => {
+    expect(candidateMeta(matchedCard(MATCH))).toBe(
+      'Backend engineer, 8 years · Aleppo · Speaks Arabic, English',
+    );
+  });
+
+  it('leaves the languages out for a Candidate who lists none', () => {
+    expect(candidateMeta(matchedCard({ ...MATCH, language_names: [] }))).toBe(
+      'Backend engineer, 8 years · Aleppo',
+    );
   });
 
   it('says nothing at all when the profile says nothing', () => {

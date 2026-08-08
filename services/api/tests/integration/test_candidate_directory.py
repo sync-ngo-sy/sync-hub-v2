@@ -113,6 +113,7 @@ LISTED_KEYS = {
     "canonical_role_key",
     "canonical_role_name",
     "total_experience_years",
+    "language_names",
     "in_talent_pool",
 }
 
@@ -197,6 +198,16 @@ async def test_naming_two_languages_answers_with_everyone_who_speaks_either(
         people["lina"],
         people["amina"],
     ]
+
+
+async def test_each_row_carries_the_languages_the_candidate_lists_by_name(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    people = await three_candidates(app, mailbox, db_session)
+    by_id = {row["candidate_id"]: row for row in await listed(recruiter)}
+
+    assert by_id[people["lina"]]["language_names"] == ["Arabic", "English"]
+    assert by_id[people["yusuf"]]["language_names"] == ["French"]
 
 
 async def test_a_language_filter_reads_the_languages_a_candidate_lists(

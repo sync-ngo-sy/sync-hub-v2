@@ -291,6 +291,7 @@ t_candidate_directory_profiles = Table(
     Column("canonical_role_key", Text),
     Column("canonical_role_name", Text),
     Column("total_experience_years", Integer),
+    Column("language_names", ARRAY(Text())),
     schema="public",
 )
 
@@ -309,6 +310,7 @@ t_candidate_search_profiles = Table(
     Column("canonical_role_key", Text),
     Column("canonical_role_name", Text),
     Column("total_experience_years", Integer),
+    Column("language_names", ARRAY(Text())),
     schema="public",
 )
 

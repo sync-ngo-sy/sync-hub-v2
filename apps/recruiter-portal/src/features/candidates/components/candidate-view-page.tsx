@@ -69,6 +69,12 @@ export function CandidateViewPage({ card, evidence, filters }: CandidateViewPage
                   <dt className="text-meta text-muted-foreground">Location</dt>
                   <dd>{card.locationName ?? 'Not said'}</dd>
                 </div>
+                <div>
+                  <dt className="text-meta text-muted-foreground">Languages</dt>
+                  <dd>
+                    {card.languageNames.length > 0 ? card.languageNames.join(', ') : 'Not said'}
+                  </dd>
+                </div>
               </dl>
 
               <MatchEvidenceNote evidence={evidence} />

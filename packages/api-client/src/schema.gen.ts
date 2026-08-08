@@ -2168,6 +2168,15 @@ export interface components {
              */
             total_experience_years: number;
             /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
+            /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
              */
@@ -3039,6 +3048,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -3945,6 +3963,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.

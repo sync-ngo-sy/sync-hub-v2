@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import DateTime, Integer, Text, Uuid, column, select, table
+from sqlalchemy import ARRAY, DateTime, Integer, Text, Uuid, column, select, table
 
 from sync_core.models import CandidateLanguage, CandidateSkill, TalentPoolMember
 
@@ -29,6 +29,7 @@ def _eligible(view: str) -> TableClause:
         column("canonical_role_key", Text),
         column("canonical_role_name", Text),
         column("total_experience_years", Integer),
+        column("language_names", ARRAY(Text())),
         schema="public",
     )
 

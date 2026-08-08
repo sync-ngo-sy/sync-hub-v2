@@ -127,7 +127,9 @@ describe('the candidate search page', () => {
     expect(await screen.findByText('2 matches, closest first.')).toBeVisible();
 
     const amina = within(results().getByRole('link', { name: 'Amina Haddad' }));
-    expect(amina.getByText('Backend engineer, 8 years · Aleppo')).toBeVisible();
+    expect(
+      amina.getByText('Backend engineer, 8 years · Aleppo · Speaks Arabic, English'),
+    ).toBeVisible();
     expect(
       amina.getByText('Ran the payment platform at Hand in Hand for four years.'),
     ).toBeVisible();
