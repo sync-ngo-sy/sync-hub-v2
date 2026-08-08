@@ -181,6 +181,61 @@ describe('DataTable', () => {
   });
 });
 
+describe('DataTable sorted by a column', () => {
+  const SORTABLE: DataTableColumn<Application>[] = [
+    {
+      accessorKey: 'candidate',
+      header: 'Candidate',
+      meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
+    },
+    { accessorKey: 'job', header: 'Job' },
+  ];
+
+  it('leaves a column alone when nothing has asked for it to be sortable', () => {
+    renderTable({ columns: SORTABLE });
+
+    expect(screen.queryByRole('button', { name: 'Candidate' })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Candidate' })).not.toHaveAttribute(
+      'aria-sort',
+    );
+  });
+
+  it('offers only the columns that say they can be sorted', () => {
+    renderTable({ columns: SORTABLE, sort: { by: 'name', onChange: vi.fn() } });
+
+    expect(screen.getByRole('button', { name: 'Candidate' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Job' })).not.toBeInTheDocument();
+  });
+
+  it('says which way the sorted column is going, and says nothing on the others', () => {
+    renderTable({ columns: SORTABLE, sort: { by: 'name', onChange: vi.fn() } });
+
+    expect(screen.getByRole('columnheader', { name: 'Candidate' })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    expect(screen.getByRole('columnheader', { name: 'Job' })).not.toHaveAttribute('aria-sort');
+  });
+
+  it('turns the sorted column around rather than asking for the same order twice', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({ columns: SORTABLE, sort: { by: 'name', onChange } });
+
+    await user.click(screen.getByRole('button', { name: 'Candidate' }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('name_reversed');
+  });
+
+  it('starts an unsorted column ascending, whichever order the table is in', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({ columns: SORTABLE, sort: { by: 'newest', onChange } });
+
+    await user.click(screen.getByRole('button', { name: 'Candidate' }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('name');
+  });
+});
+
 describe('DataTable on a narrow viewport', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', (query: string) => ({
