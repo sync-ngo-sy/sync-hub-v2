@@ -23,8 +23,11 @@ interface CandidateCardProps {
   email?: string | null;
   phone?: string | null;
   role?: string | null;
+  headline?: string | null;
   yearsOfExperience?: number | null;
   languages?: string[];
+  mark?: string;
+  note?: string;
   className?: string;
 }
 
@@ -34,8 +37,11 @@ export function CandidateCard({
   email,
   phone,
   role,
+  headline,
   yearsOfExperience,
   languages,
+  mark,
+  note,
   className,
 }: CandidateCardProps) {
   const nameId = useId();
@@ -51,25 +57,43 @@ export function CandidateCard({
 
   return (
     <article aria-labelledby={nameId}>
-      <Card className={cn(cardSurface, className)}>
-        <CardContent className="space-y-(--space-card-gap)">
-          <div className="flex items-center gap-4">
-            <Avatar size="lg">
+      <Card
+        className={cn(
+          cardSurface,
+          'border-transparent bg-accent/45 shadow-lg ring-2 ring-primary/25',
+          className,
+        )}
+      >
+        <CardContent className="space-y-(--space-card)">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-5">
+            <Avatar size="lg" className="size-16 shrink-0 sm:size-20">
               {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-              <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
+              <AvatarFallback className="bg-primary-solid text-h3 font-semibold text-primary-solid-foreground">
                 {initials(name)}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <p id={nameId} className="truncate text-title text-foreground">
-                {name}
-              </p>
-              {role ? <p className="truncate text-meta text-secondary-foreground">{role}</p> : null}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 id={nameId} className="truncate font-heading text-page-title text-foreground">
+                  {name}
+                </h1>
+                {mark ? (
+                  <span className="rounded-4xl border border-primary/30 bg-background/70 px-2 py-0.5 text-meta text-accent-foreground">
+                    {mark}
+                  </span>
+                ) : null}
+              </div>
+              {role ? (
+                <p className="truncate text-meta font-medium text-accent-foreground">{role}</p>
+              ) : null}
+              {headline ? (
+                <p className="max-w-prose text-dense text-muted-foreground">{headline}</p>
+              ) : null}
             </div>
           </div>
 
           {facts.length > 0 ? (
-            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <dl className="grid gap-x-6 gap-y-3 border-t border-primary/15 pt-(--space-card-gap) sm:grid-cols-2 lg:grid-cols-4">
               {facts.map((fact) => (
                 <div key={fact.label} className="min-w-0">
                   <dt className="text-meta text-secondary-foreground">{fact.label}</dt>
@@ -78,6 +102,8 @@ export function CandidateCard({
               ))}
             </dl>
           ) : null}
+
+          {note ? <p className="text-meta text-muted-foreground">{note}</p> : null}
         </CardContent>
       </Card>
     </article>

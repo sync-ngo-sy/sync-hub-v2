@@ -15,6 +15,7 @@ const WHOLE = {
   email: 'lina@example.test',
   phone: '+963 11 555 0100',
   role: 'Project Manager',
+  headline: 'Runs delivery for two field programmes',
   yearsOfExperience: 6,
   languages: ['Arabic', 'English'],
 };
@@ -30,11 +31,18 @@ describe('CandidateCard', () => {
     expect(screen.getByRole('article', { name: 'Lina Khoury' })).toBeVisible();
   });
 
+  it('carries the page’s own heading, because the page is about this person', () => {
+    render(<CandidateCard {...WHOLE} />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Lina Khoury' })).toBeVisible();
+  });
+
   it('shows every key fact it is given', () => {
     render(<CandidateCard {...WHOLE} />);
 
     expect(screen.getByText('Lina Khoury')).toBeVisible();
     expect(screen.getByText('Project Manager')).toBeVisible();
+    expect(screen.getByText('Runs delivery for two field programmes')).toBeVisible();
     expect(screen.getByText('lina@example.test')).toBeVisible();
     expect(screen.getByText('+963 11 555 0100')).toBeVisible();
     expect(screen.getByText('6 years')).toBeVisible();
@@ -48,6 +56,19 @@ describe('CandidateCard', () => {
     for (const label of ['Email', 'Phone', 'Total experience', 'Languages']) {
       expect(screen.queryByText(label)).toBeNull();
     }
+  });
+
+  it('says beside the name and under the facts where the facts came from', () => {
+    render(<CandidateCard {...WHOLE} mark="Snapshot" note="Frozen when they applied." />);
+
+    expect(screen.getByText('Snapshot')).toBeVisible();
+    expect(screen.getByText('Frozen when they applied.')).toBeVisible();
+  });
+
+  it('says nothing about provenance where the card was given none', () => {
+    render(<CandidateCard {...WHOLE} />);
+
+    expect(screen.queryByText('Snapshot')).toBeNull();
   });
 
   it('omits a field it is not given rather than labelling an empty one', () => {

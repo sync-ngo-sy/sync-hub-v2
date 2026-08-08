@@ -41,7 +41,14 @@ create table application_profile_snapshots (
   phone     text,
   headline  text,
   summary   text,
-  location  text,
+
+  -- `location` and `canonical_role` are frozen as the *names* they went by the day the
+  -- Application arrived, never as their keys. Re-wording an entry in either vocabulary, or the
+  -- Candidate moving or retraining afterwards, then leaves every Application already judged
+  -- saying exactly what it said. A key would point into today's vocabulary, which is what the
+  -- live profile is for; an Application is the record of a moment.
+  location       text,
+  canonical_role text,
 
   unmapped_skills text[] not null default '{}',
 

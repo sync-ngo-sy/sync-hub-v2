@@ -47,6 +47,11 @@ export const MOVE_REFUSED: components['schemas']['ProblemDetail'] = {
 export const AMAL_REVIEW: ApplicationReview = {
   id: AMAL.id,
   job: { id: FIELD_COORDINATOR.id, title: FIELD_COORDINATOR.title },
+  candidate: {
+    id: '00000000-0000-4000-8000-000000000041',
+    email: 'amal.haddad@example.test',
+    avatar_url: null,
+  },
   status: 'shortlisted',
   screening: {
     status: 'qualified',
@@ -59,6 +64,7 @@ export const AMAL_REVIEW: ApplicationReview = {
     total_experience_years: 9,
     summary: 'Nine years moving relief cargo across northern Syria.',
     location: 'Aleppo',
+    canonical_role: 'Logistics Manager',
     unmapped_skills: ['Convoy planning', 'Customs clearance'],
     experiences: [
       {

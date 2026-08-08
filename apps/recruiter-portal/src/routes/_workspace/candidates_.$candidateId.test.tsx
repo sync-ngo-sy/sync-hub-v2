@@ -2,13 +2,20 @@ import type { components } from '@sync/api-client';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import { AMINA, CANDIDATE_OUT_OF_REACH, YOUSSEF } from '@/features/candidates/testing/fixtures';
+import {
+  AMINA,
+  AMINA_RECORD,
+  BARE_RECORD,
+  CANDIDATE_OUT_OF_REACH,
+} from '@/features/candidates/testing/fixtures';
 import {
   type AskedSearch,
   filesCandidateTags,
   findsCandidates,
   keepsCandidateNotes,
   listsCandidateNotes,
+  reachesNoCandidate,
+  readsCandidate,
 } from '@/features/candidates/testing/handlers';
 import {
   ARABIC,
@@ -34,65 +41,105 @@ function pool() {
   return within(screen.getByRole('region', { name: 'Talent pool' }));
 }
 
+function card() {
+  return within(screen.getByRole('article', { name: 'Amina Haddad' }));
+}
+
 describe('the Candidate view', () => {
-  it('shows the person the search found, and the fragment that found them', async () => {
-    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA]));
-
-    await renderApp(FOUND_BY);
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
-    expect(screen.getByText('Backend engineer, 8 years · Aleppo · Prefers Arabic')).toBeVisible();
-
-    const profile = within(screen.getByRole('region', { name: 'Profile' }));
-    expect(
-      profile.getByText('Builds payment systems for NGOs working across the region.'),
-    ).toBeVisible();
-    expect(
-      profile.getByText('Ran the payment platform at Hand in Hand for four years.'),
-    ).toBeVisible();
-    expect(profile.getByText('Matched in their experience')).toBeVisible();
-  });
-
-  it('says plainly that the platform hands over no way to contact them', async () => {
-    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA]));
-
-    await renderApp(FOUND_BY);
-
-    expect(
-      screen.getByText(
-        'What the platform will show you about this person. Sync never hands over an address or a phone number.',
-      ),
-    ).toBeVisible();
-  });
-
-  it('re-runs the search in the address, so a pasted link opens the same person', async () => {
-    const asked: AskedSearch[] = [];
-    server.use(...signedInAs(RECRUITER), ...findsCandidates([YOUSSEF, AMINA], asked));
-
-    await renderApp(FOUND_BY);
-
-    expect(asked).toHaveLength(1);
-    expect(asked[0]).toMatchObject({ q: 'backend engineer' });
-    expect(screen.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
-  });
-
-  it('reads them off the talent pool when no search led here', async () => {
-    const asked: AskedSearch[] = [];
-    server.use(
-      ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA], asked),
-      ...holdsTalentPool([AMINA_SAVED]),
-    );
+  it('reads the person by id and shows their whole profile', async () => {
+    const asked: string[] = [];
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD, asked));
 
     await renderApp(AT);
 
-    expect(asked).toEqual([]);
+    expect(asked).toEqual([AMINA.candidate_id]);
     expect(screen.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
-    expect(screen.getByText('Backend engineer, 8 years · Aleppo')).toBeVisible();
+    expect(screen.getByText('Backend engineer, 8 years')).toBeVisible();
+
+    const profile = within(screen.getByRole('region', { name: 'Profile' }));
+    expect(profile.getByText('Aleppo')).toBeVisible();
+    expect(
+      profile.getByText('Builds payment systems for NGOs working across the region.'),
+    ).toBeVisible();
+    expect(profile.getByText('Payments Lead')).toBeVisible();
+    expect(profile.getByText('University of Aleppo')).toBeVisible();
+    expect(profile.getByText('PostgreSQL')).toBeVisible();
+    expect(profile.getByRole('link', { name: 'Cash transfer ledger' })).toBeVisible();
   });
 
-  it('says so when neither the search nor the pool has them', async () => {
-    server.use(...signedInAs(RECRUITER), ...findsCandidates([YOUSSEF]));
+  it('hands over the email and phone the read carries', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(AT);
+
+    expect(card().getByText('amina.haddad@example.test')).toBeVisible();
+    expect(card().getByText('+963 11 555 0142')).toBeVisible();
+    expect(
+      screen.queryByText(
+        'What the platform will show you about this person. Sync never hands over an address or a phone number.',
+      ),
+    ).toBeNull();
+  });
+
+  it('tops the profile with the card of who they are', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(AT);
+
+    expect(card().getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
+    expect(card().getByText('Backend Engineer')).toBeVisible();
+    expect(card().getByText('Backend engineer, 8 years')).toBeVisible();
+    expect(card().getByText('8 years')).toBeVisible();
+    expect(card().getByText('Arabic, English')).toBeVisible();
+    expect(card().queryByText('Snapshot')).toBeNull();
+  });
+
+  it('says what little there is rather than an empty page', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(BARE_RECORD));
+
+    await renderApp(AT);
+
+    const profile = within(screen.getByRole('region', { name: 'Profile' }));
+    expect(
+      profile.getByText('This Candidate has filled in nothing beyond the facts above.'),
+    ).toBeVisible();
+  });
+
+  it('never re-runs a search to find them, however they were reached', async () => {
+    const searched: AskedSearch[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...findsCandidates([AMINA], searched),
+      ...readsCandidate(AMINA_RECORD),
+    );
+
+    await renderApp(FOUND_BY);
+
+    expect(searched).toEqual([]);
+    expect(screen.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
+  });
+
+  it('keeps the fragment that matched when a search led here', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
+    );
+
+    const { user } = await renderApp('/candidates?q=backend%20engineer');
+
+    const results = within(await screen.findByRole('list', { name: 'Matching Candidates' }));
+    await user.click(results.getByRole('link', { name: 'Amina Haddad' }));
+
+    const profile = within(await screen.findByRole('region', { name: 'Profile' }));
+    expect(profile.getByText('Matched in their experience')).toBeVisible();
+    expect(
+      profile.getByText('Ran the payment platform at Hand in Hand for four years.'),
+    ).toBeVisible();
+  });
+
+  it('says so when the platform can’t reach that person, rather than inventing a profile', async () => {
+    server.use(...signedInAs(RECRUITER), ...reachesNoCandidate());
 
     await renderApp(FOUND_BY);
 
@@ -106,7 +153,7 @@ describe('the Candidate view', () => {
     const asked: string[] = [];
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...keepsTalentPool([], asked),
     );
 
@@ -125,7 +172,7 @@ describe('the Candidate view', () => {
     const asked: string[] = [];
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...keepsTalentPool([AMINA_SAVED], asked),
     );
 
@@ -142,7 +189,7 @@ describe('the Candidate view', () => {
   it('puts the server’s reason for refusing beside the button, and changes nothing', async () => {
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...refusesTalentPoolChange([], CANDIDATE_OUT_OF_REACH),
     );
 
@@ -160,7 +207,7 @@ describe('the Candidate view', () => {
   it('fails and retries on its own, leaving the rest of the page standing', async () => {
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...failsToReadTalentPool(SERVER_FAULT),
     );
 
@@ -181,7 +228,7 @@ describe('the Candidate view', () => {
     const written: string[] = [];
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...keepsCandidateNotes([], written),
     );
 
@@ -205,7 +252,7 @@ describe('the Candidate view', () => {
   it('shows the notes the Tenant already keeps on the person', async () => {
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...listsCandidateNotes([CALLED_HER]),
     );
 
@@ -220,7 +267,7 @@ describe('the Candidate view', () => {
   it('offers only the Tags a Tenant may put on a Candidate, and files them under one', async () => {
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...filesCandidateTags({ vocabulary: [ARABIC, OPEN_TO_RELOCATION, WORKED_WITH_US] }),
     );
 
@@ -249,7 +296,7 @@ describe('the Candidate view', () => {
     const created: components['schemas']['NewTag'][] = [];
     server.use(
       ...signedInAs(RECRUITER),
-      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
       ...filesCandidateTags({ vocabulary: [OPEN_TO_RELOCATION] }, created),
     );
 

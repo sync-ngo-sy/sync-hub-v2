@@ -25,7 +25,7 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
     accessorKey: 'full_name',
     header: 'Candidate',
     cell: ({ row }) => {
-      const meta = candidateMeta(pooledCard(row.original), null);
+      const meta = candidateMeta(pooledCard(row.original));
       return (
         <span className="flex min-w-52 flex-col gap-1">
           <span>{row.original.full_name}</span>

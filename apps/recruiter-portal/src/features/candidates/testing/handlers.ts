@@ -2,10 +2,13 @@ import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
-import type { MatchedCandidate } from '../candidate';
+import type { MatchedCandidate, SearchableCandidate } from '../candidate';
+import { CANDIDATE_PATH, type CandidateRecord } from '../candidate-record';
+import { DIRECTORY_PATH } from '../hooks/use-candidate-directory';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-candidate-notes';
 import { SEARCH_PATH } from '../hooks/use-candidate-search';
 import { TAG_PATH, TAGS_PATH, VOCABULARY_PATH } from '../hooks/use-candidate-tags';
+import { CANDIDATE_OUT_OF_REACH } from './fixtures';
 
 type Problem = components['schemas']['ProblemDetail'];
 type NewNote = components['schemas']['NewNote'];
@@ -35,8 +38,20 @@ const NO_SUCH_TAG: Problem = {
 export interface AskedSearch {
   q: string | null;
   location_key: string | null;
-  language: string | null;
+  language: string[];
+  skill: string[];
+  role: string | null;
+  min_total_experience: string | null;
   keywords: string | null;
+}
+
+export interface AskedDirectory {
+  sort: string | null;
+  location_key: string | null;
+  language: string[];
+  skill: string[];
+  role: string | null;
+  min_total_experience: string | null;
 }
 
 export function findsCandidates(items: MatchedCandidate[], asked?: AskedSearch[]) {
@@ -45,7 +60,10 @@ export function findsCandidates(items: MatchedCandidate[], asked?: AskedSearch[]
       asked?.push({
         q: query.get('q'),
         location_key: query.get('location_key'),
-        language: query.get('language'),
+        language: query.getAll('language'),
+        skill: query.getAll('skill'),
+        role: query.get('role'),
+        min_total_experience: query.get('min_total_experience'),
         keywords: query.get('keywords'),
       });
       return response(200).json({ items, has_more: false, depth_reached: false });
@@ -55,6 +73,57 @@ export function findsCandidates(items: MatchedCandidate[], asked?: AskedSearch[]
 
 export function failsToSearchCandidates(problem: Problem) {
   return [http.get(SEARCH_PATH, ({ response }) => response(503).json(problem))];
+}
+
+export function readsCandidate(record: CandidateRecord, asked?: string[]) {
+  return [
+    http.get(CANDIDATE_PATH, ({ params, response }) => {
+      asked?.push(params.candidate_id);
+      if (params.candidate_id !== record.candidate_id) {
+        return response(404).json(CANDIDATE_OUT_OF_REACH);
+      }
+      return response(200).json(record);
+    }),
+  ];
+}
+
+export function reachesNoCandidate(asked?: string[]) {
+  return [
+    http.get(CANDIDATE_PATH, ({ params, response }) => {
+      asked?.push(params.candidate_id);
+      return response(404).json(CANDIDATE_OUT_OF_REACH);
+    }),
+  ];
+}
+
+/** `bySort` lets one test prove the order came from the API rather than from the browser: each
+ * order answers with its own arrangement, and the table shows whichever was asked for. */
+export function listsDirectoryCandidates(
+  items: SearchableCandidate[],
+  asked?: AskedDirectory[],
+  bySort?: Record<string, SearchableCandidate[]>,
+) {
+  return [
+    http.get(DIRECTORY_PATH, ({ query, response }) => {
+      const sort = query.get('sort');
+      asked?.push({
+        sort,
+        location_key: query.get('location_key'),
+        language: query.getAll('language'),
+        skill: query.getAll('skill'),
+        role: query.get('role'),
+        min_total_experience: query.get('min_total_experience'),
+      });
+      return response(200).json({
+        items: (sort && bySort?.[sort]) || items,
+        next_cursor: null,
+      });
+    }),
+  ];
+}
+
+export function failsToListDirectoryCandidates(problem: Problem) {
+  return [http.get(DIRECTORY_PATH, ({ response }) => response(500).json(problem))];
 }
 
 export function listsCandidateNotes(notes: Note[]) {
