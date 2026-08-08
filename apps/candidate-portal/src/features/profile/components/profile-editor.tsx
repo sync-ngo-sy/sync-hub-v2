@@ -18,6 +18,7 @@ import { ExperiencesSection } from './experiences-section';
 import { FilledNotice } from './filled-notice';
 import { IdentitySection } from './identity-section';
 import { LanguagesSection } from './languages-section';
+import { MyCandidateCard } from './my-candidate-card';
 import { ProfileSection } from './profile-section';
 import { ProjectsSection } from './projects-section';
 import { SkillsSection } from './skills-section';
@@ -85,6 +86,8 @@ export function ProfileEditor() {
       {fill.filledBy ? (
         <FilledNotice cvName={fill.filledBy} onUndo={fill.undo} onDismiss={fill.dismiss} />
       ) : null}
+
+      <MyCandidateCard />
 
       <form onSubmit={submit} noValidate className="space-y-6">
         <IdentitySection control={control} />
