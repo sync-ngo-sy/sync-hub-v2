@@ -1,6 +1,6 @@
 import { CandidateCard } from '@sync/ui/components/candidate-card';
 import type { ReactNode } from 'react';
-import { useLanguages } from '@/features/reference/hooks/use-languages';
+import { useLanguageName } from '@/features/reference/hooks/use-languages';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import {
   type FullProfile,
@@ -11,6 +11,23 @@ import {
   yearsOfExperience,
 } from '../profile';
 
+export function ProfileCard({ profile }: { profile: FullProfile }) {
+  const languageName = useLanguageName();
+
+  return (
+    <CandidateCard
+      name={profile.name}
+      avatarUrl={profile.avatarUrl}
+      email={profile.email}
+      phone={profile.phone}
+      role={profile.role}
+      headline={profile.headline}
+      yearsOfExperience={profile.totalExperienceYears}
+      languages={profile.languages.map((language) => languageName(language.code))}
+    />
+  );
+}
+
 interface CandidateProfileProps {
   profile: FullProfile;
   title: string;
@@ -20,150 +37,135 @@ interface CandidateProfileProps {
 }
 
 export function CandidateProfile({ profile, title, hint, empty, children }: CandidateProfileProps) {
-  const { data: languages } = useLanguages();
-  const languageName = (code: string) =>
-    languages?.find((language) => language.code === code)?.name ?? code.toUpperCase();
-  const spoken = profile.languages.map((language) => languageName(language.code));
+  const languageName = useLanguageName();
 
   return (
-    <>
-      <CandidateCard
-        name={profile.name}
-        avatarUrl={profile.avatarUrl}
-        email={profile.email}
-        phone={profile.phone}
-        role={profile.role}
-        yearsOfExperience={profile.totalExperienceYears}
-        languages={spoken}
-      />
+    <ReviewCard title={title} hint={hint}>
+      <div className="space-y-(--space-section)">
+        {profileIsBare(profile) ? (
+          <p className="text-dense text-muted-foreground">{empty}</p>
+        ) : (
+          <>
+            {profile.location || profile.summary ? (
+              <div className="space-y-2">
+                {profile.location ? (
+                  <p className="text-dense text-muted-foreground">{profile.location}</p>
+                ) : null}
+                {profile.summary ? (
+                  <p className="max-w-prose text-dense whitespace-pre-line">{profile.summary}</p>
+                ) : null}
+              </div>
+            ) : null}
 
-      <ReviewCard title={title} hint={hint}>
-        <div className="space-y-(--space-section)">
-          {profileIsBare(profile) ? (
-            <p className="text-dense text-muted-foreground">{empty}</p>
-          ) : (
-            <>
-              {profile.location || profile.summary ? (
-                <div className="space-y-2">
-                  {profile.location ? (
-                    <p className="text-dense text-muted-foreground">{profile.location}</p>
-                  ) : null}
-                  {profile.summary ? (
-                    <p className="max-w-prose text-dense whitespace-pre-line">{profile.summary}</p>
-                  ) : null}
-                </div>
-              ) : null}
+            {profile.experiences.length > 0 ? (
+              <Group title="Experience">
+                {profile.experiences.map((experience) => (
+                  <Entry
+                    key={`${experience.job_title}-${experience.company_name}-${experience.start_year}-${experience.start_month}`}
+                    title={experience.job_title}
+                    subtitle={experience.company_name}
+                    when={period(experience)}
+                    description={experience.description}
+                  />
+                ))}
+              </Group>
+            ) : null}
 
-              {profile.experiences.length > 0 ? (
-                <Group title="Experience">
-                  {profile.experiences.map((experience) => (
-                    <Entry
-                      key={`${experience.job_title}-${experience.company_name}-${experience.start_year}-${experience.start_month}`}
-                      title={experience.job_title}
-                      subtitle={experience.company_name}
-                      when={period(experience)}
-                      description={experience.description}
-                    />
+            {profile.educations.length > 0 ? (
+              <Group title="Education">
+                {profile.educations.map((education) => (
+                  <Entry
+                    key={`${education.institution}-${education.degree}-${education.field_of_study}-${education.graduation_year}`}
+                    title={education.institution}
+                    subtitle={[education.degree, education.field_of_study]
+                      .filter(Boolean)
+                      .join(', ')}
+                    when={education.graduation_year ? String(education.graduation_year) : null}
+                    description={education.description}
+                  />
+                ))}
+              </Group>
+            ) : null}
+
+            {profile.skills.length > 0 ? (
+              <Group title="Skills">
+                <ul aria-label="Skills" className="flex flex-wrap gap-2">
+                  {profile.skills.map((skill) => (
+                    <li
+                      key={skill.name}
+                      className="flex items-baseline gap-2 rounded-md bg-muted px-2 py-1 text-dense"
+                    >
+                      <span>{skill.name}</span>
+                      <span className="text-meta text-muted-foreground">
+                        {yearsOfExperience(skill.years_experience)}
+                      </span>
+                    </li>
                   ))}
-                </Group>
-              ) : null}
+                </ul>
+              </Group>
+            ) : null}
 
-              {profile.educations.length > 0 ? (
-                <Group title="Education">
-                  {profile.educations.map((education) => (
-                    <Entry
-                      key={`${education.institution}-${education.degree}-${education.field_of_study}-${education.graduation_year}`}
-                      title={education.institution}
-                      subtitle={[education.degree, education.field_of_study]
-                        .filter(Boolean)
-                        .join(', ')}
-                      when={education.graduation_year ? String(education.graduation_year) : null}
-                      description={education.description}
-                    />
+            {profile.languages.length > 0 ? (
+              <Group title="Languages">
+                <ul aria-label="Languages" className="flex flex-wrap gap-x-6 gap-y-1 text-dense">
+                  {profile.languages.map((language) => (
+                    <li key={language.code} className="flex items-baseline gap-2">
+                      <span>{languageName(language.code)}</span>
+                      <span className="text-meta text-muted-foreground">
+                        {LANGUAGE_PROFICIENCY_LABELS[language.proficiency]}
+                      </span>
+                    </li>
                   ))}
-                </Group>
-              ) : null}
+                </ul>
+              </Group>
+            ) : null}
 
-              {profile.skills.length > 0 ? (
-                <Group title="Skills">
-                  <ul aria-label="Skills" className="flex flex-wrap gap-2">
-                    {profile.skills.map((skill) => (
-                      <li
-                        key={skill.name}
-                        className="flex items-baseline gap-2 rounded-md bg-muted px-2 py-1 text-dense"
-                      >
-                        <span>{skill.name}</span>
-                        <span className="text-meta text-muted-foreground">
-                          {yearsOfExperience(skill.years_experience)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </Group>
-              ) : null}
+            {profile.projects.length > 0 ? (
+              <Group title="Projects">
+                {profile.projects.map((project) => (
+                  <Entry
+                    key={`${project.name}-${project.start_year}-${project.start_month}`}
+                    title={
+                      project.project_url ? (
+                        <ExternalLink href={project.project_url}>{project.name}</ExternalLink>
+                      ) : (
+                        project.name
+                      )
+                    }
+                    subtitle={
+                      project.repository_url ? (
+                        <ExternalLink href={project.repository_url}>
+                          {linkLabel(project.repository_url)}
+                        </ExternalLink>
+                      ) : null
+                    }
+                    when={period(project)}
+                    description={project.description}
+                  />
+                ))}
+              </Group>
+            ) : null}
 
-              {profile.languages.length > 0 ? (
-                <Group title="Languages">
-                  <ul aria-label="Languages" className="flex flex-wrap gap-x-6 gap-y-1 text-dense">
-                    {profile.languages.map((language) => (
-                      <li key={language.code} className="flex items-baseline gap-2">
-                        <span>{languageName(language.code)}</span>
-                        <span className="text-meta text-muted-foreground">
-                          {LANGUAGE_PROFICIENCY_LABELS[language.proficiency]}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </Group>
-              ) : null}
-
-              {profile.projects.length > 0 ? (
-                <Group title="Projects">
-                  {profile.projects.map((project) => (
-                    <Entry
-                      key={`${project.name}-${project.start_year}-${project.start_month}`}
-                      title={
-                        project.project_url ? (
-                          <ExternalLink href={project.project_url}>{project.name}</ExternalLink>
-                        ) : (
-                          project.name
-                        )
-                      }
-                      subtitle={
-                        project.repository_url ? (
-                          <ExternalLink href={project.repository_url}>
-                            {linkLabel(project.repository_url)}
-                          </ExternalLink>
-                        ) : null
-                      }
-                      when={period(project)}
-                      description={project.description}
-                    />
+            {profile.unmappedSkills.length > 0 ? (
+              <Group title="Other skills">
+                <p className="text-meta text-muted-foreground">
+                  The platform has no Canonical name for these, so Screening never read them.
+                </p>
+                <ul aria-label="Other skills" className="flex flex-wrap gap-2">
+                  {profile.unmappedSkills.map((skill) => (
+                    <li key={skill} className="rounded-md bg-muted px-2 py-1 text-dense">
+                      {skill}
+                    </li>
                   ))}
-                </Group>
-              ) : null}
+                </ul>
+              </Group>
+            ) : null}
+          </>
+        )}
 
-              {profile.unmappedSkills.length > 0 ? (
-                <Group title="Other skills">
-                  <p className="text-meta text-muted-foreground">
-                    The platform has no Canonical name for these, so Screening never read them.
-                  </p>
-                  <ul aria-label="Other skills" className="flex flex-wrap gap-2">
-                    {profile.unmappedSkills.map((skill) => (
-                      <li key={skill} className="rounded-md bg-muted px-2 py-1 text-dense">
-                        {skill}
-                      </li>
-                    ))}
-                  </ul>
-                </Group>
-              ) : null}
-            </>
-          )}
-
-          {children}
-        </div>
-      </ReviewCard>
-    </>
+        {children}
+      </div>
+    </ReviewCard>
   );
 }
 

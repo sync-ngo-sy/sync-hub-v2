@@ -23,6 +23,7 @@ from tests.support.applications import (
     a_reviewed_application,
     a_withdrawn_application,
     an_accepted_application,
+    an_applicant_who_can_apply,
     apply_to,
     communications_of,
     job_applications_of,
@@ -166,6 +167,24 @@ async def test_the_review_holds_the_snapshot_the_answers_and_the_verdict(
         (yes_no["question_text"], True, None),
         (short_text["question_text"], None, "In two weeks."),
     ]
+
+
+async def test_the_review_carries_the_live_facts_a_snapshot_never_froze(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    applicant = await an_applicant_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+
+    review = await a_reviewed_application(recruiter, application["id"])
+
+    assert review["candidate"]["id"] == str(applicant.id)
+    assert review["candidate"]["email"] == applicant.signup.email
+    assert review["candidate"]["canonical_role_name"] == "Backend Engineer"
+    assert "email" not in review["snapshot"]
 
 
 async def test_the_review_says_why_the_verdict_went_the_way_it_did(

@@ -40,9 +40,13 @@ same amber as `--status-review` without depending on it.
 _Avoid_: Chip, status pill, badge.
 
 **Candidate Card**:
-The summary block of a candidate's key facts — name, avatar, email, phone, canonical
-role, total years of experience, languages — rendered at the top of every candidate
-profile view, full-page or panel.
+The summary block of a candidate's key facts — avatar, name, canonical role, headline,
+email, phone, total years of experience, languages — rendered full width at the top of
+every candidate profile view, above everything else the page holds. It carries the page's
+`h1`, so no page heading repeats the name above it, and it is deliberately louder than the
+cards under it (accent wash, accent ring, deeper shadow): the page is about this person,
+and their card is the one block that says so. The avatar falls back to their initials
+until an uploaded photo exists.
 _Avoid_: Profile header, summary card.
 
 **Promotion**:

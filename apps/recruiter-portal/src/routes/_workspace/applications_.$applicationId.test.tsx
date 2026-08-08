@@ -98,9 +98,21 @@ describe('the Application review page', () => {
     await renderApp(`/applications/${REVIEW.id}`);
 
     const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
+    expect(card.getByText('Logistics Manager')).toBeVisible();
+    expect(card.getByText('Field logistics lead')).toBeVisible();
     expect(card.getByText('+963 11 555 0101')).toBeVisible();
     expect(card.getByText('9 years')).toBeVisible();
     expect(card.getByText('Arabic, English')).toBeVisible();
+  });
+
+  it('reaches the applicant by the address the account confirmed, which no Snapshot holds', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('amal.haddad@example.test')).toBeVisible();
   });
 
   it('flags the skills Screening could not read, because a human still should', async () => {

@@ -12,6 +12,7 @@ from sync_api.applications.payload import (
     ApplicationSummary,
     ApplicationSummaryPage,
     MovedApplication,
+    ReviewedCandidate,
     ReviewedJob,
     ScreeningVerdict,
     StatusHistoryEntry,
@@ -30,10 +31,14 @@ from sync_core.models import (
     ApplicationProfileSnapshot,
     ApplicationStatus,
     ApplicationStatusHistory,
+    Candidate,
+    CanonicalRole,
     Cv,
     Job,
+    Profile,
     QualificationStatus,
     StatusChangeSource,
+    User,
 )
 
 if TYPE_CHECKING:
@@ -167,6 +172,7 @@ class ApplicationReviewService:
         return ApplicationReview(
             id=application.id,
             job=ReviewedJob(id=applied.job.id, title=applied.job.title),
+            candidate=await self._candidate(application.candidate_id),
             status=application.status,
             screening=ScreeningVerdict(
                 status=application.qualification_status,
@@ -232,6 +238,23 @@ class ApplicationReviewService:
                 tenant_name=applied.tenant_name,
                 candidate_name=full_name,
             ),
+        )
+
+    async def _candidate(self, candidate_id: UUID) -> ReviewedCandidate:
+        found = (
+            await self._db.execute(
+                select(Profile.avatar_url, User.email, CanonicalRole.name.label("role_name"))
+                .join_from(Candidate, Profile, Profile.id == Candidate.id)
+                .outerjoin(CanonicalRole, CanonicalRole.key == Candidate.canonical_role_key)
+                .outerjoin(User, User.id == Candidate.id)
+                .where(Candidate.id == candidate_id)
+            )
+        ).one()
+        return ReviewedCandidate(
+            id=candidate_id,
+            email=found.email,
+            avatar_url=found.avatar_url,
+            canonical_role_name=found.role_name,
         )
 
     async def _history(self, application_id: UUID) -> list[StatusHistoryEntry]:

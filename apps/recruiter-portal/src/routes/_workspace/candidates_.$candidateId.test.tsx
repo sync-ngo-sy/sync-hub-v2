@@ -86,7 +86,9 @@ describe('the Candidate view', () => {
 
     await renderApp(AT);
 
+    expect(card().getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
     expect(card().getByText('Backend Engineer')).toBeVisible();
+    expect(card().getByText('Backend engineer, 8 years')).toBeVisible();
     expect(card().getByText('8 years')).toBeVisible();
     expect(card().getByText('Arabic, English')).toBeVisible();
   });

@@ -3,6 +3,7 @@ import { said } from '@/lib/said';
 
 type CandidateRecord = components['schemas']['CandidateRecord'];
 type ApplicationSnapshot = components['schemas']['ApplicationSnapshot'];
+type ReviewedCandidate = components['schemas']['ReviewedCandidate'];
 type LanguageProficiency = components['schemas']['LanguageProficiency'];
 
 const UNNAMED = 'Unnamed candidate';
@@ -45,14 +46,17 @@ export function recordProfile(record: CandidateRecord): FullProfile {
   };
 }
 
-export function snapshotProfile(snapshot: ApplicationSnapshot): FullProfile {
+export function snapshotProfile(
+  snapshot: ApplicationSnapshot,
+  candidate: ReviewedCandidate,
+): FullProfile {
   return {
     name: said(snapshot.full_name) ?? UNNAMED,
-    avatarUrl: null,
-    email: null,
+    avatarUrl: said(candidate.avatar_url),
+    email: said(candidate.email),
     phone: said(snapshot.phone),
     headline: said(snapshot.headline),
-    role: null,
+    role: said(candidate.canonical_role_name),
     totalExperienceYears: snapshot.total_experience_years,
     location: said(snapshot.location),
     summary: said(snapshot.summary),

@@ -229,11 +229,33 @@ class ReviewedJob(BaseModel):
     title: str
 
 
+class ReviewedCandidate(BaseModel):
+    """Who applied, as they stand today — and only what a Snapshot cannot freeze.
+
+    Everything a Recruiter judges by is read off the `snapshot`. These three are not there
+    because freezing them would be a lie: only the authentication store holds a confirmed
+    address, the Canonical role is the platform's own reading of a profile rather than
+    anything the candidate sent, and an avatar is a file that moves.
+    """
+
+    id: UUID
+    email: str | None = Field(
+        default=None,
+        description="Read from the authentication store, which is the only place a confirmed "
+        "address lives. Null when the account has none.",
+    )
+    avatar_url: str | None = None
+    canonical_role_name: str | None = Field(
+        default=None, description="What the platform currently reads their role as."
+    )
+
+
 class ApplicationReview(BaseModel):
     """One Application, whole: everything reviewing it takes, and no other tool."""
 
     id: UUID
     job: ReviewedJob
+    candidate: ReviewedCandidate
     status: ApplicationStatus
     screening: ScreeningVerdict
     snapshot: ApplicationSnapshot

@@ -45,6 +45,13 @@ const SNAPSHOT: components['schemas']['ApplicationSnapshot'] = {
   projects: [],
 };
 
+const APPLICANT: components['schemas']['ReviewedCandidate'] = {
+  id: '00000000-0000-4000-8000-000000000041',
+  email: 'amal@example.test',
+  avatar_url: 'https://cdn.example.test/amal.webp',
+  canonical_role_name: 'Logistics Coordinator',
+};
+
 describe('a Candidate read by id, as one profile', () => {
   it('carries the contact details only this read hands over', () => {
     const profile = recordProfile(RECORD);
@@ -71,22 +78,30 @@ describe('a Candidate read by id, as one profile', () => {
 });
 
 describe('an Application’s frozen profile, as the same profile', () => {
-  it('carries the phone the candidate sent, and no email, because none was sent', () => {
-    const profile = snapshotProfile(SNAPSHOT);
+  it('carries the phone the candidate froze into it', () => {
+    const profile = snapshotProfile(SNAPSHOT, APPLICANT);
 
     expect(profile.phone).toBe('+963 11 555 0101');
-    expect(profile.email).toBeNull();
   });
 
-  it('has no canonical role and no photo, because a Snapshot froze neither', () => {
-    const profile = snapshotProfile(SNAPSHOT);
+  it('takes the email, the role and the photo from the applicant as they stand today', () => {
+    const profile = snapshotProfile(SNAPSHOT, APPLICANT);
 
+    expect(profile.email).toBe('amal@example.test');
+    expect(profile.role).toBe('Logistics Coordinator');
+    expect(profile.avatarUrl).toBe('https://cdn.example.test/amal.webp');
+  });
+
+  it('says nothing rather than a blank where the account holds none of it', () => {
+    const profile = snapshotProfile(SNAPSHOT, { id: APPLICANT.id });
+
+    expect(profile.email).toBeNull();
     expect(profile.role).toBeNull();
     expect(profile.avatarUrl).toBeNull();
   });
 
   it('keeps the skills Screening could not read', () => {
-    expect(snapshotProfile(SNAPSHOT).unmappedSkills).toEqual(['Convoy planning']);
+    expect(snapshotProfile(SNAPSHOT, APPLICANT).unmappedSkills).toEqual(['Convoy planning']);
   });
 });
 
@@ -94,13 +109,16 @@ describe('a profile with nothing in its body', () => {
   it('is bare when only the facts on the card were given', () => {
     expect(
       profileIsBare(
-        snapshotProfile({ full_name: 'Amal Haddad', phone: '+963 1', total_experience_years: 9 }),
+        snapshotProfile(
+          { full_name: 'Amal Haddad', phone: '+963 1', total_experience_years: 9 },
+          APPLICANT,
+        ),
       ),
     ).toBe(true);
   });
 
   it('is not bare once anything below the card was said', () => {
-    expect(profileIsBare(snapshotProfile(SNAPSHOT))).toBe(false);
+    expect(profileIsBare(snapshotProfile(SNAPSHOT, APPLICANT))).toBe(false);
     expect(profileIsBare(recordProfile(RECORD))).toBe(false);
   });
 });

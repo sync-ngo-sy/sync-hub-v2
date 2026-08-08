@@ -1,8 +1,7 @@
-import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { CandidateProfile } from '@/features/profile/components/candidate-profile';
+import { CandidateProfile, ProfileCard } from '@/features/profile/components/candidate-profile';
 import { snapshotProfile } from '@/features/profile/profile';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
@@ -42,6 +41,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
   if (!review) return null;
 
   const verdict = screeningState(review.screening.status);
+  const profile = snapshotProfile(review.snapshot, review.candidate);
 
   return (
     <div className="space-y-(--space-section)">
@@ -53,10 +53,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         >
           Back to {review.job.title}
         </Link>
-        <PageHeader
-          title={review.snapshot.full_name}
-          description={review.snapshot.headline ?? undefined}
-        />
+        <ProfileCard profile={profile} />
         <dl
           aria-label="Application facts"
           className="flex flex-wrap items-center gap-x-6 gap-y-2 text-dense"
@@ -75,7 +72,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
       <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
         <div className="space-y-(--space-grid)">
           <CandidateProfile
-            profile={snapshotProfile(review.snapshot)}
+            profile={profile}
             title="Snapshot"
             hint={SNAPSHOT_HINT}
             empty={SNAPSHOT_EMPTY}

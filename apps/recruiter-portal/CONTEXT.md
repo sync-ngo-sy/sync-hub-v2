@@ -69,8 +69,13 @@ what the Application says on the left (the Snapshot, the answers, and the Match 
 of them), and on the right the things a Recruiter acts on or against: the Pipeline, the Applicant
 message, the Screening verdict, the CV, and the history. It reads the Snapshot
 rather than the Candidate's live profile, and says so on the page, because the two can differ
-and only one of them is what was reviewed. The CV's link is short-lived and never stored: the
-page re-reads the Application instead of holding on to it.
+and only one of them is what was reviewed. The Candidate Card on top is the one exception, and
+only for the three facts a Snapshot never froze: a confirmed email lives in the authentication
+store alone, a Canonical role is the platform's reading rather than anything the candidate sent,
+and an avatar is a file that moves. Everything else on that card — the name, the headline, the
+phone, the years, the languages — is the frozen one, so nothing the Screening verdict cites can
+drift out from under it. The CV's link is short-lived and never stored: the page re-reads the
+Application instead of holding on to it.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:

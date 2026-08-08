@@ -1,7 +1,6 @@
-import { PageHeader } from '@sync/ui/components/page-header';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { CandidateProfile } from '@/features/profile/components/candidate-profile';
+import { CandidateProfile, ProfileCard } from '@/features/profile/components/candidate-profile';
 import { recordProfile } from '@/features/profile/profile';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
@@ -52,7 +51,7 @@ export function CandidateViewPage({ record, evidence, filters }: CandidateViewPa
         >
           Back to candidate search
         </Link>
-        <PageHeader title={profile.name} description={profile.headline ?? undefined} />
+        <ProfileCard profile={profile} />
       </div>
 
       <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">

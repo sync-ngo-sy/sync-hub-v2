@@ -47,6 +47,12 @@ export const MOVE_REFUSED: components['schemas']['ProblemDetail'] = {
 export const AMAL_REVIEW: ApplicationReview = {
   id: AMAL.id,
   job: { id: FIELD_COORDINATOR.id, title: FIELD_COORDINATOR.title },
+  candidate: {
+    id: '00000000-0000-4000-8000-000000000041',
+    email: 'amal.haddad@example.test',
+    avatar_url: null,
+    canonical_role_name: 'Logistics Manager',
+  },
   status: 'shortlisted',
   screening: {
     status: 'qualified',
