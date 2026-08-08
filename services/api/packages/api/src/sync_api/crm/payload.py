@@ -74,6 +74,17 @@ class PooledCandidate(BaseModel):
     headline: str | None = None
     location_name: LocationName = None
     added_at: datetime = Field(description="When this Tenant first saved them.")
+    is_imported_from_manatal: bool = Field(
+        default=False,
+        description="True where a migration made this Candidate rather than the "
+        "person signing up. Nobody typed this profile: it was read off a CV.",
+    )
+    is_claimed: bool = Field(
+        default=True,
+        description="Whether the person has ever signed in. False means the account "
+        "exists but nobody has taken it over, so nothing on it has been confirmed "
+        "by them.",
+    )
 
 
 class TalentPoolPage(BaseModel):

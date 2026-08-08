@@ -31,6 +31,8 @@ const POOLED: PooledCandidate = {
   headline: 'Backend engineer, 8 years',
   location_name: 'Aleppo',
   added_at: '2026-07-30T09:00:00Z',
+  is_imported_from_manatal: false,
+  is_claimed: true,
 };
 
 describe('the card a search hit hands the Candidate view', () => {

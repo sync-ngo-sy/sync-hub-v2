@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.support.crm import (
@@ -107,3 +110,56 @@ async def test_a_candidate_dropped_from_the_pool_leaves_it(
     assert dropped.status_code == 204, dropped.text
     assert again.status_code == 204, again.text
     assert await pool_of(recruiter) == []
+
+
+async def test_the_pool_says_a_candidate_signed_up_and_has_signed_in(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The ordinary case, so the flags a migrated Candidate carries have something to differ
+    from."""
+    await an_application_to_this_tenant(recruiter, other_browser, mailbox, db_session)
+    candidate_id = await my_id(other_browser)
+    await save_to_pool(recruiter, candidate_id)
+
+    [member] = await pool_of(recruiter)
+
+    assert member["is_imported_from_manatal"] is False
+    assert member["is_claimed"] is True
+
+
+async def test_the_pool_marks_a_migrated_candidate_nobody_has_claimed(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """What `scripts/manatal-migration` leaves behind: a Candidate the platform made on somebody's
+    behalf, whose account nobody has taken over. Both facts have to reach the Recruiter reading
+    them, because neither is visible in anything else on the record."""
+    await a_searchable_candidate(other_browser, mailbox, db_session)
+    candidate_id = await my_id(other_browser)
+    await save_to_pool(recruiter, candidate_id)
+    await _as_an_unclaimed_import(db_session, candidate_id)
+
+    [member] = await pool_of(recruiter)
+
+    assert member["is_imported_from_manatal"] is True
+    assert member["is_claimed"] is False
+
+
+async def _as_an_unclaimed_import(session: AsyncSession, candidate_id: UUID) -> None:
+    """The state the migration script leaves: flagged as Manatal's, and never signed into."""
+    await session.execute(
+        text("update candidates set is_imported_from_manatal = true where id = :id").bindparams(
+            id=candidate_id
+        )
+    )
+    await session.execute(
+        text("update auth.users set last_sign_in_at = null where id = :id").bindparams(
+            id=candidate_id
+        )
+    )
+    await session.commit()

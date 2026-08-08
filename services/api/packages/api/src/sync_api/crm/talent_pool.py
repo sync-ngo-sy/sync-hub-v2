@@ -11,7 +11,7 @@ from sync_api.crm.access import reachable_candidate
 from sync_api.crm.payload import PooledCandidate, TalentPoolPage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_core import get_logger, transaction
-from sync_core.models import Candidate, Location, Profile, TalentPoolMember
+from sync_core.models import Candidate, Location, Profile, TalentPoolMember, User
 
 if TYPE_CHECKING:
     from sqlalchemy import ColumnElement
@@ -21,12 +21,18 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: One row of the pool: who they are now, and when this Tenant saved them.
-type Member = tuple[UUID, str, str | None, str | None, datetime]
+#: One row of the pool: who they are now, when this Tenant saved them, and how they
+#: came to exist at all.
+type Member = tuple[UUID, str, str | None, str | None, datetime, bool, datetime | None]
 
 #: Left-joined, so a Candidate who has chosen no Location has no name here — which the column
 #: itself, `not null` on its own table, has no way to say.
 LOCATION_NAME: Final = cast("ColumnElement[str | None]", Location.name)
+
+#: Whether anybody has ever signed into the account. `auth.users` is the only thing
+#: that knows, and asking it is what keeps "claimed" from being a column somebody has
+#: to remember to write.
+LAST_SIGN_IN: Final = cast("ColumnElement[datetime | None]", User.last_sign_in_at)
 
 
 class TalentPoolService:
@@ -122,24 +128,29 @@ def _members() -> Select[Member]:
             Candidate.headline,
             LOCATION_NAME,
             TalentPoolMember.added_at,
+            Candidate.is_imported_from_manatal,
+            LAST_SIGN_IN,
         )
         .join(Candidate, Candidate.id == TalentPoolMember.candidate_id)
         .join(Profile, Profile.id == TalentPoolMember.candidate_id)
+        .join(User, User.id == TalentPoolMember.candidate_id)
         .outerjoin(Location, Location.key == Candidate.location_key)
     )
 
 
 def _cursor(row: Member) -> Cursor:
-    candidate_id, _name, _headline, _location_name, added_at = row
+    candidate_id, _name, _headline, _location_name, added_at, _imported, _signed_in = row
     return Cursor(created_at=added_at, id=candidate_id)
 
 
 def _as_payload(row: Member) -> PooledCandidate:
-    candidate_id, full_name, headline, location_name, added_at = row
+    candidate_id, full_name, headline, location_name, added_at, imported, signed_in = row
     return PooledCandidate(
         candidate_id=candidate_id,
         full_name=full_name,
         headline=headline,
         location_name=location_name,
         added_at=added_at,
+        is_imported_from_manatal=imported,
+        is_claimed=signed_in is not None,
     )
