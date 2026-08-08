@@ -413,10 +413,10 @@ async def test_the_filters_narrow_the_results_together(
         str(lina.id),
     }
     assert set(named(await found(recruiter, q="engineer", language="fr"))) == {str(yusuf.id)}
-    assert set(named(await found(recruiter, q="engineer or designer", language=["en", "fr"]))) == {
-        str(lina.id),
-        str(yusuf.id),
-    }
+    assert named(await found(recruiter, q="engineer", language=["ar", "en"])) == [str(lina.id)]
+    assert await found(recruiter, q="engineer or designer", language=["en", "fr"]) == []
+    assert named(await found(recruiter, q="engineer", language="en:fluent")) == [str(lina.id)]
+    assert await found(recruiter, q="engineer", language="en:native") == []
     assert named(
         await found(recruiter, q="engineer", location_key="sy-damascus", language="en")
     ) == [str(lina.id)]

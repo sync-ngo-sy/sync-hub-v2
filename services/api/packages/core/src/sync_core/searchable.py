@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from sqlalchemy import ColumnElement, SQLColumnExpression
     from sqlalchemy.sql import TableClause
 
+    from sync_core.models import LanguageProficiency
+
 
 def _eligible(view: str) -> TableClause:
     return table(
@@ -47,9 +49,15 @@ class RequiredSkill:
 
 
 @dataclass(frozen=True, slots=True)
+class RequiredLanguage:
+    code: str
+    minimum_proficiency: LanguageProficiency | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateFilters:
     location_key: str | None = None
-    language_codes: tuple[str, ...] = ()
+    languages: tuple[RequiredLanguage, ...] = ()
     canonical_role_key: str | None = None
     minimum_total_experience_years: int | None = None
     skills: tuple[RequiredSkill, ...] = ()
@@ -59,29 +67,32 @@ def narrowed_to(profiles: TableClause, filters: CandidateFilters) -> list[Column
     predicates: list[ColumnElement[bool]] = []
     if filters.location_key:
         predicates.append(profiles.c.location_key == filters.location_key)
-    if filters.language_codes:
-        predicates.append(_speaks_one_of(profiles.c.candidate_id, filters.language_codes))
     if filters.canonical_role_key:
         predicates.append(profiles.c.canonical_role_key == filters.canonical_role_key)
     if filters.minimum_total_experience_years is not None:
         predicates.append(
             profiles.c.total_experience_years >= filters.minimum_total_experience_years
         )
+    predicates += [_speaks(profiles.c.candidate_id, language) for language in filters.languages]
     predicates += [_holds(profiles.c.candidate_id, skill) for skill in filters.skills]
     return predicates
 
 
-def _speaks_one_of(
-    candidate_id: SQLColumnExpression[UUID], codes: tuple[str, ...]
+def _speaks(
+    candidate_id: SQLColumnExpression[UUID], language: RequiredLanguage
 ) -> ColumnElement[bool]:
-    return (
-        select(CandidateLanguage.candidate_id)
-        .where(
-            CandidateLanguage.candidate_id == candidate_id,
-            CandidateLanguage.language_code.in_(codes),
-        )
-        .exists()
+    """One predicate per language, so naming two asks for both.
+
+    `proficiency >= :minimum` is the enum's own ordering, declared weakest first, which is what
+    makes "intermediate" mean intermediate and everything above it.
+    """
+    spoken = select(CandidateLanguage.candidate_id).where(
+        CandidateLanguage.candidate_id == candidate_id,
+        CandidateLanguage.language_code == language.code,
     )
+    if language.minimum_proficiency is not None:
+        spoken = spoken.where(CandidateLanguage.proficiency >= language.minimum_proficiency)
+    return spoken.exists()
 
 
 def _holds(candidate_id: SQLColumnExpression[UUID], skill: RequiredSkill) -> ColumnElement[bool]:

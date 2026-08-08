@@ -1,4 +1,13 @@
+import type { components } from '@sync/api-client';
 import { said } from '@/lib/said';
+
+export type LanguageProficiency = components['schemas']['LanguageProficiency'];
+
+/** A language a Candidate has to speak, and how well at the least. Blank means any level. */
+export interface SpokenLanguage {
+  code: string;
+  level: LanguageProficiency | '';
+}
 
 export interface CandidateSearchFilters {
   q: string;
@@ -13,13 +22,39 @@ export const SEARCH_LIMIT = 20;
 
 export const MAX_LANGUAGE_FILTERS = 20;
 
+export const PROFICIENCY_ORDER: LanguageProficiency[] = [
+  'beginner',
+  'intermediate',
+  'advanced',
+  'fluent',
+  'native',
+];
+
+const LEVEL_SEPARATOR = ':';
+
 function set(value: string | undefined): string | undefined {
   return said(value)?.trim();
 }
 
-function spoken(codes: string[] | undefined): string[] | undefined {
-  const chosen = (codes ?? []).map((code) => code.trim()).filter(Boolean);
-  return chosen.length > 0 ? chosen : undefined;
+function spoken(tokens: string[] | undefined): string[] | undefined {
+  const kept = (tokens ?? []).map((token) => token.trim()).filter(Boolean);
+  return kept.length > 0 ? kept : undefined;
+}
+
+export function languagesFrom(tokens: string[] | undefined): SpokenLanguage[] {
+  return (spoken(tokens) ?? []).map((token) => {
+    const at = token.lastIndexOf(LEVEL_SEPARATOR);
+    if (at < 0) return { code: token, level: '' };
+    return { code: token.slice(0, at), level: token.slice(at + 1) as LanguageProficiency };
+  });
+}
+
+export function languageTokens(languages: SpokenLanguage[]): string[] {
+  return languages
+    .filter((language) => language.code !== '')
+    .map((language) =>
+      language.level === '' ? language.code : `${language.code}${LEVEL_SEPARATOR}${language.level}`,
+    );
 }
 
 export function isAsked(filters: CandidateSearchFilters): boolean {

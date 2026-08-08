@@ -712,8 +712,9 @@ order by ch.candidate_id, distance          -- then order the result by distance
 `distinct on` is what keeps a candidate to one place in the ranking, holding the chunk of
 theirs that matched best; that chunk is returned as the evidence for the hit.
 
-Optional filters AND onto the join: structured predicates on the view (Location key exactly, at
-least one of the languages named) and, when the recruiter supplies explicit keywords,
+Optional filters AND onto the join: structured predicates on the view (Location key exactly, and
+every language named at the proficiency asked of it or better) and, when the recruiter supplies
+explicit keywords,
 `candidates.search_vector @@ websearch_to_tsquery('english', :keywords)`. Semantics come from
 the vector ranking; FTS is a hard filter only — there is no rank fusion.
 

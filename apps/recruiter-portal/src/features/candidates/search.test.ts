@@ -3,6 +3,8 @@ import {
   type CandidateSearchFilters,
   hardFilterCount,
   isAsked,
+  languagesFrom,
+  languageTokens,
   noMatchesMessage,
   searchQuery,
 } from './search';
@@ -32,13 +34,13 @@ describe('what the API is asked for', () => {
       searchQuery({
         q: 'nurse',
         location: 'sy-aleppo',
-        languages: ['ar', 'en'],
+        languages: ['ar:native', 'en'],
         keywords: 'triage',
       }),
     ).toEqual({
       q: 'nurse',
       location_key: 'sy-aleppo',
-      language: ['ar', 'en'],
+      language: ['ar:native', 'en'],
       keywords: 'triage',
       limit: 20,
     });
@@ -60,7 +62,7 @@ describe('how many hard filters are narrowing the results', () => {
     expect(hardFilterCount(ASKED)).toBe(0);
     expect(hardFilterCount({ ...ASKED, location: 'sy-aleppo' })).toBe(1);
     expect(hardFilterCount({ ...ASKED, location: 'sy-aleppo', languages: ['ar'] })).toBe(2);
-    expect(hardFilterCount({ ...ASKED, languages: ['ar', 'en', 'fr'] })).toBe(1);
+    expect(hardFilterCount({ ...ASKED, languages: ['ar:native', 'en', 'fr'] })).toBe(1);
     expect(hardFilterCount({ ...ASKED, languages: [] })).toBe(0);
     expect(hardFilterCount({ ...ASKED, location: '', keywords: 'triage' })).toBe(1);
   });
@@ -83,5 +85,36 @@ describe('what a search with no matches says', () => {
     expect(noMatchesMessage({ ...ASKED, languages: ['ar'], keywords: 'triage' })).toBe(
       'No Searchable Candidate matches those words with those filters.',
     );
+  });
+});
+
+describe('a language and the least proficiency that will do', () => {
+  it('reads a bare code as any level', () => {
+    expect(languagesFrom(['ar'])).toEqual([{ code: 'ar', level: '' }]);
+  });
+
+  it('reads the level written after the colon', () => {
+    expect(languagesFrom(['ar:native', 'en:intermediate'])).toEqual([
+      { code: 'ar', level: 'native' },
+      { code: 'en', level: 'intermediate' },
+    ]);
+  });
+
+  it('writes a level back only where one was asked for', () => {
+    expect(
+      languageTokens([
+        { code: 'ar', level: 'native' },
+        { code: 'en', level: '' },
+      ]),
+    ).toEqual(['ar:native', 'en']);
+  });
+
+  it('drops a row that names no language at all', () => {
+    expect(languageTokens([{ code: '', level: 'native' }])).toEqual([]);
+  });
+
+  it('survives a round trip', () => {
+    const tokens = ['ar:native', 'en'];
+    expect(languageTokens(languagesFrom(tokens))).toEqual(tokens);
   });
 });

@@ -24,6 +24,7 @@ UNKNOWN_LOCATION: Final = "urn:sync:problem:unknown-location"
 UNKNOWN_CANONICAL_ROLE: Final = "urn:sync:problem:unknown-canonical-role"
 UNKNOWN_LANGUAGE: Final = "urn:sync:problem:unknown-language"
 MALFORMED_SKILL_FILTER: Final = "urn:sync:problem:malformed-skill-filter"
+MALFORMED_LANGUAGE_FILTER: Final = "urn:sync:problem:malformed-language-filter"
 
 
 def a_candidate_record(candidate_id: UUID | str) -> str:

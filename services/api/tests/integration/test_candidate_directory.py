@@ -14,6 +14,7 @@ from tests.support.embedders import FakeEmbedder
 from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.search import (
     DIRECTORY,
+    MALFORMED_LANGUAGE_FILTER,
     MALFORMED_SKILL_FILTER,
     SEARCH,
     UNKNOWN_CANONICAL_ROLE,
@@ -188,16 +189,51 @@ async def test_naming_two_skills_answers_with_the_people_who_have_both(
     assert await listed(recruiter, skill=["React", "Python"]) == []
 
 
-async def test_naming_two_languages_answers_with_everyone_who_speaks_either(
+async def test_naming_two_languages_answers_with_the_people_who_speak_both(
     app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
+    """Lina is the only one with both; naming a pair nobody holds together answers with nobody."""
     people = await three_candidates(app, mailbox, db_session)
 
-    assert named(await listed(recruiter, language=["ar", "fr"])) == [
-        people["yusuf"],
-        people["lina"],
-        people["amina"],
+    assert named(await listed(recruiter, language=["ar", "en"])) == [people["lina"]]
+    assert await listed(recruiter, language=["ar", "fr"]) == []
+
+
+async def test_a_proficiency_keeps_everyone_who_speaks_it_that_well_or_better(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Lina's English is fluent, which clears intermediate and advanced but not native."""
+    people = await three_candidates(app, mailbox, db_session)
+
+    assert named(await listed(recruiter, language="en:intermediate")) == [people["lina"]]
+    assert named(await listed(recruiter, language="en:advanced")) == [people["lina"]]
+    assert named(await listed(recruiter, language="en:fluent")) == [people["lina"]]
+    assert await listed(recruiter, language="en:native") == []
+
+
+async def test_each_language_carries_its_own_least_proficiency(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Native Arabic and workable English is one question, and Lina is the answer to it."""
+    people = await three_candidates(app, mailbox, db_session)
+
+    assert named(await listed(recruiter, language=["ar:native", "en:intermediate"])) == [
+        people["lina"]
     ]
+    assert await listed(recruiter, language=["ar:native", "en:native"]) == []
+
+
+async def test_a_proficiency_the_platform_does_not_know_is_refused(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await three_candidates(app, mailbox, db_session)
+
+    response = await recruiter.get(DIRECTORY, params={"language": ["ar", "en:conversational"]})
+
+    assert response.status_code == 422
+    problem = response.json()
+    assert problem["type"] == MALFORMED_LANGUAGE_FILTER
+    assert [error["location"] for error in problem["errors"]] == ["query.language.1"]
 
 
 async def test_each_row_carries_the_languages_the_candidate_lists_by_name(

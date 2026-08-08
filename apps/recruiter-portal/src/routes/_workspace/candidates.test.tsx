@@ -15,7 +15,7 @@ import { server } from '@/testing/server';
 
 const AT = '/candidates';
 
-const LANGUAGES_IN_URL = encodeURIComponent(JSON.stringify(['ar', 'en']));
+const LANGUAGES_IN_URL = encodeURIComponent(JSON.stringify(['ar:native', 'en']));
 
 function results() {
   return within(screen.getByRole('list', { name: 'Matching Candidates' }));
@@ -103,6 +103,29 @@ describe('the candidate search page', () => {
     });
   });
 
+  it('asks for a language at a level, and leaves the other one at any level', async () => {
+    const asked: AskedSearch[] = [];
+    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA], asked));
+
+    const { user, router } = await renderApp(AT);
+
+    await user.type(screen.getByLabelText('Who are you looking for?'), 'nurse');
+
+    await user.click(screen.getByLabelText('Languages'));
+    await user.click(await screen.findByRole('option', { name: 'Arabic' }));
+    await user.click(await screen.findByRole('option', { name: 'English' }));
+    await user.keyboard('{Escape}');
+
+    await user.click(await screen.findByRole('combobox', { name: 'Arabic at least' }));
+    await user.click(await screen.findByRole('option', { name: 'Native' }));
+
+    await user.click(await screen.findByRole('button', { name: 'Search' }));
+
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(asked[0]?.language).toEqual(['ar:native', 'en']);
+    expect(router.state.location.search).toMatchObject({ languages: ['ar:native', 'en'] });
+  });
+
   it('drops a language from the filter without touching the rest of it', async () => {
     const asked: AskedSearch[] = [];
     server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA], asked));
@@ -110,7 +133,7 @@ describe('the candidate search page', () => {
     const { user } = await renderApp(`${AT}?q=nurse&languages=${LANGUAGES_IN_URL}`);
 
     await waitFor(() => expect(asked).toHaveLength(1));
-    expect(asked[0]?.language).toEqual(['ar', 'en']);
+    expect(asked[0]?.language).toEqual(['ar:native', 'en']);
 
     await user.click(screen.getByRole('button', { name: 'Remove Arabic' }));
     await user.click(screen.getByRole('button', { name: 'Search' }));
@@ -167,7 +190,7 @@ describe('the candidate search page', () => {
     expect(asked[0]).toEqual({
       q: 'nurse',
       location_key: 'sy-aleppo',
-      language: ['ar', 'en'],
+      language: ['ar:native', 'en'],
       keywords: 'triage',
     });
     expect(screen.getByLabelText('Who are you looking for?')).toHaveValue('nurse');

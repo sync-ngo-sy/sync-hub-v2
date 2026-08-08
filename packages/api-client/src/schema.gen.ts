@@ -6616,7 +6616,7 @@ export interface operations {
                 limit?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A language code, from `/v1/languages`. Repeat it to name more, and a Candidate who speaks any one of them is a match. */
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
                 language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
@@ -7103,7 +7103,7 @@ export interface operations {
                 offset?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A language code, from `/v1/languages`. Repeat it to name more, and a Candidate who speaks any one of them is a match. */
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
                 language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
