@@ -32,7 +32,6 @@ from sync_core.models import (
     ApplicationStatus,
     ApplicationStatusHistory,
     Candidate,
-    CanonicalRole,
     Cv,
     Job,
     Profile,
@@ -243,19 +242,13 @@ class ApplicationReviewService:
     async def _candidate(self, candidate_id: UUID) -> ReviewedCandidate:
         found = (
             await self._db.execute(
-                select(Profile.avatar_url, User.email, CanonicalRole.name.label("role_name"))
+                select(Profile.avatar_url, User.email)
                 .join_from(Candidate, Profile, Profile.id == Candidate.id)
-                .outerjoin(CanonicalRole, CanonicalRole.key == Candidate.canonical_role_key)
                 .outerjoin(User, User.id == Candidate.id)
                 .where(Candidate.id == candidate_id)
             )
         ).one()
-        return ReviewedCandidate(
-            id=candidate_id,
-            email=found.email,
-            avatar_url=found.avatar_url,
-            canonical_role_name=found.role_name,
-        )
+        return ReviewedCandidate(id=candidate_id, email=found.email, avatar_url=found.avatar_url)
 
     async def _history(self, application_id: UUID) -> list[StatusHistoryEntry]:
         rows = await self._db.scalars(

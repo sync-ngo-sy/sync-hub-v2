@@ -1873,6 +1873,11 @@ export interface components {
             /** Location */
             location?: string | null;
             /**
+             * Canonical Role
+             * @description What the Candidate's Canonical role was called the day they applied. Null when they claimed none.
+             */
+            canonical_role?: string | null;
+            /**
              * Unmapped Skills
              * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
              */
@@ -3913,12 +3918,11 @@ export interface components {
         RecruiterRole: "admin" | "recruiter";
         /**
          * ReviewedCandidate
-         * @description Who applied, as they stand today — and only what a Snapshot cannot freeze.
+         * @description Who applied, as they stand today — and only the two facts a Snapshot cannot freeze.
          *
-         *     Everything a Recruiter judges by is read off the `snapshot`. These three are not there
+         *     Everything a Recruiter judges by is read off the `snapshot`. These two are not there
          *     because freezing them would be a lie: only the authentication store holds a confirmed
-         *     address, the Canonical role is the platform's own reading of a profile rather than
-         *     anything the candidate sent, and an avatar is a file that moves.
+         *     address, and an avatar is a file that moves rather than a value that was true once.
          */
         ReviewedCandidate: {
             /**
@@ -3933,11 +3937,6 @@ export interface components {
             email?: string | null;
             /** Avatar Url */
             avatar_url?: string | null;
-            /**
-             * Canonical Role Name
-             * @description What the platform currently reads their role as.
-             */
-            canonical_role_name?: string | null;
         };
         /**
          * ReviewedJob

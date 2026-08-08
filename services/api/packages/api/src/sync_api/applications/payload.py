@@ -162,6 +162,11 @@ class ApplicationSnapshot(BaseModel):
     headline: OptionalLine = None
     summary: OptionalParagraph = None
     location: OptionalLine = None
+    canonical_role: OptionalLine = Field(
+        default=None,
+        description="What the Candidate's Canonical role was called the day they applied. Null "
+        "when they claimed none.",
+    )
     unmapped_skills: list[str] = Field(
         default_factory=list,
         description="Skills the candidate claims that the platform has no Canonical name for. "
@@ -230,12 +235,11 @@ class ReviewedJob(BaseModel):
 
 
 class ReviewedCandidate(BaseModel):
-    """Who applied, as they stand today — and only what a Snapshot cannot freeze.
+    """Who applied, as they stand today — and only the two facts a Snapshot cannot freeze.
 
-    Everything a Recruiter judges by is read off the `snapshot`. These three are not there
+    Everything a Recruiter judges by is read off the `snapshot`. These two are not there
     because freezing them would be a lie: only the authentication store holds a confirmed
-    address, the Canonical role is the platform's own reading of a profile rather than
-    anything the candidate sent, and an avatar is a file that moves.
+    address, and an avatar is a file that moves rather than a value that was true once.
     """
 
     id: UUID
@@ -245,9 +249,6 @@ class ReviewedCandidate(BaseModel):
         "address lives. Null when the account has none.",
     )
     avatar_url: str | None = None
-    canonical_role_name: str | None = Field(
-        default=None, description="What the platform currently reads their role as."
-    )
 
 
 class ApplicationReview(BaseModel):

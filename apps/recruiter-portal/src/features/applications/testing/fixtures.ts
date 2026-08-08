@@ -51,7 +51,6 @@ export const AMAL_REVIEW: ApplicationReview = {
     id: '00000000-0000-4000-8000-000000000041',
     email: 'amal.haddad@example.test',
     avatar_url: null,
-    canonical_role_name: 'Logistics Manager',
   },
   status: 'shortlisted',
   screening: {
@@ -65,6 +64,7 @@ export const AMAL_REVIEW: ApplicationReview = {
     total_experience_years: 9,
     summary: 'Nine years moving relief cargo across northern Syria.',
     location: 'Aleppo',
+    canonical_role: 'Logistics Manager',
     unmapped_skills: ['Convoy planning', 'Customs clearance'],
     experiences: [
       {

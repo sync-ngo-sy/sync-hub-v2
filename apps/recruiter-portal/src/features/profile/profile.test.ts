@@ -36,6 +36,7 @@ const SNAPSHOT: components['schemas']['ApplicationSnapshot'] = {
   headline: 'Field logistics lead',
   summary: 'Nine years moving relief cargo.',
   location: 'Aleppo',
+  canonical_role: 'Logistics Manager',
   total_experience_years: 9,
   unmapped_skills: ['Convoy planning'],
   experiences: [],
@@ -49,7 +50,6 @@ const APPLICANT: components['schemas']['ReviewedCandidate'] = {
   id: '00000000-0000-4000-8000-000000000041',
   email: 'amal@example.test',
   avatar_url: 'https://cdn.example.test/amal.webp',
-  canonical_role_name: 'Logistics Coordinator',
 };
 
 describe('a Candidate read by id, as one profile', () => {

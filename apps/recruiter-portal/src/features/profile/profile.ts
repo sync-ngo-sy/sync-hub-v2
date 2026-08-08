@@ -56,7 +56,7 @@ export function snapshotProfile(
     email: said(candidate.email),
     phone: said(snapshot.phone),
     headline: said(snapshot.headline),
-    role: said(candidate.canonical_role_name),
+    role: said(snapshot.canonical_role),
     totalExperienceYears: snapshot.total_experience_years,
     location: said(snapshot.location),
     summary: said(snapshot.summary),

@@ -115,6 +115,22 @@ describe('the Application review page', () => {
     expect(card.getByText('amal.haddad@example.test')).toBeVisible();
   });
 
+  it('names the role they applied as, not whatever they call themselves today', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication({
+        ...REVIEW,
+        snapshot: { ...REVIEW.snapshot, canonical_role: 'Warehouse Officer' },
+      }),
+    );
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('Warehouse Officer')).toBeVisible();
+    expect(card.queryByText('Logistics Manager')).toBeNull();
+  });
+
   it('flags the skills Screening could not read, because a human still should', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
