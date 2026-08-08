@@ -65,6 +65,13 @@ because an upload is what fills everything under it; `/cvs`, where they used to 
 own, redirects here.
 _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
 
+**Avatar**:
+The Candidate's current public profile image, stored as one square WebP. The portal calls the file
+they pick a photo because that is the action's ordinary language; the API and stored field call the
+result an Avatar. Replacing it updates the Profile before removing only the previously remembered
+object, so concurrent uploads cannot delete the current one.
+_Avoid_: Profile picture as a separate domain concept.
+
 **Fill from a CV**:
 Taking what the platform read off a CV into the editor's fields, where the Candidate reads every
 value in context and saves — or does not. It writes nothing: a raw parse is never the

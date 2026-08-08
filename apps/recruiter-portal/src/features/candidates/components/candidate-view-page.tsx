@@ -1,6 +1,9 @@
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { CandidateProfile, ProfileCard } from '@/features/profile/components/candidate-profile';
+import {
+  CandidateFactsCard,
+  CandidateProfile,
+} from '@/features/profile/components/candidate-profile';
 import { recordProfile } from '@/features/profile/profile';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
@@ -51,7 +54,7 @@ export function CandidateViewPage({ record, evidence, filters }: CandidateViewPa
         >
           Back to candidate search
         </Link>
-        <ProfileCard profile={profile} />
+        <CandidateFactsCard profile={profile} />
       </div>
 
       <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">

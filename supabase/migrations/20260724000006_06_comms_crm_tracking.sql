@@ -53,7 +53,10 @@ create table communications (
   idempotency_key text not null unique,
 
   created_at timestamptz not null default now(),
-  sent_at    timestamptz,
+  available_at timestamptz,
+  started_at   timestamptz,
+  completed_at timestamptz,
+  sent_at      timestamptz,
 
   foreign key (tenant_id)                        references tenants (id),
   foreign key (application_id, candidate_id)      references applications (id, candidate_id),
@@ -69,6 +72,8 @@ create table communications (
   )
 );
 create index communications_status_created_idx      on communications (status, created_at);
+create index communications_claim_idx on communications (available_at)
+  where status in ('queued', 'processing');
 create index communications_candidate_idx           on communications (candidate_id);
 create index communications_application_idx          on communications (application_id);
 create index communications_tenant_candidate_idx    on communications (tenant_id, candidate_id, created_at);
@@ -92,12 +97,12 @@ create table job_view_events (
 create index job_view_events_job_viewed_idx         on job_view_events (job_id, viewed_at);
 create index job_view_events_link_viewed_idx        on job_view_events (tracked_link_id, viewed_at);
 create index job_view_events_job_link_viewed_idx    on job_view_events (job_id, tracked_link_id, viewed_at);
--- Two questions share the (session, job) prefix: which link brought this session here, for
--- attributing an Application, and whether this browser has already been counted for this Job
--- through this attribution. The second one asks about Direct views too, so this cannot be
--- partial on `tracked_link_id`, and one row per view is too many writes for a second index.
 create index job_view_events_session_job_idx
   on job_view_events (session_id, job_id, tracked_link_id, viewed_at desc);
+create index job_view_events_session_job_attribution_idx
+  on job_view_events (session_id, job_id, viewed_at desc, id desc)
+  include (tracked_link_id)
+  where tracked_link_id is not null;
 
 create table notes (
   id uuid primary key default gen_random_uuid(),

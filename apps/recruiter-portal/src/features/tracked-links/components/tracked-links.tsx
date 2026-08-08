@@ -9,13 +9,18 @@ import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useChangeTrackedLink } from '../hooks/use-tracked-link-actions';
 import { useTrackedLinks } from '../hooks/use-tracked-links';
-import { type TrackedLink, trackedLinkAddress, trackedLinkState, viewShare } from '../tracked-link';
+import {
+  type TrackedLink,
+  trackedLinkAddress,
+  trackedLinkState,
+  viewsPerSource,
+} from '../tracked-link';
 import { CopyAddressButton } from './copy-address-button';
 import { LinkViewsCard } from './link-views-card';
 import { MintLinkDialog } from './mint-link-dialog';
 import { RenameLinkDialog } from './rename-link-dialog';
 
-function columnsFor(jobViews: number): DataTableColumn<TrackedLink>[] {
+function columnsFor(shares: Map<string, number | null>): DataTableColumn<TrackedLink>[] {
   return [
     { accessorKey: 'name', header: 'Link' },
     {
@@ -43,7 +48,7 @@ function columnsFor(jobViews: number): DataTableColumn<TrackedLink>[] {
       header: 'Share',
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
-          {viewShare(row.original.view_count, jobViews)}
+          {shares.get(row.original.id) === null ? '—' : `${shares.get(row.original.id) ?? 0}%`}
         </span>
       ),
     },
@@ -71,15 +76,17 @@ function columnsFor(jobViews: number): DataTableColumn<TrackedLink>[] {
 const TURNED_OFF =
   'Tracked link turned off — its address stops working, and the views it brought stay counted.';
 
-export function TrackedLinks({ jobId, jobViews }: { jobId: string; jobViews: number }) {
+export function TrackedLinks({ jobId }: { jobId: string }) {
   const links = useTrackedLinks(jobId);
   const change = useChangeTrackedLink(jobId);
   const [minting, setMinting] = useState(false);
   const [renaming, setRenaming] = useState<TrackedLink | null>(null);
   const [changeFailure, setChangeFailure] = useState<string | null>(null);
-  const columns = useMemo(() => columnsFor(jobViews), [jobViews]);
+  const bars = useMemo(() => (links.data ? viewsPerSource(links.data) : []), [links.data]);
+  const shares = useMemo(() => new Map(bars.map((row) => [row.id, row.share ?? null])), [bars]);
+  const columns = useMemo(() => columnsFor(shares), [shares]);
 
-  const items = links.data ?? [];
+  const items = links.data?.items ?? [];
   const listedNothing = links.isSuccess && items.length === 0;
 
   async function toggle(link: TrackedLink) {
@@ -109,7 +116,9 @@ export function TrackedLinks({ jobId, jobViews }: { jobId: string; jobViews: num
         </div>
       )}
 
-      {items.length > 0 ? <LinkViewsCard links={items} jobViews={jobViews} /> : null}
+      {links.data && (items.length > 0 || links.data.view_count > 0) ? (
+        <LinkViewsCard bars={bars} viewCount={links.data.view_count} />
+      ) : null}
 
       {changeFailure ? (
         <Alert>

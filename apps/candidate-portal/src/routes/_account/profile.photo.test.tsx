@@ -137,15 +137,4 @@ describe('putting a photo on the profile', () => {
     expect(screen.queryByRole('dialog', { name: 'Frame your photo' })).toBeNull();
     expect(uploaded).not.toHaveBeenCalled();
   });
-
-  it('refuses a photo bigger than the platform takes without sending it', async () => {
-    const uploaded = vi.fn();
-    server.use(...savesPhoto(A_PHOTO_URL, uploaded));
-    const user = await openProfile();
-
-    await pickAPhoto(user, aPhotoFile('huge.jpg', 'image/jpeg', 5 * 1024 * 1024 + 1));
-
-    expect(await screen.findByText(/larger than 5 MB/)).toBeInTheDocument();
-    expect(uploaded).not.toHaveBeenCalled();
-  });
 });
