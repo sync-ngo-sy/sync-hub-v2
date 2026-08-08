@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { StatusTone } from '@sync/ui/components/status-mark';
 
 export type Cv = components['schemas']['Cv'];
 
@@ -40,22 +40,22 @@ interface ParseState {
 export const PARSE_STATES: Record<Cv['parsing_status'], ParseState> = {
   uploaded: {
     label: 'Queued',
-    tone: 'neutral',
+    tone: 'waiting',
     sentence: 'Waiting to be read. The fields below fill in when it has been.',
   },
   processing: {
     label: 'Reading',
-    tone: 'neutral',
+    tone: 'waiting',
     sentence: 'Being read now. The fields below fill in when it has been.',
   },
   ready: {
     label: 'Ready',
-    tone: 'positive',
+    tone: 'active',
     sentence: 'Read in full — it can fill the form below, and be the CV you apply with.',
   },
   failed: {
     label: "Couldn't be read",
-    tone: 'negative',
+    tone: 'ended',
     sentence: 'It cannot fill the form below or be made current. Upload another file instead.',
   },
 };

@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { StatusTone } from '@sync/ui/components/status-mark';
 
 export type Member = components['schemas']['MemberView'];
 export type RecruiterRole = components['schemas']['RecruiterRole'];
@@ -31,8 +31,8 @@ export function isTenantAdmin(members: Member[], profileId: string): boolean {
 
 export function memberAccess(member: Member): { label: string; tone: StatusTone } {
   return member.is_active
-    ? { label: 'Active', tone: 'positive' }
-    : { label: 'No access', tone: 'negative' };
+    ? { label: 'Active', tone: 'active' }
+    : { label: 'No access', tone: 'ended' };
 }
 
 export type MemberChangeKey =

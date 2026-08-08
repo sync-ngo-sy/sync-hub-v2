@@ -1,5 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
@@ -50,7 +50,7 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
     header: 'Screening',
     cell: ({ row }) => {
       const state = screeningState(row.original.qualification_status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {
@@ -58,7 +58,7 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
     header: 'Pipeline',
     cell: ({ row }) => {
       const state = pipelineState(row.original.status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
 ];

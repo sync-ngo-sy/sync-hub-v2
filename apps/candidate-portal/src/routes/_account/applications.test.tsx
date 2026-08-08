@@ -33,7 +33,7 @@ function cardFor(title: string): HTMLElement {
 }
 
 describe('My Applications', () => {
-  it('lists Applications newest-first with status chips and relative times', async () => {
+  it('lists Applications newest-first with status marks and relative times', async () => {
     const recentApplication = {
       ...APPLICATION,
       applied_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1_000).toISOString(),
