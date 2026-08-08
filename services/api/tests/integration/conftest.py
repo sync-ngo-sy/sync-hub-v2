@@ -11,9 +11,10 @@ from httpx import AsyncClient
 from sqlalchemy import text
 
 from sync_api.app import create_app
-from sync_core import Database, Settings, Storage, get_settings
+from sync_core import AVATAR_BUCKET, Database, Settings, Storage, get_settings
 from tests.conftest import ADMIN_PORTAL_URL, RECRUITER_PORTAL_URL
 from tests.support import stack
+from tests.support.avatars import empty_avatar_bucket
 from tests.support.cvs import empty_cv_bucket
 from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.mailbox import Mailbox, mailbox_at
@@ -98,13 +99,22 @@ async def storage(settings: Settings) -> AsyncIterator[Storage]:
     await bucket.aclose()
 
 
+@pytest.fixture(scope="session")
+async def avatar_storage(settings: Settings) -> AsyncIterator[Storage]:
+    bucket = Storage.build(settings, bucket=AVATAR_BUCKET)
+    yield bucket
+    await bucket.aclose()
+
+
 @pytest.fixture(autouse=True)
 async def _clean_slate(
     _cleanup_connection: asyncpg.Connection,
     _data_tables: list[str],
     storage: Storage,
+    avatar_storage: Storage,
 ) -> None:
     await empty_cv_bucket(_cleanup_connection, storage)
+    await empty_avatar_bucket(_cleanup_connection, avatar_storage)
     await _cleanup_connection.execute(stack.truncate_script(_data_tables))
     await _cleanup_connection.execute(stack.reference_seed_sql())
 
