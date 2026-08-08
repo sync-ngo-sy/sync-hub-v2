@@ -3,9 +3,11 @@ import { http } from '@sync/api-client/testing';
 import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
 import type { MatchedCandidate } from '../candidate';
+import { CANDIDATE_PATH, type CandidateRecord } from '../candidate-record';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-candidate-notes';
 import { SEARCH_PATH } from '../hooks/use-candidate-search';
 import { TAG_PATH, TAGS_PATH, VOCABULARY_PATH } from '../hooks/use-candidate-tags';
+import { CANDIDATE_OUT_OF_REACH } from './fixtures';
 
 type Problem = components['schemas']['ProblemDetail'];
 type NewNote = components['schemas']['NewNote'];
@@ -55,6 +57,27 @@ export function findsCandidates(items: MatchedCandidate[], asked?: AskedSearch[]
 
 export function failsToSearchCandidates(problem: Problem) {
   return [http.get(SEARCH_PATH, ({ response }) => response(503).json(problem))];
+}
+
+export function readsCandidate(record: CandidateRecord, asked?: string[]) {
+  return [
+    http.get(CANDIDATE_PATH, ({ params, response }) => {
+      asked?.push(params.candidate_id);
+      if (params.candidate_id !== record.candidate_id) {
+        return response(404).json(CANDIDATE_OUT_OF_REACH);
+      }
+      return response(200).json(record);
+    }),
+  ];
+}
+
+export function reachesNoCandidate(asked?: string[]) {
+  return [
+    http.get(CANDIDATE_PATH, ({ params, response }) => {
+      asked?.push(params.candidate_id);
+      return response(404).json(CANDIDATE_OUT_OF_REACH);
+    }),
+  ];
 }
 
 export function listsCandidateNotes(notes: Note[]) {

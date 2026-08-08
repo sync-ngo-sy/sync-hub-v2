@@ -1,11 +1,17 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import { AMINA, SEARCH_OFFLINE, YOUSSEF } from '@/features/candidates/testing/fixtures';
+import {
+  AMINA,
+  AMINA_RECORD,
+  SEARCH_OFFLINE,
+  YOUSSEF,
+} from '@/features/candidates/testing/fixtures';
 import {
   type AskedSearch,
   failsToSearchCandidates,
   findsCandidates,
+  readsCandidate,
 } from '@/features/candidates/testing/handlers';
 import { AMINA_SAVED } from '@/features/talent-pool/testing/fixtures';
 import { holdsTalentPool } from '@/features/talent-pool/testing/handlers';
@@ -203,7 +209,11 @@ describe('the candidate search page', () => {
   });
 
   it('opens the Candidate view from a match, carrying the search that found them', async () => {
-    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...findsCandidates([AMINA]),
+      ...readsCandidate(AMINA_RECORD),
+    );
 
     const { user, router } = await renderApp(`${AT}?q=engineer&location=sy-aleppo`);
 
@@ -213,5 +223,6 @@ describe('the candidate search page', () => {
       expect(router.state.location.pathname).toBe(`/candidates/${AMINA.candidate_id}`),
     );
     expect(router.state.location.search).toEqual({ q: 'engineer', location: 'sy-aleppo' });
+    expect(await screen.findByRole('article', { name: 'Amina Haddad' })).toBeVisible();
   });
 });

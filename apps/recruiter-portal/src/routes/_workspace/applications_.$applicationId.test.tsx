@@ -61,7 +61,6 @@ describe('the Application review page', () => {
       snapshot.getByText('Nine years moving relief cargo across northern Syria.'),
     ).toBeVisible();
     expect(snapshot.getByText('Aleppo')).toBeVisible();
-    expect(snapshot.getByText('+963 11 555 0101')).toBeVisible();
 
     expect(snapshot.getByText('Logistics Coordinator')).toBeVisible();
     expect(snapshot.getByText('Hand in Hand')).toBeVisible();
@@ -91,6 +90,17 @@ describe('the Application review page', () => {
       'href',
       'https://example.test/cold-chain',
     );
+  });
+
+  it('tops the frozen profile with the card of who applied', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
+    expect(card.getByText('+963 11 555 0101')).toBeVisible();
+    expect(card.getByText('9 years')).toBeVisible();
+    expect(card.getByText('Arabic, English')).toBeVisible();
   });
 
   it('flags the skills Screening could not read, because a human still should', async () => {

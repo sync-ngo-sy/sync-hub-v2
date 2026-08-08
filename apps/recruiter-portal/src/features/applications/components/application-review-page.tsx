@@ -2,6 +2,8 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { CandidateProfile } from '@/features/profile/components/candidate-profile';
+import { snapshotProfile } from '@/features/profile/profile';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { absoluteDateTime } from '@/lib/dates';
@@ -12,9 +14,13 @@ import { ApplicationAnswers } from './application-answers';
 import { ApplicationHistory } from './application-history';
 import { ApplicationNotes } from './application-notes';
 import { ApplicationPipeline } from './application-pipeline';
-import { ApplicationSnapshot } from './application-snapshot';
 import { ApplicationTags } from './application-tags';
 import { MatchAssessments } from './match-assessments';
+
+const SNAPSHOT_HINT =
+  'What the candidate reviewed when they applied — not their profile as it stands today.';
+
+const SNAPSHOT_EMPTY = 'Nothing else was on the profile when this Application was sent.';
 
 export function ApplicationNotFound() {
   return (
@@ -68,7 +74,12 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
 
       <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
         <div className="space-y-(--space-grid)">
-          <ApplicationSnapshot snapshot={review.snapshot} />
+          <CandidateProfile
+            profile={snapshotProfile(review.snapshot)}
+            title="Snapshot"
+            hint={SNAPSHOT_HINT}
+            empty={SNAPSHOT_EMPTY}
+          />
           <ApplicationAnswers answers={review.answers} />
           <WidgetBoundary name="Match assessment">
             <MatchAssessments applicationId={applicationId} />

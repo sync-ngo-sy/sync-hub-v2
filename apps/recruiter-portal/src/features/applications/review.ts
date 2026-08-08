@@ -2,10 +2,8 @@ import type { components } from '@sync/api-client';
 import { type PipelineStatus, pipelineState } from './application';
 
 export type ApplicationReview = components['schemas']['ApplicationReview'];
-export type Snapshot = components['schemas']['ApplicationSnapshot'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
 export type StatusHistoryEntry = components['schemas']['StatusHistoryEntry'];
-type LanguageProficiency = components['schemas']['LanguageProficiency'];
 type StatusChangeSource = components['schemas']['StatusChangeSource'];
 
 export interface PipelineMove {
@@ -102,49 +100,6 @@ export function pipelineMoves(status: PipelineStatus): PipelineMove[] {
 
 export function pipelineOutcome(status: PipelineStatus): string | null {
   return OUTCOME[status] ?? null;
-}
-
-export const LANGUAGE_PROFICIENCY_LABELS: Record<LanguageProficiency, string> = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-  fluent: 'Fluent',
-  native: 'Native',
-};
-
-const MONTH = new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' });
-
-export interface SnapshotPeriod {
-  start_year?: number | null;
-  start_month?: number | null;
-  end_year?: number | null;
-  end_month?: number | null;
-  is_current?: boolean;
-}
-
-function monthYear(
-  year: number | null | undefined,
-  month: number | null | undefined,
-): string | null {
-  if (year === null || year === undefined) return null;
-  if (month === null || month === undefined || month < 1 || month > 12) return String(year);
-  return `${MONTH.format(new Date(Date.UTC(2000, month - 1, 1)))} ${year}`;
-}
-
-export function period(entry: SnapshotPeriod): string | null {
-  const from = monthYear(entry.start_year, entry.start_month);
-  const to = entry.is_current ? 'Present' : monthYear(entry.end_year, entry.end_month);
-  if (from && to) return `${from} – ${to}`;
-  return from ?? to ?? null;
-}
-
-export function linkLabel(url: string): string {
-  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-}
-
-export function yearsOfExperience(years: number): string {
-  if (years < 1) return 'Under a year';
-  return years === 1 ? '1 year' : `${years} years`;
 }
 
 const CHANGED_BY: Record<StatusChangeSource, string> = {

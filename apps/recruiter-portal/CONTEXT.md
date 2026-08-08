@@ -226,21 +226,24 @@ ones that remain. Asked on submit rather than as a Recruiter types, because the 
 one and half a sentence is a different question; the whole search lives in the address bar, so a
 reload keeps it and a pasted link reproduces it. The API answers one page and offers no cursor, so
 a full page is a ceiling rather than a count — it reads as "the closest twenty" and points at
-narrowing, because there is no next page to offer and calling it a total would be a lie. Nothing
-here carries an address or a phone number, and the page says so before the first search rather than
-after it.
+narrowing, because there is no next page to offer and calling it a total would be a lie. A result
+row is a way in rather than a dossier: it carries no email and no phone, but opening the person
+reads their whole profile, contact details included, which is what the page says before the first
+search.
 _Avoid_: Sourcing, candidate database, global search (that is the backend's name for the index).
 
 **Candidate view**:
-One person as this Tenant knows them: what the platform will show of their profile, the fragment
+One person as this Tenant knows them: their whole profile with their email and phone, the fragment
 that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
-Talent pool. There is no endpoint that reads a Candidate's profile by id, so the page has whatever
-the list that found them carried — it re-runs the search in its own address to get it, and falls
-back to the Talent pool when no search led here. When neither has them the page says exactly that
-rather than inventing a profile, because a Candidate who has stopped being searchable really is out
-of reach. The notes and the Tags are the Application review's own interactions, naming a Candidate
-instead of an Application; a Tag offered here is candidate-scoped, which is the other half of the
-same vocabulary.
+Talent pool. The profile is read by id from the directory, so how you arrived changes nothing about
+what you see — a pasted link shows the same person a click from the Talent pool does, and no search
+is re-run to reconstruct them. The matched fragment is the one thing arriving does decide: it is
+read from the search already in hand, and a link opened cold simply has none. When the directory
+answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
+inventing a profile. The profile itself is the shared full-profile component, Candidate Card on top,
+the same one the Application review renders its Snapshot through. The notes and the Tags are the
+Application review's own interactions, naming a Candidate instead of an Application; a Tag offered
+here is candidate-scoped, which is the other half of the same vocabulary.
 _Avoid_: Candidate profile, candidate detail (a Profile is the Candidate's own; this is the
 Tenant's reading of it).
 
@@ -260,7 +263,7 @@ first, paged by cursor the way the API pages it, because a page is what the list
 the membership question ever needs the pool whole. The two readings are two cache entries of one
 endpoint, so a save or a drop made anywhere re-reads both, the copy nobody is watching included:
 that copy is what a route loader reads next, and it hands back what it has rather than waiting.
-A row opens the Candidate view, which finds the person in the pool because no search led there.
+A row opens the Candidate view, which reads the person by id like every other way in.
 Dropping asks first here although the card does not: the action is one line in a row menu rather
 than a button that has just told you the state. What it costs is what the asking says — the
 Tenant's notes and Tags on them survive, but nothing points at that Candidate any more until a
