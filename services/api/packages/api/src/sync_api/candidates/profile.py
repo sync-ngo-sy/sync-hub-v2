@@ -69,7 +69,6 @@ class CandidateProfileService:
             summary=candidate.summary,
             location_key=candidate.location_key,
             canonical_role_key=candidate.canonical_role_key,
-            preferred_language_code=candidate.preferred_language_code,
             is_searchable=candidate.is_searchable,
             total_experience_years=candidate.total_experience_years,
             unmapped_skills=candidate.unmapped_skills,
@@ -109,7 +108,6 @@ class CandidateProfileService:
             candidate.summary = profile.summary
             candidate.location_key = profile.location_key
             candidate.canonical_role_key = profile.canonical_role_key
-            candidate.preferred_language_code = profile.preferred_language_code
             candidate.is_searchable = profile.is_searchable
             # Derived here and never read off the request: whatever a caller sends is ignored,
             # so the number and the jobs it came from cannot disagree.
@@ -331,11 +329,8 @@ def skills_named(profile: CandidateProfile) -> dict[str, str]:
 
 
 def languages_named(profile: CandidateProfile) -> dict[str, str]:
-    """`preferred_language_code` is a language too, and is refused where the candidate typed it."""
-    named = {
+    """Every language code, keyed by where it sat in the request that carried the profile."""
+    return {
         f"body.languages.{position}.code": language.code
         for position, language in enumerate(profile.languages)
     }
-    if profile.preferred_language_code is not None:
-        named["body.preferred_language_code"] = profile.preferred_language_code
-    return named

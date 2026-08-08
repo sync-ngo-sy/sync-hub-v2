@@ -543,11 +543,14 @@ describe('a CV filling the form', () => {
   });
 
   it('never moves the candidate or changes their settings', async () => {
-    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)], {
+      ...CANDIDATE_PROFILE,
+      is_searchable: true,
+    });
     await fillFrom(user, READY_CV);
 
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
-    expect(screen.getByLabelText('Preferred language')).toHaveValue('Arabic');
+    expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).toBeChecked();
   });
 
   it('saves what the CV filled, and what the candidate changed after it, on Save', async () => {

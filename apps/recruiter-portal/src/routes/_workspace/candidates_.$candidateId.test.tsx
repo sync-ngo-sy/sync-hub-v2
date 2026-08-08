@@ -41,7 +41,9 @@ describe('the Candidate view', () => {
     await renderApp(FOUND_BY);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
-    expect(screen.getByText('Backend engineer, 8 years · Aleppo · Prefers Arabic')).toBeVisible();
+    expect(
+      screen.getByText('Backend engineer, 8 years · Aleppo · Speaks Arabic, English'),
+    ).toBeVisible();
 
     const profile = within(screen.getByRole('region', { name: 'Profile' }));
     expect(
