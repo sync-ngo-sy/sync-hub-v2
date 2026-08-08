@@ -19,7 +19,8 @@ from sync_api.problems import (
     DUPLICATE_CV_PROBLEM_TYPE,
     Problem,
 )
-from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
+from sync_api.uploads import discard_on_failure
+from sync_core import ObjectNotFoundError, get_logger, transaction
 from sync_core.models import Candidate, CvParsingStatus
 from sync_core.models import Cv as CvRow
 from sync_core.storage import cv_object_path
@@ -66,7 +67,12 @@ class CvService:
             cv_id = uuid4()
             storage_path = cv_object_path(candidate_id, cv_id, file.media_type)
             await self._storage.upload(storage_path, file.reader, media_type=file.media_type)
-            try:
+            async with discard_on_failure(
+                self._storage,
+                storage_path,
+                event="cvs.orphaned_object",
+                candidate_id=str(candidate_id),
+            ):
                 row = await self._insert(
                     cv_id,
                     candidate_id=candidate_id,
@@ -74,9 +80,6 @@ class CvService:
                     storage_path=storage_path,
                     file_hash=file.sha256,
                 )
-            except BaseException:
-                await self._discard(storage_path)
-                raise
 
         logger.info(
             "cvs.uploaded", candidate_id=str(candidate_id), cv_id=str(cv_id), bytes=file.size
@@ -223,12 +226,6 @@ class CvService:
         if winner is None:  # pragma: no cover — some other constraint, which is our bug
             return Problem(status=500, detail="The CV could not be saved.")
         return _duplicate(winner)
-
-    async def _discard(self, storage_path: str) -> None:
-        try:
-            await self._storage.remove(storage_path)
-        except StorageError as error:
-            logger.error("cvs.orphaned_object", path=storage_path, error=str(error))
 
     async def _own_cv(self, candidate_id: UUID, cv_id: UUID) -> CvRow:
         cv = await self._db.scalar(

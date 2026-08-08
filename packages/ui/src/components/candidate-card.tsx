@@ -26,8 +26,9 @@ interface CandidateCardProps {
   headline?: string | null;
   yearsOfExperience?: number | null;
   languages?: string[];
-  mark?: string;
+  contextLabel?: string;
   note?: string;
+  headingLevel?: 1 | 2;
   className?: string;
 }
 
@@ -40,11 +41,13 @@ export function CandidateCard({
   headline,
   yearsOfExperience,
   languages,
-  mark,
+  contextLabel,
   note,
+  headingLevel = 1,
   className,
 }: CandidateCardProps) {
   const nameId = useId();
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const facts = [
     { label: 'Email', value: email },
     { label: 'Phone', value: phone },
@@ -74,12 +77,15 @@ export function CandidateCard({
             </Avatar>
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h1 id={nameId} className="truncate font-heading text-page-title text-foreground">
+                <Heading
+                  id={nameId}
+                  className="truncate font-heading text-page-title text-foreground"
+                >
                   {name}
-                </h1>
-                {mark ? (
-                  <span className="rounded-4xl border border-primary/30 bg-background/70 px-2 py-0.5 text-meta text-accent-foreground">
-                    {mark}
+                </Heading>
+                {contextLabel ? (
+                  <span className="text-meta font-medium text-accent-foreground">
+                    {contextLabel}
                   </span>
                 ) : null}
               </div>

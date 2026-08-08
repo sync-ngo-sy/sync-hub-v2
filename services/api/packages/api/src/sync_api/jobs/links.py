@@ -13,6 +13,7 @@ from sync_api.jobs.payload import (
     TenantTrackedLink,
     TenantTrackedLinkPage,
     TrackedLink,
+    TrackedLinkReport,
 )
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
@@ -40,8 +41,6 @@ NAME_CONSTRAINT: Final = "tracked_job_links_tenant_id_job_id_name_key"
 
 
 class TrackedLinkService:
-    """The campaign links of one tenant's Jobs, and the traffic each has brought."""
-
     def __init__(self, session: AsyncSession) -> None:
         self._db = session
 
@@ -66,16 +65,48 @@ class TrackedLinkService:
         logger.info("jobs.link_created", job_id=str(job_id), link_id=str(link.id))
         return _as_payload(link, views=0)
 
-    async def links(self, recruiter: ActingRecruiter, job_id: UUID) -> list[TrackedLink]:
+    async def links(self, recruiter: ActingRecruiter, job_id: UUID) -> TrackedLinkReport:
         await own_job(self._db, recruiter.tenant.id, job_id)
-        rows = await self._db.execute(
-            select(TrackedJobLink, func.count(JobViewEvent.id))
-            .outerjoin(JobViewEvent, JobViewEvent.tracked_link_id == TrackedJobLink.id)
-            .where(TrackedJobLink.job_id == job_id)
-            .group_by(TrackedJobLink.id)
-            .order_by(TrackedJobLink.created_at)
+        direct_count = (
+            select(func.count())
+            .select_from(JobViewEvent)
+            .where(JobViewEvent.job_id == job_id, JobViewEvent.tracked_link_id.is_(None))
+            .scalar_subquery()
         )
-        return [_as_payload(link, views=views) for link, views in rows.tuples()]
+        total_count = (
+            select(func.count())
+            .select_from(JobViewEvent)
+            .where(JobViewEvent.job_id == job_id)
+            .scalar_subquery()
+        )
+        link_count = (
+            select(func.count())
+            .select_from(JobViewEvent)
+            .where(JobViewEvent.tracked_link_id == TrackedJobLink.id)
+            .correlate(TrackedJobLink)
+            .scalar_subquery()
+        )
+        rows = list(
+            (
+                await self._db.execute(
+                    select(TrackedJobLink, link_count, direct_count, total_count)
+                    .select_from(Job)
+                    .outerjoin(TrackedJobLink, TrackedJobLink.job_id == Job.id)
+                    .where(Job.id == job_id)
+                    .order_by(TrackedJobLink.created_at)
+                )
+            ).tuples()
+        )
+        first = rows[0]
+        return TrackedLinkReport(
+            items=[
+                _as_payload(link, views=link_views)
+                for link, link_views, _direct, _total in rows
+                if link is not None
+            ],
+            direct_view_count=first[2],
+            view_count=first[3],
+        )
 
     async def change(
         self,

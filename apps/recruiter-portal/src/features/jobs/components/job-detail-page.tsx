@@ -144,7 +144,7 @@ export function JobDetailPage({
         </TabsContent>
         <TabsContent value="links">
           <WidgetBoundary name="Tracked links">
-            <TrackedLinks jobId={jobId} jobViews={job.view_count} />
+            <TrackedLinks jobId={jobId} />
           </WidgetBoundary>
         </TabsContent>
       </Tabs>

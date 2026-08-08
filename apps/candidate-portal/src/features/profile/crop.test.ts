@@ -1,6 +1,12 @@
 import type { Crop } from 'react-image-crop';
-import { describe, expect, it } from 'vitest';
-import { boundingSquare, type PhotoMetrics, type PixelSquare } from './crop';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  boundingSquare,
+  centeredSquare,
+  type PhotoMetrics,
+  type PixelSquare,
+  squareBlob,
+} from './crop';
 
 const PHOTO: PhotoMetrics = { naturalWidth: 2000, naturalHeight: 1000, width: 500, height: 250 };
 
@@ -51,5 +57,30 @@ describe('the square behind the circle', () => {
     );
 
     expect(nothing).toBeNull();
+  });
+
+  it('centres a displayed square rather than a natural-size square', () => {
+    expect(centeredSquare(600, 400)).toEqual({
+      unit: '%',
+      x: expect.closeTo(23.333, 3),
+      y: 10,
+      width: expect.closeTo(53.333, 3),
+      height: 80,
+    });
+  });
+
+  it('draws the selected source square into the upload canvas', async () => {
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage,
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => {
+      done(new Blob([new Uint8Array(1)], { type: 'image/webp' }));
+    });
+    const photo = document.createElement('img');
+
+    await squareBlob(photo, { x: 20, y: 30, side: 400 });
+
+    expect(drawImage).toHaveBeenCalledWith(photo, 20, 30, 400, 400, 0, 0, 400, 400);
   });
 });

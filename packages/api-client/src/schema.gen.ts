@@ -1213,13 +1213,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The Job's campaign links and their traffic
-         * @description Every link of the Job, oldest first, each with the views it has brought.
+         * The Job's Tracked links and all of its traffic
+         * @description Every link and its views, plus Direct and total views from the same report.
          */
         get: operations["listTrackedJobLinks"];
         put?: never;
         /**
-         * Name a campaign link to the Job
+         * Name a Tracked link to the Job
          * @description Mint a link whose `token` attributes every view and application it brings to its name.
          */
         post: operations["createTrackedJobLink"];
@@ -1243,7 +1243,7 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename a campaign link or turn it off
+         * Rename a Tracked link or turn it off
          * @description Turning a link off stops it resolving; the views it already brought stay counted.
          */
         patch: operations["changeTrackedJobLink"];
@@ -3359,7 +3359,7 @@ export interface components {
         NewTrackedLink: {
             /**
              * Name
-             * @description What the campaign is called, unique per Job.
+             * @description The channel or placement this link represents, unique per Job.
              */
             name: string;
             /**
@@ -4451,7 +4451,7 @@ export interface components {
         };
         /**
          * TrackedLink
-         * @description One campaign link, and how much traffic it has brought.
+         * @description One Tracked link, and how much traffic it has brought.
          */
         TrackedLink: {
             /**
@@ -4495,6 +4495,15 @@ export interface components {
              * @description When the Job stops being public. Null means it stays up until closed.
              */
             expires_at?: string | null;
+        };
+        /** TrackedLinkReport */
+        TrackedLinkReport: {
+            /** Items */
+            items: components["schemas"]["TrackedLink"][];
+            /** Direct View Count */
+            direct_view_count: number;
+            /** View Count */
+            view_count: number;
         };
         /**
          * UnreadNotificationCount
@@ -9135,7 +9144,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TrackedLink"][];
+                    "application/json": components["schemas"]["TrackedLinkReport"];
                 };
             };
             /** @description There is no valid session. */

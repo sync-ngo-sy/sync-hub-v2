@@ -2,12 +2,29 @@ import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 import { holding } from '@/testing/holding';
 import { TRACKED_LINK_PATH, TRACKED_LINKS_PATH } from '../hooks/use-tracked-links';
-import type { NewTrackedLink, TrackedLink, TrackedLinkChanges } from '../tracked-link';
+import type {
+  NewTrackedLink,
+  TrackedLink,
+  TrackedLinkChanges,
+  TrackedLinkReport,
+} from '../tracked-link';
 
 type Problem = components['schemas']['ProblemDetail'];
 
-export function listsTrackedLinks(items: TrackedLink[]) {
-  return [http.get(TRACKED_LINKS_PATH, ({ response }) => response(200).json(items))];
+function report(items: TrackedLink[], directViewCount = 0): TrackedLinkReport {
+  return {
+    items,
+    direct_view_count: directViewCount,
+    view_count: items.reduce((total, link) => total + link.view_count, directViewCount),
+  };
+}
+
+export function listsTrackedLinks(items: TrackedLink[], directViewCount = 0) {
+  return [
+    http.get(TRACKED_LINKS_PATH, ({ response }) =>
+      response(200).json(report(items, directViewCount)),
+    ),
+  ];
 }
 
 export function failsToListTrackedLinks(problem: Problem) {
@@ -21,7 +38,7 @@ export function holdsTrackedLinks(items: TrackedLink[]) {
     handlers: [
       http.get(TRACKED_LINKS_PATH, async ({ response }) => {
         await gate.held;
-        return response(200).json(items);
+        return response(200).json(report(items));
       }),
     ],
   };
@@ -59,7 +76,7 @@ export function managesTrackedLinks(initial: TrackedLink[]) {
       return links;
     },
     handlers: [
-      http.get(TRACKED_LINKS_PATH, ({ response }) => response(200).json(links)),
+      http.get(TRACKED_LINKS_PATH, ({ response }) => response(200).json(report(links))),
       http.post(TRACKED_LINKS_PATH, async ({ request, response }) => {
         const body = (await request.json()) as NewTrackedLink;
         const link: TrackedLink = {

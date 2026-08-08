@@ -37,6 +37,13 @@ describe('CandidateCard', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Lina Khoury' })).toBeVisible();
   });
 
+  it('can sit under a page heading without creating a second h1', () => {
+    render(<CandidateCard {...WHOLE} headingLevel={2} />);
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Lina Khoury' })).toBeVisible();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  });
+
   it('shows every key fact it is given', () => {
     render(<CandidateCard {...WHOLE} />);
 
@@ -59,7 +66,7 @@ describe('CandidateCard', () => {
   });
 
   it('says beside the name and under the facts where the facts came from', () => {
-    render(<CandidateCard {...WHOLE} mark="Snapshot" note="Frozen when they applied." />);
+    render(<CandidateCard {...WHOLE} contextLabel="Snapshot" note="Frozen when they applied." />);
 
     expect(screen.getByText('Snapshot')).toBeVisible();
     expect(screen.getByText('Frozen when they applied.')).toBeVisible();
