@@ -28,26 +28,32 @@ _SEPARATOR: Final = "|"
 class Cursor:
     created_at: datetime
     id: UUID
+    #: The number a ranked order sorted on, carried so the next page resumes at the same place.
+    #: Null in the orders that sort by date alone.
+    rank: int | None = None
 
     def encode(self) -> str:
-        raw = f"{self.created_at.isoformat()}{_SEPARATOR}{self.id}".encode()
+        parts = [self.created_at.isoformat(), str(self.id)]
+        if self.rank is not None:
+            parts.append(str(self.rank))
+        raw = _SEPARATOR.join(parts).encode()
         return urlsafe_b64encode(raw).decode().rstrip("=")
 
     @classmethod
     def decode(cls, encoded: str) -> Cursor:
         try:
             padded = encoded + "=" * (-len(encoded) % 4)
-            timestamp, separator, identifier = (
-                urlsafe_b64decode(padded).decode().partition(_SEPARATOR)
+            timestamp, identifier, *rank = urlsafe_b64decode(padded).decode().split(_SEPARATOR)
+            if len(rank) > 1:
+                raise ValueError("a cursor is a timestamp, an id, and at most one rank")
+            return cls(
+                created_at=datetime.fromisoformat(timestamp),
+                id=UUID(identifier),
+                rank=int(rank[0]) if rank else None,
             )
-            if not separator:
-                raise ValueError("a cursor is a timestamp and an id")
-            return cls(created_at=datetime.fromisoformat(timestamp), id=UUID(identifier))
         except (ValueError, UnicodeDecodeError, binascii.Error) as unusable:
-            raise Problem(
-                status=422,
-                type=INVALID_CURSOR_PROBLEM_TYPE,
-                detail="That is not a cursor this API issued. Ask for the first page instead.",
+            raise _unusable_cursor(
+                "That is not a cursor this API issued. Ask for the first page instead."
             ) from unusable
 
 
@@ -60,12 +66,104 @@ def newest_first[Selected: tuple[Any, ...]](
     limit: int,
 ) -> Select[Selected]:
     """Order and window one page, asking for a row more than fits so `page_of` knows there is."""
-    ordered = query.order_by(created_at.desc(), id_.desc()).limit(limit + 1)
+    return _windowed(
+        query,
+        order=(created_at.desc(), id_.desc()),
+        keys=(created_at, id_),
+        after=_by_date(cursor),
+        descending=True,
+        limit=limit,
+    )
+
+
+def oldest_first[Selected: tuple[Any, ...]](
+    query: Select[Selected],
+    *,
+    created_at: SQLColumnExpression[datetime],
+    id_: SQLColumnExpression[UUID],
+    cursor: str | None,
+    limit: int,
+) -> Select[Selected]:
+    """The same page from the other end: the oldest row first, and the cursor climbing."""
+    return _windowed(
+        query,
+        order=(created_at.asc(), id_.asc()),
+        keys=(created_at, id_),
+        after=_by_date(cursor),
+        descending=False,
+        limit=limit,
+    )
+
+
+def most_first[Selected: tuple[Any, ...]](
+    query: Select[Selected],
+    *,
+    rank: SQLColumnExpression[Any],
+    created_at: SQLColumnExpression[datetime],
+    id_: SQLColumnExpression[UUID],
+    cursor: str | None,
+    limit: int,
+) -> Select[Selected]:
+    """Busiest first, and newest first among rows that tie.
+
+    The date and the id stay in the key because a rank repeats: without them a page boundary
+    landing inside a run of ties would skip the rest of the run or repeat it.
+    """
+    return _windowed(
+        query,
+        order=(rank.desc(), created_at.desc(), id_.desc()),
+        keys=(rank, created_at, id_),
+        after=_by_rank(cursor),
+        descending=True,
+        limit=limit,
+    )
+
+
+def _by_date(cursor: str | None) -> tuple[Any, ...] | None:
+    """Where a date-ordered page resumes. A cursor carrying a rank came out of a ranked order,
+    and following it here would page one list by another's boundary."""
     if cursor is None:
-        return ordered
+        return None
     after = Cursor.decode(cursor)
-    return ordered.where(
-        tuple_(created_at, id_) < tuple_(literal(after.created_at), literal(after.id))
+    if after.rank is not None:
+        raise _wrong_order()
+    return (after.created_at, after.id)
+
+
+def _by_rank(cursor: str | None) -> tuple[Any, ...] | None:
+    if cursor is None:
+        return None
+    after = Cursor.decode(cursor)
+    if after.rank is None:
+        raise _wrong_order()
+    return (after.rank, after.created_at, after.id)
+
+
+def _windowed[Selected: tuple[Any, ...]](
+    query: Select[Selected],
+    *,
+    order: tuple[SQLColumnExpression[Any], ...],
+    keys: tuple[SQLColumnExpression[Any], ...],
+    after: tuple[Any, ...] | None,
+    descending: bool,
+    limit: int,
+) -> Select[Selected]:
+    """One page, asking for a row more than fits so `page_of` knows there is another."""
+    ordered = query.order_by(*order).limit(limit + 1)
+    if after is None:
+        return ordered
+    row = tuple_(*keys)
+    mark = tuple_(*(literal(value) for value in after))
+    return ordered.where(row < mark if descending else row > mark)
+
+
+def _unusable_cursor(detail: str) -> Problem:
+    return Problem(status=422, type=INVALID_CURSOR_PROBLEM_TYPE, detail=detail)
+
+
+def _wrong_order() -> Problem:
+    return _unusable_cursor(
+        "That cursor was issued for a different order. Ask for the first page of this one."
     )
 
 

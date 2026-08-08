@@ -201,8 +201,11 @@ _Avoid_: Campaign, UTM, Short link.
 
 **Job view event**:
 One anonymous reading of a Job, attributed to the Tracked link that brought it when there was
-one. It records a session the platform issued and a salted hash — never an address, an agent
-string, or a person.
+one and to nothing when the visitor arrived on their own. It records a session the platform
+issued and a salted hash — never an address, an agent string, or a person. One session reading
+one Job through one channel is one event per half hour: a refresh is the same interest, and the
+window is per channel so a browser that reads a Job and then follows a campaign link gives the
+campaign its own event.
 _Avoid_: Impression, Hit, Visit.
 
 **Canonical skill**:

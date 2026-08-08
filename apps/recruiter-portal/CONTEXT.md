@@ -152,14 +152,27 @@ decision: the picker empties afterwards so the same words don't go twice by acci
 send keeps the draft so the Recruiter can try the same message again.
 _Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
+**Jobs page**:
+The Workspace destination that lists the Tenant's Jobs, filtered by state on tabs and ordered by
+a picker beside them: newest, oldest, or most applications. Both live in the URL, so a view is
+shareable and a reload lands where the Recruiter was. Each row carries the views and the
+applications the Job has drawn, side by side, because reach and conversion are only worth
+anything read against each other. Views are all views, whatever brought them — the Tracked links
+tab is where they are broken down by Source.
+_Avoid_: Postings list, vacancies page.
+
 **Tracked links tab**:
 The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,
 renames it, turns it off, and reads what each one brought. Minting hands the address straight back
 to copy, because a link nobody can share is worth nothing. A link that is off keeps its row and its
 count: turning it off ends the traffic, not the history — and so a rename leaves both the address
-and the views alone. The comparison is a bar chart of views per link on the teal chart ramp, loaded
-in a chunk of its own so the charting library only travels for a Recruiter who opens this tab. The
-address is built on the Candidate Portal's origin, since that is the portal that counts the view.
+and the views alone. Each row also carries its share of the Job's whole total, so a link is read
+against everything the Job drew rather than against the other links; a Job nobody has read yet
+shows a dash rather than a percentage of nothing. The comparison is a bar chart of views per
+Source on the teal chart ramp, loaded in a chunk of its own so the charting library only travels
+for a Recruiter who opens this tab, and `Direct` stands in it as the total less what the links
+brought — a bar where such traffic exists and no bar where it does not. The address is built on
+the Candidate Portal's origin, since that is the portal that counts the view.
 _Avoid_: Campaigns tab, UTM builder, analytics tab.
 
 **Tracked links page**:

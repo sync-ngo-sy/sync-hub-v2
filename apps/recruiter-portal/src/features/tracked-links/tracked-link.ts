@@ -43,14 +43,24 @@ export function viewsRanked(rows: Omit<LinkViews, 'fill'>[]): LinkViews[] {
     .map((row, index) => ({ ...row, fill: RAMP[index] ?? PALEST_STEP }));
 }
 
-export function viewsPerLink(links: TrackedLink[]): LinkViews[] {
-  return viewsRanked(
-    links.map((link) => ({ id: link.id, name: link.name, views: link.view_count })),
-  );
+export const DIRECT = 'Direct';
+
+export function directViews(links: TrackedLink[], jobViews: number): number {
+  return Math.max(0, jobViews - totalViews(links));
+}
+
+export function viewsPerSource(links: TrackedLink[], jobViews: number): LinkViews[] {
+  const direct = directViews(links, jobViews);
+  const rows = links.map((link) => ({ id: link.id, name: link.name, views: link.view_count }));
+  return viewsRanked(direct > 0 ? [...rows, { id: DIRECT, name: DIRECT, views: direct }] : rows);
 }
 
 export function totalViews(links: TrackedLink[]): number {
   return links.reduce((total, link) => total + link.view_count, 0);
+}
+
+export function viewShare(views: number, jobViews: number): string {
+  return jobViews === 0 ? '—' : `${Math.round((views / jobViews) * 100)}%`;
 }
 
 export function viewsSummary(bars: LinkViews[]): string {
@@ -59,8 +69,9 @@ export function viewsSummary(bars: LinkViews[]): string {
     (bar) => `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}`,
   );
   const rest = bars.length - spoken.length;
-  const tail = rest > 0 ? ` And ${rest} more ${rest === 1 ? 'link' : 'links'}, further down.` : '';
-  return `Views per tracked link. ${rows.join('. ')}.${tail}`;
+  const tail =
+    rest > 0 ? ` And ${rest} more ${rest === 1 ? 'source' : 'sources'}, further down.` : '';
+  return `Views per source. ${rows.join('. ')}.${tail}`;
 }
 
 export type TenantTrackedLink = components['schemas']['TenantTrackedLink'];
