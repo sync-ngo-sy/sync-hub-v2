@@ -279,7 +279,6 @@ AMINA: Final = SeededCandidate(
         ),
         location_key="sy-damascus",
         canonical_role_key="backend-engineer",
-        preferred_language_code="en",
         is_searchable=True,
         experiences=[
             Held(
@@ -368,7 +367,6 @@ BASHIR: Final = SeededCandidate(
         ),
         location_key="sy-aleppo",
         canonical_role_key="frontend-engineer",
-        preferred_language_code="en",
         is_searchable=True,
         experiences=[
             Held(
@@ -451,7 +449,6 @@ KARIM: Final = SeededCandidate(
         ),
         location_key="sy-latakia",
         canonical_role_key="devops-engineer",
-        preferred_language_code="en",
         is_searchable=True,
         experiences=[
             Held(
@@ -524,7 +521,6 @@ LAYLA: Final = SeededCandidate(
         ),
         location_key="sy-homs",
         canonical_role_key="data-scientist",
-        preferred_language_code="en",
         is_searchable=True,
         experiences=[
             Held(
@@ -590,7 +586,6 @@ NADIA: Final = SeededCandidate(
         # Outside Syria, so the place taxonomy answers with a country rather than a governorate.
         location_key="lb",
         canonical_role_key="ui-ux-designer",
-        preferred_language_code="ar",
         is_searchable=True,
         experiences=[
             Held(
@@ -671,7 +666,6 @@ FADI: Final = SeededCandidate(
         summary="A year and a half in, and reading everything. Wants a team that reviews code.",
         location_key="sy-damascus",
         canonical_role_key="fullstack-engineer",
-        preferred_language_code="ar",
         is_searchable=True,
         experiences=[
             Held(
@@ -745,7 +739,6 @@ HIBA: Final = SeededCandidate(
         ),
         location_key="sy-rif-dimashq",
         canonical_role_key="qa-engineer",
-        preferred_language_code="ar",
         is_searchable=False,
         experiences=[
             Held(
@@ -806,7 +799,6 @@ ZIAD: Final = SeededCandidate(
         summary="iOS and Android, and the API in between when nobody else will write it.",
         location_key="sy-tartus",
         canonical_role_key="mobile-engineer",
-        preferred_language_code="ar",
         is_searchable=False,
         experiences=[
             Held(

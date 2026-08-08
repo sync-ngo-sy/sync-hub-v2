@@ -300,7 +300,6 @@ export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
   canonical_role_key: 'project-manager',
-  preferred_language_code: 'ar',
   is_searchable: false,
   total_experience_years: 6,
   experiences: [
@@ -352,7 +351,6 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   is_searchable: false,
   headline: 'Backend engineer, 8 years',
   location_key: null,
-  preferred_language_code: null,
   experiences: [
     {
       job_title: 'Backend engineer',

@@ -1,9 +1,14 @@
 import type { components } from '@sync/api-client';
 import type { ComboboxOption, ComboboxOptionGroup } from '@sync/ui/components/combobox';
 
+type CanonicalRole = components['schemas']['CanonicalRole'];
 type CanonicalSkill = components['schemas']['CanonicalSkill'];
 type Language = components['schemas']['Language'];
 type Location = components['schemas']['Location'];
+
+export function roleOptions(roles: CanonicalRole[] | undefined): ComboboxOption[] {
+  return (roles ?? []).map((role) => ({ value: role.key, label: role.name }));
+}
 
 export function skillGroups(
   skills: CanonicalSkill[] | undefined,
@@ -29,14 +34,6 @@ export function languageOptions(
   return (languages ?? [])
     .filter((language) => !already.has(language.code))
     .map((language) => ({ value: language.code, label: language.name }));
-}
-
-export function languageName(
-  languages: Language[] | undefined,
-  code: string | null | undefined,
-): string | null {
-  if (!code) return null;
-  return languages?.find((language) => language.code === code)?.name ?? null;
 }
 
 export function locationGroups(locations: Location[] | undefined): ComboboxOptionGroup[] {

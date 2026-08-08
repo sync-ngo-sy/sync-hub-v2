@@ -623,11 +623,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Searchable Candidates by fact, newest first
+         * Searchable Candidates by fact, in the order you ask for
          * @description Everyone in Damascus, everyone with React and TypeScript, everyone with five years of work.
          *
          *     No query written in words: every filter is a yes or a no, so naming more of them only ever
-         *     narrows the answer, and the whole result can be paged to the end.
+         *     narrows the answer, and the whole result can be paged to the end. Because nothing here is
+         *     ranked, the order is the caller's to choose — which is what separates this from Global search,
+         *     where closeness is the order and re-sorting it would be a different question.
          *
          *     A Candidate whose re-embedding is still queued is here even though Global search cannot see
          *     them yet — being findable by fact does not wait on a vector. No result carries an email or a
@@ -2028,15 +2030,15 @@ export interface components {
         };
         /**
          * CandidateDirectoryPage
-         * @description One page of the Candidate directory, newest first. It carries no phone and no email: a
-         *     Tenant reads either by opening one Candidate, never off a list.
+         * @description One page of the Candidate directory, in the order it was asked for. It carries no phone and
+         *     no email: a Tenant reads either by opening one Candidate, never off a list.
          */
         CandidateDirectoryPage: {
             /** Items */
             items: components["schemas"]["SearchableCandidate"][];
             /**
              * Next Cursor
-             * @description Send back as `cursor` for the following page. Null on the last page.
+             * @description Send back as `cursor` for the following page, with the same `sort`. Null on the last page.
              */
             next_cursor?: string | null;
         };
@@ -2089,11 +2091,6 @@ export interface components {
              * @example frontend-engineer
              */
             canonical_role_key?: string | null;
-            /**
-             * Preferred Language Code
-             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
-             */
-            preferred_language_code?: string | null;
             /**
              * Is Searchable
              * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
@@ -2172,8 +2169,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -2456,6 +2460,14 @@ export interface components {
              */
             password: string;
         };
+        /**
+         * DirectoryOrder
+         * @description How the directory has been asked to order itself. Each value names the answer it gives
+         *     rather than a column and a direction, so there is no ascending/descending convention to
+         *     learn — and no way to ask for an order the directory cannot page through.
+         * @enum {string}
+         */
+        DirectoryOrder: "newest" | "oldest" | "name" | "name_reversed" | "most_experience" | "least_experience";
         /**
          * DraftExperience
          * @description One job on a draft, where the CV may not have dated it.
@@ -3046,8 +3058,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -3552,11 +3571,6 @@ export interface components {
              */
             canonical_role_key?: string | null;
             /**
-             * Preferred Language Code
-             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
-             */
-            preferred_language_code?: string | null;
-            /**
              * Is Searchable
              * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
              * @default false
@@ -3959,8 +3973,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -6599,14 +6620,16 @@ export interface operations {
     listDirectoryCandidates: {
         parameters: {
             query?: {
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description What order to answer in. Newest first unless you say otherwise, and a `cursor` only ever resumes the order it was issued for. */
+                sort?: components["schemas"]["DirectoryOrder"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
+                language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
                 /** @description Whole years of work, at least this many. */
@@ -7092,8 +7115,8 @@ export interface operations {
                 offset?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
+                language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
                 /** @description Whole years of work, at least this many. */
