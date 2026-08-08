@@ -10,9 +10,9 @@ export function MyCandidateCard() {
   const roles = useCanonicalRoles();
   const known = useLanguages();
 
-  const role = roles.data?.find((one) => one.key === profile.canonical_role_key);
+  const role = roles.data?.find(({ key }) => key === profile.canonical_role_key);
   const spoken = (profile.languages ?? [])
-    .map((language) => known.data?.find((one) => one.code === language.code)?.name)
+    .map(({ code }) => known.data?.find((language) => language.code === code)?.name)
     .filter((name): name is string => Boolean(name));
 
   return (

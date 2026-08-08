@@ -1,6 +1,13 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CandidateCard } from './candidate-card';
+
+class PhotoThatLoads {
+  onload: (() => void) | null = null;
+  set src(_address: string) {
+    setTimeout(() => this.onload?.(), 0);
+  }
+}
 
 const WHOLE = {
   name: 'Lina Khoury',
@@ -13,6 +20,10 @@ const WHOLE = {
 };
 
 describe('CandidateCard', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('is one block of a page, named for the person it describes', () => {
     render(<CandidateCard {...WHOLE} />);
 
@@ -60,16 +71,28 @@ describe('CandidateCard', () => {
     expect(screen.getByText('0 years')).toBeVisible();
   });
 
-  it('stands the initials in until a photo has loaded, so nothing looks broken', () => {
+  it('shows the photo once it has loaded, left out of the reading order', async () => {
+    vi.stubGlobal('Image', PhotoThatLoads);
     render(<CandidateCard {...WHOLE} />);
 
+    await waitFor(() => expect(document.querySelector('img')).not.toBeNull());
+    expect(document.querySelector('img')).toHaveAttribute('src', WHOLE.avatarUrl);
+    expect(document.querySelector('img')).toHaveAttribute('alt', '');
+  });
+
+  it('stands the initials in until the photo has loaded, so nothing looks broken', () => {
+    render(<CandidateCard {...WHOLE} />);
+
+    expect(document.querySelector('img')).toBeNull();
     expect(screen.getByText('LK')).toBeInTheDocument();
   });
 
-  it('falls back to the initials when there is no photo at all', () => {
+  it('falls back to the initials when there is no photo at all', async () => {
+    vi.stubGlobal('Image', PhotoThatLoads);
     render(<CandidateCard name="Lina Khoury" />);
 
     expect(screen.getByText('LK')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('img')).toBeNull());
   });
 
   it('takes the first two initials of a longer name, and copes with one', () => {
