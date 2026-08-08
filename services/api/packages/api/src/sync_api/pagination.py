@@ -31,11 +31,14 @@ class Cursor:
     #: The number a ranked order sorted on, carried so the next page resumes at the same place.
     #: Null in the orders that sort by date alone.
     rank: int | None = None
+    order: str | None = None
 
     def encode(self) -> str:
         parts = [self.created_at.isoformat(), str(self.id)]
-        if self.rank is not None:
-            parts.append(str(self.rank))
+        if self.rank is not None or self.order is not None:
+            parts.append("" if self.rank is None else str(self.rank))
+        if self.order is not None:
+            parts.append(self.order)
         raw = _SEPARATOR.join(parts).encode()
         return urlsafe_b64encode(raw).decode().rstrip("=")
 
@@ -43,13 +46,14 @@ class Cursor:
     def decode(cls, encoded: str) -> Cursor:
         try:
             padded = encoded + "=" * (-len(encoded) % 4)
-            timestamp, identifier, *rank = urlsafe_b64decode(padded).decode().split(_SEPARATOR)
-            if len(rank) > 1:
-                raise ValueError("a cursor is a timestamp, an id, and at most one rank")
+            timestamp, identifier, *rest = urlsafe_b64decode(padded).decode().split(_SEPARATOR)
+            if len(rest) > 2:
+                raise ValueError("a cursor has too many parts")
             return cls(
                 created_at=datetime.fromisoformat(timestamp),
                 id=UUID(identifier),
-                rank=int(rank[0]) if rank else None,
+                rank=int(rest[0]) if rest and rest[0] else None,
+                order=rest[1] if len(rest) == 2 else None,
             )
         except (ValueError, UnicodeDecodeError, binascii.Error) as unusable:
             raise _not_a_cursor() from unusable
@@ -103,13 +107,14 @@ def newest_first[Selected: tuple[Any, ...]](
     id_: SQLColumnExpression[UUID],
     cursor: str | None,
     limit: int,
+    cursor_order: str | None = None,
 ) -> Select[Selected]:
     """Order and window one page, asking for a row more than fits so `page_of` knows there is."""
     return _windowed(
         query,
         order=(created_at.desc(), id_.desc()),
         keys=(created_at, id_),
-        after=_by_date(cursor),
+        after=_by_date(cursor, cursor_order),
         descending=True,
         limit=limit,
     )
@@ -122,13 +127,14 @@ def oldest_first[Selected: tuple[Any, ...]](
     id_: SQLColumnExpression[UUID],
     cursor: str | None,
     limit: int,
+    cursor_order: str | None = None,
 ) -> Select[Selected]:
     """The same page from the other end: the oldest row first, and the cursor climbing."""
     return _windowed(
         query,
         order=(created_at.asc(), id_.asc()),
         keys=(created_at, id_),
-        after=_by_date(cursor),
+        after=_by_date(cursor, cursor_order),
         descending=False,
         limit=limit,
     )
@@ -142,6 +148,7 @@ def most_first[Selected: tuple[Any, ...]](
     id_: SQLColumnExpression[UUID],
     cursor: str | None,
     limit: int,
+    cursor_order: str | None = None,
 ) -> Select[Selected]:
     """Busiest first, and newest first among rows that tie.
 
@@ -152,28 +159,28 @@ def most_first[Selected: tuple[Any, ...]](
         query,
         order=(rank.desc(), created_at.desc(), id_.desc()),
         keys=(rank, created_at, id_),
-        after=_by_rank(cursor),
+        after=_by_rank(cursor, cursor_order),
         descending=True,
         limit=limit,
     )
 
 
-def _by_date(cursor: str | None) -> tuple[Any, ...] | None:
+def _by_date(cursor: str | None, order: str | None) -> tuple[Any, ...] | None:
     """Where a date-ordered page resumes. A cursor carrying a rank came out of a ranked order,
     and following it here would page one list by another's boundary."""
     if cursor is None:
         return None
     after = Cursor.decode(cursor)
-    if after.rank is not None:
+    if after.rank is not None or (order is not None and after.order != order):
         raise _wrong_order()
     return (after.created_at, after.id)
 
 
-def _by_rank(cursor: str | None) -> tuple[Any, ...] | None:
+def _by_rank(cursor: str | None, order: str | None) -> tuple[Any, ...] | None:
     if cursor is None:
         return None
     after = Cursor.decode(cursor)
-    if after.rank is None:
+    if after.rank is None or (order is not None and after.order != order):
         raise _wrong_order()
     return (after.rank, after.created_at, after.id)
 

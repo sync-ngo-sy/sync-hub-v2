@@ -298,6 +298,9 @@ async def test_a_cursor_from_one_order_is_not_a_cursor_for_another(
     await a_created_job(browser, title="One")
     await a_created_job(browser, title="Two")
     by_date = (await browser.get(TENANT_JOBS, params={"limit": 1})).json()["next_cursor"]
+    oldest = (await browser.get(TENANT_JOBS, params={"limit": 1, "sort": "oldest"})).json()[
+        "next_cursor"
+    ]
     by_rank = (await browser.get(TENANT_JOBS, params={"limit": 1, "sort": "applications"})).json()[
         "next_cursor"
     ]
@@ -306,9 +309,15 @@ async def test_a_cursor_from_one_order_is_not_a_cursor_for_another(
         TENANT_JOBS, params={"limit": 1, "sort": "applications", "cursor": by_date}
     )
     refused_the_other_way = await browser.get(TENANT_JOBS, params={"limit": 1, "cursor": by_rank})
+    refused_newest_as_oldest = await browser.get(
+        TENANT_JOBS, params={"limit": 1, "sort": "oldest", "cursor": by_date}
+    )
+    refused_oldest_as_newest = await browser.get(TENANT_JOBS, params={"limit": 1, "cursor": oldest})
 
     assert refused.status_code == 422, refused.text
     assert refused_the_other_way.status_code == 422, refused_the_other_way.text
+    assert refused_newest_as_oldest.status_code == 422, refused_newest_as_oldest.text
+    assert refused_oldest_as_newest.status_code == 422, refused_oldest_as_newest.text
 
 
 async def test_the_list_can_be_narrowed_to_one_status(

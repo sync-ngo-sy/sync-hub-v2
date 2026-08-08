@@ -203,19 +203,19 @@ describe("a Job's Tracked links tab", () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(JOB),
-      ...listsTrackedLinks([UNIVERSITY_BOARD, LINKEDIN_POST, WHATSAPP_GROUPS]),
+      ...listsTrackedLinks([UNIVERSITY_BOARD, LINKEDIN_POST, WHATSAPP_GROUPS], 100),
     );
 
     await renderApp(LINKS);
 
     expect(
       await screen.findByRole('img', {
-        name: 'Views per source. LinkedIn post: 342 views. WhatsApp groups: 281 views. Direct: 100 views. University board: 41 views.',
+        name: 'Views per source. LinkedIn post: 342 views, 45%. WhatsApp groups: 281 views, 37%. Direct: 100 views, 13%. University board: 41 views, 5%.',
       }),
     ).toBeInTheDocument();
   });
 
-  it('leaves Direct out when every view arrived through a link', async () => {
+  it('reports Direct as zero when every view arrived through a link', async () => {
     const tracked = { ...JOB, view_count: 342 };
     server.use(
       ...signedInAs(RECRUITER),
@@ -226,7 +226,9 @@ describe("a Job's Tracked links tab", () => {
     await renderApp(LINKS);
 
     expect(
-      await screen.findByRole('img', { name: 'Views per source. LinkedIn post: 342 views.' }),
+      await screen.findByRole('img', {
+        name: 'Views per source. LinkedIn post: 342 views, 100%. Direct: 0 views, 0%.',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -234,7 +236,7 @@ describe("a Job's Tracked links tab", () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(JOB),
-      ...listsTrackedLinks([LINKEDIN_POST, WHATSAPP_GROUPS, UNIVERSITY_BOARD]),
+      ...listsTrackedLinks([LINKEDIN_POST, WHATSAPP_GROUPS, UNIVERSITY_BOARD], 100),
     );
 
     await renderApp(LINKS);
@@ -281,6 +283,18 @@ describe("a Job's Tracked links tab", () => {
 
     const dialog = within(await screen.findByRole('dialog'));
     expect(await dialog.findByText('http://localhost:5173/l/MintedTok3n')).toBeVisible();
+  });
+
+  it('reports Direct traffic when the Job has no tracked links', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsTrackedLinks([], JOB.view_count));
+
+    await renderApp(LINKS);
+
+    expect(
+      await screen.findByRole('img', {
+        name: `Views per source. Direct: ${JOB.view_count} views, 100%.`,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('stands a skeleton in the table while the links are on the wire', async () => {

@@ -41,8 +41,15 @@ def cv_object_path(candidate_id: UUID, cv_id: UUID, media_type: str) -> str:
 
 
 def avatar_object_path(candidate_id: UUID, avatar_id: UUID) -> str:
-    """A fresh name per upload, so a replaced photo cannot be served from anyone's cache."""
-    return f"{candidate_id}/{avatar_id}.webp"
+    return f"{avatar_folder(candidate_id)}/{avatar_id}.webp"
+
+
+def avatar_folder(candidate_id: UUID) -> str:
+    return str(candidate_id)
+
+
+def avatar_path_from_url(candidate_id: UUID, url: str) -> str:
+    return f"{avatar_folder(candidate_id)}/{url.rsplit('/', 1)[-1]}"
 
 
 def cv_media_type_of(storage_path: str) -> str:
@@ -93,7 +100,6 @@ class Storage:
             await self._bucket.upload(path, content, {"content-type": media_type})
 
     async def public_url(self, path: str) -> str:
-        """Where a reader fetches the object. Only a public bucket answers it."""
         with _storage_failures("address", path):
             return await self._bucket.get_public_url(path)
 
@@ -116,7 +122,7 @@ class Storage:
     async def paths_under(self, folder: str) -> list[str]:
         with _storage_failures("list", folder):
             entries = await self._bucket.list(folder)
-        return [f"{folder}/{entry['name']}" for entry in entries if entry.get("id")]
+        return [f"{folder}/{entry['name']}" for entry in entries if _stored_object(entry)]
 
     @property
     def _bucket(self) -> AsyncBucketProxy:
@@ -155,3 +161,7 @@ class _storage_failures:  # noqa: N801 — reads as a statement at the call site
         if str(status) == "404" or code in MISSING_OBJECT_CODES:
             raise ObjectNotFoundError(f"no object at {self._path}") from exc
         raise StorageError(f"Storage could not {self._step} {self._path}") from exc
+
+
+def _stored_object(entry: dict[str, object]) -> bool:
+    return bool(entry.get("id"))
