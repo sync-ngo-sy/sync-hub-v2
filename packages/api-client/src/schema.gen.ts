@@ -480,6 +480,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/candidates/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's profile photo
+         * @description The photo everywhere the candidate appears. Sent square by the portal's crop; anything
+         *     else keeps its middle square. What comes back is stored small, so send the original.
+         *
+         *     Replaces whatever photo the candidate had, at a new URL — the old one stops answering.
+         */
+        put: operations["replaceMyAvatar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/candidates/me/deletion": {
         parameters: {
             query?: never;
@@ -2025,6 +2048,26 @@ export interface components {
              * @description Where Sync answers them.
              */
             email: string;
+        };
+        /**
+         * Avatar
+         * @description Where the candidate's stored photo is served from.
+         */
+        Avatar: {
+            /**
+             * Avatar Url
+             * @description A public URL, good until the candidate uploads another photo.
+             * @example https://sync.example/storage/v1/object/public/avatars/<id>/<photo>.webp
+             */
+            avatar_url: string;
+        };
+        /** Body_replaceMyAvatar */
+        Body_replaceMyAvatar: {
+            /**
+             * File
+             * @description The photo: JPEG, PNG or WebP, up to 5 MB. Square or it is cropped.
+             */
+            file: string;
         };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
@@ -6057,6 +6100,93 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replaceMyAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_replaceMyAvatar"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Avatar"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is larger than the platform accepts. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is not a JPEG, PNG or WebP image. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is empty. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file store could not be reached. */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
