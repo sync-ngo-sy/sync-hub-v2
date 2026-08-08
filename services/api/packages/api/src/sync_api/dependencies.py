@@ -12,6 +12,7 @@ from sync_api.applications import (
     MatchAssessmentService,
 )
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
+from sync_api.avatars import AvatarService
 from sync_api.candidate_directory import CandidateDirectoryService
 from sync_api.candidates import (
     ActingCandidate,
@@ -130,11 +131,31 @@ CandidateDirectoryServiceDep = Annotated[
 ]
 
 
+def get_storage(request: Request) -> Storage:
+    return cast("Storage", request.app.state.storage)
+
+
+def get_avatar_storage(request: Request) -> Storage:
+    return cast("Storage", request.app.state.avatar_storage)
+
+
+def get_avatar_service(
+    session: SessionDep,
+    storage: Annotated[Storage, Depends(get_avatar_storage)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> AvatarService:
+    return AvatarService(session, storage, settings)
+
+
+AvatarServiceDep = Annotated[AvatarService, Depends(get_avatar_service)]
+
+
 def get_candidate_deletion(
     session: SessionDep,
     authentication: Annotated[Authentication, Depends(get_authentication)],
+    avatars: Annotated[Storage, Depends(get_avatar_storage)],
 ) -> CandidateDeletion:
-    return CandidateDeletion(session, authentication.gotrue)
+    return CandidateDeletion(session, authentication.gotrue, avatars)
 
 
 CandidateDeletionDep = Annotated[CandidateDeletion, Depends(get_candidate_deletion)]
@@ -145,10 +166,6 @@ def get_notification_service(session: SessionDep) -> NotificationService:
 
 
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
-
-
-def get_storage(request: Request) -> Storage:
-    return cast("Storage", request.app.state.storage)
 
 
 def get_cv_service(

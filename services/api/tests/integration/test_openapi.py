@@ -136,6 +136,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "refreshSession",
         "renameTenantTag",
         "replaceJobCriteria",
+        "replaceMyAvatar",
         "replaceMyProfile",
         "requestPasswordReset",
         "resendFoundingAdminInvite",

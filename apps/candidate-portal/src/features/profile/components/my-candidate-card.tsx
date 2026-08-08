@@ -3,6 +3,7 @@ import { useCurrentProfile } from '@/features/auth/current-profile';
 import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { useMyProfile } from '../hooks/use-my-profile';
+import { PhotoPicker } from './photo-picker';
 
 export function MyCandidateCard() {
   const { data: profile } = useMyProfile();
@@ -16,14 +17,17 @@ export function MyCandidateCard() {
     .filter((name): name is string => Boolean(name));
 
   return (
-    <CandidateCard
-      name={profile.full_name}
-      avatarUrl={account.avatar_url}
-      email={account.email}
-      phone={profile.phone}
-      role={role?.name}
-      yearsOfExperience={profile.total_experience_years}
-      languages={spoken}
-    />
+    <div className="space-y-3">
+      <CandidateCard
+        name={profile.full_name}
+        avatarUrl={account.avatar_url}
+        email={account.email}
+        phone={profile.phone}
+        role={role?.name}
+        yearsOfExperience={profile.total_experience_years}
+        languages={spoken}
+      />
+      <PhotoPicker hasPhoto={Boolean(account.avatar_url)} />
+    </div>
   );
 }

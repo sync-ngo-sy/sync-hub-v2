@@ -41,7 +41,15 @@ from sync_api.routes import (
     tenants,
 )
 from sync_assessments.openai_assessor import OpenAiMatchAssessor
-from sync_core import Database, Settings, Storage, configure_logging, get_logger, get_settings
+from sync_core import (
+    AVATAR_BUCKET,
+    Database,
+    Settings,
+    Storage,
+    configure_logging,
+    get_logger,
+    get_settings,
+)
 from sync_rag.openai_embedder import OpenAiEmbedder
 
 if TYPE_CHECKING:
@@ -78,10 +86,12 @@ def create_app(
             resolved, refresh_cookie_path=f"{API_PREFIX}{auth.ROUTER_PREFIX}"
         )
         storage = Storage.build(resolved)
+        avatar_storage = Storage.build(resolved, bucket=AVATAR_BUCKET)
         app.state.settings = resolved
         app.state.database = database
         app.state.authentication = authentication
         app.state.storage = storage
+        app.state.avatar_storage = avatar_storage
         app.state.embedder = embedder or _openai_embedder(resolved)
         app.state.assessor = assessor or _openai_assessor(resolved)
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
@@ -94,6 +104,7 @@ def create_app(
         finally:
             await authentication.aclose()
             await storage.aclose()
+            await avatar_storage.aclose()
             await database.dispose()
             logger.info("api.stopped")
 

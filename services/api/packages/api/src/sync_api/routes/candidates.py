@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Final
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, File, Response, UploadFile, status
 from pydantic import BaseModel, Field
 
+from sync_api.avatars import ACCEPTED_FORMATS, Avatar
 from sync_api.candidates import CandidateProfile
 from sync_api.dependencies import (
     ActingCandidateDep,
+    AvatarServiceDep,
     CandidateDeletionDep,
     CandidateProfileServiceDep,
     SessionCookiesDep,
@@ -70,6 +72,34 @@ async def replace_my_profile(
 ) -> CandidateProfile:
     """Replace the profile whole — an omitted section is an emptied one — and answer with it."""
     return await profiles.replace(candidate.id, body)
+
+
+@router.put(
+    "/me/avatar",
+    operation_id="replaceMyAvatar",
+    summary="Set the caller's profile photo",
+    responses={
+        **CANDIDATE_ACCESS_REFUSED,
+        413: openapi_problem("The file is larger than the platform accepts."),
+        415: openapi_problem(f"The file is not a {ACCEPTED_FORMATS} image."),
+        422: openapi_problem("The file is empty."),
+        502: openapi_problem("The file store could not be reached."),
+    },
+)
+async def replace_my_avatar(
+    candidate: ActingCandidateDep,
+    avatars: AvatarServiceDep,
+    file: Annotated[
+        UploadFile,
+        File(description=f"The photo: {ACCEPTED_FORMATS}, up to 5 MB. Square or it is cropped."),
+    ],
+) -> Avatar:
+    """The photo everywhere the candidate appears. Sent square by the portal's crop; anything
+    else keeps its middle square. What comes back is stored small, so send the original.
+
+    Replaces whatever photo the candidate had, at a new URL — the old one stops answering.
+    """
+    return await avatars.replace(candidate.id, file)
 
 
 @router.post(

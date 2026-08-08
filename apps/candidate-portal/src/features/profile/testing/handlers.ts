@@ -43,3 +43,16 @@ export function refusesSearchable(problem: ProblemDetail) {
 export function faultsOnSave(problem: ProblemDetail) {
   return [http.put('/v1/candidates/me/profile', ({ response }) => response(500).json(problem))];
 }
+
+export function savesPhoto(avatarUrl: string, onUpload?: (contentType: string | null) => void) {
+  return [
+    http.put('/v1/candidates/me/avatar', ({ request, response }) => {
+      onUpload?.(request.headers.get('content-type'));
+      return response(200).json({ avatar_url: avatarUrl });
+    }),
+  ];
+}
+
+export function refusesPhoto(problem: ProblemDetail, status: 413 | 415) {
+  return [http.put('/v1/candidates/me/avatar', ({ response }) => response(status).json(problem))];
+}
