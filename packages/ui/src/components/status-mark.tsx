@@ -29,7 +29,7 @@ interface Mark {
 }
 
 const TONE: Record<StatusTone, Mark> = {
-  new: { color: 'text-status-new', shape: HOLLOW },
+  new: { color: 'text-status-new', shape: FILLED },
   reviewing: { color: 'text-status-review', shape: FILLED },
   shortlisted: { color: 'text-status-shortlisted', shape: FILLED },
   interview: { color: 'text-status-interview', shape: FILLED },
@@ -39,7 +39,7 @@ const TONE: Record<StatusTone, Mark> = {
   withdrawn: { color: 'text-status-withdrawn', icon: CircleX },
   waiting: { color: 'text-muted-foreground', shape: HOLLOW },
   active: { color: 'text-accent-foreground', shape: FILLED },
-  attention: { color: 'text-muted-foreground', icon: CircleAlert },
+  attention: { color: 'text-mark-attention', icon: CircleAlert },
   ended: { color: 'text-muted-foreground', icon: CircleX },
 };
 

@@ -11,7 +11,14 @@ import {
 const HOLLOW = 'shadow-[inset_0_0_0_2px_currentColor]';
 const FILLED = 'bg-current';
 
-const PROGRESSING: StatusTone[] = ['reviewing', 'shortlisted', 'interview', 'offer', 'hired'];
+const PROGRESSING: StatusTone[] = [
+  'new',
+  'reviewing',
+  'shortlisted',
+  'interview',
+  'offer',
+  'hired',
+];
 const ENDED: StatusTone[] = ['rejected', 'withdrawn'];
 
 function markFor(label: string) {
@@ -36,14 +43,21 @@ describe('StatusMark', () => {
     }
   });
 
-  it('leaves the New mark hollow, because nothing has happened yet', () => {
+  it('gives New the same weight as the rest of the pipeline, and its own hue', () => {
     render(<StatusMark tone="new" label="New" />);
 
-    expect(dotOf('New')).toHaveClass(HOLLOW);
-    expect(dotOf('New')).not.toHaveClass(FILLED);
+    expect(dotOf('New')).toHaveClass(FILLED);
+    expect(dotOf('New')).not.toHaveClass(HOLLOW);
   });
 
-  it('fills the mark once the application starts moving', () => {
+  it('reserves the hollow ring for a general state that has not started', () => {
+    render(<StatusMark tone="waiting" label="Draft" />);
+
+    expect(dotOf('Draft')).toHaveClass(HOLLOW);
+    expect(dotOf('Draft')).not.toHaveClass(FILLED);
+  });
+
+  it('fills the mark for every application still in the pipeline', () => {
     for (const tone of PROGRESSING) {
       const { unmount } = render(<StatusMark tone={tone} label={tone} />);
 
@@ -107,6 +121,13 @@ describe('StatusMark', () => {
     expect(dotOf('Published')).toHaveClass(FILLED);
     expect(iconOf('Review required')).toHaveClass('lucide-circle-alert');
     expect(iconOf('Closed')).toHaveClass('lucide-circle-x');
+  });
+
+  it('paints Review required in the same amber as Reviewing, without the status token', () => {
+    render(<StatusMark tone="attention" label="Review required" />);
+
+    expect(iconOf('Review required')).toHaveClass('text-mark-attention');
+    expect(iconOf('Review required')).not.toHaveClass('text-muted-foreground');
   });
 
   it('paints no status mark in the destructive red', () => {

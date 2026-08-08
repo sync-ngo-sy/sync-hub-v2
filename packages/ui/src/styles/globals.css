@@ -80,6 +80,8 @@
   --color-status-rejected: var(--status-rejected);
   --color-status-withdrawn: var(--status-withdrawn);
 
+  --color-mark-attention: var(--mark-attention);
+
   --shadow-sm: var(--elevation-sm);
   --shadow-card: var(--elevation-card);
   --shadow-md: var(--elevation-md);
@@ -202,14 +204,16 @@
   --sidebar-border: #256C62;
   --sidebar-label: #A9C7C1;
 
-  --status-new: #6D6C64;
+  --status-new: #285D9B;
   --status-review: #946400;
-  --status-shortlisted: #4B726B;
-  --status-interview: #256E63;
-  --status-offer: #00675B;
-  --status-hired: #005D53;
+  --status-shortlisted: #A8521C;
+  --status-interview: #7F5093;
+  --status-offer: #2D7F3F;
+  --status-hired: #006D61;
   --status-rejected: #7C7B73;
   --status-withdrawn: #8A8982;
+
+  --mark-attention: #946400;
 
   --elevation-sm: 0 1px 2px 0 rgb(48 46 36 / 0.05);
   --elevation-card: 0 1px 2px -1px rgb(48 46 36 / 0.07), 0 2px 6px -2px rgb(48 46 36 / 0.06);
@@ -273,14 +277,16 @@
   --sidebar-border: #292823;
   --sidebar-label: #8B8981;
 
-  --status-new: #A6A49B;
+  --status-new: #7DB1F1;
   --status-review: #EEB150;
-  --status-shortlisted: #44887D;
-  --status-interview: #3CA092;
-  --status-offer: #40B7A7;
-  --status-hired: #53CDBB;
+  --status-shortlisted: #E08E52;
+  --status-interview: #9F71B4;
+  --status-offer: #63B772;
+  --status-hired: #59C9B8;
   --status-rejected: #8E8C85;
   --status-withdrawn: #7B7973;
+
+  --mark-attention: #EEB150;
 
   --elevation-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
   --elevation-card: 0 1px 2px -1px rgb(0 0 0 / 0.40), 0 2px 6px -2px rgb(0 0 0 / 0.30);
