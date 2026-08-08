@@ -23,7 +23,7 @@ from tests.support.applications import (
     a_reviewed_application,
     a_withdrawn_application,
     an_accepted_application,
-    an_applicant_who_can_apply,
+    an_applicant_with_a_stored_cv,
     apply_to,
     communications_of,
     job_applications_of,
@@ -177,7 +177,7 @@ async def test_the_review_carries_the_two_live_facts_a_snapshot_never_froze(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    applicant = await an_applicant_who_can_apply(other_browser, mailbox, db_session)
+    applicant = await an_applicant_with_a_stored_cv(other_browser, mailbox, db_session)
     application = await an_accepted_application(other_browser, job["id"])
 
     review = await a_reviewed_application(recruiter, application["id"])
@@ -195,7 +195,7 @@ async def test_the_snapshot_freezes_the_role_they_applied_as_not_the_one_they_ho
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
-    await an_applicant_who_can_apply(other_browser, mailbox, db_session)
+    await an_applicant_with_a_stored_cv(other_browser, mailbox, db_session)
     application = await an_accepted_application(other_browser, job["id"])
 
     await a_saved_profile(other_browser, a_filled_profile(canonical_role_key="data-scientist"))
