@@ -1,0 +1,5 @@
+interface:
+  display_name: "web-design-guidelines"
+  short_description: "web-design-guidelines"
+policy:
+  allow_implicit_invocation: false
