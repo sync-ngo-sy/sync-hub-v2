@@ -5,7 +5,7 @@ import {
   CandidateOutOfReach,
   CandidateViewPage,
 } from '@/features/candidates/components/candidate-view-page';
-import { cachedSearchHits } from '@/features/candidates/hooks/use-candidate-search';
+import { readSearchHits } from '@/features/candidates/hooks/use-candidate-search';
 import { recordProfile } from '@/features/profile/profile';
 import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
 import { warmTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
@@ -16,17 +16,17 @@ export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
   validateSearch: candidateSearchParams,
   loaderDeps: ({ search }) => search,
   loader: async ({ context, params, deps }) => {
-    const [record] = await Promise.all([
+    const filters = filtersFrom(deps);
+    const [record, hits] = await Promise.all([
       ensureCandidateRecord(context.queryClient, params.candidateId),
+      readSearchHits(context.queryClient, filters),
       warmTalentPool(context.queryClient),
       warmSearchTaxonomies(context.queryClient),
     ]);
 
     if (!record) return null;
 
-    const hit = cachedSearchHits(context.queryClient, filtersFrom(deps)).find(
-      (match) => match.candidate_id === params.candidateId,
-    );
+    const hit = hits.find((match) => match.candidate_id === params.candidateId);
 
     return { record, evidence: hit ? matchEvidence(hit) : null };
   },

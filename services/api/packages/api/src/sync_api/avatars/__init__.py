@@ -1,6 +1,6 @@
 from sync_api.avatars.image import ACCEPTED_FORMATS, AVATAR_PIXELS, avatar_webp
 from sync_api.avatars.payload import Avatar
-from sync_api.avatars.service import AvatarService, forget_photos
+from sync_api.avatars.service import AvatarService, remove_avatar_folder
 
 __all__ = [
     "ACCEPTED_FORMATS",
@@ -8,5 +8,5 @@ __all__ = [
     "Avatar",
     "AvatarService",
     "avatar_webp",
-    "forget_photos",
+    "remove_avatar_folder",
 ]

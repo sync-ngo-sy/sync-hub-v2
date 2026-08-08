@@ -84,7 +84,7 @@ async def a_closed_job(browser: AsyncClient, **changes: Any) -> dict[str, Any]:
 
 
 async def create_link(
-    browser: AsyncClient, job_id: str, name: str = "LinkedIn campaign", **changes: Any
+    browser: AsyncClient, job_id: str, name: str = "LinkedIn post", **changes: Any
 ) -> Response:
     return await browser.post(f"{TENANT_JOBS}/{job_id}/links", json={"name": name, **changes})
 
@@ -103,8 +103,15 @@ async def change_link(browser: AsyncClient, job_id: str, link_id: str, **changes
 async def links_of(browser: AsyncClient, job_id: str) -> list[dict[str, Any]]:
     response = await browser.get(f"{TENANT_JOBS}/{job_id}/links")
     assert response.status_code == 200, response.text
-    found: list[dict[str, Any]] = response.json()
+    found: list[dict[str, Any]] = response.json()["items"]
     return found
+
+
+async def link_report(browser: AsyncClient, job_id: str) -> dict[str, Any]:
+    response = await browser.get(f"{TENANT_JOBS}/{job_id}/links")
+    assert response.status_code == 200, response.text
+    report: dict[str, Any] = response.json()
+    return report
 
 
 async def browse(visitor: AsyncClient, **params: Any) -> list[dict[str, Any]]:

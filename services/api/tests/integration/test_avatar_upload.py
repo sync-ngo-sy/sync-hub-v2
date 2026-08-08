@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 from typing import TYPE_CHECKING, Final
 
@@ -97,6 +98,26 @@ async def test_a_second_photo_replaces_the_first(
     assert second != first
     assert len(await avatar_paths(db_session)) == 1
     assert (await web.get(first)).status_code >= 400
+
+
+async def test_simultaneous_photos_leave_the_remembered_one_served(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    web: AsyncClient,
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    responses = await asyncio.gather(
+        *(upload_avatar(browser, a_photo(colour=(index * 20, 80, 120))) for index in range(1, 7))
+    )
+
+    assert {response.status_code for response in responses} == {200}
+    remembered = (await browser.get("/v1/auth/me")).json()["avatar_url"]
+    assert (await web.get(remembered)).status_code == 200
+    paths = await avatar_paths(db_session)
+    assert len(paths) == 1
+    assert remembered.endswith(paths[0])
 
 
 async def test_a_photo_larger_than_the_platform_takes_is_refused(

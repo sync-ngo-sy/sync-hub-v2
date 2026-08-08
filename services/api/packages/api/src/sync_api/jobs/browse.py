@@ -81,7 +81,6 @@ class JobBrowseService:
         return await self._detail(job, tenant)
 
     async def by_link(self, token: str, visitor: Visitor) -> PublicJob:
-        """A campaign landing. A link that has been turned off or has run out is simply gone."""
         link = await self._db.scalar(select(TrackedJobLink).where(TrackedJobLink.token == token))
         if link is None or not _usable(link):
             raise _dead_link()
@@ -97,17 +96,22 @@ class JobBrowseService:
     async def _record_view(
         self, job_id: UUID, visitor: Visitor, *, tracked_link_id: UUID | None
     ) -> None:
-        if await self._counted_recently(job_id, visitor, tracked_link_id):
-            return
+        recorded = False
         async with transaction(self._db):
-            self._db.add(
-                JobViewEvent(
-                    job_id=job_id,
-                    tracked_link_id=tracked_link_id,
-                    session_id=visitor.session_id,
-                    visitor_hash=visitor.visitor_hash,
+            key = f"{visitor.session_id}:{job_id}:{tracked_link_id or 'direct'}"
+            await self._db.scalar(select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0))))
+            if not await self._counted_recently(job_id, visitor, tracked_link_id):
+                self._db.add(
+                    JobViewEvent(
+                        job_id=job_id,
+                        tracked_link_id=tracked_link_id,
+                        session_id=visitor.session_id,
+                        visitor_hash=visitor.visitor_hash,
+                    )
                 )
-            )
+                recorded = True
+        if not recorded:
+            return
         logger.info(
             "jobs.viewed",
             job_id=str(job_id),
@@ -117,14 +121,6 @@ class JobBrowseService:
     async def _counted_recently(
         self, job_id: UUID, visitor: Visitor, tracked_link_id: UUID | None
     ) -> bool:
-        """Whether this browser is already counted for this Job through this channel.
-
-        Per channel, not per Job: a visitor who reads a Job on the board and then follows a
-        campaign link is a view the campaign brought, and swallowing it would both understate
-        the link and lose the attribution an Application is later read from.
-
-        The database's clock, so the window is measured from the instant the rows carry.
-        """
         return bool(
             await self._db.scalar(
                 select(

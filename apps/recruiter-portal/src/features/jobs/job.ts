@@ -63,6 +63,9 @@ export const JOB_SORTS: Record<JobSort, string> = {
   applications: 'Most applications',
 };
 
+export const JOB_STATUS_VALUES = Object.keys(JOB_STATE) as [JobStatus, ...JobStatus[]];
+export const JOB_SORT_VALUES = Object.keys(JOB_SORTS) as [JobSort, ...JobSort[]];
+
 export const DEFAULT_JOB_SORT: JobSort = 'newest';
 
 export interface JobLifecycleAction {

@@ -1,7 +1,10 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { CandidateProfile, ProfileCard } from '@/features/profile/components/candidate-profile';
+import {
+  CandidateFactsCard,
+  CandidateProfile,
+} from '@/features/profile/components/candidate-profile';
 import { snapshotProfile } from '@/features/profile/profile';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
@@ -59,7 +62,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         >
           Back to {review.job.title}
         </Link>
-        <ProfileCard profile={profile} mark={CARD_MARK} note={CARD_NOTE} />
+        <CandidateFactsCard profile={profile} contextLabel={CARD_MARK} note={CARD_NOTE} />
         <dl
           aria-label="Application facts"
           className="flex flex-wrap items-center gap-x-6 gap-y-2 text-dense"

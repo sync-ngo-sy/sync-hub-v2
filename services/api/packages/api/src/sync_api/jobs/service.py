@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final
 
@@ -104,10 +106,9 @@ class JobService:
         if status is not None:
             query = query.where(Job.status == status)
 
-        found = list((await self._db.execute(_ordered(query, sort, cursor, limit))).tuples())
-        rows, next_cursor = page_of(
-            found, limit=limit, cursor_for=lambda row: _cursor(row[0], row[1], sort)
-        )
+        ordered, cursor_for = _ordering(query, sort, cursor, limit)
+        found = list((await self._db.execute(ordered)).tuples())
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=cursor_for)
         return JobPage(
             items=[_summary(job, applications, views) for job, applications, views in rows],
             next_cursor=next_cursor,
@@ -176,71 +177,98 @@ class JobService:
     async def _has_applications(self, job_id: UUID) -> bool:
         return bool(await self._db.scalar(select(exists().where(Application.job_id == job_id))))
 
-    async def _applications(self, job_id: UUID) -> int:
-        counted = await self._db.scalar(
-            select(func.count()).select_from(Application).where(Application.job_id == job_id)
-        )
-        return counted or 0
-
-    async def _views(self, job_id: UUID) -> int:
-        counted = await self._db.scalar(
-            select(func.count()).select_from(JobViewEvent).where(JobViewEvent.job_id == job_id)
-        )
-        return counted or 0
-
     async def _view(self, job: Job) -> JobView:
-        # The count answers the lock too: criteria freeze on the first Application, so one read
-        # settles both rather than asking the same table twice.
-        applications = await self._applications(job.id)
+        applications, views = (
+            await self._db.execute(select(APPLICATION_COUNT, VIEW_COUNT).where(Job.id == job.id))
+        ).one()
         return JobView(
-            **_summary(job, applications, await self._views(job.id)).model_dump(),
+            **_summary(job, applications, views).model_dump(),
             description=job.description,
             criteria=await criteria_of(self._db, job),
             criteria_locked=applications > 0,
         )
 
 
+def _job_count(model: type[Application] | type[JobViewEvent]):
+    return (
+        select(func.count())
+        .select_from(model)
+        .where(model.job_id == Job.id)
+        .correlate(Job)
+        .scalar_subquery()
+    )
+
+
 #: Correlated so one page of Jobs carries its counts, rather than a request per row.
-APPLICATION_COUNT: Final = (
-    select(func.count())
-    .select_from(Application)
-    .where(Application.job_id == Job.id)
-    .correlate(Job)
-    .scalar_subquery()
-)
+APPLICATION_COUNT: Final = _job_count(Application)
 
-#: Every view of the Job, whatever brought it. A Tracked link's own count is the links list's.
-VIEW_COUNT: Final = (
-    select(func.count())
-    .select_from(JobViewEvent)
-    .where(JobViewEvent.job_id == Job.id)
-    .correlate(Job)
-    .scalar_subquery()
-)
+VIEW_COUNT: Final = _job_count(JobViewEvent)
 
 
-def _ordered(
-    query: Select[tuple[Job, int, int]], sort: JobSort, cursor: str | None, limit: int
-) -> Select[tuple[Job, int, int]]:
-    """One page in the order that was asked for.
+type JobRow = tuple[Job, int, int]
 
-    `applications` ranks on the same correlated count the rows carry, so the number a Recruiter
-    sorted by and the number they read are one number, not two reads that could disagree.
-    """
-    if sort is JobSort.OLDEST:
-        return oldest_first(
-            query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit
+
+@dataclass(frozen=True, slots=True)
+class _JobPage:
+    cursor: str | None
+    limit: int
+    order: str
+
+    def newest(self, query: Select[JobRow]) -> Select[JobRow]:
+        return newest_first(
+            query,
+            created_at=Job.created_at,
+            id_=Job.id,
+            cursor=self.cursor,
+            limit=self.limit,
+            cursor_order=self.order,
         )
-    if sort is JobSort.APPLICATIONS:
+
+    def oldest(self, query: Select[JobRow]) -> Select[JobRow]:
+        return oldest_first(
+            query,
+            created_at=Job.created_at,
+            id_=Job.id,
+            cursor=self.cursor,
+            limit=self.limit,
+            cursor_order=self.order,
+        )
+
+    def most_applications(self, query: Select[JobRow]) -> Select[JobRow]:
         return most_first(
             query,
             rank=APPLICATION_COUNT,
             created_at=Job.created_at,
             id_=Job.id,
-            cursor=cursor,
-            limit=limit,
+            cursor=self.cursor,
+            limit=self.limit,
+            cursor_order=self.order,
         )
-    return newest_first(query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit)
+
+
+def _ordering(
+    query: Select[tuple[Job, int, int]], sort: JobSort, cursor: str | None, limit: int
+) -> tuple[Select[tuple[Job, int, int]], Callable[[JobRow], Cursor]]:
+    """One page in the order that was asked for.
+
+    `applications` ranks on the same correlated count the rows carry, so the number a Recruiter
+    sorted by and the number they read are one number, not two reads that could disagree.
+    """
+    page = _JobPage(cursor=cursor, limit=limit, order=sort.value)
+    if sort is JobSort.OLDEST:
+        return (
+            page.oldest(query),
+            lambda row: _cursor_for(row, sort, ranked=False),
+        )
+    if sort is JobSort.APPLICATIONS:
+        return (
+            page.most_applications(query),
+            lambda row: _cursor_for(row, sort, ranked=True),
+        )
+    return (
+        page.newest(query),
+        lambda row: _cursor_for(row, sort, ranked=False),
+    )
 
 
 def _summary(job: Job, applications: int, views: int) -> JobSummary:
@@ -278,9 +306,14 @@ def _stamp_publication(job: Job, *, was: JobStatus) -> None:
         job.published_at = func.now()
 
 
-def _cursor(job: Job, applications: int, sort: JobSort) -> Cursor:
-    rank = applications if sort is JobSort.APPLICATIONS else None
-    return Cursor(created_at=job.created_at, id=job.id, rank=rank)
+def _cursor_for(row: JobRow, sort: JobSort, *, ranked: bool) -> Cursor:
+    job, applications, _views = row
+    return Cursor(
+        created_at=job.created_at,
+        id=job.id,
+        rank=applications if ranked else None,
+        order=sort.value,
+    )
 
 
 def _skills_named(criteria: JobCriteria) -> dict[str, str]:

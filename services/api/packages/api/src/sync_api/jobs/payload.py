@@ -270,7 +270,7 @@ class PublicJobPage(BaseModel):
 class NewTrackedLink(BaseModel):
     """A named link to a Job, so the views and applications it brings can be told apart."""
 
-    name: Line = Field(description="What the campaign is called, unique per Job.")
+    name: Line = Field(description="The channel or placement this link represents, unique per Job.")
     expires_at: Expiry = None
 
 
@@ -288,8 +288,6 @@ class TrackedLinkChanges(BaseModel):
 
 
 class TrackedLink(BaseModel):
-    """One campaign link, and how much traffic it has brought."""
-
     id: UUID
     name: str
     token: str = Field(description="The unguessable part of the public URL.")
@@ -297,6 +295,12 @@ class TrackedLink(BaseModel):
     expires_at: datetime | None = None
     created_at: datetime
     view_count: int = Field(description="Job views that arrived through this link.")
+
+
+class TrackedLinkReport(BaseModel):
+    items: list[TrackedLink]
+    direct_view_count: int
+    view_count: int
 
 
 class LinkedJob(BaseModel):
