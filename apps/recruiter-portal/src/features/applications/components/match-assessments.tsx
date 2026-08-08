@@ -1,17 +1,21 @@
 import { SkeletonText } from '@sync/ui/components/skeletons';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { CircleAlert, Sparkles } from 'lucide-react';
+import { cn } from '@sync/ui/lib/utils';
+import { CircleAlert, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
 import { assessmentProvenance, type MatchAssessment, matchLabel } from '../assessment';
-import { useAssessMatch } from '../hooks/use-application-actions';
+import { useAssessMatch, useForgetAssessment } from '../hooks/use-application-actions';
 import { useMatchAssessments } from '../hooks/use-match-assessments';
 
 const ADVICE =
   'Advice drawn from the Snapshot and the Job — it does not change the Screening verdict.';
+
+const LEAVING =
+  'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-8 motion-safe:duration-300 motion-safe:fill-mode-forwards';
 
 function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
   return (
@@ -26,8 +30,16 @@ function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
   );
 }
 
-function Assessment({ assessment }: { assessment: MatchAssessment }) {
+interface AssessmentProps {
+  assessment: MatchAssessment;
+  isLeaving: boolean;
+  refusal: string | null;
+  onForget: () => void;
+}
+
+function Assessment({ assessment, isLeaving, refusal, onForget }: AssessmentProps) {
   const label = matchLabel(assessment.match_percentage);
+  const stamp = absoluteDateTime(assessment.assessed_at);
   const strengths = assessment.strengths ?? [];
   const gaps = assessment.gaps ?? [];
   const wordless = !assessment.explanation && strengths.length === 0 && gaps.length === 0;
@@ -35,13 +47,27 @@ function Assessment({ assessment }: { assessment: MatchAssessment }) {
   return (
     <li
       aria-label={label}
-      className="space-y-2 border-border border-t pt-4 first:border-t-0 first:pt-0"
+      className={cn(
+        'space-y-2 border-border border-t pt-4 first:border-t-0 first:pt-0',
+        isLeaving && LEAVING,
+      )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <h3 className="font-medium text-dense text-foreground">{label}</h3>
-        <time dateTime={assessment.assessed_at} className="text-meta text-muted-foreground">
-          {absoluteDateTime(assessment.assessed_at)}
-        </time>
+        <span className="flex items-baseline gap-2">
+          <time dateTime={assessment.assessed_at} className="text-meta text-muted-foreground">
+            {stamp}
+          </time>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Delete the reading from ${stamp}`}
+            disabled={isLeaving}
+            onClick={onForget}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
+        </span>
       </div>
 
       {assessment.explanation ? (
@@ -57,6 +83,14 @@ function Assessment({ assessment }: { assessment: MatchAssessment }) {
       {gaps.length > 0 ? <Reasons title="Gaps" phrases={gaps} /> : null}
 
       <p className="text-meta text-muted-foreground">{assessmentProvenance(assessment)}</p>
+
+      {refusal ? (
+        <Alert>
+          <CircleAlert aria-hidden="true" />
+          <AlertTitle>This reading is still here</AlertTitle>
+          <AlertDescription>{refusal}</AlertDescription>
+        </Alert>
+      ) : null}
     </li>
   );
 }
@@ -64,7 +98,10 @@ function Assessment({ assessment }: { assessment: MatchAssessment }) {
 export function MatchAssessments({ applicationId }: { applicationId: string }) {
   const assessments = useMatchAssessments(applicationId);
   const asking = useAssessMatch(applicationId);
+  const forgetting = useForgetAssessment(applicationId);
   const [refused, setRefused] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  const [unforgotten, setUnforgotten] = useState<{ id: string; detail: string } | null>(null);
 
   const items = assessments.data ?? [];
   const failure = assessments.isError
@@ -79,6 +116,24 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
       setRefused(
         problemDetail(error, "This Application couldn't be assessed. Nothing was recorded."),
       );
+    }
+  }
+
+  async function forget(assessmentId: string) {
+    if (leaving) return;
+    setLeaving(assessmentId);
+    setUnforgotten(null);
+    try {
+      await forgetting.mutateAsync({
+        params: { path: { application_id: applicationId, assessment_id: assessmentId } },
+      });
+    } catch (error) {
+      setUnforgotten({
+        id: assessmentId,
+        detail: problemDetail(error, "That reading couldn't be deleted. It is still on record."),
+      });
+    } finally {
+      setLeaving(null);
     }
   }
 
@@ -122,7 +177,13 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
         {items.length > 0 ? (
           <ol aria-label="Match assessments" className="space-y-4">
             {items.map((assessment) => (
-              <Assessment key={assessment.id} assessment={assessment} />
+              <Assessment
+                key={assessment.id}
+                assessment={assessment}
+                isLeaving={leaving === assessment.id}
+                refusal={unforgotten?.id === assessment.id ? unforgotten.detail : null}
+                onForget={() => void forget(assessment.id)}
+              />
             ))}
           </ol>
         ) : null}

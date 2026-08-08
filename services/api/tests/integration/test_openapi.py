@@ -76,6 +76,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "createPlatformTenant",
         "createTenantTag",
         "createTrackedJobLink",
+        "deleteApplicationMatchAssessment",
         "deleteApplicationNote",
         "deleteCandidateNote",
         "deleteMessageTemplate",

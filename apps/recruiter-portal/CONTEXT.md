@@ -141,6 +141,11 @@ than replaces, so every past reading stays with the model and prompt version tha
 the wait is shown as a wait — the model is slow, nothing is put in the list optimistically, and
 the finished reading arrives only when the API has it. A refusal (asked too often, the model
 failed, no model configured) lands beside the button in the server's own words.
+A reading is thrown away one at a time and nothing is asked first — a stale reading is not a
+decision, and the Recruiter can always ask for another. The one going leaves to the right while
+the API is told, so the list is seen shortening rather than found shorter; the readings left
+behind are untouched, each still with the model and prompt version that wrote it. A deletion the
+server refuses lands beside that reading, in the server's own words, and the reading stays.
 _Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
 
 **Applicant message**:
