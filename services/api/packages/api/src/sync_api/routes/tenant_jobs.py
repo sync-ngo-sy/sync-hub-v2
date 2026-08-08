@@ -18,6 +18,7 @@ from sync_api.jobs import (
     JobCriteria,
     JobCriteriaView,
     JobPage,
+    JobSort,
     JobView,
     NewJob,
     NewTrackedLink,
@@ -53,10 +54,10 @@ async def create_job(body: NewJob, recruiter: ActingRecruiterDep, jobs: JobServi
 @router.get(
     "",
     operation_id="listJobs",
-    summary="The tenant's Jobs, newest first",
+    summary="The tenant's Jobs, newest first unless another order is asked for",
     responses={
         **TENANT_ACCESS_REFUSED,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_jobs(
@@ -66,16 +67,23 @@ async def list_jobs(
         JobStatus | None,
         Query(alias="status", description="Only Jobs in this state."),
     ] = None,
+    sort: Annotated[
+        JobSort,
+        Query(
+            description="`newest` and `oldest` order by when the Job was written; "
+            "`applications` puts the busiest first, newest first among ties."
+        ),
+    ] = JobSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
-    """Every Job of the tenant, whatever its state. Page with `next_cursor`."""
-    return await jobs.page(recruiter, status=job_status, cursor=cursor, limit=limit)
+    """Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`."""
+    return await jobs.page(recruiter, status=job_status, sort=sort, cursor=cursor, limit=limit)
 
 
 @router.get(

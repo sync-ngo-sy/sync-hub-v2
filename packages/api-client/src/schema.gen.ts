@@ -1119,8 +1119,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The tenant's Jobs, newest first
-         * @description Every Job of the tenant, whatever its state. Page with `next_cursor`.
+         * The tenant's Jobs, newest first unless another order is asked for
+         * @description Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`.
          */
         get: operations["listJobs"];
         put?: never;
@@ -2750,7 +2750,7 @@ export interface components {
         };
         /**
          * JobPage
-         * @description One page of the tenant's Jobs, newest first.
+         * @description One page of the tenant's Jobs, in the order that was asked for.
          */
         JobPage: {
             /** Items */
@@ -2829,6 +2829,12 @@ export interface components {
             minimum_years?: number | null;
         };
         /**
+         * JobSort
+         * @description The orders the tenant's own Jobs list can be read in.
+         * @enum {string}
+         */
+        JobSort: "newest" | "oldest" | "applications";
+        /**
          * JobStatus
          * @enum {string}
          */
@@ -2878,6 +2884,11 @@ export interface components {
              * @description How many Applications this Job has received.
              */
             application_count: number;
+            /**
+             * View Count
+             * @description How many times this Job's page has been read, through a Tracked link or not. One browser reading it repeatedly counts once per half hour, per channel.
+             */
+            view_count: number;
         };
         /**
          * JobView
@@ -2924,6 +2935,11 @@ export interface components {
              * @description How many Applications this Job has received.
              */
             application_count: number;
+            /**
+             * View Count
+             * @description How many times this Job's page has been read, through a Tracked link or not. One browser reading it repeatedly counts once per half hour, per channel.
+             */
+            view_count: number;
             /** Description */
             description: string;
             criteria: components["schemas"]["JobCriteriaView"];
@@ -8643,7 +8659,9 @@ export interface operations {
             query?: {
                 /** @description Only Jobs in this state. */
                 status?: components["schemas"]["JobStatus"] | null;
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description `newest` and `oldest` order by when the Job was written; `applications` puts the busiest first, newest first among ties. */
+                sort?: components["schemas"]["JobSort"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
@@ -8681,7 +8699,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or belongs to another `sort`. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -4,6 +4,7 @@ import type { StatusTone } from '@sync/ui/components/status-mark';
 export type Job = components['schemas']['JobView'];
 export type JobSummary = components['schemas']['JobSummary'];
 export type JobStatus = components['schemas']['JobStatus'];
+export type JobSort = components['schemas']['JobSort'];
 export type NewJob = components['schemas']['NewJob'];
 export type JobChanges = components['schemas']['JobChanges'];
 export type EmploymentType = components['schemas']['EmploymentType'];
@@ -55,6 +56,14 @@ export function jobMeta(job: JobSummary): string {
       .join(' · ') || 'Details not set'
   );
 }
+
+export const JOB_SORTS: Record<JobSort, string> = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  applications: 'Most applications',
+};
+
+export const DEFAULT_JOB_SORT: JobSort = 'newest';
 
 export interface JobLifecycleAction {
   label: string;

@@ -15,6 +15,7 @@ export const FIELD_COORDINATOR: JobSummary = {
   created_at: '2026-07-25T09:00:00Z',
   updated_at: '2026-07-26T09:00:00Z',
   application_count: 18,
+  view_count: 764,
 };
 
 export const PROGRAMME_OFFICER: JobSummary = {
@@ -29,6 +30,7 @@ export const PROGRAMME_OFFICER: JobSummary = {
   created_at: '2026-07-24T09:00:00Z',
   updated_at: '2026-07-24T09:00:00Z',
   application_count: 0,
+  view_count: 0,
 };
 
 export const FIELD_COORDINATOR_VIEW: JobView = {
