@@ -3,6 +3,13 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@sync/ui/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { BriefcaseBusiness, CircleAlert, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -13,7 +20,10 @@ import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useChangeJob } from '../hooks/use-job-actions';
 import { useJobs } from '../hooks/use-jobs';
 import {
+  DEFAULT_JOB_SORT,
+  JOB_SORTS,
   type JobLifecycleAction,
+  type JobSort,
   type JobStatus,
   type JobSummary,
   jobLifecycleActions,
@@ -43,6 +53,16 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
     },
   },
   {
+    accessorKey: 'view_count',
+    header: 'Views',
+    cell: ({ row }) => <span className="tabular-nums">{row.original.view_count}</span>,
+  },
+  {
+    accessorKey: 'application_count',
+    header: 'Applications',
+    cell: ({ row }) => <span className="tabular-nums">{row.original.application_count}</span>,
+  },
+  {
     accessorKey: 'updated_at',
     header: 'Updated',
     cell: ({ row }) => (
@@ -55,12 +75,20 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
 
 interface JobsPageProps {
   status?: JobStatus;
+  sort?: JobSort;
   onStatusChange: (status?: JobStatus) => void;
+  onSortChange: (sort: JobSort) => void;
   onJobOpen: (job: JobSummary) => void;
 }
 
-export function JobsPage({ status, onStatusChange, onJobOpen }: JobsPageProps) {
-  const jobs = useJobs(status);
+export function JobsPage({
+  status,
+  sort = DEFAULT_JOB_SORT,
+  onStatusChange,
+  onSortChange,
+  onJobOpen,
+}: JobsPageProps) {
+  const jobs = useJobs(status, sort);
   const change = useChangeJob();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<JobSummary | null>(null);
@@ -94,20 +122,41 @@ export function JobsPage({ status, onStatusChange, onJobOpen }: JobsPageProps) {
         }
       />
 
-      <Tabs
-        value={status ?? 'all'}
-        onValueChange={(value) =>
-          onStatusChange(value === 'all' ? undefined : (value as JobStatus))
-        }
-      >
-        <TabsList aria-label="Status">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="draft">Draft</TabsTrigger>
-          <TabsTrigger value="published">Published</TabsTrigger>
-          <TabsTrigger value="closed">Closed</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs
+          value={status ?? 'all'}
+          onValueChange={(value) =>
+            onStatusChange(value === 'all' ? undefined : (value as JobStatus))
+          }
+        >
+          <TabsList aria-label="Status">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="draft">Draft</TabsTrigger>
+            <TabsTrigger value="published">Published</TabsTrigger>
+            <TabsTrigger value="closed">Closed</TabsTrigger>
+            <TabsTrigger value="archived">Archived</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <Select
+          items={JOB_SORTS}
+          value={sort}
+          onValueChange={(value) => {
+            if (value !== null) onSortChange(value as JobSort);
+          }}
+        >
+          <SelectTrigger aria-label="Order">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(JOB_SORTS) as [JobSort, string][]).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {lifecycleFailure ? (
         <Alert>

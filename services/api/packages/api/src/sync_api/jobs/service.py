@@ -3,13 +3,20 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import Select, delete, exists, func, select
 from sqlalchemy.exc import IntegrityError
 
 from sync_api.jobs.access import WITH_LOCATION, location_name, lock_the_criteria, own_job
 from sync_api.jobs.criteria import criteria_of
-from sync_api.jobs.payload import JobPage, JobSummary, JobView
-from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
+from sync_api.jobs.payload import JobPage, JobSort, JobSummary, JobView
+from sync_api.pagination import (
+    DEFAULT_PAGE_SIZE,
+    Cursor,
+    most_first,
+    newest_first,
+    oldest_first,
+    page_of,
+)
 from sync_api.problems import (
     JOB_CRITERIA_LOCKED_PROBLEM_TYPE,
     JOB_TRANSITION_PROBLEM_TYPE,
@@ -29,6 +36,7 @@ from sync_core.models import (
     JobLanguage,
     JobSkill,
     JobStatus,
+    JobViewEvent,
 )
 
 if TYPE_CHECKING:
@@ -84,29 +92,24 @@ class JobService:
         recruiter: ActingRecruiter,
         *,
         status: JobStatus | None = None,
+        sort: JobSort = JobSort.NEWEST,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> JobPage:
         query = (
-            select(Job, APPLICATION_COUNT)
+            select(Job, APPLICATION_COUNT, VIEW_COUNT)
             .options(*WITH_LOCATION)
             .where(Job.tenant_id == recruiter.tenant.id)
         )
         if status is not None:
             query = query.where(Job.status == status)
 
-        found = list(
-            (
-                await self._db.execute(
-                    newest_first(
-                        query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit
-                    )
-                )
-            ).tuples()
+        found = list((await self._db.execute(_ordered(query, sort, cursor, limit))).tuples())
+        rows, next_cursor = page_of(
+            found, limit=limit, cursor_for=lambda row: _cursor(row[0], row[1], sort)
         )
-        rows, next_cursor = page_of(found, limit=limit, cursor_for=lambda row: _cursor(row[0]))
         return JobPage(
-            items=[_summary(job, applications) for job, applications in rows],
+            items=[_summary(job, applications, views) for job, applications, views in rows],
             next_cursor=next_cursor,
         )
 
@@ -179,12 +182,18 @@ class JobService:
         )
         return counted or 0
 
+    async def _views(self, job_id: UUID) -> int:
+        counted = await self._db.scalar(
+            select(func.count()).select_from(JobViewEvent).where(JobViewEvent.job_id == job_id)
+        )
+        return counted or 0
+
     async def _view(self, job: Job) -> JobView:
         # The count answers the lock too: criteria freeze on the first Application, so one read
         # settles both rather than asking the same table twice.
         applications = await self._applications(job.id)
         return JobView(
-            **_summary(job, applications).model_dump(),
+            **_summary(job, applications, await self._views(job.id)).model_dump(),
             description=job.description,
             criteria=await criteria_of(self._db, job),
             criteria_locked=applications > 0,
@@ -200,8 +209,41 @@ APPLICATION_COUNT: Final = (
     .scalar_subquery()
 )
 
+#: Every view of the Job, whatever brought it. A Tracked link's own count is the links list's.
+VIEW_COUNT: Final = (
+    select(func.count())
+    .select_from(JobViewEvent)
+    .where(JobViewEvent.job_id == Job.id)
+    .correlate(Job)
+    .scalar_subquery()
+)
 
-def _summary(job: Job, applications: int) -> JobSummary:
+
+def _ordered(
+    query: Select[tuple[Job, int, int]], sort: JobSort, cursor: str | None, limit: int
+) -> Select[tuple[Job, int, int]]:
+    """One page in the order that was asked for.
+
+    `applications` ranks on the same correlated count the rows carry, so the number a Recruiter
+    sorted by and the number they read are one number, not two reads that could disagree.
+    """
+    if sort is JobSort.OLDEST:
+        return oldest_first(
+            query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit
+        )
+    if sort is JobSort.APPLICATIONS:
+        return most_first(
+            query,
+            rank=APPLICATION_COUNT,
+            created_at=Job.created_at,
+            id_=Job.id,
+            cursor=cursor,
+            limit=limit,
+        )
+    return newest_first(query, created_at=Job.created_at, id_=Job.id, cursor=cursor, limit=limit)
+
+
+def _summary(job: Job, applications: int, views: int) -> JobSummary:
     return JobSummary(
         id=job.id,
         title=job.title,
@@ -215,6 +257,7 @@ def _summary(job: Job, applications: int) -> JobSummary:
         updated_at=job.updated_at,
         published_at=job.published_at,
         application_count=applications,
+        view_count=views,
     )
 
 
@@ -235,8 +278,9 @@ def _stamp_publication(job: Job, *, was: JobStatus) -> None:
         job.published_at = func.now()
 
 
-def _cursor(job: Job) -> Cursor:
-    return Cursor(created_at=job.created_at, id=job.id)
+def _cursor(job: Job, applications: int, sort: JobSort) -> Cursor:
+    rank = applications if sort is JobSort.APPLICATIONS else None
+    return Cursor(created_at=job.created_at, id=job.id, rank=rank)
 
 
 def _skills_named(criteria: JobCriteria) -> dict[str, str]:

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.jobs.browse import VIEW_WINDOW
 from tests.support.jobs import (
     TENANT_JOBS,
     a_created_job,
@@ -15,6 +16,9 @@ from tests.support.jobs import (
     follow_link,
     job_views,
     links_of,
+    read_job,
+    read_public_job,
+    viewed_ago,
 )
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import an_admin
@@ -35,18 +39,64 @@ async def test_a_link_lands_on_its_job_and_the_view_is_attributed_to_it(
 
 
 async def test_a_link_counts_the_traffic_it_brought(
-    recruiter: AsyncClient, visitor: AsyncClient
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
     job = await a_published_job(recruiter)
     campaign = await a_tracked_link(recruiter, job["id"], name="LinkedIn campaign")
     quiet = await a_tracked_link(recruiter, job["id"], name="Print flyer")
 
     await follow_link(visitor, campaign["token"])
+    await viewed_ago(db_session, job["id"], VIEW_WINDOW + timedelta(minutes=1))
     await follow_link(visitor, campaign["token"])
 
     counted = {link["name"]: link["view_count"] for link in await links_of(recruiter, job["id"])}
     assert counted == {"LinkedIn campaign": 2, "Print flyer": 0}
     assert quiet["view_count"] == 0
+
+
+async def test_landing_on_the_same_link_twice_over_is_one_view(
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"])
+
+    await follow_link(visitor, link["token"])
+    await follow_link(visitor, link["token"])
+
+    assert len(await job_views(db_session, job["id"])) == 1
+
+
+async def test_a_link_and_the_open_page_are_two_channels_of_one_job(
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The window is per channel. A browser that read the Job on the board and then followed a
+    campaign link gave the campaign a view, and swallowing it would both understate the link and
+    lose the attribution an Application is later read from."""
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"])
+
+    await read_public_job(visitor, job["id"])
+    await follow_link(visitor, link["token"])
+
+    direct, tracked = await job_views(db_session, job["id"])
+    assert direct.tracked_link_id is None
+    assert str(tracked.tracked_link_id) == link["id"]
+    assert direct.session_id == tracked.session_id
+
+
+async def test_a_jobs_total_counts_the_views_no_link_brought(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """What the Tracked links tab divides by: each link's share is of the Job's whole total, and
+    Direct is what that total has over the links."""
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"])
+
+    await read_public_job(visitor, job["id"])
+    await follow_link(visitor, link["token"])
+
+    assert [item["view_count"] for item in await links_of(recruiter, job["id"])] == [1]
+    assert (await read_job(recruiter, job["id"]))["view_count"] == 2
 
 
 async def test_a_link_that_was_turned_off_leads_nowhere(

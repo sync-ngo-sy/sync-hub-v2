@@ -22,6 +22,16 @@ export function listsJobs(items: JobSummary[]) {
   ];
 }
 
+export function sortsJobs(byOrder: Record<string, JobSummary[]>, onSort?: (sort: string) => void) {
+  return [
+    http.get('/v1/tenants/me/jobs', ({ query, response }) => {
+      const sort = query.get('sort') ?? 'newest';
+      onSort?.(sort);
+      return response(200).json({ items: byOrder[sort] ?? [], next_cursor: null });
+    }),
+  ];
+}
+
 export function failsToListJobs(problem: Problem) {
   return [http.get('/v1/tenants/me/jobs', ({ response }) => response(500).json(problem))];
 }

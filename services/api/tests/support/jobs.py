@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
+from sync_api.jobs.browse import VIEW_WINDOW
 from sync_core.models import Application, Job, JobViewEvent
 from tests.support.profiles import give_a_current_cv
 
@@ -133,6 +135,26 @@ async def an_application(session: AsyncSession, job_id: str | UUID, candidate_id
     session.add(application)
     await session.commit()
     return application.id
+
+
+async def viewed_ago(session: AsyncSession, job_id: str | UUID, ago: timedelta) -> None:
+    """Move a Job's view events back in time. The dedup window is rolling, so a test that wants a
+    visit to sit outside it has to put it there — nothing else can."""
+    await session.execute(
+        update(JobViewEvent)
+        .where(JobViewEvent.job_id == UUID(str(job_id)))
+        .values(viewed_at=datetime.now(UTC) - ago)
+    )
+    await session.commit()
+
+
+async def counted_again(session: AsyncSession, job_id: str | UUID) -> None:
+    """Put a Job's views far enough back that the next one from the same browser counts.
+
+    For tests about the counting rather than about the window: driving one browser round a loop
+    is one visitor looking twice, which is the one thing the window exists to swallow.
+    """
+    await viewed_ago(session, job_id, VIEW_WINDOW + timedelta(minutes=1))
 
 
 async def job_views(session: AsyncSession, job_id: str | UUID) -> list[JobViewEvent]:
