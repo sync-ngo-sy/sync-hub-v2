@@ -5,7 +5,7 @@ import { type ChangeEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { isClientError, problemMessage } from '@/lib/api-problem';
 import { photoUpload, useUploadPhoto } from '../hooks/use-upload-photo';
-import { MAX_PHOTO_MB, PHOTO_FILE_ACCEPT, PHOTO_FORMATS, rejectionFor } from '../photo-check';
+import { PHOTO_FILE_ACCEPT, PHOTO_FORMATS, rejectionFor } from '../photo-check';
 import { PhotoCropDialog } from './photo-crop-dialog';
 
 export function PhotoPicker({ hasPhoto }: { hasPhoto: boolean }) {
@@ -53,7 +53,7 @@ export function PhotoPicker({ hasPhoto }: { hasPhoto: boolean }) {
           {hasPhoto ? 'Change photo' : 'Add a photo'}
         </Button>
         <p className="text-meta text-muted-foreground">
-          {PHOTO_FORMATS}, up to {MAX_PHOTO_MB} MB. You choose what the circle holds.
+          {PHOTO_FORMATS}. You choose what the circle holds.
         </p>
       </div>
 

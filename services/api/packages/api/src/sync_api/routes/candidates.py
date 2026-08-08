@@ -91,7 +91,7 @@ async def replace_my_avatar(
     avatars: AvatarServiceDep,
     file: Annotated[
         UploadFile,
-        File(description=f"The photo: {ACCEPTED_FORMATS}, up to 5 MB. Square or it is cropped."),
+        File(description=f"The photo: {ACCEPTED_FORMATS}. Square or it is cropped."),
     ],
 ) -> Avatar:
     """The photo everywhere the candidate appears. Sent square by the portal's crop; anything
