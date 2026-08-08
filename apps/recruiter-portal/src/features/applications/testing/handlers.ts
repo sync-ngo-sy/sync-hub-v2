@@ -130,6 +130,13 @@ const NO_SUCH_TAG: Problem = {
   detail: 'This tenant has no application or no tag with that id.',
 };
 
+const NO_SUCH_ASSESSMENT: Problem = {
+  type: 'urn:sync:problem:assessment-not-found',
+  title: 'Not Found',
+  status: 404,
+  detail: 'This tenant has no application, or no assessment of it, with that id.',
+};
+
 const WROTE_AT = '2026-08-03T12:00:00Z';
 
 const AUTHOR: Note['author'] = {
@@ -329,14 +336,7 @@ export function failsToAssessMatch(
   ];
 }
 
-const NO_SUCH_ASSESSMENT: Problem = {
-  type: 'urn:sync:problem:assessment-not-found',
-  title: 'Not Found',
-  status: 404,
-  detail: 'This tenant has no application, or no assessment of it, with that id.',
-};
-
-export function keepsMatchAssessments(initial: MatchAssessment[], forgotten?: string[]) {
+export function forgetsMatchAssessments(initial: MatchAssessment[], forgotten?: string[]) {
   let items = [...initial];
   return [
     http.get(ASSESSMENTS_PATH, ({ response }) => response(200).json({ items, next_cursor: null })),
@@ -349,6 +349,24 @@ export function keepsMatchAssessments(initial: MatchAssessment[], forgotten?: st
       return response(204).empty();
     }),
   ];
+}
+
+export function holdsMatchAssessmentDeletion(initial: MatchAssessment[]) {
+  const gate = holding();
+  let items = [...initial];
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get(ASSESSMENTS_PATH, ({ response }) =>
+        response(200).json({ items, next_cursor: null }),
+      ),
+      http.delete(ASSESSMENT_PATH, async ({ params, response }) => {
+        await gate.held;
+        items = items.filter((item) => item.id !== params.assessment_id);
+        return response(204).empty();
+      }),
+    ],
+  };
 }
 
 export function refusesMatchAssessmentDeletion(initial: MatchAssessment[], problem: Problem) {

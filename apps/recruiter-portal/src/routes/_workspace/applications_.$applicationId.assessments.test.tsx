@@ -14,9 +14,10 @@ import {
   failsToAssessMatch,
   failsToListMatchAssessments,
   failsToPageMatchAssessments,
+  forgetsMatchAssessments,
   getsApplication,
   holdsMatchAssessment,
-  keepsMatchAssessments,
+  holdsMatchAssessmentDeletion,
   listsMatchAssessments,
   pagesMatchAssessments,
   refusesMatchAssessmentDeletion,
@@ -270,7 +271,7 @@ describe('throwing a reading away', () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsApplication(REVIEW),
-      ...keepsMatchAssessments([LATEST_ASSESSMENT, EARLIER_ASSESSMENT], forgotten),
+      ...forgetsMatchAssessments([LATEST_ASSESSMENT, EARLIER_ASSESSMENT], forgotten),
     );
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
@@ -287,7 +288,7 @@ describe('throwing a reading away', () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsApplication(REVIEW),
-      ...keepsMatchAssessments([LATEST_ASSESSMENT]),
+      ...forgetsMatchAssessments([LATEST_ASSESSMENT]),
     );
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
@@ -298,6 +299,24 @@ describe('throwing a reading away', () => {
     expect(
       await widget().findByText('No AI has read this Application against the Job yet.'),
     ).toBeVisible();
+  });
+
+  it('offers no second deletion while one is still on its way', async () => {
+    const held = holdsMatchAssessmentDeletion([LATEST_ASSESSMENT, EARLIER_ASSESSMENT]);
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW), ...held.handlers);
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const latest = within(await screen.findByRole('listitem', { name: /82%/ }));
+    await user.click(latest.getByRole('button', { name: /^Delete/ }));
+
+    const earlier = within(screen.getByRole('listitem', { name: /54%/ }));
+    await waitFor(() => expect(earlier.getByRole('button', { name: /^Delete/ })).toBeDisabled());
+
+    held.arrive();
+
+    await waitFor(() => expect(widget().queryByText('82% of what the Job asks for')).toBeNull());
+    expect(widget().getByRole('button', { name: /^Delete/ })).toBeEnabled();
   });
 
   it('puts the reason beside the reading it could not delete, and keeps the reading', async () => {

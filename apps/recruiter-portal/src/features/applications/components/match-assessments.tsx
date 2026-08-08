@@ -33,11 +33,13 @@ function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
 interface AssessmentProps {
   assessment: MatchAssessment;
   isLeaving: boolean;
+  isBusy: boolean;
   refusal: string | null;
   onForget: () => void;
+  onGone: () => void;
 }
 
-function Assessment({ assessment, isLeaving, refusal, onForget }: AssessmentProps) {
+function Assessment({ assessment, isLeaving, isBusy, refusal, onForget, onGone }: AssessmentProps) {
   const label = matchLabel(assessment.match_percentage);
   const stamp = absoluteDateTime(assessment.assessed_at);
   const strengths = assessment.strengths ?? [];
@@ -47,6 +49,7 @@ function Assessment({ assessment, isLeaving, refusal, onForget }: AssessmentProp
   return (
     <li
       aria-label={label}
+      onAnimationEnd={isLeaving ? onGone : undefined}
       className={cn(
         'space-y-2 border-border border-t pt-4 first:border-t-0 first:pt-0',
         isLeaving && LEAVING,
@@ -62,7 +65,7 @@ function Assessment({ assessment, isLeaving, refusal, onForget }: AssessmentProp
             variant="ghost"
             size="sm"
             aria-label={`Delete the reading from ${stamp}`}
-            disabled={isLeaving}
+            disabled={isBusy}
             onClick={onForget}
           >
             <Trash2 aria-hidden="true" />
@@ -101,9 +104,12 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
   const forgetting = useForgetAssessment(applicationId);
   const [refused, setRefused] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<string | null>(null);
-  const [unforgotten, setUnforgotten] = useState<{ id: string; detail: string } | null>(null);
+  const [refusedDeletion, setRefusedDeletion] = useState<{ id: string; detail: string } | null>(
+    null,
+  );
+  const [gone, setGone] = useState<string[]>([]);
 
-  const items = assessments.data ?? [];
+  const items = (assessments.data ?? []).filter((assessment) => !gone.includes(assessment.id));
   const failure = assessments.isError
     ? problemDetail(assessments.error, "The older assessments couldn't be read.")
     : refused;
@@ -122,13 +128,14 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
   async function forget(assessmentId: string) {
     if (leaving) return;
     setLeaving(assessmentId);
-    setUnforgotten(null);
+    setRefusedDeletion(null);
     try {
       await forgetting.mutateAsync({
         params: { path: { application_id: applicationId, assessment_id: assessmentId } },
       });
     } catch (error) {
-      setUnforgotten({
+      setGone((ids) => ids.filter((id) => id !== assessmentId));
+      setRefusedDeletion({
         id: assessmentId,
         detail: problemDetail(error, "That reading couldn't be deleted. It is still on record."),
       });
@@ -181,8 +188,10 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
                 key={assessment.id}
                 assessment={assessment}
                 isLeaving={leaving === assessment.id}
-                refusal={unforgotten?.id === assessment.id ? unforgotten.detail : null}
+                isBusy={leaving !== null}
+                refusal={refusedDeletion?.id === assessment.id ? refusedDeletion.detail : null}
                 onForget={() => void forget(assessment.id)}
+                onGone={() => setGone((ids) => [...ids, assessment.id])}
               />
             ))}
           </ol>
