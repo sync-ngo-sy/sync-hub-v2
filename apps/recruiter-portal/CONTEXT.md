@@ -63,6 +63,18 @@ so a reload keeps them and a pasted link reproduces the list it was copied from.
 paged by cursor and never sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
+**Status filter**:
+The Triage list's Pipeline filter: a checkbox dropdown over all eight statuses, any combination
+of which narrows the list, with the selection summarised on the trigger and written into the
+address bar as an array. Beside each status is how many of the Job's Applications stand in it —
+counted by the API over the whole Job rather than over the page on screen, and counted before
+the status filter narrows anything, which is what lets the filter hide a status while still
+saying how much it is hiding. An untouched list checks the six active statuses and leaves
+Rejected and Withdrawn off, so terminal Applications stay out of the way without going
+unmentioned; `All statuses` puts every one of them back. The last checked status cannot be
+unchecked, because a list filtered to no status is not a view of anything.
+_Avoid_: Status dropdown, pipeline picker, stage filter.
+
 **Application review**:
 The page one Application is read on, reached from the Triage list or from its own address —
 what the Application says on the left (the Snapshot, the answers, and the Match assessments read

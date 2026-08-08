@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from sync_api.applications.access import own_application
 from sync_api.applications.payload import (
     ApplicationCv,
     ApplicationJob,
     ApplicationReview,
+    ApplicationStatusCount,
     ApplicationSummary,
     ApplicationSummaryPage,
     MovedApplication,
@@ -41,6 +42,7 @@ from sync_core.models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,7 +72,7 @@ class ApplicationReviewService:
         recruiter: ActingRecruiter,
         job_id: UUID,
         *,
-        status: ApplicationStatus | None = None,
+        statuses: Sequence[ApplicationStatus] | None = None,
         qualification_status: QualificationStatus | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
@@ -85,10 +87,16 @@ class ApplicationReviewService:
             )
             .where(Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
         )
-        if status is not None:
-            query = query.where(Application.status == status)
+        counting = (
+            select(Application.status, func.count())
+            .where(Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
+            .group_by(Application.status)
+        )
+        if statuses is not None:
+            query = query.where(Application.status.in_(statuses))
         if qualification_status is not None:
             query = query.where(Application.qualification_status == qualification_status)
+            counting = counting.where(Application.qualification_status == qualification_status)
 
         found = list(
             (
@@ -103,10 +111,15 @@ class ApplicationReviewService:
                 )
             ).tuples()
         )
+        counted = dict((await self._db.execute(counting)).tuples().all())
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return ApplicationSummaryPage(
             items=[_summary(application, snapshot) for application, snapshot in rows],
             next_cursor=next_cursor,
+            status_counts=[
+                ApplicationStatusCount(status=one, count=counted.get(one, 0))
+                for one in ApplicationStatus
+            ],
         )
 
     async def tenant_page(

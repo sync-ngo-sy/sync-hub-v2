@@ -12,13 +12,13 @@ import { warmReferenceData } from '@/features/reference/reference-queries';
 import { pageTitle } from '@/lib/page-title';
 
 const jobTab = z.enum(['applications', 'criteria', 'links']);
-const pipelineStatus = z.enum(PIPELINE_STATUSES);
+const pipelineStatuses = z.array(z.enum(PIPELINE_STATUSES)).min(1);
 const screeningVerdict = z.enum(SCREENING_VERDICTS);
 
 export const Route = createFileRoute('/_workspace/jobs_/$jobId')({
   validateSearch: z.object({
     tab: jobTab.optional().catch(undefined),
-    pipeline: pipelineStatus.optional().catch(undefined),
+    pipeline: pipelineStatuses.optional().catch(undefined),
     screening: screeningVerdict.optional().catch(undefined),
   }),
   loader: async ({ context, params }) => {

@@ -44,6 +44,15 @@ export const PIPELINE_STATUSES = [
   'withdrawn',
 ] as const satisfies readonly PipelineStatus[];
 
+export const ACTIVE_PIPELINE_STATUSES = [
+  'new',
+  'reviewing',
+  'shortlisted',
+  'interview',
+  'offer',
+  'hired',
+] as const satisfies readonly PipelineStatus[];
+
 export const SCREENING_VERDICTS = [
   'pending',
   'qualified',
@@ -53,6 +62,10 @@ export const SCREENING_VERDICTS = [
 
 export function pipelineState(status: PipelineStatus): PipelineState {
   return PIPELINE_STATE[status];
+}
+
+export function pipelineSelection(chosen: PipelineStatus[] | undefined): PipelineStatus[] {
+  return chosen ?? [...ACTIVE_PIPELINE_STATUSES];
 }
 
 export function screeningState(verdict: ScreeningVerdict): MarkState {

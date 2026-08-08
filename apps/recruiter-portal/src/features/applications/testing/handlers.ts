@@ -4,7 +4,7 @@ import { VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
-import type { ApplicationSummary, PipelineStatus } from '../application';
+import { type ApplicationSummary, PIPELINE_STATUSES, type PipelineStatus } from '../application';
 import type { MatchAssessment } from '../assessment';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
 import { TAG_PATH, TAGS_PATH } from '../hooks/use-application-tags';
@@ -30,21 +30,32 @@ const NO_SUCH_APPLICATION: Problem = {
 };
 
 export interface AskedFor {
-  status: string | null;
+  status: string[];
   qualification_status: string | null;
+}
+
+function countedByStatus(items: ApplicationSummary[]) {
+  return PIPELINE_STATUSES.map((status) => ({
+    status,
+    count: items.filter((item) => item.status === status).length,
+  }));
 }
 
 export function listsJobApplications(items: ApplicationSummary[], asked?: AskedFor[]) {
   return [
     http.get(PATH, ({ query, response }) => {
-      const status = query.get('status');
+      const statuses = query.getAll('status');
       const qualification = query.get('qualification_status');
-      asked?.push({ status, qualification_status: qualification });
+      asked?.push({ status: statuses, qualification_status: qualification });
+      const ofThisVerdict = items.filter((item) =>
+        qualification ? item.qualification_status === qualification : true,
+      );
       return response(200).json({
-        items: items
-          .filter((item) => (status ? item.status === status : true))
-          .filter((item) => (qualification ? item.qualification_status === qualification : true)),
+        items: ofThisVerdict.filter((item) =>
+          statuses.length > 0 ? statuses.includes(item.status) : true,
+        ),
         next_cursor: null,
+        status_counts: countedByStatus(ofThisVerdict),
       });
     }),
   ];
@@ -58,6 +69,7 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
       return response(200).json({
         items: pages[index] ?? [],
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
+        status_counts: countedByStatus(pages.flat()),
       });
     }),
   ];
@@ -379,7 +391,11 @@ export function holdsJobApplications(items: ApplicationSummary[]) {
     handlers: [
       http.get(PATH, async ({ response }) => {
         await gate.held;
-        return response(200).json({ items, next_cursor: null });
+        return response(200).json({
+          items,
+          next_cursor: null,
+          status_counts: countedByStatus(items),
+        });
       }),
     ],
   };

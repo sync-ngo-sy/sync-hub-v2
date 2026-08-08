@@ -118,12 +118,26 @@ class ApplicationSummary(BaseModel):
     updated_at: datetime
 
 
+class ApplicationStatusCount(BaseModel):
+    """How many of the Job's Applications stand in one Pipeline status."""
+
+    status: ApplicationStatus
+    count: int
+
+
 class ApplicationSummaryPage(BaseModel):
     """One page of a Job's Applications, newest first."""
 
     items: list[ApplicationSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
+    )
+    status_counts: list[ApplicationStatusCount] = Field(
+        default_factory=list,
+        description="Every Pipeline status the platform has, in Pipeline order, each with how "
+        "many of the Job's Applications stand in it. Counted before `status` narrows anything, "
+        "so a filter that hides some of them still says how many it is hiding. The other "
+        "filters do narrow it: the counts describe the list the reader is looking at.",
     )
 
 

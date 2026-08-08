@@ -8,7 +8,7 @@ import {
   type ApplicationSummary,
   candidateMeta,
   PIPELINE_STATUSES,
-  type PipelineStatus,
+  pipelineSelection,
   pipelineState,
   SCREENING_VERDICTS,
   type ScreeningVerdict,
@@ -16,6 +16,7 @@ import {
 } from '../application';
 import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
 import { SegmentedFilter } from './segmented-filter';
+import { StatusFilter } from './status-filter';
 
 const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
   {
@@ -75,8 +76,14 @@ export function JobApplications({
   onApplicationOpen,
   onShowLinks,
 }: JobApplicationsProps) {
-  const applications = useJobApplications(jobId, filters);
-  const active = [filters.screening, filters.pipeline].filter(Boolean).length;
+  const pipeline = pipelineSelection(filters.pipeline);
+  const applications = useJobApplications(jobId, { ...filters, pipeline });
+  const counts = applications.data?.statusCounts ?? {};
+  const hidden = PIPELINE_STATUSES.filter((status) => !pipeline.includes(status)).reduce(
+    (sum, status) => sum + (counts[status] ?? 0),
+    0,
+  );
+  const active = [filters.screening !== undefined, hidden > 0].filter(Boolean).length;
 
   return (
     <div className="space-y-6 pt-4">
@@ -91,22 +98,17 @@ export function JobApplications({
           }))}
           onChange={(screening) => onFiltersChange({ ...filters, screening })}
         />
-        <SegmentedFilter<PipelineStatus>
-          label="Pipeline"
-          anyLabel="All statuses"
-          value={filters.pipeline}
-          options={PIPELINE_STATUSES.map((status) => ({
-            value: status,
-            label: pipelineState(status).label,
-          }))}
-          onChange={(pipeline) => onFiltersChange({ ...filters, pipeline })}
+        <StatusFilter
+          selected={pipeline}
+          counts={counts}
+          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
       </div>
 
       <DataTable
         label="Applications"
         columns={COLUMNS}
-        data={applications.data ?? []}
+        data={applications.data?.items ?? []}
         getRowId={(application) => application.id}
         rowLabel={(application) => `${application.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
@@ -131,7 +133,9 @@ export function JobApplications({
             active > 0 ? (
               <Button
                 variant="outline"
-                onClick={() => onFiltersChange({ pipeline: undefined, screening: undefined })}
+                onClick={() =>
+                  onFiltersChange({ pipeline: [...PIPELINE_STATUSES], screening: undefined })
+                }
               >
                 {active === 1 ? 'Clear filter' : 'Clear filters'}
               </Button>

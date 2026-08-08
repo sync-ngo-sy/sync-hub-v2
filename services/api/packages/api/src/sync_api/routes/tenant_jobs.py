@@ -146,9 +146,13 @@ async def list_job_applications(
     job_id: UUID,
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
-    application_status: Annotated[
-        ApplicationStatus | None,
-        Query(alias="status", description="Only Applications in this pipeline state."),
+    application_statuses: Annotated[
+        list[ApplicationStatus] | None,
+        Query(
+            alias="status",
+            description="Only Applications in one of these pipeline states. Repeat it to name "
+            "several; omit it for every state.",
+        ),
     ] = None,
     qualification_status: Annotated[
         QualificationStatus | None,
@@ -162,11 +166,15 @@ async def list_job_applications(
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> ApplicationSummaryPage:
-    """The triage list: who applied, where each one stands, and how Screening judged it."""
+    """The triage list: who applied, where each one stands, and how Screening judged it.
+
+    `status_counts` comes back whatever `status` narrows to, so the caller can say how many
+    Applications the filter is keeping off the list.
+    """
     return await applications.page(
         recruiter,
         job_id,
-        status=application_status,
+        statuses=application_statuses,
         qualification_status=qualification_status,
         cursor=cursor,
         limit=limit,

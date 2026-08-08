@@ -1191,6 +1191,9 @@ export interface paths {
         /**
          * The Job's Applications, newest first
          * @description The triage list: who applied, where each one stands, and how Screening judged it.
+         *
+         *     `status_counts` comes back whatever `status` narrows to, so the caller can say how many
+         *     Applications the filter is keeping off the list.
          */
         get: operations["listJobApplications"];
         put?: never;
@@ -1960,6 +1963,15 @@ export interface components {
             previous_status: components["schemas"]["ApplicationStatus"];
         };
         /**
+         * ApplicationStatusCount
+         * @description How many of the Job's Applications stand in one Pipeline status.
+         */
+        ApplicationStatusCount: {
+            status: components["schemas"]["ApplicationStatus"];
+            /** Count */
+            count: number;
+        };
+        /**
          * ApplicationSummary
          * @description One Application, as the Job's triage list shows it.
          */
@@ -2005,6 +2017,11 @@ export interface components {
              * @description Send back as `cursor` for the following page.
              */
             next_cursor?: string | null;
+            /**
+             * Status Counts
+             * @description Every Pipeline status the platform has, in Pipeline order, each with how many of the Job's Applications stand in it. Counted before `status` narrows anything, so a filter that hides some of them still says how many it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            status_counts?: components["schemas"]["ApplicationStatusCount"][];
         };
         /**
          * AppliedJob
@@ -8991,8 +9008,8 @@ export interface operations {
     listJobApplications: {
         parameters: {
             query?: {
-                /** @description Only Applications in this pipeline state. */
-                status?: components["schemas"]["ApplicationStatus"] | null;
+                /** @description Only Applications in one of these pipeline states. Repeat it to name several; omit it for every state. */
+                status?: components["schemas"]["ApplicationStatus"][] | null;
                 /** @description Only Applications the Screening verdict decided this way. */
                 qualification_status?: components["schemas"]["QualificationStatus"] | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */
