@@ -46,8 +46,8 @@ export function searchAddress(filters: CandidateSearchFilters) {
 }
 
 export function hardFilterCount(filters: CandidateSearchFilters): number {
-  const named = [filters.location, filters.keywords].filter((value) => set(value)).length;
-  return spoken(filters.languages) ? named + 1 : named;
+  return [set(filters.location), set(filters.keywords), spoken(filters.languages)].filter(Boolean)
+    .length;
 }
 
 export function noMatchesMessage(filters: CandidateSearchFilters): string {

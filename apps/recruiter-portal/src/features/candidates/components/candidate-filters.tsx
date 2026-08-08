@@ -4,7 +4,6 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { ReferenceMultiPicker } from '@/features/reference/components/reference-multi-picker';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { useLocations } from '@/features/reference/hooks/use-locations';
@@ -71,11 +70,12 @@ export function CandidateFilters({ filters, onSearch }: CandidateFiltersProps) {
           description="Anyone who speaks at least one of these."
         >
           {({ value, onChange, onBlur, id, ...aria }) => (
-            <ReferenceMultiPicker
+            <ReferencePicker
+              multiple
               id={id}
               noun="language"
               list={languages}
-              options={languageOptions(languages.data, value)}
+              options={languageOptions(languages.data)}
               value={value}
               onChange={onChange}
               onBlur={onBlur}

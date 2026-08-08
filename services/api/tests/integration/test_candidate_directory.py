@@ -184,6 +184,7 @@ async def test_naming_two_skills_answers_with_the_people_who_have_both(
     people = await three_candidates(app, mailbox, db_session)
 
     assert named(await listed(recruiter, skill=["React", "TypeScript"])) == [people["lina"]]
+    assert await listed(recruiter, skill=["React", "Python"]) == []
 
 
 async def test_naming_two_languages_answers_with_everyone_who_speaks_either(
@@ -220,7 +221,6 @@ async def test_a_language_the_platform_does_not_know_is_refused(
     problem = response.json()
     assert problem["type"] == UNKNOWN_LANGUAGE
     assert [error["location"] for error in problem["errors"]] == ["query.language.1"]
-    assert await listed(recruiter, skill=["React", "Python"]) == []
 
 
 async def test_a_per_skill_year_minimum_is_honoured(
