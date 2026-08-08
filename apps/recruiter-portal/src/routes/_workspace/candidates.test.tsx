@@ -256,7 +256,11 @@ describe('the Filter tab', () => {
   });
 
   it('opens the Candidate view from a row, carrying the filters that found them', async () => {
-    server.use(...signedInAs(RECRUITER), ...listsDirectoryCandidates([LISTED_AMINA]));
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsDirectoryCandidates([LISTED_AMINA]),
+      ...readsCandidate(AMINA_RECORD),
+    );
 
     const { user, router } = await renderApp(`${AT}?role=backend-engineer`);
 

@@ -15,6 +15,7 @@ const WHOLE = {
   email: 'lina@example.test',
   phone: '+963 11 555 0100',
   role: 'Project Manager',
+  headline: 'Runs delivery for two field programmes',
   yearsOfExperience: 6,
   languages: ['Arabic', 'English'],
 };
@@ -30,11 +31,18 @@ describe('CandidateCard', () => {
     expect(screen.getByRole('article', { name: 'Lina Khoury' })).toBeVisible();
   });
 
+  it('carries the page’s own heading, because the page is about this person', () => {
+    render(<CandidateCard {...WHOLE} />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Lina Khoury' })).toBeVisible();
+  });
+
   it('shows every key fact it is given', () => {
     render(<CandidateCard {...WHOLE} />);
 
     expect(screen.getByText('Lina Khoury')).toBeVisible();
     expect(screen.getByText('Project Manager')).toBeVisible();
+    expect(screen.getByText('Runs delivery for two field programmes')).toBeVisible();
     expect(screen.getByText('lina@example.test')).toBeVisible();
     expect(screen.getByText('+963 11 555 0100')).toBeVisible();
     expect(screen.getByText('6 years')).toBeVisible();
