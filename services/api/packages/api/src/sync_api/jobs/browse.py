@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import ColumnElement, func, literal_column, select
+from sqlalchemy import ColumnElement, exists, func, literal_column, select
 
 from sync_api.jobs.access import location_name, open_job, public_jobs
 from sync_api.jobs.criteria import (
@@ -29,6 +29,11 @@ logger = get_logger(__name__)
 
 #: Inlined, not bound: as a parameter it reaches the driver as a `regconfig` with no codec.
 ENGLISH: Final[ColumnElement[str]] = literal_column("'english'")
+
+#: How long one browser's readings of one Job through one channel count as the same view. A
+#: refresh, a back button and a second look are the same interest, and counting each of them
+#: would make "views" a measure of restlessness.
+VIEW_WINDOW: Final = timedelta(minutes=30)
 
 
 class JobBrowseService:
@@ -92,6 +97,8 @@ class JobBrowseService:
     async def _record_view(
         self, job_id: UUID, visitor: Visitor, *, tracked_link_id: UUID | None
     ) -> None:
+        if await self._counted_recently(job_id, visitor, tracked_link_id):
+            return
         async with transaction(self._db):
             self._db.add(
                 JobViewEvent(
@@ -105,6 +112,30 @@ class JobBrowseService:
             "jobs.viewed",
             job_id=str(job_id),
             tracked_link_id=None if tracked_link_id is None else str(tracked_link_id),
+        )
+
+    async def _counted_recently(
+        self, job_id: UUID, visitor: Visitor, tracked_link_id: UUID | None
+    ) -> bool:
+        """Whether this browser is already counted for this Job through this channel.
+
+        Per channel, not per Job: a visitor who reads a Job on the board and then follows a
+        campaign link is a view the campaign brought, and swallowing it would both understate
+        the link and lose the attribution an Application is later read from.
+
+        The database's clock, so the window is measured from the instant the rows carry.
+        """
+        return bool(
+            await self._db.scalar(
+                select(
+                    exists().where(
+                        JobViewEvent.job_id == job_id,
+                        JobViewEvent.session_id == visitor.session_id,
+                        JobViewEvent.tracked_link_id.is_not_distinct_from(tracked_link_id),
+                        JobViewEvent.viewed_at > func.now() - VIEW_WINDOW,
+                    )
+                )
+            )
         )
 
     async def _detail(self, job: Job, tenant: Tenant) -> PublicJob:

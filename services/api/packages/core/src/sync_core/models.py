@@ -1629,9 +1629,8 @@ class JobViewEvent(Base):
             "job_view_events_session_job_idx",
             "session_id",
             "job_id",
+            "tracked_link_id",
             "viewed_at",
-            "id",
-            postgresql_where="(tracked_link_id IS NOT NULL)",
         ),
         {"schema": "public"},
     )
