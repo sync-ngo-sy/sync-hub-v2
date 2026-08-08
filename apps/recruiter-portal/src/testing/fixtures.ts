@@ -95,3 +95,9 @@ export const LANGUAGES: components['schemas']['Language'][] = [
   { code: 'fr', name: 'French' },
   { code: 'tr', name: 'Turkish' },
 ];
+
+export const CANONICAL_ROLES: components['schemas']['CanonicalRole'][] = [
+  { key: 'backend-engineer', name: 'Backend Engineer' },
+  { key: 'frontend-engineer', name: 'Frontend Engineer' },
+  { key: 'nurse', name: 'Nurse' },
+];

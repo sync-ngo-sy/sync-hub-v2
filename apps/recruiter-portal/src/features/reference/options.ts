@@ -1,9 +1,14 @@
 import type { components } from '@sync/api-client';
 import type { ComboboxOption, ComboboxOptionGroup } from '@sync/ui/components/combobox';
 
+type CanonicalRole = components['schemas']['CanonicalRole'];
 type CanonicalSkill = components['schemas']['CanonicalSkill'];
 type Language = components['schemas']['Language'];
 type Location = components['schemas']['Location'];
+
+export function roleOptions(roles: CanonicalRole[] | undefined): ComboboxOption[] {
+  return (roles ?? []).map((role) => ({ value: role.key, label: role.name }));
+}
 
 export function skillGroups(
   skills: CanonicalSkill[] | undefined,
