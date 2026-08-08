@@ -18,6 +18,9 @@ locals {
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
+    # The Platform Portal's gate, and the schedule that guarantees the queue drains.
+    "iap.googleapis.com",
+    "cloudscheduler.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "sts.googleapis.com",
@@ -25,8 +28,38 @@ locals {
     "monitoring.googleapis.com",
   ]
 
-  deployer_roles = ["roles/run.developer", "roles/iam.serviceAccountUser"]
-  runtime_roles  = ["roles/secretmanager.secretAccessor", "roles/logging.logWriter"]
+  # The pipeline applies Terraform rather than pushing a revision by hand, so the deployer needs
+  # authority over the resources the environment root declares -- and not a scrap more:
+  #
+  #   run.admin            create services, and set their IAM: run.developer cannot bind invokers
+  #   iam.serviceAccountUser  act as the runtime identity the service runs under
+  #   secretmanager.admin  create secret *containers*. Values are written out of band, and this
+  #                        role cannot read a version's payload -- that is secretAccessor, which
+  #                        only the runtime identity holds.
+  #   iap.admin            bind who the Platform Portal's gate lets through
+  #   firebasehosting.admin  deploy the two static portals
+  #
+  # Nothing here grants billing, project creation, or organisation-policy authority, so a stolen
+  # deploy token cannot widen its own blast radius.
+  deployer_roles = [
+    "roles/run.admin",
+    "roles/iam.serviceAccountUser",
+    "roles/secretmanager.admin",
+    "roles/iap.admin",
+    "roles/firebasehosting.admin",
+  ]
+  runtime_roles = ["roles/secretmanager.secretAccessor", "roles/logging.logWriter"]
+
+  # The pool and provider were created by scripts/bootstrap-ci-org-policy.sh and are not in this
+  # state, so they are referenced by name. The provider already refuses any token not issued to
+  # this repository; these principals narrow that to a named GitHub environment, which is what
+  # makes the production gate a review rather than a branch name.
+  wif_pool = "projects/${local.project_numbers.production}/locations/global/workloadIdentityPools/github"
+
+  github_environments = {
+    production = "production"
+    staging    = "staging"
+  }
 }
 
 # Imported, not created. deletion_policy keeps a stray destroy from taking the project with
@@ -142,6 +175,59 @@ resource "google_project_iam_member" "runtime" {
   project = local.envs[each.value.env].project_id
   role    = each.value.role
   member  = "serviceAccount:${google_service_account.runtime[each.value.env].email}"
+}
+
+# ---------------------------------------------------------------- ci -----------
+# One identity that may push an image, separate from both deployers. The registry lives in
+# production and production promotes what staging validated, so if staging's deployer could write
+# to it, staging would be a path into production's artifacts. It cannot: it reads.
+resource "google_service_account" "builder" {
+  project      = var.production_project
+  account_id   = "builder"
+  display_name = "CI image builder"
+  description  = "Pushes images to Artifact Registry and does nothing else. No keys."
+
+  depends_on = [google_project_service.this]
+}
+
+resource "google_artifact_registry_repository_iam_member" "builder_push" {
+  project    = google_artifact_registry_repository.images.project
+  location   = google_artifact_registry_repository.images.location
+  repository = google_artifact_registry_repository.images.name
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.builder.email}"
+}
+
+# Federation, not keys: the organisation forbids creating service-account keys outright, which is
+# what makes this the only available shape rather than the preferred one.
+resource "google_service_account_iam_member" "deployer_federation" {
+  for_each = local.envs
+
+  service_account_id = google_service_account.deployer[each.key].name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${local.wif_pool}/attribute.environment/${local.github_environments[each.key]}"
+}
+
+# Both environments, because both build something. Staging builds the API and worker images that
+# production later promotes; production builds only the Platform Portal's, whose API hostname is
+# compiled in and therefore cannot be promoted from staging's.
+resource "google_service_account_iam_member" "builder_federation" {
+  for_each = local.github_environments
+
+  service_account_id = google_service_account.builder.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${local.wif_pool}/attribute.environment/${each.value}"
+}
+
+# The pipeline applies Terraform, so it needs the state it applies against. Scoped to the bucket
+# rather than granted at project level, and the bucket is not managed here -- it cannot be, since
+# it holds the state that would manage it.
+resource "google_storage_bucket_iam_member" "deployer_state" {
+  for_each = local.envs
+
+  bucket = var.state_bucket
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.deployer[each.key].email}"
 }
 
 # ---------------------------------------------------------------- budgets ------

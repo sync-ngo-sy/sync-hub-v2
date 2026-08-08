@@ -1,0 +1,24 @@
+{
+  "projects": {
+    "default": "sync-ngo-staging",
+    "staging": "sync-ngo-staging",
+    "production": "sync-ngo-prod"
+  },
+  "targets": {
+    "sync-ngo-prod": {
+      "hosting": {
+        "candidate": ["sync-ngo-jobs"],
+        "recruiter": ["sync-ngo-app"],
+        "api": ["sync-ngo-api"],
+        "legacy": ["sync-ngo-legacy-jobs"]
+      }
+    },
+    "sync-ngo-staging": {
+      "hosting": {
+        "candidate-staging": ["sync-ngo-jobs-staging"],
+        "recruiter-staging": ["sync-ngo-app-staging"],
+        "api-staging": ["sync-ngo-api-staging"]
+      }
+    }
+  }
+}
