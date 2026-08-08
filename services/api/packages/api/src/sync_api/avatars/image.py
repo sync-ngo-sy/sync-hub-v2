@@ -7,7 +7,6 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from sync_api.problems import AVATAR_MEDIA_TYPE_PROBLEM_TYPE, Problem
 
-#: The one size an avatar is stored at. Every consumer scales down from it.
 AVATAR_PIXELS: Final = 512
 
 AVATAR_QUALITY: Final = 80

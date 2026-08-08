@@ -5,7 +5,7 @@ import tempfile
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from anyio import to_thread
 
@@ -15,6 +15,7 @@ from sync_api.problems import (
     CV_TOO_LARGE_PROBLEM_TYPE,
     Problem,
 )
+from sync_api.uploads import limited_chunks
 from sync_core.profile import MAX_LINE_LENGTH
 from sync_core.storage import CV_MEDIA_TYPE_BY_EXTENSION, CV_MEDIA_TYPES
 
@@ -23,8 +24,6 @@ if TYPE_CHECKING:
     from io import BufferedReader
 
     from fastapi import UploadFile
-
-READ_CHUNK_BYTES: Final = 1024 * 1024
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,18 +55,19 @@ async def _spool(upload: UploadFile, destination: Path, *, max_bytes: int) -> tu
     digest = hashlib.sha256()
     size = 0
     with destination.open("wb") as sink:
-        while chunk := await upload.read(READ_CHUNK_BYTES):
+        async for chunk in limited_chunks(
+            upload,
+            max_bytes=max_bytes,
+            too_large=_too_large(max_bytes),
+            empty=Problem(
+                status=422,
+                type=CV_EMPTY_PROBLEM_TYPE,
+                detail="The uploaded file is empty.",
+            ),
+        ):
             size += len(chunk)
-            if size > max_bytes:
-                raise _too_large(max_bytes)
             digest.update(chunk)
             await to_thread.run_sync(sink.write, chunk)
-    if size == 0:
-        raise Problem(
-            status=422,
-            type=CV_EMPTY_PROBLEM_TYPE,
-            detail="The uploaded file is empty.",
-        )
     return digest.hexdigest(), size
 
 

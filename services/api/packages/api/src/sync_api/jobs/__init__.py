@@ -5,6 +5,7 @@ from sync_api.jobs.payload import (
     JobCriteria,
     JobCriteriaView,
     JobPage,
+    JobSort,
     JobView,
     LinkedJob,
     NewJob,
@@ -16,6 +17,7 @@ from sync_api.jobs.payload import (
     TenantTrackedLinkPage,
     TrackedLink,
     TrackedLinkChanges,
+    TrackedLinkReport,
 )
 from sync_api.jobs.service import JobService
 from sync_api.jobs.visitors import Visitor, Visitors
@@ -27,6 +29,7 @@ __all__ = [
     "JobCriteriaView",
     "JobPage",
     "JobService",
+    "JobSort",
     "JobView",
     "LinkedJob",
     "NewJob",
@@ -38,6 +41,7 @@ __all__ = [
     "TenantTrackedLinkPage",
     "TrackedLink",
     "TrackedLinkChanges",
+    "TrackedLinkReport",
     "TrackedLinkService",
     "Visitor",
     "Visitors",

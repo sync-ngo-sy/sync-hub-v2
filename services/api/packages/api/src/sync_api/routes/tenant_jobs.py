@@ -18,11 +18,13 @@ from sync_api.jobs import (
     JobCriteria,
     JobCriteriaView,
     JobPage,
+    JobSort,
     JobView,
     NewJob,
     NewTrackedLink,
     TrackedLink,
     TrackedLinkChanges,
+    TrackedLinkReport,
 )
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
@@ -53,10 +55,10 @@ async def create_job(body: NewJob, recruiter: ActingRecruiterDep, jobs: JobServi
 @router.get(
     "",
     operation_id="listJobs",
-    summary="The tenant's Jobs, newest first",
+    summary="The tenant's Jobs, newest first unless another order is asked for",
     responses={
         **TENANT_ACCESS_REFUSED,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_jobs(
@@ -66,16 +68,23 @@ async def list_jobs(
         JobStatus | None,
         Query(alias="status", description="Only Jobs in this state."),
     ] = None,
+    sort: Annotated[
+        JobSort,
+        Query(
+            description="`newest` and `oldest` order by when the Job was written; "
+            "`applications` puts the busiest first, newest first among ties."
+        ),
+    ] = JobSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
-    """Every Job of the tenant, whatever its state. Page with `next_cursor`."""
-    return await jobs.page(recruiter, status=job_status, cursor=cursor, limit=limit)
+    """Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`."""
+    return await jobs.page(recruiter, status=job_status, sort=sort, cursor=cursor, limit=limit)
 
 
 @router.get(
@@ -184,7 +193,7 @@ async def list_job_applications(
 @router.post(
     "/{job_id}/links",
     operation_id="createTrackedJobLink",
-    summary="Name a campaign link to the Job",
+    summary="Name a Tracked link to the Job",
     status_code=status.HTTP_201_CREATED,
     responses={
         **TENANT_ACCESS_REFUSED,
@@ -205,20 +214,19 @@ async def create_tracked_job_link(
 @router.get(
     "/{job_id}/links",
     operation_id="listTrackedJobLinks",
-    summary="The Job's campaign links and their traffic",
+    summary="The Job's Tracked links and all of its traffic",
     responses={**TENANT_ACCESS_REFUSED, **JOB_NOT_FOUND},
 )
 async def list_tracked_job_links(
     job_id: UUID, recruiter: ActingRecruiterDep, links: TrackedLinkServiceDep
-) -> list[TrackedLink]:
-    """Every link of the Job, oldest first, each with the views it has brought."""
+) -> TrackedLinkReport:
     return await links.links(recruiter, job_id)
 
 
 @router.patch(
     "/{job_id}/links/{link_id}",
     operation_id="changeTrackedJobLink",
-    summary="Rename a campaign link or turn it off",
+    summary="Rename a Tracked link or turn it off",
     responses={
         **TENANT_ACCESS_REFUSED,
         404: openapi_problem("This tenant has no such Job, or the Job has no such link."),

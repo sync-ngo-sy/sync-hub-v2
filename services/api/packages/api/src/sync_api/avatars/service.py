@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from anyio import to_thread
@@ -13,9 +13,10 @@ from sync_api.problems import (
     AVATAR_TOO_LARGE_PROBLEM_TYPE,
     Problem,
 )
+from sync_api.uploads import discard_on_failure, limited_chunks, remove_uploaded
 from sync_core import StorageError, get_logger, transaction
 from sync_core.models import Profile
-from sync_core.storage import avatar_object_path
+from sync_core.storage import avatar_folder, avatar_object_path, avatar_path_from_url
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -27,24 +28,21 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-READ_CHUNK_BYTES: Final = 256 * 1024
 
-
-async def forget_photos(
-    storage: Storage, candidate_id: UUID, *, keeping: str | None = None
-) -> None:
-    """Drop every stored photo of this candidate bar the one at `keeping`.
-
-    Whatever else sits in their folder is the photo they just replaced, or the wreckage of an
-    upload that failed after writing. Nothing serves either, so failing to sweep is logged
-    rather than raised — it costs storage, and never correctness.
-    """
+async def remove_avatar_folder(storage: Storage, candidate_id: UUID) -> None:
     try:
-        for path in await storage.paths_under(str(candidate_id)):
-            if path != keeping:
+        for path in await storage.paths_under(avatar_folder(candidate_id)):
+            try:
                 await storage.remove(path)
+            except StorageError as error:
+                logger.error(
+                    "avatars.orphaned_object",
+                    candidate_id=str(candidate_id),
+                    object_path=path,
+                    error=str(error),
+                )
     except StorageError as error:
-        logger.error("avatars.orphaned_object", candidate_id=str(candidate_id), error=str(error))
+        logger.error("avatars.cleanup_failed", candidate_id=str(candidate_id), error=str(error))
 
 
 class AvatarService:
@@ -54,52 +52,58 @@ class AvatarService:
         self._settings = settings
 
     async def replace(self, candidate_id: UUID, upload: UploadFile) -> Avatar:
-        """Store the photo the candidate picked, and leave nothing of the one it replaces."""
         photo = await to_thread.run_sync(
             avatar_webp, await self._read(upload, max_bytes=self._settings.avatar_max_upload_bytes)
         )
 
         path = avatar_object_path(candidate_id, uuid4())
         await self._storage.upload(path, photo, media_type=AVATAR_MEDIA_TYPE)
-        url = await self._storage.public_url(path)
-        try:
-            await self._remember(candidate_id, url)
-        except BaseException:
-            await self._discard(path)
-            raise
-        await forget_photos(self._storage, candidate_id, keeping=path)
+        async with discard_on_failure(
+            self._storage,
+            path,
+            event="avatars.orphaned_object",
+            candidate_id=str(candidate_id),
+        ):
+            url = await self._storage.public_url(path)
+            previous = await self._remember(candidate_id, url)
+        if previous is not None:
+            await remove_uploaded(
+                self._storage,
+                avatar_path_from_url(candidate_id, previous),
+                event="avatars.orphaned_object",
+                candidate_id=str(candidate_id),
+            )
 
         logger.info("avatars.uploaded", candidate_id=str(candidate_id), bytes=len(photo))
         return Avatar(avatar_url=url)
 
     async def _read(self, upload: UploadFile, *, max_bytes: int) -> bytes:
         received = bytearray()
-        while chunk := await upload.read(READ_CHUNK_BYTES):
-            received.extend(chunk)
-            if len(received) > max_bytes:
-                raise Problem(
-                    status=413,
-                    type=AVATAR_TOO_LARGE_PROBLEM_TYPE,
-                    detail=f"A profile photo has to be {max_bytes // (1024 * 1024)} MB or "
-                    f"smaller. Crop it or pick a smaller {ACCEPTED_FORMATS} file.",
-                )
-        if not received:
-            raise Problem(
+        async for chunk in limited_chunks(
+            upload,
+            max_bytes=max_bytes,
+            too_large=Problem(
+                status=413,
+                type=AVATAR_TOO_LARGE_PROBLEM_TYPE,
+                detail=f"A profile photo has to be {max_bytes // (1024 * 1024)} MB or "
+                f"smaller. Crop it or pick a smaller {ACCEPTED_FORMATS} file.",
+            ),
+            empty=Problem(
                 status=422,
                 type=AVATAR_EMPTY_PROBLEM_TYPE,
                 detail="The file you picked is empty.",
-            )
+            ),
+        ):
+            received.extend(chunk)
         return bytes(received)
 
-    async def _remember(self, candidate_id: UUID, url: str) -> None:
+    async def _remember(self, candidate_id: UUID, url: str) -> str | None:
         async with transaction(self._db):
-            profile = await self._db.scalar(select(Profile).where(Profile.id == candidate_id))
+            profile = await self._db.scalar(
+                select(Profile).where(Profile.id == candidate_id).with_for_update()
+            )
             if profile is None:  # pragma: no cover — the acting candidate is one
                 raise LookupError(f"candidate {candidate_id} has no profile row")
+            previous = profile.avatar_url
             profile.avatar_url = url
-
-    async def _discard(self, path: str) -> None:
-        try:
-            await self._storage.remove(path)
-        except StorageError as error:
-            logger.error("avatars.orphaned_object", path=path, error=str(error))
+        return previous

@@ -41,15 +41,13 @@ _Avoid_: Chip, status pill, badge.
 
 **Candidate Card**:
 The summary block of a candidate's key facts — avatar, name, canonical role, headline,
-email, phone, total years of experience, languages — rendered full width at the top of
-every candidate profile view, above everything else the page holds. It carries the page's
-`h1`, so no page heading repeats the name above it, and it is deliberately louder than the
-cards under it (accent wash, accent ring, deeper shadow): the page is about this person,
-and their card is the one block that says so. The avatar falls back to their initials
-until an uploaded photo exists. A page whose facts are not simply current says so on the
-card itself, through two optional slots the card renders and never decides: a short mark
-beside the name, and a line under the facts saying where they came from. A card given
-neither claims nothing, which is what a live profile should claim.
+email, phone, total years of experience, languages. It is the leading block in Recruiter
+candidate views and also appears inside the Candidate Portal's profile editor. It owns the
+name heading: level one when it is the page heading, level two when the surrounding page already
+has one. It is deliberately louder than the cards under it (accent wash, accent ring, deeper
+shadow). The avatar falls back to initials until an uploaded photo exists. A page whose facts are
+not simply current may add a plain context label beside the name and a line under the facts saying
+where they came from. Neither is a Status Mark or badge, and a card given neither claims nothing.
 _Avoid_: Profile header, summary card.
 
 **Promotion**:

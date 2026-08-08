@@ -3,6 +3,7 @@ import type { StatusTone } from '@sync/ui/components/status-mark';
 import { env } from '@/lib/env';
 
 export type TrackedLink = components['schemas']['TrackedLink'];
+export type TrackedLinkReport = components['schemas']['TrackedLinkReport'];
 export type NewTrackedLink = components['schemas']['NewTrackedLink'];
 export type TrackedLinkChanges = components['schemas']['TrackedLinkChanges'];
 
@@ -30,6 +31,7 @@ export interface LinkViews {
   id: string;
   name: string;
   views: number;
+  share?: number | null;
   fill: string;
 }
 
@@ -43,24 +45,48 @@ export function viewsRanked(rows: Omit<LinkViews, 'fill'>[]): LinkViews[] {
     .map((row, index) => ({ ...row, fill: RAMP[index] ?? PALEST_STEP }));
 }
 
-export function viewsPerLink(links: TrackedLink[]): LinkViews[] {
-  return viewsRanked(
-    links.map((link) => ({ id: link.id, name: link.name, views: link.view_count })),
-  );
+export const DIRECT = 'Direct';
+
+export function viewsPerSource(report: TrackedLinkReport): LinkViews[] {
+  const rows = [
+    ...report.items.map((link) => ({ id: link.id, name: link.name, views: link.view_count })),
+    { id: DIRECT, name: DIRECT, views: report.direct_view_count },
+  ];
+  return viewsRanked(withShares(rows, report.view_count));
 }
 
-export function totalViews(links: TrackedLink[]): number {
-  return links.reduce((total, link) => total + link.view_count, 0);
+function withShares(
+  rows: { id: string; name: string; views: number }[],
+  total: number,
+): Omit<LinkViews, 'fill'>[] {
+  if (total === 0) return rows.map((row) => ({ ...row, share: null }));
+  const exact = rows.map((row, index) => ({
+    ...row,
+    index,
+    share: Math.floor((row.views / total) * 100),
+    remainder: (row.views / total) * 100 - Math.floor((row.views / total) * 100),
+  }));
+  let points = 100 - exact.reduce((sum, row) => sum + row.share, 0);
+  for (const row of [...exact].sort(
+    (one, other) => other.remainder - one.remainder || one.index - other.index,
+  )) {
+    if (points === 0) break;
+    row.share += 1;
+    points -= 1;
+  }
+  return exact.map(({ index: _index, remainder: _remainder, ...row }) => row);
 }
 
 export function viewsSummary(bars: LinkViews[]): string {
   const spoken = bars.slice(0, SPOKEN_AT_MOST);
-  const rows = spoken.map(
-    (bar) => `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}`,
-  );
+  const rows = spoken.map((bar) => {
+    const share = bar.share === undefined ? '' : `, ${bar.share ?? 0}%`;
+    return `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}${share}`;
+  });
   const rest = bars.length - spoken.length;
-  const tail = rest > 0 ? ` And ${rest} more ${rest === 1 ? 'link' : 'links'}, further down.` : '';
-  return `Views per tracked link. ${rows.join('. ')}.${tail}`;
+  const tail =
+    rest > 0 ? ` And ${rest} more ${rest === 1 ? 'source' : 'sources'}, further down.` : '';
+  return `Views per source. ${rows.join('. ')}.${tail}`;
 }
 
 export type TenantTrackedLink = components['schemas']['TenantTrackedLink'];

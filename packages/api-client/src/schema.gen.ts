@@ -1119,8 +1119,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The tenant's Jobs, newest first
-         * @description Every Job of the tenant, whatever its state. Page with `next_cursor`.
+         * The tenant's Jobs, newest first unless another order is asked for
+         * @description Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`.
          */
         get: operations["listJobs"];
         put?: never;
@@ -1212,13 +1212,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The Job's campaign links and their traffic
-         * @description Every link of the Job, oldest first, each with the views it has brought.
+         * The Job's Tracked links and all of its traffic
+         * @description Every link and its views, plus Direct and total views from the same report.
          */
         get: operations["listTrackedJobLinks"];
         put?: never;
         /**
-         * Name a campaign link to the Job
+         * Name a Tracked link to the Job
          * @description Mint a link whose `token` attributes every view and application it brings to its name.
          */
         post: operations["createTrackedJobLink"];
@@ -1242,7 +1242,7 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename a campaign link or turn it off
+         * Rename a Tracked link or turn it off
          * @description Turning a link off stops it resolving; the views it already brought stay counted.
          */
         patch: operations["changeTrackedJobLink"];
@@ -2767,7 +2767,7 @@ export interface components {
         };
         /**
          * JobPage
-         * @description One page of the tenant's Jobs, newest first.
+         * @description One page of the tenant's Jobs, in the order that was asked for.
          */
         JobPage: {
             /** Items */
@@ -2846,6 +2846,12 @@ export interface components {
             minimum_years?: number | null;
         };
         /**
+         * JobSort
+         * @description The orders the tenant's own Jobs list can be read in.
+         * @enum {string}
+         */
+        JobSort: "newest" | "oldest" | "applications";
+        /**
          * JobStatus
          * @enum {string}
          */
@@ -2895,6 +2901,11 @@ export interface components {
              * @description How many Applications this Job has received.
              */
             application_count: number;
+            /**
+             * View Count
+             * @description How many times this Job's page has been read, through a Tracked link or not. One browser reading it repeatedly counts once per half hour, per channel.
+             */
+            view_count: number;
         };
         /**
          * JobView
@@ -2941,6 +2952,11 @@ export interface components {
              * @description How many Applications this Job has received.
              */
             application_count: number;
+            /**
+             * View Count
+             * @description How many times this Job's page has been read, through a Tracked link or not. One browser reading it repeatedly counts once per half hour, per channel.
+             */
+            view_count: number;
             /** Description */
             description: string;
             criteria: components["schemas"]["JobCriteriaView"];
@@ -3356,7 +3372,7 @@ export interface components {
         NewTrackedLink: {
             /**
              * Name
-             * @description What the campaign is called, unique per Job.
+             * @description The channel or placement this link represents, unique per Job.
              */
             name: string;
             /**
@@ -4420,7 +4436,7 @@ export interface components {
         };
         /**
          * TrackedLink
-         * @description One campaign link, and how much traffic it has brought.
+         * @description One Tracked link, and how much traffic it has brought.
          */
         TrackedLink: {
             /**
@@ -4464,6 +4480,15 @@ export interface components {
              * @description When the Job stops being public. Null means it stays up until closed.
              */
             expires_at?: string | null;
+        };
+        /** TrackedLinkReport */
+        TrackedLinkReport: {
+            /** Items */
+            items: components["schemas"]["TrackedLink"][];
+            /** Direct View Count */
+            direct_view_count: number;
+            /** View Count */
+            view_count: number;
         };
         /**
          * UnreadNotificationCount
@@ -8660,7 +8685,9 @@ export interface operations {
             query?: {
                 /** @description Only Jobs in this state. */
                 status?: components["schemas"]["JobStatus"] | null;
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description `newest` and `oldest` order by when the Job was written; `applications` puts the busiest first, newest first among ties. */
+                sort?: components["schemas"]["JobSort"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
@@ -8698,7 +8725,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or belongs to another `sort`. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9098,7 +9125,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TrackedLink"][];
+                    "application/json": components["schemas"]["TrackedLinkReport"];
                 };
             };
             /** @description There is no valid session. */

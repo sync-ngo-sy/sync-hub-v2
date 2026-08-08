@@ -39,11 +39,11 @@ that panel's own Retry.
 _Avoid_: Home, overview page.
 
 **Source**:
-A named channel a tenant's Job views arrived through, added up across every Job. A Tracked link's
-name is unique per Job rather than per Tenant, so the same campaign run on nine Jobs is nine
-Tracked links and one Source. `Direct` is the Source for visitors who reached a Job with no link
-at all; it appears only when such traffic exists, where a Tracked link somebody made is a Source
-even at zero views. The Dashboard card ranks Sources and shows the six that fit, saying in its own
+A named channel Job views arrived through. On the Dashboard it is tenant-wide: equal Tracked-link
+names are added across Jobs. On a Job's Tracked links tab it belongs to that Job and each link stays
+distinct. `Direct` is the Source for visitors who reached a Job with no link at all; the Dashboard
+omits it at zero views, while a Job report keeps it visible at zero so every share is explicit.
+The Dashboard card ranks Sources and shows the six that fit, saying in its own
 subtitle how many there were rather than letting six look like all of them — the count sits there
 and not on the link beside it, because that link leads to the Tracked links page and a count of
 Sources would be describing something other than where it goes.
@@ -172,14 +172,28 @@ decision: the picker empties afterwards so the same words don't go twice by acci
 send keeps the draft so the Recruiter can try the same message again.
 _Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
+**Jobs page**:
+The Workspace destination that lists the Tenant's Jobs, filtered by state on tabs and ordered by
+a picker beside them: newest, oldest, or most applications. Both live in the URL, so a view is
+shareable and a reload lands where the Recruiter was. Each row carries the views and the
+applications the Job has drawn, side by side, because reach and conversion are only worth
+anything read against each other. Views are all views, whatever brought them — the Tracked links
+tab is where they are broken down by Source.
+_Avoid_: Postings list, vacancies page.
+
 **Tracked links tab**:
 The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,
 renames it, turns it off, and reads what each one brought. Minting hands the address straight back
 to copy, because a link nobody can share is worth nothing. A link that is off keeps its row and its
 count: turning it off ends the traffic, not the history — and so a rename leaves both the address
-and the views alone. The comparison is a bar chart of views per link on the teal chart ramp, loaded
-in a chunk of its own so the charting library only travels for a Recruiter who opens this tab. The
-address is built on the Candidate Portal's origin, since that is the portal that counts the view.
+and the views alone. Each row also carries its share of the Job's whole total, so a link is read
+against everything the Job drew rather than against the other links; a Job nobody has read yet
+shows a dash rather than a percentage of nothing. The comparison is a bar chart of views per
+Source on the teal chart ramp, loaded in a chunk of its own so the charting library only travels
+for a Recruiter who opens this tab. Its API report reads the link counts, `Direct`, and the Job total
+together; the portal does not subtract independently cached reads. Whole percentages are allocated
+across every Source so they total 100, with `Direct` present even when its share is zero. The address is built on
+the Candidate Portal's origin, since that is the portal that counts the view.
 _Avoid_: Campaigns tab, UTM builder, analytics tab.
 
 **Tracked links page**:
@@ -279,16 +293,21 @@ tab).
 One person as this Tenant knows them: their whole profile with their email and phone, the fragment
 that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
 Talent pool. The profile is read by id from the directory, so how you arrived changes nothing about
-what you see — a pasted link shows the same person a click from the Talent pool does, and no search
-is re-run to reconstruct them. The matched fragment is the one thing arriving does decide: it is
-read from the search already in hand, and a link opened cold simply has none. When the directory
+what you see — a pasted link shows the same person a click from the Talent pool does. Search is
+read only to recover the matched fragment named in the URL; it never reconstructs or replaces the
+by-id record. This also lets a cold shared link show its evidence. When the directory
 answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
-inventing a profile. The profile itself is the shared full-profile component, Candidate Card on top,
+inventing a profile. The full profile is the shared component that renders the professional
+sections, with the Candidate Card on top,
 the same one the Application review renders its Snapshot through. The notes and the Tags are the
 Application review's own interactions, naming a Candidate instead of an Application; a Tag offered
 here is candidate-scoped, which is the other half of the same vocabulary.
-_Avoid_: Candidate profile, candidate detail (a Profile is the Candidate's own; this is the
-Tenant's reading of it).
+_Avoid_: Candidate detail (a Profile is the Candidate's own; this is the Tenant's reading of it).
+
+**Full profile**:
+The portal value that puts a live Candidate record and a frozen Application Snapshot into the
+same rendering shape. `FullProfile` is rendered by `CandidateProfile`; the conversion functions
+are the boundary that keeps live and frozen source fields out of the shared components.
 
 **Talent pool state**:
 Whether one Candidate is saved, which the API will only answer by listing the whole pool — so the
