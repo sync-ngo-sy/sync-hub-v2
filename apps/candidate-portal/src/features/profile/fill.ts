@@ -16,7 +16,6 @@ export function filledFromCv(current: ProfileFormValues, draft: ProfileDraft): P
   return {
     ...fromCv,
     location_key: current.location_key,
-    preferred_language_code: current.preferred_language_code,
     is_searchable: current.is_searchable,
     skills: mergedSkills(current.skills, fromCv.skills),
   };

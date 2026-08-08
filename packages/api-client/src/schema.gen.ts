@@ -480,6 +480,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/candidates/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's profile photo
+         * @description The photo everywhere the candidate appears. Sent square by the portal's crop; anything
+         *     else keeps its middle square. What comes back is stored small, so send the original.
+         *
+         *     Replaces whatever photo the candidate had, at a new URL — the old one stops answering.
+         */
+        put: operations["replaceMyAvatar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/candidates/me/deletion": {
         parameters: {
             query?: never;
@@ -623,11 +646,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Searchable Candidates by fact, newest first
+         * Searchable Candidates by fact, in the order you ask for
          * @description Everyone in Damascus, everyone with React and TypeScript, everyone with five years of work.
          *
          *     No query written in words: every filter is a yes or a no, so naming more of them only ever
-         *     narrows the answer, and the whole result can be paged to the end.
+         *     narrows the answer, and the whole result can be paged to the end. Because nothing here is
+         *     ranked, the order is the caller's to choose — which is what separates this from Global search,
+         *     where closeness is the order and re-sorting it would be a different question.
          *
          *     A Candidate whose re-embedding is still queued is here even though Global search cannot see
          *     them yet — being findable by fact does not wait on a vector. No result carries an email or a
@@ -1832,6 +1857,7 @@ export interface components {
              */
             id: string;
             job: components["schemas"]["ReviewedJob"];
+            candidate: components["schemas"]["ReviewedCandidate"];
             status: components["schemas"]["ApplicationStatus"];
             screening: components["schemas"]["ScreeningVerdict"];
             snapshot: components["schemas"]["ApplicationSnapshot"];
@@ -1869,6 +1895,11 @@ export interface components {
             summary?: string | null;
             /** Location */
             location?: string | null;
+            /**
+             * Canonical Role
+             * @description What the Candidate's Canonical role was called the day they applied. Null when they claimed none.
+             */
+            canonical_role?: string | null;
             /**
              * Unmapped Skills
              * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
@@ -2018,6 +2049,26 @@ export interface components {
              */
             email: string;
         };
+        /**
+         * Avatar
+         * @description Where the candidate's stored photo is served from.
+         */
+        Avatar: {
+            /**
+             * Avatar Url
+             * @description A public URL, good until the candidate uploads another photo.
+             * @example https://sync.example/storage/v1/object/public/avatars/<id>/<photo>.webp
+             */
+            avatar_url: string;
+        };
+        /** Body_replaceMyAvatar */
+        Body_replaceMyAvatar: {
+            /**
+             * File
+             * @description The photo: JPEG, PNG or WebP, up to 5 MB. Square or it is cropped.
+             */
+            file: string;
+        };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -2028,15 +2079,15 @@ export interface components {
         };
         /**
          * CandidateDirectoryPage
-         * @description One page of the Candidate directory, newest first. It carries no phone and no email: a
-         *     Tenant reads either by opening one Candidate, never off a list.
+         * @description One page of the Candidate directory, in the order it was asked for. It carries no phone and
+         *     no email: a Tenant reads either by opening one Candidate, never off a list.
          */
         CandidateDirectoryPage: {
             /** Items */
             items: components["schemas"]["SearchableCandidate"][];
             /**
              * Next Cursor
-             * @description Send back as `cursor` for the following page. Null on the last page.
+             * @description Send back as `cursor` for the following page, with the same `sort`. Null on the last page.
              */
             next_cursor?: string | null;
         };
@@ -2089,11 +2140,6 @@ export interface components {
              * @example frontend-engineer
              */
             canonical_role_key?: string | null;
-            /**
-             * Preferred Language Code
-             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
-             */
-            preferred_language_code?: string | null;
             /**
              * Is Searchable
              * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
@@ -2172,8 +2218,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -2456,6 +2509,14 @@ export interface components {
              */
             password: string;
         };
+        /**
+         * DirectoryOrder
+         * @description How the directory has been asked to order itself. Each value names the answer it gives
+         *     rather than a column and a direction, so there is no ascending/descending convention to
+         *     learn — and no way to ask for an order the directory cannot page through.
+         * @enum {string}
+         */
+        DirectoryOrder: "newest" | "oldest" | "name" | "name_reversed" | "most_experience" | "least_experience";
         /**
          * DraftExperience
          * @description One job on a draft, where the CV may not have dated it.
@@ -3062,8 +3123,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -3568,11 +3636,6 @@ export interface components {
              */
             canonical_role_key?: string | null;
             /**
-             * Preferred Language Code
-             * @description A recruiter search filter, and never read off a CV: the language a document happens to be written in is not a preference.
-             */
-            preferred_language_code?: string | null;
-            /**
              * Is Searchable
              * @description Opt in to cross-tenant Global search. Requires a current, ready CV.
              * @default false
@@ -3913,6 +3976,28 @@ export interface components {
          */
         RecruiterRole: "admin" | "recruiter";
         /**
+         * ReviewedCandidate
+         * @description Who applied, as they stand today — and only the two facts a Snapshot cannot freeze.
+         *
+         *     Everything a Recruiter judges by is read off the `snapshot`. These two are not there
+         *     because freezing them would be a lie: only the authentication store holds a confirmed
+         *     address, and an avatar is a file that moves rather than a value that was true once.
+         */
+        ReviewedCandidate: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Email
+             * @description Read from the authentication store, which is the only place a confirmed address lives. Null when the account has none.
+             */
+            email?: string | null;
+            /** Avatar Url */
+            avatar_url?: string | null;
+        };
+        /**
          * ReviewedJob
          * @description The Job an Application is being read against.
          */
@@ -3975,8 +4060,15 @@ export interface components {
              * @description Whole years of work, derived from their own history.
              */
             total_experience_years: number;
-            /** Preferred Language Code */
-            preferred_language_code?: string | null;
+            /**
+             * Language Names
+             * @description Every language the Candidate says they speak, by name, in their own order.
+             * @example [
+             *       "Arabic",
+             *       "English"
+             *     ]
+             */
+            language_names?: string[];
             /**
              * In Talent Pool
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
@@ -6033,6 +6125,93 @@ export interface operations {
             };
         };
     };
+    replaceMyAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_replaceMyAvatar"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Avatar"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is larger than the platform accepts. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is not a JPEG, PNG or WebP image. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is empty. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file store could not be reached. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     deleteMyAccount: {
         parameters: {
             query?: never;
@@ -6615,14 +6794,16 @@ export interface operations {
     listDirectoryCandidates: {
         parameters: {
             query?: {
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description What order to answer in. Newest first unless you say otherwise, and a `cursor` only ever resumes the order it was issued for. */
+                sort?: components["schemas"]["DirectoryOrder"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
+                language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
                 /** @description Whole years of work, at least this many. */
@@ -7108,8 +7289,8 @@ export interface operations {
                 offset?: number;
                 /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
                 location_key?: string | null;
-                /** @description A Candidate's preferred language code. */
-                language?: string | null;
+                /** @description A language code, from `/v1/languages`, optionally with the least proficiency that will do after a colon. Repeat it to name more, and a Candidate has to speak all of them. */
+                language?: string[] | null;
                 /** @description A Canonical role's key, from `/v1/roles`. */
                 role?: string | null;
                 /** @description Whole years of work, at least this many. */

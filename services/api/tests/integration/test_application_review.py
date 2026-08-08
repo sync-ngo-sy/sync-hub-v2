@@ -23,6 +23,7 @@ from tests.support.applications import (
     a_reviewed_application,
     a_withdrawn_application,
     an_accepted_application,
+    an_applicant_with_a_stored_cv,
     apply_to,
     communications_of,
     job_applications_of,
@@ -39,6 +40,7 @@ from tests.support.applications import (
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
+from tests.support.profiles import a_filled_profile, a_saved_profile
 from tests.support.tenants import an_admin
 
 
@@ -166,6 +168,41 @@ async def test_the_review_holds_the_snapshot_the_answers_and_the_verdict(
         (yes_no["question_text"], True, None),
         (short_text["question_text"], None, "In two weeks."),
     ]
+
+
+async def test_the_review_carries_the_two_live_facts_a_snapshot_never_froze(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    applicant = await an_applicant_with_a_stored_cv(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+
+    review = await a_reviewed_application(recruiter, application["id"])
+
+    assert review["candidate"]["id"] == str(applicant.id)
+    assert review["candidate"]["email"] == applicant.signup.email
+    assert "email" not in review["snapshot"]
+    assert "canonical_role_name" not in review["candidate"]
+
+
+async def test_the_snapshot_freezes_the_role_they_applied_as_not_the_one_they_hold_now(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await an_applicant_with_a_stored_cv(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+
+    await a_saved_profile(other_browser, a_filled_profile(canonical_role_key="data-scientist"))
+
+    review = await a_reviewed_application(recruiter, application["id"])
+
+    assert review["snapshot"]["canonical_role"] == "Backend Engineer"
 
 
 async def test_the_review_says_why_the_verdict_went_the_way_it_did(

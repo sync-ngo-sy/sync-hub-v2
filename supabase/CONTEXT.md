@@ -70,7 +70,10 @@ The frozen, candidate-reviewed profile captured when an Application is created �
 experience, education, skills, languages, projects (the `application_*` tables). Distinct
 from the live Candidate profile *and* from the raw AI output in `cvs.parsed_cv_data`; it
 may differ from both. Carries the Candidate's Total experience as it stood that day, so a
-verdict can be re-explained years later from the Snapshot alone. Never edited after creation —
+verdict can be re-explained years later from the Snapshot alone. Anything drawn from a
+vocabulary — the Location, the Canonical role — is frozen as the name it went by that day
+rather than as its key, so re-wording an entry never rewrites an Application already judged.
+Never edited after creation —
 and not by convention: a trigger refuses every update and delete on those tables and on the two
 histories, for the backend's service role like anybody else, because RLS does not apply to it.
 _Avoid_: Copy, Archive.

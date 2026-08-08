@@ -183,11 +183,6 @@ create index ingestion_jobs_claim_idx on ingestion_jobs (available_at)
 create index ingestion_jobs_status_created_idx on ingestion_jobs (status, created_at);
 
 alter table candidates
-  add constraint candidates_preferred_language_fk
-  foreign key (preferred_language_code) references languages (code);
-create index candidates_preferred_language_idx on candidates (preferred_language_code);
-
-alter table candidates
   add constraint candidates_location_fk
   foreign key (location_key) references locations (key);
 create index candidates_location_key_idx on candidates (location_key);
