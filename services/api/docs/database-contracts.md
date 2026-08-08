@@ -140,8 +140,8 @@ and `set_updated_at` already fire on `candidates`.
 Backend-enforced preconditions (all checked **before** anything is written, so a refusal
 cannot leave a section emptied):
 1. Every skill names an existing `skill_taxonomy.canonical_name`, exactly; every language
-   code (including `candidates.preferred_language_code`) exists in `languages`. Both refuse
-   with problem+json naming the offending entries rather than letting the FK do it.
+   code in `candidate_languages` exists in `languages`. Both refuse with problem+json naming
+   the offending entries rather than letting the FK do it.
 2. `is_searchable` only goes true when `candidates.current_cv_id` names a CV that is
    `parsing_status = 'ready'` and not soft-deleted. The `candidates_searchable_needs_cv`
    CHECK covers only the first half — the CV's state is a second row, so migration 02 leaves
@@ -173,9 +173,9 @@ such key — matching them by shape would leave duplicates to delete by hand —
 the CV alone. `ProfileDraft` is therefore a distinct type from `CandidateProfile`, with
 `skills[].years_experience` nullable: a draft is incomplete by nature, a saved profile never is.
 
-`is_searchable` and `preferred_language_code` are taken from the Candidate's current values, not
-the CV. They are settings, and a CV's `detected_language` is the language the document happens
-to be written in — a CV written in English by someone who wants Arabic would get the wrong one.
+`is_searchable` is taken from the Candidate's current value, not the CV. It is a setting, and a
+CV's `detected_language` is the language the document happens to be written in — which says
+nothing about whether the Candidate wanted the profile findable.
 
 ## A candidate's CVs: how many, which is current, deleting one
 
@@ -336,9 +336,9 @@ copy mechanical and kills the add-a-column-forget-to-map-it bug. `application_*`
 correctly do not.
 
 Two deliberate asymmetries: `full_name` and `phone` come from `profiles`, because they are the
-candidate's identity rather than a per-application claim; and `preferred_language_code`,
-`is_searchable` and `current_cv_id` are **never** snapshotted, because they are settings and
-pointers — freezing a setting would leave someone asking why changing it changed nothing.
+candidate's identity rather than a per-application claim; and `is_searchable` and
+`current_cv_id` are **never** snapshotted, because they are a setting and a pointer — freezing
+a setting would leave someone asking why changing it changed nothing.
 `email` is on neither side: only `auth.users` has a confirmed one, and `delivery.py` resolves it
 there on every send.
 
@@ -712,8 +712,9 @@ order by ch.candidate_id, distance          -- then order the result by distance
 `distinct on` is what keeps a candidate to one place in the ranking, holding the chunk of
 theirs that matched best; that chunk is returned as the evidence for the hit.
 
-Optional filters AND onto the join: structured predicates on the view (Location key exactly,
-preferred language exactly) and, when the recruiter supplies explicit keywords,
+Optional filters AND onto the join: structured predicates on the view (Location key exactly, and
+every language named at the proficiency asked of it or better) and, when the recruiter supplies
+explicit keywords,
 `candidates.search_vector @@ websearch_to_tsquery('english', :keywords)`. Semantics come from
 the vector ranking; FTS is a hard filter only — there is no rank fusion.
 

@@ -36,11 +36,10 @@ def draft_of(
     years the candidate typed by hand can be carried across. Experiences, educations and
     projects have no such key, and matching them by shape would leave duplicates to delete.
 
-    `is_searchable`, `preferred_language_code` and `location_key` come from the candidate, not
-    from the CV. The first two are settings, and a CV's `detected_language` is the language the
-    document is written in rather than a preference; the third is a choice from a list, which
-    the free text a CV gives its address in is not — "Damascus, Syria" names no Location on its
-    own, and guessing which one it meant is how the wrong governorate gets saved.
+    `is_searchable` and `location_key` come from the candidate, not from the CV. The first is a
+    setting; the second is a choice from a list, which the free text a CV gives its address in
+    is not — "Damascus, Syria" names no Location on its own, and guessing which one it meant is
+    how the wrong governorate gets saved.
 
     The Canonical role is the one thing the CV is allowed to propose into a choice from a list,
     because it is a judgement the parse is asked to make. A CV that supports none leaves
@@ -53,7 +52,6 @@ def draft_of(
         summary=parsed.summary,
         location_key=candidate.location_key,
         canonical_role_key=parsed.canonical_role or candidate.canonical_role_key,
-        preferred_language_code=candidate.preferred_language_code,
         is_searchable=candidate.is_searchable,
         unmapped_skills=list(parsed.unmapped_skills),
         experiences=[

@@ -219,10 +219,12 @@ deleted counts as deleted, since that is what was asked for.
 _Avoid_: Tag settings, taxonomy, label manager.
 **Candidate search**:
 The Workspace's one way past its own applicants: words describing who is wanted, and up to three
-hard filters — a Location, a preferred language, words that must appear — over every Candidate on
+hard filters — a Location, the languages spoken, words that must appear — over every Candidate on
 the platform who has opted into being found. The words are read for what they mean and the filters
 are absolute, so a Candidate failing any of them is not a result and the keywords never reorder the
-ones that remain. Asked on submit rather than as a Recruiter types, because the search is a real
+ones that remain. The language filter takes several at once and each carries the least proficiency
+that will do, so naming two asks for a Candidate who speaks both, each that well or better — read
+off the languages a Candidate claims rather than off a single preference. Asked on submit rather than as a Recruiter types, because the search is a real
 one and half a sentence is a different question; the whole search lives in the address bar, so a
 reload keeps it and a pasted link reproduces it. The API answers one page and offers no cursor, so
 a full page is a ceiling rather than a count — it reads as "the closest twenty" and points at

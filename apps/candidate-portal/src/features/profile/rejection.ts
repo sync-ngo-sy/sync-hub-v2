@@ -16,7 +16,6 @@ const IDENTITY_FIELDS = [
   'headline',
   'summary',
   'location_key',
-  'preferred_language_code',
   'is_searchable',
 ] as const satisfies readonly (keyof ProfileFormValues)[];
 

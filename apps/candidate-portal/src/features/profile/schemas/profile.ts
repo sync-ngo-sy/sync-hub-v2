@@ -72,12 +72,6 @@ const languageCode = z
   .min(1, 'Choose a language.')
   .refine(isLanguageCode, LANGUAGE_CODE_MESSAGE);
 
-const optionalLanguageCode = z
-  .string()
-  .trim()
-  .refine((raw) => raw === '' || isLanguageCode(raw), LANGUAGE_CODE_MESSAGE)
-  .transform(blankAsUnset);
-
 const yearsOfExperience = z
   .string()
   .trim()
@@ -202,7 +196,6 @@ export const profileSchema = z
     summary: optionalParagraph,
     location_key: optionalLine,
     canonical_role_key: optionalLine,
-    preferred_language_code: optionalLanguageCode,
     is_searchable: z.boolean(),
     total_experience_years: z.number(),
     experiences: section(experience, 'jobs'),
@@ -296,7 +289,6 @@ export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileF
     summary: orEmpty(profile.summary),
     location_key: orEmpty(profile.location_key),
     canonical_role_key: orEmpty(profile.canonical_role_key),
-    preferred_language_code: orEmpty(profile.preferred_language_code),
     is_searchable: profile.is_searchable,
     total_experience_years:
       'total_experience_years' in profile ? profile.total_experience_years : 0,

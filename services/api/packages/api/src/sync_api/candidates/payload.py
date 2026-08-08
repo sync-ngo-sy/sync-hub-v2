@@ -235,11 +235,6 @@ class ProfileClaims(BaseModel):
         "the candidate's own answer.",
         examples=["frontend-engineer"],
     )
-    preferred_language_code: LanguageCode | None = Field(
-        default=None,
-        description="A recruiter search filter, and never read off a CV: the language a "
-        "document happens to be written in is not a preference.",
-    )
     is_searchable: bool = Field(
         default=False,
         description="Opt in to cross-tenant Global search. Requires a current, ready CV.",
