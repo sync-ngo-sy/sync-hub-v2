@@ -7,6 +7,10 @@ export type Profile = components['schemas']['ProfileView'];
 
 export const currentProfileQuery = api.queryOptions('get', '/v1/auth/me');
 
+export function useCurrentProfile() {
+  return api.useSuspenseQuery('get', '/v1/auth/me');
+}
+
 export async function ensureCurrentProfile(queryClient: QueryClient): Promise<Profile | null> {
   try {
     return await queryClient.ensureQueryData(currentProfileQuery);
