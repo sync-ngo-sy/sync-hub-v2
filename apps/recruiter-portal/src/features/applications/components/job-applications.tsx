@@ -1,5 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button } from '@sync/ui/components/ui/button';
 import { Inbox } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
@@ -38,7 +38,7 @@ const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
     header: 'Screening',
     cell: ({ row }) => {
       const state = screeningState(row.original.qualification_status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {
@@ -46,7 +46,7 @@ const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
     header: 'Pipeline',
     cell: ({ row }) => {
       const state = pipelineState(row.original.status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {

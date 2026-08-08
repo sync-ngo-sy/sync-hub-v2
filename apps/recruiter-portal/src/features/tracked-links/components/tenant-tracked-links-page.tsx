@@ -1,6 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
@@ -58,7 +58,7 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
     header: 'State',
     cell: ({ row }) => {
       const state = trackedLinkState(row.original);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {

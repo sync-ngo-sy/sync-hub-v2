@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Inbox } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataTable, type DataTableColumn, type DataTableProps } from './data-table';
-import { StatusChip } from './status-chip';
+import { StatusMark } from './status-mark';
 
 interface Application {
   id: string;
@@ -18,7 +18,7 @@ const COLUMNS: DataTableColumn<Application>[] = [
   {
     id: 'status',
     header: 'Status',
-    cell: () => <StatusChip tone="neutral" label="New" />,
+    cell: () => <StatusMark tone="new" label="New" />,
   },
 ];
 

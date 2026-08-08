@@ -27,7 +27,7 @@ describe('what a tracked link is doing', () => {
     expect(trackedLinkState(link({ id: '1' }), NOW)).toEqual({
       kind: 'live',
       label: 'Live',
-      tone: 'positive',
+      tone: 'active',
     });
     expect(
       trackedLinkState(link({ id: '1', expires_at: '2026-09-01T09:00:00Z' }), NOW),
@@ -38,7 +38,7 @@ describe('what a tracked link is doing', () => {
     expect(trackedLinkState(link({ id: '1', is_active: false }), NOW)).toEqual({
       kind: 'off',
       label: 'Off',
-      tone: 'neutral',
+      tone: 'ended',
     });
     expect(
       trackedLinkState(
@@ -52,7 +52,7 @@ describe('what a tracked link is doing', () => {
     expect(trackedLinkState(link({ id: '1', expires_at: '2026-08-01T09:00:00Z' }), NOW)).toEqual({
       kind: 'expired',
       label: 'Expired',
-      tone: 'neutral',
+      tone: 'ended',
     });
   });
 });

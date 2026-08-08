@@ -1,4 +1,4 @@
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button } from '@sync/ui/components/ui/button';
 import { useState } from 'react';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
@@ -26,7 +26,7 @@ export function ApplicationCard({ application }: { application: Application }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:justify-end sm:self-auto">
-          <StatusChip tone={state.tone} label={state.label} />
+          <StatusMark tone={state.tone} label={state.label} />
           {canWithdraw(application.status) ? (
             <Button
               variant="ghost"

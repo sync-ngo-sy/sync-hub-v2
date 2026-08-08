@@ -1,6 +1,6 @@
 import { EmptyState } from '@sync/ui/components/empty-state';
 import { ListSkeleton } from '@sync/ui/components/skeletons';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { BriefcaseBusiness } from 'lucide-react';
@@ -70,7 +70,7 @@ export function JobsOverview({ jobs, onJobOpen, onCreateJob }: JobsOverviewProps
                   <span className="text-meta text-muted-foreground">{jobMeta(job)}</span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1.5">
-                  <StatusChip label={state.label} tone={state.tone} />
+                  <StatusMark label={state.label} tone={state.tone} />
                   {job.application_count > 0 ? (
                     <span className="text-meta tabular-nums text-muted-foreground">
                       {applicants(job.application_count)}

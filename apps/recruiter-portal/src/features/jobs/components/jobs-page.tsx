@@ -1,6 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
@@ -39,7 +39,7 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
     header: 'Status',
     cell: ({ row }) => {
       const state = jobState(row.original.status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {
