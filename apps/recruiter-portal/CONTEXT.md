@@ -217,30 +217,52 @@ everything filed under it and cannot change its scope; deleting unfiles it from 
 Application it was on, which is what the confirmation says — and a Tag a colleague has already
 deleted counts as deleted, since that is what was asked for.
 _Avoid_: Tag settings, taxonomy, label manager.
-**Candidate search**:
-The Workspace's one way past its own applicants: words describing who is wanted, and up to three
-hard filters — a Location, the languages spoken, words that must appear — over every Candidate on
-the platform who has opted into being found. The words are read for what they mean and the filters
-are absolute, so a Candidate failing any of them is not a result and the keywords never reorder the
-ones that remain. The language filter takes several at once and each carries the least proficiency
-that will do, so naming two asks for a Candidate who speaks both, each that well or better — read
-off the languages a Candidate claims rather than off a single preference. Asked on submit rather than as a Recruiter types, because the search is a real
-one and half a sentence is a different question; the whole search lives in the address bar, so a
-reload keeps it and a pasted link reproduces it. The API answers one page and offers no cursor, so
-a full page is a ceiling rather than a count — it reads as "the closest twenty" and points at
-narrowing, because there is no next page to offer and calling it a total would be a lie. Nothing
-here carries an address or a phone number, and the page says so before the first search rather than
-after it.
+**Candidates page**:
+The Workspace's one way past its own applicants, over every Candidate on the platform who has
+opted into being found. It is two sub-tabs and not one page with a switch, because the backend
+answers two different questions and neither is the other's setting: the Filter tab and the AI
+Search tab. Which one is open lives in the address bar with everything else, so a reload keeps it
+and a pasted link opens the tab it was copied from — and a link written before the tabs existed
+opens on AI Search when it carries words, because that is the search it was copied from. Both tabs
+offer the same five hard filters — skills, a Canonical role, whole years of work, a Location, the
+languages spoken — and a filter is absolute on either, so a Candidate failing any of it is not a
+result. The language filter takes several at once and each carries the least proficiency that will
+do, so naming two asks for a Candidate who speaks both, each that well or better — read off the
+languages a Candidate claims rather than off a single preference. Filters are asked on submit
+rather than as a Recruiter types, because half a question is a different question.
 _Avoid_: Sourcing, candidate database, global search (that is the backend's name for the index).
+
+**Filter tab**:
+The Candidates page's directory: the platform's Searchable Candidates as a sortable table, with no
+box to write words in, because nothing here is ranked and there is nothing for words to mean. Its
+columns say who somebody is — name, role, years, languages, Location, whether they are already
+saved — and Name and Experience can be sorted either way. The order is the API's answer and never
+the browser's: sorting asks the directory again, so what is on screen is a page of the whole result
+rather than a rearrangement of the twenty already fetched. Newest first is what it opens on, and
+that is the one order the address does not bother to name.
+_Avoid_: Browse tab, directory search, the table (which is how it renders, not what it is).
+
+**AI Search tab**:
+The Candidates page's ranked search: words describing who is wanted, read for what they mean, with
+the same filters narrowing what the ranking may reach and a `keywords` box for words that must
+appear literally. Closeness is the order and the only order — no column sorts, because re-sorting a
+ranking would throw away the one thing it knows. It carries a standing note that the results are
+ranked by AI relevance and may be imperfect, pointing at the Filter tab for exact matching; the
+note is on the tab rather than on the results, so it is read before the first search and not after
+it. The API answers one page and offers no cursor, so a full page is a ceiling rather than a count
+— it reads as "the closest twenty" and points at narrowing, because there is no next page to offer
+and calling it a total would be a lie.
+_Avoid_: Semantic search, smart search, vector search (that is the backend's mechanism, not the
+tab).
 
 **Candidate view**:
 One person as this Tenant knows them: what the platform will show of their profile, the fragment
 that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
-Talent pool. There is no endpoint that reads a Candidate's profile by id, so the page has whatever
-the list that found them carried — it re-runs the search in its own address to get it, and falls
-back to the Talent pool when no search led here. When neither has them the page says exactly that
-rather than inventing a profile, because a Candidate who has stopped being searchable really is out
-of reach. The notes and the Tags are the Application review's own interactions, naming a Candidate
+Talent pool. The page does not yet read a Candidate by id, so it has whatever the list that found
+them carried — it re-runs whichever list that was, the ranking or the directory, from the filters
+in its own address, and falls back to the Talent pool when neither answers. When none of the three
+has them the page says exactly that rather than inventing a profile, because a Candidate who has
+stopped being searchable really is out of reach. The notes and the Tags are the Application review's own interactions, naming a Candidate
 instead of an Application; a Tag offered here is candidate-scoped, which is the other half of the
 same vocabulary.
 _Avoid_: Candidate profile, candidate detail (a Profile is the Candidate's own; this is the

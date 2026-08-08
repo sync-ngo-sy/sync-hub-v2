@@ -14,6 +14,7 @@ from tests.support.embedders import FakeEmbedder
 from tests.support.harness import SPA_HEADERS, asgi_client
 from tests.support.search import (
     DIRECTORY,
+    INVALID_CURSOR,
     MALFORMED_LANGUAGE_FILTER,
     MALFORMED_SKILL_FILTER,
     SEARCH,
@@ -138,6 +139,35 @@ async def three_candidates(app: FastAPI, mailbox: Mailbox, session: AsyncSession
     return {"amina": str(amina.id), "lina": str(lina.id), "yusuf": str(yusuf.id)}
 
 
+async def three_sortable_candidates(
+    app: FastAPI, mailbox: Mailbox, session: AsyncSession
+) -> dict[str, str]:
+    """Written oldest first and named so that no two of the six orders agree — otherwise a sort
+    test would pass on the order the rows were already in.
+
+    Rana has 8 years of work, Karim 3 and Amal 2, which their profiles above decide."""
+    rana = await a_candidate_with(
+        app, mailbox, session, label="rana", full_name="Rana Haddad", **A_DAMASCUS_BACKEND
+    )
+    amal = await a_candidate_with(
+        app, mailbox, session, label="amal", full_name="Amal Nassar", **AN_ALEPPO_FRONTEND
+    )
+    karim = await a_candidate_with(
+        app, mailbox, session, label="karim", full_name="Karim Barakat", **A_PARIS_DESIGNER
+    )
+    return {"rana": str(rana.id), "amal": str(amal.id), "karim": str(karim.id)}
+
+
+IN_ORDER: dict[str, tuple[str, str, str]] = {
+    "newest": ("karim", "amal", "rana"),
+    "oldest": ("rana", "amal", "karim"),
+    "name": ("amal", "karim", "rana"),
+    "name_reversed": ("rana", "karim", "amal"),
+    "most_experience": ("rana", "karim", "amal"),
+    "least_experience": ("amal", "karim", "rana"),
+}
+
+
 async def test_the_directory_answers_with_no_query_written_in_words(
     app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
@@ -152,6 +182,119 @@ async def test_the_directory_orders_newest_first(
     people = await three_candidates(app, mailbox, db_session)
 
     assert named(await listed(recruiter)) == [people["yusuf"], people["lina"], people["amina"]]
+
+
+@pytest.mark.parametrize("sort", list(IN_ORDER))
+async def test_the_directory_answers_in_whichever_order_was_asked_for(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, sort: str
+) -> None:
+    people = await three_sortable_candidates(app, mailbox, db_session)
+
+    assert named(await listed(recruiter, sort=sort)) == [people[who] for who in IN_ORDER[sort]]
+
+
+async def test_asking_for_no_order_is_asking_for_the_newest(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    people = await three_sortable_candidates(app, mailbox, db_session)
+
+    assert named(await listed(recruiter)) == named(await listed(recruiter, sort="newest"))
+    assert named(await listed(recruiter)) == [people["karim"], people["amal"], people["rana"]]
+
+
+@pytest.mark.parametrize("sort", list(IN_ORDER))
+async def test_a_sorted_page_carries_on_where_the_one_before_it_left_off(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, sort: str
+) -> None:
+    """A page at a time, which is where a keyset cursor on anything but a timestamp would show
+    itself: a wrong one repeats a row, skips one, or never ends."""
+    people = await three_sortable_candidates(app, mailbox, db_session)
+    seen: list[str] = []
+    asked: dict[str, Any] = {"limit": 1, "sort": sort}
+    page: dict[str, Any] = {"next_cursor": None}
+
+    for _ in range(4):
+        response = await recruiter.get(DIRECTORY, params=asked)
+        assert response.status_code == 200, response.text
+        page = response.json()
+        seen += named(page["items"])
+        if page["next_cursor"] is None:
+            break
+        asked = {"limit": 1, "sort": sort, "cursor": page["next_cursor"]}
+
+    assert page["next_cursor"] is None
+    assert seen == [people[who] for who in IN_ORDER[sort]]
+
+
+async def test_a_sort_narrows_nothing_and_leaves_everybody_in(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    people = await three_sortable_candidates(app, mailbox, db_session)
+
+    for sort in IN_ORDER:
+        assert set(named(await listed(recruiter, sort=sort))) == set(people.values())
+
+
+async def test_a_sort_and_a_filter_answer_together(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    people = await three_sortable_candidates(app, mailbox, db_session)
+
+    assert named(await listed(recruiter, sort="name", min_total_experience=3)) == [
+        people["karim"],
+        people["rana"],
+    ]
+
+
+async def test_an_order_the_directory_does_not_offer_is_refused(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await three_sortable_candidates(app, mailbox, db_session)
+
+    response = await recruiter.get(DIRECTORY, params={"sort": "cheapest"})
+
+    assert response.status_code == 422, response.text
+
+
+async def test_a_cursor_from_one_order_is_not_a_cursor_for_another(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """A name where a number is expected is not a cursor this API issued, and saying so beats
+    answering with a page from an order nobody asked for."""
+    await three_sortable_candidates(app, mailbox, db_session)
+    first = await recruiter.get(DIRECTORY, params={"limit": 1, "sort": "name"})
+    assert first.status_code == 200, first.text
+    carried = first.json()["next_cursor"]
+
+    response = await recruiter.get(
+        DIRECTORY, params={"limit": 1, "sort": "most_experience", "cursor": carried}
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["type"] == INVALID_CURSOR
+
+
+async def test_two_people_sharing_a_name_each_get_their_own_place_in_the_order(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The id is the tiebreaker, so a page boundary landing between namesakes neither repeats one
+    nor drops one — which is the whole reason the cursor carries both."""
+    people = await three_sortable_candidates(app, mailbox, db_session)
+    twin = await a_candidate_with(
+        app, mailbox, db_session, label="twin", full_name="Amal Nassar", **AN_ALEPPO_FRONTEND
+    )
+    seen: list[str] = []
+    asked: dict[str, Any] = {"limit": 1, "sort": "name"}
+
+    for _ in range(5):
+        page = (await recruiter.get(DIRECTORY, params=asked)).json()
+        seen += named(page["items"])
+        if page["next_cursor"] is None:
+            break
+        asked = {"limit": 1, "sort": "name", "cursor": page["next_cursor"]}
+
+    assert sorted(seen) == sorted([*people.values(), str(twin.id)])
+    assert seen[2:] == [people["karim"], people["rana"]]
 
 
 async def test_each_filter_narrows_the_directory_on_its_own(
