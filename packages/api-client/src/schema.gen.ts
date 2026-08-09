@@ -1257,12 +1257,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The tenant's Applications, newest first
-         * @description Every Application the tenant has received, across every Job, newest first.
+         * The tenant's Applications, newest first unless another order is asked for
+         * @description Every Application the tenant has received, across every Job. Page with `next_cursor`,
+         *     keeping `sort`.
          *
          *     Each row names the Job it came in for — the Job's own triage list can leave that implied,
          *     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
          *     up, so another tenant's Job matches nothing here instead of refusing.
+         *
+         *     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+         *     caller can say how many Applications each one is keeping off the list.
          */
         get: operations["listTenantApplications"];
         put?: never;
@@ -1950,6 +1954,15 @@ export interface components {
             projects?: components["schemas"]["ProfileProject"][];
         };
         /**
+         * ApplicationSort
+         * @description The orders the tenant's Application list can be read in.
+         *
+         *     Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
+         *     spanning Jobs has no number of its own to be busiest by.
+         * @enum {string}
+         */
+        ApplicationSort: "newest" | "oldest";
+        /**
          * ApplicationStatus
          * @enum {string}
          */
@@ -1988,7 +2001,7 @@ export interface components {
         };
         /**
          * ApplicationStatusCount
-         * @description How many of the Job's Applications stand in one Pipeline status.
+         * @description How many Applications of the list being read stand in one Pipeline status.
          */
         ApplicationStatusCount: {
             status: components["schemas"]["ApplicationStatus"];
@@ -4043,6 +4056,16 @@ export interface components {
             database: "ok";
         };
         /**
+         * ReceivedWithin
+         * @description The rolling windows the tenant's Application list can be narrowed to.
+         *
+         *     Rolling rather than calendar, exactly as the Dashboard's counts are: `7d` is the last 168
+         *     hours rather than this week so far. A Tenant has no timezone, so a calendar week would have
+         *     to be computed in one, and the wrong one turns a Recruiter's morning into yesterday.
+         * @enum {string}
+         */
+        ReceivedWithin: "24h" | "7d" | "30d";
+        /**
          * RecruiterRole
          * @enum {string}
          */
@@ -4358,7 +4381,7 @@ export interface components {
         };
         /**
          * TenantApplicationPage
-         * @description One page of the tenant's Applications, newest first across every Job.
+         * @description One page of the tenant's Applications, in the order that was asked for, across every Job.
          */
         TenantApplicationPage: {
             /** Items */
@@ -4368,6 +4391,16 @@ export interface components {
              * @description Send back as `cursor` for the following page.
              */
             next_cursor?: string | null;
+            /**
+             * Status Counts
+             * @description Every Pipeline status the platform has, in Pipeline order, each with how many of the tenant's Applications stand in it. Counted before `status` narrows anything, so a filter that hides some of them still says how many it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            status_counts?: components["schemas"]["ApplicationStatusCount"][];
+            /**
+             * Verdict Counts
+             * @description Every Screening verdict the platform has, each with how many of the tenant's Applications it decided that way. Counted before `qualification_status` narrows anything, so a filter that hides some of them still says how much it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            verdict_counts?: components["schemas"]["ApplicationVerdictCount"][];
         };
         /**
          * TenantApplicationSummary
@@ -9403,11 +9436,17 @@ export interface operations {
     listTenantApplications: {
         parameters: {
             query?: {
-                /** @description Only Applications at this stage. */
-                status?: components["schemas"]["ApplicationStatus"] | null;
+                /** @description Only Applications in one of these pipeline states. Repeat it to name several; omit it for every state. */
+                status?: components["schemas"]["ApplicationStatus"][] | null;
+                /** @description Only Applications the Screening verdict decided one of these ways. Repeat it to name several; omit it for every verdict. */
+                qualification_status?: components["schemas"]["QualificationStatus"][] | null;
                 /** @description Only Applications for this Job of the tenant. */
                 job_id?: string | null;
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description Only Applications received inside this rolling window. Omit it for every Application the tenant has ever had. */
+                received_within?: components["schemas"]["ReceivedWithin"] | null;
+                /** @description Which end of `applied_at` the list starts at. */
+                sort?: components["schemas"]["ApplicationSort"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
@@ -9445,7 +9484,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or belongs to another `sort`. */
             422: {
                 headers: {
                     [name: string]: unknown;

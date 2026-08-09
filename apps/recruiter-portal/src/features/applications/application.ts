@@ -2,8 +2,12 @@ import type { components } from '@sync/api-client';
 import type { ApplicationStatusTone, StatusTone } from '@sync/ui/components/status-mark';
 
 export type ApplicationSummary = components['schemas']['ApplicationSummary'];
+export type TenantApplication = components['schemas']['TenantApplicationSummary'];
+export type ApplicationJob = components['schemas']['ApplicationJob'];
 export type PipelineStatus = components['schemas']['ApplicationStatus'];
 export type ScreeningVerdict = components['schemas']['QualificationStatus'];
+export type ReceivedWithin = components['schemas']['ReceivedWithin'];
+export type ApplicationSort = components['schemas']['ApplicationSort'];
 
 interface MarkState {
   label: string;
@@ -94,4 +98,51 @@ export function screeningState(verdict: ScreeningVerdict): MarkState {
 
 export function candidateMeta(application: ApplicationSummary): string {
   return [application.headline, application.location].filter(Boolean).join(' · ');
+}
+
+export const EVERY_TIME = 'ever';
+
+export type ReceivedRange = ReceivedWithin | typeof EVERY_TIME;
+
+export const RECEIVED_RANGES: Record<ReceivedRange, string> = {
+  '24h': 'Last 24 hours',
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  ever: 'All time',
+};
+
+export const RECEIVED_WITHIN_VALUES = [
+  '24h',
+  '7d',
+  '30d',
+] as const satisfies readonly ReceivedWithin[];
+
+export function receivedSelection(chosen: ReceivedWithin | undefined): ReceivedRange {
+  return chosen ?? EVERY_TIME;
+}
+
+export function receivedWithin(range: ReceivedRange): ReceivedWithin | undefined {
+  return range === EVERY_TIME ? undefined : range;
+}
+
+export const APPLICATION_SORTS = ['newest', 'oldest'] as const satisfies readonly ApplicationSort[];
+
+export const DEFAULT_APPLICATION_SORT: ApplicationSort = 'newest';
+
+export function sortSelection(chosen: ApplicationSort | undefined): ApplicationSort {
+  return chosen ?? DEFAULT_APPLICATION_SORT;
+}
+
+export function sortInAddress(sort: ApplicationSort | undefined): ApplicationSort | undefined {
+  return sort === DEFAULT_APPLICATION_SORT ? undefined : sort;
+}
+
+export function hiddenBehind<TValue extends string>(
+  all: readonly TValue[],
+  selected: TValue[],
+  counts: Partial<Record<TValue, number>>,
+): number {
+  return all
+    .filter((one) => !selected.includes(one))
+    .reduce((sum, one) => sum + (counts[one] ?? 0), 0);
 }

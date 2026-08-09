@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
+from typing import Final
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -119,7 +121,7 @@ class ApplicationSummary(BaseModel):
 
 
 class ApplicationStatusCount(BaseModel):
-    """How many of the Job's Applications stand in one Pipeline status."""
+    """How many Applications of the list being read stand in one Pipeline status."""
 
     status: ApplicationStatus
     count: int
@@ -173,12 +175,58 @@ class TenantApplicationSummary(ApplicationSummary):
     job: ApplicationJob
 
 
+class ReceivedWithin(StrEnum):
+    """The rolling windows the tenant's Application list can be narrowed to.
+
+    Rolling rather than calendar, exactly as the Dashboard's counts are: `7d` is the last 168
+    hours rather than this week so far. A Tenant has no timezone, so a calendar week would have
+    to be computed in one, and the wrong one turns a Recruiter's morning into yesterday.
+    """
+
+    DAY = "24h"
+    WEEK = "7d"
+    MONTH = "30d"
+
+
+RECEIVED_WITHIN_DAYS: Final[dict[ReceivedWithin, int]] = {
+    ReceivedWithin.DAY: 1,
+    ReceivedWithin.WEEK: 7,
+    ReceivedWithin.MONTH: 30,
+}
+
+
+class ApplicationSort(StrEnum):
+    """The orders the tenant's Application list can be read in.
+
+    Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
+    spanning Jobs has no number of its own to be busiest by.
+    """
+
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
 class TenantApplicationPage(BaseModel):
-    """One page of the tenant's Applications, newest first across every Job."""
+    """One page of the tenant's Applications, in the order that was asked for, across every Job."""
 
     items: list[TenantApplicationSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
+    )
+    status_counts: list[ApplicationStatusCount] = Field(
+        default_factory=list,
+        description="Every Pipeline status the platform has, in Pipeline order, each with how "
+        "many of the tenant's Applications stand in it. Counted before `status` narrows "
+        "anything, so a filter that hides some of them still says how many it is hiding. The "
+        "other filters do narrow it: the counts describe the list the reader is looking at.",
+    )
+    verdict_counts: list[ApplicationVerdictCount] = Field(
+        default_factory=list,
+        description="Every Screening verdict the platform has, each with how many of the "
+        "tenant's Applications it decided that way. Counted before `qualification_status` "
+        "narrows anything, so a filter that hides some of them still says how much it is "
+        "hiding. The other filters do narrow it: the counts describe the list the reader is "
+        "looking at.",
     )
 
 

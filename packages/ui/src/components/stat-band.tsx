@@ -1,3 +1,4 @@
+import { useRender } from '@base-ui/react/use-render';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { cn } from '@sync/ui/lib/utils';
 import { type LucideIcon, TrendingUp } from 'lucide-react';
@@ -21,6 +22,36 @@ export interface StatBandItem {
   label: string;
   value: ReactNode;
   trend?: { label: string; tone?: TrendTone };
+  render?: useRender.RenderProp;
+}
+
+/* `accent` rather than `muted`, which is a translucent near-black: over the cream card in light
+   theme that reads as a grey smudge, where the tint reads as the cell lighting up. */
+const LINKED_CELL =
+  'outline-none transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50';
+
+function Cell({ label, value, trend, render }: StatBandItem) {
+  const { color, icon: TrendIcon } = TREND_TONE[trend?.tone ?? 'neutral'];
+
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: {
+      className: cn(CELL, render && LINKED_CELL),
+      children: (
+        <>
+          <span className="text-meta text-muted-foreground">{label}</span>
+          <span className="font-heading text-figure tabular-nums text-foreground">{value}</span>
+          {trend ? (
+            <span className={cn('flex items-center gap-1.5 text-xs', color)}>
+              {TrendIcon ? <TrendIcon aria-hidden="true" className="size-3.5" /> : null}
+              {trend.label}
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+  });
 }
 
 export function StatBand({
@@ -30,24 +61,9 @@ export function StatBand({
 }: { items: StatBandItem[] } & Omit<ComponentProps<'div'>, 'children'>) {
   return (
     <div className={cn(BAND, 'md:grid-cols-4 shadow-card', className)} {...props}>
-      {items.map((item) => {
-        const { color, icon: TrendIcon } = TREND_TONE[item.trend?.tone ?? 'neutral'];
-
-        return (
-          <div key={item.label} className={CELL}>
-            <span className="text-meta text-muted-foreground">{item.label}</span>
-            <span className="font-heading text-figure tabular-nums text-foreground">
-              {item.value}
-            </span>
-            {item.trend ? (
-              <span className={cn('flex items-center gap-1.5 text-xs', color)}>
-                {TrendIcon ? <TrendIcon aria-hidden="true" className="size-3.5" /> : null}
-                {item.trend.label}
-              </span>
-            ) : null}
-          </div>
-        );
-      })}
+      {items.map((item) => (
+        <Cell key={item.label} {...item} />
+      ))}
     </div>
   );
 }
