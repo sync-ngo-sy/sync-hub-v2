@@ -1,8 +1,6 @@
 import { PageHeader } from '@sync/ui/components/page-header';
 import { Button } from '@sync/ui/components/ui/button';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
-import { CreateJobDialog } from '@/features/jobs/components/create-job-dialog';
 import type { JobSummary } from '@/features/jobs/job';
 import type { TenantApplication } from '../dashboard';
 import { useDashboard } from '../hooks/use-dashboard';
@@ -14,11 +12,11 @@ import { SourcesCard } from './sources-card';
 interface DashboardPageProps {
   onJobOpen: (job: JobSummary) => void;
   onApplicationOpen: (application: TenantApplication) => void;
+  onCreateJob: () => void;
 }
 
-export function DashboardPage({ onJobOpen, onApplicationOpen }: DashboardPageProps) {
+export function DashboardPage({ onJobOpen, onApplicationOpen, onCreateJob }: DashboardPageProps) {
   const { tenantName, stats, applications, jobs } = useDashboard();
-  const [creating, setCreating] = useState(false);
 
   return (
     <div className="space-y-(--space-section)">
@@ -26,7 +24,7 @@ export function DashboardPage({ onJobOpen, onApplicationOpen }: DashboardPagePro
         title="Dashboard"
         description={tenantName}
         actions={
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={onCreateJob}>
             <Plus aria-hidden="true" />
             Create job
           </Button>
@@ -40,11 +38,9 @@ export function DashboardPage({ onJobOpen, onApplicationOpen }: DashboardPagePro
 
         <div className="space-y-(--space-grid)">
           <SourcesCard stats={stats} />
-          <JobsOverview jobs={jobs} onJobOpen={onJobOpen} onCreateJob={() => setCreating(true)} />
+          <JobsOverview jobs={jobs} onJobOpen={onJobOpen} onCreateJob={onCreateJob} />
         </div>
       </div>
-
-      <CreateJobDialog open={creating} onOpenChange={setCreating} />
     </div>
   );
 }

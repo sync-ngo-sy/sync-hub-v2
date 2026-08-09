@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   EMPLOYMENT_TYPE_LABELS,
   type EmploymentType,
+  type NewJob,
   WORK_MODE_LABELS,
   type WorkMode,
 } from '../job';
@@ -33,3 +34,27 @@ export const jobFormSchema = z.object({
 });
 
 export type JobFormValues = z.infer<typeof jobFormSchema>;
+
+export const EMPTY_JOB: JobFormValues = {
+  title: '',
+  description: '',
+  locationKey: '',
+  employmentType: '',
+  workMode: '',
+  expiresAt: '',
+};
+
+function optional(value: string): string | null {
+  return value.trim() || null;
+}
+
+export function toNewJob(values: JobFormValues): NewJob {
+  return {
+    title: values.title.trim(),
+    description: values.description.trim(),
+    location_key: optional(values.locationKey),
+    employment_type: values.employmentType || null,
+    work_mode: values.workMode || null,
+    expires_at: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
+  };
+}

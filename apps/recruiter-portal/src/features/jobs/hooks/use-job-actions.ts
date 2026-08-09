@@ -22,6 +22,10 @@ export function useChangeJob() {
   });
 }
 
+export function useReplaceCriteria() {
+  return api.useMutation('put', '/v1/tenants/me/jobs/{job_id}/criteria');
+}
+
 export function useReplaceJobCriteria(jobId: string) {
   const queryClient = useQueryClient();
 
