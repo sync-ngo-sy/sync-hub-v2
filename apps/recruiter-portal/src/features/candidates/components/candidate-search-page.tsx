@@ -1,6 +1,6 @@
 import { PageHeader } from '@sync/ui/components/page-header';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
-import { Funnel, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
+import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import type { CandidateSearchFilters, CandidateTab, DirectoryOrder } from '../search';
 import { CandidateDirectory } from './candidate-directory';
@@ -33,22 +33,26 @@ export function CandidateSearchPage({
   const clear = () => onFiltersChange({ q: filters.q });
 
   return (
-    <div className="space-y-(--space-section)">
-      <PageHeader title="Candidates" description={DESCRIPTION} />
+    <Tabs
+      className="gap-0"
+      value={tab}
+      onValueChange={(next) => onTabChange(next as CandidateTab)}
+    >
+      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+        <PageHeader title="Candidates" description={DESCRIPTION} />
+        <LineTabsList
+          label="Candidate search"
+          value={tab}
+          tabs={[
+            { value: 'filter', label: 'Filter' },
+            { value: 'search', label: 'AI Search' },
+          ]}
+          className="-mb-px mt-5"
+        />
+      </div>
 
-      <Tabs value={tab} onValueChange={(next) => onTabChange(next as CandidateTab)}>
-        <TabsList>
-          <TabsTrigger value="filter">
-            <Funnel aria-hidden="true" />
-            Filter
-          </TabsTrigger>
-          <TabsTrigger value="search">
-            <Sparkles aria-hidden="true" />
-            AI Search
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="filter" className="space-y-(--space-section) pt-4">
+      <div className="pt-(--space-section)">
+        <TabsContent value="filter" className="space-y-(--space-section)">
           <CandidateFilters tab="filter" filters={filters} onSearch={onFiltersChange} />
 
           <WidgetBoundary name="Directory">
@@ -61,7 +65,7 @@ export function CandidateSearchPage({
           </WidgetBoundary>
         </TabsContent>
 
-        <TabsContent value="search" className="space-y-(--space-section) pt-4">
+        <TabsContent value="search" className="space-y-(--space-section)">
           <p className="text-meta text-muted-foreground">{AI_HINT}</p>
 
           <CandidateFilters tab="search" filters={filters} onSearch={onFiltersChange} />
@@ -70,7 +74,7 @@ export function CandidateSearchPage({
             <CandidateResults filters={filters} onClear={clear} />
           </WidgetBoundary>
         </TabsContent>
-      </Tabs>
-    </div>
+      </div>
+    </Tabs>
   );
 }
