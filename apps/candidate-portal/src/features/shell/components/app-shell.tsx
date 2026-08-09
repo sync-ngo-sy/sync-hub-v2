@@ -11,7 +11,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-background">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-(--space-gutter) py-3 md:max-w-5xl">
-          <Brand />
+          <Brand to="/applications" />
           <PrimaryNav />
           <div className="ml-auto flex items-center gap-1">
             <NotificationBell />

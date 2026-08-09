@@ -10,8 +10,8 @@ export function useLogOut() {
 
   return api.useMutation('post', '/v1/auth/logout', {
     onSuccess: async () => {
-      await navigate({ to: '/', replace: true });
       queryClient.clear();
+      await navigate({ to: '/', replace: true });
     },
     onError: (error) => {
       toast.error(problemMessage(error, "Couldn't sign you out. Try again."));

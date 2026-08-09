@@ -58,7 +58,7 @@ export function ApplyCta({ signedIn, returnTo, jobId, questions }: ApplyCtaProps
         Sign in to apply
       </Link>
       <p className="text-meta text-muted-foreground">
-        New to Sync?{' '}
+        New to Sync Hub?{' '}
         <Link to="/signup" className={INLINE_LINK}>
           Create an account
         </Link>

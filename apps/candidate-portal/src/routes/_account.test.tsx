@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
-import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { logsOutOf, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { hasProfile } from '@/features/profile/testing/handlers';
@@ -36,7 +36,7 @@ describe('the account guard', () => {
     expect(
       await screen.findByRole('heading', { name: 'This is the Candidate Portal' }),
     ).toBeVisible();
-    expect(screen.getByText(/Sync\s+Recruiter Portal/)).toBeVisible();
+    expect(screen.getByText(/Sync Hub\s+Recruiter Portal/)).toBeVisible();
   });
 
   it('shows a platform admin the same notice, in words that fit their account', async () => {
@@ -49,7 +49,7 @@ describe('the account guard', () => {
       await screen.findByRole('heading', { name: 'This is the Candidate Portal' }),
     ).toBeVisible();
     expect(screen.getByText(/platform admin account/)).toBeVisible();
-    expect(screen.queryByText(/Sync\s+Recruiter Portal/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sync Hub\s+Recruiter Portal/)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to Admin Portal' })).toHaveAttribute(
       'href',
       'http://localhost:5175',
@@ -91,6 +91,14 @@ describe('the account chrome', () => {
     expect(within(nav).queryByRole('link', { name: 'CVs' })).toBeNull();
   });
 
+  it('points the logo at the applications list, never back out to the landing page', async () => {
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+
+    await renderApp('/profile');
+
+    expect(screen.getByRole('link', { name: 'Sync Hub' })).toHaveAttribute('href', '/applications');
+  });
+
   it('moves between destinations from the tab bar', async () => {
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
     const { router, user } = await renderApp('/applications');
@@ -114,7 +122,7 @@ describe('the account chrome', () => {
   });
 
   it('signs the candidate out, landing on the landing page with an empty cache', async () => {
-    server.use(...signedInAs(CANDIDATE), ...logsOut(), ...listsJobs(PUBLIC_JOBS));
+    server.use(...logsOutOf(CANDIDATE), ...listsJobs(PUBLIC_JOBS));
     const { router, queryClient, user } = await renderApp('/applications');
 
     await user.click(screen.getByRole('button', { name: `Account: ${CANDIDATE.full_name}` }));

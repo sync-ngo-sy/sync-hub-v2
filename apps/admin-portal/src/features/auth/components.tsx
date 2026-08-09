@@ -71,7 +71,7 @@ export function LoginForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
 export function SignInScreen({ onSignedIn }: { onSignedIn: (profile: Profile) => void }) {
   return (
     <Screen title="Sign in">
-      <p className="text-muted-foreground">Operate the Sync platform.</p>
+      <p className="text-muted-foreground">Operate the Sync Hub platform.</p>
       <LoginForm onSignedIn={onSignedIn} />
     </Screen>
   );
@@ -184,7 +184,7 @@ export function ResetPasswordScreen({
 export function WrongPortalScreen({ accountType }: { accountType: Profile['account_type'] }) {
   const logOut = useLogOut();
   return (
-    <Screen title="This is the Sync Platform Portal">
+    <Screen title="This is the Sync Hub Platform Portal">
       <p className="text-muted-foreground">
         You're signed in with a {accountType} account, which this portal does not serve.
       </p>

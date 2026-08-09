@@ -9,7 +9,7 @@ Recruiter, Job, Application, Screening, Tracked link…) is inherited from the
 
 **Landing page**:
 The public page at the portal's root that explains the platform to companies and offers
-contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync is
+contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync Hub is
 sold, not self-served, so every call to action points at the Access-request page. One of the two
 surfaces where animation is decorative — motion for its own sake — the other being the Candidate
 Portal's landing page. Inside the Workspace motion is only ever a thing arriving or leaving and
@@ -25,7 +25,7 @@ invitation.
 _Avoid_: Sign-up page, contact form, waitlist.
 
 **Workspace**:
-Everything behind the sign-in guard — the Tenant's own Sync, reached through the
+Everything behind the sign-in guard — the Tenant's own Sync Hub, reached through the
 sidebar. Routes live under the `_workspace` layout, whose guard is the single place a
 Profile is checked before any of its loaders run.
 _Avoid_: App, dashboard area, admin.
@@ -330,7 +330,7 @@ _Avoid_: Users page, members list, seats.
 **Teammate invitation**:
 One address, one name and one role, sent by the API as an email the invitee sets their own password
 from. The roster gains them at once, pending that password, so an admin sees the invitation rather
-than having to remember it. An address that already has a Sync account is refused, and the refusal
+than having to remember it. An address that already has a Sync Hub account is refused, and the refusal
 lands under the email field, because the address is what was wrong rather than the asking.
 _Avoid_: Sign-up, adding a user, provisioning.
 

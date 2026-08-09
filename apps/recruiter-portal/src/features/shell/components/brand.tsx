@@ -1,9 +1,17 @@
 import { cn } from '@sync/ui/lib/utils';
-import { Link } from '@tanstack/react-router';
+import { Link, type LinkProps } from '@tanstack/react-router';
 
-export function Brand({ className, nameHidden }: { className?: string; nameHidden?: boolean }) {
+export function Brand({
+  className,
+  nameHidden,
+  to = '/',
+}: {
+  className?: string;
+  nameHidden?: boolean;
+  to?: LinkProps['to'];
+}) {
   return (
-    <Link to="/" className={cn('flex items-center gap-2.5', className)}>
+    <Link to={to} className={cn('flex items-center gap-2.5', className)}>
       <img src="/logo.png" alt="" className="h-6 w-auto" />
       <span
         className={cn(
@@ -11,7 +19,7 @@ export function Brand({ className, nameHidden }: { className?: string; nameHidde
           nameHidden && 'sr-only',
         )}
       >
-        Sync
+        Sync Hub
       </span>
     </Link>
   );

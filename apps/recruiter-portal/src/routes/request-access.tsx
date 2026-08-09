@@ -19,7 +19,7 @@ function RequestAccessPage() {
     return (
       <AuthScreen
         title="Request received"
-        description="Thanks — the Sync team has your request and will be in touch about setting your company up."
+        description="Thanks — the Sync Hub team has your request and will be in touch about setting your company up."
       >
         <div>
           <Link to="/" className={buttonVariants({ variant: 'outline' })}>
@@ -32,8 +32,8 @@ function RequestAccessPage() {
 
   return (
     <AuthScreen
-      title="Request access to Sync"
-      description="Tell us who you are and we'll set your company up. Sync is not self-service."
+      title="Request access to Sync Hub"
+      description="Tell us who you are and we'll set your company up. Sync Hub is not self-service."
     >
       <RequestAccessForm onRequested={() => setRequested(true)} />
       <p className="text-center text-dense text-muted-foreground">

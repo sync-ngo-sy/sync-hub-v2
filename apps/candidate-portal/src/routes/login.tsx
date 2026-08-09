@@ -38,7 +38,7 @@ function LogInPage() {
           </Link>
         </p>
         <p>
-          New to Sync?{' '}
+          New to Sync Hub?{' '}
           <Link to="/signup" className={AUTH_LINK}>
             Create an account
           </Link>

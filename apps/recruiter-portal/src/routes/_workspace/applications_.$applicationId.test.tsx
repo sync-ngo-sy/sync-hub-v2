@@ -318,7 +318,7 @@ describe('reaching an Application by its address', () => {
     await renderApp(`/applications/${REVIEW.id}`);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
-    await waitFor(() => expect(document.title).toBe('Amal Haddad · Sync Recruiter'));
+    await waitFor(() => expect(document.title).toBe('Amal Haddad · Sync Hub Recruiter'));
   });
 
   it('shows a friendly not-found for an Application this Tenant does not have', async () => {

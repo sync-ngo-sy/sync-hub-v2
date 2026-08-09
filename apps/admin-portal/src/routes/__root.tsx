@@ -5,7 +5,7 @@ import { Toaster } from '@/features/shell/components/toaster';
 import { THEME_STORAGE_KEY } from '@/lib/theme';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({ meta: [{ title: 'Sync Platform' }] }),
+  head: () => ({ meta: [{ title: 'Sync Hub Platform' }] }),
   component: () => (
     <ThemeProvider storageKey={THEME_STORAGE_KEY}>
       <HeadContent />
