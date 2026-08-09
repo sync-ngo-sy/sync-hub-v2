@@ -30,7 +30,7 @@ export interface StatBandItem {
 const LINKED_BAND_CELL =
   'outline-none transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50';
 const LINKED_CARD_CELL =
-  'group/stat-cell outline-none transition-all hover:border-primary/35 hover:shadow-md focus-visible:border-primary/35 focus-visible:ring-3 focus-visible:ring-ring/50';
+  'group/stat-cell outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50';
 
 function Cell({
   item: { label, value, icon: Icon, trend, render },
