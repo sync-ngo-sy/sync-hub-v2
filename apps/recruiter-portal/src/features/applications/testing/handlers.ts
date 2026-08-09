@@ -20,6 +20,7 @@ type QueuedMessage = components['schemas']['QueuedMessage'];
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
 const ASSESSMENTS_PATH = '/v1/tenants/me/applications/{application_id}/assessments';
+const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}';
 const MESSAGES_PATH = '/v1/tenants/me/applications/{application_id}/messages';
 
 const NO_SUCH_APPLICATION: Problem = {
@@ -127,6 +128,13 @@ const NO_SUCH_TAG: Problem = {
   title: 'Not Found',
   status: 404,
   detail: 'This tenant has no application or no tag with that id.',
+};
+
+const NO_SUCH_ASSESSMENT: Problem = {
+  type: 'urn:sync:problem:assessment-not-found',
+  title: 'Not Found',
+  status: 404,
+  detail: 'This tenant has no application, or no assessment of it, with that id.',
 };
 
 const WROTE_AT = '2026-08-03T12:00:00Z';
@@ -325,6 +333,46 @@ export function failsToAssessMatch(
   return [
     ...listsMatchAssessments(initial),
     http.post(ASSESSMENTS_PATH, ({ response }) => response(status).json(problem)),
+  ];
+}
+
+export function forgetsMatchAssessments(initial: MatchAssessment[], forgotten?: string[]) {
+  let items = [...initial];
+  return [
+    http.get(ASSESSMENTS_PATH, ({ response }) => response(200).json({ items, next_cursor: null })),
+    http.delete(ASSESSMENT_PATH, ({ params, response }) => {
+      if (!items.some((item) => item.id === params.assessment_id)) {
+        return response(404).json(NO_SUCH_ASSESSMENT);
+      }
+      forgotten?.push(params.assessment_id);
+      items = items.filter((item) => item.id !== params.assessment_id);
+      return response(204).empty();
+    }),
+  ];
+}
+
+export function holdsMatchAssessmentDeletion(initial: MatchAssessment[]) {
+  const gate = holding();
+  let items = [...initial];
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get(ASSESSMENTS_PATH, ({ response }) =>
+        response(200).json({ items, next_cursor: null }),
+      ),
+      http.delete(ASSESSMENT_PATH, async ({ params, response }) => {
+        await gate.held;
+        items = items.filter((item) => item.id !== params.assessment_id);
+        return response(204).empty();
+      }),
+    ],
+  };
+}
+
+export function refusesMatchAssessmentDeletion(initial: MatchAssessment[], problem: Problem) {
+  return [
+    ...listsMatchAssessments(initial),
+    http.delete(ASSESSMENT_PATH, ({ response }) => response(500).json(problem)),
   ];
 }
 

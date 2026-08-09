@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from sync_api.applications.access import own_application
 from sync_api.applications.criteria import screening_criteria_of
@@ -13,6 +13,7 @@ from sync_api.jobs.access import location_name
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     ASSESSMENT_FAILED_PROBLEM_TYPE,
+    ASSESSMENT_NOT_FOUND_PROBLEM_TYPE,
     ASSESSMENT_UNAVAILABLE_PROBLEM_TYPE,
     Problem,
 )
@@ -49,7 +50,7 @@ logger = get_logger(__name__)
 
 
 class MatchAssessmentService:
-    """The Recruiter's second opinion on an Application: on demand, append-only, advisory.
+    """The Recruiter's second opinion on an Application: on demand, advisory, never rewritten.
 
     The Candidate's side of what it reads is the immutable Snapshot, never the live profile:
     an assessment says how the Application was sent, not how its author reads today. The
@@ -57,7 +58,10 @@ class MatchAssessmentService:
     lets a model say anything Screening could not — and which it reads as they stand, since
     only the criteria are locked once Applications arrive.
 
-    What it writes is one more row. No assessment, however many are run, is a word in the
+    What it writes is one more row: asking again appends, so a reading keeps the model and
+    the prompt version that wrote it for as long as it is kept. A reading can be thrown away
+    one at a time, which takes that row and nothing else — every reading left behind still
+    reads as its own model wrote it. No assessment, however many are run, is a word in the
     Screening verdict.
     """
 
@@ -123,6 +127,30 @@ class MatchAssessmentService:
         )
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return MatchAssessmentPage(items=[_view(row) for row in rows], next_cursor=next_cursor)
+
+    async def remove(
+        self, recruiter: ActingRecruiter, application_id: UUID, assessment_id: UUID
+    ) -> None:
+        """The row has no tenant of its own, so the Application it hangs off is what scopes it."""
+        await own_application(self._db, recruiter.tenant.id, application_id)
+        async with transaction(self._db):
+            deleted = await self._db.scalars(
+                delete(ApplicationAiMatchAssessment)
+                .where(
+                    ApplicationAiMatchAssessment.id == assessment_id,
+                    ApplicationAiMatchAssessment.application_id == application_id,
+                )
+                .returning(ApplicationAiMatchAssessment.id)
+            )
+            if deleted.one_or_none() is None:
+                raise _no_such_assessment()
+
+        logger.info(
+            "applications.assessment_deleted",
+            assessment_id=str(assessment_id),
+            application_id=str(application_id),
+            tenant_id=str(recruiter.tenant.id),
+        )
 
     def _configured(self) -> MatchAssessor:
         """Reading what was assessed never depends on a model; asking for another one does."""
@@ -233,6 +261,14 @@ async def _answered(assessor: MatchAssessor, request: MatchRequest) -> AssessedM
             detail="The model could not assess this application. Nothing was recorded, so "
             "asking again is safe.",
         ) from failed
+
+
+def _no_such_assessment() -> Problem:
+    return Problem(
+        status=404,
+        type=ASSESSMENT_NOT_FOUND_PROBLEM_TYPE,
+        detail="No assessment of this application has that id.",
+    )
 
 
 def _view(row: ApplicationAiMatchAssessment) -> MatchAssessment:
