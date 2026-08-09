@@ -11,7 +11,9 @@ Recruiter, Job, Application, Screening, Tracked link…) is inherited from the
 The public page at the portal's root that explains the platform to companies and offers
 contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync is
 sold, not self-served, so every call to action points at the Access-request page. One of the two
-surfaces where animation is allowed (the other is the Candidate Portal's landing page).
+surfaces where animation is decorative — motion for its own sake — the other being the Candidate
+Portal's landing page. Inside the Workspace motion is only ever a thing arriving or leaving and
+says which way it went: a deleted Match assessment goes out to the right.
 _Avoid_: Home page, marketing site.
 
 **Access-request page**:
@@ -153,6 +155,11 @@ than replaces, so every past reading stays with the model and prompt version tha
 the wait is shown as a wait — the model is slow, nothing is put in the list optimistically, and
 the finished reading arrives only when the API has it. A refusal (asked too often, the model
 failed, no model configured) lands beside the button in the server's own words.
+A reading is thrown away one at a time and nothing is asked first — a stale reading is not a
+decision, and the Recruiter can always ask for another. The one going leaves to the right while
+the API is told, so the list is seen shortening rather than found shorter; the readings left
+behind are untouched, each still with the model and prompt version that wrote it. A refusal lands
+beside the reading it could not delete, in the server's own words, and that reading stays.
 _Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
 
 **Applicant message**:
