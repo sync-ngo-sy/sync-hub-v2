@@ -9,17 +9,11 @@ import {
   DropdownMenuTrigger,
 } from '@sync/ui/components/ui/dropdown-menu';
 import { cn } from '@sync/ui/lib/utils';
-import { CircleAlert, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleAlert, CircleX, MoreHorizontal } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { problemDetail } from '@/lib/api-problem';
-import {
-  PIPELINE_LADDER,
-  PIPELINE_STEPS,
-  type PipelineStatus,
-  pipelineState,
-  pipelineStep,
-} from '../application';
+import { PIPELINE_LADDER, type PipelineStatus, pipelineState, pipelineStep } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
 import { type PipelineMove, pipelineMoveChoices, pipelineOutcome } from '../review';
 
@@ -59,73 +53,59 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
     <section aria-labelledby={headingId}>
       <Card>
         <CardHeader className="border-b border-border pb-(--card-spacing)">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <CardTitle>
-                <h2 id={headingId}>Pipeline</h2>
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <StatusMark label={state.label} tone={state.tone} />
-                {step ? (
-                  <span className="text-meta text-muted-foreground">
-                    Step {step} of {PIPELINE_STEPS}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            {choices.adjacent.length > 0 || choices.other.length > 0 ? (
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {choices.adjacent.map((move, index) => (
-                  <Button
-                    key={move.label}
-                    size="sm"
-                    variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
-                    disabled={moving.isPending}
-                    onClick={() => void makeMove(move)}
-                  >
-                    <move.icon aria-hidden="true" />
-                    <span aria-hidden="true" className="text-meta opacity-65">
-                      {pipelineStep(move.target)}
-                    </span>
-                    {move.label}
-                  </Button>
-                ))}
-
-                {choices.other.length > 0 ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={moving.isPending}
-                      className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                    >
-                      <MoreHorizontal aria-hidden="true" />
-                      More moves
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {choices.other.map((move) => (
-                        <DropdownMenuItem
-                          key={move.label}
-                          variant={move.direction === 'rejection' ? 'destructive' : 'default'}
-                          onClick={() => void makeMove(move)}
-                        >
-                          <move.icon aria-hidden="true" />
-                          <span className="flex-1">{move.label}</span>
-                          {pipelineStep(move.target) ? (
-                            <span className="text-meta text-muted-foreground">
-                              {pipelineStep(move.target)}
-                            </span>
-                          ) : null}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
-              </div>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle>
+              <h2 id={headingId}>Pipeline</h2>
+            </CardTitle>
+            <StatusMark label={state.label} tone={state.tone} />
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {choices.adjacent.length > 0 || choices.other.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {choices.adjacent.map((move, index) => (
+                <Button
+                  key={move.label}
+                  size="sm"
+                  variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
+                  disabled={moving.isPending}
+                  onClick={() => void makeMove(move)}
+                >
+                  {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
+                  {move.label}
+                  {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
+                </Button>
+              ))}
+
+              {choices.other.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={moving.isPending}
+                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                  >
+                    <MoreHorizontal aria-hidden="true" />
+                    More moves
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    {choices.other.map((move) => (
+                      <DropdownMenuItem
+                        key={move.label}
+                        variant={move.direction === 'rejection' ? 'destructive' : 'default'}
+                        onClick={() => void makeMove(move)}
+                      >
+                        {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
+                        {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
+                        <span className="flex-1">{move.label}</span>
+                        {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </div>
+          ) : null}
+
           <ol aria-label="Pipeline progress" className="grid grid-cols-6 gap-1.5">
             {PIPELINE_LADDER.map((pipelineStatus, index) => {
               const stageStep = index + 1;
@@ -139,7 +119,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                     className={cn(
                       'block h-1 rounded-full bg-border',
                       isReached && 'bg-primary',
-                      isCurrent && 'bg-deep',
+                      isCurrent && 'bg-deep dark:bg-deep-foreground',
                     )}
                   />
                   <span
@@ -149,7 +129,12 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                     )}
                   >
                     {pipelineState(pipelineStatus).label}
-                    {isCurrent ? ' · now' : ''}
+                    {isCurrent ? (
+                      <>
+                        <span className="text-muted-foreground"> · </span>
+                        <span className="text-primary">now</span>
+                      </>
+                    ) : null}
                   </span>
                 </li>
               );

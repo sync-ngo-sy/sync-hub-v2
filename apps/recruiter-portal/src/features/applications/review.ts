@@ -1,15 +1,4 @@
 import type { components } from '@sync/api-client';
-import {
-  CalendarCheck,
-  CircleCheck,
-  CircleX,
-  Eye,
-  Handshake,
-  ListChecks,
-  type LucideIcon,
-  RotateCcw,
-  Undo2,
-} from 'lucide-react';
 import { PIPELINE_LADDER, type PipelineStatus, pipelineState } from './application';
 
 export type ApplicationReview = components['schemas']['ApplicationReview'];
@@ -23,7 +12,6 @@ export interface PipelineMove {
   target: PipelineStatus;
   label: string;
   success: string;
-  icon: LucideIcon;
   direction: MoveDirection;
 }
 
@@ -40,42 +28,36 @@ const TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move to Reviewing',
   success: `Moved to Reviewing — ${TOLD}`,
-  icon: Eye,
   direction: 'onward',
 };
 const TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move to Shortlisted',
   success: `Shortlisted — ${TOLD}`,
-  icon: ListChecks,
   direction: 'onward',
 };
 const TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move to Interview',
   success: `Moved to Interview — ${TOLD}`,
-  icon: CalendarCheck,
   direction: 'onward',
 };
 const TO_OFFER: PipelineMove = {
   target: 'offer',
   label: 'Move to Offer',
   success: `Moved to Offer — ${TOLD}`,
-  icon: Handshake,
   direction: 'onward',
 };
 const TO_HIRED: PipelineMove = {
   target: 'hired',
   label: 'Mark as hired',
   success: `Marked as hired — ${TOLD}`,
-  icon: CircleCheck,
   direction: 'onward',
 };
 const TO_REJECTED: PipelineMove = {
   target: 'rejected',
   label: 'Reject',
   success: 'Rejected — the candidate has been emailed.',
-  icon: CircleX,
   direction: 'rejection',
 };
 
@@ -83,35 +65,30 @@ const BACK_TO_NEW: PipelineMove = {
   target: 'new',
   label: 'Move back to New',
   success: `Moved back to New — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const BACK_TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move back to Reviewing',
   success: `Moved back to Reviewing — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const BACK_TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move back to Shortlisted',
   success: `Moved back to Shortlisted — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const BACK_TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move back to Interview',
   success: `Moved back to Interview — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const REOPEN: PipelineMove = {
   target: 'reviewing',
   label: 'Reopen for review',
   success: `Reopened for review — ${TOLD}`,
-  icon: RotateCcw,
   direction: 'back',
 };
 

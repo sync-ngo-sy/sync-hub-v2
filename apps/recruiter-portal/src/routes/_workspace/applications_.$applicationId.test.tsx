@@ -378,13 +378,14 @@ describe('the Pipeline on the Application review page', () => {
     }
   });
 
-  it('numbers where the Application stands on the way to hired', async () => {
+  it('names where the Application stands without numbering the Pipeline', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
-    expect(pipeline.getByText('Step 3 of 6')).toBeVisible();
+    expect(pipeline.getByText('now')).toBeVisible();
+    expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
   });
 
   it('leaves a rejected Application unnumbered, because it stands off the way through', async () => {
@@ -397,15 +398,15 @@ describe('the Pipeline on the Application review page', () => {
     expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
   });
 
-  it('numbers the adjacent moves for the stages they land on', async () => {
+  it('keeps stage numbers out of the adjacent moves', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
-      '2Move back to Reviewing',
-      '4Move to Interview',
+      'Move back to Reviewing',
+      'Move to Interview',
       'More moves',
     ]);
   });
@@ -420,15 +421,21 @@ describe('the Pipeline on the Application review page', () => {
     expect(pipeline.queryByRole('button', { name: 'Reject' })).toBeNull();
   });
 
-  it('draws the primary moves with icons and Reject as a destructive menu item', async () => {
+  it('uses one directional icon per move and keeps Reject destructive', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     for (const move of pipeline.getAllByRole('button')) {
-      expect(move.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+      expect(move.querySelectorAll('svg')).toHaveLength(1);
     }
+    expect(
+      pipeline.getByRole('button', { name: 'Move back to Reviewing' }).querySelector('svg'),
+    ).toHaveClass('lucide-arrow-left');
+    expect(
+      pipeline.getByRole('button', { name: 'Move to Interview' }).querySelector('svg'),
+    ).toHaveClass('lucide-arrow-right');
     await user.click(pipeline.getByRole('button', { name: 'More moves' }));
     expect(await screen.findByRole('menuitem', { name: /^Reject/ })).toHaveAttribute(
       'data-variant',

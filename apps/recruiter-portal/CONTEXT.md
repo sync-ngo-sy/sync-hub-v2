@@ -144,7 +144,8 @@ short-lived and never stored, so the page re-reads the Application rather than h
 The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
 and the six-step progress line in one card. There is no static warning beneath it: move outcomes
 already say the Candidate was notified, while a refused move still explains itself inside the
-Pipeline. Screening and Tags lead the two-column review below; the Snapshot, answers, Match
+Pipeline. The current segment keeps strong contrast in either theme and `now` carries the accent
+colour. Screening and Tags lead the two-column review below; the Snapshot, answers, Match
 assessments and notes follow on the wider reading side, while the Applicant message and history
 follow Tags on the action side.
 _Avoid_: Application detail, candidate page, applicant profile.
@@ -152,27 +153,17 @@ _Avoid_: Application detail, candidate page, applicant profile.
 **Pipeline move**:
 One named action on the Application review, offered only where the platform allows it from
 where the Application stands — so the buttons on screen are the moves that exist, and the
-current status sits above them. A move forward or back is named for its stage, a decision for
-the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
-was told, because every move notifies them and a rejection also emails them. Each carries an icon
-for what it does to the candidate — the stage it moves them to, an arrow back for a move
-backwards — and every label carries its icon and destination step. The compact actions wrap at the
-edge of the card. Only the adjacent move back and the adjacent move onward are primary buttons;
+current status sits above a full-width, centred action row. A move forward or back is named
+for its stage, a decision for the decision ("Mark as hired", "Reject"), and each says in its
+outcome toast that the candidate was told, because every move notifies them and a rejection also
+emails them. Each move carries one
+icon: a left arrow for a backward move, a right arrow for an onward move, and a rejection mark for
+Reject. The compact actions wrap at the edge of the card. Only the adjacent move back and the
+adjacent move onward are primary buttons;
 non-adjacent jumps and rejection live under `More moves`, so the common path reads immediately
 without removing deliberate shortcuts. Reject takes the destructive colour inside that menu,
 because it is the one move a Recruiter would regret making by accident.
 Withdrawing is never offered: that is the Candidate's alone.
-
-**Pipeline step**:
-Where a status sits on the way through, counted from New as 1 to Hired as 6 — shown beside the
-current status as "Step _n_ of 6" and on each move for the stage it lands on, so how far a move
-carries the Candidate is readable before it is pressed. Rejected and Withdrawn have no step and
-are never numbered: they are where an Application leaves the way through, not a further place
-along it, and numbering them would claim an order that does not exist. A step on a move is drawn
-in that button's own colour, dimmed, rather than in a fixed grey: the moves are not all on the
-same background, and a grey that reads as secondary on a pale button disappears on a solid one.
-The numbers are marked decorative — every move already says its stage in words, so nothing is
-lost by reading the label alone.
 _Avoid_: Stage number, pipeline position, progress percentage.
 _Avoid_: Status change, transition, stage update.
 
