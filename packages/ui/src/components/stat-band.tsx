@@ -1,23 +1,17 @@
 import { useRender } from '@base-ui/react/use-render';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
+import { cardSurface } from '@sync/ui/lib/card-surface';
+import { TREND_TONE, type TrendTone } from '@sync/ui/lib/trend-tone';
 import { cn } from '@sync/ui/lib/utils';
-import { ArrowUpRight, type LucideIcon, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, type LucideIcon } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
-type TrendTone = 'positive' | 'caution' | 'neutral';
 type StatBandVariant = 'band' | 'cards';
-
-const TREND_TONE: Record<TrendTone, { color: string; icon?: LucideIcon }> = {
-  positive: { color: 'text-success-foreground', icon: TrendingUp },
-  caution: { color: 'text-warning-foreground' },
-  neutral: { color: 'text-muted-foreground' },
-};
 
 const BAND = 'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border';
 const BAND_CELL = 'flex flex-col gap-2 bg-card p-(--space-card)';
 const CARDS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4';
-const CARD_CELL =
-  'flex min-h-27 flex-col gap-1.5 rounded-lg border border-border bg-card px-[18px] py-4 shadow-card';
+const CARD_CELL = cn(cardSurface, 'flex min-h-27 flex-col gap-1.5 px-[18px] py-4');
 
 export interface StatBandItem {
   label: string;
@@ -28,9 +22,9 @@ export interface StatBandItem {
 }
 
 const LINKED_BAND_CELL =
-  'outline-none transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50';
+  'outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50';
 const LINKED_CARD_CELL =
-  'group/stat-cell outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50';
+  'group/stat-cell outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50';
 
 function Cell({
   item: { label, value, icon: Icon, trend, render },

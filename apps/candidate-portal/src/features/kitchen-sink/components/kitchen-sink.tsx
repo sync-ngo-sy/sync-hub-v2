@@ -184,6 +184,7 @@ const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
   ['card', 'bg-card'],
   ['muted', 'bg-muted'],
+  ['interactive hover', 'bg-interactive-hover'],
   ['accent', 'bg-accent'],
   ['primary', 'bg-primary'],
   ['secondary', 'bg-secondary'],

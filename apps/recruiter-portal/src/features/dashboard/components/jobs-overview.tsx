@@ -62,7 +62,7 @@ export function JobsOverview({ jobs, onJobOpen, onCreateJob }: JobsOverviewProps
                   type="button"
                   aria-label={`Open ${job.title}`}
                   onClick={() => onJobOpen(job)}
-                  className="flex w-full cursor-pointer items-start justify-between gap-3 px-(--card-spacing) py-3 text-start outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                  className="flex w-full cursor-pointer items-start justify-between gap-3 px-(--card-spacing) py-3 text-start outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
                 >
                   <span className="flex min-w-0 flex-col gap-1">
                     <span className="font-medium text-dense text-foreground">{job.title}</span>

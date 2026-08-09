@@ -4,6 +4,7 @@ import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
   type ApplicationSort,
@@ -90,7 +91,7 @@ export function ApplicationsPage({
 
   return (
     <>
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader withTabs>
         <PageHeader
           title="Applications"
           description="Everyone who has applied, across every Job your Tenant is hiring for."
@@ -102,7 +103,7 @@ export function ApplicationsPage({
           className="-mb-px mt-5"
           onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
-      </div>
+      </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-3">
@@ -115,7 +116,6 @@ export function ApplicationsPage({
             }))}
             selected={screening}
             counts={verdictCounts}
-            triggerClassName="h-9 justify-between gap-1.5 border border-input bg-input-background py-2 pr-2.5 pl-3 font-normal transition-colors select-none hover:text-inherit focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:ring-0"
             onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
           />
           <div className="flex min-w-0 items-center gap-3">

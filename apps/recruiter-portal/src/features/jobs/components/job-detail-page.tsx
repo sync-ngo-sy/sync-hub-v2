@@ -21,6 +21,7 @@ import type { ApplicationFilters } from '@/features/applications/hooks/use-job-a
 import { FactGrid } from '@/features/shell/components/fact-grid';
 import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { TrackedLinks } from '@/features/tracked-links/components/tracked-links';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
@@ -90,7 +91,7 @@ export function JobDetailPage({
       value={tab}
       onValueChange={(value) => onTabChange(value as JobDetailTab)}
     >
-      <header className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader withTabs>
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -152,7 +153,7 @@ export function JobDetailPage({
           tabs={JOB_DETAIL_TABS}
           className="-mb-px mt-5"
         />
-      </header>
+      </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         {lifecycleFailure ? (

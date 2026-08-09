@@ -3,6 +3,7 @@ import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
 import { TagVocabulary } from '@/features/crm/components/tag-vocabulary';
 import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { TeamRoster } from '@/features/team/components/team-roster';
 import { WorkspaceIdentity } from './workspace-identity';
 
@@ -21,7 +22,7 @@ export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: Workspace
       value={tab}
       onValueChange={(value) => onTabChange(value as SettingsTab)}
     >
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader withTabs>
         <PageHeader
           title="Settings"
           description="Your team, the Tags they file by, and the Tenant they all work for."
@@ -36,7 +37,7 @@ export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: Workspace
           ]}
           className="-mb-px mt-5"
         />
-      </div>
+      </WorkspaceHeader>
 
       <div className="pt-(--space-section)">
         <TabsContent value="team">

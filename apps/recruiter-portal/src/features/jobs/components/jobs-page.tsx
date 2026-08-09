@@ -3,12 +3,13 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
-import { cn } from '@sync/ui/lib/utils';
+import { Tabs } from '@sync/ui/components/ui/tabs';
 import { BriefcaseBusiness, CircleAlert, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { useMyTenant } from '@/features/tenant/hooks/use-my-tenant';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
@@ -98,6 +99,14 @@ export function JobsPage({
   const [lifecycleFailure, setLifecycleFailure] = useState<string | null>(null);
   const counts = jobs.data?.statusCounts;
   const total = JOB_STATUS_VALUES.reduce((sum, value) => sum + (counts?.[value] ?? 0), 0);
+  const tabs = [
+    { value: 'all', label: 'All', count: total },
+    ...JOB_STATUS_VALUES.map((value) => ({
+      value,
+      label: jobState(value).label,
+      count: counts?.[value] ?? 0,
+    })),
+  ];
 
   async function move(job: JobSummary, action: JobLifecycleAction) {
     setLifecycleFailure(null);
@@ -116,7 +125,7 @@ export function JobsPage({
 
   return (
     <>
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader withTabs>
         <PageHeader
           title="Jobs"
           description={
@@ -132,58 +141,21 @@ export function JobsPage({
           }
         />
 
-        <div className="-mb-px mt-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Tabs
-            className="w-max min-w-full gap-0"
+        <Tabs
+          className="min-w-full gap-0"
+          value={status ?? 'all'}
+          onValueChange={(value) =>
+            onStatusChange(value === 'all' ? undefined : (value as JobStatus))
+          }
+        >
+          <LineTabsList
+            label="Status"
             value={status ?? 'all'}
-            onValueChange={(value) =>
-              onStatusChange(value === 'all' ? undefined : (value as JobStatus))
-            }
-          >
-            <TabsList
-              variant="line"
-              aria-label="Status"
-              className="min-w-max justify-start gap-7 p-0 group-data-horizontal/tabs:h-10"
-            >
-              <TabsTrigger
-                value="all"
-                className="h-10 flex-none rounded-none px-0 py-0 after:hidden"
-              >
-                <span
-                  className={cn(
-                    'relative flex h-full items-center after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary after:opacity-0',
-                    !status && 'after:opacity-100',
-                  )}
-                >
-                  All
-                </span>
-                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground tabular-nums">
-                  {total}
-                </span>
-              </TabsTrigger>
-              {JOB_STATUS_VALUES.map((value) => (
-                <TabsTrigger
-                  key={value}
-                  value={value}
-                  className="h-10 flex-none rounded-none px-0 py-0 after:hidden"
-                >
-                  <span
-                    className={cn(
-                      'relative flex h-full items-center after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary after:opacity-0',
-                      status === value && 'after:opacity-100',
-                    )}
-                  >
-                    {jobState(value).label}
-                  </span>
-                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground tabular-nums">
-                    {counts?.[value] ?? 0}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
+            tabs={tabs}
+            className="-mb-px mt-5"
+          />
+        </Tabs>
+      </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         <div className="flex flex-wrap items-center justify-between gap-3">

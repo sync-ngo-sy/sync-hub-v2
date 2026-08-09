@@ -2,6 +2,7 @@ import { Mail, Phone } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { CandidateAvatar } from '@/features/candidates/components/candidate-avatar';
 import { FactGrid, type FactGridItem } from '@/features/shell/components/fact-grid';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import type { FullProfile } from '../profile';
 
 export type CandidateIdentityFact = FactGridItem;
@@ -27,7 +28,7 @@ export function CandidateIdentityHeader({
   const subtitle = profile.role && profile.headline ? profile.headline : null;
 
   return (
-    <header className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5 dark:border-sidebar-border dark:bg-sidebar">
+    <WorkspaceHeader>
       {breadcrumbs}
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-5">
@@ -89,6 +90,6 @@ export function CandidateIdentityHeader({
           <FactGrid label={factsLabel} facts={facts} />
         </div>
       ) : null}
-    </header>
+    </WorkspaceHeader>
   );
 }

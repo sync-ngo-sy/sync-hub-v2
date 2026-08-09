@@ -2,6 +2,7 @@ import { PageHeaderShell } from '@sync/ui/components/page-header';
 import { Button } from '@sync/ui/components/ui/button';
 import { Plus } from 'lucide-react';
 import type { JobSummary } from '@/features/jobs/job';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { dashboardDate, dashboardGreeting, type TenantApplication } from '../dashboard';
 import { useDashboard } from '../hooks/use-dashboard';
 import { ActivityStats } from './activity-stats';
@@ -27,7 +28,7 @@ export function DashboardPage({
 
   return (
     <>
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader>
         <PageHeaderShell
           actions={
             <Button onClick={onCreateJob}>
@@ -49,7 +50,7 @@ export function DashboardPage({
             <time>{dashboardDate(now)}</time>
           </p>
         </PageHeaderShell>
-      </div>
+      </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         <ActivityStats stats={stats} />

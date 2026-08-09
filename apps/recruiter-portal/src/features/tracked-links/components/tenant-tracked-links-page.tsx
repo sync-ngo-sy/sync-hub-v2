@@ -8,6 +8,7 @@ import { Link } from '@tanstack/react-router';
 import { Link2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { LineTabsList } from '@/features/shell/components/line-tabs-list';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useTenantTrackedLinks } from '../hooks/use-tenant-tracked-links';
@@ -158,7 +159,7 @@ export function TenantTrackedLinksPage({
 
   return (
     <>
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader withTabs>
         <PageHeader title="Tracked links" description={DESCRIPTION} />
         <Tabs
           className="gap-0"
@@ -172,7 +173,7 @@ export function TenantTrackedLinksPage({
             className="-mb-px mt-5"
           />
         </Tabs>
-      </div>
+      </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         <div className="flex max-w-xs flex-col gap-1.5">

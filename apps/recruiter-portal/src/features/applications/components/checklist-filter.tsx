@@ -6,7 +6,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@sync/ui/components/ui/dropdown-menu';
-import { cn } from '@sync/ui/lib/utils';
 import { ChevronDown } from 'lucide-react';
 
 interface ChecklistOption<TValue extends string> {
@@ -20,7 +19,6 @@ interface ChecklistFilterProps<TValue extends string> {
   options: ChecklistOption<TValue>[];
   selected: TValue[];
   counts: Partial<Record<TValue, number>>;
-  triggerClassName?: string;
   onChange: (selected: TValue[]) => void;
 }
 
@@ -45,7 +43,6 @@ export function ChecklistFilter<TValue extends string>({
   options,
   selected,
   counts,
-  triggerClassName,
   onChange,
 }: ChecklistFilterProps<TValue>) {
   const only = theOnlyOne(selected);
@@ -58,10 +55,7 @@ export function ChecklistFilter<TValue extends string>({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={`${label}: ${summarize(options, selected, noun)}`}
-          className={cn(
-            'inline-flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5 text-sm font-medium whitespace-nowrap outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
-            triggerClassName,
-          )}
+          className="inline-flex h-9 items-center justify-between gap-1.5 rounded-lg border border-input bg-input-background py-2 pr-2.5 pl-3 text-sm font-normal whitespace-nowrap outline-none transition-colors select-none hover:text-inherit focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
           {summarize(options, selected, noun)}
           <ChevronDown className="size-4 text-muted-foreground" />

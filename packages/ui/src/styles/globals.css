@@ -40,6 +40,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-interactive-hover: var(--interactive-hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -177,7 +178,8 @@
   --secondary-foreground: #525048;
   --muted-foreground: #5F5E56;
 
-  --muted: rgba(44, 42, 32, 0.082);
+  --muted: #ECEAE5;
+  --interactive-hover: #E7F0ED;
 
   --accent: #DCEFEB;
   --accent-foreground: #006D61;
@@ -252,7 +254,8 @@
 
   --secondary: #373530;
   --secondary-foreground: #CAC7BE;
-  --muted: rgba(252, 251, 247, 0.06);
+  --muted: #35332F;
+  --interactive-hover: #293833;
   --muted-foreground: #ADABA2;
 
   --accent: rgba(45, 190, 172, 0.12);

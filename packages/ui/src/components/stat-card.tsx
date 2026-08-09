@@ -1,16 +1,8 @@
 import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { cardSurface } from '@sync/ui/lib/card-surface';
+import { TREND_TONE, type TrendTone } from '@sync/ui/lib/trend-tone';
 import { cn } from '@sync/ui/lib/utils';
-import { type LucideIcon, TrendingUp } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
-
-type TrendTone = 'positive' | 'caution' | 'neutral';
-
-const TREND_TONE: Record<TrendTone, { color: string; icon?: LucideIcon }> = {
-  positive: { color: 'text-success-foreground', icon: TrendingUp },
-  caution: { color: 'text-warning-foreground' },
-  neutral: { color: 'text-muted-foreground' },
-};
 
 export function StatCardShell({ className, children, ...props }: ComponentProps<typeof Card>) {
   return (

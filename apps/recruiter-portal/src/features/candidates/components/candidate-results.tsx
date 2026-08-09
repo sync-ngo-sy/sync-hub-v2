@@ -118,7 +118,7 @@ function CandidateResult({ match, filters, saved }: CandidateResultProps) {
       params={{ candidateId: card.id }}
       search={searchAddress(filters)}
       aria-label={card.fullName}
-      className="block space-y-3 rounded-lg border border-border p-4 outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="block space-y-3 rounded-lg border border-border p-4 outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-start gap-3">

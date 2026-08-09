@@ -64,7 +64,6 @@ export function JobApplications({
           }))}
           selected={screening}
           counts={verdictCounts}
-          triggerClassName="h-9 justify-between gap-1.5 border border-input bg-input-background py-2 pr-2.5 pl-3 font-normal transition-colors select-none hover:text-inherit focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:ring-0"
           onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
         />
       </div>

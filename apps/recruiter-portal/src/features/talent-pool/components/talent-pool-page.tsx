@@ -11,6 +11,7 @@ import {
   yearsOf,
 } from '@/features/candidates/components/candidate-cells';
 import { TagList } from '@/features/crm/components/tag-list';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useSavedCandidates } from '../hooks/use-talent-pool';
@@ -91,9 +92,9 @@ export function TalentPoolPage({ reading, onReadingChange, onCandidateOpen }: Ta
 
   return (
     <>
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5 dark:border-sidebar-border dark:bg-sidebar">
+      <WorkspaceHeader>
         <PageHeader title="Talent pool" description={DESCRIPTION} />
-      </div>
+      </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         <PoolSearch q={reading.q} onSearch={(q) => onReadingChange({ ...reading, q })} />
