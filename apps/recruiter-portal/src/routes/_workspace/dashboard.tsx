@@ -16,9 +16,11 @@ export const Route = createFileRoute('/_workspace/dashboard')({
 
 function DashboardPage() {
   const navigate = useNavigate({ from: Route.fullPath });
+  const { profile } = Route.useRouteContext();
 
   return (
     <DashboardFeaturePage
+      recruiterName={profile.full_name}
       onJobOpen={(job) =>
         void navigate({ to: '/jobs/$jobId', params: { jobId: job.id }, search: {} })
       }

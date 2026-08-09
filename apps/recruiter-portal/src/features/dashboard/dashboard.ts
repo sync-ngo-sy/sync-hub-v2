@@ -8,9 +8,26 @@ export const RECENT_APPLICATIONS = 6;
 
 export const OVERVIEW_JOBS = 5;
 
+const DASHBOARD_DATE = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
 export interface Trend {
   label: string;
   tone?: 'positive' | 'caution' | 'neutral';
+}
+
+export function dashboardGreeting(fullName: string, now: Date): string {
+  const firstName = fullName.trim().split(/\s+/)[0] ?? fullName;
+  const greeting = now.getHours() < 12 ? 'Good morning' : 'Good evening';
+  return `${greeting}, ${firstName}`;
+}
+
+export function dashboardDate(now: Date): string {
+  return DASHBOARD_DATE.format(now);
 }
 
 export function openedThisWeek(count: number): Trend {

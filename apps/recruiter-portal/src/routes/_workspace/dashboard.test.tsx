@@ -51,13 +51,17 @@ describe('the Dashboard', () => {
     vi.useRealTimers();
   });
 
-  it('names the Tenant it is counting for', async () => {
+  it('greets the Recruiter and names the Tenant it is counting for', async () => {
+    vi.setSystemTime(new Date(2026, 7, 9, 9));
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Rana' }),
+    ).toBeVisible();
     expect(await screen.findByText('Aman Relief')).toBeVisible();
+    expect(screen.getByText('Sunday, 9 August 2026')).toBeVisible();
   });
 
   it('shows the counts the API reports, with no arithmetic of its own', async () => {

@@ -1,5 +1,6 @@
 import { StatBand, StatBandSkeleton } from '@sync/ui/components/stat-band';
 import { Link } from '@tanstack/react-router';
+import { BriefcaseBusiness, CircleCheck, Clock3, Inbox } from 'lucide-react';
 import { PIPELINE_STATUSES } from '@/features/applications/application';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { problemMessage } from '@/lib/api-problem';
@@ -37,7 +38,7 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
   if (!stats.error && stats.isPending) {
     return (
       <div role="status" aria-label="Loading the counts">
-        <StatBandSkeleton labels={SKELETON_LABELS} />
+        <StatBandSkeleton labels={SKELETON_LABELS} variant="cards" />
       </div>
     );
   }
@@ -54,16 +55,19 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
       ) : null}
 
       <StatBand
+        variant="cards"
         items={[
           {
             label: 'Open jobs',
             value: orDash(counted?.jobs.published),
+            icon: BriefcaseBusiness,
             trend: counted ? openedThisWeek(counted.jobs.published_last_week) : undefined,
             render: OPEN_JOBS,
           },
           {
             label: 'Applications this week',
             value: orDash(counted?.applications.last_7d),
+            icon: Inbox,
             trend: counted
               ? weekOnWeek(counted.applications.last_7d, counted.applications.previous_7d)
               : undefined,
@@ -72,12 +76,14 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
           {
             label: 'Awaiting review',
             value: orDash(counted?.applications.by_stage.new),
+            icon: Clock3,
             trend: counted ? awaitingReview(counted.applications.by_stage.new) : undefined,
             render: AWAITING_REVIEW,
           },
           {
             label: 'Qualified by screening',
             value: orDash(counted?.applications.by_qualification.qualified),
+            icon: CircleCheck,
             trend: counted ? passRate(counted.applications.pass_rate) : undefined,
             render: QUALIFIED_BY_SCREENING,
           },
