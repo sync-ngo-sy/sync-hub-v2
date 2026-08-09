@@ -24,6 +24,19 @@ export function useAssessMatch(applicationId: string) {
   });
 }
 
+export function useForgetAssessment(applicationId: string) {
+  const queryClient = useQueryClient();
+
+  return api.useMutation(
+    'delete',
+    '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}',
+    {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: matchAssessmentsQueryKey(applicationId) }),
+    },
+  );
+}
+
 export function useMessageApplicant() {
   return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/messages');
 }
