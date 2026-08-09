@@ -55,8 +55,7 @@ def read_password() -> str:
     if from_environment:
         return from_environment
 
-    print(POLICY_SUMMARY)
-    password = getpass("Password: ")
+    password = getpass(f"{POLICY_SUMMARY}\nPassword: ")
     if password != getpass("Repeat it: "):
         raise SystemExit("The two passwords differ. Nothing was created.")
     if not password:
