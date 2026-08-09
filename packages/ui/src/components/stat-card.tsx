@@ -33,7 +33,9 @@ export function StatCard({ label, value, trend, className }: StatCardProps) {
   return (
     <StatCardShell className={className}>
       <span className="text-meta text-muted-foreground">{label}</span>
-      <span className="font-heading text-figure tabular-nums text-foreground">{value}</span>
+      <span className="font-mono text-figure font-semibold tabular-nums text-foreground">
+        {value}
+      </span>
       {trend ? (
         <span className={cn('flex items-center gap-1.5 text-xs', color)}>
           {TrendIcon ? <TrendIcon aria-hidden="true" className="size-3.5" /> : null}

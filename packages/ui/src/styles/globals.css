@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/public-sans";
 @import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/600.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -313,5 +314,11 @@
   }
   body {
     @apply bg-background text-foreground font-sans font-normal text-reading antialiased;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-family: var(--font-mono);
   }
 }

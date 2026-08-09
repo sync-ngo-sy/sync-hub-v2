@@ -68,12 +68,7 @@ function Cell({
           ) : (
             <span className="text-meta text-muted-foreground">{label}</span>
           )}
-          <span
-            className={cn(
-              'text-figure tabular-nums text-foreground',
-              cards ? 'font-mono font-semibold' : 'font-heading',
-            )}
-          >
+          <span className="font-mono text-figure font-semibold tabular-nums text-foreground">
             {value}
           </span>
           {trend ? (
