@@ -14,7 +14,7 @@ import {
 } from '@sync/ui/components/ui/select';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { Link } from '@tanstack/react-router';
-import { CircleAlert, Send } from 'lucide-react';
+import { CircleAlert, Mail, Send } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -96,6 +96,7 @@ export function ApplicantMessage({
   return (
     <ReviewCard
       title="Message the applicant"
+      icon={Mail}
       hint="One email. Start from a template, change what you like — the template stays as it is."
     >
       {templates.isPending || !tenantName ? (

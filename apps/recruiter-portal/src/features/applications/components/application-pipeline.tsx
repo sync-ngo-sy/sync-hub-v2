@@ -1,25 +1,30 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
+import { Separator } from '@sync/ui/components/ui/separator';
+import { cn } from '@sync/ui/lib/utils';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
-import { type PipelineStatus, pipelineState } from '../application';
+import { PIPELINE_STEPS, type PipelineStatus, pipelineState, pipelineStep } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
-import { type PipelineMove, pipelineMoves, pipelineOutcome } from '../review';
+import { type PipelineMove, pipelineMoveGroups, pipelineOutcome } from '../review';
 
 interface ApplicationPipelineProps {
   applicationId: string;
   status: PipelineStatus;
 }
 
+const REJECTION = 'text-destructive hover:text-destructive';
+
 export function ApplicationPipeline({ applicationId, status }: ApplicationPipelineProps) {
   const moving = useMoveApplication(applicationId);
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = pipelineState(status);
-  const moves = pipelineMoves(status);
+  const step = pipelineStep(status);
+  const groups = pipelineMoveGroups(status);
   const outcome = pipelineOutcome(status);
 
   async function makeMove(move: PipelineMove) {
@@ -45,7 +50,14 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <span className="text-meta text-muted-foreground">Current</span>
-          <StatusMark label={state.label} tone={state.tone} />
+          <div className="flex items-center gap-2">
+            {step ? (
+              <span className="text-meta text-muted-foreground">
+                Step {step} of {PIPELINE_STEPS}
+              </span>
+            ) : null}
+            <StatusMark label={state.label} tone={state.tone} />
+          </div>
         </div>
 
         {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}
@@ -58,20 +70,26 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
           </Alert>
         ) : null}
 
-        {moves.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {moves.map((move, index) => (
+        {groups.map((group, groupIndex) => (
+          <div key={group.direction} className="flex flex-col gap-2">
+            {groupIndex > 0 ? <Separator className="mb-2" /> : null}
+            {group.moves.map((move, moveIndex) => (
               <Button
                 key={move.label}
-                variant={index === 0 ? 'default' : 'outline'}
+                variant={groupIndex === 0 && moveIndex === 0 ? 'default' : 'outline'}
+                className={cn('justify-start', move.direction === 'rejection' && REJECTION)}
                 disabled={moving.isPending}
                 onClick={() => void makeMove(move)}
               >
+                <move.icon aria-hidden="true" />
+                <span aria-hidden="true" className="w-3 text-meta opacity-65">
+                  {pipelineStep(move.target)}
+                </span>
                 {move.label}
               </Button>
             ))}
           </div>
-        ) : null}
+        ))}
       </div>
     </ReviewCard>
   );
