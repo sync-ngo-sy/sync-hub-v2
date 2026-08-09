@@ -496,9 +496,9 @@ describe('a CV filling the form', () => {
     await fillFrom(user, READY_CV);
 
     expect(entry('Skill 1').getByLabelText('Skill')).toHaveValue('Python');
-    expect(entry('Skill 1').getByLabelText('Years')).toHaveValue('3.5');
+    expect(entry('Skill 1').getByLabelText('Years')).toHaveValue(3.5);
     expect(entry('Skill 2').getByLabelText('Skill')).toHaveValue('Kubernetes');
-    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue('');
+    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue(null);
   });
 
   it('leaves a skill the CV introduced to ordinary validation rather than a step of its own', async () => {
@@ -539,7 +539,9 @@ describe('a CV filling the form', () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);
 
-    expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Sphere Standards');
+    expect(
+      within(screen.getByRole('region', { name: 'Other skills' })).getByText('Sphere Standards'),
+    ).toBeVisible();
   });
 
   it('never moves the candidate or changes their settings', async () => {
@@ -682,7 +684,7 @@ describe('uploading a CV and saving what it filled', () => {
       ],
     });
     expect(headline()).toHaveValue('Backend engineer, Aleppo');
-    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue('4');
+    expect(entry('Skill 2').getByLabelText('Years')).toHaveValue(4);
     expect(screen.getByText('Everything is saved.')).toBeVisible();
   });
 });
@@ -702,9 +704,11 @@ describe('undoing a fill', () => {
     expect(entry('Qualification 1').getByLabelText('Institution')).toHaveValue(
       'University of Aleppo',
     );
-    expect(entry('Skill 1').getByLabelText('Years')).toHaveValue('3.5');
+    expect(entry('Skill 1').getByLabelText('Years')).toHaveValue(3.5);
     expect(screen.queryByRole('group', { name: 'Skill 2' })).toBeNull();
-    expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Kobo Toolbox');
+    expect(
+      within(screen.getByRole('region', { name: 'Other skills' })).getByText('Kobo Toolbox'),
+    ).toBeVisible();
     expect(entry('Project 1').getByLabelText('Project name')).toHaveValue('Distribution tracker');
     expect(screen.queryByText(/The fields below now say/)).toBeNull();
   });
