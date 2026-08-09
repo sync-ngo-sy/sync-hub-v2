@@ -136,6 +136,59 @@ export const BLANK_QUESTION: Entry<'questions'> = {
   acceptedAnswer: 'none',
 };
 
+export const EMPTY_CRITERIA: CriteriaFormValues = {
+  minimumTotalExperienceYears: '',
+  skills: [],
+  languages: [],
+  questions: [],
+};
+
+export const NO_SKILLS = 'No skills screen applicants for this Job.';
+export const NO_LANGUAGES = 'No languages screen applicants for this Job.';
+export const NO_QUESTIONS = 'This Job asks no application questions.';
+
+export const criteriaDraftSchema = z
+  .object({
+    minimumTotalExperienceYears: z.string().catch(''),
+    skills: z
+      .array(
+        z.object({
+          name: z.string().catch(''),
+          importance: z.enum(importance).catch(BLANK_SKILL.importance),
+          minimumYears: z.string().catch(''),
+        }),
+      )
+      .catch([]),
+    languages: z
+      .array(
+        z.object({
+          code: z.string().catch(''),
+          minimumProficiency: z.enum(proficiency).catch(BLANK_LANGUAGE.minimumProficiency),
+        }),
+      )
+      .catch([]),
+    questions: z
+      .array(
+        z.object({
+          questionText: z.string().catch(''),
+          questionType: z.enum(questionType).catch(BLANK_QUESTION.questionType),
+          isRequired: z.boolean().catch(BLANK_QUESTION.isRequired),
+          acceptedAnswer: z.enum(['none', 'yes', 'no']).catch('none'),
+        }),
+      )
+      .catch([]),
+  })
+  .catch(EMPTY_CRITERIA);
+
+export function screens(criteria: JobCriteria): boolean {
+  return (
+    criteria.minimum_total_experience_years !== null ||
+    (criteria.skills?.length ?? 0) > 0 ||
+    (criteria.languages?.length ?? 0) > 0 ||
+    (criteria.questions?.length ?? 0) > 0
+  );
+}
+
 const fieldValue = (value: number | null | undefined) =>
   value === null || value === undefined ? '' : String(value);
 

@@ -36,6 +36,7 @@ function JobsPage() {
         onJobOpen={(job) =>
           void navigate({ to: '/jobs/$jobId', params: { jobId: job.id }, search: {} })
         }
+        onCreateJob={() => void navigate({ to: '/jobs/new', search: {} })}
         onStatusChange={(nextStatus) =>
           void navigate({ search: (prev) => ({ ...prev, status: nextStatus }), replace: true })
         }

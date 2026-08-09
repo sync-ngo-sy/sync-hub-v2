@@ -24,7 +24,6 @@ import {
   jobState,
 } from '../job';
 import { ChoicePicker } from './choice-select';
-import { CreateJobDialog } from './create-job-dialog';
 import { EditJobDialog } from './edit-job-dialog';
 
 const COLUMNS: DataTableColumn<JobSummary>[] = [
@@ -73,6 +72,7 @@ interface JobsPageProps {
   onStatusChange: (status?: JobStatus) => void;
   onSortChange: (sort: JobSort) => void;
   onJobOpen: (job: JobSummary) => void;
+  onCreateJob: () => void;
 }
 
 export function JobsPage({
@@ -81,10 +81,10 @@ export function JobsPage({
   onStatusChange,
   onSortChange,
   onJobOpen,
+  onCreateJob,
 }: JobsPageProps) {
   const jobs = useJobs(status, sort);
   const change = useChangeJob();
-  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<JobSummary | null>(null);
   const [lifecycleFailure, setLifecycleFailure] = useState<string | null>(null);
 
@@ -109,7 +109,7 @@ export function JobsPage({
         title="Jobs"
         description="Draft, publish and close the roles your Tenant is hiring for."
         actions={
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={onCreateJob}>
             <Plus aria-hidden="true" />
             Create job
           </Button>
@@ -164,9 +164,7 @@ export function JobsPage({
             ? `No ${jobState(status).label.toLowerCase()} Jobs match this view.`
             : 'No Jobs yet — write the first role your Tenant is hiring for.',
           action: (
-            <Button onClick={() => setCreating(true)}>
-              {status ? 'Create job' : 'Create your first job'}
-            </Button>
+            <Button onClick={onCreateJob}>{status ? 'Create job' : 'Create your first job'}</Button>
           ),
         }}
         loadMore={{
@@ -176,7 +174,6 @@ export function JobsPage({
         }}
       />
 
-      <CreateJobDialog open={creating} onOpenChange={setCreating} />
       {editing ? (
         <WidgetBoundary name="Edit Job">
           <EditJobDialog
