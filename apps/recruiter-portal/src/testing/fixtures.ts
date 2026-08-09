@@ -1,5 +1,7 @@
 import type { components } from '@sync/api-client';
 
+export const TODAY = new Date('2026-08-04T09:00:00Z');
+
 export const RECRUITER: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000011',
   email: 'rana@aman.test',

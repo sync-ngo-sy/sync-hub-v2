@@ -8,7 +8,10 @@ import {
   type ApplicationSummary,
   PIPELINE_STATUSES,
   type PipelineStatus,
+  RECEIVED_WITHIN_VALUES,
+  type ReceivedWithin,
   SCREENING_VERDICTS,
+  type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
@@ -23,6 +26,7 @@ type OutgoingMessage = components['schemas']['OutgoingMessage'];
 type QueuedMessage = components['schemas']['QueuedMessage'];
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
+const TENANT_PATH = '/v1/tenants/me/applications';
 const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
 const ASSESSMENTS_PATH = '/v1/tenants/me/applications/{application_id}/assessments';
 const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}';
@@ -38,6 +42,10 @@ const NO_SUCH_APPLICATION: Problem = {
 export interface AskedFor {
   status: string[];
   qualification_status: string[];
+}
+
+function chosen(named: string[], value: string): boolean {
+  return named.length === 0 || named.includes(value);
 }
 
 function countedByStatus(items: ApplicationSummary[]) {
@@ -60,22 +68,90 @@ export function listsJobApplications(items: ApplicationSummary[], asked?: AskedF
       const statuses = query.getAll('status');
       const verdicts = query.getAll('qualification_status');
       asked?.push({ status: statuses, qualification_status: verdicts });
-      const ofThisVerdict = items.filter((item) =>
-        verdicts.length > 0 ? verdicts.includes(item.qualification_status) : true,
-      );
-      const ofThisStatus = items.filter((item) =>
-        statuses.length > 0 ? statuses.includes(item.status) : true,
-      );
+      const ofThisVerdict = items.filter((item) => chosen(verdicts, item.qualification_status));
+      const ofThisStatus = items.filter((item) => chosen(statuses, item.status));
       return response(200).json({
-        items: ofThisVerdict.filter((item) =>
-          statuses.length > 0 ? statuses.includes(item.status) : true,
-        ),
+        items: ofThisVerdict.filter((item) => chosen(statuses, item.status)),
         next_cursor: null,
         status_counts: countedByStatus(ofThisVerdict),
         verdict_counts: countedByVerdict(ofThisStatus),
       });
     }),
   ];
+}
+
+const WINDOW_DAYS: Record<ReceivedWithin, number> = { '24h': 1, '7d': 7, '30d': 30 };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export interface TenantAskedFor {
+  status: string[];
+  qualification_status: string[];
+  received_within: string | null;
+  sort: string | null;
+}
+
+function inTheWindow(item: TenantApplication, window: string | null): boolean {
+  const named = RECEIVED_WITHIN_VALUES.find((one) => one === window);
+  if (!named) return true;
+  return new Date(item.applied_at).getTime() > Date.now() - WINDOW_DAYS[named] * DAY;
+}
+
+function byReceived(sort: string | null) {
+  const newestFirst = sort !== 'oldest';
+  return (one: TenantApplication, other: TenantApplication) => {
+    const gap = Date.parse(one.applied_at) - Date.parse(other.applied_at);
+    return newestFirst ? -gap : gap;
+  };
+}
+
+export function listsTenantApplications(items: TenantApplication[], asked?: TenantAskedFor[]) {
+  return [
+    http.get(TENANT_PATH, ({ query, response }) => {
+      const statuses = query.getAll('status');
+      const verdicts = query.getAll('qualification_status');
+      const window = query.get('received_within');
+      const sort = query.get('sort');
+      asked?.push({
+        status: statuses,
+        qualification_status: verdicts,
+        received_within: window,
+        sort,
+      });
+      const inWindow = items.filter((item) => inTheWindow(item, window));
+      const ofThisStatus = inWindow.filter((item) => chosen(statuses, item.status));
+      const ofThisVerdict = inWindow.filter((item) => chosen(verdicts, item.qualification_status));
+      const limit = Number(query.get('limit') ?? inWindow.length);
+      return response(200).json({
+        items: ofThisStatus
+          .filter((item) => chosen(verdicts, item.qualification_status))
+          .sort(byReceived(sort))
+          .slice(0, limit),
+        next_cursor: null,
+        status_counts: countedByStatus(ofThisVerdict),
+        verdict_counts: countedByVerdict(ofThisStatus),
+      });
+    }),
+  ];
+}
+
+export function pagesTenantApplications(pages: TenantApplication[][]) {
+  return [
+    http.get(TENANT_PATH, ({ query, response }) => {
+      const cursor = query.get('cursor');
+      const index = cursor === null ? 0 : Number(cursor);
+      return response(200).json({
+        items: pages[index] ?? [],
+        next_cursor: index + 1 < pages.length ? String(index + 1) : null,
+        status_counts: countedByStatus(pages.flat()),
+        verdict_counts: countedByVerdict(pages.flat()),
+      });
+    }),
+  ];
+}
+
+export function failsToListTenantApplications(problem: Problem) {
+  return [http.get(TENANT_PATH, ({ response }) => response(500).json(problem))];
 }
 
 export function pagesJobApplications(pages: ApplicationSummary[][]) {

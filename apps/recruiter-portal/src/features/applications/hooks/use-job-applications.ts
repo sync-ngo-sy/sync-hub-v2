@@ -13,6 +13,20 @@ export interface ApplicationFilters {
 export type StatusCounts = Partial<Record<PipelineStatus, number>>;
 export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;
 
+export function statusCountsFrom(
+  counted: { status: PipelineStatus; count: number }[] | undefined,
+): StatusCounts {
+  return Object.fromEntries((counted ?? []).map((one) => [one.status, one.count])) as StatusCounts;
+}
+
+export function verdictCountsFrom(
+  counted: { verdict: ScreeningVerdict; count: number }[] | undefined,
+): VerdictCounts {
+  return Object.fromEntries(
+    (counted ?? []).map((one) => [one.verdict, one.count]),
+  ) as VerdictCounts;
+}
+
 export function jobApplicationsQueryPrefix() {
   return api.queryOptions('get', PATH, { params: { path: { job_id: '' } } }).queryKey.slice(0, 2);
 }
@@ -36,12 +50,8 @@ export function useJobApplications(jobId: string, filters: ApplicationFilters) {
       getNextPageParam: (page) => page.next_cursor,
       select: (data) => ({
         items: data.pages.flatMap((page) => page.items),
-        statusCounts: Object.fromEntries(
-          (data.pages[0]?.status_counts ?? []).map((one) => [one.status, one.count]),
-        ) as StatusCounts,
-        verdictCounts: Object.fromEntries(
-          (data.pages[0]?.verdict_counts ?? []).map((one) => [one.verdict, one.count]),
-        ) as VerdictCounts,
+        statusCounts: statusCountsFrom(data.pages[0]?.status_counts),
+        verdictCounts: verdictCountsFrom(data.pages[0]?.verdict_counts),
       }),
     },
   );

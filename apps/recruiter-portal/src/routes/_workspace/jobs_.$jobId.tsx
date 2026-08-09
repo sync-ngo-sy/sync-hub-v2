@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
-import { PIPELINE_STATUSES, SCREENING_VERDICTS } from '@/features/applications/application';
 import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
+import { pipelineStatuses, screeningVerdicts } from '@/features/applications/schemas/filters';
 import {
   JobDetailPage,
   type JobDetailTab,
@@ -12,8 +12,6 @@ import { warmReferenceData } from '@/features/reference/reference-queries';
 import { pageTitle } from '@/lib/page-title';
 
 const jobTab = z.enum(['applications', 'criteria', 'links']);
-const pipelineStatuses = z.array(z.enum(PIPELINE_STATUSES)).min(1);
-const screeningVerdicts = z.array(z.enum(SCREENING_VERDICTS)).min(1);
 
 export const Route = createFileRoute('/_workspace/jobs_/$jobId')({
   validateSearch: z.object({
