@@ -53,11 +53,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
           icon={Wrench}
           addLabel="Add a skill"
           empty="No skills listed yet — Screening reads these, so start here."
-          entryClassName="relative min-w-0 space-y-3 rounded-lg border border-border p-3"
-          hideLabel
-          listClassName="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-3"
-          removeIconOnly
-          removeOverlay
+          variant="compact-grid"
           onAdd={() => skills.append(BLANK_SKILL)}
           onRemove={skills.remove}
         >
@@ -95,7 +91,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
                     inputMode="decimal"
                     min="0"
                     max="999.9"
-                    step="0.1"
+                    step="1"
                     placeholder="3.5"
                   />
                 )}

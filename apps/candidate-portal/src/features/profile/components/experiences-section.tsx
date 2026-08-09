@@ -3,8 +3,8 @@ import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { Briefcase } from 'lucide-react';
-import { useEffect } from 'react';
-import { type Control, type UseFormSetValue, useFieldArray, useWatch } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { useDebounce } from 'use-debounce';
 import { client } from '@/lib/api';
 import { reportError } from '@/lib/report-error';
@@ -22,15 +22,14 @@ const sameExperiences = (
 export function ExperiencesSection({
   control,
   experiencesDirty,
-  setValue,
 }: {
   control: Control<ProfileFormValues>;
   experiencesDirty: boolean;
-  setValue: UseFormSetValue<ProfileFormValues>;
 }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'experiences' });
-  const saved = useWatch({ control, name: 'total_experience_years' });
+  const totalExperienceYears = useWatch({ control, name: 'total_experience_years' });
   const experiences = useWatch({ control, name: 'experiences' });
+  const [preview, setPreview] = useState<{ key: string; years: number } | null>(null);
   const [debouncedExperiences, debounce] = useDebounce(experiences, 400, {
     equalityFn: sameExperiences,
   });
@@ -40,6 +39,7 @@ export function ExperiencesSection({
     const body = toProfileExperiences(debouncedExperiences);
     if (!body) return;
 
+    const key = JSON.stringify(debouncedExperiences);
     const controller = new AbortController();
     const calculate = async () => {
       const { data, error } = await client.POST('/v1/candidates/me/profile/experience-total', {
@@ -47,18 +47,22 @@ export function ExperiencesSection({
         signal: controller.signal,
       });
       if (error) reportError(error, { boundary: 'widget', source: 'Total experience' });
-      if (data) setValue('total_experience_years', data.total_experience_years);
+      if (data) setPreview({ key, years: data.total_experience_years });
     };
     calculate().catch((error) => {
       if (error instanceof DOMException && error.name === 'AbortError') return;
       reportError(error, { boundary: 'widget', source: 'Total experience' });
     });
     return () => controller.abort();
-  }, [debounce, debouncedExperiences, experiencesDirty, setValue]);
+  }, [debounce, debouncedExperiences, experiencesDirty]);
+
+  const currentKey = JSON.stringify(experiences);
+  const displayedYears =
+    experiencesDirty && preview?.key === currentKey ? preview.years : totalExperienceYears;
 
   return (
     <ProfileSection title="Experience" description="Newest first, or whatever order suits you.">
-      <TotalExperience years={saved} />
+      <TotalExperience years={displayedYears} />
 
       <EntryList
         ids={fields.map((field) => field.id)}

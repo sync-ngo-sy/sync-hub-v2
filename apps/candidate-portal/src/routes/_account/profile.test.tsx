@@ -80,7 +80,7 @@ describe('the profile editor', () => {
     expect(skill.getByLabelText('Skill')).toHaveValue('Python');
     expect(skill.getByLabelText('Years')).toHaveValue('3.5');
     expect(skill.getByLabelText('Years')).toHaveAttribute('type', 'number');
-    expect(skill.getByLabelText('Years')).toHaveAttribute('step', '0.1');
+    expect(skill.getByLabelText('Years')).toHaveAttribute('step', '1');
     expect(
       within(screen.getByRole('region', { name: 'Other skills' })).getByText('Kobo Toolbox'),
     ).toBeVisible();
@@ -309,6 +309,11 @@ describe('the profile editor', () => {
     );
     expect(screen.getByText('4 years')).toBeVisible();
     expect(saved).not.toHaveBeenCalled();
+
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(screen.getByText('6 years')).toBeVisible();
   });
 
   it('says the skill list is missing rather than that there are no skills', async () => {
