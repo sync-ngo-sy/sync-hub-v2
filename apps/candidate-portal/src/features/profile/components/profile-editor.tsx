@@ -33,7 +33,8 @@ export function ProfileEditor() {
     handleSubmit,
     reset,
     setError,
-    formState: { errors, isDirty, isSubmitting },
+    setValue,
+    formState: { dirtyFields, errors, isDirty, isSubmitting },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema, undefined, { raw: true }),
     mode: 'onTouched',
@@ -91,7 +92,11 @@ export function ProfileEditor() {
 
       <form onSubmit={submit} noValidate className="space-y-6">
         <IdentitySection control={control} />
-        <ExperiencesSection control={control} />
+        <ExperiencesSection
+          control={control}
+          experiencesDirty={Boolean(dirtyFields.experiences)}
+          setValue={setValue}
+        />
         <EducationsSection control={control} />
         <SkillsSection control={control} />
         <LanguagesSection control={control} />

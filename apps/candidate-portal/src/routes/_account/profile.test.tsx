@@ -4,6 +4,7 @@ import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import {
+  calculatesExperience,
   failsToLoadProfile,
   faultsOnSave,
   hasProfile,
@@ -78,7 +79,9 @@ describe('the profile editor', () => {
     const skill = entry('Skill 1');
     expect(skill.getByLabelText('Skill')).toHaveValue('Python');
     expect(skill.getByLabelText('Years')).toHaveValue('3.5');
-    expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Kobo Toolbox');
+    expect(
+      within(screen.getByRole('region', { name: 'Other skills' })).getByText('Kobo Toolbox'),
+    ).toBeVisible();
 
     const language = entry('Language 1');
     expect(language.getByLabelText('Language')).toHaveValue('Arabic');
@@ -288,6 +291,24 @@ describe('the profile editor', () => {
     expect(screen.queryByLabelText('Total experience')).toBeNull();
   });
 
+  it('recalculates total experience after a date changes without saving', async () => {
+    const calculated = vi.fn();
+    const saved = vi.fn();
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    server.use(...calculatesExperience(4, calculated), ...savesProfile(CANDIDATE_PROFILE, saved));
+
+    const { user } = await renderApp('/profile');
+    const startYear = entry('Job 1').getByLabelText('Start year');
+    await user.clear(startYear);
+    await user.type(startYear, '2022');
+
+    await waitFor(() =>
+      expect(calculated).toHaveBeenLastCalledWith([expect.objectContaining({ start_year: 2022 })]),
+    );
+    expect(screen.getByText('4 years')).toBeVisible();
+    expect(saved).not.toHaveBeenCalled();
+  });
+
   it('says the skill list is missing rather than that there are no skills', async () => {
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
     server.use(...failsToLoadCanonicalSkills(SERVER_FAULT));
@@ -310,6 +331,17 @@ describe('the profile editor', () => {
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
     expect(sent.body?.unmapped_skills).toEqual(['Kobo Toolbox', 'Sphere Standards']);
+  });
+
+  it('deletes an Other skill from its pill', async () => {
+    const { user, sent } = await openProfileThatSaves();
+    const otherSkills = within(screen.getByRole('region', { name: 'Other skills' }));
+
+    await user.click(otherSkills.getByRole('button', { name: 'Remove Kobo Toolbox' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.unmapped_skills).toEqual([]);
   });
 
   it('blames the searchable switch when Global search needs a CV first', async () => {

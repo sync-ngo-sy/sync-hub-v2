@@ -10,6 +10,11 @@ interface EntryListProps {
   icon: LucideIcon;
   addLabel: string;
   empty: string;
+  entryClassName?: string;
+  hideLabel?: boolean;
+  listClassName?: string;
+  removeIconOnly?: boolean;
+  removeOverlay?: boolean;
   onAdd: () => void;
   onRemove: (index: number) => void;
   children: (index: number) => ReactNode;
@@ -21,6 +26,11 @@ export function EntryList({
   icon,
   addLabel,
   empty,
+  entryClassName,
+  hideLabel = false,
+  listClassName,
+  removeIconOnly = false,
+  removeOverlay = false,
   onAdd,
   onRemove,
   children,
@@ -42,28 +52,50 @@ export function EntryList({
 
   return (
     <div className="space-y-4">
-      {ids.map((id, index) => (
-        <fieldset
-          key={id}
-          aria-label={label(index)}
-          className="min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-dense font-medium text-foreground">{label(index)}</h3>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={`Remove ${label(index)}`}
-              onClick={() => onRemove(index)}
-            >
-              <Trash2 data-icon="inline-start" />
-              Remove
-            </Button>
-          </div>
-          {children(index)}
-        </fieldset>
-      ))}
+      <div className={listClassName ?? 'space-y-4'}>
+        {ids.map((id, index) => (
+          <fieldset
+            key={id}
+            aria-label={label(index)}
+            className={
+              entryClassName ?? 'min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4'
+            }
+          >
+            {removeOverlay ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size={removeIconOnly ? 'icon-xs' : 'sm'}
+                className="absolute top-2 right-2"
+                aria-label={`Remove ${label(index)}`}
+                onClick={() => onRemove(index)}
+              >
+                <Trash2 data-icon={removeIconOnly ? undefined : 'inline-start'} />
+                {removeIconOnly ? null : 'Remove'}
+              </Button>
+            ) : (
+              <div
+                className={`flex items-center gap-3 ${hideLabel ? 'justify-end' : 'justify-between'}`}
+              >
+                {hideLabel ? null : (
+                  <h3 className="text-dense font-medium text-foreground">{label(index)}</h3>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size={removeIconOnly ? 'icon-xs' : 'sm'}
+                  aria-label={`Remove ${label(index)}`}
+                  onClick={() => onRemove(index)}
+                >
+                  <Trash2 data-icon={removeIconOnly ? undefined : 'inline-start'} />
+                  {removeIconOnly ? null : 'Remove'}
+                </Button>
+              </div>
+            )}
+            {children(index)}
+          </fieldset>
+        ))}
+      </div>
       {add}
     </div>
   );

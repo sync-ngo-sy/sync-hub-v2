@@ -2,6 +2,7 @@ import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 
 type CandidateProfile = components['schemas']['CandidateProfile'];
+type ProfileExperience = components['schemas']['ProfileExperience'];
 type ProblemDetail = components['schemas']['ProblemDetail'];
 type ValidationProblemDetail = components['schemas']['ValidationProblemDetail'];
 
@@ -18,6 +19,19 @@ export function savesProfile(saved: CandidateProfile, onSave?: (body: CandidateP
     http.put('/v1/candidates/me/profile', async ({ request, response }) => {
       onSave?.(await request.json());
       return response(200).json(saved);
+    }),
+  ];
+}
+
+export function calculatesExperience(
+  total: number,
+  onCalculate?: (experiences: ProfileExperience[]) => void,
+) {
+  return [
+    http.post('/v1/candidates/me/profile/experience-total', async ({ request, response }) => {
+      const body = await request.json();
+      onCalculate?.(body.experiences ?? []);
+      return response(200).json({ total_experience_years: total });
     }),
   ];
 }
