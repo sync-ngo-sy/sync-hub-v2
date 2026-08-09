@@ -43,32 +43,32 @@ export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void
   });
 
   return (
-    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-      <form onSubmit={submit} noValidate className="w-full max-w-sm space-y-5">
-        <FormField control={control} name="full_name" label="Full name">
-          {(field) => <Input {...field} autoComplete="name" />}
-        </FormField>
+    <form onSubmit={submit} noValidate className="relative space-y-5">
+      <FormField control={control} name="full_name" label="Full name">
+        {(field) => <Input {...field} autoComplete="name" />}
+      </FormField>
 
-        <FormField control={control} name="email" label="Email">
-          {(field) => <Input {...field} type="email" autoComplete="email" />}
-        </FormField>
+      <FormField control={control} name="email" label="Email">
+        {(field) => <Input {...field} type="email" autoComplete="email" />}
+      </FormField>
 
+      <div className="space-y-4">
         <FormField control={control} name="password" label="Password">
           {(field) => <PasswordInput {...field} autoComplete="new-password" />}
         </FormField>
 
-        <FormField control={control} name="confirm_password" label="Confirm password">
-          {(field) => <PasswordInput {...field} autoComplete="new-password" />}
-        </FormField>
+        <div className="lg:absolute lg:top-1/2 lg:left-full lg:ml-10 lg:w-56 lg:-translate-y-1/2">
+          <PasswordChecklist password={password} />
+        </div>
+      </div>
 
-        <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? 'Creating your account…' : 'Create account'}
-        </Button>
-      </form>
+      <FormField control={control} name="confirm_password" label="Confirm password">
+        {(field) => <PasswordInput {...field} autoComplete="new-password" />}
+      </FormField>
 
-      <aside className="sm:sticky sm:top-24 sm:pt-8">
-        <PasswordChecklist password={password} />
-      </aside>
-    </div>
+      <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? 'Creating your account…' : 'Create account'}
+      </Button>
+    </form>
   );
 }

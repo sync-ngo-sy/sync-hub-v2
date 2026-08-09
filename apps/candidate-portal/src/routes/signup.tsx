@@ -14,17 +14,13 @@ function SignUpPage() {
   const navigate = useNavigate();
 
   return (
-    <AuthScreen
-      title="Create your account"
-      description="One profile, every application you send."
-      sideRail
-    >
+    <AuthScreen title="Create your account" description="One profile, every application you send.">
       <SignUpForm
         onSignedUp={(email) => {
           void navigate({ to: '/check-email', search: { email } });
         }}
       />
-      <p className="max-w-sm text-center text-dense text-muted-foreground">
+      <p className="text-center text-dense text-muted-foreground">
         Already have an account?{' '}
         <Link to="/login" className={AUTH_LINK}>
           Sign in

@@ -1,4 +1,3 @@
-import { cn } from '@sync/ui/lib/utils';
 import type { ReactNode } from 'react';
 
 export const AUTH_LINK = 'font-medium text-accent-foreground underline underline-offset-4';
@@ -7,25 +6,18 @@ export function AuthScreen({
   header,
   title,
   description,
-  sideRail = false,
   children,
 }: {
   header: ReactNode;
   title: string;
   description?: ReactNode;
-  sideRail?: boolean;
   children?: ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
       {header}
-      <main
-        className={cn(
-          'mx-auto flex w-full flex-1 flex-col justify-center gap-6 px-5 py-12',
-          sideRail ? 'max-w-2xl' : 'max-w-sm',
-        )}
-      >
-        <div className="max-w-sm space-y-1.5">
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-5 py-12">
+        <div className="space-y-1.5">
           <h1 className="font-heading text-h3 text-foreground">{title}</h1>
           {description ? <p className="text-dense text-muted-foreground">{description}</p> : null}
         </div>
