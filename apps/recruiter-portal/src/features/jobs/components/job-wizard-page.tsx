@@ -54,7 +54,7 @@ export function JobWizardPage({
     if (target > index) {
       for (const passed of WIZARD_STEPS.slice(index, target)) {
         if (!(await wizard.validate(passed))) {
-          onStepChange(passed);
+          if (passed !== step) onStepChange(passed);
           return;
         }
       }

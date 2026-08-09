@@ -44,10 +44,7 @@ describe('the job creation wizard', () => {
 
     const { user, router } = await renderApp('/jobs/new');
 
-    expect(screen.getByRole('button', { name: /1\s*Details/ })).toHaveAttribute(
-      'aria-current',
-      'step',
-    );
+    expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute('aria-current', 'step');
     await typeDetails(user);
     await next(user);
 
@@ -201,10 +198,7 @@ describe('the job creation wizard', () => {
     await renderApp('/jobs/new?step=review');
 
     expect(await screen.findByLabelText('Title')).toBeVisible();
-    expect(screen.getByRole('button', { name: /1\s*Details/ })).toHaveAttribute(
-      'aria-current',
-      'step',
-    );
+    expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute('aria-current', 'step');
   });
 
   it('offers employment type and work mode as fixed sets, never as text boxes', async () => {
