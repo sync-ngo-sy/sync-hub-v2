@@ -82,6 +82,9 @@
 
   --color-mark-attention: var(--mark-attention);
 
+  --color-tag: var(--tag);
+  --color-tag-foreground: var(--tag-foreground);
+
   --shadow-sm: var(--elevation-sm);
   --shadow-card: var(--elevation-card);
   --shadow-md: var(--elevation-md);
@@ -196,6 +199,9 @@
   --chart-4: #56B8A9;
   --chart-5: #CAC7BD;
 
+  --tag: #005349;
+  --tag-foreground: #FFFFFF;
+
   --sidebar: #005349;
   --sidebar-foreground: #D9E8E5;
   --sidebar-accent: rgba(250, 248, 244, 0.15);
@@ -268,6 +274,9 @@
   --chart-3: #43C2B0;
   --chart-4: #6FDAC9;
   --chart-5: #4F4D47;
+
+  --tag: #016D61;
+  --tag-foreground: #FFFFFF;
 
   --sidebar: #0C0B08;
   --sidebar-foreground: #A7A59C;

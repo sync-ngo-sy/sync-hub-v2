@@ -21,6 +21,7 @@ from sync_api.problems import (
     TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
+from sync_api.text import LIKE_ESCAPE, containing
 from sync_core import get_logger, transaction
 from sync_core.models import Job, JobViewEvent, TrackedJobLink
 
@@ -37,9 +38,6 @@ logger = get_logger(__name__)
 TOKEN_BYTES: Final = 16
 
 NAME_CONSTRAINT: Final = "tracked_job_links_tenant_id_job_id_name_key"
-
-#: Backslash rather than the default, which is `%` itself and cannot then escape one.
-ESCAPE: Final = "\\"
 
 
 class TrackedLinkService:
@@ -164,7 +162,7 @@ class TrackedLinkService:
             .where(TrackedJobLink.tenant_id == recruiter.tenant.id)
         )
         if q is not None:
-            query = query.where(TrackedJobLink.name.ilike(_containing(q), escape=ESCAPE))
+            query = query.where(TrackedJobLink.name.ilike(containing(q), escape=LIKE_ESCAPE))
         if is_active is not None:
             query = query.where(TrackedJobLink.is_active.is_(is_active))
 
@@ -210,13 +208,6 @@ VIEW_COUNT: Final = (
     .correlate(TrackedJobLink)
     .scalar_subquery()
 )
-
-
-def _containing(term: str) -> str:
-    """A search term as a substring pattern. `%` and `_` are wildcards to the database and
-    ordinary characters to whoever typed them, so they are escaped rather than honoured."""
-    escaped = term.replace(ESCAPE, ESCAPE * 2).replace("%", f"{ESCAPE}%").replace("_", f"{ESCAPE}_")
-    return f"%{escaped}%"
 
 
 def _cursor(row: tuple[TrackedJobLink, Job, int]) -> Cursor:

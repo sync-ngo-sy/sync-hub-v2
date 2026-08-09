@@ -1,10 +1,24 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Final
 
 from pydantic import BeforeValidator, Field, StringConstraints
 
 from sync_core.profile import MAX_LINE_LENGTH, MAX_LINK_LENGTH, MAX_PARAGRAPH_LENGTH
+
+#: Backslash rather than the default, which is `%` itself and cannot then escape one.
+LIKE_ESCAPE: Final = "\\"
+
+
+def containing(term: str) -> str:
+    """A search term as a substring pattern. `%` and `_` are wildcards to the database and
+    ordinary characters to whoever typed them, so they are escaped rather than honoured."""
+    escaped = (
+        term.replace(LIKE_ESCAPE, LIKE_ESCAPE * 2)
+        .replace("%", f"{LIKE_ESCAPE}%")
+        .replace("_", f"{LIKE_ESCAPE}_")
+    )
+    return f"%{escaped}%"
 
 
 def _blank_as_unset(value: object) -> object:

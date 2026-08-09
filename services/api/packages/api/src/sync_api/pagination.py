@@ -61,27 +61,38 @@ class Cursor:
 
 @dataclass(frozen=True, slots=True)
 class SortCursor:
-    """Where a sorted page left off: the value it was ordered by, written out, and the id that
-    broke the tie. Split from the right, because the id can hold no separator and a full name can.
+    """Where a sorted page left off: which order issued it, the value it was ordered by, written
+    out, and the id that broke the tie.
+
+    The order is carried for the same reason a ranked `Cursor` carries its rank: a written-out
+    value alone cannot be told apart from another order's — a timestamp reads perfectly well as a
+    name — and resuming the wrong order would silently serve the first page again rather than the
+    second. Read from the left for the order, which holds no separator, and from the right for the
+    id, which holds none either; a full name in between may hold as many as it likes.
     """
 
+    by: str
     at: str
     id: UUID
 
     def encode(self) -> str:
-        raw = f"{self.at}{_SEPARATOR}{self.id}".encode()
+        raw = f"{self.by}{_SEPARATOR}{self.at}{_SEPARATOR}{self.id}".encode()
         return urlsafe_b64encode(raw).decode().rstrip("=")
 
     @classmethod
-    def decode(cls, encoded: str) -> SortCursor:
+    def decode(cls, encoded: str, *, by: str) -> SortCursor:
         try:
             padded = encoded + "=" * (-len(encoded) % 4)
-            value, separator, identifier = urlsafe_b64decode(padded).decode().rpartition(_SEPARATOR)
-            if not separator:
-                raise ValueError("a cursor is a sort value and an id")
-            return cls(at=value, id=UUID(identifier))
+            order, issued, rest = urlsafe_b64decode(padded).decode().partition(_SEPARATOR)
+            value, separator, identifier = rest.rpartition(_SEPARATOR)
+            if not issued or not separator:
+                raise ValueError("a cursor is an order, a sort value and an id")
+            found = cls(by=order, at=value, id=UUID(identifier))
         except (ValueError, UnicodeDecodeError, binascii.Error) as unusable:
             raise _not_a_cursor() from unusable
+        if found.by != by:
+            raise _wrong_order()
+        return found
 
 
 def _not_a_cursor() -> Problem:
@@ -203,13 +214,30 @@ def _windowed[Selected: tuple[Any, ...]](
     return ordered.where(row < mark if descending else row > mark)
 
 
+@dataclass(frozen=True, slots=True)
+class Ordering:
+    """One answerable order: what it is called, the column it runs on, which way, and how its
+    cursor is written."""
+
+    by: str
+    column: SQLColumnExpression[Any]
+    descending: bool
+    #: The cursor's written-out value, read back into something the column compares against.
+    read: Callable[[str], Any]
+    #: One row's value for this column, written out for the cursor.
+    wrote: Callable[[Any], str]
+
+
+def cursor_for(ordering: Ordering, row: Any, *, id_: UUID) -> SortCursor:
+    """Where this row leaves the page off, in the order that put it there."""
+    return SortCursor(by=ordering.by, at=ordering.wrote(row), id=id_)
+
+
 def ordered_by[Selected: tuple[Any, ...]](
     query: Select[Selected],
     *,
-    key: SQLColumnExpression[Any],
+    ordering: Ordering,
     id_: SQLColumnExpression[UUID],
-    descending: bool,
-    read: Callable[[str], Any],
     cursor: str | None,
     limit: int,
 ) -> Select[Selected]:
@@ -217,20 +245,22 @@ def ordered_by[Selected: tuple[Any, ...]](
 
     The id is always the tiebreaker, so the pair it orders on is unique — without it two people
     with the same name, or the same number of years, could swallow or repeat each other across a
-    page boundary. `read` turns the cursor's written-out value back into something the column can
-    be compared against, and a value that will not read is not a cursor this API issued.
+    page boundary. The cursor's written-out value is read back into something the column can be
+    compared against, and a value that will not read — or one another order issued — is not a
+    cursor this page can resume.
     """
+    key = ordering.column
     ordered = (
         query.order_by(key.desc(), id_.desc())
-        if descending
+        if ordering.descending
         else query.order_by(key.asc(), id_.asc())
     ).limit(limit + 1)
     if cursor is None:
         return ordered
-    after = SortCursor.decode(cursor)
+    after = SortCursor.decode(cursor, by=ordering.by)
     reached = tuple_(key, id_)
-    left_off = tuple_(literal(_read(read, after.at)), literal(after.id))
-    return ordered.where(reached < left_off if descending else reached > left_off)
+    left_off = tuple_(literal(_read(ordering.read, after.at)), literal(after.id))
+    return ordered.where(reached < left_off if ordering.descending else reached > left_off)
 
 
 def _read(read: Callable[[str], Any], at: str) -> Any:

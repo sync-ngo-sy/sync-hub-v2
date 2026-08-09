@@ -1075,8 +1075,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The Tenant's talent pool, most recently saved first
-         * @description One pool per Tenant, and this is it. Names and headlines are read live, not frozen.
+         * The Tenant's talent pool, in the order you ask for
+         * @description One pool per Tenant, and this is it.
+         *
+         *     Everything a row says about a Candidate — their name, their headline, the role they put
+         *     themselves under, their years of work, their photo — is read live rather than frozen the day
+         *     they were saved. The Tags are this Tenant's own filing of them, and nobody else's.
          */
         get: operations["listTalentPool"];
         put?: never;
@@ -3576,6 +3580,9 @@ export interface components {
         /**
          * PooledCandidate
          * @description One Candidate the Tenant has saved, as its talent pool lists them.
+         *
+         *     Everything but `added_at` is read live off the Candidate, so a row says who they are today
+         *     rather than who they were the day somebody saved them.
          */
         PooledCandidate: {
             /**
@@ -3585,6 +3592,8 @@ export interface components {
             candidate_id: string;
             /** Full Name */
             full_name: string;
+            /** Avatar Url */
+            avatar_url?: string | null;
             /** Headline */
             headline?: string | null;
             /**
@@ -3593,6 +3602,21 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
+            /**
+             * Canonical Role Name
+             * @description The Canonical role they put themselves under, by name.
+             */
+            canonical_role_name?: string | null;
+            /**
+             * Total Experience Years
+             * @description Whole years of work, derived from their own history.
+             */
+            total_experience_years: number;
+            /**
+             * Tags
+             * @description This Tenant's own filing of them. No other tenant's Tags are here.
+             */
+            tags?: components["schemas"]["Tag"][];
             /**
              * Added At
              * Format: date-time
@@ -4304,15 +4328,23 @@ export interface components {
          */
         TagScope: "candidate" | "application";
         /**
+         * TalentPoolOrder
+         * @description How the pool has been asked to order itself. Each value names the answer it gives rather
+         *     than a column and a direction, so there is no ascending/descending convention to learn — and
+         *     no way to ask for an order the pool cannot page through.
+         * @enum {string}
+         */
+        TalentPoolOrder: "newest" | "oldest" | "name" | "name_reversed";
+        /**
          * TalentPoolPage
-         * @description One page of the Tenant's talent pool, most recently saved first.
+         * @description One page of the Tenant's talent pool, in the order it was asked for.
          */
         TalentPoolPage: {
             /** Items */
             items: components["schemas"]["PooledCandidate"][];
             /**
              * Next Cursor
-             * @description Send back as `cursor` for the following page. Null on the last page.
+             * @description Send back as `cursor` for the following page, with the same `sort` and `q`. Null on the last page.
              */
             next_cursor?: string | null;
         };
@@ -8513,7 +8545,11 @@ export interface operations {
     listTalentPool: {
         parameters: {
             query?: {
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description Keeps only the people whose name or headline holds this, wherever in it and whatever the case. It narrows the pool; it never reaches outside it. */
+                q?: string | null;
+                /** @description What order to answer in. Most recently saved first unless you say otherwise, and a `cursor` only ever resumes the order it was issued for. */
+                sort?: components["schemas"]["TalentPoolOrder"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;

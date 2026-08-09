@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Final
+from typing import Any, Final
 
-from sync_api.pagination import SortCursor
+from sync_api.pagination import Ordering
 from sync_core.searchable import DIRECTORY_PROFILES
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from sqlalchemy import SQLColumnExpression
 
 
 class DirectoryOrder(StrEnum):
@@ -25,16 +19,6 @@ class DirectoryOrder(StrEnum):
     NAME_REVERSED = "name_reversed"
     MOST_EXPERIENCE = "most_experience"
     LEAST_EXPERIENCE = "least_experience"
-
-
-@dataclass(frozen=True, slots=True)
-class Ordering:
-    column: SQLColumnExpression[Any]
-    descending: bool
-    #: The cursor's written-out value, read back into something the column compares against.
-    read: Callable[[str], Any]
-    #: One row's value for this column, written out for the cursor.
-    wrote: Callable[[Any], str]
 
 
 _ADDED: Final = DIRECTORY_PROFILES.c.created_at
@@ -58,14 +42,10 @@ def _years(row: Any) -> str:
 
 
 ORDERINGS: Final[dict[DirectoryOrder, Ordering]] = {
-    DirectoryOrder.NEWEST: Ordering(_ADDED, True, datetime.fromisoformat, _added),
-    DirectoryOrder.OLDEST: Ordering(_ADDED, False, datetime.fromisoformat, _added),
-    DirectoryOrder.NAME: Ordering(_NAME, False, str, _name),
-    DirectoryOrder.NAME_REVERSED: Ordering(_NAME, True, str, _name),
-    DirectoryOrder.MOST_EXPERIENCE: Ordering(_YEARS, True, int, _years),
-    DirectoryOrder.LEAST_EXPERIENCE: Ordering(_YEARS, False, int, _years),
+    DirectoryOrder.NEWEST: Ordering("newest", _ADDED, True, datetime.fromisoformat, _added),
+    DirectoryOrder.OLDEST: Ordering("oldest", _ADDED, False, datetime.fromisoformat, _added),
+    DirectoryOrder.NAME: Ordering("name", _NAME, False, str, _name),
+    DirectoryOrder.NAME_REVERSED: Ordering("name_reversed", _NAME, True, str, _name),
+    DirectoryOrder.MOST_EXPERIENCE: Ordering("most_experience", _YEARS, True, int, _years),
+    DirectoryOrder.LEAST_EXPERIENCE: Ordering("least_experience", _YEARS, False, int, _years),
 }
-
-
-def cursor_for(order: DirectoryOrder, row: Any) -> SortCursor:
-    return SortCursor(at=ORDERINGS[order].wrote(row), id=row.candidate_id)

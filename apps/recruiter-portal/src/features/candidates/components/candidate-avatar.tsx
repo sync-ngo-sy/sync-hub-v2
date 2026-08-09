@@ -12,14 +12,14 @@ function initials(fullName: string): string {
 
 interface CandidateAvatarProps {
   card: CandidateCard;
-  size?: 'default' | 'sm' | 'lg';
+  size?: 'default' | 'sm' | 'lg' | 'row';
 }
 
 export function CandidateAvatar({ card, size = 'default' }: CandidateAvatarProps) {
   return (
     <Avatar size={size}>
       {card.avatarUrl ? <AvatarImage src={card.avatarUrl} alt="" /> : null}
-      <AvatarFallback className="bg-accent text-xs font-semibold text-accent-foreground">
+      <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
         {initials(card.fullName)}
       </AvatarFallback>
     </Avatar>

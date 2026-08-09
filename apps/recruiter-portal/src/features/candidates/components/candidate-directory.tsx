@@ -4,7 +4,7 @@ import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Star, Users } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
-import { type CandidateCard, listedCard, type SearchableCandidate } from '../candidate';
+import { listedCard, type SearchableCandidate } from '../candidate';
 import { useCandidateDirectory } from '../hooks/use-candidate-directory';
 import {
   type CandidateSearchFilters,
@@ -13,7 +13,7 @@ import {
   noCandidatesMessage,
   searchAddress,
 } from '../search';
-import { CandidateAvatar } from './candidate-avatar';
+import { CandidateNameCell, NOTHING, yearsOf } from './candidate-cells';
 
 const TO_THE_POOL = (
   <Link to="/talent-pool" className={buttonVariants({ variant: 'outline' })}>
@@ -21,31 +21,12 @@ const TO_THE_POOL = (
   </Link>
 );
 
-const NOTHING = '—';
-
-function yearsOf(years: number): string {
-  return years === 1 ? '1 year' : `${years} years`;
-}
-
 const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Name',
     meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
-    cell: ({ row }) => {
-      const card: CandidateCard = listedCard(row.original);
-      return (
-        <span className="flex min-w-52 items-center gap-3">
-          <CandidateAvatar card={card} size="sm" />
-          <span className="flex min-w-0 flex-col gap-1">
-            <span>{card.fullName}</span>
-            {card.headline ? (
-              <span className="text-meta font-normal text-muted-foreground">{card.headline}</span>
-            ) : null}
-          </span>
-        </span>
-      );
-    },
+    cell: ({ row }) => <CandidateNameCell card={listedCard(row.original)} />,
   },
   {
     accessorKey: 'canonical_role_name',
