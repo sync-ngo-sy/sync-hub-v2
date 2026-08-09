@@ -1,7 +1,8 @@
 import { FormField } from '@sync/ui/components/form-field';
+import { PasswordInput } from '@sync/ui/components/password-input';
 import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
-import type { FormEventHandler } from 'react';
+import type { FormEventHandler, ReactNode } from 'react';
 import type { Control } from 'react-hook-form';
 
 export interface EmailFormValues {
@@ -39,6 +40,7 @@ export function PasswordForm({
   onSubmit,
   isSubmitting,
   label,
+  description,
   pendingLabel,
   submitLabel,
 }: {
@@ -46,18 +48,14 @@ export function PasswordForm({
   onSubmit: FormEventHandler<HTMLFormElement>;
   isSubmitting: boolean;
   label: string;
+  description?: ReactNode;
   pendingLabel: string;
   submitLabel: string;
 }) {
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
-      <FormField
-        control={control}
-        name="password"
-        label={label}
-        description="At least 8 characters."
-      >
-        {(field) => <Input {...field} type="password" autoComplete="new-password" />}
+      <FormField control={control} name="password" label={label} description={description}>
+        {(field) => <PasswordInput {...field} autoComplete="new-password" />}
       </FormField>
 
       <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">

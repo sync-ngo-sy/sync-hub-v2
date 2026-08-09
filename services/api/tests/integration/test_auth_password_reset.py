@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
     from sqlalchemy.ext.asyncio import AsyncSession
 
-A_NEW_PASSWORD = "a-brand-new-passphrase"
+A_NEW_PASSWORD = "A-Brand-New-Passphrase1"
 
 
 async def ask_to_reset(browser: AsyncClient, email: str) -> None:
@@ -129,8 +129,8 @@ async def test_a_reset_will_not_set_a_short_password(
     signup = await a_confirmed_candidate(browser, mailbox)
     await ask_to_reset(browser, signup.email)
 
-    response = await follow_the_reset_link(browser, mailbox, signup.email, password="short")
+    response = await follow_the_reset_link(browser, mailbox, signup.email, password="Short1!")
 
-    assert response.status_code == 422
-    assert [error["location"] for error in response.json()["errors"]] == ["body.password"]
+    assert response.status_code == 400
+    assert response.json()["type"] == "urn:sync:problem:weak-password"
     assert (await sign_in(browser, signup)).status_code == 200

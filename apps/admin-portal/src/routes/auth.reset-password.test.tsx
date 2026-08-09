@@ -12,7 +12,7 @@ describe('resetting a password', () => {
     const { router, user } = await renderApp('/overview');
     await router.navigate({ to: '/auth/reset-password', search: { token_hash: 'valid-token' } });
     server.use(...signedOut());
-    await user.type(await screen.findByLabelText('New password'), 'correct-horse-battery');
+    await user.type(await screen.findByLabelText('New password'), 'CorrectHorse9');
     await user.click(screen.getByRole('button', { name: 'Save new password' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));

@@ -122,7 +122,7 @@ async def test_signup_refuses_a_short_password(browser: AsyncClient) -> None:
 async def test_signup_refuses_a_malformed_address(browser: AsyncClient) -> None:
     response = await browser.post(
         "/v1/auth/signup",
-        json={"email": "not-an-address", "password": "correct-horse-battery", "full_name": "A"},
+        json={"email": "not-an-address", "password": "Correct-Horse9", "full_name": "A"},
     )
 
     assert response.status_code == 422

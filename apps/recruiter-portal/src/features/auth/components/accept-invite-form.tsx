@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { isProblem, problemMessage } from '@/lib/api-problem';
 import { useAcceptInvite } from '../hooks/use-accept-invite';
+import { PASSWORD_POLICY_SUMMARY } from '../password-rules';
 import { DEAD_LINK_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type NewPasswordValues, newPasswordSchema } from '../schemas/new-password';
 
@@ -49,6 +50,7 @@ export function AcceptInviteForm({ tokenHash, onAccepted, onDeadLink }: AcceptIn
       onSubmit={submit}
       isSubmitting={isSubmitting}
       label="Choose a password"
+      description={PASSWORD_POLICY_SUMMARY}
       pendingLabel="Joining workspace…"
       submitLabel="Join workspace"
     />

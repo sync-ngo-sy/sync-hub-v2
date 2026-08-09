@@ -1654,8 +1654,8 @@ export interface components {
             token_hash: string;
             /**
              * Password
-             * @description At least 8 characters.
-             * @example correct-horse-battery
+             * @description At least 8 characters, with an uppercase letter, a lowercase letter and a digit.
+             * @example CorrectHorse9
              */
             password: string;
         };
@@ -2387,8 +2387,8 @@ export interface components {
             token_hash: string;
             /**
              * Password
-             * @description At least 8 characters.
-             * @example correct-horse-battery
+             * @description At least 8 characters, with an uppercase letter, a lowercase letter and a digit.
+             * @example CorrectHorse9
              */
             password: string;
         };
@@ -3083,8 +3083,8 @@ export interface components {
             email: string;
             /**
              * Password
-             * @description At least 8 characters.
-             * @example correct-horse-battery
+             * @description The password on the account.
+             * @example CorrectHorse9
              */
             password: string;
         };
@@ -4187,8 +4187,8 @@ export interface components {
             email: string;
             /**
              * Password
-             * @description At least 8 characters.
-             * @example correct-horse-battery
+             * @description At least 8 characters, with an uppercase letter, a lowercase letter and a digit.
+             * @example CorrectHorse9
              */
             password: string;
             /** Full Name */
