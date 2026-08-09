@@ -31,6 +31,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-passw
 import { Route as WorkspaceApplicationsApplicationIdRouteImport } from './routes/_workspace/applications_.$applicationId'
 import { Route as WorkspaceCandidatesCandidateIdRouteImport } from './routes/_workspace/candidates_.$candidateId'
 import { Route as WorkspaceJobsJobIdRouteImport } from './routes/_workspace/jobs_.$jobId'
+import { Route as WorkspaceJobsNewRouteImport } from './routes/_workspace/jobs_.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -143,6 +144,11 @@ const WorkspaceJobsJobIdRoute = WorkspaceJobsJobIdRouteImport.update({
   path: '/jobs/$jobId',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceJobsNewRoute = WorkspaceJobsNewRouteImport.update({
+  id: '/jobs_/new',
+  path: '/jobs/new',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/applications/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
   '/candidates/$candidateId': typeof WorkspaceCandidatesCandidateIdRoute
   '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
+  '/jobs/new': typeof WorkspaceJobsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/applications/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
   '/candidates/$candidateId': typeof WorkspaceCandidatesCandidateIdRoute
   '/jobs/$jobId': typeof WorkspaceJobsJobIdRoute
+  '/jobs/new': typeof WorkspaceJobsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/_workspace/applications_/$applicationId': typeof WorkspaceApplicationsApplicationIdRoute
   '/_workspace/candidates_/$candidateId': typeof WorkspaceCandidatesCandidateIdRoute
   '/_workspace/jobs_/$jobId': typeof WorkspaceJobsJobIdRoute
+  '/_workspace/jobs_/new': typeof WorkspaceJobsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/applications/$applicationId'
     | '/candidates/$candidateId'
     | '/jobs/$jobId'
+    | '/jobs/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/applications/$applicationId'
     | '/candidates/$candidateId'
     | '/jobs/$jobId'
+    | '/jobs/new'
   id:
     | '__root__'
     | '/'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/_workspace/applications_/$applicationId'
     | '/_workspace/candidates_/$candidateId'
     | '/_workspace/jobs_/$jobId'
+    | '/_workspace/jobs_/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -458,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceJobsJobIdRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/jobs_/new': {
+      id: '/_workspace/jobs_/new'
+      path: '/jobs/new'
+      fullPath: '/jobs/new'
+      preLoaderRoute: typeof WorkspaceJobsNewRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
   }
 }
 
@@ -473,6 +492,7 @@ interface WorkspaceRouteChildren {
   WorkspaceApplicationsApplicationIdRoute: typeof WorkspaceApplicationsApplicationIdRoute
   WorkspaceCandidatesCandidateIdRoute: typeof WorkspaceCandidatesCandidateIdRoute
   WorkspaceJobsJobIdRoute: typeof WorkspaceJobsJobIdRoute
+  WorkspaceJobsNewRoute: typeof WorkspaceJobsNewRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
@@ -488,6 +508,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
     WorkspaceApplicationsApplicationIdRoute,
   WorkspaceCandidatesCandidateIdRoute: WorkspaceCandidatesCandidateIdRoute,
   WorkspaceJobsJobIdRoute: WorkspaceJobsJobIdRoute,
+  WorkspaceJobsNewRoute: WorkspaceJobsNewRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(

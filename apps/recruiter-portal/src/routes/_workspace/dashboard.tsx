@@ -28,6 +28,7 @@ function DashboardPage() {
           params: { applicationId: application.id },
         })
       }
+      onCreateJob={() => void navigate({ to: '/jobs/new', search: {} })}
     />
   );
 }
