@@ -6,6 +6,8 @@ import { expect } from 'vitest';
 import { createQueryClient } from '@/lib/query-client';
 import { createAppRouter } from '@/lib/router';
 
+const SETTLED = { timeout: 10_000 };
+
 export async function renderApp(path = '/') {
   const queryClient = createQueryClient();
   const router = createAppRouter(queryClient, createMemoryHistory({ initialEntries: [path] }));
@@ -16,8 +18,11 @@ export async function renderApp(path = '/') {
     </QueryClientProvider>,
   );
 
-  await waitFor(() => expect(router.state.status).toBe('idle'));
-  await waitFor(() => expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull());
+  await waitFor(() => expect(router.state.status).toBe('idle'), SETTLED);
+  await waitFor(
+    () => expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull(),
+    SETTLED,
+  );
 
   return { router, queryClient, user: userEvent.setup() };
 }
