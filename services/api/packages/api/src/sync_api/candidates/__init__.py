@@ -5,6 +5,8 @@ from sync_api.candidates.payload import (
     CandidateProfile,
     DraftExperience,
     DraftSkill,
+    ExperienceTotal,
+    ExperienceTotalRequest,
     ProfileDraft,
     ProfileEducation,
     ProfileExperience,
@@ -14,6 +16,7 @@ from sync_api.candidates.payload import (
 )
 from sync_api.candidates.profile import (
     CandidateProfileService,
+    derived_experience,
     languages_named,
     refuse_incomplete_profile,
     skills_named,
@@ -36,6 +39,8 @@ __all__ = [
     "CandidateProfileService",
     "DraftExperience",
     "DraftSkill",
+    "ExperienceTotal",
+    "ExperienceTotalRequest",
     "LiveSection",
     "ProfileDraft",
     "ProfileEducation",
@@ -48,6 +53,7 @@ __all__ = [
     "acting_candidate",
     "an_education",
     "an_experience",
+    "derived_experience",
     "draft_of",
     "languages_named",
     "refuse_incomplete_profile",

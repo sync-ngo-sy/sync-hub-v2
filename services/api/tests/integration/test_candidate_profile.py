@@ -24,6 +24,7 @@ from tests.support.profiles import (
 from tests.support.tenants import an_admin
 
 PROFILE = "/v1/candidates/me/profile"
+EXPERIENCE_TOTAL = f"{PROFILE}/experience-total"
 
 A_FULL_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
@@ -566,6 +567,21 @@ async def test_saving_derives_total_experience_from_the_jobs_that_were_saved(
 
     assert saved.status_code == 200, saved.text
     assert saved.json()["total_experience_years"] == 3
+
+
+async def test_calculating_total_experience_does_not_save_the_jobs(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    calculated = await browser.post(
+        EXPERIENCE_TOTAL,
+        json={"experiences": [a_job((2018, 1), (2020, 12))]},
+    )
+
+    assert calculated.status_code == 200, calculated.text
+    assert calculated.json() == {"total_experience_years": 3}
+    assert (await browser.get(PROFILE)).json()["experiences"] == []
 
 
 async def test_two_jobs_held_at_once_are_one_stretch_of_experience(

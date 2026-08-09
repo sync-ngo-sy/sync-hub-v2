@@ -6,7 +6,12 @@ from fastapi import APIRouter, File, Response, UploadFile, status
 from pydantic import BaseModel, Field
 
 from sync_api.avatars import ACCEPTED_FORMATS, Avatar
-from sync_api.candidates import CandidateProfile
+from sync_api.candidates import (
+    CandidateProfile,
+    ExperienceTotal,
+    ExperienceTotalRequest,
+    derived_experience,
+)
 from sync_api.dependencies import (
     ActingCandidateDep,
     AvatarServiceDep,
@@ -72,6 +77,18 @@ async def replace_my_profile(
 ) -> CandidateProfile:
     """Replace the profile whole — an omitted section is an emptied one — and answer with it."""
     return await profiles.replace(candidate.id, body)
+
+
+@router.post(
+    "/me/profile/experience-total",
+    operation_id="calculateMyExperienceTotal",
+    summary="Calculate total experience without saving",
+    responses=CANDIDATE_ACCESS_REFUSED,
+)
+async def calculate_my_experience_total(
+    body: ExperienceTotalRequest, _: ActingCandidateDep
+) -> ExperienceTotal:
+    return ExperienceTotal(total_experience_years=derived_experience(body.experiences))
 
 
 @router.put(
