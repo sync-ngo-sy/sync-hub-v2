@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import pytest
 from asgi_lifespan import LifespanManager
@@ -21,6 +22,7 @@ from tests.support.assessments import (
     an_assessment,
     assess,
     assessments_of,
+    forget_assessment,
     list_assessments,
     stored_assessments,
 )
@@ -255,6 +257,84 @@ async def test_the_history_pages_newest_first(
 
     assert [item["id"] for item in newest["items"]] == [second["id"]]
     assert [item["id"] for item in following] == [first["id"]]
+
+
+async def test_throwing_one_reading_away_leaves_the_others_as_their_models_wrote_them(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    kept = await an_assessment(recruiter, application["id"])
+    thrown_away = await an_assessment(recruiter, application["id"])
+
+    forgotten = await forget_assessment(recruiter, application["id"], thrown_away["id"])
+
+    assert forgotten.status_code == 204, forgotten.text
+    [survivor] = await assessments_of(recruiter, application["id"])
+    assert survivor["id"] == kept["id"]
+    assert (survivor["model_name"], survivor["prompt_version"]) == (MODEL, PROMPT_VERSION)
+    [stored] = await stored_assessments(db_session, application["id"])
+    assert str(stored.id) == kept["id"]
+
+
+async def test_a_reading_already_gone_is_the_same_404_as_one_never_written(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    assessment = await an_assessment(recruiter, application["id"])
+
+    first = await forget_assessment(recruiter, application["id"], assessment["id"])
+    again = await forget_assessment(recruiter, application["id"], assessment["id"])
+    invented = await forget_assessment(recruiter, application["id"], uuid4())
+
+    assert first.status_code == 204, first.text
+    assert again.status_code == 404, again.text
+    assert again.json()["type"] == "urn:sync:problem:assessment-not-found"
+    assert invented.status_code == 404, invented.text
+    assert await stored_assessments(db_session, application["id"]) == []
+
+
+async def test_a_reading_cannot_be_thrown_away_through_another_application(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    another = await an_application_to(recruiter, applicant, mailbox, db_session)
+    assessment = await an_assessment(recruiter, application["id"])
+
+    refused = await forget_assessment(recruiter, another["id"], assessment["id"])
+
+    assert refused.status_code == 404, refused.text
+    assert refused.json()["type"] == "urn:sync:problem:assessment-not-found"
+    assert len(await stored_assessments(db_session, application["id"])) == 1
+
+
+async def test_neither_another_tenant_nor_the_candidate_can_throw_a_reading_away(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    assessing: FastAPI,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    assessment = await an_assessment(recruiter, application["id"])
+
+    async with asgi_client(assessing, headers=SPA_HEADERS) as rival:
+        await an_admin(rival, mailbox, "rival")
+        by_a_rival = await forget_assessment(rival, application["id"], assessment["id"])
+    by_the_candidate = await forget_assessment(applicant, application["id"], assessment["id"])
+
+    assert by_a_rival.status_code == 404, by_a_rival.text
+    assert by_a_rival.json()["type"] == "urn:sync:problem:application-not-found"
+    assert by_the_candidate.status_code == 403, by_the_candidate.text
+    assert len(await stored_assessments(db_session, application["id"])) == 1
 
 
 async def test_no_number_of_assessments_touches_the_screening_verdict(

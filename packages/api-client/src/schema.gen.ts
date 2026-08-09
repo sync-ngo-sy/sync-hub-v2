@@ -1327,6 +1327,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Throw away one AI match assessment
+         * @description One reading and no other: the rest of the history keeps the model that wrote each of them.
+         *
+         *     Any recruiter of the Tenant may throw one away, and asking again writes a new one rather than
+         *     bringing this one back.
+         */
+        delete: operations["deleteApplicationMatchAssessment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/applications/{application_id}/messages": {
         parameters: {
             query?: never;
@@ -9697,6 +9720,72 @@ export interface operations {
             };
             /** @description This deployment has no assessment model configured. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    deleteApplicationMatchAssessment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+                assessment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no application, or no assessment of it, with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
