@@ -7,13 +7,17 @@ a courtesy: a request that skips the portal entirely is refused just the same.
 from __future__ import annotations
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_api.auth.password_policy import PasswordPolicyError
+from sync_api.platform import create_platform_admin
 from sync_core.models import Profile
 from tests.support.candidates import a_confirmed_candidate, a_signup, sign_in, sign_up
 from tests.support.mailbox import Mailbox
+from tests.support.platform_admins import a_platform_admin_signup
 from tests.support.tenants import accept_invite, an_admin, an_invitee_address, invite
 
 WEAK_PASSWORD = "urn:sync:problem:weak-password"
@@ -118,6 +122,27 @@ async def test_accepting_an_invite_refuses_a_password_below_the_policy(
     body = response.json()
     assert body["type"] == WEAK_PASSWORD
     assert requirement in body["detail"]
+
+
+@pytest.mark.parametrize(("password", "requirement"), REFUSED)
+async def test_the_bootstrap_refuses_a_password_below_the_policy(
+    app: FastAPI, db_session: AsyncSession, password: str, requirement: str
+) -> None:
+    """The operator account is made by a script rather than a route, and is held to the same
+    policy — otherwise the one account with the most reach could have the weakest password."""
+    signup = a_platform_admin_signup()
+
+    with pytest.raises(PasswordPolicyError) as refused:
+        await create_platform_admin(
+            db_session,
+            app.state.authentication.gotrue,
+            email=signup.email,
+            password=password,
+            full_name=signup.full_name,
+        )
+
+    assert requirement in str(refused.value)
+    assert (await db_session.execute(select(Profile))).first() is None
 
 
 async def test_an_invite_refused_by_the_policy_stays_usable(
