@@ -1,6 +1,7 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { FileText, UserRound } from 'lucide-react';
 import {
   CandidateFactsCard,
   CandidateProfile,
@@ -55,13 +56,24 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
   return (
     <div className="space-y-(--space-section)">
       <div className="space-y-4">
-        <Link
-          to="/jobs/$jobId"
-          params={{ jobId: review.job.id }}
-          className={buttonVariants({ variant: 'link', size: 'sm' })}
-        >
-          Back to {review.job.title}
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            to="/jobs/$jobId"
+            params={{ jobId: review.job.id }}
+            className={buttonVariants({ variant: 'link', size: 'sm' })}
+          >
+            Back to {review.job.title}
+          </Link>
+          <Link
+            to="/candidates/$candidateId"
+            params={{ candidateId: review.candidate.id }}
+            search={{}}
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          >
+            <UserRound aria-hidden="true" />
+            Open the Candidate view
+          </Link>
+        </div>
         <CandidateFactsCard profile={profile} contextLabel={CARD_MARK} note={CARD_NOTE} />
         <dl
           aria-label="Application facts"
@@ -99,6 +111,22 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         <div className="space-y-(--space-grid)">
           <ApplicationPipeline applicationId={applicationId} status={review.status} />
 
+          <ReviewCard title="CV" icon={FileText}>
+            <div className="space-y-2">
+              <a
+                href={review.cv.download_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-dense underline underline-offset-4"
+              >
+                {review.cv.display_name}
+              </a>
+              <p className="text-meta text-muted-foreground">
+                This link is short-lived — reload the page if it stops working.
+              </p>
+            </div>
+          </ReviewCard>
+
           <WidgetBoundary name="Tags">
             <ApplicationTags applicationId={applicationId} />
           </WidgetBoundary>
@@ -116,22 +144,6 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
               <StatusMark label={verdict.label} tone={verdict.tone} />
               <p className="text-dense text-muted-foreground">
                 {review.screening.reason ?? 'Screening has not run on this Application yet.'}
-              </p>
-            </div>
-          </ReviewCard>
-
-          <ReviewCard title="CV">
-            <div className="space-y-2">
-              <a
-                href={review.cv.download_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-dense underline underline-offset-4"
-              >
-                {review.cv.display_name}
-              </a>
-              <p className="text-meta text-muted-foreground">
-                This link is short-lived — reload the page if it stops working.
               </p>
             </div>
           </ReviewCard>
