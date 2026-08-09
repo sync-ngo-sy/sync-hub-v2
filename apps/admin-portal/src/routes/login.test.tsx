@@ -17,4 +17,16 @@ describe('signing in', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/overview'));
     expect(await screen.findByRole('heading', { name: 'Platform overview' })).toBeVisible();
   });
+
+  it('lets the operator reveal what they typed into the password field', async () => {
+    server.use(...signedOut());
+
+    const { user } = await renderApp('/login');
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text');
+  });
 });

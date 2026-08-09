@@ -4,7 +4,8 @@ import { signUpSchema } from './sign-up';
 const FILLED = {
   full_name: 'Lina Khoury',
   email: 'lina@example.test',
-  password: 'correct-horse-battery',
+  password: 'CorrectHorse9',
+  confirm_password: 'CorrectHorse9',
 };
 
 function errorFor(field: keyof typeof FILLED, input: Record<string, unknown>): string | undefined {
@@ -40,8 +41,27 @@ describe('the sign-up schema', () => {
     expect(errorFor('password', { ...FILLED, password: 'short' })).toBe(
       'Use at least 8 characters.',
     );
-    expect(errorFor('password', { ...FILLED, password: 'x'.repeat(73) })).toBe(
+    expect(errorFor('password', { ...FILLED, password: `Aa1${'x'.repeat(73)}` })).toBe(
       'Use 72 characters or fewer.',
+    );
+  });
+
+  it('holds the password to the policy the API enforces', () => {
+    expect(errorFor('password', { ...FILLED, password: 'correcthorse9' })).toBe(
+      'Add an uppercase letter.',
+    );
+    expect(errorFor('password', { ...FILLED, password: 'CorrectHorse' })).toBe('Add a digit.');
+  });
+
+  it('asks for the password to be repeated', () => {
+    expect(errorFor('confirm_password', { ...FILLED, confirm_password: '' })).toBe(
+      'Repeat your password.',
+    );
+  });
+
+  it('refuses a confirmation that does not match', () => {
+    expect(errorFor('confirm_password', { ...FILLED, confirm_password: 'CorrectHorse8' })).toBe(
+      'Both passwords must match.',
     );
   });
 });

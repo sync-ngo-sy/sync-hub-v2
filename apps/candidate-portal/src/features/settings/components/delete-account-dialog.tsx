@@ -1,3 +1,4 @@
+import { PasswordInput } from '@sync/ui/components/password-input';
 import { Button } from '@sync/ui/components/ui/button';
 import {
   Dialog,
@@ -8,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sync/ui/components/ui/dialog';
-import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
 import { type FormEvent, useState } from 'react';
 import { problemMessage } from '@/lib/api-problem';
@@ -52,9 +52,8 @@ export function DeleteAccountDialog({ open, onOpenChange }: DeleteAccountDialogP
 
           <div className="grid gap-2">
             <Label htmlFor="delete-account-password">Current password</Label>
-            <Input
+            <PasswordInput
               id="delete-account-password"
-              type="password"
               autoComplete="current-password"
               value={password}
               disabled={deleteAccount.isPending}

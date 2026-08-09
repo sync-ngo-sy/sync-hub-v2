@@ -96,14 +96,14 @@ async def test_the_password_chosen_on_acceptance_is_the_one_that_signs_them_in(
     await an_admin(browser, mailbox)
     email = an_invitee_address()
     await invite(browser, email=email)
-    await accept_invite(other_browser, mailbox, email, password="a-brand-new-password")
+    await accept_invite(other_browser, mailbox, email, password="A-Brand-New-Password1")
     other_browser.cookies.clear()
 
     refused = await other_browser.post(
         "/v1/auth/login", json={"email": email, "password": DEFAULT_PASSWORD}
     )
     accepted = await other_browser.post(
-        "/v1/auth/login", json={"email": email, "password": "a-brand-new-password"}
+        "/v1/auth/login", json={"email": email, "password": "A-Brand-New-Password1"}
     )
 
     assert refused.status_code == 401
