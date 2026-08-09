@@ -29,7 +29,9 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'job',
     header: 'Job',
-    cell: ({ row }) => <span className="text-muted-foreground">{row.original.job.title}</span>,
+    cell: ({ row }) => (
+      <span className="font-medium text-foreground">{row.original.job.title}</span>
+    ),
   },
   {
     id: 'received',
