@@ -125,6 +125,13 @@ class ApplicationStatusCount(BaseModel):
     count: int
 
 
+class ApplicationVerdictCount(BaseModel):
+    """How many of the Job's Applications the Screening verdict decided one way."""
+
+    verdict: QualificationStatus
+    count: int
+
+
 class ApplicationSummaryPage(BaseModel):
     """One page of a Job's Applications, newest first."""
 
@@ -138,6 +145,13 @@ class ApplicationSummaryPage(BaseModel):
         "many of the Job's Applications stand in it. Counted before `status` narrows anything, "
         "so a filter that hides some of them still says how many it is hiding. The other "
         "filters do narrow it: the counts describe the list the reader is looking at.",
+    )
+    verdict_counts: list[ApplicationVerdictCount] = Field(
+        default_factory=list,
+        description="Every Screening verdict the platform has, each with how many of the Job's "
+        "Applications it decided that way. Counted before `qualification_status` narrows "
+        "anything, so a filter that hides some of them still says how much it is hiding. The "
+        "other filters do narrow it: the counts describe the list the reader is looking at.",
     )
 
 

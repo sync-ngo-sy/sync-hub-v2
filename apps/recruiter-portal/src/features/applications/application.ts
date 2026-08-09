@@ -68,6 +68,10 @@ export function pipelineSelection(chosen: PipelineStatus[] | undefined): Pipelin
   return chosen ?? [...ACTIVE_PIPELINE_STATUSES];
 }
 
+export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {
+  return chosen ?? [...SCREENING_VERDICTS];
+}
+
 export function screeningState(verdict: ScreeningVerdict): MarkState {
   return SCREENING_STATE[verdict];
 }

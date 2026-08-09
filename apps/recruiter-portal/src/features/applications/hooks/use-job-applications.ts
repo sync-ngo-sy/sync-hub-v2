@@ -7,10 +7,11 @@ const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 
 export interface ApplicationFilters {
   pipeline?: PipelineStatus[];
-  screening?: ScreeningVerdict;
+  screening?: ScreeningVerdict[];
 }
 
 export type StatusCounts = Partial<Record<PipelineStatus, number>>;
+export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;
 
 export function jobApplicationsQueryPrefix() {
   return api.queryOptions('get', PATH, { params: { path: { job_id: '' } } }).queryKey.slice(0, 2);
@@ -38,6 +39,9 @@ export function useJobApplications(jobId: string, filters: ApplicationFilters) {
         statusCounts: Object.fromEntries(
           (data.pages[0]?.status_counts ?? []).map((one) => [one.status, one.count]),
         ) as StatusCounts,
+        verdictCounts: Object.fromEntries(
+          (data.pages[0]?.verdict_counts ?? []).map((one) => [one.verdict, one.count]),
+        ) as VerdictCounts,
       }),
     },
   );

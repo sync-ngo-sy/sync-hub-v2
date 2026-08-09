@@ -12,6 +12,7 @@ from sync_api.applications.payload import (
     ApplicationStatusCount,
     ApplicationSummary,
     ApplicationSummaryPage,
+    ApplicationVerdictCount,
     MovedApplication,
     ReviewedCandidate,
     ReviewedJob,
@@ -73,30 +74,35 @@ class ApplicationReviewService:
         job_id: UUID,
         *,
         statuses: Sequence[ApplicationStatus] | None = None,
-        qualification_status: QualificationStatus | None = None,
+        qualification_statuses: Sequence[QualificationStatus] | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> ApplicationSummaryPage:
         await own_job(self._db, recruiter.tenant.id, job_id)
 
+        mine = (Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
         query = (
             select(Application, ApplicationProfileSnapshot)
             .join(
                 ApplicationProfileSnapshot,
                 ApplicationProfileSnapshot.application_id == Application.id,
             )
-            .where(Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
+            .where(*mine)
         )
         counting = (
-            select(Application.status, func.count())
-            .where(Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
-            .group_by(Application.status)
+            select(Application.status, func.count()).where(*mine).group_by(Application.status)
+        )
+        verdict_counting = (
+            select(Application.qualification_status, func.count())
+            .where(*mine)
+            .group_by(Application.qualification_status)
         )
         if statuses is not None:
             query = query.where(Application.status.in_(statuses))
-        if qualification_status is not None:
-            query = query.where(Application.qualification_status == qualification_status)
-            counting = counting.where(Application.qualification_status == qualification_status)
+            verdict_counting = verdict_counting.where(Application.status.in_(statuses))
+        if qualification_statuses is not None:
+            query = query.where(Application.qualification_status.in_(qualification_statuses))
+            counting = counting.where(Application.qualification_status.in_(qualification_statuses))
 
         found = list(
             (
@@ -112,6 +118,7 @@ class ApplicationReviewService:
             ).tuples()
         )
         counted = dict((await self._db.execute(counting)).tuples().all())
+        counted_verdicts = dict((await self._db.execute(verdict_counting)).tuples().all())
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
         return ApplicationSummaryPage(
             items=[_summary(application, snapshot) for application, snapshot in rows],
@@ -119,6 +126,10 @@ class ApplicationReviewService:
             status_counts=[
                 ApplicationStatusCount(status=one, count=counted.get(one, 0))
                 for one in ApplicationStatus
+            ],
+            verdict_counts=[
+                ApplicationVerdictCount(verdict=one, count=counted_verdicts.get(one, 0))
+                for one in QualificationStatus
             ],
         )
 

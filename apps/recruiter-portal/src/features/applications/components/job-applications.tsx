@@ -11,12 +11,11 @@ import {
   pipelineSelection,
   pipelineState,
   SCREENING_VERDICTS,
-  type ScreeningVerdict,
+  screeningSelection,
   screeningState,
 } from '../application';
 import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
-import { SegmentedFilter } from './segmented-filter';
-import { StatusFilter } from './status-filter';
+import { ChecklistFilter } from './checklist-filter';
 
 const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
   {
@@ -61,6 +60,16 @@ const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
   },
 ];
 
+function hiddenBehind<TValue extends string>(
+  all: readonly TValue[],
+  selected: TValue[],
+  counts: Partial<Record<TValue, number>>,
+): number {
+  return all
+    .filter((one) => !selected.includes(one))
+    .reduce((sum, one) => sum + (counts[one] ?? 0), 0);
+}
+
 interface JobApplicationsProps {
   jobId: string;
   filters: ApplicationFilters;
@@ -77,30 +86,38 @@ export function JobApplications({
   onShowLinks,
 }: JobApplicationsProps) {
   const pipeline = pipelineSelection(filters.pipeline);
-  const applications = useJobApplications(jobId, { ...filters, pipeline });
-  const counts = applications.data?.statusCounts ?? {};
-  const hidden = PIPELINE_STATUSES.filter((status) => !pipeline.includes(status)).reduce(
-    (sum, status) => sum + (counts[status] ?? 0),
-    0,
-  );
-  const active = [filters.screening !== undefined, hidden > 0].filter(Boolean).length;
+  const screening = screeningSelection(filters.screening);
+  const applications = useJobApplications(jobId, { pipeline, screening });
+  const statusCounts = applications.data?.statusCounts ?? {};
+  const verdictCounts = applications.data?.verdictCounts ?? {};
+  const active = [
+    hiddenBehind(SCREENING_VERDICTS, screening, verdictCounts),
+    hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts),
+  ].filter((hidden) => hidden > 0).length;
 
   return (
     <div className="space-y-6 pt-4">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-        <SegmentedFilter<ScreeningVerdict>
+        <ChecklistFilter
           label="Screening"
-          anyLabel="All verdicts"
-          value={filters.screening}
+          noun="verdicts"
           options={SCREENING_VERDICTS.map((verdict) => ({
             value: verdict,
             label: screeningState(verdict).label,
           }))}
-          onChange={(screening) => onFiltersChange({ ...filters, screening })}
+          selected={screening}
+          counts={verdictCounts}
+          onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
         />
-        <StatusFilter
+        <ChecklistFilter
+          label="Pipeline"
+          noun="statuses"
+          options={PIPELINE_STATUSES.map((status) => ({
+            value: status,
+            label: pipelineState(status).label,
+          }))}
           selected={pipeline}
-          counts={counts}
+          counts={statusCounts}
           onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
       </div>
@@ -134,7 +151,10 @@ export function JobApplications({
               <Button
                 variant="outline"
                 onClick={() =>
-                  onFiltersChange({ pipeline: [...PIPELINE_STATUSES], screening: undefined })
+                  onFiltersChange({
+                    pipeline: [...PIPELINE_STATUSES],
+                    screening: [...SCREENING_VERDICTS],
+                  })
                 }
               >
                 {active === 1 ? 'Clear filter' : 'Clear filters'}

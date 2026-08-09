@@ -4,7 +4,12 @@ import { VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
-import { type ApplicationSummary, PIPELINE_STATUSES, type PipelineStatus } from '../application';
+import {
+  type ApplicationSummary,
+  PIPELINE_STATUSES,
+  type PipelineStatus,
+  SCREENING_VERDICTS,
+} from '../application';
 import type { MatchAssessment } from '../assessment';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
 import { TAG_PATH, TAGS_PATH } from '../hooks/use-application-tags';
@@ -32,7 +37,7 @@ const NO_SUCH_APPLICATION: Problem = {
 
 export interface AskedFor {
   status: string[];
-  qualification_status: string | null;
+  qualification_status: string[];
 }
 
 function countedByStatus(items: ApplicationSummary[]) {
@@ -42,14 +47,24 @@ function countedByStatus(items: ApplicationSummary[]) {
   }));
 }
 
+function countedByVerdict(items: ApplicationSummary[]) {
+  return SCREENING_VERDICTS.map((verdict) => ({
+    verdict,
+    count: items.filter((item) => item.qualification_status === verdict).length,
+  }));
+}
+
 export function listsJobApplications(items: ApplicationSummary[], asked?: AskedFor[]) {
   return [
     http.get(PATH, ({ query, response }) => {
       const statuses = query.getAll('status');
-      const qualification = query.get('qualification_status');
-      asked?.push({ status: statuses, qualification_status: qualification });
+      const verdicts = query.getAll('qualification_status');
+      asked?.push({ status: statuses, qualification_status: verdicts });
       const ofThisVerdict = items.filter((item) =>
-        qualification ? item.qualification_status === qualification : true,
+        verdicts.length > 0 ? verdicts.includes(item.qualification_status) : true,
+      );
+      const ofThisStatus = items.filter((item) =>
+        statuses.length > 0 ? statuses.includes(item.status) : true,
       );
       return response(200).json({
         items: ofThisVerdict.filter((item) =>
@@ -57,6 +72,7 @@ export function listsJobApplications(items: ApplicationSummary[], asked?: AskedF
         ),
         next_cursor: null,
         status_counts: countedByStatus(ofThisVerdict),
+        verdict_counts: countedByVerdict(ofThisStatus),
       });
     }),
   ];
@@ -71,6 +87,7 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
         items: pages[index] ?? [],
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
         status_counts: countedByStatus(pages.flat()),
+        verdict_counts: countedByVerdict(pages.flat()),
       });
     }),
   ];
@@ -443,6 +460,7 @@ export function holdsJobApplications(items: ApplicationSummary[]) {
           items,
           next_cursor: null,
           status_counts: countedByStatus(items),
+          verdict_counts: countedByVerdict(items),
         });
       }),
     ],

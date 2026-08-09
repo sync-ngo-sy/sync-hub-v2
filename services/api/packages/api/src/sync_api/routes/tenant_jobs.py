@@ -163,9 +163,13 @@ async def list_job_applications(
             "several; omit it for every state.",
         ),
     ] = None,
-    qualification_status: Annotated[
-        QualificationStatus | None,
-        Query(description="Only Applications the Screening verdict decided this way."),
+    qualification_statuses: Annotated[
+        list[QualificationStatus] | None,
+        Query(
+            alias="qualification_status",
+            description="Only Applications the Screening verdict decided one of these ways. "
+            "Repeat it to name several; omit it for every verdict.",
+        ),
     ] = None,
     cursor: Annotated[
         str | None,
@@ -177,14 +181,14 @@ async def list_job_applications(
 ) -> ApplicationSummaryPage:
     """The triage list: who applied, where each one stands, and how Screening judged it.
 
-    `status_counts` comes back whatever `status` narrows to, so the caller can say how many
-    Applications the filter is keeping off the list.
+    `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+    caller can say how many Applications each one is keeping off the list.
     """
     return await applications.page(
         recruiter,
         job_id,
         statuses=application_statuses,
-        qualification_status=qualification_status,
+        qualification_statuses=qualification_statuses,
         cursor=cursor,
         limit=limit,
     )

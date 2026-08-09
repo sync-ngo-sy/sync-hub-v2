@@ -165,6 +165,85 @@ async def test_the_verdict_filter_narrows_the_status_counts_as_well_as_the_list(
     assert counts["new"] == 1
 
 
+async def test_the_application_list_takes_several_verdicts_at_once(
+    recruiter: AsyncClient,
+    third_browser: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_job_screening_on(
+        recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": None}]
+    )
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, skills=[{"name": "Rust", "years_experience": 4.0}]
+    )
+    qualified = await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "stranger")
+    disqualified = await an_accepted_application(third_browser, job["id"])
+
+    both = await job_applications_of(
+        recruiter, job["id"], qualification_status=["qualified", "disqualified"]
+    )
+    neither = await job_applications_of(
+        recruiter, job["id"], qualification_status=["pending", "review_required"]
+    )
+
+    assert {item["id"] for item in both} == {qualified["id"], disqualified["id"]}
+    assert neither == []
+
+
+async def test_the_application_list_counts_every_verdict_whatever_it_is_filtered_to(
+    recruiter: AsyncClient,
+    third_browser: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_job_screening_on(
+        recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": None}]
+    )
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, skills=[{"name": "Rust", "years_experience": 4.0}]
+    )
+    qualified = await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "stranger")
+    await an_accepted_application(third_browser, job["id"])
+
+    page = await list_job_applications(recruiter, job["id"], qualification_status="qualified")
+    assert page.status_code == 200, page.text
+    counts = {one["verdict"]: one["count"] for one in page.json()["verdict_counts"]}
+
+    assert [item["id"] for item in page.json()["items"]] == [qualified["id"]]
+    assert counts == {"pending": 0, "qualified": 1, "disqualified": 1, "review_required": 0}
+
+
+async def test_the_status_filter_narrows_the_verdict_counts_as_well_as_the_list(
+    recruiter: AsyncClient,
+    third_browser: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_job_screening_on(
+        recruiter, skills=[{"name": "Rust", "importance": "required", "minimum_years": None}]
+    )
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, skills=[{"name": "Rust", "years_experience": 4.0}]
+    )
+    await an_accepted_application(other_browser, job["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "stranger")
+    disqualified = await an_accepted_application(third_browser, job["id"])
+    await a_moved_application(recruiter, disqualified["id"], ApplicationStatus.REJECTED)
+
+    page = await list_job_applications(recruiter, job["id"], status="new")
+    assert page.status_code == 200, page.text
+    counts = {one["verdict"]: one["count"] for one in page.json()["verdict_counts"]}
+
+    assert counts["qualified"] == 1
+    assert counts["disqualified"] == 0
+
+
 async def test_the_application_list_pages_newest_first(
     recruiter: AsyncClient,
     third_browser: AsyncClient,
