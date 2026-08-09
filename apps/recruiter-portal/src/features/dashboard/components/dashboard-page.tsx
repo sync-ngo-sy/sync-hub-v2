@@ -30,10 +30,7 @@ export function DashboardPage({
       <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5 dark:border-sidebar-border dark:bg-sidebar">
         <PageHeaderShell
           actions={
-            <Button
-              className="dark:border-white/30 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 dark:hover:text-white dark:focus-visible:border-white/70 dark:focus-visible:ring-white/30"
-              onClick={onCreateJob}
-            >
+            <Button onClick={onCreateJob}>
               <Plus aria-hidden="true" />
               Create job
             </Button>
