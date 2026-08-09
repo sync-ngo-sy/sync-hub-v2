@@ -139,10 +139,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                       <>
                         <span className="text-muted-foreground"> · </span>
                         <span className="inline-flex items-center gap-1 text-primary">
-                          <span
-                            aria-hidden="true"
-                            className="size-1.5 rounded-full bg-current motion-safe:animate-pulse"
-                          />
+                          <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
                           now
                         </span>
                       </>
