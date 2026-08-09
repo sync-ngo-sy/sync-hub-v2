@@ -43,6 +43,12 @@ async def assessments_of(
     return items
 
 
+async def forget_assessment(
+    recruiter: AsyncClient, application_id: str | UUID, assessment_id: str | UUID
+) -> Response:
+    return await recruiter.delete(f"{assessments_url(application_id)}/{assessment_id}")
+
+
 async def stored_assessments(
     session: AsyncSession, application_id: str | UUID
 ) -> list[ApplicationAiMatchAssessment]:

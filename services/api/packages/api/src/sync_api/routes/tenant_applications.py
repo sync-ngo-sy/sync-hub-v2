@@ -39,6 +39,10 @@ NOTE_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
     404: openapi_problem("This tenant has no application, or no note on it, with that id."),
 }
 
+ASSESSMENT_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
+    404: openapi_problem("This tenant has no application, or no assessment of it, with that id."),
+}
+
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
 
 
@@ -185,6 +189,28 @@ async def list_application_match_assessments(
 ) -> MatchAssessmentPage:
     """The whole history, each entry with the model and prompt version that wrote it."""
     return await assessments.page(recruiter, application_id, cursor=cursor, limit=limit)
+
+
+@router.delete(
+    "/{application_id}/assessments/{assessment_id}",
+    operation_id="deleteApplicationMatchAssessment",
+    summary="Throw away one AI match assessment",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**TENANT_ACCESS_REFUSED, **ASSESSMENT_NOT_FOUND},
+)
+async def delete_application_match_assessment(
+    application_id: UUID,
+    assessment_id: UUID,
+    recruiter: ActingRecruiterDep,
+    assessments: MatchAssessmentServiceDep,
+) -> Response:
+    """One reading and no other: the rest of the history keeps the model that wrote each of them.
+
+    Any recruiter of the Tenant may throw one away, and asking again writes a new one rather than
+    bringing this one back.
+    """
+    await assessments.remove(recruiter, application_id, assessment_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
