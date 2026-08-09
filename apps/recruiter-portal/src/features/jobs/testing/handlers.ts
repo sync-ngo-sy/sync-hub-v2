@@ -104,6 +104,14 @@ export function replacesJobCriteria(
   ];
 }
 
+export function refusesCriteriaReplacement(problem: Problem) {
+  return [
+    http.put('/v1/tenants/me/jobs/{job_id}/criteria', ({ response }) =>
+      response(409).json(problem),
+    ),
+  ];
+}
+
 export function refusesJobChange(problem: Problem) {
   return [
     http.patch('/v1/tenants/me/jobs/{job_id}', ({ response }) => response(409).json(problem)),
