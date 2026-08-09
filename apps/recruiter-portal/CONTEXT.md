@@ -146,26 +146,20 @@ _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechan
 
 **Application review**:
 The page one Application is read on, reached from the Triage list or from its own address —
-what the Application says on the left (the Snapshot, the answers, and the Match assessments read
-of them), and on the right the things a Recruiter acts on or against, in the order the work goes
-in: the Pipeline, the CV, the Tags, the Applicant message, the Screening verdict, and the history
-— the CV sits directly under the Pipeline because deciding a move is what a Recruiter opens it
-for. It reads the Snapshot
-rather than the Candidate's live profile, and says so on the page, because the two can differ
-and only one of them is what was reviewed. The Candidate Card on top is the one exception, and
-only for the two facts a Snapshot cannot freeze: a confirmed email lives in the authentication
-store alone, and an avatar is a file that moves rather than a value that was once true.
-Everything else on that card — the name, the headline, the Canonical role, the phone, the years,
-the languages — is the frozen one, so nothing a Recruiter reads beside the verdict can drift out
-from under it. The card says as much on itself rather than leaving the Snapshot panel below to
-say it: it is marked `Snapshot` beside the name and names the two live facts underneath, because
-a card that looks identical to the Candidate view's would otherwise read as today's person. The
-CV's link is short-lived and never stored: the page re-reads the Application instead of holding
-on to it. The CV and the Applicant message carry an icon on their header, and the other panels
-do not: those two are the ones a Recruiter arrives looking for, and an icon is what finds them
-in a column of otherwise identical cards. The page is not a dead end either: a link beside the
-way back to the Job opens the Candidate view, which is the same person read live rather than as
-they were frozen.
+headed by a breadcrumb and a compact identity band rather than a second profile card. The band
+integrates the Candidate's live avatar with the Snapshot name, headline, Canonical role and contact
+details, then gives Location, experience and dates their own compact fact grid. It marks the
+live/frozen distinction with a quiet `Snapshot` badge. The confirmed
+email and avatar are the two live facts because neither can be frozen with an Application. `Open
+CV` and `Live candidate profile` are distinct bordered actions in the header; the CV's link is
+short-lived and never stored, so the page re-reads the Application rather than holding on to it.
+
+The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
+and the six-step progress line in one card. There is no static warning beneath it: move outcomes
+already say the Candidate was notified, while a refused move still explains itself inside the
+Pipeline. Screening and Tags lead the two-column review below; the Snapshot, answers, Match
+assessments and notes follow on the wider reading side, while the Applicant message and history
+follow Tags on the action side.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:
@@ -175,12 +169,11 @@ current status sits above them. A move forward or back is named for its stage, a
 the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
 was told, because every move notifies them and a rejection also emails them. Each carries an icon
 for what it does to the candidate — the stage it moves them to, an arrow back for a move
-backwards — and every label starts at the same point behind its icon and its step, so the moves
-read down as one column rather than as centred lines of different lengths. The moves onward, the
-moves back and the rejection are separated from one another, so a Recruiter never reaches past a
-rejection to find the move they meant. Reject keeps the shape its neighbours have and takes the
-destructive colour on its label alone, because it is the only move a Recruiter would regret
-making by accident and a filled red block would shout louder than the decision deserves.
+backwards — and every label carries its icon and destination step. The compact actions wrap at the
+edge of the card. Only the adjacent move back and the adjacent move onward are primary buttons;
+non-adjacent jumps and rejection live under `More moves`, so the common path reads immediately
+without removing deliberate shortcuts. Reject takes the destructive colour inside that menu,
+because it is the one move a Recruiter would regret making by accident.
 Withdrawing is never offered: that is the Candidate's alone.
 
 **Pipeline step**:
@@ -419,10 +412,12 @@ read only to recover the matched fragment named in the URL; it never reconstruct
 by-id record. This also lets a cold shared link show its evidence. When the directory
 answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
 inventing a profile. The full profile is the shared component that renders the professional
-sections, with the Candidate Card on top,
-the same one the Application review renders its Snapshot through. The notes and the Tags are the
-Application review's own interactions, naming a Candidate instead of an Application; a Tag offered
-here is candidate-scoped, which is the other half of the same vocabulary.
+sections. `CandidateIdentityHeader` is the shared shell above it on both this page and the
+Application review: the same avatar, name, contact and fact-grid treatment, with each page supplying
+its own breadcrumbs, actions and facts. Only the Application version carries the `Snapshot` badge.
+The notes and the Tags are the Application review's own interactions, naming a Candidate instead of
+an Application; a Tag offered here is candidate-scoped, which is the other half of the same
+vocabulary.
 _Avoid_: Candidate detail (a Profile is the Candidate's own; this is the Tenant's reading of it).
 
 **Full profile**:

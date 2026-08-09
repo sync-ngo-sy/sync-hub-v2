@@ -1,10 +1,16 @@
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@sync/ui/components/ui/breadcrumb';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import {
-  CandidateFactsCard,
-  CandidateProfile,
-} from '@/features/profile/components/candidate-profile';
-import { recordProfile } from '@/features/profile/profile';
+import { CandidateIdentityHeader } from '@/features/profile/components/candidate-identity-header';
+import { CandidateProfile } from '@/features/profile/components/candidate-profile';
+import { recordProfile, yearsOfExperience } from '@/features/profile/profile';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
 import type { MatchEvidence } from '../candidate';
@@ -43,41 +49,59 @@ interface CandidateViewPageProps {
 
 export function CandidateViewPage({ record, evidence, filters }: CandidateViewPageProps) {
   const profile = recordProfile(record);
+  const experience =
+    profile.totalExperienceYears === null
+      ? null
+      : `${yearsOfExperience(profile.totalExperienceYears)} experience`;
 
   return (
-    <div className="space-y-(--space-section)">
-      <div className="space-y-4">
-        <Link
-          to="/candidates"
-          search={searchAddress(filters)}
-          className={buttonVariants({ variant: 'link', size: 'sm' })}
-        >
-          Back to candidate search
-        </Link>
-        <CandidateFactsCard profile={profile} />
-      </div>
+    <>
+      <CandidateIdentityHeader
+        profile={profile}
+        breadcrumbs={
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link to="/candidates" search={searchAddress(filters)} />}>
+                  Candidates
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{profile.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        }
+        facts={[
+          { label: 'Location', value: profile.location },
+          { label: 'Experience', value: experience },
+        ]}
+      />
 
-      <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
-        <div className="space-y-(--space-grid)">
-          <CandidateProfile profile={profile} title="Profile" empty={PROFILE_EMPTY}>
-            <MatchEvidenceNote evidence={evidence} />
-          </CandidateProfile>
+      <div className="pt-(--space-section)">
+        <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
+          <div className="space-y-(--space-grid)">
+            <CandidateProfile profile={profile} title="Profile" empty={PROFILE_EMPTY}>
+              <MatchEvidenceNote evidence={evidence} />
+            </CandidateProfile>
 
-          <WidgetBoundary name="Notes">
-            <CandidateNotes candidateId={record.candidate_id} />
-          </WidgetBoundary>
+            <WidgetBoundary name="Notes">
+              <CandidateNotes candidateId={record.candidate_id} />
+            </WidgetBoundary>
+          </div>
+
+          <div className="space-y-(--space-grid)">
+            <WidgetBoundary name="Talent pool">
+              <TalentPoolCard candidateId={record.candidate_id} candidateName={profile.name} />
+            </WidgetBoundary>
+
+            <WidgetBoundary name="Tags">
+              <CandidateTags candidateId={record.candidate_id} />
+            </WidgetBoundary>
+          </div>
         </div>
-
-        <div className="space-y-(--space-grid)">
-          <WidgetBoundary name="Talent pool">
-            <TalentPoolCard candidateId={record.candidate_id} candidateName={profile.name} />
-          </WidgetBoundary>
-
-          <WidgetBoundary name="Tags">
-            <CandidateTags candidateId={record.candidate_id} />
-          </WidgetBoundary>
-        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Undo2,
 } from 'lucide-react';
-import { type PipelineStatus, pipelineState } from './application';
+import { PIPELINE_LADDER, type PipelineStatus, pipelineState } from './application';
 
 export type ApplicationReview = components['schemas']['ApplicationReview'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
@@ -147,6 +147,29 @@ export function pipelineMoveGroups(status: PipelineStatus): PipelineMoveGroup[] 
     direction,
     moves: pipelineMoves(status).filter((move) => move.direction === direction),
   })).filter((group) => group.moves.length > 0);
+}
+
+export interface PipelineMoveChoices {
+  adjacent: PipelineMove[];
+  other: PipelineMove[];
+}
+
+export function pipelineMoveChoices(status: PipelineStatus): PipelineMoveChoices {
+  const moves = pipelineMoves(status);
+  const currentIndex = (PIPELINE_LADDER as readonly PipelineStatus[]).indexOf(status);
+  const previousStatus = currentIndex > 0 ? PIPELINE_LADDER[currentIndex - 1] : null;
+  const nextStatus =
+    currentIndex >= 0 && currentIndex < PIPELINE_LADDER.length - 1
+      ? PIPELINE_LADDER[currentIndex + 1]
+      : null;
+  const previousMove = moves.find((move) => move.target === previousStatus);
+  const nextMove = moves.find((move) => move.target === nextStatus);
+  const adjacent =
+    currentIndex >= 0
+      ? [previousMove, nextMove].filter((move): move is PipelineMove => move !== undefined)
+      : [];
+
+  return { adjacent, other: moves.filter((move) => !adjacent.includes(move)) };
 }
 
 export function pipelineOutcome(status: PipelineStatus): string | null {

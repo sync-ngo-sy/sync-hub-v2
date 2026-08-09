@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { PipelineStatus } from '@/features/applications/application';
 import { AMAL_REVIEW, MOVE_REFUSED } from '@/features/applications/testing/fixtures';
@@ -28,6 +29,24 @@ function headerIcon(name: string) {
   return screen.getByRole('region', { name }).querySelector('[data-slot="card-header"] svg');
 }
 
+function applicationHeader() {
+  const header = screen
+    .getByRole('heading', { level: 1, name: REVIEW.snapshot.full_name })
+    .closest('header');
+  if (!header) throw new Error('The Application heading is not inside its header.');
+  return within(header);
+}
+
+async function chooseMove(user: UserEvent, label: string) {
+  const direct = screen.queryByRole('button', { name: label });
+  if (direct) {
+    await user.click(direct);
+    return;
+  }
+  await user.click(screen.getByRole('button', { name: 'More moves' }));
+  await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }));
+}
+
 describe('the Application review page', () => {
   it('names the candidate, the Job it answers, and where it stands', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
@@ -36,7 +55,7 @@ describe('the Application review page', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
     expect(screen.getByText('Field logistics lead')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Back to Field Coordinator' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Field Coordinator' })).toBeVisible();
 
     const facts = within(screen.getByLabelText('Application facts'));
     expect(facts.getByText(absoluteDateTime(REVIEW.applied_at))).toBeVisible();
@@ -100,18 +119,18 @@ describe('the Application review page', () => {
     );
   });
 
-  it('tops the frozen profile with the card of who applied', async () => {
+  it('integrates the applicant and their avatar into the page header', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
-    expect(card.getByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
-    expect(card.getByText('Logistics Manager')).toBeVisible();
-    expect(card.getByText('Field logistics lead')).toBeVisible();
-    expect(card.getByText('+963 11 555 0101')).toBeVisible();
-    expect(card.getByText('9 years')).toBeVisible();
-    expect(card.getByText('Arabic, English')).toBeVisible();
+    const header = applicationHeader();
+    expect(header.getByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
+    expect(header.getByText('AH')).toBeVisible();
+    expect(header.getByText('Logistics Manager')).toBeVisible();
+    expect(header.getByText('Field logistics lead')).toBeVisible();
+    expect(header.getByText('+963 11 555 0101')).toBeVisible();
+    expect(header.getByText('9 years experience')).toBeVisible();
   });
 
   it('reaches the applicant by the address the account confirmed, which no Snapshot holds', async () => {
@@ -119,8 +138,7 @@ describe('the Application review page', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
-    expect(card.getByText('amal.haddad@example.test')).toBeVisible();
+    expect(applicationHeader().getByText('amal.haddad@example.test')).toBeVisible();
   });
 
   it('leads from the Application to the Candidate as they are today', async () => {
@@ -128,23 +146,17 @@ describe('the Application review page', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const jump = await screen.findByRole('link', { name: 'Open the Candidate view' });
+    const jump = await screen.findByRole('link', { name: 'Live candidate profile' });
     expect(jump).toHaveAttribute('href', `/candidates/${REVIEW.candidate.id}`);
+    expect(jump).toHaveClass('border-input', 'bg-input-background');
   });
 
-  it('says on the card itself that this is the person as they applied', async () => {
+  it('marks the candidate identity as the Application Snapshot', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
-    expect(card.getByText('Snapshot')).toBeVisible();
-    expect(
-      card.getByText(
-        'Who they were when they applied, not who they are today. Only the email and the photo ' +
-          'are read live — everything else here was frozen with the Application.',
-      ),
-    ).toBeVisible();
+    expect(applicationHeader().getByText('Snapshot')).toBeVisible();
   });
 
   it('names the role they applied as, not whatever they call themselves today', async () => {
@@ -158,9 +170,9 @@ describe('the Application review page', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
-    expect(card.getByText('Warehouse Officer')).toBeVisible();
-    expect(card.queryByText('Logistics Manager')).toBeNull();
+    const header = applicationHeader();
+    expect(header.getByText('Warehouse Officer')).toBeVisible();
+    expect(header.queryByText('Logistics Manager')).toBeNull();
   });
 
   it('flags the skills Screening could not read, because a human still should', async () => {
@@ -251,37 +263,37 @@ describe('the Application review page', () => {
 });
 
 describe('the CV and the history on the Application review page', () => {
-  it('links the CV the Application was sent with, by the name the candidate gave it', async () => {
+  it('opens the CV the Application was sent with from the page header', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const cv = within(await screen.findByRole('region', { name: 'CV' }));
-    const link = cv.getByRole('link', { name: 'amal-haddad-cv.pdf' });
+    const link = await screen.findByRole('link', { name: 'Open CV' });
     expect(link).toHaveAttribute('href', REVIEW.cv.download_url);
     expect(link).toHaveAttribute('target', '_blank');
-    expect(
-      cv.getByText('This link is short-lived — reload the page if it stops working.'),
-    ).toBeVisible();
+    expect(link).toHaveClass('border-input', 'bg-input-background');
   });
 
-  it('reads the CV straight after the Pipeline, the order the work goes in', async () => {
+  it('puts the Pipeline before the review widgets', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    await screen.findByRole('region', { name: 'CV' });
+    await screen.findByRole('region', { name: 'Pipeline' });
     const panels = panelOrder();
-    expect(panels.indexOf('CV')).toBe(panels.indexOf('Pipeline') + 1);
+    expect(panels.indexOf('Pipeline')).toBeLessThan(panels.indexOf('Screening'));
+    expect(panels.indexOf('Tags')).toBe(panels.indexOf('Screening') + 1);
+    expect(panels.indexOf('Screening')).toBeLessThan(panels.indexOf('Snapshot'));
   });
 
-  it('marks the CV and the Applicant message headers with an icon apiece', async () => {
+  it('marks the CV action and the Applicant message header with an icon apiece', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    await screen.findByRole('region', { name: 'CV' });
-    expect(headerIcon('CV')).toHaveAttribute('aria-hidden', 'true');
+    expect(
+      (await screen.findByRole('link', { name: 'Open CV' })).querySelector('svg'),
+    ).toHaveAttribute('aria-hidden', 'true');
     expect(headerIcon('Message the applicant')).toHaveAttribute('aria-hidden', 'true');
   });
 
@@ -303,7 +315,7 @@ describe('the CV and the history on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Move to Offer' }));
+    await chooseMove(user, 'Move to Offer');
 
     const history = within(screen.getByRole('region', { name: 'History' }));
     expect(await history.findByText('Moved to Offer')).toBeVisible();
@@ -343,24 +355,23 @@ describe('reaching an Application by its address', () => {
 });
 
 describe('the Pipeline on the Application review page', () => {
-  it('shows where the Application stands and every move the platform allows from there', async () => {
+  it('shows only the adjacent moves and keeps every other allowed move in a menu', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
-    await renderApp(`/applications/${REVIEW.id}`);
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getByText('Shortlisted')).toBeVisible();
-    for (const label of [
-      'Move to Interview',
-      'Move to Offer',
-      'Mark as hired',
-      'Move back to Reviewing',
-      'Move back to New',
-      'Reject',
-    ]) {
-      expect(pipeline.getByRole('button', { name: label })).toBeVisible();
+    expect(pipeline.queryByText(/Stage changes are visible/)).toBeNull();
+    expect(pipeline.getByRole('button', { name: 'Move back to Reviewing' })).toBeVisible();
+    expect(pipeline.getByRole('button', { name: 'Move to Interview' })).toBeVisible();
+    expect(pipeline.getByRole('button', { name: 'More moves' })).toBeVisible();
+    expect(pipeline.getAllByRole('button')).toHaveLength(3);
+
+    await user.click(pipeline.getByRole('button', { name: 'More moves' }));
+    for (const label of ['Move to Offer', 'Mark as hired', 'Move back to New', 'Reject']) {
+      expect(await screen.findByRole('menuitem', { name: new RegExp(label) })).toBeVisible();
     }
-    expect(pipeline.getAllByRole('button')).toHaveLength(6);
   });
 
   it('numbers where the Application stands on the way to hired', async () => {
@@ -382,43 +393,42 @@ describe('the Pipeline on the Application review page', () => {
     expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
   });
 
-  it('numbers each move for the stage it lands on, and the rejection not at all', async () => {
+  it('numbers the adjacent moves for the stages they land on', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
-      '4Move to Interview',
-      '5Move to Offer',
-      '6Mark as hired',
       '2Move back to Reviewing',
-      '1Move back to New',
-      'Reject',
+      '4Move to Interview',
+      'More moves',
     ]);
   });
 
-  it('keeps the moves onward, the moves back and the rejection apart', async () => {
+  it('keeps non-adjacent moves out of the primary action row', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
-    expect(pipeline.getAllByRole('separator')).toHaveLength(2);
+    expect(pipeline.queryByRole('button', { name: 'Move to Offer' })).toBeNull();
+    expect(pipeline.queryByRole('button', { name: 'Reject' })).toBeNull();
   });
 
-  it('draws every move with an icon, and Reject as the destructive one', async () => {
+  it('draws the primary moves with icons and Reject as a destructive menu item', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
-    await renderApp(`/applications/${REVIEW.id}`);
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     for (const move of pipeline.getAllByRole('button')) {
       expect(move.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     }
-    expect(pipeline.getByRole('button', { name: 'Reject' })).toHaveClass('text-destructive');
-    expect(pipeline.getByRole('button', { name: 'Move to Interview' })).not.toHaveClass(
-      'text-destructive',
+    await user.click(pipeline.getByRole('button', { name: 'More moves' }));
+    expect(await screen.findByRole('menuitem', { name: /^Reject/ })).toHaveAttribute(
+      'data-variant',
+      'destructive',
     );
   });
 
@@ -428,7 +438,7 @@ describe('the Pipeline on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Move to Interview' }));
+    await chooseMove(user, 'Move to Interview');
 
     expect(
       await screen.findByText('Moved to Interview — the candidate has been told.'),
@@ -458,7 +468,7 @@ describe('the Pipeline on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await user.click(await screen.findByRole('button', { name: label }));
+    await chooseMove(user, label);
 
     await waitFor(() => expect(asked).toEqual([target]));
   });
@@ -473,11 +483,9 @@ describe('the Pipeline on the Application review page', () => {
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
-    expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
-      '2Reopen for review',
-    ]);
+    expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual(['More moves']);
 
-    await user.click(pipeline.getByRole('button', { name: 'Reopen for review' }));
+    await chooseMove(user, 'Reopen for review');
 
     expect(
       await screen.findByText('Reopened for review — the candidate has been told.'),
@@ -490,14 +498,14 @@ describe('the Pipeline on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Move back to New' }));
+    await chooseMove(user, 'Move back to New');
 
     const pipeline = within(screen.getByRole('region', { name: 'Pipeline' }));
     expect(await pipeline.findByRole('alert')).toHaveTextContent(
       'A shortlisted application cannot become new.',
     );
     expect(pipeline.getByText('Shortlisted')).toBeVisible();
-    expect(pipeline.getByRole('button', { name: 'Move back to New' })).toBeVisible();
+    expect(pipeline.getByRole('button', { name: 'More moves' })).toBeVisible();
   });
 
   it('names the move it could not make when the server refuses without saying why', async () => {
@@ -508,7 +516,7 @@ describe('the Pipeline on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Mark as hired' }));
+    await chooseMove(user, 'Mark as hired');
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent("This Application couldn't move to Hired.");
@@ -520,7 +528,7 @@ describe('the Pipeline on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Move back to New' }));
+    await chooseMove(user, 'Move back to New');
     expect(await screen.findByRole('alert')).toBeVisible();
 
     server.use(...reviewsApplication(REVIEW));

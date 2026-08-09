@@ -122,7 +122,7 @@ function CandidateResult({ match, filters, saved }: CandidateResultProps) {
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-start gap-3">
-          <CandidateAvatar card={card} />
+          <CandidateAvatar fullName={card.fullName} avatarUrl={card.avatarUrl} />
           <div className="min-w-0 space-y-1">
             <p className="text-dense font-medium text-foreground">{card.fullName}</p>
             {meta ? <p className="text-meta text-muted-foreground">{meta}</p> : null}
