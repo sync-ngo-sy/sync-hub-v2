@@ -241,16 +241,24 @@ describe('the Dashboard', () => {
     expect(jobs.getByText(/^Updated/)).toBeVisible();
   });
 
-  it('draws where applicants come from, ranked', async () => {
+  it('lists where applicants come from, ranked by views without chart decoration', async () => {
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
-    const chart = await sources.findByRole('img');
-    expect(chart).toHaveAccessibleName(/LinkedIn post: 342 views/);
-    expect(chart).toHaveAccessibleName(/WhatsApp groups: 281 views/);
-    expect(chart).toHaveAccessibleName(/Direct: 190 views/);
+    const rows = within(await sources.findByRole('list', { name: 'Views by source' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+
+    expect(rows).toEqual([
+      'LinkedIn post342',
+      'WhatsApp groups281',
+      'Direct190',
+      'Facebook page97',
+    ]);
+    expect(sources.queryByText(/%/)).not.toBeInTheDocument();
+    expect(sources.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('says how many channels it is showing you out of how many there are', async () => {
