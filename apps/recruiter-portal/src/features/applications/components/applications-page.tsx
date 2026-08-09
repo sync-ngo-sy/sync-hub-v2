@@ -1,8 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
-import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
@@ -12,7 +10,6 @@ import {
   EVERY_TIME,
   hiddenBehind,
   PIPELINE_STATUSES,
-  pipelineState,
   RECEIVED_RANGES,
   type ReceivedRange,
   receivedSelection,
@@ -28,6 +25,7 @@ import {
   useTenantApplications,
 } from '../hooks/use-tenant-applications';
 import { applicationColumns } from './application-columns';
+import { ApplicationPipelineTabs } from './application-pipeline-tabs';
 import { ChecklistFilter } from './checklist-filter';
 
 const JOB: DataTableColumn<TenantApplication> = {
@@ -89,16 +87,6 @@ export function ApplicationsPage({
     hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts) > 0,
     range !== EVERY_TIME,
   ].filter(Boolean).length;
-  const pipelineTab = pipeline.length === 1 ? pipeline[0] : 'all';
-  const total = PIPELINE_STATUSES.reduce((sum, status) => sum + (statusCounts[status] ?? 0), 0);
-  const pipelineTabs = [
-    { value: 'all', label: 'All', count: total },
-    ...PIPELINE_STATUSES.map((status) => ({
-      value: status,
-      label: pipelineState(status).label,
-      count: statusCounts[status] ?? 0,
-    })),
-  ];
 
   return (
     <>
@@ -108,45 +96,12 @@ export function ApplicationsPage({
           description="Everyone who has applied, across every Job your Tenant is hiring for."
         />
 
-        <div className="-mb-px mt-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Tabs
-            className="w-max min-w-full gap-0"
-            value={pipelineTab}
-            onValueChange={(value) =>
-              onFiltersChange({
-                ...filters,
-                pipeline:
-                  value === 'all' ? undefined : [value as (typeof PIPELINE_STATUSES)[number]],
-              })
-            }
-          >
-            <TabsList
-              variant="line"
-              aria-label="Pipeline"
-              className="min-w-max justify-start gap-7 p-0 group-data-horizontal/tabs:h-10"
-            >
-              {pipelineTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="h-10 flex-none rounded-none px-0 py-0 after:hidden"
-                >
-                  <span
-                    className={cn(
-                      'relative flex h-full items-center after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary after:opacity-0',
-                      pipelineTab === tab.value && 'after:opacity-100',
-                    )}
-                  >
-                    {tab.label}
-                  </span>
-                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground tabular-nums">
-                    {tab.count}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
+        <ApplicationPipelineTabs
+          pipeline={pipelineFilter}
+          counts={statusCounts}
+          className="-mb-px mt-5"
+          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
+        />
       </div>
 
       <div className="space-y-(--space-section) pt-(--space-section)">

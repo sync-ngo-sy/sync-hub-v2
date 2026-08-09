@@ -1,12 +1,10 @@
 import { Mail, Phone } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { CandidateAvatar } from '@/features/candidates/components/candidate-avatar';
+import { FactGrid, type FactGridItem } from '@/features/shell/components/fact-grid';
 import type { FullProfile } from '../profile';
 
-export interface CandidateIdentityFact {
-  label: string;
-  value: ReactNode;
-}
+export type CandidateIdentityFact = FactGridItem;
 
 interface CandidateIdentityHeaderProps {
   profile: FullProfile;
@@ -87,19 +85,9 @@ export function CandidateIdentityHeader({
       </div>
 
       {facts.length > 0 ? (
-        <dl
-          aria-label={factsLabel}
-          className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-px overflow-hidden rounded-lg border border-border bg-border"
-        >
-          {facts.map((fact) => (
-            <div key={fact.label} className="bg-card px-3 py-2.5">
-              <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                {fact.label}
-              </dt>
-              <dd className="mt-1 text-dense text-foreground">{fact.value ?? 'Not provided'}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-5">
+          <FactGrid label={factsLabel} facts={facts} />
+        </div>
       ) : null}
     </header>
   );

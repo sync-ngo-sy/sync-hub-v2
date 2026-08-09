@@ -60,44 +60,31 @@ _Avoid_: Funnel, workflow, stages.
 A Job's Applications, newest first, under the Job's Applications tab — the surface a Recruiter
 works from before opening anything. Each row carries the Screening verdict and the Pipeline
 status side by side, because the two answer different questions and neither substitutes for the
-other. Both are filters, built the same way, and they live in the address bar rather than in the
-page, so a reload keeps them and a pasted link reproduces the list it was copied from. Each one
-counts what it is hiding, and counts it through the other: the numbers beside a verdict describe
-the Job as the status filter leaves it, and the other way round. The list is paged by cursor and
-never sorted in the browser: the API decides the order.
+other. Pipeline tabs are its primary navigation and Screening remains a secondary filter; both
+live in the address bar, so a reload keeps them and a pasted link reproduces the list it was copied
+from. Each one counts through the other: the numbers beside a verdict describe the Job as the
+selected Pipeline tab leaves it, and the other way round. The list is paged by cursor and never
+sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
-**Status filter**:
-The Pipeline filter over a Job's Triage list: a checkbox dropdown over all eight statuses, any
-combination of which narrows the list, with the selection summarised on the trigger and written into
-the address bar as an array. Beside each status is how many Applications stand in it —
-counted by the API over the whole list rather than over the page on screen, and counted before
-the status filter narrows anything, which is what lets the filter hide a status while still
-saying how much it is hiding. An untouched list checks the six active statuses and leaves
-Rejected and Withdrawn off, so terminal Applications stay out of the way without going
-unmentioned; `All statuses` puts every one of them back. The last checked status cannot be
-unchecked, because a list filtered to no status is not a view of anything. Its counts are the Job's
-as the Verdict filter leaves it. The Applications page uses Pipeline tabs instead, because that
-Tenant-wide list treats the Pipeline as its primary way of moving between views.
-_Avoid_: Status dropdown, pipeline picker, stage filter.
-
 **Pipeline tabs**:
-The Applications page's primary navigation through the Pipeline: `All` followed by each of the
-eight statuses, in Pipeline order, in the same header treatment as the Jobs page. Each tab carries
-the API's Tenant-wide count as the Screening and Time-range filters leave it. One status may be
-viewed at a time; `All` includes terminal Applications as well as active ones and leaves Pipeline
-out of the address bar. A selected status is written into the address bar, so Dashboard deep-links
-and shared views land on the same tab and list.
-_Avoid_: Status filter on the Applications page, pipeline picker.
+An Applications list's primary navigation through the Pipeline: `All` followed by each of the
+eight statuses in Pipeline order. Each tab carries the API's count as the other filters leave it;
+the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list. One
+status may be viewed at a time; `All` includes terminal Applications as well as active ones and
+leaves Pipeline out of the address bar. A selected status is written into the address bar, so
+Dashboard deep-links and shared views land on the same tab and list.
+_Avoid_: Status filter, pipeline picker, stage filter.
 
 **Verdict filter**:
 The Screening filter over a list of Applications: a checkbox dropdown over all four verdicts, any
 combination of which narrows the list, summarised on the trigger, written into the address bar as
 an array, each verdict carrying
 how many Applications it decided that way, and the last checked one impossible to uncheck. An
-untouched list checks all four. On the Triage list the counts are the Job's as the Status filter
-leaves it; on the Applications page it sits below the Pipeline tabs as a secondary filter, and its
-counts are the whole Tenant's as the selected tab and the Time-range filter leave it.
+untouched list checks all four. On the Triage list the counts are the Job's as the selected
+Pipeline tab leaves it; on both Applications lists it sits below the Pipeline tabs as a
+right-aligned secondary filter. Its counts are the Job's on a Triage list and the whole Tenant's
+on the Applications page, as the selected tab and any other filters leave them.
 _Avoid_: Qualification filter, screening dropdown, verdict picker.
 
 **Applications page**:

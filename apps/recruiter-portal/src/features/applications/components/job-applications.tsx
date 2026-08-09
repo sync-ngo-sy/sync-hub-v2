@@ -6,14 +6,13 @@ import {
   type ApplicationSummary,
   hiddenBehind,
   PIPELINE_STATUSES,
-  pipelineSelection,
-  pipelineState,
   SCREENING_VERDICTS,
   screeningSelection,
   screeningState,
 } from '../application';
 import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
 import { applicationColumns } from './application-columns';
+import { ApplicationPipelineTabs } from './application-pipeline-tabs';
 import { ChecklistFilter } from './checklist-filter';
 
 const COLUMNS = applicationColumns<ApplicationSummary>();
@@ -33,9 +32,10 @@ export function JobApplications({
   onApplicationOpen,
   onShowLinks,
 }: JobApplicationsProps) {
-  const pipeline = pipelineSelection(filters.pipeline);
+  const pipelineFilter = filters.pipeline?.length === 1 ? filters.pipeline : undefined;
+  const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
   const screening = screeningSelection(filters.screening);
-  const applications = useJobApplications(jobId, { pipeline, screening });
+  const applications = useJobApplications(jobId, { pipeline: pipelineFilter, screening });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const active = [
@@ -44,8 +44,17 @@ export function JobApplications({
   ].filter((hidden) => hidden > 0).length;
 
   return (
-    <div className="space-y-6 pt-4">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+    <div className="space-y-6">
+      <div className="border-b border-border">
+        <ApplicationPipelineTabs
+          pipeline={pipelineFilter}
+          counts={statusCounts}
+          className="-mb-px"
+          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-3">
         <ChecklistFilter
           label="Screening"
           noun="verdicts"
@@ -55,18 +64,8 @@ export function JobApplications({
           }))}
           selected={screening}
           counts={verdictCounts}
+          triggerClassName="h-9 justify-between gap-1.5 border border-input bg-input-background py-2 pr-2.5 pl-3 font-normal transition-colors select-none hover:text-inherit focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:ring-0"
           onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
-        />
-        <ChecklistFilter
-          label="Pipeline"
-          noun="statuses"
-          options={PIPELINE_STATUSES.map((status) => ({
-            value: status,
-            label: pipelineState(status).label,
-          }))}
-          selected={pipeline}
-          counts={statusCounts}
-          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
       </div>
 
@@ -100,8 +99,8 @@ export function JobApplications({
                 variant="outline"
                 onClick={() =>
                   onFiltersChange({
-                    pipeline: [...PIPELINE_STATUSES],
-                    screening: [...SCREENING_VERDICTS],
+                    pipeline: undefined,
+                    screening: undefined,
                   })
                 }
               >

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
 import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
-import { pipelineStatuses, screeningVerdicts } from '@/features/applications/schemas/filters';
+import { pipelineTabSelection, screeningVerdicts } from '@/features/applications/schemas/filters';
 import {
   JobDetailPage,
   type JobDetailTab,
@@ -16,7 +16,7 @@ const jobTab = z.enum(['applications', 'criteria', 'links']);
 export const Route = createFileRoute('/_workspace/jobs_/$jobId')({
   validateSearch: z.object({
     tab: jobTab.optional().catch(undefined),
-    pipeline: pipelineStatuses.optional().catch(undefined),
+    pipeline: pipelineTabSelection.optional().catch(undefined),
     screening: screeningVerdicts.optional().catch(undefined),
   }),
   loader: async ({ context, params }) => {

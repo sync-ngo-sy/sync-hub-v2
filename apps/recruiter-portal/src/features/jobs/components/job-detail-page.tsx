@@ -1,8 +1,16 @@
 import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@sync/ui/components/ui/breadcrumb';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
+import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
@@ -10,6 +18,8 @@ import { toast } from 'sonner';
 import type { ApplicationSummary } from '@/features/applications/application';
 import { JobApplications } from '@/features/applications/components/job-applications';
 import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
+import { FactGrid } from '@/features/shell/components/fact-grid';
+import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { TrackedLinks } from '@/features/tracked-links/components/tracked-links';
 import { problemMessage } from '@/lib/api-problem';
@@ -26,6 +36,12 @@ import {
 import { CriteriaForm } from './criteria-form';
 
 export type JobDetailTab = 'applications' | 'criteria' | 'links';
+
+const JOB_DETAIL_TABS = [
+  { value: 'applications', label: 'Applications' },
+  { value: 'criteria', label: 'Screening criteria' },
+  { value: 'links', label: 'Tracked links' },
+];
 
 interface JobDetailPageProps {
   jobId: string;
@@ -69,18 +85,37 @@ export function JobDetailPage({
   const state = jobState(job.status);
 
   return (
-    <div className="space-y-(--space-section)">
-      <div className="space-y-4">
-        <Link to="/jobs" className={buttonVariants({ variant: 'link', size: 'sm' })}>
-          Back to Jobs
-        </Link>
+    <Tabs
+      className="gap-0"
+      value={tab}
+      onValueChange={(value) => onTabChange(value as JobDetailTab)}
+    >
+      <header className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link to="/jobs" search={{}} />}>Jobs</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{job.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         <PageHeader
+          className="mt-5"
           title={job.title}
           description={job.description}
           actions={jobLifecycleActions(job.status).map((action) => (
             <Button
               key={action.target}
               variant={action.target === 'archived' ? 'outline' : 'default'}
+              className={
+                action.target === 'archived'
+                  ? 'border-input bg-input-background hover:bg-muted'
+                  : undefined
+              }
               disabled={change.isPending}
               onClick={() => void move(action)}
             >
@@ -88,46 +123,46 @@ export function JobDetailPage({
             </Button>
           ))}
         />
-        <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 text-dense">
-          <div>
-            <dt className="sr-only">Status</dt>
-            <dd>
-              <StatusMark label={state.label} tone={state.tone} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-meta text-muted-foreground">Location</dt>
-            <dd>{job.location_name ?? 'Not set'}</dd>
-          </div>
-          <div>
-            <dt className="text-meta text-muted-foreground">Employment type</dt>
-            <dd>{employmentTypeLabel(job.employment_type) ?? 'Not set'}</dd>
-          </div>
-          <div>
-            <dt className="text-meta text-muted-foreground">Work mode</dt>
-            <dd>{workModeLabel(job.work_mode) ?? 'Not set'}</dd>
-          </div>
-          <div>
-            <dt className="text-meta text-muted-foreground">Closing date</dt>
-            <dd>{job.expires_at ? absoluteDateTime(job.expires_at) : 'No closing date'}</dd>
-          </div>
-        </dl>
-      </div>
+        <div className="mt-5">
+          <FactGrid
+            label="Job facts"
+            facts={[
+              { label: 'Status', value: <StatusMark label={state.label} tone={state.tone} /> },
+              { label: 'Location', value: job.location_name ?? 'Not set' },
+              {
+                label: 'Employment type',
+                value: employmentTypeLabel(job.employment_type) ?? 'Not set',
+              },
+              { label: 'Work mode', value: workModeLabel(job.work_mode) ?? 'Not set' },
+              {
+                label: 'Closing date',
+                value: job.expires_at ? (
+                  <time dateTime={job.expires_at}>{absoluteDateTime(job.expires_at)}</time>
+                ) : (
+                  'No closing date'
+                ),
+              },
+            ]}
+          />
+        </div>
 
-      {lifecycleFailure ? (
-        <Alert>
-          <CircleAlert aria-hidden="true" />
-          <AlertTitle>Lifecycle move refused</AlertTitle>
-          <AlertDescription>{lifecycleFailure}</AlertDescription>
-        </Alert>
-      ) : null}
+        <LineTabsList
+          label="Job details"
+          value={tab}
+          tabs={JOB_DETAIL_TABS}
+          className="-mb-px mt-5"
+        />
+      </header>
 
-      <Tabs value={tab} onValueChange={(value) => onTabChange(value as JobDetailTab)}>
-        <TabsList aria-label="Job details">
-          <TabsTrigger value="applications">Applications</TabsTrigger>
-          <TabsTrigger value="criteria">Screening criteria</TabsTrigger>
-          <TabsTrigger value="links">Tracked links</TabsTrigger>
-        </TabsList>
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        {lifecycleFailure ? (
+          <Alert>
+            <CircleAlert aria-hidden="true" />
+            <AlertTitle>Lifecycle move refused</AlertTitle>
+            <AlertDescription>{lifecycleFailure}</AlertDescription>
+          </Alert>
+        ) : null}
+
         <TabsContent value="applications">
           <WidgetBoundary name="Applications">
             <JobApplications
@@ -147,8 +182,8 @@ export function JobDetailPage({
             <TrackedLinks jobId={jobId} />
           </WidgetBoundary>
         </TabsContent>
-      </Tabs>
-    </div>
+      </div>
+    </Tabs>
   );
 }
 
