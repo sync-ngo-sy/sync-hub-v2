@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from sync_api.candidate_directory.ordering import ORDERINGS, DirectoryOrder, cursor_for
+from sync_api.candidate_directory.ordering import ORDERINGS, DirectoryOrder
 from sync_api.candidate_directory.payload import (
     CandidateDirectoryPage,
     CandidateRecord,
@@ -12,7 +12,7 @@ from sync_api.candidate_directory.payload import (
 )
 from sync_api.candidates.profile import CandidateProfileService
 from sync_api.crm.access import reachable_candidate
-from sync_api.pagination import DEFAULT_PAGE_SIZE, ordered_by, page_of
+from sync_api.pagination import DEFAULT_PAGE_SIZE, cursor_for, ordered_by, page_of
 from sync_core import get_logger
 from sync_core.models import (
     Candidate,
@@ -61,17 +61,17 @@ class CandidateDirectoryService:
             await self._db.execute(
                 ordered_by(
                     listed,
-                    key=sorting.column,
+                    ordering=sorting,
                     id_=DIRECTORY_PROFILES.c.candidate_id,
-                    descending=sorting.descending,
-                    read=sorting.read,
                     cursor=cursor,
                     limit=limit,
                 )
             )
         ).all()
         rows, next_cursor = page_of(
-            found, limit=limit, cursor_for=lambda row: cursor_for(order, row)
+            found,
+            limit=limit,
+            cursor_for=lambda row: cursor_for(sorting, row, id_=row.candidate_id),
         )
         logger.info("directory.candidates_listed", order=order.value, results=len(rows))
         return CandidateDirectoryPage(

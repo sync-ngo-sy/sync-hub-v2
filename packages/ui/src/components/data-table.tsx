@@ -26,7 +26,14 @@ import {
   type RowData,
   useReactTable,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, CircleAlert, type LucideIcon, MoreHorizontal } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CircleAlert,
+  type LucideIcon,
+  MoreHorizontal,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
@@ -387,16 +394,23 @@ function sortingOf(
 }
 
 function SortButton({ direction, onSort, children }: Sorting & { children: ReactNode }) {
-  const Arrow = direction === 'ascending' ? ArrowUp : direction === 'descending' ? ArrowDown : null;
+  const Arrow =
+    direction === 'ascending' ? ArrowUp : direction === 'descending' ? ArrowDown : ArrowUpDown;
 
   return (
     <button
       type="button"
       onClick={onSort}
-      className="inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+      className={cn(
+        microLabel,
+        'inline-flex cursor-pointer items-center gap-1 rounded-sm font-semibold outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
+      )}
     >
       {children}
-      {Arrow ? <Arrow aria-hidden="true" className="size-3.5" /> : null}
+      <Arrow
+        aria-hidden="true"
+        className={cn('size-3.5', !direction && 'text-muted-foreground/70')}
+      />
     </button>
   );
 }

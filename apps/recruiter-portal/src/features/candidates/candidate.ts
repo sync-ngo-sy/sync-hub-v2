@@ -59,7 +59,7 @@ export function pooledCard(pooled: PooledCandidate): CandidateCard {
     summary: null,
     locationName: said(pooled.location_name),
     languageNames: [],
-    avatarUrl: null,
+    avatarUrl: said(pooled.avatar_url),
   };
 }
 
