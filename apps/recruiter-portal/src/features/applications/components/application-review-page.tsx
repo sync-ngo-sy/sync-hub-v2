@@ -91,7 +91,15 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink render={<Link to="/applications" search={{}} />}>
+                <BreadcrumbLink
+                  render={
+                    <Link
+                      to="/jobs/$jobId"
+                      params={{ jobId: review.job.id }}
+                      search={{ tab: 'applications' }}
+                    />
+                  }
+                >
                   Applications
                 </BreadcrumbLink>
               </BreadcrumbItem>

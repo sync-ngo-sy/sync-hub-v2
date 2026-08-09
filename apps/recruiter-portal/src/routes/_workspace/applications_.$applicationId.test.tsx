@@ -56,6 +56,10 @@ describe('the Application review page', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
     expect(screen.getByText('Field logistics lead')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Field Coordinator' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Applications' })).toHaveAttribute(
+      'href',
+      `/jobs/${REVIEW.job.id}?tab=applications`,
+    );
 
     const facts = within(screen.getByLabelText('Application facts'));
     expect(facts.getByText(absoluteDateTime(REVIEW.applied_at))).toBeVisible();
