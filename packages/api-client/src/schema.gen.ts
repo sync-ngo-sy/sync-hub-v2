@@ -1263,6 +1263,9 @@ export interface paths {
          *     Each row names the Job it came in for — the Job's own triage list can leave that implied,
          *     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
          *     up, so another tenant's Job matches nothing here instead of refusing.
+         *
+         *     `status_counts` comes back whatever `status` narrows to, so the caller can say how many
+         *     Applications the filter is keeping off the list.
          */
         get: operations["listTenantApplications"];
         put?: never;
@@ -1988,7 +1991,7 @@ export interface components {
         };
         /**
          * ApplicationStatusCount
-         * @description How many of the Job's Applications stand in one Pipeline status.
+         * @description How many Applications of the list being read stand in one Pipeline status.
          */
         ApplicationStatusCount: {
             status: components["schemas"]["ApplicationStatus"];
@@ -4043,6 +4046,16 @@ export interface components {
             database: "ok";
         };
         /**
+         * ReceivedWithin
+         * @description The rolling windows the tenant's Application list can be narrowed to.
+         *
+         *     Rolling rather than calendar, exactly as the Dashboard's counts are: `7d` is the last 168
+         *     hours rather than this week so far. A Tenant has no timezone, so a calendar week would have
+         *     to be computed in one, and the wrong one turns a Recruiter's morning into yesterday.
+         * @enum {string}
+         */
+        ReceivedWithin: "24h" | "7d" | "30d";
+        /**
          * RecruiterRole
          * @enum {string}
          */
@@ -4368,6 +4381,11 @@ export interface components {
              * @description Send back as `cursor` for the following page.
              */
             next_cursor?: string | null;
+            /**
+             * Status Counts
+             * @description Every Pipeline status the platform has, in Pipeline order, each with how many of the tenant's Applications stand in it. Counted before `status` narrows anything, so a filter that hides some of them still says how many it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            status_counts?: components["schemas"]["ApplicationStatusCount"][];
         };
         /**
          * TenantApplicationSummary
@@ -9403,10 +9421,12 @@ export interface operations {
     listTenantApplications: {
         parameters: {
             query?: {
-                /** @description Only Applications at this stage. */
-                status?: components["schemas"]["ApplicationStatus"] | null;
+                /** @description Only Applications in one of these pipeline states. Repeat it to name several; omit it for every state. */
+                status?: components["schemas"]["ApplicationStatus"][] | null;
                 /** @description Only Applications for this Job of the tenant. */
                 job_id?: string | null;
+                /** @description Only Applications received inside this rolling window. Omit it for every Application the tenant has ever had. */
+                received_within?: components["schemas"]["ReceivedWithin"] | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */
                 cursor?: string | null;
                 /** @description How many to return. */

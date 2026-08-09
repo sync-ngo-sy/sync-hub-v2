@@ -1,12 +1,10 @@
-import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusMark } from '@sync/ui/components/status-mark';
+import { DataTable } from '@sync/ui/components/data-table';
 import { Button } from '@sync/ui/components/ui/button';
 import { Inbox } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
-import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import {
   type ApplicationSummary,
-  candidateMeta,
+  hiddenBehind,
   PIPELINE_STATUSES,
   pipelineSelection,
   pipelineState,
@@ -15,60 +13,10 @@ import {
   screeningState,
 } from '../application';
 import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
+import { applicationColumns } from './application-columns';
 import { ChecklistFilter } from './checklist-filter';
 
-const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
-  {
-    accessorKey: 'candidate_name',
-    header: 'Candidate',
-    cell: ({ row }) => {
-      const meta = candidateMeta(row.original);
-      return (
-        <span className="flex min-w-52 flex-col gap-1">
-          <span>{row.original.candidate_name}</span>
-          {meta ? (
-            <span className="text-meta font-normal text-muted-foreground">{meta}</span>
-          ) : null}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: 'qualification_status',
-    header: 'Screening',
-    cell: ({ row }) => {
-      const state = screeningState(row.original.qualification_status);
-      return <StatusMark label={state.label} tone={state.tone} />;
-    },
-  },
-  {
-    accessorKey: 'status',
-    header: 'Pipeline',
-    cell: ({ row }) => {
-      const state = pipelineState(row.original.status);
-      return <StatusMark label={state.label} tone={state.tone} />;
-    },
-  },
-  {
-    accessorKey: 'applied_at',
-    header: 'Received',
-    cell: ({ row }) => (
-      <time dateTime={row.original.applied_at} title={absoluteDateTime(row.original.applied_at)}>
-        {relativeTime(row.original.applied_at)}
-      </time>
-    ),
-  },
-];
-
-function hiddenBehind<TValue extends string>(
-  all: readonly TValue[],
-  selected: TValue[],
-  counts: Partial<Record<TValue, number>>,
-): number {
-  return all
-    .filter((one) => !selected.includes(one))
-    .reduce((sum, one) => sum + (counts[one] ?? 0), 0);
-}
+const COLUMNS = applicationColumns<ApplicationSummary>();
 
 interface JobApplicationsProps {
   jobId: string;

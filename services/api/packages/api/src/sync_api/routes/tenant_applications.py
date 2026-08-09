@@ -11,6 +11,7 @@ from sync_api.applications import (
     MatchAssessment,
     MatchAssessmentPage,
     MovedApplication,
+    ReceivedWithin,
     TenantApplicationPage,
 )
 from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
@@ -58,12 +59,23 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
 async def list_tenant_applications(
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
-    application_status: Annotated[
-        ApplicationStatus | None,
-        Query(alias="status", description="Only Applications at this stage."),
+    application_statuses: Annotated[
+        list[ApplicationStatus] | None,
+        Query(
+            alias="status",
+            description="Only Applications in one of these pipeline states. Repeat it to name "
+            "several; omit it for every state.",
+        ),
     ] = None,
     job_id: Annotated[
         UUID | None, Query(description="Only Applications for this Job of the tenant.")
+    ] = None,
+    received_within: Annotated[
+        ReceivedWithin | None,
+        Query(
+            description="Only Applications received inside this rolling window. Omit it for "
+            "every Application the tenant has ever had."
+        ),
     ] = None,
     cursor: Annotated[
         str | None,
@@ -78,9 +90,17 @@ async def list_tenant_applications(
     Each row names the Job it came in for — the Job's own triage list can leave that implied,
     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
     up, so another tenant's Job matches nothing here instead of refusing.
+
+    `status_counts` comes back whatever `status` narrows to, so the caller can say how many
+    Applications the filter is keeping off the list.
     """
     return await applications.tenant_page(
-        recruiter, status=application_status, job_id=job_id, cursor=cursor, limit=limit
+        recruiter,
+        statuses=application_statuses,
+        job_id=job_id,
+        received_within=received_within,
+        cursor=cursor,
+        limit=limit,
     )
 
 

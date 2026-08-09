@@ -1,7 +1,8 @@
 import type { components } from '@sync/api-client';
 
+export type { TenantApplication } from '@/features/applications/application';
+
 export type TenantStats = components['schemas']['TenantStats'];
-export type TenantApplication = components['schemas']['TenantApplicationSummary'];
 
 export const RECENT_APPLICATIONS = 6;
 

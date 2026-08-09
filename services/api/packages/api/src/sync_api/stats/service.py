@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Final
 
 from sqlalchemy import Select, func, literal, select, true, union_all
@@ -13,6 +12,7 @@ from sync_api.stats.payload import (
     StageCounts,
     TenantStats,
 )
+from sync_api.windows import rolling_since
 from sync_core.models import (
     Application,
     ApplicationStatus,
@@ -111,11 +111,6 @@ def _verdict(status: QualificationStatus) -> str:
     return f"verdict_{status.value}"
 
 
-def _ago(days: float) -> Any:
-    """The database's clock, so every window in one answer is measured from the same instant."""
-    return func.now() - timedelta(days=days)
-
-
 def _counts(tenant_id: UUID) -> Select[Any]:
     """Both tables in one statement, each scanned once.
 
@@ -129,7 +124,9 @@ def _counts(tenant_id: UUID) -> Select[Any]:
     jobs = (
         select(
             func.count().label("jobs_total"),
-            func.count().filter(Job.published_at > _ago(7)).label("jobs_published_last_week"),
+            func.count()
+            .filter(Job.published_at > rolling_since(7))
+            .label("jobs_published_last_week"),
             *(
                 func.count().filter(Job.status == status).label(_job(status))
                 for status in JobStatus
@@ -142,10 +139,17 @@ def _counts(tenant_id: UUID) -> Select[Any]:
     applications = (
         select(
             func.count().label("applications_total"),
-            func.count().filter(Application.applied_at > _ago(1)).label("applications_last_24h"),
-            func.count().filter(Application.applied_at > _ago(7)).label("applications_last_7d"),
             func.count()
-            .filter(Application.applied_at > _ago(14), Application.applied_at <= _ago(7))
+            .filter(Application.applied_at > rolling_since(1))
+            .label("applications_last_24h"),
+            func.count()
+            .filter(Application.applied_at > rolling_since(7))
+            .label("applications_last_7d"),
+            func.count()
+            .filter(
+                Application.applied_at > rolling_since(14),
+                Application.applied_at <= rolling_since(7),
+            )
             .label("applications_previous_7d"),
             *(
                 func.count().filter(Application.status == stage).label(_stage(stage))
