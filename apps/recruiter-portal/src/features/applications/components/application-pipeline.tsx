@@ -16,7 +16,7 @@ interface ApplicationPipelineProps {
 }
 
 function moveVariant(move: PipelineMove, index: number) {
-  if (move.target === 'rejected') return 'destructive';
+  if (move.destructive) return 'destructive';
   return index === 0 ? 'default' : 'outline';
 }
 

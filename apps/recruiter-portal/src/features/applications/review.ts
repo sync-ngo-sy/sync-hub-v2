@@ -22,6 +22,7 @@ export interface PipelineMove {
   label: string;
   success: string;
   icon: LucideIcon;
+  destructive?: true;
 }
 
 const TOLD = 'the candidate has been told.';
@@ -61,6 +62,7 @@ const TO_REJECTED: PipelineMove = {
   label: 'Reject',
   success: 'Rejected — the candidate has been emailed.',
   icon: CircleX,
+  destructive: true,
 };
 
 const BACK_TO_NEW: PipelineMove = {

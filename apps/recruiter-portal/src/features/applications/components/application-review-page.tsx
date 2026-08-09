@@ -71,7 +71,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
             <UserRound aria-hidden="true" />
-            Open the full profile
+            Open the Candidate view
           </Link>
         </div>
         <CandidateFactsCard profile={profile} contextLabel={CARD_MARK} note={CARD_NOTE} />

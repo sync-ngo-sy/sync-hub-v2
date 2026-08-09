@@ -105,8 +105,11 @@ from under it. The card says as much on itself rather than leaving the Snapshot 
 say it: it is marked `Snapshot` beside the name and names the two live facts underneath, because
 a card that looks identical to the Candidate view's would otherwise read as today's person. The
 CV's link is short-lived and never stored: the page re-reads the Application instead of holding
-on to it. The page is not a dead end either: a link beside the way back to the Job opens the
-Candidate view, which is the same person read live rather than as they were frozen.
+on to it. The CV and the Applicant message carry an icon on their header, and the other panels
+do not: those two are the ones a Recruiter arrives looking for, and an icon is what finds them
+in a column of otherwise identical cards. The page is not a dead end either: a link beside the
+way back to the Job opens the Candidate view, which is the same person read live rather than as
+they were frozen.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:

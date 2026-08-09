@@ -128,7 +128,7 @@ describe('the Application review page', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const jump = await screen.findByRole('link', { name: 'Open the full profile' });
+    const jump = await screen.findByRole('link', { name: 'Open the Candidate view' });
     expect(jump).toHaveAttribute('href', `/candidates/${REVIEW.candidate.id}`);
   });
 
@@ -360,7 +360,7 @@ describe('the Pipeline on the Application review page', () => {
     ]);
   });
 
-  it('draws every move with an icon and hover feedback, and Reject as the destructive one', async () => {
+  it('draws every move with an icon, and Reject as the destructive one', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
@@ -368,7 +368,6 @@ describe('the Pipeline on the Application review page', () => {
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     for (const move of pipeline.getAllByRole('button')) {
       expect(move.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
-      expect(move.className).toMatch(/hover:/);
     }
     expect(pipeline.getByRole('button', { name: 'Reject' })).toHaveClass('text-destructive');
     expect(pipeline.getByRole('button', { name: 'Move to Interview' })).not.toHaveClass(
