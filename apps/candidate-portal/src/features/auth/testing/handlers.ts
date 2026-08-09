@@ -31,10 +31,12 @@ export function logsOut() {
   return [http.post('/v1/auth/logout', ({ response }) => response(204).empty())];
 }
 
-export function signsUp(profile: Profile, onRequest?: () => void) {
+type SignUpRequest = components['schemas']['SignUpRequest'];
+
+export function signsUp(profile: Profile, onRequest?: (body: SignUpRequest) => void) {
   return [
-    http.post('/v1/auth/signup', ({ response }) => {
-      onRequest?.();
+    http.post('/v1/auth/signup', async ({ request, response }) => {
+      onRequest?.((await request.json()) as SignUpRequest);
       return response(201).json(profile);
     }),
   ];

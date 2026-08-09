@@ -94,4 +94,20 @@ describe('signing in', () => {
 
     expect(router.state.location.pathname).toBe('/wrong-portal');
   });
+
+  it('lets the recruiter reveal what they typed into the password field', async () => {
+    server.use(...signedOut());
+
+    const { user } = await renderApp('/login');
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text');
+
+    await user.click(screen.getByRole('button', { name: 'Hide password' }));
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+  });
 });

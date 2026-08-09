@@ -9,7 +9,7 @@ the API reads (`SYNC_DATABASE_URL`, `SYNC_SUPABASE_URL`, `SYNC_SUPABASE_SERVICE_
 
 The password is read from the terminal, or from SYNC_PLATFORM_ADMIN_PASSWORD where there is
 no terminal to read it from. It is never a command-line argument: those are in the history
-of every shell that ran them.
+of every shell that ran them. It must meet the same policy the portals enforce.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from httpx import AsyncClient
 
 from sync_api.auth import GoTrue
 from sync_api.auth.gotrue import EmailAlreadyRegisteredError, GoTrueError, WeakPasswordError
+from sync_api.auth.password_policy import POLICY_SUMMARY, PasswordPolicyError
 from sync_api.platform import create_platform_admin
 from sync_core import Database, get_settings
 
@@ -54,7 +55,7 @@ def read_password() -> str:
     if from_environment:
         return from_environment
 
-    password = getpass("Password: ")
+    password = getpass(f"{POLICY_SUMMARY}\nPassword: ")
     if password != getpass("Repeat it: "):
         raise SystemExit("The two passwords differ. Nothing was created.")
     if not password:
@@ -85,6 +86,9 @@ async def run(*, email: str, full_name: str, password: str, skip_confirmation: b
                 admin = await create_platform_admin(
                     session, gotrue, email=email, password=password, full_name=full_name
                 )
+    except PasswordPolicyError as refusal:
+        print(refusal, file=sys.stderr)
+        return 1
     except EmailAlreadyRegisteredError:
         print(f"{email} already has an account.", file=sys.stderr)
         return 1

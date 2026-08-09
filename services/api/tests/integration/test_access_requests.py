@@ -405,7 +405,7 @@ async def test_creating_a_tenant_is_no_longer_something_a_stranger_can_do(
             "tenant_name": "Acme Recruiting",
             "slug": a_slug(),
             "email": "founder@example.com",
-            "password": "correct-horse-battery",
+            "password": "Correct-Horse9",
             "full_name": "Rana Khalil",
         },
     )

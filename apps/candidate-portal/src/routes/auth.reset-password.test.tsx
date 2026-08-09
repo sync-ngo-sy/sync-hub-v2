@@ -13,7 +13,7 @@ import { server } from '@/testing/server';
 
 const RESET_LINK = '/auth/reset-password?token_hash=emailed-token&type=recovery';
 
-async function chooseAPassword(user: UserEvent, password = 'correct-horse-battery') {
+async function chooseAPassword(user: UserEvent, password = 'CorrectHorse9') {
   await user.type(screen.getByLabelText('New password'), password);
   await user.click(screen.getByRole('button', { name: 'Save new password' }));
 }
