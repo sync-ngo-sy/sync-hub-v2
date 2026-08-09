@@ -1195,6 +1195,9 @@ export interface paths {
         /**
          * The Job's Applications, newest first
          * @description The triage list: who applied, where each one stands, and how Screening judged it.
+         *
+         *     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+         *     caller can say how many Applications each one is keeping off the list.
          */
         get: operations["listJobApplications"];
         put?: never;
@@ -1212,10 +1215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * The Job's Tracked links and all of its traffic
-         * @description Every link and its views, plus Direct and total views from the same report.
-         */
+        /** The Job's Tracked links and all of its traffic */
         get: operations["listTrackedJobLinks"];
         put?: never;
         /**
@@ -1987,6 +1987,15 @@ export interface components {
             previous_status: components["schemas"]["ApplicationStatus"];
         };
         /**
+         * ApplicationStatusCount
+         * @description How many of the Job's Applications stand in one Pipeline status.
+         */
+        ApplicationStatusCount: {
+            status: components["schemas"]["ApplicationStatus"];
+            /** Count */
+            count: number;
+        };
+        /**
          * ApplicationSummary
          * @description One Application, as the Job's triage list shows it.
          */
@@ -2032,6 +2041,25 @@ export interface components {
              * @description Send back as `cursor` for the following page.
              */
             next_cursor?: string | null;
+            /**
+             * Status Counts
+             * @description Every Pipeline status the platform has, in Pipeline order, each with how many of the Job's Applications stand in it. Counted before `status` narrows anything, so a filter that hides some of them still says how many it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            status_counts?: components["schemas"]["ApplicationStatusCount"][];
+            /**
+             * Verdict Counts
+             * @description Every Screening verdict the platform has, each with how many of the Job's Applications it decided that way. Counted before `qualification_status` narrows anything, so a filter that hides some of them still says how much it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            verdict_counts?: components["schemas"]["ApplicationVerdictCount"][];
+        };
+        /**
+         * ApplicationVerdictCount
+         * @description How many of the Job's Applications the Screening verdict decided one way.
+         */
+        ApplicationVerdictCount: {
+            verdict: components["schemas"]["QualificationStatus"];
+            /** Count */
+            count: number;
         };
         /**
          * AppliedJob
@@ -2076,10 +2104,7 @@ export interface components {
              */
             email: string;
         };
-        /**
-         * Avatar
-         * @description Where the candidate's stored photo is served from.
-         */
+        /** Avatar */
         Avatar: {
             /**
              * Avatar Url
@@ -2092,7 +2117,7 @@ export interface components {
         Body_replaceMyAvatar: {
             /**
              * File
-             * @description The photo: JPEG, PNG or WebP, up to 5 MB. Square or it is cropped.
+             * @description The photo: JPEG, PNG or WebP. Square or it is cropped.
              */
             file: string;
         };
@@ -4472,10 +4497,7 @@ export interface components {
             /** Slug */
             slug: string;
         };
-        /**
-         * TrackedLink
-         * @description One Tracked link, and how much traffic it has brought.
-         */
+        /** TrackedLink */
         TrackedLink: {
             /**
              * Id
@@ -9077,10 +9099,10 @@ export interface operations {
     listJobApplications: {
         parameters: {
             query?: {
-                /** @description Only Applications in this pipeline state. */
-                status?: components["schemas"]["ApplicationStatus"] | null;
-                /** @description Only Applications the Screening verdict decided this way. */
-                qualification_status?: components["schemas"]["QualificationStatus"] | null;
+                /** @description Only Applications in one of these pipeline states. Repeat it to name several; omit it for every state. */
+                status?: components["schemas"]["ApplicationStatus"][] | null;
+                /** @description Only Applications the Screening verdict decided one of these ways. Repeat it to name several; omit it for every verdict. */
+                qualification_status?: components["schemas"]["QualificationStatus"][] | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */
                 cursor?: string | null;
                 /** @description How many to return. */
