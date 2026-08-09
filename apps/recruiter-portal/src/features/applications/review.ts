@@ -17,12 +17,21 @@ export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
 export type StatusHistoryEntry = components['schemas']['StatusHistoryEntry'];
 type StatusChangeSource = components['schemas']['StatusChangeSource'];
 
+export type MoveDirection = 'onward' | 'back' | 'rejection';
+
 export interface PipelineMove {
   target: PipelineStatus;
   label: string;
   success: string;
   icon: LucideIcon;
-  destructive?: true;
+  direction: MoveDirection;
+}
+
+const DIRECTIONS = ['onward', 'back', 'rejection'] as const satisfies readonly MoveDirection[];
+
+export interface PipelineMoveGroup {
+  direction: MoveDirection;
+  moves: PipelineMove[];
 }
 
 const TOLD = 'the candidate has been told.';
@@ -32,37 +41,42 @@ const TO_REVIEWING: PipelineMove = {
   label: 'Move to Reviewing',
   success: `Moved to Reviewing — ${TOLD}`,
   icon: Eye,
+  direction: 'onward',
 };
 const TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move to Shortlisted',
   success: `Shortlisted — ${TOLD}`,
   icon: ListChecks,
+  direction: 'onward',
 };
 const TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move to Interview',
   success: `Moved to Interview — ${TOLD}`,
   icon: CalendarCheck,
+  direction: 'onward',
 };
 const TO_OFFER: PipelineMove = {
   target: 'offer',
   label: 'Move to Offer',
   success: `Moved to Offer — ${TOLD}`,
   icon: Handshake,
+  direction: 'onward',
 };
 const TO_HIRED: PipelineMove = {
   target: 'hired',
   label: 'Mark as hired',
   success: `Marked as hired — ${TOLD}`,
   icon: CircleCheck,
+  direction: 'onward',
 };
 const TO_REJECTED: PipelineMove = {
   target: 'rejected',
   label: 'Reject',
   success: 'Rejected — the candidate has been emailed.',
   icon: CircleX,
-  destructive: true,
+  direction: 'rejection',
 };
 
 const BACK_TO_NEW: PipelineMove = {
@@ -70,30 +84,35 @@ const BACK_TO_NEW: PipelineMove = {
   label: 'Move back to New',
   success: `Moved back to New — ${TOLD}`,
   icon: Undo2,
+  direction: 'back',
 };
 const BACK_TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move back to Reviewing',
   success: `Moved back to Reviewing — ${TOLD}`,
   icon: Undo2,
+  direction: 'back',
 };
 const BACK_TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move back to Shortlisted',
   success: `Moved back to Shortlisted — ${TOLD}`,
   icon: Undo2,
+  direction: 'back',
 };
 const BACK_TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move back to Interview',
   success: `Moved back to Interview — ${TOLD}`,
   icon: Undo2,
+  direction: 'back',
 };
 const REOPEN: PipelineMove = {
   target: 'reviewing',
   label: 'Reopen for review',
   success: `Reopened for review — ${TOLD}`,
   icon: RotateCcw,
+  direction: 'back',
 };
 
 const PIPELINE_MOVES: Record<PipelineStatus, PipelineMove[]> = {
@@ -121,6 +140,13 @@ const OUTCOME: Partial<Record<PipelineStatus, string>> = {
 
 export function pipelineMoves(status: PipelineStatus): PipelineMove[] {
   return PIPELINE_MOVES[status];
+}
+
+export function pipelineMoveGroups(status: PipelineStatus): PipelineMoveGroup[] {
+  return DIRECTIONS.map((direction) => ({
+    direction,
+    moves: pipelineMoves(status).filter((move) => move.direction === direction),
+  })).filter((group) => group.moves.length > 0);
 }
 
 export function pipelineOutcome(status: PipelineStatus): string | null {

@@ -350,14 +350,61 @@ describe('the Pipeline on the Application review page', () => {
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getByText('Shortlisted')).toBeVisible();
-    expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
+    for (const label of [
       'Move to Interview',
       'Move to Offer',
       'Mark as hired',
-      'Reject',
       'Move back to Reviewing',
       'Move back to New',
+      'Reject',
+    ]) {
+      expect(pipeline.getByRole('button', { name: label })).toBeVisible();
+    }
+    expect(pipeline.getAllByRole('button')).toHaveLength(6);
+  });
+
+  it('numbers where the Application stands on the way to hired', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
+    expect(pipeline.getByText('Step 3 of 6')).toBeVisible();
+  });
+
+  it('leaves a rejected Application unnumbered, because it stands off the way through', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication({ ...REVIEW, status: 'rejected' }));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
+    expect(pipeline.getByText('Rejected')).toBeVisible();
+    expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
+  });
+
+  it('numbers each move for the stage it lands on, and the rejection not at all', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
+    expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
+      '4Move to Interview',
+      '5Move to Offer',
+      '6Mark as hired',
+      '2Move back to Reviewing',
+      '1Move back to New',
+      'Reject',
     ]);
+  });
+
+  it('keeps the moves onward, the moves back and the rejection apart', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
+    expect(pipeline.getAllByRole('separator')).toHaveLength(2);
   });
 
   it('draws every move with an icon, and Reject as the destructive one', async () => {
@@ -427,7 +474,7 @@ describe('the Pipeline on the Application review page', () => {
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
-      'Reopen for review',
+      '2Reopen for review',
     ]);
 
     await user.click(pipeline.getByRole('button', { name: 'Reopen for review' }));

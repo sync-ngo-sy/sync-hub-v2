@@ -119,11 +119,23 @@ current status sits above them. A move forward or back is named for its stage, a
 the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
 was told, because every move notifies them and a rejection also emails them. Each carries an icon
 for what it does to the candidate — the stage it moves them to, an arrow back for a move
-backwards — and every label starts at the same point behind its icon, so the moves read down as
-one column rather than as centred lines of different lengths. Reject keeps the shape its
-neighbours have and takes the destructive colour on its label and its hover alone, because it is
-the only move a Recruiter would regret making by accident and a filled red block would shout
-louder than the decision deserves. Withdrawing is never offered: that is the Candidate's alone.
+backwards — and every label starts at the same point behind its icon and its step, so the moves
+read down as one column rather than as centred lines of different lengths. The moves onward, the
+moves back and the rejection are separated from one another, so a Recruiter never reaches past a
+rejection to find the move they meant. Reject keeps the shape its neighbours have and takes the
+destructive colour on its label alone, because it is the only move a Recruiter would regret
+making by accident and a filled red block would shout louder than the decision deserves.
+Withdrawing is never offered: that is the Candidate's alone.
+
+**Pipeline step**:
+Where a status sits on the way through, counted from New as 1 to Hired as 6 — shown beside the
+current status as "Step _n_ of 6" and on each move for the stage it lands on, so how far a move
+carries the Candidate is readable before it is pressed. Rejected and Withdrawn have no step and
+are never numbered: they are where an Application leaves the way through, not a further place
+along it, and numbering them would claim an order that does not exist. The numbers are marked
+decorative — every move already says its stage in words, so nothing is lost by reading the label
+alone.
+_Avoid_: Stage number, pipeline position, progress percentage.
 _Avoid_: Status change, transition, stage update.
 
 **Refused move**:
