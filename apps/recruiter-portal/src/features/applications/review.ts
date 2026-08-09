@@ -1,4 +1,15 @@
 import type { components } from '@sync/api-client';
+import {
+  CalendarCheck,
+  CircleCheck,
+  CircleX,
+  Eye,
+  Handshake,
+  ListChecks,
+  type LucideIcon,
+  RotateCcw,
+  Undo2,
+} from 'lucide-react';
 import { type PipelineStatus, pipelineState } from './application';
 
 export type ApplicationReview = components['schemas']['ApplicationReview'];
@@ -10,6 +21,7 @@ export interface PipelineMove {
   target: PipelineStatus;
   label: string;
   success: string;
+  icon: LucideIcon;
 }
 
 const TOLD = 'the candidate has been told.';
@@ -18,57 +30,68 @@ const TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move to Reviewing',
   success: `Moved to Reviewing — ${TOLD}`,
+  icon: Eye,
 };
 const TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move to Shortlisted',
   success: `Shortlisted — ${TOLD}`,
+  icon: ListChecks,
 };
 const TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move to Interview',
   success: `Moved to Interview — ${TOLD}`,
+  icon: CalendarCheck,
 };
 const TO_OFFER: PipelineMove = {
   target: 'offer',
   label: 'Move to Offer',
   success: `Moved to Offer — ${TOLD}`,
+  icon: Handshake,
 };
 const TO_HIRED: PipelineMove = {
   target: 'hired',
   label: 'Mark as hired',
   success: `Marked as hired — ${TOLD}`,
+  icon: CircleCheck,
 };
 const TO_REJECTED: PipelineMove = {
   target: 'rejected',
   label: 'Reject',
   success: 'Rejected — the candidate has been emailed.',
+  icon: CircleX,
 };
 
 const BACK_TO_NEW: PipelineMove = {
   target: 'new',
   label: 'Move back to New',
   success: `Moved back to New — ${TOLD}`,
+  icon: Undo2,
 };
 const BACK_TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move back to Reviewing',
   success: `Moved back to Reviewing — ${TOLD}`,
+  icon: Undo2,
 };
 const BACK_TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move back to Shortlisted',
   success: `Moved back to Shortlisted — ${TOLD}`,
+  icon: Undo2,
 };
 const BACK_TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move back to Interview',
   success: `Moved back to Interview — ${TOLD}`,
+  icon: Undo2,
 };
 const REOPEN: PipelineMove = {
   target: 'reviewing',
   label: 'Reopen for review',
   success: `Reopened for review — ${TOLD}`,
+  icon: RotateCcw,
 };
 
 const PIPELINE_MOVES: Record<PipelineStatus, PipelineMove[]> = {

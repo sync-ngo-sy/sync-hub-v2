@@ -15,6 +15,11 @@ interface ApplicationPipelineProps {
   status: PipelineStatus;
 }
 
+function moveVariant(move: PipelineMove, index: number) {
+  if (move.target === 'rejected') return 'destructive';
+  return index === 0 ? 'default' : 'outline';
+}
+
 export function ApplicationPipeline({ applicationId, status }: ApplicationPipelineProps) {
   const moving = useMoveApplication(applicationId);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -63,10 +68,11 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
             {moves.map((move, index) => (
               <Button
                 key={move.label}
-                variant={index === 0 ? 'default' : 'outline'}
+                variant={moveVariant(move, index)}
                 disabled={moving.isPending}
                 onClick={() => void makeMove(move)}
               >
+                <move.icon aria-hidden="true" />
                 {move.label}
               </Button>
             ))}

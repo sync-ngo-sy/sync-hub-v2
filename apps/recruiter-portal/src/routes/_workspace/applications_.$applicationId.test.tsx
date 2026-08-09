@@ -20,6 +20,14 @@ function section(name: string) {
   return within(screen.getByRole('region', { name }));
 }
 
+function panelOrder() {
+  return screen.getAllByRole('region').map((panel) => panel.querySelector('h2')?.textContent);
+}
+
+function headerIcon(name: string) {
+  return screen.getByRole('region', { name }).querySelector('[data-slot="card-header"] svg');
+}
+
 describe('the Application review page', () => {
   it('names the candidate, the Job it answers, and where it stands', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
@@ -113,6 +121,15 @@ describe('the Application review page', () => {
 
     const card = within(await screen.findByRole('article', { name: 'Amal Haddad' }));
     expect(card.getByText('amal.haddad@example.test')).toBeVisible();
+  });
+
+  it('leads from the Application to the Candidate as they are today', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const jump = await screen.findByRole('link', { name: 'Open the full profile' });
+    expect(jump).toHaveAttribute('href', `/candidates/${REVIEW.candidate.id}`);
   });
 
   it('says on the card itself that this is the person as they applied', async () => {
@@ -248,6 +265,26 @@ describe('the CV and the history on the Application review page', () => {
     ).toBeVisible();
   });
 
+  it('reads the CV straight after the Pipeline, the order the work goes in', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    await screen.findByRole('region', { name: 'CV' });
+    const panels = panelOrder();
+    expect(panels.indexOf('CV')).toBe(panels.indexOf('Pipeline') + 1);
+  });
+
+  it('marks the CV and the Applicant message headers with an icon apiece', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    await screen.findByRole('region', { name: 'CV' });
+    expect(headerIcon('CV')).toHaveAttribute('aria-hidden', 'true');
+    expect(headerIcon('Message the applicant')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('tells the whole story of the Application, oldest move first', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
@@ -321,6 +358,22 @@ describe('the Pipeline on the Application review page', () => {
       'Move back to Reviewing',
       'Move back to New',
     ]);
+  });
+
+  it('draws every move with an icon and hover feedback, and Reject as the destructive one', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
+    for (const move of pipeline.getAllByRole('button')) {
+      expect(move.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+      expect(move.className).toMatch(/hover:/);
+    }
+    expect(pipeline.getByRole('button', { name: 'Reject' })).toHaveClass('text-destructive');
+    expect(pipeline.getByRole('button', { name: 'Move to Interview' })).not.toHaveClass(
+      'text-destructive',
+    );
   });
 
   it('moves the Application, says the candidate was told, and re-reads where it stands', async () => {

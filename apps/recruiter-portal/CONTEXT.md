@@ -91,8 +91,10 @@ _Avoid_: Qualification filter, screening dropdown, verdict picker.
 **Application review**:
 The page one Application is read on, reached from the Triage list or from its own address —
 what the Application says on the left (the Snapshot, the answers, and the Match assessments read
-of them), and on the right the things a Recruiter acts on or against: the Pipeline, the Applicant
-message, the Screening verdict, the CV, and the history. It reads the Snapshot
+of them), and on the right the things a Recruiter acts on or against, in the order the work goes
+in: the Pipeline, the CV, the Tags, the Applicant message, the Screening verdict, and the history
+— the CV sits directly under the Pipeline because deciding a move is what a Recruiter opens it
+for. It reads the Snapshot
 rather than the Candidate's live profile, and says so on the page, because the two can differ
 and only one of them is what was reviewed. The Candidate Card on top is the one exception, and
 only for the two facts a Snapshot cannot freeze: a confirmed email lives in the authentication
@@ -103,7 +105,8 @@ from under it. The card says as much on itself rather than leaving the Snapshot 
 say it: it is marked `Snapshot` beside the name and names the two live facts underneath, because
 a card that looks identical to the Candidate view's would otherwise read as today's person. The
 CV's link is short-lived and never stored: the page re-reads the Application instead of holding
-on to it.
+on to it. The page is not a dead end either: a link beside the way back to the Job opens the
+Candidate view, which is the same person read live rather than as they were frozen.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:
@@ -111,8 +114,10 @@ One named action on the Application review, offered only where the platform allo
 where the Application stands — so the buttons on screen are the moves that exist, and the
 current status sits above them. A move forward or back is named for its stage, a decision for
 the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
-was told, because every move notifies them and a rejection also emails them. Withdrawing is
-never offered: that is the Candidate's alone.
+was told, because every move notifies them and a rejection also emails them. Each carries an icon
+for what it does to the candidate — the stage it moves them to, an arrow back for a move
+backwards — and Reject is drawn as the destructive one, because it is the only move a Recruiter
+would regret making by accident. Withdrawing is never offered: that is the Candidate's alone.
 _Avoid_: Status change, transition, stage update.
 
 **Refused move**:
