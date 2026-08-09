@@ -131,8 +131,10 @@ _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechan
 **Application review**:
 The page one Application is read on, reached from the Triage list or from its own address —
 what the Application says on the left (the Snapshot, the answers, and the Match assessments read
-of them), and on the right the things a Recruiter acts on or against: the Pipeline, the Applicant
-message, the Screening verdict, the CV, and the history. It reads the Snapshot
+of them), and on the right the things a Recruiter acts on or against, in the order the work goes
+in: the Pipeline, the CV, the Tags, the Applicant message, the Screening verdict, and the history
+— the CV sits directly under the Pipeline because deciding a move is what a Recruiter opens it
+for. It reads the Snapshot
 rather than the Candidate's live profile, and says so on the page, because the two can differ
 and only one of them is what was reviewed. The Candidate Card on top is the one exception, and
 only for the two facts a Snapshot cannot freeze: a confirmed email lives in the authentication
@@ -143,7 +145,11 @@ from under it. The card says as much on itself rather than leaving the Snapshot 
 say it: it is marked `Snapshot` beside the name and names the two live facts underneath, because
 a card that looks identical to the Candidate view's would otherwise read as today's person. The
 CV's link is short-lived and never stored: the page re-reads the Application instead of holding
-on to it.
+on to it. The CV and the Applicant message carry an icon on their header, and the other panels
+do not: those two are the ones a Recruiter arrives looking for, and an icon is what finds them
+in a column of otherwise identical cards. The page is not a dead end either: a link beside the
+way back to the Job opens the Candidate view, which is the same person read live rather than as
+they were frozen.
 _Avoid_: Application detail, candidate page, applicant profile.
 
 **Pipeline move**:
@@ -151,8 +157,27 @@ One named action on the Application review, offered only where the platform allo
 where the Application stands — so the buttons on screen are the moves that exist, and the
 current status sits above them. A move forward or back is named for its stage, a decision for
 the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
-was told, because every move notifies them and a rejection also emails them. Withdrawing is
-never offered: that is the Candidate's alone.
+was told, because every move notifies them and a rejection also emails them. Each carries an icon
+for what it does to the candidate — the stage it moves them to, an arrow back for a move
+backwards — and every label starts at the same point behind its icon and its step, so the moves
+read down as one column rather than as centred lines of different lengths. The moves onward, the
+moves back and the rejection are separated from one another, so a Recruiter never reaches past a
+rejection to find the move they meant. Reject keeps the shape its neighbours have and takes the
+destructive colour on its label alone, because it is the only move a Recruiter would regret
+making by accident and a filled red block would shout louder than the decision deserves.
+Withdrawing is never offered: that is the Candidate's alone.
+
+**Pipeline step**:
+Where a status sits on the way through, counted from New as 1 to Hired as 6 — shown beside the
+current status as "Step _n_ of 6" and on each move for the stage it lands on, so how far a move
+carries the Candidate is readable before it is pressed. Rejected and Withdrawn have no step and
+are never numbered: they are where an Application leaves the way through, not a further place
+along it, and numbering them would claim an order that does not exist. A step on a move is drawn
+in that button's own colour, dimmed, rather than in a fixed grey: the moves are not all on the
+same background, and a grey that reads as secondary on a pale button disappears on a solid one.
+The numbers are marked decorative — every move already says its stage in words, so nothing is
+lost by reading the label alone.
+_Avoid_: Stage number, pipeline position, progress percentage.
 _Avoid_: Status change, transition, stage update.
 
 **Refused move**:
@@ -238,6 +263,19 @@ applications the Job has drawn, side by side, because reach and conversion are o
 anything read against each other. Views are all views, whatever brought them — the Tracked links
 tab is where they are broken down by Source.
 _Avoid_: Postings list, vacancies page.
+
+**Job wizard**:
+The Workspace destination where a Job is written, a page of its own rather than a dialog, walked in
+three steps: Details, Screening, Review. The step lives in the URL like every other view here, so a
+reload lands where the Recruiter was. Nothing reaches the backend until the Review step's Publish or
+Save as draft, so a wizard walked away from leaves no half-made Job behind; what was typed is held
+in the browser instead and comes back after a refresh, whether or not it is finished enough to be
+valid. A Recruiter cannot stand on a step whose earlier steps are unfinished — asking for one, by
+button or by link, lands on the first step still wanting an answer. Screening criteria and
+application questions are entered here, not afterwards, and are saved by the same press that
+creates the Job; the Tracked links tab stays a post-creation surface, since a link needs a Job to
+point at.
+_Avoid_: Create-job modal, new-job form, job builder.
 
 **Tracked links tab**:
 The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,

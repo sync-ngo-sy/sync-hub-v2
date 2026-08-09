@@ -56,6 +56,17 @@ export const ACTIVE_PIPELINE_STATUSES = [
   'hired',
 ] as const satisfies readonly PipelineStatus[];
 
+export const PIPELINE_LADDER = [
+  'new',
+  'reviewing',
+  'shortlisted',
+  'interview',
+  'offer',
+  'hired',
+] as const satisfies readonly PipelineStatus[];
+
+export const PIPELINE_STEPS = PIPELINE_LADDER.length;
+
 export const SCREENING_VERDICTS = [
   'pending',
   'qualified',
@@ -65,6 +76,11 @@ export const SCREENING_VERDICTS = [
 
 export function pipelineState(status: PipelineStatus): PipelineState {
   return PIPELINE_STATE[status];
+}
+
+export function pipelineStep(status: PipelineStatus): number | null {
+  const place = (PIPELINE_LADDER as readonly PipelineStatus[]).indexOf(status);
+  return place === -1 ? null : place + 1;
 }
 
 export function pipelineSelection(chosen: PipelineStatus[] | undefined): PipelineStatus[] {

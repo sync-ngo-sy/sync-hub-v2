@@ -384,7 +384,7 @@ describe('the Dashboard', () => {
     expect(screen.queryByRole('status', { name: 'Loading the counts' })).not.toBeInTheDocument();
   });
 
-  it('writes a new Job without leaving the Dashboard', async () => {
+  it('sends a recruiter writing a new Job to the full-page wizard', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...servesStats(NOTHING_YET),
@@ -392,10 +392,11 @@ describe('the Dashboard', () => {
       ...listsJobs([]),
     );
 
-    const { user } = await renderApp('/dashboard');
+    const { router, user } = await renderApp('/dashboard');
     await user.click(screen.getByRole('button', { name: 'Create job' }));
 
-    expect(await screen.findByRole('heading', { name: 'Create a Job' })).toBeVisible();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/jobs/new'));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create a Job' })).toBeVisible();
     expect(screen.getByLabelText('Title')).toBeVisible();
   });
 });
