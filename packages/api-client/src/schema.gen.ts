@@ -1257,15 +1257,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The tenant's Applications, newest first
-         * @description Every Application the tenant has received, across every Job, newest first.
+         * The tenant's Applications, newest first unless another order is asked for
+         * @description Every Application the tenant has received, across every Job. Page with `next_cursor`,
+         *     keeping `sort`.
          *
          *     Each row names the Job it came in for — the Job's own triage list can leave that implied,
          *     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
          *     up, so another tenant's Job matches nothing here instead of refusing.
          *
-         *     `status_counts` comes back whatever `status` narrows to, so the caller can say how many
-         *     Applications the filter is keeping off the list.
+         *     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+         *     caller can say how many Applications each one is keeping off the list.
          */
         get: operations["listTenantApplications"];
         put?: never;
@@ -1952,6 +1953,15 @@ export interface components {
             /** Projects */
             projects?: components["schemas"]["ProfileProject"][];
         };
+        /**
+         * ApplicationSort
+         * @description The orders the tenant's Application list can be read in.
+         *
+         *     Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
+         *     spanning Jobs has no number of its own to be busiest by.
+         * @enum {string}
+         */
+        ApplicationSort: "newest" | "oldest";
         /**
          * ApplicationStatus
          * @enum {string}
@@ -4371,7 +4381,7 @@ export interface components {
         };
         /**
          * TenantApplicationPage
-         * @description One page of the tenant's Applications, newest first across every Job.
+         * @description One page of the tenant's Applications, in the order that was asked for, across every Job.
          */
         TenantApplicationPage: {
             /** Items */
@@ -4386,6 +4396,11 @@ export interface components {
              * @description Every Pipeline status the platform has, in Pipeline order, each with how many of the tenant's Applications stand in it. Counted before `status` narrows anything, so a filter that hides some of them still says how many it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
              */
             status_counts?: components["schemas"]["ApplicationStatusCount"][];
+            /**
+             * Verdict Counts
+             * @description Every Screening verdict the platform has, each with how many of the tenant's Applications it decided that way. Counted before `qualification_status` narrows anything, so a filter that hides some of them still says how much it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
+             */
+            verdict_counts?: components["schemas"]["ApplicationVerdictCount"][];
         };
         /**
          * TenantApplicationSummary
@@ -9423,11 +9438,15 @@ export interface operations {
             query?: {
                 /** @description Only Applications in one of these pipeline states. Repeat it to name several; omit it for every state. */
                 status?: components["schemas"]["ApplicationStatus"][] | null;
+                /** @description Only Applications the Screening verdict decided one of these ways. Repeat it to name several; omit it for every verdict. */
+                qualification_status?: components["schemas"]["QualificationStatus"][] | null;
                 /** @description Only Applications for this Job of the tenant. */
                 job_id?: string | null;
                 /** @description Only Applications received inside this rolling window. Omit it for every Application the tenant has ever had. */
                 received_within?: components["schemas"]["ReceivedWithin"] | null;
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description Which end of `applied_at` the list starts at. */
+                sort?: components["schemas"]["ApplicationSort"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
@@ -9465,7 +9484,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or belongs to another `sort`. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -48,6 +48,7 @@ export function applicationColumns<TRow extends ApplicationSummary>(
   const received: DataTableColumn<TRow> = {
     accessorKey: 'applied_at',
     header: 'Received',
+    meta: { sort: { ascending: 'oldest', descending: 'newest' } },
     cell: ({ row }) => (
       <time dateTime={row.original.applied_at} title={absoluteDateTime(row.original.applied_at)}>
         {relativeTime(row.original.applied_at)}

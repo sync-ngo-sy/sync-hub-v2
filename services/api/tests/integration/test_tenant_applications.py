@@ -6,7 +6,7 @@ from uuid import UUID
 from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_core.models import ApplicationStatus
+from sync_core.models import ApplicationStatus, QualificationStatus
 from tests.support.applications import (
     TENANT_APPLICATIONS,
     a_candidate_who_can_apply,
@@ -15,7 +15,7 @@ from tests.support.applications import (
 )
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
-from tests.support.stats import received_days_ago
+from tests.support.stats import decide, received_days_ago
 
 
 async def a_pair_of_applications(
@@ -38,6 +38,25 @@ def counts_of(listed: Response) -> dict[str, int]:
     return {one["status"]: one["count"] for one in listed.json()["status_counts"]}
 
 
+def verdicts_of(listed: Response) -> dict[str, int]:
+    return {one["verdict"]: one["count"] for one in listed.json()["verdict_counts"]}
+
+
+async def a_qualified_and_a_disqualified_one(
+    recruiter: AsyncClient, applicant: AsyncClient, mailbox: Mailbox, session: AsyncSession
+) -> tuple[dict[str, str], dict[str, str]]:
+    """The pair, with the verdicts written directly: how Screening reaches one is its own
+    business, and this list only ever narrows by what it reached."""
+    older, newer = await a_pair_of_applications(recruiter, applicant, mailbox, session)
+    await decide(
+        session, UUID(older["application"]), qualification_status=QualificationStatus.QUALIFIED
+    )
+    await decide(
+        session, UUID(newer["application"]), qualification_status=QualificationStatus.DISQUALIFIED
+    )
+    return older, newer
+
+
 def ids_in(listed: Response) -> list[str]:
     items: list[dict[str, Any]] = listed.json()["items"]
     return [item["id"] for item in items]
@@ -50,6 +69,7 @@ async def test_a_tenant_with_no_applications_lists_none(recruiter: AsyncClient) 
     assert listed.json()["items"] == []
     assert listed.json()["next_cursor"] is None
     assert counts_of(listed) == {status.value: 0 for status in ApplicationStatus}
+    assert verdicts_of(listed) == {verdict.value: 0 for verdict in QualificationStatus}
 
 
 async def test_the_list_is_refused_without_a_session(browser: AsyncClient) -> None:
@@ -206,6 +226,145 @@ async def test_the_window_narrows_the_counts_as_well_as_the_list(
     assert ids_in(listed) == [newer["application"]]
     assert counts_of(listed)["reviewing"] == 1
     assert counts_of(listed)["new"] == 0
+
+
+async def test_the_list_can_be_narrowed_to_one_verdict(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    older, newer = await a_qualified_and_a_disqualified_one(
+        recruiter, other_browser, mailbox, db_session
+    )
+
+    qualified = await recruiter.get(
+        TENANT_APPLICATIONS, params={"qualification_status": "qualified"}
+    )
+    both = await recruiter.get(
+        TENANT_APPLICATIONS, params={"qualification_status": ["qualified", "disqualified"]}
+    )
+    neither = await recruiter.get(
+        TENANT_APPLICATIONS, params={"qualification_status": ["pending", "review_required"]}
+    )
+
+    assert ids_in(qualified) == [older["application"]]
+    assert set(ids_in(both)) == {older["application"], newer["application"]}
+    assert ids_in(neither) == []
+
+
+async def test_the_list_counts_every_verdict_whatever_it_is_narrowed_to(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The count beside a verdict says what the filter is hiding, so it is taken before it hides."""
+    older, _newer = await a_qualified_and_a_disqualified_one(
+        recruiter, other_browser, mailbox, db_session
+    )
+
+    listed = await recruiter.get(TENANT_APPLICATIONS, params={"qualification_status": "qualified"})
+
+    assert ids_in(listed) == [older["application"]]
+    assert verdicts_of(listed)["qualified"] == 1
+    assert verdicts_of(listed)["disqualified"] == 1
+    assert verdicts_of(listed)["review_required"] == 0
+
+
+async def test_the_verdict_filter_narrows_the_stage_counts(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Each filter's counts are narrowed by the other, so each describes the list on screen."""
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    moved = await move_to(recruiter, newer["application"], "reviewing")
+    assert moved.status_code == 200, moved.text
+    await decide(
+        db_session, UUID(older["application"]), qualification_status=QualificationStatus.QUALIFIED
+    )
+    await decide(
+        db_session,
+        UUID(newer["application"]),
+        qualification_status=QualificationStatus.DISQUALIFIED,
+    )
+
+    listed = await recruiter.get(TENANT_APPLICATIONS, params={"qualification_status": "qualified"})
+
+    assert ids_in(listed) == [older["application"]]
+    assert counts_of(listed)["new"] == 1
+    assert counts_of(listed)["reviewing"] == 0
+
+
+async def test_the_stage_filter_narrows_the_verdict_counts(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    moved = await move_to(recruiter, newer["application"], "reviewing")
+    assert moved.status_code == 200, moved.text
+    await decide(
+        db_session, UUID(older["application"]), qualification_status=QualificationStatus.QUALIFIED
+    )
+    await decide(
+        db_session,
+        UUID(newer["application"]),
+        qualification_status=QualificationStatus.DISQUALIFIED,
+    )
+
+    listed = await recruiter.get(TENANT_APPLICATIONS, params={"status": "new"})
+
+    assert ids_in(listed) == [older["application"]]
+    assert verdicts_of(listed)["qualified"] == 1
+    assert verdicts_of(listed)["disqualified"] == 0
+
+
+async def test_a_verdict_the_platform_does_not_offer_is_refused(recruiter: AsyncClient) -> None:
+    assert (
+        await recruiter.get(TENANT_APPLICATIONS, params={"qualification_status": "promising"})
+    ).status_code == 422
+
+
+async def test_the_list_can_be_read_from_the_oldest_end(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+
+    oldest = await recruiter.get(TENANT_APPLICATIONS, params={"sort": "oldest"})
+
+    assert oldest.status_code == 200, oldest.text
+    assert ids_in(oldest) == [older["application"], newer["application"]]
+
+
+async def test_the_oldest_end_pages_from_its_own_cursor(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+
+    first = await recruiter.get(TENANT_APPLICATIONS, params={"limit": 1, "sort": "oldest"})
+    cursor = first.json()["next_cursor"]
+    assert ids_in(first) == [older["application"]]
+    assert cursor is not None
+
+    rest = await recruiter.get(
+        TENANT_APPLICATIONS, params={"limit": 1, "sort": "oldest", "cursor": cursor}
+    )
+    assert ids_in(rest) == [newer["application"]]
+    assert rest.json()["next_cursor"] is None
+
+
+async def test_a_cursor_from_one_order_does_not_resume_the_other(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Following it would serve the first page again from the far end rather than the second."""
+    await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+
+    first = await recruiter.get(TENANT_APPLICATIONS, params={"limit": 1, "sort": "oldest"})
+    cursor = first.json()["next_cursor"]
+
+    wrong = await recruiter.get(
+        TENANT_APPLICATIONS, params={"limit": 1, "sort": "newest", "cursor": cursor}
+    )
+
+    assert wrong.status_code == 422
+
+
+async def test_an_order_the_platform_does_not_offer_is_refused(recruiter: AsyncClient) -> None:
+    assert (
+        await recruiter.get(TENANT_APPLICATIONS, params={"sort": "alphabetically"})
+    ).status_code == 422
 
 
 async def test_a_window_the_platform_does_not_offer_is_refused(recruiter: AsyncClient) -> None:

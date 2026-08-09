@@ -7,6 +7,7 @@ export type ApplicationJob = components['schemas']['ApplicationJob'];
 export type PipelineStatus = components['schemas']['ApplicationStatus'];
 export type ScreeningVerdict = components['schemas']['QualificationStatus'];
 export type ReceivedWithin = components['schemas']['ReceivedWithin'];
+export type ApplicationSort = components['schemas']['ApplicationSort'];
 
 interface MarkState {
   label: string;
@@ -122,6 +123,18 @@ export function receivedSelection(chosen: ReceivedWithin | undefined): ReceivedR
 
 export function receivedWithin(range: ReceivedRange): ReceivedWithin | undefined {
   return range === EVERY_TIME ? undefined : range;
+}
+
+export const APPLICATION_SORTS = ['newest', 'oldest'] as const satisfies readonly ApplicationSort[];
+
+export const DEFAULT_APPLICATION_SORT: ApplicationSort = 'newest';
+
+export function sortSelection(chosen: ApplicationSort | undefined): ApplicationSort {
+  return chosen ?? DEFAULT_APPLICATION_SORT;
+}
+
+export function sortInAddress(sort: ApplicationSort | undefined): ApplicationSort | undefined {
+  return sort === DEFAULT_APPLICATION_SORT ? undefined : sort;
 }
 
 export function hiddenBehind<TValue extends string>(

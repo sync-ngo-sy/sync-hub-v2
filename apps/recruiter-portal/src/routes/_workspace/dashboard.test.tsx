@@ -110,6 +110,35 @@ describe('the Dashboard', () => {
     });
   });
 
+  it('sends Open jobs to the published Jobs the number counted', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Open jobs/ }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published' })).toHaveAttribute('data-active');
+    expect(await screen.findByText('MEAL Officer')).toBeVisible();
+    expect(router.state.location.pathname).toBe('/jobs');
+    expect(router.state.location.search).toEqual({ status: 'published' });
+  });
+
+  it('sends Qualified by screening to the verdict, whatever the Pipeline did next', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Qualified by screening/ }));
+
+    expect(await screen.findByRole('button', { name: /^Screening: / })).toHaveAccessibleName(
+      'Screening: Qualified',
+    );
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(router.state.location.search).toEqual({
+      pipeline: [...PIPELINE_STATUSES],
+      screening: ['qualified'],
+    });
+  });
+
   it('compares this week with the one before it', async () => {
     server.use(...aWorkingDashboard());
 

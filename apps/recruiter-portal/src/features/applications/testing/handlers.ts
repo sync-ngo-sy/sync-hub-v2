@@ -44,6 +44,10 @@ export interface AskedFor {
   qualification_status: string[];
 }
 
+function chosen(named: string[], value: string): boolean {
+  return named.length === 0 || named.includes(value);
+}
+
 function countedByStatus(items: ApplicationSummary[]) {
   return PIPELINE_STATUSES.map((status) => ({
     status,
@@ -64,16 +68,10 @@ export function listsJobApplications(items: ApplicationSummary[], asked?: AskedF
       const statuses = query.getAll('status');
       const verdicts = query.getAll('qualification_status');
       asked?.push({ status: statuses, qualification_status: verdicts });
-      const ofThisVerdict = items.filter((item) =>
-        verdicts.length > 0 ? verdicts.includes(item.qualification_status) : true,
-      );
-      const ofThisStatus = items.filter((item) =>
-        statuses.length > 0 ? statuses.includes(item.status) : true,
-      );
+      const ofThisVerdict = items.filter((item) => chosen(verdicts, item.qualification_status));
+      const ofThisStatus = items.filter((item) => chosen(statuses, item.status));
       return response(200).json({
-        items: ofThisVerdict.filter((item) =>
-          statuses.length > 0 ? statuses.includes(item.status) : true,
-        ),
+        items: ofThisVerdict.filter((item) => chosen(statuses, item.status)),
         next_cursor: null,
         status_counts: countedByStatus(ofThisVerdict),
         verdict_counts: countedByVerdict(ofThisStatus),
@@ -88,7 +86,9 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export interface TenantAskedFor {
   status: string[];
+  qualification_status: string[];
   received_within: string | null;
+  sort: string | null;
 }
 
 function inTheWindow(item: TenantApplication, window: string | null): boolean {
@@ -97,20 +97,39 @@ function inTheWindow(item: TenantApplication, window: string | null): boolean {
   return new Date(item.applied_at).getTime() > Date.now() - WINDOW_DAYS[named] * DAY;
 }
 
+function byReceived(sort: string | null) {
+  const newestFirst = sort !== 'oldest';
+  return (one: TenantApplication, other: TenantApplication) => {
+    const gap = Date.parse(one.applied_at) - Date.parse(other.applied_at);
+    return newestFirst ? -gap : gap;
+  };
+}
+
 export function listsTenantApplications(items: TenantApplication[], asked?: TenantAskedFor[]) {
   return [
     http.get(TENANT_PATH, ({ query, response }) => {
       const statuses = query.getAll('status');
+      const verdicts = query.getAll('qualification_status');
       const window = query.get('received_within');
-      asked?.push({ status: statuses, received_within: window });
+      const sort = query.get('sort');
+      asked?.push({
+        status: statuses,
+        qualification_status: verdicts,
+        received_within: window,
+        sort,
+      });
       const inWindow = items.filter((item) => inTheWindow(item, window));
+      const ofThisStatus = inWindow.filter((item) => chosen(statuses, item.status));
+      const ofThisVerdict = inWindow.filter((item) => chosen(verdicts, item.qualification_status));
       const limit = Number(query.get('limit') ?? inWindow.length);
       return response(200).json({
-        items: inWindow
-          .filter((item) => (statuses.length > 0 ? statuses.includes(item.status) : true))
+        items: ofThisStatus
+          .filter((item) => chosen(verdicts, item.qualification_status))
+          .sort(byReceived(sort))
           .slice(0, limit),
         next_cursor: null,
-        status_counts: countedByStatus(inWindow),
+        status_counts: countedByStatus(ofThisVerdict),
+        verdict_counts: countedByVerdict(ofThisStatus),
       });
     }),
   ];
@@ -125,6 +144,7 @@ export function pagesTenantApplications(pages: TenantApplication[][]) {
         items: pages[index] ?? [],
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
         status_counts: countedByStatus(pages.flat()),
+        verdict_counts: countedByVerdict(pages.flat()),
       });
     }),
   ];

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from sync_api.applications import (
     ApplicationReview,
+    ApplicationSort,
     ApplicationStatusChange,
     MatchAssessment,
     MatchAssessmentPage,
@@ -28,7 +29,7 @@ from sync_api.messaging import OutgoingMessage, QueuedMessage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_assessment_rate_limit
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
-from sync_core.models import ApplicationStatus
+from sync_core.models import ApplicationStatus, QualificationStatus
 
 ROUTER_PREFIX: Final = "/tenants/me/applications"
 
@@ -50,10 +51,10 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
 @router.get(
     "",
     operation_id="listTenantApplications",
-    summary="The tenant's Applications, newest first",
+    summary="The tenant's Applications, newest first unless another order is asked for",
     responses={
         **TENANT_ACCESS_REFUSED,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_tenant_applications(
@@ -67,6 +68,14 @@ async def list_tenant_applications(
             "several; omit it for every state.",
         ),
     ] = None,
+    qualification_statuses: Annotated[
+        list[QualificationStatus] | None,
+        Query(
+            alias="qualification_status",
+            description="Only Applications the Screening verdict decided one of these ways. "
+            "Repeat it to name several; omit it for every verdict.",
+        ),
+    ] = None,
     job_id: Annotated[
         UUID | None, Query(description="Only Applications for this Job of the tenant.")
     ] = None,
@@ -77,28 +86,35 @@ async def list_tenant_applications(
             "every Application the tenant has ever had."
         ),
     ] = None,
+    sort: Annotated[
+        ApplicationSort,
+        Query(description="Which end of `applied_at` the list starts at."),
+    ] = ApplicationSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> TenantApplicationPage:
-    """Every Application the tenant has received, across every Job, newest first.
+    """Every Application the tenant has received, across every Job. Page with `next_cursor`,
+    keeping `sort`.
 
     Each row names the Job it came in for — the Job's own triage list can leave that implied,
     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
     up, so another tenant's Job matches nothing here instead of refusing.
 
-    `status_counts` comes back whatever `status` narrows to, so the caller can say how many
-    Applications the filter is keeping off the list.
+    `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+    caller can say how many Applications each one is keeping off the list.
     """
     return await applications.tenant_page(
         recruiter,
         statuses=application_statuses,
+        qualification_statuses=qualification_statuses,
         job_id=job_id,
         received_within=received_within,
+        sort=sort,
         cursor=cursor,
         limit=limit,
     )

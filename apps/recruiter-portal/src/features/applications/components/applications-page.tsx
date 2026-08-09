@@ -6,6 +6,7 @@ import { Inbox } from 'lucide-react';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
 import { problemMessage } from '@/lib/api-problem';
 import {
+  type ApplicationSort,
   EVERY_TIME,
   hiddenBehind,
   PIPELINE_STATUSES,
@@ -15,6 +16,10 @@ import {
   type ReceivedRange,
   receivedSelection,
   receivedWithin,
+  SCREENING_VERDICTS,
+  screeningSelection,
+  screeningState,
+  sortSelection,
   type TenantApplication,
 } from '../application';
 import {
@@ -66,10 +71,19 @@ export function ApplicationsPage({
   onApplicationOpen,
 }: ApplicationsPageProps) {
   const pipeline = pipelineSelection(filters.pipeline);
+  const screening = screeningSelection(filters.screening);
   const range = receivedSelection(filters.received);
-  const applications = useTenantApplications({ pipeline, received: filters.received });
+  const sort = sortSelection(filters.sort);
+  const applications = useTenantApplications({
+    pipeline,
+    screening,
+    received: filters.received,
+    sort,
+  });
   const statusCounts = applications.data?.statusCounts ?? {};
+  const verdictCounts = applications.data?.verdictCounts ?? {};
   const active = [
+    hiddenBehind(SCREENING_VERDICTS, screening, verdictCounts) > 0,
     hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts) > 0,
     range !== EVERY_TIME,
   ].filter(Boolean).length;
@@ -82,6 +96,17 @@ export function ApplicationsPage({
       />
 
       <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+        <ChecklistFilter
+          label="Screening"
+          noun="verdicts"
+          options={SCREENING_VERDICTS.map((verdict) => ({
+            value: verdict,
+            label: screeningState(verdict).label,
+          }))}
+          selected={screening}
+          counts={verdictCounts}
+          onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
+        />
         <ChecklistFilter
           label="Pipeline"
           noun="statuses"
@@ -111,6 +136,10 @@ export function ApplicationsPage({
         rowLabel={(application) => `${application.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
         isLoading={applications.isPending}
+        sort={{
+          by: sort,
+          onChange: (by) => onFiltersChange({ ...filters, sort: by as ApplicationSort }),
+        }}
         error={
           applications.isError
             ? {
@@ -126,13 +155,18 @@ export function ApplicationsPage({
               ? NOTHING_YET
               : active === 1
                 ? 'No Application matches that filter.'
-                : 'No Application matches both filters.',
+                : 'No Application matches these filters.',
           action:
             active > 0 ? (
               <Button
                 variant="outline"
                 onClick={() =>
-                  onFiltersChange({ pipeline: [...PIPELINE_STATUSES], received: undefined })
+                  onFiltersChange({
+                    ...filters,
+                    pipeline: [...PIPELINE_STATUSES],
+                    screening: [...SCREENING_VERDICTS],
+                    received: undefined,
+                  })
                 }
               >
                 {active === 1 ? 'Clear filter' : 'Clear filters'}

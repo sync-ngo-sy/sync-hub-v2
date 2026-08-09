@@ -195,8 +195,19 @@ RECEIVED_WITHIN_DAYS: Final[dict[ReceivedWithin, int]] = {
 }
 
 
+class ApplicationSort(StrEnum):
+    """The orders the tenant's Application list can be read in.
+
+    Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
+    spanning Jobs has no number of its own to be busiest by.
+    """
+
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
 class TenantApplicationPage(BaseModel):
-    """One page of the tenant's Applications, newest first across every Job."""
+    """One page of the tenant's Applications, in the order that was asked for, across every Job."""
 
     items: list[TenantApplicationSummary]
     next_cursor: str | None = Field(
@@ -208,6 +219,14 @@ class TenantApplicationPage(BaseModel):
         "many of the tenant's Applications stand in it. Counted before `status` narrows "
         "anything, so a filter that hides some of them still says how many it is hiding. The "
         "other filters do narrow it: the counts describe the list the reader is looking at.",
+    )
+    verdict_counts: list[ApplicationVerdictCount] = Field(
+        default_factory=list,
+        description="Every Screening verdict the platform has, each with how many of the "
+        "tenant's Applications it decided that way. Counted before `qualification_status` "
+        "narrows anything, so a filter that hides some of them still says how much it is "
+        "hiding. The other filters do narrow it: the counts describe the list the reader is "
+        "looking at.",
     )
 
 

@@ -25,8 +25,10 @@ export interface StatBandItem {
   render?: useRender.RenderProp;
 }
 
+/* `accent` rather than `muted`, which is a translucent near-black: over the cream card in light
+   theme that reads as a grey smudge, where the tint reads as the cell lighting up. */
 const LINKED_CELL =
-  'outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50';
+  'outline-none transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50';
 
 function Cell({ label, value, trend, render }: StatBandItem) {
   const { color, icon: TrendIcon } = TREND_TONE[trend?.tone ?? 'neutral'];

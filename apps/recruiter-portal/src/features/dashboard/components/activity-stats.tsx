@@ -14,11 +14,20 @@ import type { PanelRead } from '../hooks/use-dashboard';
 
 const SKELETON_LABELS = ['Open jobs', 'Applications this week', 'Awaiting review', 'Qualified'];
 
+const OPEN_JOBS = <Link to="/jobs" search={{ status: 'published' }} />;
+
 const THIS_WEEK = (
   <Link to="/applications" search={{ pipeline: [...PIPELINE_STATUSES], received: '7d' }} />
 );
 
 const AWAITING_REVIEW = <Link to="/applications" search={{ pipeline: ['new'] }} />;
+
+const QUALIFIED_BY_SCREENING = (
+  <Link
+    to="/applications"
+    search={{ pipeline: [...PIPELINE_STATUSES], screening: ['qualified'] }}
+  />
+);
 
 function orDash(value: number | undefined): string {
   return value === undefined ? '—' : String(value);
@@ -50,6 +59,7 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
             label: 'Open jobs',
             value: orDash(counted?.jobs.published),
             trend: counted ? openedThisWeek(counted.jobs.published_last_week) : undefined,
+            render: OPEN_JOBS,
           },
           {
             label: 'Applications this week',
@@ -69,6 +79,7 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
             label: 'Qualified by screening',
             value: orDash(counted?.applications.by_qualification.qualified),
             trend: counted ? passRate(counted.applications.pass_rate) : undefined,
+            render: QUALIFIED_BY_SCREENING,
           },
         ]}
       />

@@ -1,6 +1,11 @@
 import { api } from '@/lib/api';
-import type { PipelineStatus, ReceivedWithin } from '../application';
-import { statusCountsFrom } from './use-job-applications';
+import type {
+  ApplicationSort,
+  PipelineStatus,
+  ReceivedWithin,
+  ScreeningVerdict,
+} from '../application';
+import { statusCountsFrom, verdictCountsFrom } from './use-job-applications';
 
 export const TENANT_APPLICATIONS_PAGE_SIZE = 20;
 
@@ -8,7 +13,9 @@ const PATH = '/v1/tenants/me/applications';
 
 export interface TenantApplicationFilters {
   pipeline?: PipelineStatus[];
+  screening?: ScreeningVerdict[];
   received?: ReceivedWithin;
+  sort?: ApplicationSort;
 }
 
 export function useTenantApplications(filters: TenantApplicationFilters) {
@@ -20,7 +27,9 @@ export function useTenantApplications(filters: TenantApplicationFilters) {
         query: {
           limit: TENANT_APPLICATIONS_PAGE_SIZE,
           status: filters.pipeline,
+          qualification_status: filters.screening,
           received_within: filters.received ?? null,
+          sort: filters.sort,
         },
       },
     },
@@ -30,6 +39,7 @@ export function useTenantApplications(filters: TenantApplicationFilters) {
       select: (data) => ({
         items: data.pages.flatMap((page) => page.items),
         statusCounts: statusCountsFrom(data.pages[0]?.status_counts),
+        verdictCounts: verdictCountsFrom(data.pages[0]?.verdict_counts),
       }),
     },
   );
