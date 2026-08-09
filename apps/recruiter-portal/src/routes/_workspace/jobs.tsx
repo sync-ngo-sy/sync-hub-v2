@@ -11,12 +11,16 @@ const jobStatus = z.enum(JOB_STATUS_VALUES);
 const jobSort = z.enum(JOB_SORT_VALUES);
 
 export const Route = createFileRoute('/_workspace/jobs')({
-  validateSearch: z.object({ status: jobStatus.optional(), sort: jobSort.optional() }),
-  loaderDeps: ({ search }) => ({ status: search.status, sort: search.sort }),
+  validateSearch: z.object({
+    q: z.string().trim().max(200).optional(),
+    status: jobStatus.optional(),
+    sort: jobSort.optional(),
+  }),
+  loaderDeps: ({ search }) => ({ q: search.q, status: search.status, sort: search.sort }),
   loader: ({ context, deps }) =>
     Promise.all([
       context.queryClient
-        .ensureQueryData(jobsFirstPageQuery(deps.status, deps.sort))
+        .ensureQueryData(jobsFirstPageQuery(deps.status, deps.sort, deps.q))
         .catch(() => undefined),
       warmLocations(context.queryClient),
     ]),
@@ -25,14 +29,18 @@ export const Route = createFileRoute('/_workspace/jobs')({
 });
 
 function JobsPage() {
-  const { status, sort } = Route.useSearch();
+  const { q, status, sort } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
   return (
     <WidgetBoundary name="Jobs">
       <JobsFeaturePage
+        q={q}
         status={status}
         sort={sort}
+        onQueryChange={(nextQuery) =>
+          void navigate({ search: (prev) => ({ ...prev, q: nextQuery }), replace: true })
+        }
         onJobOpen={(job) =>
           void navigate({ to: '/jobs/$jobId', params: { jobId: job.id }, search: {} })
         }

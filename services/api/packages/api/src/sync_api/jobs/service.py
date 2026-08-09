@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from sync_api.jobs.access import WITH_LOCATION, location_name, lock_the_criteria, own_job
 from sync_api.jobs.criteria import criteria_of
-from sync_api.jobs.payload import JobPage, JobSort, JobSummary, JobView
+from sync_api.jobs.payload import JobPage, JobSort, JobStatusCount, JobSummary, JobView
 from sync_api.pagination import (
     DEFAULT_PAGE_SIZE,
     Cursor,
@@ -24,6 +24,7 @@ from sync_api.problems import (
     JOB_TRANSITION_PROBLEM_TYPE,
     Problem,
 )
+from sync_api.text import LIKE_ESCAPE, containing
 from sync_api.vocabulary import (
     canonical_skill_ids,
     refuse_unknown_languages,
@@ -93,6 +94,7 @@ class JobService:
         self,
         recruiter: ActingRecruiter,
         *,
+        q: str | None = None,
         status: JobStatus | None = None,
         sort: JobSort = JobSort.NEWEST,
         cursor: str | None = None,
@@ -103,15 +105,27 @@ class JobService:
             .options(*WITH_LOCATION)
             .where(Job.tenant_id == recruiter.tenant.id)
         )
+        written = (q or "").strip()
+        if written:
+            query = query.where(Job.title.ilike(containing(written), escape=LIKE_ESCAPE))
         if status is not None:
             query = query.where(Job.status == status)
 
+        counting = (
+            select(Job.status, func.count())
+            .where(Job.tenant_id == recruiter.tenant.id)
+            .group_by(Job.status)
+        )
         ordered, cursor_for = _ordering(query, sort, cursor, limit)
         found = list((await self._db.execute(ordered)).tuples())
+        counted = dict((await self._db.execute(counting)).tuples().all())
         rows, next_cursor = page_of(found, limit=limit, cursor_for=cursor_for)
         return JobPage(
             items=[_summary(job, applications, views) for job, applications, views in rows],
             next_cursor=next_cursor,
+            status_counts=[
+                JobStatusCount(status=one, count=counted.get(one, 0)) for one in JobStatus
+            ],
         )
 
     async def job(self, recruiter: ActingRecruiter, job_id: UUID) -> JobView:

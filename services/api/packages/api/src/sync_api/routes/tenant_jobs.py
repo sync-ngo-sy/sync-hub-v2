@@ -30,6 +30,7 @@ from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
 from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus
+from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/tenants/me/jobs"
 
@@ -64,6 +65,15 @@ async def create_job(body: NewJob, recruiter: ActingRecruiterDep, jobs: JobServi
 async def list_jobs(
     recruiter: ActingRecruiterDep,
     jobs: JobServiceDep,
+    q: Annotated[
+        str | None,
+        Query(
+            max_length=MAX_LINE_LENGTH,
+            description="Keeps only Jobs whose title contains this, wherever in it and whatever "
+            "the case.",
+            examples=["designer"],
+        ),
+    ] = None,
     job_status: Annotated[
         JobStatus | None,
         Query(alias="status", description="Only Jobs in this state."),
@@ -84,7 +94,7 @@ async def list_jobs(
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
     """Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`."""
-    return await jobs.page(recruiter, status=job_status, sort=sort, cursor=cursor, limit=limit)
+    return await jobs.page(recruiter, q=q, status=job_status, sort=sort, cursor=cursor, limit=limit)
 
 
 @router.get(

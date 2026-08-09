@@ -2855,6 +2855,11 @@ export interface components {
              * @description Send back as `cursor` for the following page.
              */
             next_cursor?: string | null;
+            /**
+             * Status Counts
+             * @description Every Job lifecycle status, each with the Tenant's total in it. These totals are independent of `q`, `status`, sorting and pagination.
+             */
+            status_counts: components["schemas"]["JobStatusCount"][];
         };
         /**
          * JobQuestion
@@ -2934,6 +2939,15 @@ export interface components {
          * @enum {string}
          */
         JobStatus: "draft" | "published" | "closed" | "archived";
+        /**
+         * JobStatusCount
+         * @description How many of the Tenant's Jobs stand in one lifecycle status.
+         */
+        JobStatusCount: {
+            status: components["schemas"]["JobStatus"];
+            /** Count */
+            count: number;
+        };
         /**
          * JobSummary
          * @description One of the tenant's Jobs, as its own list renders it.
@@ -8870,6 +8884,8 @@ export interface operations {
     listJobs: {
         parameters: {
             query?: {
+                /** @description Keeps only Jobs whose title contains this, wherever in it and whatever the case. */
+                q?: string | null;
                 /** @description Only Jobs in this state. */
                 status?: components["schemas"]["JobStatus"] | null;
                 /** @description `newest` and `oldest` order by when the Job was written; `applications` puts the busiest first, newest first among ties. */
