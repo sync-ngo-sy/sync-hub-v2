@@ -82,7 +82,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                 onClick={() => void makeMove(move)}
               >
                 <move.icon aria-hidden="true" />
-                <span aria-hidden="true" className="w-3 text-meta text-muted-foreground">
+                <span aria-hidden="true" className="w-3 text-meta opacity-65">
                   {pipelineStep(move.target)}
                 </span>
                 {move.label}

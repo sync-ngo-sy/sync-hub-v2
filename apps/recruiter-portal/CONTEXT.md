@@ -132,9 +132,11 @@ Where a status sits on the way through, counted from New as 1 to Hired as 6 — 
 current status as "Step _n_ of 6" and on each move for the stage it lands on, so how far a move
 carries the Candidate is readable before it is pressed. Rejected and Withdrawn have no step and
 are never numbered: they are where an Application leaves the way through, not a further place
-along it, and numbering them would claim an order that does not exist. The numbers are marked
-decorative — every move already says its stage in words, so nothing is lost by reading the label
-alone.
+along it, and numbering them would claim an order that does not exist. A step on a move is drawn
+in that button's own colour, dimmed, rather than in a fixed grey: the moves are not all on the
+same background, and a grey that reads as secondary on a pale button disappears on a solid one.
+The numbers are marked decorative — every move already says its stage in words, so nothing is
+lost by reading the label alone.
 _Avoid_: Stage number, pipeline position, progress percentage.
 _Avoid_: Status change, transition, stage update.
 
