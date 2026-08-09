@@ -10,6 +10,7 @@ interface EntryListProps {
   icon: LucideIcon;
   addLabel: string;
   empty: string;
+  variant?: 'default' | 'compact-grid';
   onAdd: () => void;
   onRemove: (index: number) => void;
   children: (index: number) => ReactNode;
@@ -21,10 +22,12 @@ export function EntryList({
   icon,
   addLabel,
   empty,
+  variant = 'default',
   onAdd,
   onRemove,
   children,
 }: EntryListProps) {
+  const compact = variant === 'compact-grid';
   const add = (
     <Button
       type="button"
@@ -42,28 +45,50 @@ export function EntryList({
 
   return (
     <div className="space-y-4">
-      {ids.map((id, index) => (
-        <fieldset
-          key={id}
-          aria-label={label(index)}
-          className="min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-dense font-medium text-foreground">{label(index)}</h3>
+      <div
+        className={
+          compact
+            ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-3'
+            : 'space-y-4'
+        }
+      >
+        {ids.map((id, index) => {
+          const removeButton = (
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size={compact ? 'icon-xs' : 'sm'}
+              className={compact ? 'absolute top-2 right-2' : undefined}
               aria-label={`Remove ${label(index)}`}
               onClick={() => onRemove(index)}
             >
-              <Trash2 data-icon="inline-start" />
-              Remove
+              <Trash2 data-icon={compact ? undefined : 'inline-start'} />
+              {compact ? null : 'Remove'}
             </Button>
-          </div>
-          {children(index)}
-        </fieldset>
-      ))}
+          );
+          return (
+            <fieldset
+              key={id}
+              aria-label={label(index)}
+              className={
+                compact
+                  ? 'relative min-w-0 space-y-3 rounded-lg border border-border p-3'
+                  : 'min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4'
+              }
+            >
+              {compact ? (
+                removeButton
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-dense font-medium text-foreground">{label(index)}</h3>
+                  {removeButton}
+                </div>
+              )}
+              {children(index)}
+            </fieldset>
+          );
+        })}
+      </div>
       {add}
     </div>
   );

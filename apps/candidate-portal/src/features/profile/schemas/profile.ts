@@ -175,6 +175,8 @@ const unmappedSkill = z.object({ value: line('Enter the skill.') });
 const section = <Entry extends z.ZodType>(entry: Entry, plural: string) =>
   z.array(entry).max(MAX_ENTRIES, `List at most ${MAX_ENTRIES} ${plural}.`);
 
+const profileExperiences = section(experience, 'jobs');
+
 function refuseRepeats(
   keys: string[],
   ctx: z.RefinementCtx,
@@ -198,7 +200,7 @@ export const profileSchema = z
     canonical_role_key: optionalLine,
     is_searchable: z.boolean(),
     total_experience_years: z.number(),
-    experiences: section(experience, 'jobs'),
+    experiences: profileExperiences,
     educations: section(education, 'qualifications'),
     skills: section(skill, 'skills'),
     languages: section(language, 'languages'),
@@ -236,6 +238,13 @@ export type ProfileFormValues = z.input<typeof profileSchema>;
 
 export function toProfile(values: ProfileFormValues): CandidateProfile {
   return profileSchema.parse(values);
+}
+
+export function toProfileExperiences(
+  values: ProfileFormValues['experiences'],
+): CandidateProfile['experiences'] | null {
+  const parsed = profileExperiences.safeParse(values);
+  return parsed.success ? parsed.data : null;
 }
 
 type Entry<Name extends keyof ProfileFormValues> = ProfileFormValues[Name] extends (infer Item)[]

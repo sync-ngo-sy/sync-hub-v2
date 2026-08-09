@@ -270,6 +270,14 @@ class CandidateProfile(ProfileClaims):
     )
 
 
+class ExperienceTotalRequest(BaseModel):
+    experiences: list[ProfileExperience] = _section("Jobs to calculate as one work history.")
+
+
+class ExperienceTotal(BaseModel):
+    total_experience_years: int = Field(ge=0)
+
+
 class ProfileDraft(ProfileClaims):
     """A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
 

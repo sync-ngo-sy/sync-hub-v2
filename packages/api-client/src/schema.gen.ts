@@ -480,6 +480,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/candidates/me/profile/experience-total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate total experience without saving */
+        post: operations["calculateMyExperienceTotal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/candidates/me/avatar": {
         parameters: {
             query?: never;
@@ -2659,6 +2676,19 @@ export interface components {
          * @enum {string}
          */
         EmploymentType: "full_time" | "part_time" | "contract" | "temporary" | "internship" | "volunteer";
+        /** ExperienceTotal */
+        ExperienceTotal: {
+            /** Total Experience Years */
+            total_experience_years: number;
+        };
+        /** ExperienceTotalRequest */
+        ExperienceTotalRequest: {
+            /**
+             * Experiences
+             * @description Jobs to calculate as one work history.
+             */
+            experiences?: components["schemas"]["ProfileExperience"][];
+        };
         /**
          * Health
          * @description The process is up and serving.
@@ -6225,6 +6255,66 @@ export interface operations {
                 };
             };
             /** @description A skill is not a Canonical skill, or a language code is not one the platform knows. Both name the offending entries. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    calculateMyExperienceTotal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperienceTotalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceTotal"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
             422: {
                 headers: {
                     [name: string]: unknown;
