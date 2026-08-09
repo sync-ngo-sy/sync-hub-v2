@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
-import { logsOutOf, signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { signedInAs, signedInUntilLogOut, signedOut } from '@/features/auth/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { hasProfile } from '@/features/profile/testing/handlers';
@@ -122,7 +122,7 @@ describe('the account chrome', () => {
   });
 
   it('signs the candidate out, landing on the landing page with an empty cache', async () => {
-    server.use(...logsOutOf(CANDIDATE), ...listsJobs(PUBLIC_JOBS));
+    server.use(...signedInUntilLogOut(CANDIDATE), ...listsJobs(PUBLIC_JOBS));
     const { router, queryClient, user } = await renderApp('/applications');
 
     await user.click(screen.getByRole('button', { name: `Account: ${CANDIDATE.full_name}` }));

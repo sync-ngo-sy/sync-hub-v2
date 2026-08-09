@@ -27,7 +27,11 @@ export function faultsOnSignIn(problem: components['schemas']['ProblemDetail']) 
   return [http.post('/v1/auth/login', ({ response }) => response(500).json(problem))];
 }
 
-export function logsOutOf(profile: Profile) {
+export function faultsOnSession(problem: components['schemas']['ProblemDetail']) {
+  return [http.get('/v1/auth/me', ({ response }) => response(500).json(problem))];
+}
+
+export function signedInUntilLogOut(profile: Profile) {
   let session = true;
   return [
     http.get('/v1/auth/me', ({ response }) =>

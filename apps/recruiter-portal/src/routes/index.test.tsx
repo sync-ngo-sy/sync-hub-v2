@@ -1,10 +1,10 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { faultsOnSession, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { CONTACT_SUBJECT } from '@/features/landing/contact';
 import { HEADLINE_TEXT } from '@/features/landing/headline';
 import { env } from '@/lib/env';
-import { CANDIDATE, RECRUITER } from '@/testing/fixtures';
+import { CANDIDATE, RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -145,5 +145,14 @@ describe('the landing page and a session', () => {
     const { router } = await renderApp('/');
 
     expect(router.state.location.pathname).toBe('/wrong-portal');
+  });
+
+  it('still shows the landing page when the session cannot be read at all', async () => {
+    server.use(...faultsOnSession(SERVER_FAULT));
+
+    const { router } = await renderApp('/');
+
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
   });
 });

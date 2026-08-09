@@ -1,6 +1,6 @@
 # Database
 
-The Postgres schema for the Sync recruitment platform, hosted on Supabase. It holds
+The Postgres schema for the Sync Hub recruitment platform, hosted on Supabase. It holds
 identity, per-tenant recruiting data, candidate profiles, applications, and the
 invariants the database enforces itself (constraints, RLS, trusted RPCs).
 
@@ -32,17 +32,17 @@ inside their own Tenant — and has nothing to do with a Platform admin.
 _Avoid_: Agent, Hiring manager.
 
 **Platform admin**:
-A Profile that operates Sync itself and belongs to no Tenant: the account a Tenant is
+A Profile that operates Sync Hub itself and belongs to no Tenant: the account a Tenant is
 created from, its founding admin invited from, and a Tenant suspended or restored from. The
 Platform Portal serves the account type; the Candidate and Recruiter Portals do not. Created
 out of band by a script run against an environment — never by signing up,
 because the first one has nobody to authorise them. Distinct from a Recruiter whose role is
 `admin`. The only account that may turn an Access request into a Tenant.
-_Avoid_: Superuser, Staff, Sync admin, Operator, Owner.
+_Avoid_: Superuser, Staff, Sync Hub admin, Operator, Owner.
 
 **Access request**:
-A company asking to be let onto Sync — a name, a person and an address, typed by a visitor
-with no account. Sync is sold, not self-served: nobody creates their own Tenant, so this is
+A company asking to be let onto Sync Hub — a name, a person and an address, typed by a visitor
+with no account. Sync Hub is sold, not self-served: nobody creates their own Tenant, so this is
 where every Tenant starts. It is not an account and carries no identity; converting one is
 what creates the Profile. A Platform admin either **converts** it, which opens the Tenant and
 invites the founding admin it named, or **dismisses** it — and either decision takes it off

@@ -7,7 +7,7 @@ export async function bounceSignedIn({
 }: {
   context: { queryClient: QueryClient };
 }): Promise<void> {
-  const profile = await ensureCurrentProfile(context.queryClient);
+  const profile = await ensureCurrentProfile(context.queryClient).catch(() => null);
   if (!profile) return;
   throw profile.account_type === 'recruiter'
     ? redirect({ to: '/dashboard' })
