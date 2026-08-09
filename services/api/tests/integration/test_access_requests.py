@@ -66,7 +66,7 @@ async def test_a_visitor_asks_for_access_and_is_told_it_was_received(
 
 
 async def test_asking_needs_no_account_at_all(browser: AsyncClient) -> None:
-    """The one unauthenticated write on the platform: a company that wants Sync has nobody to
+    """The one unauthenticated write on the platform: a company that wants Sync Hub has nobody to
     sign in as yet, which is the whole point of the queue."""
     asked = await ask_for_access(browser, an_ask())
 

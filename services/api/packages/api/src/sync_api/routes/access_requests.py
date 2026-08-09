@@ -16,15 +16,15 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["access requests"])
 
 
 class AskForAccessRequest(BaseModel):
-    company: Line = Field(description="The company that wants Sync.")
+    company: Line = Field(description="The company that wants Sync Hub.")
     full_name: Line = Field(description="Who is asking.")
-    email: EmailStr = Field(description="Where Sync answers them.")
+    email: EmailStr = Field(description="Where Sync Hub answers them.")
 
 
 @router.post(
     "",
     operation_id="askForAccess",
-    summary="Ask for access to Sync",
+    summary="Ask for access to Sync Hub",
     status_code=status.HTTP_202_ACCEPTED,
     response_class=Response,
     dependencies=[Depends(enforce_access_request_rate_limit)],
@@ -33,7 +33,7 @@ class AskForAccessRequest(BaseModel):
 async def ask_for_access(
     body: AskForAccessRequest, access_requests: AccessRequestServiceDep
 ) -> Response:
-    """Sync is sold, not self-served: this asks a human to open a Tenant, and creates nothing.
+    """Sync Hub is sold, not self-served: this asks a human to open a Tenant, and creates nothing.
 
     Accepted rather than created, and answered with nothing: what a stranger asked for is not
     theirs to read back, and a second ask from the same address revises the first rather than

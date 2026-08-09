@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class AccessRequestRecord:
-    """A company asking to be given Sync, as the Platform admin working the queue sees it."""
+    """A company asking to be given Sync Hub, as the Platform admin working the queue sees it."""
 
     id: UUID
     company: str
@@ -37,7 +37,8 @@ class AccessRequestRecord:
 
 
 class AccessRequestService:
-    """The queue between a company asking for Sync and the Tenant a Platform admin opens for it."""
+    """The queue between a company asking for Sync Hub and the Tenant a Platform admin
+    opens for it."""
 
     def __init__(self, session: AsyncSession, platform: PlatformService) -> None:
         self._db = session

@@ -292,8 +292,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Ask for access to Sync
-         * @description Sync is sold, not self-served: this asks a human to open a Tenant, and creates nothing.
+         * Ask for access to Sync Hub
+         * @description Sync Hub is sold, not self-served: this asks a human to open a Tenant, and creates nothing.
          *
          *     Accepted rather than created, and answered with nothing: what a stranger asked for is not
          *     theirs to read back, and a second ask from the same address revises the first rather than
@@ -379,7 +379,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Companies waiting to be let onto Sync
+         * Companies waiting to be let onto Sync Hub
          * @description The queue, oldest first. A request leaves it the moment it is converted or dismissed.
          */
         get: operations["listAccessRequests"];
@@ -1661,7 +1661,7 @@ export interface components {
         };
         /**
          * AccessRequestView
-         * @description A company waiting to be let onto Sync, exactly as its visitor typed it.
+         * @description A company waiting to be let onto Sync Hub, exactly as its visitor typed it.
          */
         AccessRequestView: {
             /** Id */
@@ -2102,7 +2102,7 @@ export interface components {
         AskForAccessRequest: {
             /**
              * Company
-             * @description The company that wants Sync.
+             * @description The company that wants Sync Hub.
              */
             company: string;
             /**
@@ -2113,7 +2113,7 @@ export interface components {
             /**
              * Email
              * Format: email
-             * @description Where Sync answers them.
+             * @description Where Sync Hub answers them.
              */
             email: string;
         };
@@ -5385,7 +5385,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description That email address already has a Sync account. */
+            /** @description That email address already has a Sync Hub account. */
             409: {
                 headers: {
                     [name: string]: unknown;
