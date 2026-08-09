@@ -119,8 +119,11 @@ current status sits above them. A move forward or back is named for its stage, a
 the decision ("Mark as hired", "Reject"), and each says in its outcome toast that the candidate
 was told, because every move notifies them and a rejection also emails them. Each carries an icon
 for what it does to the candidate — the stage it moves them to, an arrow back for a move
-backwards — and Reject is drawn as the destructive one, because it is the only move a Recruiter
-would regret making by accident. Withdrawing is never offered: that is the Candidate's alone.
+backwards — and every label starts at the same point behind its icon, so the moves read down as
+one column rather than as centred lines of different lengths. Reject keeps the shape its
+neighbours have and takes the destructive colour on its label and its hover alone, because it is
+the only move a Recruiter would regret making by accident and a filled red block would shout
+louder than the decision deserves. Withdrawing is never offered: that is the Candidate's alone.
 _Avoid_: Status change, transition, stage update.
 
 **Refused move**:

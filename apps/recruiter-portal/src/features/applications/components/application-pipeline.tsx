@@ -1,6 +1,7 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
+import { cn } from '@sync/ui/lib/utils';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -15,9 +16,11 @@ interface ApplicationPipelineProps {
   status: PipelineStatus;
 }
 
+const DESTRUCTIVE_MOVE =
+  'text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive';
+
 function moveVariant(move: PipelineMove, index: number) {
-  if (move.destructive) return 'destructive';
-  return index === 0 ? 'default' : 'outline';
+  return index === 0 && !move.destructive ? 'default' : 'outline';
 }
 
 export function ApplicationPipeline({ applicationId, status }: ApplicationPipelineProps) {
@@ -69,6 +72,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
               <Button
                 key={move.label}
                 variant={moveVariant(move, index)}
+                className={cn('justify-start', move.destructive && DESTRUCTIVE_MOVE)}
                 disabled={moving.isPending}
                 onClick={() => void makeMove(move)}
               >
