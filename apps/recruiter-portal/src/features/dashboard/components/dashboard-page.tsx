@@ -27,19 +27,22 @@ export function DashboardPage({
 
   return (
     <>
-      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5">
+      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5 dark:border-sidebar-border dark:bg-sidebar">
         <PageHeaderShell
           actions={
-            <Button onClick={onCreateJob}>
+            <Button
+              className="dark:border-white/30 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 dark:hover:text-white dark:focus-visible:border-white/70 dark:focus-visible:ring-white/30"
+              onClick={onCreateJob}
+            >
               <Plus aria-hidden="true" />
               Create job
             </Button>
           }
         >
-          <h1 className="font-greeting text-page-title text-foreground">
+          <h1 className="font-greeting text-page-title text-foreground dark:text-white">
             {dashboardGreeting(recruiterName, now)}
           </h1>
-          <p className="flex flex-wrap items-center gap-x-2 text-dense text-muted-foreground">
+          <p className="flex flex-wrap items-center gap-x-2 text-dense text-muted-foreground dark:text-white/75">
             {tenantName ? (
               <>
                 <span>{tenantName}</span>
