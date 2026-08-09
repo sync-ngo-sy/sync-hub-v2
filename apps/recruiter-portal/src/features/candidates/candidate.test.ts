@@ -28,8 +28,12 @@ const MATCH: MatchedCandidate = {
 const POOLED: PooledCandidate = {
   candidate_id: '00000000-0000-4000-8000-000000000031',
   full_name: 'Amina Haddad',
+  avatar_url: 'https://cdn.example.test/amina.webp',
   headline: 'Backend engineer, 8 years',
   location_name: 'Aleppo',
+  canonical_role_name: 'Backend Engineer',
+  total_experience_years: 8,
+  tags: [],
   added_at: '2026-07-30T09:00:00Z',
 };
 
@@ -67,7 +71,7 @@ describe('the card a search hit hands the Candidate view', () => {
 });
 
 describe('the card a talent-pool row hands the Candidate view', () => {
-  it('carries the three things the pool lists, and claims nothing else', () => {
+  it('carries what the pool lists, and claims nothing else', () => {
     expect(pooledCard(POOLED)).toEqual({
       id: '00000000-0000-4000-8000-000000000031',
       fullName: 'Amina Haddad',
@@ -75,7 +79,7 @@ describe('the card a talent-pool row hands the Candidate view', () => {
       summary: null,
       locationName: 'Aleppo',
       languageNames: [],
-      avatarUrl: null,
+      avatarUrl: 'https://cdn.example.test/amina.webp',
     });
   });
 });

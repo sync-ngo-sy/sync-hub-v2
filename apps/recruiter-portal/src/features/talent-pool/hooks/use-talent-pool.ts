@@ -1,6 +1,13 @@
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, client } from '@/lib/api';
-import { POOL_PAGE_SIZE, type PooledCandidate, type PoolPage, readWholePool } from '../pool';
+import {
+  POOL_PAGE_SIZE,
+  type PooledCandidate,
+  type PoolPage,
+  type PoolReading,
+  poolQuery,
+  readWholePool,
+} from '../pool';
 
 export const POOL_PATH = '/v1/tenants/me/talent-pool';
 export const POOL_ENTRY_PATH = '/v1/tenants/me/talent-pool/{candidate_id}';
@@ -23,20 +30,23 @@ export function warmTalentPool(queryClient: QueryClient): Promise<PooledCandidat
   return queryClient.ensureQueryData(talentPoolQuery).catch(() => []);
 }
 
-function savedParams(cursor?: string | null) {
-  return { params: { query: { limit: SAVED_PAGE_SIZE, cursor } } };
+function savedParams(reading: PoolReading, cursor?: string | null) {
+  return { params: { query: { ...poolQuery(reading), limit: SAVED_PAGE_SIZE, cursor } } };
 }
 
-export function savedCandidatesFirstPageQuery() {
-  return api.queryOptions('get', POOL_PATH, savedParams(null));
+export function savedCandidatesFirstPageQuery(reading: PoolReading) {
+  return api.queryOptions('get', POOL_PATH, savedParams(reading, null));
 }
 
 function savedCandidatesPrefix() {
-  return savedCandidatesFirstPageQuery().queryKey.slice(0, 2);
+  return api.queryOptions('get', POOL_PATH).queryKey.slice(0, 2);
 }
 
-export function warmSavedCandidates(queryClient: QueryClient): Promise<PoolPage | undefined> {
-  return queryClient.ensureQueryData(savedCandidatesFirstPageQuery()).catch(() => undefined);
+export function warmSavedCandidates(
+  queryClient: QueryClient,
+  reading: PoolReading,
+): Promise<PoolPage | undefined> {
+  return queryClient.ensureQueryData(savedCandidatesFirstPageQuery(reading)).catch(() => undefined);
 }
 
 export interface TalentPool {
@@ -60,13 +70,13 @@ export function useTalentPool(): TalentPool {
   };
 }
 
-export function useSavedCandidates() {
+export function useSavedCandidates(reading: PoolReading) {
   const queryClient = useQueryClient();
-  const firstPageQuery = savedCandidatesFirstPageQuery();
+  const firstPageQuery = savedCandidatesFirstPageQuery(reading);
   const firstPage = queryClient.getQueryData<PoolPage>(firstPageQuery.queryKey);
   const firstPageUpdatedAt = queryClient.getQueryState(firstPageQuery.queryKey)?.dataUpdatedAt;
 
-  return api.useInfiniteQuery('get', POOL_PATH, savedParams(), {
+  return api.useInfiniteQuery('get', POOL_PATH, savedParams(reading), {
     initialPageParam: null,
     getNextPageParam: (page) => page.next_cursor,
     select: (data) => data.pages.flatMap((page) => page.items),
