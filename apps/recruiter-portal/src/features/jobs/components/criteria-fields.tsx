@@ -1,9 +1,7 @@
 import { FormField } from '@sync/ui/components/form-field';
-import { Card, CardContent, CardDescription, CardHeader } from '@sync/ui/components/ui/card';
 import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { CircleHelp, Languages, Wrench } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { type UseFormReturn, useFieldArray } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-skills';
@@ -15,12 +13,16 @@ import {
   BLANK_SKILL,
   type CriteriaFormValues,
   IMPORTANCE_LABELS,
+  NO_LANGUAGES,
+  NO_QUESTIONS,
+  NO_SKILLS,
   PROFICIENCY_LABELS,
   QUESTION_TYPE_LABELS,
 } from '../schemas/criteria';
 import { takenElsewhere } from '../taken-elsewhere';
 import { ChoiceSelect } from './choice-select';
 import { CriteriaEntryList } from './criteria-entry-list';
+import { SectionCard } from './section-card';
 
 interface CriteriaFieldsProps {
   form: UseFormReturn<CriteriaFormValues>;
@@ -39,7 +41,8 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
 
   return (
     <>
-      <CriteriaSection
+      <SectionCard
+        className="space-y-5"
         title="Experience"
         description="The minimum total experience an applicant needs across their work history."
       >
@@ -59,9 +62,10 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
             />
           )}
         </FormField>
-      </CriteriaSection>
+      </SectionCard>
 
-      <CriteriaSection
+      <SectionCard
+        className="space-y-5"
         title="Skills"
         description="Canonical skills the role asks for, and whether each can disqualify."
       >
@@ -70,7 +74,7 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
           label={(index) => `Skill ${index + 1}`}
           icon={Wrench}
           addLabel="Add a skill"
-          empty="No skills screen applicants for this Job."
+          empty={NO_SKILLS}
           disabled={disabled}
           onAdd={() => skills.append(BLANK_SKILL)}
           onRemove={skills.remove}
@@ -115,9 +119,10 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
             </div>
           )}
         </CriteriaEntryList>
-      </CriteriaSection>
+      </SectionCard>
 
-      <CriteriaSection
+      <SectionCard
+        className="space-y-5"
         title="Languages"
         description="Languages the applicant needs and the minimum accepted proficiency."
       >
@@ -126,7 +131,7 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
           label={(index) => `Language ${index + 1}`}
           icon={Languages}
           addLabel="Add a language"
-          empty="No languages screen applicants for this Job."
+          empty={NO_LANGUAGES}
           disabled={disabled}
           onAdd={() => languages.append(BLANK_LANGUAGE)}
           onRemove={languages.remove}
@@ -161,9 +166,10 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
             </div>
           )}
         </CriteriaEntryList>
-      </CriteriaSection>
+      </SectionCard>
 
-      <CriteriaSection
+      <SectionCard
+        className="space-y-5"
         title="Questions"
         description="Questions applicants answer in this order. A yes-or-no answer can screen them out."
       >
@@ -172,7 +178,7 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
           label={(index) => `Question ${index + 1}`}
           icon={CircleHelp}
           addLabel="Add a question"
-          empty="This Job asks no application questions."
+          empty={NO_QUESTIONS}
           disabled={disabled}
           onAdd={() => questions.append(BLANK_QUESTION)}
           onRemove={questions.remove}
@@ -235,27 +241,7 @@ export function CriteriaFields({ form, disabled = false }: CriteriaFieldsProps) 
             </div>
           )}
         </CriteriaEntryList>
-      </CriteriaSection>
+      </SectionCard>
     </>
-  );
-}
-
-function CriteriaSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <h2 className="font-heading text-h3 text-card-foreground">{title}</h2>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">{children}</CardContent>
-    </Card>
   );
 }

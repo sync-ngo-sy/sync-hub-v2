@@ -4,7 +4,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { cn } from '@sync/ui/lib/utils';
 import { ArrowLeft, ArrowRight, Check, CircleAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useJobWizard } from '../hooks/use-job-wizard';
 import type { Job } from '../job';
@@ -28,7 +28,7 @@ const STEP_DESCRIPTIONS: Record<WizardStep, string> = {
 interface JobWizardPageProps {
   step: WizardStep;
   onStepChange: (step: WizardStep) => void;
-  onCreated: (job: Job) => void;
+  onCreated: (job: Job, unfinished: 'criteria' | null) => void;
   onCancel: () => void;
 }
 
@@ -40,13 +40,15 @@ export function JobWizardPage({
 }: JobWizardPageProps) {
   const wizard = useJobWizard();
   const [failure, setFailure] = useState<string | null>(null);
-  const step = reachableStep(
-    { details: wizard.details.getValues(), screening: wizard.screening.getValues() },
-    wanted,
-  );
+  const draft = wizard.values();
+  const step = reachableStep(draft, wanted);
   const index = WIZARD_STEPS.indexOf(step);
   const previous = WIZARD_STEPS[index - 1];
   const next = WIZARD_STEPS[index + 1];
+
+  useEffect(() => {
+    if (step !== wanted) onStepChange(step);
+  }, [step, wanted, onStepChange]);
 
   async function goTo(next: WizardStep) {
     setFailure(null);
@@ -74,12 +76,12 @@ export function JobWizardPage({
 
     if (outcome.kind === 'unfinished') {
       toast.error(outcome.message);
-      onCreated(outcome.job);
+      onCreated(outcome.job, outcome.step === 'criteria' ? 'criteria' : null);
       return;
     }
 
     toast.success(status === 'published' ? 'Job published' : 'Draft saved');
-    onCreated(outcome.job);
+    onCreated(outcome.job, null);
   }
 
   function abandon() {
@@ -97,17 +99,14 @@ export function JobWizardPage({
         <CardContent className="space-y-5 pt-6">
           {step === 'details' ? (
             <div className="space-y-4">
-              <JobFields control={wizard.details.control} autoFocus />
+              <JobFields control={wizard.details.control} />
             </div>
           ) : null}
 
           {step === 'screening' ? <CriteriaFields form={wizard.screening} /> : null}
 
           {step === 'review' ? (
-            <JobWizardReview
-              details={wizard.details.getValues()}
-              screening={wizard.screening.getValues()}
-            />
+            <JobWizardReview details={draft.details} screening={draft.screening} />
           ) : null}
         </CardContent>
       </Card>

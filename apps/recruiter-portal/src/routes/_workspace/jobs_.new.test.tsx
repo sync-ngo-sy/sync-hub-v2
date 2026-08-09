@@ -9,6 +9,7 @@ import {
   changesJob,
   createsJob,
   getsJob,
+  refusesCriteriaReplacement,
   refusesJobChange,
   refusesJobCreation,
   replacesJobCriteria,
@@ -177,6 +178,71 @@ describe('the job creation wizard', () => {
     await renderApp('/jobs/new?step=screening');
 
     expect(await screen.findByLabelText('Question')).toHaveValue('Can you travel?');
+  });
+
+  it('brings back a half-typed draft, not only a finished one', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    const first = await renderApp('/jobs/new');
+    await first.user.type(screen.getByLabelText('Title'), 'Programme Off');
+
+    cleanup();
+    await renderApp('/jobs/new');
+
+    expect(await screen.findByLabelText('Title')).toHaveValue('Programme Off');
+    expect(screen.getByLabelText('Description')).toHaveValue('');
+  });
+
+  it('keeps a half-filled screening entry rather than dropping the whole step', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    const first = await renderApp('/jobs/new');
+    await typeDetails(first.user);
+    await next(first.user);
+    await first.user.click(await screen.findByRole('button', { name: 'Add a question' }));
+    await first.user.type(entry('Question 1').getByLabelText('Question'), 'Can you tra');
+    await first.user.click(screen.getByRole('button', { name: 'Add a skill' }));
+
+    cleanup();
+    await renderApp('/jobs/new?step=screening');
+
+    expect(await screen.findByLabelText('Question')).toHaveValue('Can you tra');
+    expect(entry('Skill 1').getByLabelText('Skill')).toHaveValue('');
+  });
+
+  it('corrects the address when it asks for a step the draft cannot reach', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    const { router } = await renderApp('/jobs/new?step=review');
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ step: 'details' }));
+  });
+
+  it('drops the recruiter on the Screening tab when only the criteria failed to save', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...createsJob(DRAFT),
+      ...getsJob(DRAFT),
+      ...listsJobApplications([]),
+      ...refusesCriteriaReplacement({
+        type: 'urn:sync:problem:conflict',
+        title: 'Conflict',
+        status: 409,
+        detail: 'These screening criteria were not accepted.',
+      }),
+    );
+
+    const { user, router } = await renderApp('/jobs/new');
+    await typeDetails(user);
+    await next(user);
+    await user.click(await screen.findByRole('button', { name: 'Add a question' }));
+    await user.type(entry('Question 1').getByLabelText('Question'), 'Can you travel?');
+    await next(user);
+    await user.click(await screen.findByRole('button', { name: 'Publish' }));
+
+    expect(await screen.findByText('These screening criteria were not accepted.')).toBeVisible();
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/jobs/${DRAFT.id}`));
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'criteria' }));
   });
 
   it('keeps the recruiter on Details until the Job has a title and a description', async () => {

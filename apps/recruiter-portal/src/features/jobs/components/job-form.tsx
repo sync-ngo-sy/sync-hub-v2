@@ -57,7 +57,7 @@ export function JobForm({ job, onSaved, onCancel }: JobFormProps) {
 
   return (
     <form onSubmit={save} noValidate className="space-y-4">
-      <JobFields control={form.control} autoFocus />
+      <JobFields control={form.control} />
 
       {form.formState.errors.root?.message ? (
         <Alert>

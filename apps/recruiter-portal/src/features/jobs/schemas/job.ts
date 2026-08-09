@@ -44,6 +44,17 @@ export const EMPTY_JOB: JobFormValues = {
   expiresAt: '',
 };
 
+export const jobDraftSchema = z
+  .object({
+    title: z.string().catch(''),
+    description: z.string().catch(''),
+    locationKey: z.string().catch(''),
+    employmentType: z.enum(employmentType).catch(''),
+    workMode: z.enum(workMode).catch(''),
+    expiresAt: z.string().catch(''),
+  })
+  .catch(EMPTY_JOB);
+
 function optional(value: string): string | null {
   return value.trim() || null;
 }

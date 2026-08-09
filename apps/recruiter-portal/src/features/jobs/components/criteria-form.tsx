@@ -16,7 +16,7 @@ import {
 import { CriteriaFields } from './criteria-fields';
 
 export function CriteriaForm({ job }: { job: Job }) {
-  const replace = useReplaceJobCriteria(job.id);
+  const replace = useReplaceJobCriteria();
   const form = useForm<CriteriaFormValues>({
     resolver: zodResolver(criteriaFormSchema),
     defaultValues: toCriteriaFormValues(job.criteria),

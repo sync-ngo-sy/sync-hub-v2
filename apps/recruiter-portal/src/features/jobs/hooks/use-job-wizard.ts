@@ -1,27 +1,29 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { problemMessage } from '@/lib/api-problem';
 import type { Job } from '../job';
 import { jobFormRejection } from '../rejection';
-import { type CriteriaFormValues, criteriaFormSchema, toCriteria } from '../schemas/criteria';
+import {
+  type CriteriaFormValues,
+  criteriaFormSchema,
+  screens,
+  toCriteria,
+} from '../schemas/criteria';
 import { type JobFormValues, jobFormSchema, toNewJob } from '../schemas/job';
-import { clearWizardDraft, readWizardDraft, type WizardStep, writeWizardDraft } from '../wizard';
-import { useChangeJob, useCreateJob, useReplaceCriteria } from './use-job-actions';
+import {
+  clearWizardDraft,
+  readWizardDraft,
+  type WizardDraft,
+  type WizardStep,
+  writeWizardDraft,
+} from '../wizard';
+import { useChangeJob, useCreateJob, useReplaceJobCriteria } from './use-job-actions';
 
 export type CreateOutcome =
   | { kind: 'created'; job: Job }
-  | { kind: 'unfinished'; job: Job; message: string }
+  | { kind: 'unfinished'; job: Job; step: 'criteria' | 'publish'; message: string }
   | { kind: 'refused'; step: WizardStep; message: string | null };
-
-function screens(criteria: ReturnType<typeof toCriteria>): boolean {
-  return (
-    criteria.minimum_total_experience_years !== null ||
-    (criteria.skills?.length ?? 0) > 0 ||
-    (criteria.languages?.length ?? 0) > 0 ||
-    (criteria.questions?.length ?? 0) > 0
-  );
-}
 
 export function useJobWizard() {
   const draft = readWizardDraft();
@@ -34,19 +36,23 @@ export function useJobWizard() {
     defaultValues: draft.screening,
   });
 
+  const values = useCallback(
+    (): WizardDraft => ({ details: details.getValues(), screening: screening.getValues() }),
+    [details, screening],
+  );
+
   useEffect(() => {
-    const save = () =>
-      writeWizardDraft({ details: details.getValues(), screening: screening.getValues() });
+    const save = () => writeWizardDraft(values());
     const watchedDetails = details.watch(save);
     const watchedScreening = screening.watch(save);
     return () => {
       watchedDetails.unsubscribe();
       watchedScreening.unsubscribe();
     };
-  }, [details, screening]);
+  }, [details, screening, values]);
 
   const create = useCreateJob();
-  const replaceCriteria = useReplaceCriteria();
+  const replaceCriteria = useReplaceJobCriteria();
   const change = useChangeJob();
 
   async function validate(step: WizardStep): Promise<boolean> {
@@ -85,9 +91,10 @@ export function useJobWizard() {
         return {
           kind: 'unfinished',
           job,
+          step: 'criteria',
           message: problemMessage(
             error,
-            'The Job was created as a draft, but its screening criteria were not saved.',
+            'The Job was created as a draft, but its screening criteria and questions were not saved. Enter them again here.',
           ),
         };
       }
@@ -104,6 +111,7 @@ export function useJobWizard() {
         return {
           kind: 'unfinished',
           job,
+          step: 'publish',
           message: problemMessage(
             error,
             'The Job was created as a draft, but it could not be published.',
@@ -119,6 +127,7 @@ export function useJobWizard() {
   return {
     details,
     screening,
+    values,
     validate,
     submit,
     isSubmitting: create.isPending || replaceCriteria.isPending || change.isPending,

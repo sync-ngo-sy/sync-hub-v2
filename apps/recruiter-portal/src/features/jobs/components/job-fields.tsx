@@ -12,18 +12,13 @@ import { ChoiceSelect } from './choice-select';
 const EMPLOYMENT_TYPES = { '': 'Not set', ...EMPLOYMENT_TYPE_LABELS };
 const WORK_MODES = { '': 'Not set', ...WORK_MODE_LABELS };
 
-interface JobFieldsProps {
-  control: Control<JobFormValues>;
-  autoFocus?: boolean;
-}
-
-export function JobFields({ control, autoFocus }: JobFieldsProps) {
+export function JobFields({ control }: { control: Control<JobFormValues> }) {
   const places = useLocations();
 
   return (
     <>
       <FormField control={control} name="title" label="Title">
-        {(field) => <Input {...field} value={field.value} autoFocus={autoFocus} />}
+        {(field) => <Input {...field} value={field.value} autoFocus />}
       </FormField>
 
       <FormField control={control} name="description" label="Description">

@@ -224,6 +224,19 @@ anything read against each other. Views are all views, whatever brought them —
 tab is where they are broken down by Source.
 _Avoid_: Postings list, vacancies page.
 
+**Job wizard**:
+The Workspace destination where a Job is written, a page of its own rather than a dialog, walked in
+three steps: Details, Screening, Review. The step lives in the URL like every other view here, so a
+reload lands where the Recruiter was. Nothing reaches the backend until the Review step's Publish or
+Save as draft, so a wizard walked away from leaves no half-made Job behind; what was typed is held
+in the browser instead and comes back after a refresh, whether or not it is finished enough to be
+valid. A Recruiter cannot stand on a step whose earlier steps are unfinished — asking for one, by
+button or by link, lands on the first step still wanting an answer. Screening criteria and
+application questions are entered here, not afterwards, and are saved by the same press that
+creates the Job; the Tracked links tab stays a post-creation surface, since a link needs a Job to
+point at.
+_Avoid_: Create-job modal, new-job form, job builder.
+
 **Tracked links tab**:
 The Job's third tab, where a Recruiter mints a named link for a channel, copies its address,
 renames it, turns it off, and reads what each one brought. Minting hands the address straight back
