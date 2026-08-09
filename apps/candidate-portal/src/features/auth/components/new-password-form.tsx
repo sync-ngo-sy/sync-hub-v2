@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { isProblem, problemMessage } from '@/lib/api-problem';
 import { useResetPassword } from '../hooks/use-reset-password';
+import { PASSWORD_POLICY_SUMMARY } from '../password-rules';
 import { DEAD_LINK_PROBLEM, PASSWORD_UNCHANGED_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type NewPasswordValues, newPasswordSchema } from '../schemas/new-password';
 
@@ -49,6 +50,7 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
       onSubmit={submit}
       isSubmitting={isSubmitting}
       label="New password"
+      description={PASSWORD_POLICY_SUMMARY}
       pendingLabel="Saving…"
       submitLabel="Save new password"
     />

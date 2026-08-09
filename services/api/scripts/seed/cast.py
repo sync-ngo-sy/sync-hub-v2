@@ -45,7 +45,7 @@ from sync_core.models import (
 
 #: One password for every seeded account, so signing in as anybody is one thing to remember.
 #: Local fixtures only — `seed_demo.py` refuses to run against anything but a local stack.
-PASSWORD: Final = "sync-demo-2026"
+PASSWORD: Final = "Sync-Demo-2026"
 
 Skill = ProfileSkill
 Spoken = ProfileLanguage

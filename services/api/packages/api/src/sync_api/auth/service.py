@@ -19,6 +19,7 @@ from sync_api.auth.gotrue import (
     WeakPasswordError,
 )
 from sync_api.auth.identities import by_address
+from sync_api.auth.password_policy import PasswordPolicyError, enforce_password_policy
 from sync_api.auth.registration import (
     create_identity,
     identity_undone_on_failure,
@@ -32,6 +33,7 @@ from sync_api.problems import (
     INVALID_EMAIL_TOKEN_PROBLEM_TYPE,
     NOT_AUTHENTICATED_PROBLEM_TYPE,
     PASSWORD_UNCHANGED_PROBLEM_TYPE,
+    WEAK_PASSWORD_PROBLEM_TYPE,
     Problem,
 )
 from sync_core import get_logger
@@ -128,6 +130,7 @@ class AuthService:
     async def register_candidate(
         self, *, email: str, password: str, full_name: str
     ) -> ActingProfile:
+        password = _vetted(password)
         user = await create_identity(self._gotrue, email=email, password=password)
         async with identity_undone_on_failure(self._gotrue, user.id):
             await self._provision_candidate(user, full_name=full_name)
@@ -151,6 +154,7 @@ class AuthService:
         return SignedIn(profile=profile, session=session)
 
     async def accept_invite(self, *, token_hash: str, password: str) -> SignedIn:
+        password = _vetted(password)
         session = await self._redeem(token_hash, EmailTokenType.INVITE)
         try:
             await self._gotrue.set_password(user_id=session.user.id, password=password)
@@ -214,6 +218,7 @@ class AuthService:
         await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 
     async def reset_password(self, *, token_hash: str, password: str) -> None:
+        password = _vetted(password)
         session = await self._redeem(token_hash, EmailTokenType.RECOVERY)
         try:
             await self._gotrue.set_password(user_id=session.user.id, password=password)
@@ -299,6 +304,14 @@ def _membership_of(row: Row[Any]) -> ActingMembership | None:
             id=tenant.id, name=tenant.name, slug=tenant.slug, is_active=tenant.is_active
         ),
     )
+
+
+def _vetted(password: str) -> str:
+    try:
+        enforce_password_policy(password)
+    except PasswordPolicyError as refusal:
+        raise Problem(status=400, type=WEAK_PASSWORD_PROBLEM_TYPE, detail=str(refusal)) from refusal
+    return password
 
 
 def _unauthenticated(reason: object) -> Problem:

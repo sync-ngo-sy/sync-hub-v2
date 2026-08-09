@@ -12,7 +12,7 @@ anything but a local Supabase, and none of these people exist.
 ## Password
 
 ```text
-sync-demo-2026
+Sync-Demo-2026
 ```
 
 The same for all 17 accounts, on all three portals.

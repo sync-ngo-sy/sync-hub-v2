@@ -9,7 +9,7 @@ import { server } from '@/testing/server';
 
 const INVITE_LINK = '/auth/accept-invite?token_hash=emailed-token&type=invite';
 
-async function chooseAPassword(user: UserEvent, password = 'correct-horse-battery') {
+async function chooseAPassword(user: UserEvent, password = 'CorrectHorse9') {
   await user.type(screen.getByLabelText('Choose a password'), password);
   await user.click(screen.getByRole('button', { name: 'Join workspace' }));
 }
@@ -26,7 +26,7 @@ describe('accepting a teammate invitation', () => {
     expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toEqual(RECRUITER);
     expect(request).toHaveBeenCalledWith({
       token_hash: 'emailed-token',
-      password: 'correct-horse-battery',
+      password: 'CorrectHorse9',
     });
   });
 

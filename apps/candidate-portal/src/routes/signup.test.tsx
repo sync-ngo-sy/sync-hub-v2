@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -21,11 +21,20 @@ import {
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
-async function signUp(user: UserEvent) {
+const A_GOOD_PASSWORD = 'CorrectHorse9';
+
+async function signUp(user: UserEvent, password = A_GOOD_PASSWORD, confirmation = password) {
   await user.type(screen.getByLabelText('Full name'), CANDIDATE.full_name);
   await user.type(screen.getByLabelText('Email'), CANDIDATE.email);
-  await user.type(screen.getByLabelText('Password'), 'correct-horse-battery');
+  await user.type(screen.getByLabelText('Password'), password);
+  await user.type(screen.getByLabelText('Confirm password'), confirmation);
   await user.click(screen.getByRole('button', { name: 'Create account' }));
+}
+
+function requirement(text: string): HTMLElement {
+  const line = screen.getByText(text).closest('li');
+  if (!line) throw new Error(`No checklist line for ${text}`);
+  return line;
 }
 
 describe('signing up', () => {
@@ -60,6 +69,7 @@ describe('signing up', () => {
     expect(await screen.findByText('Enter your name.')).toBeVisible();
     expect(screen.getByText('Enter your email.')).toBeVisible();
     expect(screen.getByText('Use at least 8 characters.')).toBeVisible();
+    expect(screen.getByText('Repeat your password.')).toBeVisible();
     expect(unexpected).not.toHaveBeenCalled();
     expect(router.state.location.pathname).toBe('/signup');
   });
@@ -144,5 +154,144 @@ describe('signing up', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeVisible();
+  });
+});
+
+describe('the password checklist', () => {
+  it('starts with every requirement unticked', async () => {
+    server.use(...signedOut());
+
+    await renderApp('/signup');
+
+    for (const text of [
+      'At least 8 characters',
+      'An uppercase letter',
+      'A lowercase letter',
+      'A digit',
+    ]) {
+      expect(requirement(text)).toHaveAttribute('data-met', 'false');
+    }
+  });
+
+  it('asks for nothing that is not one of the four requirements', async () => {
+    server.use(...signedOut());
+
+    await renderApp('/signup');
+
+    const checklist = screen.getByRole('list', { name: 'Password requirements' });
+
+    expect(within(checklist).getAllByRole('listitem')).toHaveLength(4);
+    expect(screen.queryByText('A special character')).not.toBeInTheDocument();
+  });
+
+  it('ticks each line the moment the typed password satisfies it', async () => {
+    server.use(...signedOut());
+
+    const { user } = await renderApp('/signup');
+    const field = screen.getByLabelText('Password');
+
+    await user.type(field, 'abc');
+    expect(requirement('A lowercase letter')).toHaveAttribute('data-met', 'true');
+    expect(requirement('At least 8 characters')).toHaveAttribute('data-met', 'false');
+    expect(requirement('An uppercase letter')).toHaveAttribute('data-met', 'false');
+    expect(requirement('A digit')).toHaveAttribute('data-met', 'false');
+
+    await user.type(field, 'Defghij');
+    expect(requirement('At least 8 characters')).toHaveAttribute('data-met', 'true');
+    expect(requirement('An uppercase letter')).toHaveAttribute('data-met', 'true');
+    expect(requirement('A digit')).toHaveAttribute('data-met', 'false');
+
+    await user.type(field, '9');
+    expect(requirement('A digit')).toHaveAttribute('data-met', 'true');
+  });
+
+  it('unticks again when the password is cut back down', async () => {
+    server.use(...signedOut());
+
+    const { user } = await renderApp('/signup');
+    const field = screen.getByLabelText('Password');
+
+    await user.type(field, A_GOOD_PASSWORD);
+    expect(requirement('A digit')).toHaveAttribute('data-met', 'true');
+
+    await user.clear(field);
+    expect(requirement('A digit')).toHaveAttribute('data-met', 'false');
+    expect(requirement('A lowercase letter')).toHaveAttribute('data-met', 'false');
+  });
+});
+
+describe('confirming the password', () => {
+  it('refuses a confirmation that does not match, without asking the API', async () => {
+    const unexpected = vi.fn();
+    server.use(...signedOut(), ...signsUp(CANDIDATE, unexpected));
+
+    const { router, user } = await renderApp('/signup');
+    await signUp(user, A_GOOD_PASSWORD, 'CorrectHorse8');
+
+    expect(await screen.findByText('Both passwords must match.')).toBeVisible();
+    expect(unexpected).not.toHaveBeenCalled();
+    expect(router.state.location.pathname).toBe('/signup');
+  });
+
+  it('holds a password that misses a requirement at the form', async () => {
+    const unexpected = vi.fn();
+    server.use(...signedOut(), ...signsUp(CANDIDATE, unexpected));
+
+    const { user } = await renderApp('/signup');
+    await signUp(user, 'correcthorse9');
+
+    expect(await screen.findByText('Add an uppercase letter.')).toBeVisible();
+    expect(unexpected).not.toHaveBeenCalled();
+  });
+
+  it('sends only what the API asked for once both fields agree', async () => {
+    const sent = vi.fn();
+    server.use(...signedOut(), ...signsUp(CANDIDATE, sent));
+
+    const { user } = await renderApp('/signup');
+    await signUp(user);
+
+    await screen.findByRole('heading', { name: 'Check your email' });
+    expect(sent).toHaveBeenCalledWith({
+      full_name: CANDIDATE.full_name,
+      email: CANDIDATE.email,
+      password: A_GOOD_PASSWORD,
+    });
+  });
+});
+
+describe('the show/hide toggle', () => {
+  it('reveals and re-hides each password field on its own', async () => {
+    server.use(...signedOut());
+
+    const { user } = await renderApp('/signup');
+    const [passwordToggle, confirmToggle] = screen.getAllByRole('button', {
+      name: 'Show password',
+    });
+    if (!passwordToggle || !confirmToggle) throw new Error('Expected two show-password toggles');
+
+    await user.click(passwordToggle);
+
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Confirm password')).toHaveAttribute('type', 'password');
+
+    await user.click(confirmToggle);
+    expect(screen.getByLabelText('Confirm password')).toHaveAttribute('type', 'text');
+
+    await user.click(passwordToggle);
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+  });
+
+  it('does not submit the form', async () => {
+    const unexpected = vi.fn();
+    server.use(...signedOut(), ...signsUp(CANDIDATE, unexpected));
+
+    const { user } = await renderApp('/signup');
+    const [toggle] = screen.getAllByRole('button', { name: 'Show password' });
+    if (!toggle) throw new Error('Expected a show-password toggle');
+    await user.click(toggle);
+
+    expect(unexpected).not.toHaveBeenCalled();
+    expect(screen.queryByText('Enter your name.')).not.toBeInTheDocument();
   });
 });
