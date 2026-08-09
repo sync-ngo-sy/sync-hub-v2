@@ -60,10 +60,33 @@ _Avoid_: Funnel, workflow, stages.
 A Job's Applications, newest first, under the Job's Applications tab — the surface a Recruiter
 works from before opening anything. Each row carries the Screening verdict and the Pipeline
 status side by side, because the two answer different questions and neither substitutes for the
-other. Both are filters, they combine, and they live in the address bar rather than in the page,
-so a reload keeps them and a pasted link reproduces the list it was copied from. The list is
-paged by cursor and never sorted in the browser: the API decides the order.
+other. Both are filters, built the same way, and they live in the address bar rather than in the
+page, so a reload keeps them and a pasted link reproduces the list it was copied from. Each one
+counts what it is hiding, and counts it through the other: the numbers beside a verdict describe
+the Job as the status filter leaves it, and the other way round. The list is paged by cursor and
+never sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
+
+**Status filter**:
+The Triage list's Pipeline filter: a checkbox dropdown over all eight statuses, any combination
+of which narrows the list, with the selection summarised on the trigger and written into the
+address bar as an array. Beside each status is how many of the Job's Applications stand in it —
+counted by the API over the whole Job rather than over the page on screen, and counted before
+the status filter narrows anything, which is what lets the filter hide a status while still
+saying how much it is hiding. An untouched list checks the six active statuses and leaves
+Rejected and Withdrawn off, so terminal Applications stay out of the way without going
+unmentioned; `All statuses` puts every one of them back. The last checked status cannot be
+unchecked, because a list filtered to no status is not a view of anything.
+_Avoid_: Status dropdown, pipeline picker, stage filter.
+
+**Verdict filter**:
+The Triage list's Screening filter, and the Status filter's twin in everything but what it
+narrows: a checkbox dropdown over all four verdicts, any combination of which narrows the list,
+summarised on the trigger, written into the address bar as an array, each verdict carrying how
+many of the Job's Applications it decided that way, and the last checked one impossible to
+uncheck. Where the two part company is the untouched list: no verdict is terminal the way
+Rejected and Withdrawn are, so an untouched list checks all four rather than holding any back.
+_Avoid_: Qualification filter, screening dropdown, verdict picker.
 
 **Application review**:
 The page one Application is read on, reached from the Triage list or from its own address —
