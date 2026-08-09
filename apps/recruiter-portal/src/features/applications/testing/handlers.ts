@@ -8,7 +8,10 @@ import {
   type ApplicationSummary,
   PIPELINE_STATUSES,
   type PipelineStatus,
+  RECEIVED_WITHIN_VALUES,
+  type ReceivedWithin,
   SCREENING_VERDICTS,
+  type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
@@ -23,6 +26,7 @@ type OutgoingMessage = components['schemas']['OutgoingMessage'];
 type QueuedMessage = components['schemas']['QueuedMessage'];
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
+const TENANT_PATH = '/v1/tenants/me/applications';
 const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
 const ASSESSMENTS_PATH = '/v1/tenants/me/applications/{application_id}/assessments';
 const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}';
@@ -76,6 +80,58 @@ export function listsJobApplications(items: ApplicationSummary[], asked?: AskedF
       });
     }),
   ];
+}
+
+const WINDOW_DAYS: Record<ReceivedWithin, number> = { '24h': 1, '7d': 7, '30d': 30 };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export interface TenantAskedFor {
+  status: string[];
+  received_within: string | null;
+}
+
+function inTheWindow(item: TenantApplication, window: string | null): boolean {
+  const named = RECEIVED_WITHIN_VALUES.find((one) => one === window);
+  if (!named) return true;
+  return new Date(item.applied_at).getTime() > Date.now() - WINDOW_DAYS[named] * DAY;
+}
+
+export function listsTenantApplications(items: TenantApplication[], asked?: TenantAskedFor[]) {
+  return [
+    http.get(TENANT_PATH, ({ query, response }) => {
+      const statuses = query.getAll('status');
+      const window = query.get('received_within');
+      asked?.push({ status: statuses, received_within: window });
+      const inWindow = items.filter((item) => inTheWindow(item, window));
+      const limit = Number(query.get('limit') ?? inWindow.length);
+      return response(200).json({
+        items: inWindow
+          .filter((item) => (statuses.length > 0 ? statuses.includes(item.status) : true))
+          .slice(0, limit),
+        next_cursor: null,
+        status_counts: countedByStatus(inWindow),
+      });
+    }),
+  ];
+}
+
+export function pagesTenantApplications(pages: TenantApplication[][]) {
+  return [
+    http.get(TENANT_PATH, ({ query, response }) => {
+      const cursor = query.get('cursor');
+      const index = cursor === null ? 0 : Number(cursor);
+      return response(200).json({
+        items: pages[index] ?? [],
+        next_cursor: index + 1 < pages.length ? String(index + 1) : null,
+        status_counts: countedByStatus(pages.flat()),
+      });
+    }),
+  ];
+}
+
+export function failsToListTenantApplications(problem: Problem) {
+  return [http.get(TENANT_PATH, ({ response }) => response(500).json(problem))];
 }
 
 export function pagesJobApplications(pages: ApplicationSummary[][]) {

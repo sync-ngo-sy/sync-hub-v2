@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 
 from sync_api.applications.access import own_application
 from sync_api.applications.payload import (
+    RECEIVED_WITHIN_DAYS,
     ApplicationCv,
     ApplicationJob,
     ApplicationReview,
@@ -14,6 +15,7 @@ from sync_api.applications.payload import (
     ApplicationSummaryPage,
     ApplicationVerdictCount,
     MovedApplication,
+    ReceivedWithin,
     ReviewedCandidate,
     ReviewedJob,
     ScreeningVerdict,
@@ -26,6 +28,7 @@ from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.cvs import signed_download
 from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
+from sync_api.windows import rolling_since
 from sync_core import get_logger, transaction
 from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
 from sync_core.models import (
@@ -137,8 +140,9 @@ class ApplicationReviewService:
         self,
         recruiter: ActingRecruiter,
         *,
-        status: ApplicationStatus | None = None,
+        statuses: Sequence[ApplicationStatus] | None = None,
         job_id: UUID | None = None,
+        received_within: ReceivedWithin | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> TenantApplicationPage:
@@ -146,7 +150,18 @@ class ApplicationReviewService:
 
         `job_id` narrows rather than fetches, so another tenant's Job is not a 404 here — it is
         a filter matching none of this tenant's Applications, which is what it truthfully is.
+
+        `status_counts` is taken before `statuses` narrows anything and after everything else
+        has, so the filter can hide a status while still saying how much it is hiding.
         """
+        mine = [Application.tenant_id == recruiter.tenant.id]
+        if job_id is not None:
+            mine.append(Application.job_id == job_id)
+        if received_within is not None:
+            mine.append(
+                Application.applied_at > rolling_since(RECEIVED_WITHIN_DAYS[received_within])
+            )
+
         query = (
             select(Application, ApplicationProfileSnapshot, Job)
             .options(*WITH_LOCATION)
@@ -155,12 +170,13 @@ class ApplicationReviewService:
                 ApplicationProfileSnapshot.application_id == Application.id,
             )
             .join(Job, Job.id == Application.job_id)
-            .where(Application.tenant_id == recruiter.tenant.id)
+            .where(*mine)
         )
-        if status is not None:
-            query = query.where(Application.status == status)
-        if job_id is not None:
-            query = query.where(Application.job_id == job_id)
+        counting = (
+            select(Application.status, func.count()).where(*mine).group_by(Application.status)
+        )
+        if statuses is not None:
+            query = query.where(Application.status.in_(statuses))
 
         found = list(
             (
@@ -175,6 +191,7 @@ class ApplicationReviewService:
                 )
             ).tuples()
         )
+        counted = dict((await self._db.execute(counting)).tuples().all())
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_tenant_cursor)
         return TenantApplicationPage(
             items=[
@@ -187,6 +204,10 @@ class ApplicationReviewService:
                 for application, snapshot, job in rows
             ],
             next_cursor=next_cursor,
+            status_counts=[
+                ApplicationStatusCount(status=one, count=counted.get(one, 0))
+                for one in ApplicationStatus
+            ],
         )
 
     async def review(self, recruiter: ActingRecruiter, application_id: UUID) -> ApplicationReview:

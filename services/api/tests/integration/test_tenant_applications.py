@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from httpx import AsyncClient
+from typing import Any
+from uuid import UUID
+
+from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sync_core.models import ApplicationStatus
 from tests.support.applications import (
     TENANT_APPLICATIONS,
     a_candidate_who_can_apply,
@@ -11,6 +15,7 @@ from tests.support.applications import (
 )
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
+from tests.support.stats import received_days_ago
 
 
 async def a_pair_of_applications(
@@ -29,11 +34,22 @@ async def a_pair_of_applications(
     }
 
 
+def counts_of(listed: Response) -> dict[str, int]:
+    return {one["status"]: one["count"] for one in listed.json()["status_counts"]}
+
+
+def ids_in(listed: Response) -> list[str]:
+    items: list[dict[str, Any]] = listed.json()["items"]
+    return [item["id"] for item in items]
+
+
 async def test_a_tenant_with_no_applications_lists_none(recruiter: AsyncClient) -> None:
     listed = await recruiter.get(TENANT_APPLICATIONS)
 
     assert listed.status_code == 200, listed.text
-    assert listed.json() == {"items": [], "next_cursor": None}
+    assert listed.json()["items"] == []
+    assert listed.json()["next_cursor"] is None
+    assert counts_of(listed) == {status.value: 0 for status in ApplicationStatus}
 
 
 async def test_the_list_is_refused_without_a_session(browser: AsyncClient) -> None:
@@ -113,6 +129,89 @@ async def test_the_list_can_be_narrowed_to_one_stage(
     listed = await recruiter.get(TENANT_APPLICATIONS, params={"status": "reviewing"})
 
     assert [item["id"] for item in listed.json()["items"]] == [newer["application"]]
+
+
+async def test_the_list_takes_several_stages_at_once(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    moved = await move_to(recruiter, newer["application"], "reviewing")
+    assert moved.status_code == 200, moved.text
+
+    both = await recruiter.get(TENANT_APPLICATIONS, params={"status": ["new", "reviewing"]})
+    neither = await recruiter.get(TENANT_APPLICATIONS, params={"status": ["hired", "withdrawn"]})
+
+    assert set(ids_in(both)) == {older["application"], newer["application"]}
+    assert ids_in(neither) == []
+
+
+async def test_the_list_counts_every_stage_whatever_it_is_narrowed_to(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The count beside a stage says what the filter is hiding, so it is taken before it hides."""
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    moved = await move_to(recruiter, newer["application"], "reviewing")
+    assert moved.status_code == 200, moved.text
+
+    listed = await recruiter.get(TENANT_APPLICATIONS, params={"status": "new"})
+
+    assert ids_in(listed) == [older["application"]]
+    assert counts_of(listed)["new"] == 1
+    assert counts_of(listed)["reviewing"] == 1
+    assert counts_of(listed)["hired"] == 0
+
+
+async def test_the_job_filter_narrows_the_counts_as_well_as_the_list(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Unlike the stage filter: the counts describe the list the reader is looking at."""
+    field, meal = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    moved = await move_to(recruiter, meal["application"], "reviewing")
+    assert moved.status_code == 200, moved.text
+
+    listed = await recruiter.get(TENANT_APPLICATIONS, params={"job_id": field["job"]})
+
+    assert ids_in(listed) == [field["application"]]
+    assert counts_of(listed)["new"] == 1
+    assert counts_of(listed)["reviewing"] == 0
+
+
+async def test_the_list_can_be_narrowed_to_what_arrived_recently(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The windows are rolling, the way the Dashboard's own numbers are: `7d` is the last 168
+    hours rather than this week so far."""
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    await received_days_ago(db_session, UUID(older["application"]), 10)
+
+    week = await recruiter.get(TENANT_APPLICATIONS, params={"received_within": "7d"})
+    month = await recruiter.get(TENANT_APPLICATIONS, params={"received_within": "30d"})
+    ever = await recruiter.get(TENANT_APPLICATIONS)
+
+    assert ids_in(week) == [newer["application"]]
+    assert set(ids_in(month)) == {older["application"], newer["application"]}
+    assert set(ids_in(ever)) == {older["application"], newer["application"]}
+
+
+async def test_the_window_narrows_the_counts_as_well_as_the_list(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    older, newer = await a_pair_of_applications(recruiter, other_browser, mailbox, db_session)
+    moved = await move_to(recruiter, newer["application"], "reviewing")
+    assert moved.status_code == 200, moved.text
+    await received_days_ago(db_session, UUID(older["application"]), 10)
+
+    listed = await recruiter.get(TENANT_APPLICATIONS, params={"received_within": "7d"})
+
+    assert ids_in(listed) == [newer["application"]]
+    assert counts_of(listed)["reviewing"] == 1
+    assert counts_of(listed)["new"] == 0
+
+
+async def test_a_window_the_platform_does_not_offer_is_refused(recruiter: AsyncClient) -> None:
+    assert (
+        await recruiter.get(TENANT_APPLICATIONS, params={"received_within": "since-tuesday"})
+    ).status_code == 422
 
 
 async def test_the_list_can_be_narrowed_to_one_job(
