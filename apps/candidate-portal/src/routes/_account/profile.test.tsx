@@ -79,6 +79,8 @@ describe('the profile editor', () => {
     const skill = entry('Skill 1');
     expect(skill.getByLabelText('Skill')).toHaveValue('Python');
     expect(skill.getByLabelText('Years')).toHaveValue('3.5');
+    expect(skill.getByLabelText('Years')).toHaveAttribute('type', 'number');
+    expect(skill.getByLabelText('Years')).toHaveAttribute('step', '0.1');
     expect(
       within(screen.getByRole('region', { name: 'Other skills' })).getByText('Kobo Toolbox'),
     ).toBeVisible();

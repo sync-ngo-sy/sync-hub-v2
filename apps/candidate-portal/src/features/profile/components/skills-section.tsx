@@ -88,7 +88,17 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
                 )}
               </FormField>
               <FormField control={control} name={`skills.${index}.years_experience`} label="Years">
-                {(field) => <Input {...field} inputMode="decimal" placeholder="3.5" />}
+                {(field) => (
+                  <Input
+                    {...field}
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="999.9"
+                    step="0.1"
+                    placeholder="3.5"
+                  />
+                )}
               </FormField>
             </div>
           )}
