@@ -1,8 +1,80 @@
 import type { components } from '@sync/api-client';
 import { FIELD_COORDINATOR } from '@/features/jobs/testing/fixtures';
-import type { ApplicationSummary } from '../application';
+import type { ApplicationJob, ApplicationSummary, TenantApplication } from '../application';
 import type { MatchAssessment } from '../assessment';
 import type { ApplicationReview } from '../review';
+
+export const FIELD: ApplicationJob = {
+  id: FIELD_COORDINATOR.id,
+  title: FIELD_COORDINATOR.title,
+  location_name: FIELD_COORDINATOR.location_name,
+};
+
+export const MEAL: ApplicationJob = {
+  id: '00000000-0000-4000-8000-000000000103',
+  title: 'MEAL Officer',
+  location_name: 'Damascus',
+};
+
+export const DIMA: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000311',
+  candidate_name: 'Dima Sabbagh',
+  headline: 'Monitoring officer',
+  location: 'Damascus',
+  status: 'new',
+  qualification_status: 'qualified',
+  applied_at: '2026-08-04T07:00:00Z',
+  updated_at: '2026-08-04T07:00:00Z',
+  job: MEAL,
+};
+
+export const FARAH: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000312',
+  candidate_name: 'Farah Doumani',
+  headline: null,
+  location: null,
+  status: 'new',
+  qualification_status: 'qualified',
+  applied_at: '2026-08-03T09:00:00Z',
+  updated_at: '2026-08-03T09:00:00Z',
+  job: FIELD,
+};
+
+export const ELIAS: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000313',
+  candidate_name: 'Elias Murad',
+  headline: 'Data assistant',
+  location: 'Homs',
+  status: 'reviewing',
+  qualification_status: 'pending',
+  applied_at: '2026-08-03T08:00:00Z',
+  updated_at: '2026-08-03T08:00:00Z',
+  job: MEAL,
+};
+
+export const GHADA: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000314',
+  candidate_name: 'Ghada Kanaan',
+  headline: 'Warehouse supervisor',
+  location: 'Latakia',
+  status: 'rejected',
+  qualification_status: 'disqualified',
+  applied_at: '2026-08-02T09:00:00Z',
+  updated_at: '2026-08-05T09:00:00Z',
+  job: FIELD,
+};
+
+export const HANI: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000315',
+  candidate_name: 'Hani Barakat',
+  headline: 'Cash programming officer',
+  location: 'Homs',
+  status: 'hired',
+  qualification_status: 'qualified',
+  applied_at: '2026-06-01T09:00:00Z',
+  updated_at: '2026-06-20T09:00:00Z',
+  job: MEAL,
+};
 
 export const AMAL: ApplicationSummary = {
   id: '00000000-0000-4000-8000-000000000301',

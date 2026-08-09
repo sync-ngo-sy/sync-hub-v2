@@ -2,9 +2,6 @@ import type { components } from '@sync/api-client';
 import type { JobSummary } from '@/features/jobs/job';
 
 type TenantStats = components['schemas']['TenantStats'];
-type TenantApplication = components['schemas']['TenantApplicationSummary'];
-
-export const TODAY = new Date('2026-08-04T09:00:00Z');
 
 export const MEAL_OFFICER: JobSummary = {
   id: '00000000-0000-4000-8000-000000000103',
@@ -19,49 +16,6 @@ export const MEAL_OFFICER: JobSummary = {
   updated_at: '2026-07-22T09:00:00Z',
   application_count: 9,
   view_count: 214,
-};
-
-const MEAL = { id: MEAL_OFFICER.id, title: 'MEAL Officer', location_name: 'Damascus' };
-const FIELD = {
-  id: '00000000-0000-4000-8000-000000000101',
-  title: 'Field Coordinator',
-  location_name: 'Aleppo',
-};
-
-export const DIMA: TenantApplication = {
-  id: '00000000-0000-4000-8000-000000000311',
-  candidate_name: 'Dima Sabbagh',
-  headline: 'Monitoring officer',
-  location: 'Damascus',
-  status: 'new',
-  qualification_status: 'qualified',
-  applied_at: '2026-08-04T07:00:00Z',
-  updated_at: '2026-08-04T07:00:00Z',
-  job: MEAL,
-};
-
-export const FARAH: TenantApplication = {
-  id: '00000000-0000-4000-8000-000000000312',
-  candidate_name: 'Farah Doumani',
-  headline: null,
-  location: null,
-  status: 'new',
-  qualification_status: 'qualified',
-  applied_at: '2026-08-03T09:00:00Z',
-  updated_at: '2026-08-03T09:00:00Z',
-  job: FIELD,
-};
-
-export const ELIAS: TenantApplication = {
-  id: '00000000-0000-4000-8000-000000000313',
-  candidate_name: 'Elias Murad',
-  headline: 'Data assistant',
-  location: 'Homs',
-  status: 'reviewing',
-  qualification_status: 'pending',
-  applied_at: '2026-08-03T08:00:00Z',
-  updated_at: '2026-08-03T08:00:00Z',
-  job: MEAL,
 };
 
 const NO_STAGES = {

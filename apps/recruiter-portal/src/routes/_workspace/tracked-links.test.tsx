@@ -1,7 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import { TODAY } from '@/features/dashboard/testing/fixtures';
 import { FIELD_COORDINATOR_VIEW } from '@/features/jobs/testing/fixtures';
 import { getsJob } from '@/features/jobs/testing/handlers';
 import {
@@ -18,7 +17,7 @@ import {
   pagesTenantTrackedLinks,
   recordsSearches,
 } from '@/features/tracked-links/testing/tenant-handlers';
-import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
+import { RECRUITER, SERVER_FAULT, TODAY } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 

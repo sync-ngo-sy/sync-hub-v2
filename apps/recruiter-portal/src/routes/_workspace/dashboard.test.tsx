@@ -1,32 +1,27 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AMAL_REVIEW } from '@/features/applications/testing/fixtures';
-import { getsApplication } from '@/features/applications/testing/handlers';
+import { PIPELINE_STATUSES } from '@/features/applications/application';
+import { AMAL_REVIEW, DIMA, ELIAS, FARAH } from '@/features/applications/testing/fixtures';
+import {
+  failsToListTenantApplications,
+  getsApplication,
+  listsTenantApplications,
+} from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import {
   A_BUSY_WEEK,
-  DIMA,
-  ELIAS,
-  FARAH,
   MEAL_OFFICER,
   NOTHING_YET,
   statsWith,
-  TODAY,
 } from '@/features/dashboard/testing/fixtures';
-import {
-  failsToListTenantApplications,
-  failsToServeStats,
-  holdsStats,
-  listsTenantApplications,
-  servesStats,
-} from '@/features/dashboard/testing/handlers';
+import { failsToServeStats, holdsStats, servesStats } from '@/features/dashboard/testing/handlers';
 import {
   FIELD_COORDINATOR,
   FIELD_COORDINATOR_VIEW,
   PROGRAMME_OFFICER,
 } from '@/features/jobs/testing/fixtures';
 import { failsToListJobs, getsJob, listsJobs } from '@/features/jobs/testing/handlers';
-import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
+import { RECRUITER, SERVER_FAULT, TODAY } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -84,6 +79,64 @@ describe('the Dashboard', () => {
     expect(stats.getByText('Qualified by screening')).toBeVisible();
     expect(stats.getByText('61')).toBeVisible();
     expect(stats.getByText('78% pass rate')).toBeVisible();
+  });
+
+  it('sends Awaiting review to the Applications the number counted', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Awaiting review/ }));
+
+    expect(await screen.findByRole('button', { name: /^Pipeline: / })).toHaveAccessibleName(
+      'Pipeline: New',
+    );
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(router.state.location.search).toEqual({ pipeline: ['new'] });
+  });
+
+  it('sends Applications this week to the week, terminal Applications included', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Applications this week/ }));
+
+    expect(await screen.findByRole('combobox', { name: 'Received' })).toHaveTextContent(
+      'Last 7 days',
+    );
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(router.state.location.search).toEqual({
+      pipeline: [...PIPELINE_STATUSES],
+      received: '7d',
+    });
+  });
+
+  it('sends Open jobs to the published Jobs the number counted', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Open jobs/ }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published' })).toHaveAttribute('data-active');
+    expect(await screen.findByText('MEAL Officer')).toBeVisible();
+    expect(router.state.location.pathname).toBe('/jobs');
+    expect(router.state.location.search).toEqual({ status: 'published' });
+  });
+
+  it('sends Qualified by screening to the verdict, whatever the Pipeline did next', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Qualified by screening/ }));
+
+    expect(await screen.findByRole('button', { name: /^Screening: / })).toHaveAccessibleName(
+      'Screening: Qualified',
+    );
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(router.state.location.search).toEqual({
+      pipeline: [...PIPELINE_STATUSES],
+      screening: ['qualified'],
+    });
   });
 
   it('compares this week with the one before it', async () => {
