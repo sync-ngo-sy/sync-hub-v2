@@ -68,7 +68,7 @@ never sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
 **Status filter**:
-The Pipeline filter over a list of Applications: a checkbox dropdown over all eight statuses, any
+The Pipeline filter over a Job's Triage list: a checkbox dropdown over all eight statuses, any
 combination of which narrows the list, with the selection summarised on the trigger and written into
 the address bar as an array. Beside each status is how many Applications stand in it —
 counted by the API over the whole list rather than over the page on screen, and counted before
@@ -76,34 +76,42 @@ the status filter narrows anything, which is what lets the filter hide a status 
 saying how much it is hiding. An untouched list checks the six active statuses and leaves
 Rejected and Withdrawn off, so terminal Applications stay out of the way without going
 unmentioned; `All statuses` puts every one of them back. The last checked status cannot be
-unchecked, because a list filtered to no status is not a view of anything. One control on two
-surfaces: on the Triage list the counts are the Job's, on the Applications page they are the whole
-Tenant's as the Verdict filter and the Time-range filter leave it.
+unchecked, because a list filtered to no status is not a view of anything. Its counts are the Job's
+as the Verdict filter leaves it. The Applications page uses Pipeline tabs instead, because that
+Tenant-wide list treats the Pipeline as its primary way of moving between views.
 _Avoid_: Status dropdown, pipeline picker, stage filter.
 
+**Pipeline tabs**:
+The Applications page's primary navigation through the Pipeline: `All` followed by each of the
+eight statuses, in Pipeline order, in the same header treatment as the Jobs page. Each tab carries
+the API's Tenant-wide count as the Screening and Time-range filters leave it. One status may be
+viewed at a time; `All` includes terminal Applications as well as active ones and leaves Pipeline
+out of the address bar. A selected status is written into the address bar, so Dashboard deep-links
+and shared views land on the same tab and list.
+_Avoid_: Status filter on the Applications page, pipeline picker.
+
 **Verdict filter**:
-The Screening filter over a list of Applications, and the Status filter's twin in everything but
-what it narrows: a checkbox dropdown over all four verdicts, any combination of which narrows the
-list, summarised on the trigger, written into the address bar as an array, each verdict carrying
-how many Applications it decided that way, and the last checked one impossible to uncheck. Where
-the two part company is the untouched list: no verdict is terminal the way Rejected and Withdrawn
-are, so an untouched list checks all four rather than holding any back. One control on two
-surfaces, like the Status filter: on the Triage list the counts are the Job's, on the Applications
-page they are the whole Tenant's as the other two filters leave it.
+The Screening filter over a list of Applications: a checkbox dropdown over all four verdicts, any
+combination of which narrows the list, summarised on the trigger, written into the address bar as
+an array, each verdict carrying
+how many Applications it decided that way, and the last checked one impossible to uncheck. An
+untouched list checks all four. On the Triage list the counts are the Job's as the Status filter
+leaves it; on the Applications page it sits below the Pipeline tabs as a secondary filter, and its
+counts are the whole Tenant's as the selected tab and the Time-range filter leave it.
 _Avoid_: Qualification filter, screening dropdown, verdict picker.
 
 **Applications page**:
 The Workspace destination that lists every Application the Tenant has received, across every Job,
 newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. It
-renders through the same table as the Triage list and offers the same two filters, Screening and
-Pipeline, and adds the two things a list spanning Jobs needs: a Job column, whose link leads to the
-Job rather than to the Application its row is, and the Time-range filter. A verdict is reached
-against the Job that asked for those skills, so the Job column is what a reader checks one against
-here — the filter answers "who passed screening anywhere", which is the question the Dashboard's
-own count asks. The Received column turns around on a click, which is the two orders the API
-offers; every filter and the order live in the address bar, so a reload keeps the view and a pasted
-link reproduces it — which is what lets the Dashboard's numbers lead here. Paged by cursor and
-never sorted in the browser, like every other list the API orders.
+renders through the same table as the Triage list, with Pipeline tabs in the header and Screening
+kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job column, whose
+link leads to the Job rather than to the Application its row is, and the Time-range filter. A
+verdict is reached against the Job that asked for those skills, so the Job column is what a reader
+checks one against here — the filter answers "who passed screening anywhere", which is the question
+the Dashboard's own count asks. The Received column turns around on a click, which is the two orders
+the API offers; every filter and the order live in the address bar, so a reload keeps the view and a
+pasted link reproduces it — which is what lets the Dashboard's numbers lead here. Paged by cursor
+and never sorted in the browser, like every other list the API orders.
 _Avoid_: All applications, inbox, applicants page (a Candidate is a person; a row here is an
 Application).
 
@@ -117,24 +125,23 @@ a calendar day would have to be computed in one, and the wrong one turns a Recru
 yesterday — which is also why the choices do not say "today" or "this month" over a window that
 reaches into yesterday or into last month. `Last 7 days` is the same 168 hours the Dashboard counts
 as "Applications this week", which is what lets that number and this list be the same Applications.
-The API narrows on the window, and both the Status filter's and the Verdict filter's counts narrow
+The API narrows on the window, and both the Pipeline tabs' and the Verdict filter's counts narrow
 with it, so the numbers beside either describe the window on screen.
 _Avoid_: Date filter, period picker, since (a calendar range is exactly what this is not); Today,
 This week, This month as choice labels (they claim a boundary a rolling window does not have).
 
 **Dashboard deep-link**:
 A stat on the Dashboard that is a link to the evidence behind it, and every one of the four is one.
-Awaiting review leads to the Applications page filtered to New, because New is what that stat
-counts; Applications this week leads to the week's window with every status checked, because the
-stat counts what arrived, Rejected and Withdrawn included, and the page's own default would hide
-them. Qualified by screening leads to the Qualified verdict with every status checked for the same
-reason: Screening judged the Application before anybody moved it, so a verdict outlives the
-rejection that may have followed it. Open jobs is the one that leaves the Applications page
-entirely, for the Jobs page on its Published tab. The rule each of them keeps is that the list it
-opens counts what the stat says: a link landing on a different number would be worse than no link,
-which is why a stat gets its link only once the page it leads to can be narrowed to exactly what it
-counted. Every filter is in the URL, so what the link opens is also what a Recruiter can paste to
-somebody else.
+Awaiting review leads to the Applications page's New tab, because New is what that stat
+counts; Applications this week leads to the week's window on the All tab, because the stat counts
+what arrived, Rejected and Withdrawn included. Qualified by screening leads to the Qualified
+verdict on the All tab for the same reason: Screening judged the Application before anybody moved
+it, so a verdict outlives the rejection that may have followed it. Open jobs is the one that leaves
+the Applications page entirely, for the Jobs page on its Published tab. The rule each of them keeps
+is that the list it opens counts what the stat says: a link landing on a different number would be
+worse than no link, which is why a stat gets its link only once the page it leads to can be narrowed
+to exactly what it counted. Every filter is in the URL, so what the link opens is also what a
+Recruiter can paste to somebody else.
 _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechanism).
 
 **Application review**:

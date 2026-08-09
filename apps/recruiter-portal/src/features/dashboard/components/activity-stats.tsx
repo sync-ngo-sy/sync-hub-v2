@@ -1,7 +1,6 @@
 import { StatBand, StatBandSkeleton } from '@sync/ui/components/stat-band';
 import { Link } from '@tanstack/react-router';
 import { BriefcaseBusiness, CircleCheck, Clock3, Inbox } from 'lucide-react';
-import { PIPELINE_STATUSES } from '@/features/applications/application';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { problemMessage } from '@/lib/api-problem';
 import {
@@ -17,18 +16,11 @@ const SKELETON_LABELS = ['Open jobs', 'Applications this week', 'Awaiting review
 
 const OPEN_JOBS = <Link to="/jobs" search={{ status: 'published' }} />;
 
-const THIS_WEEK = (
-  <Link to="/applications" search={{ pipeline: [...PIPELINE_STATUSES], received: '7d' }} />
-);
+const THIS_WEEK = <Link to="/applications" search={{ received: '7d' }} />;
 
 const AWAITING_REVIEW = <Link to="/applications" search={{ pipeline: ['new'] }} />;
 
-const QUALIFIED_BY_SCREENING = (
-  <Link
-    to="/applications"
-    search={{ pipeline: [...PIPELINE_STATUSES], screening: ['qualified'] }}
-  />
-);
+const QUALIFIED_BY_SCREENING = <Link to="/applications" search={{ screening: ['qualified'] }} />;
 
 function orDash(value: number | undefined): string {
   return value === undefined ? '—' : String(value);

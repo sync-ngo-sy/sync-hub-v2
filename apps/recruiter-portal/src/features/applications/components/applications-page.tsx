@@ -1,6 +1,8 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
+import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
@@ -10,7 +12,6 @@ import {
   EVERY_TIME,
   hiddenBehind,
   PIPELINE_STATUSES,
-  pipelineSelection,
   pipelineState,
   RECEIVED_RANGES,
   type ReceivedRange,
@@ -70,12 +71,13 @@ export function ApplicationsPage({
   onFiltersChange,
   onApplicationOpen,
 }: ApplicationsPageProps) {
-  const pipeline = pipelineSelection(filters.pipeline);
+  const pipelineFilter = filters.pipeline;
+  const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
   const screening = screeningSelection(filters.screening);
   const range = receivedSelection(filters.received);
   const sort = sortSelection(filters.sort);
   const applications = useTenantApplications({
-    pipeline,
+    pipeline: pipelineFilter,
     screening,
     received: filters.received,
     sort,
@@ -87,100 +89,143 @@ export function ApplicationsPage({
     hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts) > 0,
     range !== EVERY_TIME,
   ].filter(Boolean).length;
+  const pipelineTab = pipeline.length === 1 ? pipeline[0] : 'all';
+  const total = PIPELINE_STATUSES.reduce((sum, status) => sum + (statusCounts[status] ?? 0), 0);
+  const pipelineTabs = [
+    { value: 'all', label: 'All', count: total },
+    ...PIPELINE_STATUSES.map((status) => ({
+      value: status,
+      label: pipelineState(status).label,
+      count: statusCounts[status] ?? 0,
+    })),
+  ];
 
   return (
-    <div className="space-y-(--space-section)">
-      <PageHeader
-        title="Applications"
-        description="Everyone who has applied, across every Job your Tenant is hiring for."
-      />
+    <>
+      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+        <PageHeader
+          title="Applications"
+          description="Everyone who has applied, across every Job your Tenant is hiring for."
+        />
 
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-        <ChecklistFilter
-          label="Screening"
-          noun="verdicts"
-          options={SCREENING_VERDICTS.map((verdict) => ({
-            value: verdict,
-            label: screeningState(verdict).label,
-          }))}
-          selected={screening}
-          counts={verdictCounts}
-          onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
-        />
-        <ChecklistFilter
-          label="Pipeline"
-          noun="statuses"
-          options={PIPELINE_STATUSES.map((status) => ({
-            value: status,
-            label: pipelineState(status).label,
-          }))}
-          selected={pipeline}
-          counts={statusCounts}
-          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
-        />
-        <ChoicePicker
-          label="Received"
-          items={RECEIVED_RANGES}
-          value={range}
-          onValueChange={(chosen: ReceivedRange) =>
-            onFiltersChange({ ...filters, received: receivedWithin(chosen) })
-          }
-        />
+        <div className="-mb-px mt-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Tabs
+            className="w-max min-w-full gap-0"
+            value={pipelineTab}
+            onValueChange={(value) =>
+              onFiltersChange({
+                ...filters,
+                pipeline:
+                  value === 'all' ? undefined : [value as (typeof PIPELINE_STATUSES)[number]],
+              })
+            }
+          >
+            <TabsList
+              variant="line"
+              aria-label="Pipeline"
+              className="min-w-max justify-start gap-7 p-0 group-data-horizontal/tabs:h-10"
+            >
+              {pipelineTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="h-10 flex-none rounded-none px-0 py-0 after:hidden"
+                >
+                  <span
+                    className={cn(
+                      'relative flex h-full items-center after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary after:opacity-0',
+                      pipelineTab === tab.value && 'after:opacity-100',
+                    )}
+                  >
+                    {tab.label}
+                  </span>
+                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground tabular-nums">
+                    {tab.count}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
-      <DataTable
-        label="Applications"
-        columns={COLUMNS}
-        data={applications.data?.items ?? []}
-        getRowId={(application) => application.id}
-        rowLabel={(application) => `${application.candidate_name}'s Application`}
-        onRowOpen={onApplicationOpen}
-        isLoading={applications.isPending}
-        sort={{
-          by: sort,
-          onChange: (by) => onFiltersChange({ ...filters, sort: by as ApplicationSort }),
-        }}
-        error={
-          applications.isError
-            ? {
-                message: problemMessage(applications.error, "Couldn't load your Applications."),
-                onRetry: () => void applications.refetch(),
-              }
-            : undefined
-        }
-        empty={{
-          icon: Inbox,
-          message:
-            active === 0
-              ? NOTHING_YET
-              : active === 1
-                ? 'No Application matches that filter.'
-                : 'No Application matches these filters.',
-          action:
-            active > 0 ? (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  onFiltersChange({
-                    ...filters,
-                    pipeline: [...PIPELINE_STATUSES],
-                    screening: [...SCREENING_VERDICTS],
-                    received: undefined,
-                  })
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-3">
+          <ChecklistFilter
+            label="Screening"
+            noun="verdicts"
+            options={SCREENING_VERDICTS.map((verdict) => ({
+              value: verdict,
+              label: screeningState(verdict).label,
+            }))}
+            selected={screening}
+            counts={verdictCounts}
+            onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
+          />
+          <ChoicePicker
+            label="Received"
+            items={RECEIVED_RANGES}
+            value={range}
+            onValueChange={(chosen: ReceivedRange) =>
+              onFiltersChange({ ...filters, received: receivedWithin(chosen) })
+            }
+          />
+        </div>
+
+        <DataTable
+          label="Applications"
+          columns={COLUMNS}
+          data={applications.data?.items ?? []}
+          getRowId={(application) => application.id}
+          rowLabel={(application) => `${application.candidate_name}'s Application`}
+          onRowOpen={onApplicationOpen}
+          isLoading={applications.isPending}
+          sort={{
+            by: sort,
+            onChange: (by) => onFiltersChange({ ...filters, sort: by as ApplicationSort }),
+          }}
+          error={
+            applications.isError
+              ? {
+                  message: problemMessage(applications.error, "Couldn't load your Applications."),
+                  onRetry: () => void applications.refetch(),
                 }
-              >
-                {active === 1 ? 'Clear filter' : 'Clear filters'}
-              </Button>
-            ) : (
-              TO_THE_JOBS
-            ),
-        }}
-        loadMore={{
-          hasMore: applications.hasNextPage,
-          isLoading: applications.isFetchingNextPage,
-          onLoadMore: () => void applications.fetchNextPage(),
-        }}
-      />
-    </div>
+              : undefined
+          }
+          empty={{
+            icon: Inbox,
+            message:
+              active === 0
+                ? NOTHING_YET
+                : active === 1
+                  ? 'No Application matches that filter.'
+                  : 'No Application matches these filters.',
+            action:
+              active > 0 ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    onFiltersChange({
+                      ...filters,
+                      pipeline: undefined,
+                      screening: undefined,
+                      received: undefined,
+                    })
+                  }
+                >
+                  {active === 1 ? 'Clear filter' : 'Clear filters'}
+                </Button>
+              ) : (
+                TO_THE_JOBS
+              ),
+          }}
+          loadMore={{
+            hasMore: applications.hasNextPage,
+            isLoading: applications.isFetchingNextPage,
+            onLoadMore: () => void applications.fetchNextPage(),
+          }}
+        />
+      </div>
+    </>
   );
 }
