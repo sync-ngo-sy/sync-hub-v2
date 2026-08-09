@@ -3,20 +3,66 @@ import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { Briefcase } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { type Control, useFieldArray, useWatch } from 'react-hook-form';
-import { BLANK_EXPERIENCE, type ProfileFormValues } from '../schemas/profile';
+import { useDebounce } from 'use-debounce';
+import { client } from '@/lib/api';
+import { reportError } from '@/lib/report-error';
+import { BLANK_EXPERIENCE, type ProfileFormValues, toProfileExperiences } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
 import { ProfileSection } from './profile-section';
 import { TotalExperience } from './total-experience';
 
-export function ExperiencesSection({ control }: { control: Control<ProfileFormValues> }) {
+const sameExperiences = (
+  left: ProfileFormValues['experiences'],
+  right: ProfileFormValues['experiences'],
+) => JSON.stringify(left) === JSON.stringify(right);
+
+export function ExperiencesSection({
+  control,
+  experiencesDirty,
+}: {
+  control: Control<ProfileFormValues>;
+  experiencesDirty: boolean;
+}) {
   const { fields, append, remove } = useFieldArray({ control, name: 'experiences' });
-  const saved = useWatch({ control, name: 'total_experience_years' });
+  const totalExperienceYears = useWatch({ control, name: 'total_experience_years' });
+  const experiences = useWatch({ control, name: 'experiences' });
+  const [preview, setPreview] = useState<{ key: string; years: number } | null>(null);
+  const [debouncedExperiences, debounce] = useDebounce(experiences, 400, {
+    equalityFn: sameExperiences,
+  });
+
+  useEffect(() => {
+    if (!experiencesDirty || debounce.isPending()) return;
+    const body = toProfileExperiences(debouncedExperiences);
+    if (!body) return;
+
+    const key = JSON.stringify(debouncedExperiences);
+    const controller = new AbortController();
+    const calculate = async () => {
+      const { data, error } = await client.POST('/v1/candidates/me/profile/experience-total', {
+        body: { experiences: body },
+        signal: controller.signal,
+      });
+      if (error) reportError(error, { boundary: 'widget', source: 'Total experience' });
+      if (data) setPreview({ key, years: data.total_experience_years });
+    };
+    calculate().catch((error) => {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      reportError(error, { boundary: 'widget', source: 'Total experience' });
+    });
+    return () => controller.abort();
+  }, [debounce, debouncedExperiences, experiencesDirty]);
+
+  const currentKey = JSON.stringify(experiences);
+  const displayedYears =
+    experiencesDirty && preview?.key === currentKey ? preview.years : totalExperienceYears;
 
   return (
     <ProfileSection title="Experience" description="Newest first, or whatever order suits you.">
-      <TotalExperience years={saved} />
+      <TotalExperience years={displayedYears} />
 
       <EntryList
         ids={fields.map((field) => field.id)}

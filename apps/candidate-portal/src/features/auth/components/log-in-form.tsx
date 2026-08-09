@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormField } from '@sync/ui/components/form-field';
+import { PasswordInput } from '@sync/ui/components/password-input';
 import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { useForm } from 'react-hook-form';
@@ -41,7 +42,7 @@ export function LogInForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
       </FormField>
 
       <FormField control={control} name="password" label="Password">
-        {(field) => <Input {...field} type="password" autoComplete="current-password" />}
+        {(field) => <PasswordInput {...field} autoComplete="current-password" />}
       </FormField>
 
       <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">

@@ -6,16 +6,17 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 
 from sync_api.auth import ActingProfile, SignedIn
+from sync_api.auth.password_policy import (
+    CONFORMING_EXAMPLE,
+    MAXIMUM_PASSWORD_LENGTH,
+    POLICY_SUMMARY,
+)
 from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
 from sync_api.errors import openapi_problem
 from sync_api.rate_limit import enforce_auth_rate_limit
 from sync_core.models import AccountType
 
 ROUTER_PREFIX: Final = "/auth"
-
-MINIMUM_PASSWORD_LENGTH: Final = 8
-
-MAXIMUM_PASSWORD_LENGTH: Final = 72
 
 RateLimited = Depends(enforce_auth_rate_limit)
 
@@ -28,10 +29,19 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["auth"])
 Password = Annotated[
     str,
     Field(
-        min_length=MINIMUM_PASSWORD_LENGTH,
+        min_length=1,
         max_length=MAXIMUM_PASSWORD_LENGTH,
-        description=f"At least {MINIMUM_PASSWORD_LENGTH} characters.",
-        examples=["correct-horse-battery"],
+        description="The password on the account.",
+        examples=[CONFORMING_EXAMPLE],
+    ),
+]
+
+NewPassword = Annotated[
+    str,
+    Field(
+        max_length=MAXIMUM_PASSWORD_LENGTH,
+        description=POLICY_SUMMARY,
+        examples=[CONFORMING_EXAMPLE],
     ),
 ]
 
@@ -65,7 +75,7 @@ class ProfileView(BaseModel):
 
 class SignUpRequest(BaseModel):
     email: EmailStr
-    password: Password
+    password: NewPassword
     full_name: str = Field(min_length=1, max_length=200)
 
 
@@ -84,12 +94,12 @@ class PasswordResetRequest(BaseModel):
 
 class ConfirmPasswordResetRequest(BaseModel):
     token_hash: EmailToken
-    password: Password
+    password: NewPassword
 
 
 class AcceptInviteRequest(BaseModel):
     token_hash: EmailToken
-    password: Password
+    password: NewPassword
 
 
 @router.post(
@@ -100,7 +110,7 @@ class AcceptInviteRequest(BaseModel):
     dependencies=[RateLimited],
     responses={
         409: openapi_problem("An account already exists for this email address."),
-        400: openapi_problem("The identity provider rejected the password."),
+        400: openapi_problem("The password does not meet the policy, or was rejected upstream."),
         **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
