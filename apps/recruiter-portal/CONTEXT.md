@@ -144,8 +144,9 @@ short-lived and never stored, so the page re-reads the Application rather than h
 The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
 and the six-step progress line in one card. There is no static warning beneath it: move outcomes
 already say the Candidate was notified, while a refused move still explains itself inside the
-Pipeline. The current segment keeps strong contrast in either theme and `now` carries the accent
-colour. Screening and Tags lead the two-column review below; the Snapshot, answers, Match
+Pipeline. The current segment keeps strong contrast in either theme and a small, restrained pulse
+beside `now` carries the accent colour, while reduced-motion preferences leave it static. Screening
+and Tags lead the two-column review below; the Snapshot, answers, Match
 assessments and notes follow on the wider reading side, while the Applicant message and history
 follow Tags on the action side.
 _Avoid_: Application detail, candidate page, applicant profile.
@@ -153,7 +154,8 @@ _Avoid_: Application detail, candidate page, applicant profile.
 **Pipeline move**:
 One named action on the Application review, offered only where the platform allows it from
 where the Application stands — so the buttons on screen are the moves that exist, and the
-current status sits above a full-width, centred action row. A move forward or back is named
+current status sits above the action row. Adjacent backward and onward moves remain centred while
+`More moves` sits at the right edge. A move forward or back is named
 for its stage, a decision for the decision ("Mark as hired", "Reject"), and each says in its
 outcome toast that the candidate was told, because every move notifies them and a rejection also
 emails them. Each move carries one

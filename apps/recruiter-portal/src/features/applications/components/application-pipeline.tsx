@@ -63,45 +63,51 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
 
         <CardContent className="space-y-4">
           {choices.adjacent.length > 0 || choices.other.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {choices.adjacent.map((move, index) => (
-                <Button
-                  key={move.label}
-                  size="sm"
-                  variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
-                  disabled={moving.isPending}
-                  onClick={() => void makeMove(move)}
-                >
-                  {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
-                  {move.label}
-                  {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
-                </Button>
-              ))}
+            <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+              {choices.adjacent.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:col-start-2">
+                  {choices.adjacent.map((move, index) => (
+                    <Button
+                      key={move.label}
+                      size="sm"
+                      variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
+                      disabled={moving.isPending}
+                      onClick={() => void makeMove(move)}
+                    >
+                      {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
+                      {move.label}
+                      {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
 
               {choices.other.length > 0 ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    disabled={moving.isPending}
-                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                  >
-                    <MoreHorizontal aria-hidden="true" />
-                    More moves
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    {choices.other.map((move) => (
-                      <DropdownMenuItem
-                        key={move.label}
-                        variant={move.direction === 'rejection' ? 'destructive' : 'default'}
-                        onClick={() => void makeMove(move)}
-                      >
-                        {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
-                        {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
-                        <span className="flex-1">{move.label}</span>
-                        {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex justify-center sm:col-start-3 sm:justify-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={moving.isPending}
+                      className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                    >
+                      <MoreHorizontal aria-hidden="true" />
+                      More moves
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {choices.other.map((move) => (
+                        <DropdownMenuItem
+                          key={move.label}
+                          variant={move.direction === 'rejection' ? 'destructive' : 'default'}
+                          onClick={() => void makeMove(move)}
+                        >
+                          {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
+                          {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
+                          <span className="flex-1">{move.label}</span>
+                          {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -132,7 +138,13 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                     {isCurrent ? (
                       <>
                         <span className="text-muted-foreground"> · </span>
-                        <span className="text-primary">now</span>
+                        <span className="inline-flex items-center gap-1 text-primary">
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 rounded-full bg-current motion-safe:animate-pulse"
+                          />
+                          now
+                        </span>
                       </>
                     ) : null}
                   </span>
