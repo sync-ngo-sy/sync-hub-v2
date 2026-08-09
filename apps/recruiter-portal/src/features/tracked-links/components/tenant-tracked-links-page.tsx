@@ -3,10 +3,11 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
+import { Tabs } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
 import { Link2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useTenantTrackedLinks } from '../hooks/use-tenant-tracked-links';
@@ -23,6 +24,11 @@ import { CopyAddressButton } from './copy-address-button';
 
 const DESCRIPTION =
   'Every link your Tenant has minted, across every Job, and the Job views each one brought.';
+
+const STATE_TABS = LINK_FILTER_ORDER.map((state) => ({
+  value: state,
+  label: LINK_FILTERS[state].label,
+}));
 
 const SETTLE_MS = 300;
 
@@ -151,11 +157,25 @@ export function TenantTrackedLinksPage({
   const hidden = hiddenByDate(arrived, filter);
 
   return (
-    <div className="space-y-(--space-section)">
-      <PageHeader title="Tracked links" description={DESCRIPTION} />
+    <>
+      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) pt-5 dark:border-sidebar-border dark:bg-sidebar">
+        <PageHeader title="Tracked links" description={DESCRIPTION} />
+        <Tabs
+          className="gap-0"
+          value={filter}
+          onValueChange={(value) => onFilterChange(value as LinkFilter)}
+        >
+          <LineTabsList
+            label="State"
+            value={filter}
+            tabs={STATE_TABS}
+            className="-mb-px mt-5"
+          />
+        </Tabs>
+      </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-1.5 sm:max-w-xs sm:flex-1">
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        <div className="flex max-w-xs flex-col gap-1.5">
           <label htmlFor={searchId} className="text-meta text-muted-foreground">
             Search by name
           </label>
@@ -168,51 +188,41 @@ export function TenantTrackedLinksPage({
           />
         </div>
 
-        <Tabs value={filter} onValueChange={(value) => onFilterChange(value as LinkFilter)}>
-          <TabsList aria-label="State">
-            {LINK_FILTER_ORDER.map((state) => (
-              <TabsTrigger key={state} value={state}>
-                {LINK_FILTERS[state].label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <DataTable
+          label="Tracked links"
+          columns={COLUMNS}
+          data={shown}
+          getRowId={(link) => link.id}
+          rowLabel={(link) => `${link.name} on ${link.job.title}`}
+          isLoading={links.isPending}
+          error={
+            links.error
+              ? {
+                  message: problemMessage(links.error, "Couldn't load your tracked links."),
+                  onRetry: () => void links.refetch(),
+                }
+              : undefined
+          }
+          empty={{
+            icon: Link2,
+            message: emptyMessage({ q, filter, hidden, more: links.hasNextPage }),
+            action: hidden ? (
+              <Button disabled={!links.hasNextPage} onClick={() => void links.fetchNextPage()}>
+                Keep looking
+              </Button>
+            ) : (
+              <Link to="/jobs" className={buttonVariants({ variant: 'outline' })}>
+                Go to Jobs
+              </Link>
+            ),
+          }}
+          loadMore={{
+            hasMore: links.hasNextPage,
+            isLoading: links.isFetchingNextPage,
+            onLoadMore: () => void links.fetchNextPage(),
+          }}
+        />
       </div>
-
-      <DataTable
-        label="Tracked links"
-        columns={COLUMNS}
-        data={shown}
-        getRowId={(link) => link.id}
-        rowLabel={(link) => `${link.name} on ${link.job.title}`}
-        isLoading={links.isPending}
-        error={
-          links.error
-            ? {
-                message: problemMessage(links.error, "Couldn't load your tracked links."),
-                onRetry: () => void links.refetch(),
-              }
-            : undefined
-        }
-        empty={{
-          icon: Link2,
-          message: emptyMessage({ q, filter, hidden, more: links.hasNextPage }),
-          action: hidden ? (
-            <Button disabled={!links.hasNextPage} onClick={() => void links.fetchNextPage()}>
-              Keep looking
-            </Button>
-          ) : (
-            <Link to="/jobs" className={buttonVariants({ variant: 'outline' })}>
-              Go to Jobs
-            </Link>
-          ),
-        }}
-        loadMore={{
-          hasMore: links.hasNextPage,
-          isLoading: links.isFetchingNextPage,
-          onLoadMore: () => void links.fetchNextPage(),
-        }}
-      />
-    </div>
+    </>
   );
 }

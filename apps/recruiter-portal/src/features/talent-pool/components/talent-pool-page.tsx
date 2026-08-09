@@ -90,53 +90,59 @@ export function TalentPoolPage({ reading, onReadingChange, onCandidateOpen }: Ta
   const narrowed = reading.q.trim() !== '';
 
   return (
-    <div className="space-y-(--space-section)">
-      <PageHeader title="Talent pool" description={DESCRIPTION} />
+    <>
+      <div className="-mx-(--space-gutter) -mt-(--space-section) border-b border-border bg-card px-(--space-gutter) py-5 dark:border-sidebar-border dark:bg-sidebar">
+        <PageHeader title="Talent pool" description={DESCRIPTION} />
+      </div>
 
-      <PoolSearch q={reading.q} onSearch={(q) => onReadingChange({ ...reading, q })} />
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        <PoolSearch q={reading.q} onSearch={(q) => onReadingChange({ ...reading, q })} />
 
-      <DataTable
-        label="Saved Candidates"
-        columns={COLUMNS}
-        data={saved.data ?? []}
-        getRowId={(entry) => entry.candidate_id}
-        rowLabel={(entry) => entry.full_name}
-        onRowOpen={onCandidateOpen}
-        rowActions={(entry) => [
-          { label: 'Drop from talent pool', onSelect: () => setDropping(entry) },
-        ]}
-        isLoading={saved.isPending}
-        error={
-          saved.isError
-            ? {
-                message: problemMessage(saved.error, "Couldn't read your talent pool."),
-                onRetry: () => void saved.refetch(),
-              }
-            : undefined
-        }
-        sort={{
-          by: reading.order,
-          onChange: (by) => onReadingChange({ ...reading, order: by as TalentPoolOrder }),
-        }}
-        empty={{
-          icon: Star,
-          message: narrowed ? nobodyMatches(reading.q) : NOBODY_SAVED,
-          action: narrowed ? (
-            <Button variant="outline" onClick={() => onReadingChange({ ...reading, q: '' })}>
-              Clear search
-            </Button>
-          ) : (
-            TO_SEARCH
-          ),
-        }}
-        loadMore={{
-          hasMore: saved.hasNextPage,
-          isLoading: saved.isFetchingNextPage,
-          onLoadMore: () => void saved.fetchNextPage(),
-        }}
-      />
+        <DataTable
+          label="Saved Candidates"
+          columns={COLUMNS}
+          data={saved.data ?? []}
+          getRowId={(entry) => entry.candidate_id}
+          rowLabel={(entry) => entry.full_name}
+          onRowOpen={onCandidateOpen}
+          rowActions={(entry) => [
+            { label: 'Drop from talent pool', onSelect: () => setDropping(entry) },
+          ]}
+          isLoading={saved.isPending}
+          error={
+            saved.isError
+              ? {
+                  message: problemMessage(saved.error, "Couldn't read your talent pool."),
+                  onRetry: () => void saved.refetch(),
+                }
+              : undefined
+          }
+          sort={{
+            by: reading.order,
+            onChange: (by) => onReadingChange({ ...reading, order: by as TalentPoolOrder }),
+          }}
+          empty={{
+            icon: Star,
+            message: narrowed ? nobodyMatches(reading.q) : NOBODY_SAVED,
+            action: narrowed ? (
+              <Button variant="outline" onClick={() => onReadingChange({ ...reading, q: '' })}>
+                Clear search
+              </Button>
+            ) : (
+              TO_SEARCH
+            ),
+          }}
+          loadMore={{
+            hasMore: saved.hasNextPage,
+            isLoading: saved.isFetchingNextPage,
+            onLoadMore: () => void saved.fetchNextPage(),
+          }}
+        />
 
-      {dropping ? <DropCandidateDialog entry={dropping} onClose={() => setDropping(null)} /> : null}
-    </div>
+        {dropping ? (
+          <DropCandidateDialog entry={dropping} onClose={() => setDropping(null)} />
+        ) : null}
+      </div>
+    </>
   );
 }
