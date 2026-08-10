@@ -425,10 +425,15 @@ describe('the CV and the history on the Application review page', () => {
   it('keeps a long history to its last six moves until the reader asks for the rest', async () => {
     const moves = ['reviewing', 'shortlisted', 'interview', 'offer', 'hired'] as const;
     const history = [
-      REVIEW.history[0],
+      {
+        status: 'new' as const,
+        previous_status: null,
+        source: 'candidate' as const,
+        changed_at: REVIEW.applied_at,
+      },
       ...Array.from({ length: 8 }, (_, turn) => ({
-        status: moves[turn % moves.length],
-        previous_status: moves[(turn + 1) % moves.length],
+        status: moves[turn % moves.length] as (typeof moves)[number],
+        previous_status: moves[(turn + 1) % moves.length] as (typeof moves)[number],
         source: 'recruiter' as const,
         changed_at: `2026-08-0${(turn % 8) + 1}T1${turn}:00:00Z`,
       })),
