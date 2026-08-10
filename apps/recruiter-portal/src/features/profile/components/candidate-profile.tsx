@@ -1,4 +1,5 @@
-import { CandidateCard } from '@sync/ui/components/candidate-card';
+import { CandidateCard, type CandidateFact } from '@sync/ui/components/candidate-card';
+import { Badge } from '@sync/ui/components/ui/badge';
 import type { ReactNode } from 'react';
 import { useLanguageName } from '@/features/reference/hooks/use-languages';
 import { ReviewCard } from '@/features/shell/components/review-card';
@@ -13,25 +14,22 @@ import {
 
 interface CandidateFactsCardProps {
   profile: FullProfile;
-  contextLabel?: string;
-  note?: string;
+  facts: CandidateFact[];
+  factsLabel: string;
 }
 
-export function CandidateFactsCard({ profile, contextLabel, note }: CandidateFactsCardProps) {
-  const languageName = useLanguageName();
-
+export function CandidateFactsCard({ profile, facts, factsLabel }: CandidateFactsCardProps) {
   return (
     <CandidateCard
       name={profile.name}
       avatarUrl={profile.avatarUrl}
       email={profile.email}
       phone={profile.phone}
-      role={profile.role}
+      canonicalRole={profile.role}
       headline={profile.headline}
-      yearsOfExperience={profile.totalExperienceYears}
-      languages={profile.languages.map((language) => languageName(language.code))}
-      contextLabel={contextLabel}
-      note={note}
+      facts={facts}
+      factsLabel={factsLabel}
+      headingLevel={2}
     />
   );
 }
@@ -57,10 +55,10 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
             {profile.location || profile.summary ? (
               <div className="space-y-2">
                 {profile.location ? (
-                  <p className="text-dense text-muted-foreground">{profile.location}</p>
+                  <p className="text-meta text-muted-foreground">{profile.location}</p>
                 ) : null}
                 {profile.summary ? (
-                  <p className="max-w-prose text-dense whitespace-pre-line">{profile.summary}</p>
+                  <p className="max-w-prose text-reading whitespace-pre-line">{profile.summary}</p>
                 ) : null}
               </div>
             ) : null}
@@ -99,14 +97,13 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
               <Group title="Skills">
                 <ul aria-label="Skills" className="flex flex-wrap gap-2">
                   {profile.skills.map((skill) => (
-                    <li
-                      key={skill.name}
-                      className="flex items-baseline gap-2 rounded-md bg-muted px-2 py-1 text-dense"
-                    >
-                      <span>{skill.name}</span>
-                      <span className="text-meta text-muted-foreground">
-                        {yearsOfExperience(skill.years_experience)}
-                      </span>
+                    <li key={skill.name}>
+                      <Badge variant="tag" size="sm">
+                        <span>{skill.name}</span>
+                        <span className="text-tag-foreground/80">
+                          {yearsOfExperience(skill.years_experience)}
+                        </span>
+                      </Badge>
                     </li>
                   ))}
                 </ul>
@@ -115,7 +112,7 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 
             {profile.languages.length > 0 ? (
               <Group title="Languages">
-                <ul aria-label="Languages" className="flex flex-wrap gap-x-6 gap-y-1 text-dense">
+                <ul aria-label="Languages" className="flex flex-wrap gap-x-6 gap-y-1 text-reading">
                   {profile.languages.map((language) => (
                     <li key={language.code} className="flex items-baseline gap-2">
                       <span>{languageName(language.code)}</span>
@@ -156,13 +153,12 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 
             {profile.unmappedSkills.length > 0 ? (
               <Group title="Other skills">
-                <p className="text-meta text-muted-foreground">
-                  The platform has no Canonical name for these, so Screening never read them.
-                </p>
                 <ul aria-label="Other skills" className="flex flex-wrap gap-2">
                   {profile.unmappedSkills.map((skill) => (
-                    <li key={skill} className="rounded-md bg-muted px-2 py-1 text-dense">
-                      {skill}
+                    <li key={skill}>
+                      <Badge variant="tag" size="sm">
+                        {skill}
+                      </Badge>
                     </li>
                   ))}
                 </ul>
@@ -179,9 +175,11 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-meta uppercase tracking-[0.08em] text-muted-foreground">{title}</h3>
-      {children}
+    <div className="space-y-4">
+      <h3 className="border-b border-input pb-2.5 font-heading text-title text-foreground">
+        {title}
+      </h3>
+      <div className="space-y-5">{children}</div>
     </div>
   );
 }
@@ -205,12 +203,14 @@ function Entry({ title, subtitle, when, description }: EntryProps) {
   return (
     <div className="space-y-1 border-l-2 border-border pl-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <p className="font-medium text-foreground">{title}</p>
-        {when ? <p className="text-meta text-muted-foreground">{when}</p> : null}
+        <p className="text-reading font-medium text-foreground">{title}</p>
+        {when ? (
+          <p className="text-meta font-mono tabular-nums text-muted-foreground">{when}</p>
+        ) : null}
       </div>
       {subtitle ? <p className="text-dense text-muted-foreground">{subtitle}</p> : null}
       {description ? (
-        <p className="max-w-prose text-dense whitespace-pre-line">{description}</p>
+        <p className="max-w-prose text-reading whitespace-pre-line">{description}</p>
       ) : null}
     </div>
   );

@@ -26,7 +26,11 @@ function columns(profileId: string): DataTableColumn<Member>[] {
       cell: ({ row }) => (
         <span className="flex min-w-40 items-center gap-2">
           {row.original.full_name}
-          {row.original.id === profileId ? <Badge variant="outline">You</Badge> : null}
+          {row.original.id === profileId ? (
+            <Badge variant="outline" size="sm">
+              You
+            </Badge>
+          ) : null}
         </span>
       ),
     },

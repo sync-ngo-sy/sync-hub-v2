@@ -40,15 +40,23 @@ same amber as `--status-review` without depending on it.
 _Avoid_: Chip, status pill, badge.
 
 **Candidate Card**:
-The summary block of a candidate's key facts — avatar, name, canonical role, headline,
-email, phone, total years of experience, languages. It is the leading block in Recruiter
-candidate views and also appears inside the Candidate Portal's profile editor. It owns the
-name heading: level one when it is the page heading, level two when the surrounding page already
-has one. It is deliberately louder than the cards under it (accent wash, accent ring, deeper
-shadow). The avatar falls back to initials until an uploaded photo exists. A page whose facts are
-not simply current may add a plain context label beside the name and a line under the facts saying
-where they came from. Neither is a Status Mark or badge, and a card given neither claims nothing.
-_Avoid_: Profile header, summary card.
+The one block that says who a candidate is — avatar, name, canonical role, headline, and the
+two ways to reach them. It leads the Recruiter's Application review and Candidate view, and
+sits inside the Candidate Portal's profile editor; those three are the same component, and a
+change to how a candidate reads is made once here. It owns the name heading: level one when it
+is the page heading, level two when the surrounding page already has one. Email and phone are
+the contact line, not labelled facts: an address beside a mail icon already says what it is,
+and both are live links. Everything else the page considers a fact it supplies itself, because
+what is worth saying differs by page — the Application review names the Job and the dates it
+moved, the profile editor names experience and languages. Facts sit under a hairline rule with
+no fill or border of their own, so the card never reads as a box inside a box. The avatar is
+the largest thing in the block, larger than the name, and falls back to initials until an
+uploaded photo exists; a single tinted ring is the card's only accent. It is a block among the
+other cards on its page, never a band across the top: a page header names the person and carries
+the actions, and the card reads them. That is why it holds no actions and no page furniture of
+its own — anything a reader can do to a candidate belongs to the page, not to the block that
+describes them.
+_Avoid_: Profile header, summary card, identity band.
 
 **Promotion**:
 The move of a component from one portal's feature into the Design System, permitted only

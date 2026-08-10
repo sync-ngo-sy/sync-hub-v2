@@ -1,14 +1,8 @@
 import { z } from 'zod';
-import {
-  applicationSort,
-  pipelineStatuses,
-  receivedWithinWindow,
-  screeningVerdicts,
-} from '@/features/applications/schemas/filters';
+import { applicationsReading } from '@/features/applications/reading';
 
-export const applicationsSearchParams = z.object({
-  pipeline: pipelineStatuses.optional().catch(undefined),
-  screening: screeningVerdicts.optional().catch(undefined),
-  received: receivedWithinWindow.optional().catch(undefined),
-  sort: applicationSort.optional().catch(undefined),
+export const applicationsSearchParams = applicationsReading;
+
+export const applicationReviewSearchParams = applicationsReading.extend({
+  from: z.string().optional().catch(undefined),
 });

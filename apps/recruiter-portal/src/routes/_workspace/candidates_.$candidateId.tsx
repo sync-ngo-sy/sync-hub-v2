@@ -8,12 +8,13 @@ import {
 import { readSearchHits } from '@/features/candidates/hooks/use-candidate-search';
 import { recordProfile } from '@/features/profile/profile';
 import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
+import { originFrom } from '@/features/shell/origin';
 import { warmTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
 import { pageTitle } from '@/lib/page-title';
-import { candidateSearchParams, filtersFrom } from './-candidate-search-params';
+import { candidateRecordSearchParams, filtersFrom } from './-candidate-search-params';
 
 export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
-  validateSearch: candidateSearchParams,
+  validateSearch: candidateRecordSearchParams,
   loaderDeps: ({ search }) => search,
   loader: async ({ context, params, deps }) => {
     const filters = filtersFrom(deps);
@@ -38,9 +39,17 @@ export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
 
 function CandidateRoute() {
   const found = Route.useLoaderData();
-  const filters = filtersFrom(Route.useSearch());
+  const search = Route.useSearch();
+  const filters = filtersFrom(search);
 
   if (!found) return <CandidateOutOfReach filters={filters} />;
 
-  return <CandidateViewPage record={found.record} evidence={found.evidence} filters={filters} />;
+  return (
+    <CandidateViewPage
+      record={found.record}
+      evidence={found.evidence}
+      filters={filters}
+      origin={originFrom(search.from)}
+    />
+  );
 }

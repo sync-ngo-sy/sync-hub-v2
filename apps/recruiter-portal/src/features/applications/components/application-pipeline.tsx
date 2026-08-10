@@ -1,31 +1,36 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
-import { Button } from '@sync/ui/components/ui/button';
-import { Separator } from '@sync/ui/components/ui/separator';
+import { Button, buttonVariants } from '@sync/ui/components/ui/button';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@sync/ui/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@sync/ui/components/ui/dropdown-menu';
 import { cn } from '@sync/ui/lib/utils';
-import { CircleAlert } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, ArrowRight, CircleAlert, CircleX, MoreHorizontal } from 'lucide-react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
-import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
-import { PIPELINE_STEPS, type PipelineStatus, pipelineState, pipelineStep } from '../application';
+import { PIPELINE_LADDER, type PipelineStatus, pipelineState, pipelineStep } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
-import { type PipelineMove, pipelineMoveGroups, pipelineOutcome } from '../review';
+import { type PipelineMove, pipelineMoveChoices, pipelineOutcome } from '../review';
 
 interface ApplicationPipelineProps {
   applicationId: string;
   status: PipelineStatus;
 }
 
-const REJECTION = 'text-destructive hover:text-destructive';
-
 export function ApplicationPipeline({ applicationId, status }: ApplicationPipelineProps) {
+  const headingId = useId();
   const moving = useMoveApplication(applicationId);
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = pipelineState(status);
   const step = pipelineStep(status);
-  const groups = pipelineMoveGroups(status);
+  const choices = pipelineMoveChoices(status);
   const outcome = pipelineOutcome(status);
+  const onlyMenu = choices.adjacent.length === 0;
 
   async function makeMove(move: PipelineMove) {
     setRefusal(null);
@@ -46,51 +51,125 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
   }
 
   return (
-    <ReviewCard title="Pipeline">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-meta text-muted-foreground">Current</span>
-          <div className="flex items-center gap-2">
-            {step ? (
-              <span className="text-meta text-muted-foreground">
-                Step {step} of {PIPELINE_STEPS}
-              </span>
-            ) : null}
+    <section aria-labelledby={headingId}>
+      <Card>
+        <CardHeader className="border-b border-border pb-(--card-spacing)">
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle>
+              <h2 id={headingId}>Pipeline</h2>
+            </CardTitle>
             <StatusMark label={state.label} tone={state.tone} />
           </div>
-        </div>
 
-        {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}
+          {choices.adjacent.length > 0 || choices.other.length > 0 ? (
+            <CardAction className="flex flex-wrap items-center justify-end gap-2 self-center">
+              {choices.other.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={moving.isPending}
+                    className={buttonVariants({
+                      variant: 'outline',
+                      size: onlyMenu ? 'sm' : 'icon-sm',
+                    })}
+                  >
+                    <MoreHorizontal
+                      aria-hidden="true"
+                      data-icon={onlyMenu ? 'inline-start' : undefined}
+                    />
+                    <span className={cn(!onlyMenu && 'sr-only')}>More moves</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {choices.other.map((move) => (
+                      <DropdownMenuItem
+                        key={move.label}
+                        variant={move.direction === 'rejection' ? 'destructive' : 'default'}
+                        onClick={() => void makeMove(move)}
+                      >
+                        {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
+                        {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
+                        <span className="flex-1">{move.label}</span>
+                        {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
 
-        {refusal ? (
-          <Alert>
-            <CircleAlert aria-hidden="true" />
-            <AlertTitle>Move refused</AlertTitle>
-            <AlertDescription>{refusal}</AlertDescription>
-          </Alert>
-        ) : null}
+              {choices.adjacent.map((move, index) => (
+                <Button
+                  key={move.label}
+                  size="sm"
+                  variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
+                  disabled={moving.isPending}
+                  onClick={() => void makeMove(move)}
+                >
+                  {move.direction === 'back' ? (
+                    <ArrowLeft aria-hidden="true" data-icon="inline-start" />
+                  ) : null}
+                  {move.label}
+                  {move.direction === 'onward' ? (
+                    <ArrowRight aria-hidden="true" data-icon="inline-end" />
+                  ) : null}
+                </Button>
+              ))}
+            </CardAction>
+          ) : null}
+        </CardHeader>
 
-        {groups.map((group, groupIndex) => (
-          <div key={group.direction} className="flex flex-col gap-2">
-            {groupIndex > 0 ? <Separator className="mb-2" /> : null}
-            {group.moves.map((move, moveIndex) => (
-              <Button
-                key={move.label}
-                variant={groupIndex === 0 && moveIndex === 0 ? 'default' : 'outline'}
-                className={cn('justify-start', move.direction === 'rejection' && REJECTION)}
-                disabled={moving.isPending}
-                onClick={() => void makeMove(move)}
-              >
-                <move.icon aria-hidden="true" />
-                <span aria-hidden="true" className="w-3 text-meta opacity-65">
-                  {pipelineStep(move.target)}
-                </span>
-                {move.label}
-              </Button>
-            ))}
-          </div>
-        ))}
-      </div>
-    </ReviewCard>
+        <CardContent className="space-y-4">
+          <ol aria-label="Pipeline progress" className="grid grid-cols-6 gap-1.5">
+            {PIPELINE_LADDER.map((pipelineStatus, index) => {
+              const stageStep = index + 1;
+              const isCurrent = step === stageStep;
+              const isReached = step !== null && stageStep <= step;
+
+              return (
+                <li
+                  key={pipelineStatus}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  className="min-w-0 space-y-1.5"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'block h-1 rounded-full bg-border',
+                      isReached && 'bg-primary',
+                      isCurrent && 'bg-deep dark:bg-deep-foreground',
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'block truncate text-meta text-muted-foreground',
+                      isCurrent && 'font-medium text-foreground',
+                    )}
+                  >
+                    {pipelineState(pipelineStatus).label}
+                    {isCurrent ? (
+                      <>
+                        <span className="text-muted-foreground"> · </span>
+                        <span className="inline-flex items-center gap-1 text-primary">
+                          <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+                          now
+                        </span>
+                      </>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+
+          {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}
+
+          {refusal ? (
+            <Alert>
+              <CircleAlert aria-hidden="true" />
+              <AlertTitle>Move refused</AlertTitle>
+              <AlertDescription>{refusal}</AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
+    </section>
   );
 }

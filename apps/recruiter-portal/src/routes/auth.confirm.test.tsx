@@ -21,7 +21,9 @@ describe('confirming a founding admin email', () => {
     const { router, queryClient } = await renderApp(CONFIRM_LINK);
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'));
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: /Good (morning|evening), Rana/ }),
+    ).toBeVisible();
     expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toEqual(RECRUITER);
     expect(request).toHaveBeenCalledWith({ token_hash: 'emailed-token' });
   });

@@ -6,6 +6,7 @@ export type TenantApplication = components['schemas']['TenantApplicationSummary'
 export type ApplicationJob = components['schemas']['ApplicationJob'];
 export type PipelineStatus = components['schemas']['ApplicationStatus'];
 export type ScreeningVerdict = components['schemas']['QualificationStatus'];
+export type ScreeningOutcome = components['schemas']['ScreeningVerdict'];
 export type ReceivedWithin = components['schemas']['ReceivedWithin'];
 export type ApplicationSort = components['schemas']['ApplicationSort'];
 
@@ -48,15 +49,6 @@ export const PIPELINE_STATUSES = [
   'withdrawn',
 ] as const satisfies readonly PipelineStatus[];
 
-export const ACTIVE_PIPELINE_STATUSES = [
-  'new',
-  'reviewing',
-  'shortlisted',
-  'interview',
-  'offer',
-  'hired',
-] as const satisfies readonly PipelineStatus[];
-
 export const PIPELINE_LADDER = [
   'new',
   'reviewing',
@@ -65,8 +57,6 @@ export const PIPELINE_LADDER = [
   'offer',
   'hired',
 ] as const satisfies readonly PipelineStatus[];
-
-export const PIPELINE_STEPS = PIPELINE_LADDER.length;
 
 export const SCREENING_VERDICTS = [
   'pending',
@@ -84,10 +74,6 @@ export function pipelineStep(status: PipelineStatus): number | null {
   return place === -1 ? null : place + 1;
 }
 
-export function pipelineSelection(chosen: PipelineStatus[] | undefined): PipelineStatus[] {
-  return chosen ?? [...ACTIVE_PIPELINE_STATUSES];
-}
-
 export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {
   return chosen ?? [...SCREENING_VERDICTS];
 }
@@ -96,8 +82,20 @@ export function screeningState(verdict: ScreeningVerdict): MarkState {
   return SCREENING_STATE[verdict];
 }
 
-export function candidateMeta(application: ApplicationSummary): string {
-  return [application.headline, application.location].filter(Boolean).join(' · ');
+const NOT_SCREENED = 'Screening has not run on this Application yet.';
+
+export function screeningExplanation(screening: ScreeningOutcome): string | null {
+  if (screening.status === 'pending') return NOT_SCREENED;
+  return screening.reason ?? null;
+}
+
+export function candidateIdentity(application: ApplicationSummary) {
+  return {
+    name: application.candidate_name,
+    role: application.canonical_role ?? null,
+    years: application.total_experience_years,
+    location: application.location ?? null,
+  };
 }
 
 export const EVERY_TIME = 'ever';

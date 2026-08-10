@@ -6,14 +6,14 @@ import {
   type ApplicationSummary,
   hiddenBehind,
   PIPELINE_STATUSES,
-  pipelineSelection,
-  pipelineState,
   SCREENING_VERDICTS,
   screeningSelection,
   screeningState,
 } from '../application';
-import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
+import { useJobApplications } from '../hooks/use-job-applications';
+import type { ApplicationFilters } from '../reading';
 import { applicationColumns } from './application-columns';
+import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 
 const COLUMNS = applicationColumns<ApplicationSummary>();
@@ -23,6 +23,7 @@ interface JobApplicationsProps {
   filters: ApplicationFilters;
   onFiltersChange: (filters: ApplicationFilters) => void;
   onApplicationOpen: (application: ApplicationSummary) => void;
+  applicationHref: (application: ApplicationSummary) => string;
   onShowLinks: () => void;
 }
 
@@ -31,11 +32,13 @@ export function JobApplications({
   filters,
   onFiltersChange,
   onApplicationOpen,
+  applicationHref,
   onShowLinks,
 }: JobApplicationsProps) {
-  const pipeline = pipelineSelection(filters.pipeline);
+  const pipelineFilter = filters.pipeline?.length === 1 ? filters.pipeline : undefined;
+  const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
   const screening = screeningSelection(filters.screening);
-  const applications = useJobApplications(jobId, { pipeline, screening });
+  const applications = useJobApplications(jobId, { pipeline: pipelineFilter, screening });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const active = [
@@ -44,8 +47,14 @@ export function JobApplications({
   ].filter((hidden) => hidden > 0).length;
 
   return (
-    <div className="space-y-6 pt-4">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+        <ApplicationPipelineFilter
+          pipeline={pipelineFilter}
+          counts={statusCounts}
+          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
+        />
+
         <ChecklistFilter
           label="Screening"
           noun="verdicts"
@@ -57,17 +66,6 @@ export function JobApplications({
           counts={verdictCounts}
           onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
         />
-        <ChecklistFilter
-          label="Pipeline"
-          noun="statuses"
-          options={PIPELINE_STATUSES.map((status) => ({
-            value: status,
-            label: pipelineState(status).label,
-          }))}
-          selected={pipeline}
-          counts={statusCounts}
-          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
-        />
       </div>
 
       <DataTable
@@ -77,6 +75,7 @@ export function JobApplications({
         getRowId={(application) => application.id}
         rowLabel={(application) => `${application.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
+        rowHref={applicationHref}
         isLoading={applications.isPending}
         error={
           applications.isError
@@ -100,8 +99,8 @@ export function JobApplications({
                 variant="outline"
                 onClick={() =>
                   onFiltersChange({
-                    pipeline: [...PIPELINE_STATUSES],
-                    screening: [...SCREENING_VERDICTS],
+                    pipeline: undefined,
+                    screening: undefined,
                   })
                 }
               >

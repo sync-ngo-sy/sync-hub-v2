@@ -11,9 +11,6 @@ import { assessmentProvenance, type MatchAssessment, matchLabel } from '../asses
 import { useAssessMatch, useForgetAssessment } from '../hooks/use-application-actions';
 import { useMatchAssessments } from '../hooks/use-match-assessments';
 
-const ADVICE =
-  'Advice drawn from the Snapshot and the Job — it does not change the Screening verdict.';
-
 const LEAVING =
   'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-8 motion-safe:duration-300 motion-safe:fill-mode-forwards';
 
@@ -145,7 +142,7 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
   }
 
   return (
-    <ReviewCard title="Match assessment" hint={ADVICE}>
+    <ReviewCard title="Match assessment">
       <div className="space-y-4">
         <Button
           variant="outline"
