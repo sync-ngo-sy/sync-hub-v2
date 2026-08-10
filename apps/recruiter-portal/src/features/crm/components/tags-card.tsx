@@ -47,8 +47,8 @@ export function TagsCard({ tags, subject }: { tags: TagsWidget; subject: CrmSubj
 
         {tags.isPending ? (
           <div aria-hidden="true" className="flex gap-2">
-            <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-7 w-20" />
+            <Skeleton className="h-7 w-24" />
           </div>
         ) : null}
 
@@ -92,15 +92,15 @@ export function TagsCard({ tags, subject }: { tags: TagsWidget; subject: CrmSubj
 
 function OnTag({ tag, onTakeOff }: { tag: Tag; onTakeOff: () => void }) {
   return (
-    <Badge variant="tag" className="gap-1 pr-1">
+    <Badge variant="tag" className="gap-1 pr-1.5">
       {tag.name}
       <button
         type="button"
         aria-label={`Take off ${tag.name}`}
         onClick={onTakeOff}
-        className="rounded-sm p-0.5 outline-none hover:bg-tag-foreground/15 focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="rounded-md p-0.5 outline-none hover:bg-tag-foreground/15 focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        <X aria-hidden="true" className="size-3" />
+        <X aria-hidden="true" className="size-3.5" />
       </button>
     </Badge>
   );

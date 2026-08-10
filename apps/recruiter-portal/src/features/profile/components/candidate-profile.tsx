@@ -1,4 +1,5 @@
 import { CandidateCard } from '@sync/ui/components/candidate-card';
+import { Badge } from '@sync/ui/components/ui/badge';
 import type { ReactNode } from 'react';
 import { useLanguageName } from '@/features/reference/hooks/use-languages';
 import { ReviewCard } from '@/features/shell/components/review-card';
@@ -57,7 +58,7 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
             {profile.location || profile.summary ? (
               <div className="space-y-2">
                 {profile.location ? (
-                  <p className="text-dense text-muted-foreground">{profile.location}</p>
+                  <p className="text-meta text-muted-foreground">{profile.location}</p>
                 ) : null}
                 {profile.summary ? (
                   <p className="max-w-prose text-dense whitespace-pre-line">{profile.summary}</p>
@@ -99,14 +100,13 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
               <Group title="Skills">
                 <ul aria-label="Skills" className="flex flex-wrap gap-2">
                   {profile.skills.map((skill) => (
-                    <li
-                      key={skill.name}
-                      className="flex items-baseline gap-2 rounded-md bg-muted px-2 py-1 text-dense"
-                    >
-                      <span>{skill.name}</span>
-                      <span className="text-meta text-muted-foreground">
-                        {yearsOfExperience(skill.years_experience)}
-                      </span>
+                    <li key={skill.name}>
+                      <Badge variant="tag">
+                        <span>{skill.name}</span>
+                        <span className="text-tag-foreground/80">
+                          {yearsOfExperience(skill.years_experience)}
+                        </span>
+                      </Badge>
                     </li>
                   ))}
                 </ul>
@@ -156,13 +156,10 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 
             {profile.unmappedSkills.length > 0 ? (
               <Group title="Other skills">
-                <p className="text-meta text-muted-foreground">
-                  The platform has no Canonical name for these, so Screening never read them.
-                </p>
                 <ul aria-label="Other skills" className="flex flex-wrap gap-2">
                   {profile.unmappedSkills.map((skill) => (
-                    <li key={skill} className="rounded-md bg-muted px-2 py-1 text-dense">
-                      {skill}
+                    <li key={skill}>
+                      <Badge variant="tag">{skill}</Badge>
                     </li>
                   ))}
                 </ul>
@@ -179,8 +176,10 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-meta uppercase tracking-[0.08em] text-muted-foreground">{title}</h3>
+    <div className="space-y-4">
+      <h3 className="border-b border-border pb-2 font-heading text-dense font-section text-foreground">
+        {title}
+      </h3>
       {children}
     </div>
   );
@@ -205,10 +204,10 @@ function Entry({ title, subtitle, when, description }: EntryProps) {
   return (
     <div className="space-y-1 border-l-2 border-border pl-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <p className="font-medium text-foreground">{title}</p>
-        {when ? <p className="text-meta text-muted-foreground">{when}</p> : null}
+        <p className="text-dense font-medium text-foreground">{title}</p>
+        {when ? <p className="text-meta tabular-nums text-muted-foreground">{when}</p> : null}
       </div>
-      {subtitle ? <p className="text-dense text-muted-foreground">{subtitle}</p> : null}
+      {subtitle ? <p className="text-meta text-muted-foreground">{subtitle}</p> : null}
       {description ? (
         <p className="max-w-prose text-dense whitespace-pre-line">{description}</p>
       ) : null}

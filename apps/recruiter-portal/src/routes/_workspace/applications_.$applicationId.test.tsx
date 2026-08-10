@@ -287,19 +287,17 @@ describe('the Application review page', () => {
     expect(header.queryByText('Logistics Manager')).toBeNull();
   });
 
-  it('flags the skills Screening could not read, because a human still should', async () => {
+  it('shows the skills Screening could not read, because a human still should', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
     const snapshot = within(await screen.findByRole('region', { name: 'Snapshot' }));
-    expect(snapshot.getByText('Convoy planning')).toBeVisible();
-    expect(snapshot.getByText('Customs clearance')).toBeVisible();
-    expect(
-      snapshot.getByText(
-        'The platform has no Canonical name for these, so Screening never read them.',
-      ),
-    ).toBeVisible();
+    expect(snapshot.getByRole('heading', { name: 'Other skills' })).toBeVisible();
+
+    const other = within(snapshot.getByRole('list', { name: 'Other skills' }));
+    expect(other.getByText('Convoy planning')).toBeVisible();
+    expect(other.getByText('Customs clearance')).toBeVisible();
   });
 
   it('leaves out the parts of a Snapshot the candidate never filled in', async () => {
