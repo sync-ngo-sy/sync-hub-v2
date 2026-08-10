@@ -128,24 +128,20 @@ export function ApplicationReviewPage({
         ]}
       />
 
-      <div className="space-y-(--space-section) pt-(--space-section)">
-        <ApplicationPipeline applicationId={applicationId} status={review.status} />
-
+      <div className="pt-(--space-section)">
         <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
-          <ReviewCard title="Screening">
-            <div className="space-y-3">
-              <StatusMark label={verdict.label} tone={verdict.tone} />
-              <p className="text-dense text-muted-foreground">
-                {review.screening.reason ?? 'Screening has not run on this Application yet.'}
-              </p>
-            </div>
-          </ReviewCard>
-
-          <WidgetBoundary name="Tags">
-            <ApplicationTags applicationId={applicationId} />
-          </WidgetBoundary>
-
           <div className="space-y-(--space-grid)">
+            <ApplicationPipeline applicationId={applicationId} status={review.status} />
+
+            <ReviewCard title="Screening">
+              <div className="space-y-3">
+                <StatusMark label={verdict.label} tone={verdict.tone} />
+                <p className="text-dense text-muted-foreground">
+                  {review.screening.reason ?? 'Screening has not run on this Application yet.'}
+                </p>
+              </div>
+            </ReviewCard>
+
             <CandidateProfile
               profile={profile}
               title="Snapshot"
@@ -156,13 +152,17 @@ export function ApplicationReviewPage({
             <WidgetBoundary name="Match assessment">
               <MatchAssessments applicationId={applicationId} />
             </WidgetBoundary>
+          </div>
+
+          <div className="space-y-(--space-grid)">
+            <WidgetBoundary name="Tags">
+              <ApplicationTags applicationId={applicationId} />
+            </WidgetBoundary>
 
             <WidgetBoundary name="Notes">
               <ApplicationNotes applicationId={applicationId} />
             </WidgetBoundary>
-          </div>
 
-          <div className="space-y-(--space-grid)">
             <WidgetBoundary name="Message the applicant">
               <ApplicantMessage
                 applicationId={applicationId}

@@ -68,10 +68,6 @@ export function CandidateViewPage({ record, evidence, filters, origin }: Candida
             <CandidateProfile profile={profile} title="Profile" empty={PROFILE_EMPTY}>
               <MatchEvidenceNote evidence={evidence} />
             </CandidateProfile>
-
-            <WidgetBoundary name="Notes">
-              <CandidateNotes candidateId={record.candidate_id} />
-            </WidgetBoundary>
           </div>
 
           <div className="space-y-(--space-grid)">
@@ -81,6 +77,10 @@ export function CandidateViewPage({ record, evidence, filters, origin }: Candida
 
             <WidgetBoundary name="Tags">
               <CandidateTags candidateId={record.candidate_id} />
+            </WidgetBoundary>
+
+            <WidgetBoundary name="Notes">
+              <CandidateNotes candidateId={record.candidate_id} />
             </WidgetBoundary>
           </div>
         </div>

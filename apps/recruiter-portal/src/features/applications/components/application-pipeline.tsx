@@ -1,7 +1,7 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@sync/ui/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@sync/ui/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
   const step = pipelineStep(status);
   const choices = pipelineMoveChoices(status);
   const outcome = pipelineOutcome(status);
+  const onlyMenu = choices.adjacent.length === 0;
 
   async function makeMove(move: PipelineMove) {
     setRefusal(null);
@@ -59,59 +60,63 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
             </CardTitle>
             <StatusMark label={state.label} tone={state.tone} />
           </div>
+
+          {choices.adjacent.length > 0 || choices.other.length > 0 ? (
+            <CardAction className="flex flex-wrap items-center justify-end gap-2 self-center">
+              {choices.other.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={moving.isPending}
+                    className={buttonVariants({
+                      variant: 'outline',
+                      size: onlyMenu ? 'sm' : 'icon-sm',
+                    })}
+                  >
+                    <MoreHorizontal
+                      aria-hidden="true"
+                      data-icon={onlyMenu ? 'inline-start' : undefined}
+                    />
+                    <span className={cn(!onlyMenu && 'sr-only')}>More moves</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {choices.other.map((move) => (
+                      <DropdownMenuItem
+                        key={move.label}
+                        variant={move.direction === 'rejection' ? 'destructive' : 'default'}
+                        onClick={() => void makeMove(move)}
+                      >
+                        {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
+                        {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
+                        <span className="flex-1">{move.label}</span>
+                        {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+
+              {choices.adjacent.map((move, index) => (
+                <Button
+                  key={move.label}
+                  size="sm"
+                  variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
+                  disabled={moving.isPending}
+                  onClick={() => void makeMove(move)}
+                >
+                  {move.direction === 'back' ? (
+                    <ArrowLeft aria-hidden="true" data-icon="inline-start" />
+                  ) : null}
+                  {move.label}
+                  {move.direction === 'onward' ? (
+                    <ArrowRight aria-hidden="true" data-icon="inline-end" />
+                  ) : null}
+                </Button>
+              ))}
+            </CardAction>
+          ) : null}
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {choices.adjacent.length > 0 || choices.other.length > 0 ? (
-            <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-              {choices.adjacent.length > 0 ? (
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:col-start-2">
-                  {choices.adjacent.map((move, index) => (
-                    <Button
-                      key={move.label}
-                      size="sm"
-                      variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
-                      disabled={moving.isPending}
-                      onClick={() => void makeMove(move)}
-                    >
-                      {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
-                      {move.label}
-                      {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-
-              {choices.other.length > 0 ? (
-                <div className="flex justify-center sm:col-start-3 sm:justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={moving.isPending}
-                      className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                    >
-                      <MoreHorizontal aria-hidden="true" />
-                      More moves
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {choices.other.map((move) => (
-                        <DropdownMenuItem
-                          key={move.label}
-                          variant={move.direction === 'rejection' ? 'destructive' : 'default'}
-                          onClick={() => void makeMove(move)}
-                        >
-                          {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
-                          {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
-                          <span className="flex-1">{move.label}</span>
-                          {move.direction === 'onward' ? <ArrowRight aria-hidden="true" /> : null}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
           <ol aria-label="Pipeline progress" className="grid grid-cols-6 gap-1.5">
             {PIPELINE_LADDER.map((pipelineStatus, index) => {
               const stageStep = index + 1;
@@ -119,7 +124,11 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
               const isReached = step !== null && stageStep <= step;
 
               return (
-                <li key={pipelineStatus} className="min-w-0 space-y-1.5">
+                <li
+                  key={pipelineStatus}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  className="min-w-0 space-y-1.5"
+                >
                   <span
                     aria-hidden="true"
                     className={cn(

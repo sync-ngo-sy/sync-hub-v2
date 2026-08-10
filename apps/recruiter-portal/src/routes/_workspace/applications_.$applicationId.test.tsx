@@ -25,6 +25,12 @@ function panelOrder() {
   return screen.getAllByRole('region').map((panel) => panel.querySelector('h2')?.textContent);
 }
 
+function pipelineNow() {
+  return within(screen.getByRole('region', { name: 'Pipeline' })).getByRole('listitem', {
+    current: 'step',
+  });
+}
+
 function headerIcon(name: string) {
   return screen.getByRole('region', { name }).querySelector('[data-slot="card-header"] svg');
 }
@@ -365,7 +371,7 @@ describe('the CV and the history on the Application review page', () => {
     expect(link).toHaveClass('border-input', 'bg-input-background');
   });
 
-  it('puts the Pipeline before the review widgets', async () => {
+  it('leads the review column with the Pipeline and files the Notes beside it', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
@@ -373,8 +379,10 @@ describe('the CV and the history on the Application review page', () => {
     await screen.findByRole('region', { name: 'Pipeline' });
     const panels = panelOrder();
     expect(panels.indexOf('Pipeline')).toBeLessThan(panels.indexOf('Screening'));
-    expect(panels.indexOf('Tags')).toBe(panels.indexOf('Screening') + 1);
     expect(panels.indexOf('Screening')).toBeLessThan(panels.indexOf('Snapshot'));
+    expect(panels.indexOf('Snapshot')).toBeLessThan(panels.indexOf('Tags'));
+    expect(panels.indexOf('Notes')).toBe(panels.indexOf('Tags') + 1);
+    expect(panels.indexOf('Notes')).toBeLessThan(panels.indexOf('Message the applicant'));
   });
 
   it('marks the CV action and the Applicant message header with an icon apiece', async () => {
@@ -452,7 +460,7 @@ describe('the Pipeline on the Application review page', () => {
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
-    expect(pipeline.getByText('Shortlisted')).toBeVisible();
+    expect(pipelineNow()).toHaveTextContent('Shortlisted');
     expect(pipeline.queryByText(/Stage changes are visible/)).toBeNull();
     expect(pipeline.getByRole('button', { name: 'Move back to Reviewing' })).toBeVisible();
     expect(pipeline.getByRole('button', { name: 'Move to Interview' })).toBeVisible();
@@ -485,16 +493,16 @@ describe('the Pipeline on the Application review page', () => {
     expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
   });
 
-  it('keeps stage numbers out of the adjacent moves', async () => {
+  it('keeps stage numbers out of the adjacent moves, and ends the row on the onward move', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual([
+      'More moves',
       'Move back to Reviewing',
       'Move to Interview',
-      'More moves',
     ]);
   });
 
@@ -544,7 +552,7 @@ describe('the Pipeline on the Application review page', () => {
     expect(asked).toEqual(['interview']);
 
     const pipeline = within(screen.getByRole('region', { name: 'Pipeline' }));
-    await waitFor(() => expect(pipeline.getByText('Interview')).toBeVisible());
+    await waitFor(() => expect(pipelineNow()).toHaveTextContent('Interview'));
     expect(pipeline.queryByRole('button', { name: 'Move to Interview' })).toBeNull();
     expect(pipeline.getByRole('button', { name: 'Move back to Shortlisted' })).toBeVisible();
   });
@@ -602,7 +610,7 @@ describe('the Pipeline on the Application review page', () => {
     expect(await pipeline.findByRole('alert')).toHaveTextContent(
       'A shortlisted application cannot become new.',
     );
-    expect(pipeline.getByText('Shortlisted')).toBeVisible();
+    expect(pipelineNow()).toHaveTextContent('Shortlisted');
     expect(pipeline.getByRole('button', { name: 'More moves' })).toBeVisible();
   });
 
@@ -644,7 +652,7 @@ describe('the Pipeline on the Application review page', () => {
     await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
-    expect(pipeline.getByText('Hired')).toBeVisible();
+    expect(pipelineNow()).toHaveTextContent('Hired');
     expect(
       pipeline.getByText('Hired. This Application is closed — nothing moves it.'),
     ).toBeVisible();
