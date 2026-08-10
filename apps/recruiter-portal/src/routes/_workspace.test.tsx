@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
-import { logsOut, signedInAs, signedOut } from '@/features/auth/testing/handlers';
+import { signedInAs, signedInUntilLogOut, signedOut } from '@/features/auth/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/headline';
 import { client } from '@/lib/api';
 import { CANDIDATE, PLATFORM_ADMIN, RECRUITER } from '@/testing/fixtures';
@@ -28,7 +28,7 @@ describe('the workspace guard', () => {
     expect(
       await screen.findByRole('heading', { name: 'This is the Recruiter Portal' }),
     ).toBeVisible();
-    expect(screen.getByText(/Sync Candidate Portal/)).toBeVisible();
+    expect(screen.getByText(/Sync Hub Candidate Portal/)).toBeVisible();
   });
 
   it('shows a platform admin the same notice, in words that fit their account', async () => {
@@ -74,6 +74,16 @@ describe('the workspace chrome', () => {
     expect(within(nav).getByRole('link', { name: 'Jobs' })).not.toHaveAttribute('aria-current');
   });
 
+  it('points the logo at the dashboard, never back out to the landing page', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    await renderApp('/talent-pool');
+
+    for (const logo of screen.getAllByRole('link', { name: 'Sync Hub' })) {
+      expect(logo).toHaveAttribute('href', '/dashboard');
+    }
+  });
+
   it('offers the same navigation in a drawer, which closes on arrival', async () => {
     server.use(...signedInAs(RECRUITER));
     const { router, user } = await renderApp('/dashboard');
@@ -87,7 +97,7 @@ describe('the workspace chrome', () => {
   });
 
   it('signs the recruiter out, landing on the landing page with an empty cache', async () => {
-    server.use(...signedInAs(RECRUITER), ...logsOut());
+    server.use(...signedInUntilLogOut(RECRUITER));
     const { router, queryClient, user } = await renderApp('/dashboard');
 
     await user.click(screen.getByRole('button', { name: `Account: ${RECRUITER.full_name}` }));

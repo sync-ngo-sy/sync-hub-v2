@@ -55,7 +55,7 @@ describe('Account settings', () => {
     expect(
       await screen.findByRole('heading', { name: 'Your account has been deleted' }),
     ).toBeVisible();
-    expect(screen.getByText(/Thanks for being part of Sync/)).toBeVisible();
+    expect(screen.getByText(/Thanks for being part of Sync Hub/)).toBeVisible();
     expect(screen.queryByRole('button', { name: `Account: ${CANDIDATE.full_name}` })).toBeNull();
   });
 

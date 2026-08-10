@@ -47,7 +47,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
           </SheetContent>
         </Sheet>
         <Link to="/overview" className="font-heading text-base font-semibold">
-          Sync Platform
+          Sync Hub Platform
         </Link>
       </header>
 

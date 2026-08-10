@@ -7,7 +7,7 @@ export function NotFound() {
     <CenteredScreen>
       <h1 className="font-heading text-h3 text-foreground">Page not found</h1>
       <p className="text-dense text-muted-foreground">
-        That address doesn't exist in Sync Recruiter.
+        That address doesn't exist in Sync Hub Recruiter.
       </p>
       <div>
         <Button variant="outline" nativeButton={false} render={<Link to="/dashboard" />}>

@@ -43,7 +43,7 @@ composite FK (supabase ADR-0001, amended by supabase ADR-0003).
   row they will run — see *Platform operations* below.
 - Do **not** rely on an `auth.users` trigger; the flow decides the role, so the backend writes
   both rows.
-- There is **no Tenant signup**. Sync is sold, not self-served: no public endpoint creates a
+- There is **no Tenant signup**. Sync Hub is sold, not self-served: no public endpoint creates a
   `tenants` row, and the rule lives here rather than in a hidden button. A company asks with an
   `access_requests` row, and a Platform admin converts it — see *Access requests* below.
 

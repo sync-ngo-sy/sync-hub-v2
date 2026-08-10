@@ -7,7 +7,7 @@ import { useLogOut } from '../hooks/use-log-out';
 type AccountType = components['schemas']['AccountType'];
 
 const RECRUITER_EXPLANATION =
-  "You're signed in with a recruiter account. Jobs, applications and your team live in the Sync Recruiter Portal. Sign out here to use a candidate account instead.";
+  "You're signed in with a recruiter account. Jobs, applications and your team live in the Sync Hub Recruiter Portal. Sign out here to use a candidate account instead.";
 
 const PLATFORM_ADMIN_EXPLANATION =
   "You're signed in with a platform admin account, which this portal does not serve. Sign out here to use a candidate account instead.";

@@ -38,7 +38,7 @@ function LogInPage() {
           </Link>
         </p>
         <p>
-          New to Sync?{' '}
+          New to Sync Hub?{' '}
           <Link to="/request-access" className={AUTH_LINK}>
             Request access
           </Link>

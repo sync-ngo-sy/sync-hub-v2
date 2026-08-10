@@ -4,6 +4,7 @@ import {
   listsApplicationTags,
   listsMatchAssessments,
 } from '@/features/applications/testing/handlers';
+import { signedOut } from '@/features/auth/testing/handlers';
 import {
   listsCandidateNotes,
   listsCandidateTags,
@@ -36,4 +37,5 @@ export const server = setupServer(
   ...hasCanonicalRoles(CANONICAL_ROLES),
   ...hasLanguages(LANGUAGES),
   ...hasLocations(LOCATIONS),
+  ...signedOut(),
 );

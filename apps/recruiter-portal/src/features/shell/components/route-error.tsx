@@ -29,7 +29,7 @@ export function AppCrash({ error }: ErrorComponentProps) {
   return (
     <CenteredScreen>
       <ErrorCard
-        title="Sync Recruiter didn't start"
+        title="Sync Hub Recruiter didn't start"
         description={problemMessage(error, 'Something went wrong before the workspace loaded.')}
         retryLabel="Reload"
         onRetry={() => window.location.reload()}

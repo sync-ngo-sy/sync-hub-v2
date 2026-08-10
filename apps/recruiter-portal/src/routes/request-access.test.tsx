@@ -16,7 +16,7 @@ async function askForAccess(user: UserEvent) {
   await user.click(screen.getByRole('button', { name: 'Request access' }));
 }
 
-describe('asking for access to Sync', () => {
+describe('asking for access to Sync Hub', () => {
   it('sends the company, the name and the address, and says the request was received', async () => {
     const request = vi.fn();
     server.use(...signedOut(), ...acceptsAccessRequest(request));
@@ -48,7 +48,7 @@ describe('asking for access to Sync', () => {
     await askForAccess(user);
 
     expect(await screen.findByText(TOO_MANY_REQUESTS.detail ?? '')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Request access to Sync' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Request access to Sync Hub' })).toBeVisible();
   });
 
   it('leads a visitor who still remembers the old sign-up address here', async () => {
@@ -57,7 +57,9 @@ describe('asking for access to Sync', () => {
     const { router } = await renderApp('/signup');
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/request-access'));
-    expect(await screen.findByRole('heading', { name: 'Request access to Sync' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Request access to Sync Hub' }),
+    ).toBeVisible();
   });
 
   it('bounces a signed-in recruiter to the Dashboard', async () => {
