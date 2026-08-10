@@ -33,7 +33,7 @@ describe('Jobs', () => {
     );
 
     const { router, user } = await renderApp('/jobs');
-    await user.click(await screen.findByRole('button', { name: 'Open Field Coordinator' }));
+    await user.click(await screen.findByRole('link', { name: 'Open Field Coordinator' }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/jobs/${FIELD_COORDINATOR.id}`),
@@ -48,15 +48,46 @@ describe('Jobs', () => {
 
     const { router, user } = await renderApp('/jobs?status=published');
 
-    expect(screen.getByRole('tab', { name: 'Published' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: /^Published/ })).toHaveAttribute('data-active');
     expect(await screen.findByText('Field Coordinator')).toBeVisible();
     expect(screen.queryByText('Programme Officer')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: 'Draft' }));
+    await user.click(screen.getByRole('tab', { name: /^Draft/ }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ status: 'draft' }));
     expect(await screen.findByText('Programme Officer')).toBeVisible();
     expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+  });
+
+  it('shows stable backend totals beside every status tab', async () => {
+    const closed = { ...FIELD_COORDINATOR, id: 'closed', status: 'closed' as const };
+    const archived = { ...PROGRAMME_OFFICER, id: 'archived', status: 'archived' as const };
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER, closed, archived]),
+    );
+
+    await renderApp('/jobs?status=published');
+
+    expect(screen.getByRole('tab', { name: 'All 4' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Draft 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published 1' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: 'Closed 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Archived 1' })).toBeVisible();
+  });
+
+  it('searches Job titles through the URL and keeps total counts unchanged', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
+
+    const { router, user } = await renderApp('/jobs');
+    await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'programme');
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: 'programme' }));
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+    expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'All 2' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Draft 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published 1' })).toBeVisible();
   });
 
   it('shows the views and the applications each Job has drawn', async () => {
@@ -232,7 +263,7 @@ describe('Jobs', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalledExactlyOnceWith({ status: 'published' }));
     expect(await screen.findByText('Job published')).toBeVisible();
 
-    await user.click(screen.getByRole('tab', { name: 'Published' }));
+    await user.click(screen.getByRole('tab', { name: /^Published/ }));
     expect(await screen.findByText('Programme Officer')).toBeVisible();
   });
 

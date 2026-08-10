@@ -55,7 +55,7 @@ export function ChecklistFilter<TValue extends string>({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={`${label}: ${summarize(options, selected, noun)}`}
-          className="inline-flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5 text-sm font-medium whitespace-nowrap outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex h-9 items-center justify-between gap-1.5 rounded-lg border border-input bg-input-background py-2 pr-2.5 pl-3 text-sm font-normal whitespace-nowrap outline-none transition-colors select-none hover:text-inherit focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
           {summarize(options, selected, noun)}
           <ChevronDown className="size-4 text-muted-foreground" />
@@ -83,7 +83,7 @@ export function ChecklistFilter<TValue extends string>({
               }
             >
               <span className="flex-1">{option.label}</span>
-              <span className="text-meta tabular-nums text-muted-foreground">
+              <span className="text-meta font-mono tabular-nums text-muted-foreground">
                 {counts[option.value] ?? 0}
               </span>
             </DropdownMenuCheckboxItem>

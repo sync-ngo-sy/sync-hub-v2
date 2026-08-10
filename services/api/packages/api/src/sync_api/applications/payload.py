@@ -114,6 +114,15 @@ class ApplicationSummary(BaseModel):
     candidate_name: str = Field(description="The Snapshot's name: who they applied as.")
     headline: OptionalLine = None
     location: OptionalLine = None
+    canonical_role: OptionalLine = Field(
+        default=None,
+        description="What the Candidate's Canonical role was called the day they applied. Null "
+        "when they claimed none, which is when a list has only the `headline` to name them by.",
+    )
+    total_experience_years: int = Field(
+        description="Whole years of work as the profile stood the day this was sent — the same "
+        "number Screening measured against the Job's minimum.",
+    )
     status: ApplicationStatus
     qualification_status: QualificationStatus = Field(description="The Screening verdict.")
     applied_at: datetime
@@ -276,7 +285,11 @@ class ScreeningVerdict(BaseModel):
 
     status: QualificationStatus
     reason: str | None = Field(
-        default=None, description="Which criteria decided it. Null until Screening has run."
+        default=None,
+        description=(
+            "Which criteria decided it. Null while the verdict is `pending`, and null on a "
+            "`qualified` one too: a reason lists what fell short, and nothing did."
+        ),
     )
 
 

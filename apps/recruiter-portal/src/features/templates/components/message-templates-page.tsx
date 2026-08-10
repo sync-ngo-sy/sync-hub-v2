@@ -4,6 +4,7 @@ import { Button } from '@sync/ui/components/ui/button';
 import { MailPlus, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useMessageTemplates } from '../hooks/use-message-templates';
 import type { MessageTemplate } from '../message-template';
@@ -52,49 +53,53 @@ export function MessageTemplatesPage() {
   const [deleting, setDeleting] = useState<MessageTemplate | null>(null);
 
   return (
-    <div className="space-y-(--space-section)">
-      <PageHeader
-        title="Templates"
-        description="The Message templates your Recruiters reuse when they write an applicant."
-        actions={
-          <Button onClick={() => setCreating(true)}>
-            <Plus aria-hidden="true" />
-            Create template
-          </Button>
-        }
-      />
+    <>
+      <WorkspaceHeader>
+        <PageHeader
+          title="Templates"
+          description="The Message templates your Recruiters reuse when they write an applicant."
+          actions={
+            <Button onClick={() => setCreating(true)}>
+              <Plus aria-hidden="true" />
+              Create template
+            </Button>
+          }
+        />
+      </WorkspaceHeader>
 
-      <DataTable
-        label="Message templates"
-        columns={COLUMNS}
-        data={templates.data ?? []}
-        getRowId={(template) => template.id}
-        rowLabel={(template) => template.name}
-        rowActions={(template) => [
-          { label: 'Edit template', onSelect: () => setEditing(template) },
-          { label: 'Delete template', onSelect: () => setDeleting(template) },
-        ]}
-        isLoading={templates.isPending}
-        empty={{
-          icon: MailPlus,
-          message: 'No Message templates yet — write the first one your Recruiters will reuse.',
-          action: <Button onClick={() => setCreating(true)}>Create your first template</Button>,
-        }}
-      />
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        <DataTable
+          label="Message templates"
+          columns={COLUMNS}
+          data={templates.data ?? []}
+          getRowId={(template) => template.id}
+          rowLabel={(template) => template.name}
+          rowActions={(template) => [
+            { label: 'Edit template', onSelect: () => setEditing(template) },
+            { label: 'Delete template', onSelect: () => setDeleting(template) },
+          ]}
+          isLoading={templates.isPending}
+          empty={{
+            icon: MailPlus,
+            message: 'No Message templates yet — write the first one your Recruiters will reuse.',
+            action: <Button onClick={() => setCreating(true)}>Create your first template</Button>,
+          }}
+        />
 
-      <CreateTemplateDialog open={creating} onOpenChange={setCreating} />
-      {editing ? (
-        <WidgetBoundary name="Edit template">
-          <EditTemplateDialog
-            templateId={editing.id}
-            open
-            onOpenChange={(open) => {
-              if (!open) setEditing(null);
-            }}
-          />
-        </WidgetBoundary>
-      ) : null}
-      <DeleteTemplateDialog template={deleting} onClose={() => setDeleting(null)} />
-    </div>
+        <CreateTemplateDialog open={creating} onOpenChange={setCreating} />
+        {editing ? (
+          <WidgetBoundary name="Edit template">
+            <EditTemplateDialog
+              templateId={editing.id}
+              open
+              onOpenChange={(open) => {
+                if (!open) setEditing(null);
+              }}
+            />
+          </WidgetBoundary>
+        ) : null}
+        <DeleteTemplateDialog template={deleting} onClose={() => setDeleting(null)} />
+      </div>
+    </>
   );
 }

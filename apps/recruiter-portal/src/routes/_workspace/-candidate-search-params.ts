@@ -19,6 +19,10 @@ export const candidateSearchParams = z.object({
   keywords: z.string().optional().catch(undefined),
 });
 
+export const candidateRecordSearchParams = candidateSearchParams.extend({
+  from: z.string().optional().catch(undefined),
+});
+
 export type CandidateSearchParams = z.infer<typeof candidateSearchParams>;
 
 export function filtersFrom(params: CandidateSearchParams): CandidateSearchFilters {

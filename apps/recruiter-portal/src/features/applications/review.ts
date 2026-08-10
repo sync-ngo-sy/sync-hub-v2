@@ -1,16 +1,5 @@
 import type { components } from '@sync/api-client';
-import {
-  CalendarCheck,
-  CircleCheck,
-  CircleX,
-  Eye,
-  Handshake,
-  ListChecks,
-  type LucideIcon,
-  RotateCcw,
-  Undo2,
-} from 'lucide-react';
-import { type PipelineStatus, pipelineState } from './application';
+import { PIPELINE_LADDER, type PipelineStatus, pipelineState } from './application';
 
 export type ApplicationReview = components['schemas']['ApplicationReview'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
@@ -23,15 +12,7 @@ export interface PipelineMove {
   target: PipelineStatus;
   label: string;
   success: string;
-  icon: LucideIcon;
   direction: MoveDirection;
-}
-
-const DIRECTIONS = ['onward', 'back', 'rejection'] as const satisfies readonly MoveDirection[];
-
-export interface PipelineMoveGroup {
-  direction: MoveDirection;
-  moves: PipelineMove[];
 }
 
 const TOLD = 'the candidate has been told.';
@@ -40,42 +21,36 @@ const TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move to Reviewing',
   success: `Moved to Reviewing — ${TOLD}`,
-  icon: Eye,
   direction: 'onward',
 };
 const TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move to Shortlisted',
   success: `Shortlisted — ${TOLD}`,
-  icon: ListChecks,
   direction: 'onward',
 };
 const TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move to Interview',
   success: `Moved to Interview — ${TOLD}`,
-  icon: CalendarCheck,
   direction: 'onward',
 };
 const TO_OFFER: PipelineMove = {
   target: 'offer',
   label: 'Move to Offer',
   success: `Moved to Offer — ${TOLD}`,
-  icon: Handshake,
   direction: 'onward',
 };
 const TO_HIRED: PipelineMove = {
   target: 'hired',
   label: 'Mark as hired',
   success: `Marked as hired — ${TOLD}`,
-  icon: CircleCheck,
   direction: 'onward',
 };
 const TO_REJECTED: PipelineMove = {
   target: 'rejected',
   label: 'Reject',
   success: 'Rejected — the candidate has been emailed.',
-  icon: CircleX,
   direction: 'rejection',
 };
 
@@ -83,35 +58,30 @@ const BACK_TO_NEW: PipelineMove = {
   target: 'new',
   label: 'Move back to New',
   success: `Moved back to New — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const BACK_TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move back to Reviewing',
   success: `Moved back to Reviewing — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const BACK_TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move back to Shortlisted',
   success: `Moved back to Shortlisted — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const BACK_TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move back to Interview',
   success: `Moved back to Interview — ${TOLD}`,
-  icon: Undo2,
   direction: 'back',
 };
 const REOPEN: PipelineMove = {
   target: 'reviewing',
   label: 'Reopen for review',
   success: `Reopened for review — ${TOLD}`,
-  icon: RotateCcw,
   direction: 'back',
 };
 
@@ -142,11 +112,27 @@ export function pipelineMoves(status: PipelineStatus): PipelineMove[] {
   return PIPELINE_MOVES[status];
 }
 
-export function pipelineMoveGroups(status: PipelineStatus): PipelineMoveGroup[] {
-  return DIRECTIONS.map((direction) => ({
-    direction,
-    moves: pipelineMoves(status).filter((move) => move.direction === direction),
-  })).filter((group) => group.moves.length > 0);
+export interface PipelineMoveChoices {
+  adjacent: PipelineMove[];
+  other: PipelineMove[];
+}
+
+export function pipelineMoveChoices(status: PipelineStatus): PipelineMoveChoices {
+  const moves = pipelineMoves(status);
+  const currentIndex = (PIPELINE_LADDER as readonly PipelineStatus[]).indexOf(status);
+  const previousStatus = currentIndex > 0 ? PIPELINE_LADDER[currentIndex - 1] : null;
+  const nextStatus =
+    currentIndex >= 0 && currentIndex < PIPELINE_LADDER.length - 1
+      ? PIPELINE_LADDER[currentIndex + 1]
+      : null;
+  const previousMove = moves.find((move) => move.target === previousStatus);
+  const nextMove = moves.find((move) => move.target === nextStatus);
+  const adjacent =
+    currentIndex >= 0
+      ? [previousMove, nextMove].filter((move): move is PipelineMove => move !== undefined)
+      : [];
+
+  return { adjacent, other: moves.filter((move) => !adjacent.includes(move)) };
 }
 
 export function pipelineOutcome(status: PipelineStatus): string | null {

@@ -1,8 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@sync/ui/components/ui/avatar';
-import { Card, CardContent } from '@sync/ui/components/ui/card';
-import { cardSurface } from '@sync/ui/lib/card-surface';
+import { factLabel } from '@sync/ui/lib/fact-label';
 import { cn } from '@sync/ui/lib/utils';
-import { useId } from 'react';
+import { Mail, Phone } from 'lucide-react';
+import { type ReactNode, useId } from 'react';
 
 function initials(name: string): string {
   return name
@@ -13,8 +13,9 @@ function initials(name: string): string {
     .join('');
 }
 
-function years(count: number): string {
-  return `${count} ${count === 1 ? 'year' : 'years'}`;
+export interface CandidateFact {
+  label: string;
+  value: ReactNode;
 }
 
 interface CandidateCardProps {
@@ -22,12 +23,10 @@ interface CandidateCardProps {
   avatarUrl?: string | null;
   email?: string | null;
   phone?: string | null;
-  role?: string | null;
+  canonicalRole?: string | null;
   headline?: string | null;
-  yearsOfExperience?: number | null;
-  languages?: string[];
-  contextLabel?: string;
-  note?: string;
+  facts?: CandidateFact[];
+  factsLabel?: string;
   headingLevel?: 1 | 2;
   className?: string;
 }
@@ -37,81 +36,86 @@ export function CandidateCard({
   avatarUrl,
   email,
   phone,
-  role,
+  canonicalRole,
   headline,
-  yearsOfExperience,
-  languages,
-  contextLabel,
-  note,
+  facts = [],
+  factsLabel = 'Candidate facts',
   headingLevel = 1,
   className,
 }: CandidateCardProps) {
   const nameId = useId();
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
-  const facts = [
-    { label: 'Email', value: email },
-    { label: 'Phone', value: phone },
-    {
-      label: 'Total experience',
-      value: yearsOfExperience == null ? null : years(yearsOfExperience),
-    },
-    { label: 'Languages', value: languages?.length ? languages.join(', ') : null },
-  ].filter((fact): fact is { label: string; value: string } => Boolean(fact.value));
+  const shown = facts.filter((fact) => fact.value !== null && fact.value !== undefined);
 
   return (
-    <article aria-labelledby={nameId}>
-      <Card
-        className={cn(
-          cardSurface,
-          'border-transparent bg-accent/45 shadow-lg ring-2 ring-primary/25',
-          className,
-        )}
-      >
-        <CardContent className="space-y-(--space-card)">
-          <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-            <Avatar size="lg" className="size-16 shrink-0 sm:size-20">
-              {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-              <AvatarFallback className="bg-primary-solid text-h3 font-semibold text-primary-solid-foreground">
-                {initials(name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <Heading
-                  id={nameId}
-                  className="truncate font-heading text-page-title text-foreground"
-                >
-                  {name}
-                </Heading>
-                {contextLabel ? (
-                  <span className="text-meta font-medium text-accent-foreground">
-                    {contextLabel}
-                  </span>
-                ) : null}
-              </div>
-              {role ? (
-                <p className="truncate text-meta font-medium text-accent-foreground">{role}</p>
-              ) : null}
-              {headline ? (
-                <p className="max-w-prose text-dense text-muted-foreground">{headline}</p>
-              ) : null}
-            </div>
-          </div>
+    <article
+      aria-labelledby={nameId}
+      className={cn(
+        'rounded-xl border border-border bg-card p-(--space-card) shadow-card',
+        className,
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        <Avatar className="size-14 shrink-0 ring-2 ring-primary/25 sm:size-16">
+          {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
+          <AvatarFallback className="bg-accent text-title font-semibold text-accent-foreground">
+            {initials(name)}
+          </AvatarFallback>
+        </Avatar>
 
-          {facts.length > 0 ? (
-            <dl className="grid gap-x-6 gap-y-3 border-t border-primary/15 pt-(--space-card-gap) sm:grid-cols-2 lg:grid-cols-4">
-              {facts.map((fact) => (
-                <div key={fact.label} className="min-w-0">
-                  <dt className="text-meta text-secondary-foreground">{fact.label}</dt>
-                  <dd className="truncate text-dense text-foreground">{fact.value}</dd>
-                </div>
-              ))}
-            </dl>
+        <div className="min-w-0 space-y-1">
+          <Heading id={nameId} className="truncate font-heading text-title text-foreground">
+            {name}
+          </Heading>
+
+          {canonicalRole || headline ? (
+            <p className="truncate text-dense text-muted-foreground">
+              {canonicalRole ? (
+                <span className="font-medium text-foreground">{canonicalRole}</span>
+              ) : null}
+              {canonicalRole && headline ? <span aria-hidden="true"> · </span> : null}
+              {headline}
+            </p>
           ) : null}
 
-          {note ? <p className="text-meta text-muted-foreground">{note}</p> : null}
-        </CardContent>
-      </Card>
+          {email || phone ? (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-0.5 text-meta text-muted-foreground">
+              {email ? (
+                <a
+                  href={`mailto:${email}`}
+                  className="inline-flex min-w-0 items-center gap-2 hover:text-foreground"
+                >
+                  <Mail aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+                  <span className="truncate">{email}</span>
+                </a>
+              ) : null}
+              {phone ? (
+                <a
+                  href={`tel:${phone}`}
+                  className="inline-flex min-w-0 items-center gap-2 hover:text-foreground"
+                >
+                  <Phone aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+                  <span className="truncate">{phone}</span>
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {shown.length > 0 ? (
+        <dl
+          aria-label={factsLabel}
+          className="mt-(--space-card-gap) grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-x-6 gap-y-3 border-t border-border pt-(--space-card-gap)"
+        >
+          {shown.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className={cn(factLabel, 'text-muted-foreground')}>{fact.label}</dt>
+              <dd className="mt-1 truncate text-dense text-foreground">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </article>
   );
 }

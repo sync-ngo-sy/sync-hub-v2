@@ -135,23 +135,6 @@ describe('the match assessments already on an Application', () => {
     expect(await widget().findByText('54% of what the Job asks for')).toBeVisible();
     expect(widget().queryByRole('button', { name: 'Show older assessments' })).toBeNull();
   });
-
-  it('says the assessment is advice, so it is not read as a second Screening verdict', async () => {
-    server.use(
-      ...signedInAs(RECRUITER),
-      ...getsApplication(REVIEW),
-      ...listsMatchAssessments([LATEST_ASSESSMENT]),
-    );
-
-    await renderApp(`/applications/${REVIEW.id}`);
-
-    expect(await screen.findByRole('region', { name: WIDGET })).toBeVisible();
-    expect(
-      widget().getByText(
-        'Advice drawn from the Snapshot and the Job — it does not change the Screening verdict.',
-      ),
-    ).toBeVisible();
-  });
 });
 
 describe('asking an AI to assess a match', () => {

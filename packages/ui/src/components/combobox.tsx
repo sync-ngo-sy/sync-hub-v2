@@ -154,7 +154,7 @@ export function Combobox(props: ComboboxProps) {
                   {selected.map((option) => (
                     <ComboboxPrimitive.Chip
                       key={option.value}
-                      className="flex items-center gap-1 rounded-md bg-muted py-0.5 pr-1 pl-2 text-dense text-muted-foreground"
+                      className="flex items-center gap-1 rounded-md bg-secondary py-0.5 pr-1 pl-2 text-dense text-secondary-foreground ring-1 ring-border ring-inset dark:bg-muted dark:text-muted-foreground dark:ring-0"
                     >
                       {option.label}
                       <ComboboxPrimitive.ChipRemove

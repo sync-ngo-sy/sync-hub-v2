@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CandidateCard } from './candidate-card';
 
@@ -14,10 +14,12 @@ const WHOLE = {
   avatarUrl: 'https://cdn.example.test/lina.webp',
   email: 'lina@example.test',
   phone: '+963 11 555 0100',
-  role: 'Project Manager',
+  canonicalRole: 'Project Manager',
   headline: 'Runs delivery for two field programmes',
-  yearsOfExperience: 6,
-  languages: ['Arabic', 'English'],
+  facts: [
+    { label: 'Total experience', value: '6 years' },
+    { label: 'Languages', value: 'Arabic, English' },
+  ],
 };
 
 describe('CandidateCard', () => {
@@ -56,47 +58,52 @@ describe('CandidateCard', () => {
     expect(screen.getByText('Arabic, English')).toBeVisible();
   });
 
+  it('reaches the candidate by mail and by phone rather than only naming them', () => {
+    render(<CandidateCard {...WHOLE} />);
+
+    expect(screen.getByRole('link', { name: 'lina@example.test' })).toHaveAttribute(
+      'href',
+      'mailto:lina@example.test',
+    );
+    expect(screen.getByRole('link', { name: '+963 11 555 0100' })).toHaveAttribute(
+      'href',
+      'tel:+963 11 555 0100',
+    );
+  });
+
   it('needs nothing but a name', () => {
     render(<CandidateCard name="Lina Khoury" />);
 
     expect(screen.getByText('Lina Khoury')).toBeVisible();
-    for (const label of ['Email', 'Phone', 'Total experience', 'Languages']) {
+    expect(screen.queryByRole('link')).toBeNull();
+    for (const label of ['Total experience', 'Languages']) {
       expect(screen.queryByText(label)).toBeNull();
     }
   });
 
-  it('says beside the name and under the facts where the facts came from', () => {
-    render(<CandidateCard {...WHOLE} contextLabel="Snapshot" note="Frozen when they applied." />);
-
-    expect(screen.getByText('Snapshot')).toBeVisible();
-    expect(screen.getByText('Frozen when they applied.')).toBeVisible();
-  });
-
-  it('says nothing about provenance where the card was given none', () => {
-    render(<CandidateCard {...WHOLE} />);
-
-    expect(screen.queryByText('Snapshot')).toBeNull();
-  });
-
   it('omits a field it is not given rather than labelling an empty one', () => {
-    render(<CandidateCard {...WHOLE} phone={null} languages={[]} />);
+    render(
+      <CandidateCard
+        {...WHOLE}
+        phone={null}
+        facts={[
+          { label: 'Total experience', value: '6 years' },
+          { label: 'Languages', value: null },
+        ]}
+      />,
+    );
 
-    expect(screen.getByText('Email')).toBeVisible();
-    expect(screen.queryByText('Phone')).toBeNull();
+    expect(screen.getByText('lina@example.test')).toBeVisible();
+    expect(screen.queryByText('+963 11 555 0100')).toBeNull();
+    expect(screen.getByText('Total experience')).toBeVisible();
     expect(screen.queryByText('Languages')).toBeNull();
   });
 
-  it('counts a single year in the singular', () => {
-    render(<CandidateCard name="Lina Khoury" yearsOfExperience={1} />);
+  it('names its fact list, so a page reading two people can tell them apart', () => {
+    render(<CandidateCard {...WHOLE} factsLabel="Application facts" />);
 
-    expect(screen.getByText('1 year')).toBeVisible();
-  });
-
-  it('says no experience rather than hiding the answer', () => {
-    render(<CandidateCard name="Lina Khoury" yearsOfExperience={0} />);
-
-    expect(screen.getByText('Total experience')).toBeVisible();
-    expect(screen.getByText('0 years')).toBeVisible();
+    const facts = within(screen.getByLabelText('Application facts'));
+    expect(facts.getByText('6 years')).toBeVisible();
   });
 
   it('shows the photo once it has loaded, left out of the reading order', async () => {

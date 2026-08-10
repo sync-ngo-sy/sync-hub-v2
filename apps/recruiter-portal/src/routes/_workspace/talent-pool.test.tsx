@@ -32,7 +32,7 @@ function saved() {
 
 function names() {
   return saved()
-    .getAllByRole('button', { name: /^Open / })
+    .getAllByRole('link', { name: /^Open / })
     .map((row) => row.getAttribute('aria-label'));
 }
 
@@ -73,7 +73,7 @@ describe('the talent pool page', () => {
     await renderApp(AT);
 
     const row = await screen.findByRole('row', { name: /Amina Haddad/ });
-    expect(within(row).getByText('Backend engineer, 8 years')).toBeVisible();
+    expect(within(row).queryByText('Backend engineer, 8 years')).toBeNull();
     expect(within(row).getByText('Backend Engineer')).toBeVisible();
     expect(within(row).getByText('8 years')).toBeVisible();
     expect(within(row).getByText('Aleppo')).toBeVisible();
@@ -111,7 +111,7 @@ describe('the talent pool page', () => {
     await user.click(screen.getByRole('button', { name: 'Load more' }));
 
     expect(await screen.findByText('25 shown')).toBeVisible();
-    expect(saved().getByRole('button', { name: 'Open Candidate 24' })).toBeVisible();
+    expect(saved().getByRole('link', { name: 'Open Candidate 24' })).toBeVisible();
   });
 
   it('sends a Recruiter with an empty pool to candidate search', async () => {
@@ -139,7 +139,7 @@ describe('the talent pool page', () => {
 
     const { user, router } = await renderApp(AT);
 
-    await user.click(await saved().findByRole('button', { name: 'Open Amina Haddad' }));
+    await user.click(await saved().findByRole('link', { name: 'Open Amina Haddad' }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/candidates/${AMINA_SAVED.candidate_id}`),
@@ -157,7 +157,7 @@ describe('the talent pool page', () => {
     server.use(...holdsTalentPool([AMINA_SAVED]));
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
-    expect(await saved().findByRole('button', { name: 'Open Amina Haddad' })).toBeVisible();
+    expect(await saved().findByRole('link', { name: 'Open Amina Haddad' })).toBeVisible();
   });
 });
 
@@ -337,7 +337,7 @@ describe('dropping a Candidate from the talent pool', () => {
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(asked).toEqual([]);
-    expect(saved().getByRole('button', { name: 'Open Amina Haddad' })).toBeVisible();
+    expect(saved().getByRole('link', { name: 'Open Amina Haddad' })).toBeVisible();
   });
 
   it('drops a Candidate once confirmed, and takes their row off the list', async () => {
@@ -366,7 +366,7 @@ describe('dropping a Candidate from the talent pool', () => {
 
     const { user, router } = await renderApp(AT);
 
-    await user.click(await saved().findByRole('button', { name: 'Open Amina Haddad' }));
+    await user.click(await saved().findByRole('link', { name: 'Open Amina Haddad' }));
     expect(await screen.findByText('Amina Haddad is in your talent pool.')).toBeVisible();
 
     await router.navigate({ to: AT, search: {} });

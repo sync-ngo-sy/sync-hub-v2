@@ -34,7 +34,7 @@ import {
   type LucideIcon,
   MoreHorizontal,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
 
@@ -76,6 +76,7 @@ export interface DataTableProps<TRow> {
   getRowId: (row: TRow) => string;
   rowLabel: (row: TRow) => string;
   onRowOpen?: (row: TRow) => void;
+  rowHref?: (row: TRow) => string;
   rowActions?: (row: TRow) => DataTableRowAction[];
   isLoading?: boolean;
   error?: DataTableError;
@@ -111,6 +112,7 @@ export function DataTable<TRow>({
   getRowId,
   rowLabel,
   onRowOpen,
+  rowHref,
   rowActions,
   isLoading = false,
   error,
@@ -156,7 +158,7 @@ export function DataTable<TRow>({
         compact ? 'py-3' : 'border-t border-border bg-table-header px-5 py-3',
       )}
     >
-      <p className="text-meta tabular-nums text-muted-foreground">
+      <p className="text-meta font-mono tabular-nums text-muted-foreground">
         {`${count.format(rows.length)} shown`}
       </p>
       {error ? <ErrorNotice error={error} fallback="Couldn't load more." /> : null}
@@ -181,6 +183,7 @@ export function DataTable<TRow>({
           rows={rows}
           rowLabel={rowLabel}
           onRowOpen={onRowOpen}
+          rowHref={rowHref}
           rowActions={rowActions}
           isLoading={loadingFirstPage}
         />
@@ -238,7 +241,13 @@ export function DataTable<TRow>({
                   <TableRow
                     key={row.id}
                     className={onRowOpen ? 'cursor-pointer' : undefined}
-                    onClick={onRowOpen ? () => onRowOpen(row.original) : undefined}
+                    onClick={
+                      onRowOpen
+                        ? (event) => {
+                            if (!opensElsewhere(event)) onRowOpen(row.original);
+                          }
+                        : undefined
+                    }
                   >
                     {row.getVisibleCells().map((cell, index) => (
                       <TableCell
@@ -246,17 +255,13 @@ export function DataTable<TRow>({
                         className={cn(CELL_BORDER, index === 0 && cn(LEAD_COLUMN, 'font-medium'))}
                       >
                         {index === 0 && onRowOpen ? (
-                          <button
-                            type="button"
-                            aria-label={`Open ${rowLabel(row.original)}`}
-                            className="rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onRowOpen(row.original);
-                            }}
+                          <RowOpener
+                            label={rowLabel(row.original)}
+                            href={rowHref?.(row.original)}
+                            onOpen={() => onRowOpen(row.original)}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </button>
+                          </RowOpener>
                         ) : (
                           flexRender(cell.column.columnDef.cell, cell.getContext())
                         )}
@@ -288,6 +293,7 @@ interface CardListProps<TRow> {
   rows: Row<TRow>[];
   rowLabel: (row: TRow) => string;
   onRowOpen?: (row: TRow) => void;
+  rowHref?: (row: TRow) => string;
   rowActions?: (row: TRow) => DataTableRowAction[];
   isLoading: boolean;
 }
@@ -297,6 +303,7 @@ function CardList<TRow>({
   rows,
   rowLabel,
   onRowOpen,
+  rowHref,
   rowActions,
   isLoading,
 }: CardListProps<TRow>) {
@@ -335,14 +342,13 @@ function CardList<TRow>({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 font-medium text-dense text-foreground">
                 {lead && onRowOpen ? (
-                  <button
-                    type="button"
-                    aria-label={`Open ${rowLabel(row.original)}`}
-                    className="rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    onClick={() => onRowOpen(row.original)}
+                  <RowOpener
+                    label={rowLabel(row.original)}
+                    href={rowHref?.(row.original)}
+                    onOpen={() => onRowOpen(row.original)}
                   >
                     {flexRender(lead.column.columnDef.cell, lead.getContext())}
-                  </button>
+                  </RowOpener>
                 ) : lead ? (
                   flexRender(lead.column.columnDef.cell, lead.getContext())
                 ) : null}
@@ -367,6 +373,57 @@ function CardList<TRow>({
       })}
     </ul>
   );
+}
+
+const OPENER =
+  'cursor-pointer rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
+
+function RowOpener({
+  label,
+  href,
+  onOpen,
+  children,
+}: {
+  label: string;
+  href?: string;
+  onOpen: () => void;
+  children: ReactNode;
+}) {
+  if (href === undefined) {
+    return (
+      <button
+        type="button"
+        aria-label={`Open ${label}`}
+        className={OPENER}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen();
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      aria-label={`Open ${label}`}
+      className={OPENER}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (opensElsewhere(event)) return;
+        event.preventDefault();
+        onOpen();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function opensElsewhere(event: MouseEvent<HTMLElement>): boolean {
+  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
 }
 
 interface Sorting {
@@ -424,7 +481,7 @@ function RowActions({ label, actions }: { label: string; actions: DataTableRowAc
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Actions for ${label}`}
-        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>

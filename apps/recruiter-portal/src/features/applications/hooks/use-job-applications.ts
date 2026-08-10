@@ -1,14 +1,10 @@
 import { api } from '@/lib/api';
 import type { PipelineStatus, ScreeningVerdict } from '../application';
+import type { ApplicationFilters } from '../reading';
 
 export const APPLICATIONS_PAGE_SIZE = 20;
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
-
-export interface ApplicationFilters {
-  pipeline?: PipelineStatus[];
-  screening?: ScreeningVerdict[];
-}
 
 export type StatusCounts = Partial<Record<PipelineStatus, number>>;
 export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;

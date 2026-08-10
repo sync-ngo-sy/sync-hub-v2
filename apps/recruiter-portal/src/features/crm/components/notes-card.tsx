@@ -117,12 +117,6 @@ export function NotesCard({ notes, subject }: { notes: NotesWidget; subject: Crm
           </ul>
         ) : null}
 
-        {!notes.isPending && !notes.error && notes.items.length === 0 ? (
-          <p className="text-dense text-muted-foreground">
-            Nothing written down yet. The first note is the one your colleagues will read first.
-          </p>
-        ) : null}
-
         {notes.loadMore ? (
           <Button
             variant="outline"

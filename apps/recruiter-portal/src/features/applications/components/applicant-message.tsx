@@ -94,11 +94,7 @@ export function ApplicantMessage({
   }
 
   return (
-    <ReviewCard
-      title="Message the applicant"
-      icon={Mail}
-      hint="One email. Start from a template, change what you like — the template stays as it is."
-    >
+    <ReviewCard title="Message the applicant" icon={Mail}>
       {templates.isPending || !tenantName ? (
         <SkeletonText lines={3} />
       ) : available.length === 0 ? (

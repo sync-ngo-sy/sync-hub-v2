@@ -1,6 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PIPELINE_STATUSES } from '@/features/applications/application';
 import { AMAL_REVIEW, DIMA, ELIAS, FARAH } from '@/features/applications/testing/fixtures';
 import {
   failsToListTenantApplications,
@@ -51,13 +50,17 @@ describe('the Dashboard', () => {
     vi.useRealTimers();
   });
 
-  it('names the Tenant it is counting for', async () => {
+  it('greets the Recruiter and names the Tenant it is counting for', async () => {
+    vi.setSystemTime(new Date(2026, 7, 9, 9));
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Rana' }),
+    ).toBeVisible();
     expect(await screen.findByText('Aman Relief')).toBeVisible();
+    expect(screen.getByText('Sunday, 9 August 2026')).toBeVisible();
   });
 
   it('shows the counts the API reports, with no arithmetic of its own', async () => {
@@ -87,9 +90,7 @@ describe('the Dashboard', () => {
     const { router, user } = await renderApp('/dashboard');
     await user.click(await screen.findByRole('link', { name: /Awaiting review/ }));
 
-    expect(await screen.findByRole('button', { name: /^Pipeline: / })).toHaveAccessibleName(
-      'Pipeline: New',
-    );
+    expect(await screen.findByRole('radio', { name: /^New / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
     expect(router.state.location.search).toEqual({ pipeline: ['new'] });
   });
@@ -104,10 +105,8 @@ describe('the Dashboard', () => {
       'Last 7 days',
     );
     expect(router.state.location.pathname).toBe('/applications');
-    expect(router.state.location.search).toEqual({
-      pipeline: [...PIPELINE_STATUSES],
-      received: '7d',
-    });
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
+    expect(router.state.location.search).toEqual({ received: '7d' });
   });
 
   it('sends Open jobs to the published Jobs the number counted', async () => {
@@ -117,7 +116,7 @@ describe('the Dashboard', () => {
     await user.click(await screen.findByRole('link', { name: /Open jobs/ }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Published' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: /^Published/ })).toHaveAttribute('data-active');
     expect(await screen.findByText('MEAL Officer')).toBeVisible();
     expect(router.state.location.pathname).toBe('/jobs');
     expect(router.state.location.search).toEqual({ status: 'published' });
@@ -132,11 +131,9 @@ describe('the Dashboard', () => {
     expect(await screen.findByRole('button', { name: /^Screening: / })).toHaveAccessibleName(
       'Screening: Qualified',
     );
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
-    expect(router.state.location.search).toEqual({
-      pipeline: [...PIPELINE_STATUSES],
-      screening: ['qualified'],
-    });
+    expect(router.state.location.search).toEqual({ screening: ['qualified'] });
   });
 
   it('compares this week with the one before it', async () => {
@@ -207,9 +204,7 @@ describe('the Dashboard', () => {
 
     const { router, user } = await renderApp('/dashboard');
     const recent = panel('Recent applications');
-    await user.click(
-      await recent.findByRole('button', { name: "Open Dima Sabbagh's Application" }),
-    );
+    await user.click(await recent.findByRole('link', { name: "Open Dima Sabbagh's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${DIMA.id}`));
   });
@@ -237,16 +232,24 @@ describe('the Dashboard', () => {
     expect(jobs.getByText(/^Updated/)).toBeVisible();
   });
 
-  it('draws where applicants come from, ranked', async () => {
+  it('lists where applicants come from, ranked by views without chart decoration', async () => {
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
-    const chart = await sources.findByRole('img');
-    expect(chart).toHaveAccessibleName(/LinkedIn post: 342 views/);
-    expect(chart).toHaveAccessibleName(/WhatsApp groups: 281 views/);
-    expect(chart).toHaveAccessibleName(/Direct: 190 views/);
+    const rows = within(await sources.findByRole('list', { name: 'Views by source' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+
+    expect(rows).toEqual([
+      'LinkedIn post342',
+      'WhatsApp groups281',
+      'Direct190',
+      'Facebook page97',
+    ]);
+    expect(sources.queryByText(/%/)).not.toBeInTheDocument();
+    expect(sources.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('says how many channels it is showing you out of how many there are', async () => {
