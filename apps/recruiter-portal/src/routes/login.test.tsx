@@ -76,7 +76,9 @@ describe('signing in', () => {
     const { router } = await renderApp('/login');
 
     expect(router.state.location.pathname).toBe('/dashboard');
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: /Good (morning|evening), Rana/ }),
+    ).toBeVisible();
   });
 
   it('honours the returnTo when bouncing an already-signed-in recruiter', async () => {

@@ -2045,6 +2045,17 @@ export interface components {
             headline?: string | null;
             /** Location */
             location?: string | null;
+            /**
+             * Canonical Role
+             * @description What the Candidate's Canonical role was called the day they applied. Null when they claimed none, which is when a list has only the `headline` to name them by.
+             */
+            canonical_role?: string | null;
+            /**
+             * Total Experience Years
+             * @description Whole years of work as the profile stood the day this was sent — the same number Screening measured against the Job's minimum.
+             * @default 0
+             */
+            total_experience_years: number;
             status: components["schemas"]["ApplicationStatus"];
             /** @description The Screening verdict. */
             qualification_status: components["schemas"]["QualificationStatus"];
@@ -2855,6 +2866,11 @@ export interface components {
              * @description Send back as `cursor` for the following page.
              */
             next_cursor?: string | null;
+            /**
+             * Status Counts
+             * @description Every Job lifecycle status, each with the Tenant's total in it. These totals are independent of `q`, `status`, sorting and pagination.
+             */
+            status_counts: components["schemas"]["JobStatusCount"][];
         };
         /**
          * JobQuestion
@@ -2934,6 +2950,15 @@ export interface components {
          * @enum {string}
          */
         JobStatus: "draft" | "published" | "closed" | "archived";
+        /**
+         * JobStatusCount
+         * @description How many of the Tenant's Jobs stand in one lifecycle status.
+         */
+        JobStatusCount: {
+            status: components["schemas"]["JobStatus"];
+            /** Count */
+            count: number;
+        };
         /**
          * JobSummary
          * @description One of the tenant's Jobs, as its own list renders it.
@@ -4143,7 +4168,7 @@ export interface components {
             status: components["schemas"]["QualificationStatus"];
             /**
              * Reason
-             * @description Which criteria decided it. Null until Screening has run.
+             * @description Which criteria decided it. Null while the verdict is `pending`, and null on a `qualified` one too: a reason lists what fell short, and nothing did.
              */
             reason?: string | null;
         };
@@ -4455,6 +4480,17 @@ export interface components {
             headline?: string | null;
             /** Location */
             location?: string | null;
+            /**
+             * Canonical Role
+             * @description What the Candidate's Canonical role was called the day they applied. Null when they claimed none, which is when a list has only the `headline` to name them by.
+             */
+            canonical_role?: string | null;
+            /**
+             * Total Experience Years
+             * @description Whole years of work as the profile stood the day this was sent — the same number Screening measured against the Job's minimum.
+             * @default 0
+             */
+            total_experience_years: number;
             status: components["schemas"]["ApplicationStatus"];
             /** @description The Screening verdict. */
             qualification_status: components["schemas"]["QualificationStatus"];
@@ -4781,7 +4817,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProfileView"];
                 };
             };
-            /** @description The identity provider rejected the password. */
+            /** @description The password does not meet the policy, or was rejected upstream. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -8870,6 +8906,8 @@ export interface operations {
     listJobs: {
         parameters: {
             query?: {
+                /** @description Keeps only Jobs whose title contains this, wherever in it and whatever the case. */
+                q?: string | null;
                 /** @description Only Jobs in this state. */
                 status?: components["schemas"]["JobStatus"] | null;
                 /** @description `newest` and `oldest` order by when the Job was written; `applications` puts the busiest first, newest first among ties. */

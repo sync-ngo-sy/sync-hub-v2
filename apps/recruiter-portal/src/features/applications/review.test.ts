@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PIPELINE_STATUSES } from './application';
-import {
-  answerText,
-  historyLine,
-  pipelineMoveGroups,
-  pipelineMoves,
-  pipelineOutcome,
-} from './review';
+import { answerText, historyLine, pipelineMoves, pipelineOutcome } from './review';
 
 const targets = (status: Parameters<typeof pipelineMoves>[0]) =>
   pipelineMoves(status).map((move) => move.target);
@@ -95,36 +88,6 @@ describe('the Pipeline moves offered from a status', () => {
 
     expect(success('reviewing', 'rejected')).toBe('Rejected — the candidate has been emailed.');
     expect(success('reviewing', 'shortlisted')).toBe('Shortlisted — the candidate has been told.');
-  });
-});
-
-describe('how the offered moves are grouped for reading', () => {
-  const labels = (status: Parameters<typeof pipelineMoveGroups>[0]) =>
-    pipelineMoveGroups(status).map((group) => group.moves.map((move) => move.label));
-
-  it('reads onward first, then back, then the rejection on its own', () => {
-    expect(labels('shortlisted')).toEqual([
-      ['Move to Interview', 'Move to Offer', 'Mark as hired'],
-      ['Move back to Reviewing', 'Move back to New'],
-      ['Reject'],
-    ]);
-  });
-
-  it('never leaves the rejection amongst the moves a Recruiter makes freely', () => {
-    for (const status of ['new', 'reviewing', 'shortlisted', 'interview', 'offer'] as const) {
-      const groups = pipelineMoveGroups(status);
-      expect(groups.at(-1)?.moves.map((move) => move.label)).toEqual(['Reject']);
-    }
-  });
-
-  it('offers no empty group, so nothing is separated off from nothing', () => {
-    for (const status of PIPELINE_STATUSES) {
-      expect(pipelineMoveGroups(status).every((group) => group.moves.length > 0)).toBe(true);
-    }
-  });
-
-  it('groups a rejected Application’s one way back as a move back', () => {
-    expect(labels('rejected')).toEqual([['Reopen for review']]);
   });
 });
 

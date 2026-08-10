@@ -8,7 +8,7 @@ export default function LinkViewsChart({ bars }: { bars: LinkViews[] }) {
       {bars.map((bar) => (
         <div key={bar.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
           <span className="truncate text-meta text-secondary-foreground">{bar.name}</span>
-          <span className="text-meta tabular-nums text-foreground">
+          <span className="text-meta font-mono tabular-nums text-foreground">
             {bar.views} · {bar.share ?? 0}%
           </span>
           <span className="col-span-2 mt-1.5 block h-2 overflow-hidden rounded-full bg-muted">

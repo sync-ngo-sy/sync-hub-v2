@@ -53,38 +53,38 @@ export function JobsOverview({ jobs, onJobOpen, onCreateJob }: JobsOverviewProps
       ) : null}
 
       {overview.length > 0 ? (
-        <ul className="divide-y divide-border">
+        <ul className="-mx-(--card-spacing) divide-y divide-border">
           {overview.map((job) => {
             const state = jobState(job.status);
             return (
-              <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0">
-                <span className="flex min-w-0 flex-col gap-1">
-                  <button
-                    type="button"
-                    aria-label={`Open ${job.title}`}
-                    onClick={() => onJobOpen(job)}
-                    className="rounded-sm text-start font-medium text-dense text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    {job.title}
-                  </button>
-                  <span className="text-meta text-muted-foreground">{jobMeta(job)}</span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1.5">
-                  <StatusMark label={state.label} tone={state.tone} />
-                  {job.application_count > 0 ? (
-                    <span className="text-meta tabular-nums text-muted-foreground">
-                      {applicants(job.application_count)}
-                    </span>
-                  ) : (
-                    <time
-                      dateTime={job.updated_at}
-                      title={absoluteDateTime(job.updated_at)}
-                      className="text-meta text-muted-foreground"
-                    >
-                      {`Updated ${relativeTime(job.updated_at)}`}
-                    </time>
-                  )}
-                </span>
+              <li key={job.id}>
+                <button
+                  type="button"
+                  aria-label={`Open ${job.title}`}
+                  onClick={() => onJobOpen(job)}
+                  className="flex w-full cursor-pointer items-start justify-between gap-3 px-(--card-spacing) py-3 text-start outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                >
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className="font-medium text-dense text-foreground">{job.title}</span>
+                    <span className="text-meta text-muted-foreground">{jobMeta(job)}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1.5">
+                    <StatusMark label={state.label} tone={state.tone} />
+                    {job.application_count > 0 ? (
+                      <span className="text-meta font-mono tabular-nums text-muted-foreground">
+                        {applicants(job.application_count)}
+                      </span>
+                    ) : (
+                      <time
+                        dateTime={job.updated_at}
+                        title={absoluteDateTime(job.updated_at)}
+                        className="text-meta text-muted-foreground"
+                      >
+                        {`Updated ${relativeTime(job.updated_at)}`}
+                      </time>
+                    )}
+                  </span>
+                </button>
               </li>
             );
           })}

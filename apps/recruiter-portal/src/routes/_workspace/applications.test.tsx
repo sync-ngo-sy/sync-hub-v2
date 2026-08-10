@@ -1,11 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  ACTIVE_PIPELINE_STATUSES,
-  PIPELINE_STATUSES,
-  SCREENING_VERDICTS,
-} from '@/features/applications/application';
+import { SCREENING_VERDICTS } from '@/features/applications/application';
 import {
   AMAL_REVIEW,
   DIMA,
@@ -31,8 +27,6 @@ import { RECRUITER, SERVER_FAULT, TODAY } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
-const ACTIVE = [...ACTIVE_PIPELINE_STATUSES];
-const EVERY_STATUS = [...PIPELINE_STATUSES];
 const EVERY_VERDICT = [...SCREENING_VERDICTS];
 
 const EVERYONE = [DIMA, FARAH, ELIAS, GHADA, HANI];
@@ -45,17 +39,12 @@ function rowOf(candidate: string) {
   return within(screen.getByRole('row', { name: new RegExp(candidate) }));
 }
 
-function statusTrigger() {
-  return screen.getByRole('button', { name: /^Pipeline: / });
+function pipelineChip(label: string) {
+  return screen.getByRole('radio', { name: new RegExp(`^${label}(?: |$)`) });
 }
 
 function verdictTrigger() {
   return screen.getByRole('button', { name: /^Screening: / });
-}
-
-async function openStatuses(user: UserEvent) {
-  await user.click(statusTrigger());
-  await screen.findByRole('menu');
 }
 
 async function openVerdicts(user: UserEvent) {
@@ -77,7 +66,7 @@ function receivedHeader() {
 
 function namesInOrder() {
   return screen
-    .getAllByRole('button', { name: /Application$/ })
+    .getAllByRole('link', { name: /Application$/ })
     .map((row) => row.getAttribute('aria-label'));
 }
 
@@ -163,62 +152,56 @@ describe('the unified Applications page', () => {
     );
 
     const { router, user } = await renderApp('/applications');
-    await user.click(
-      await screen.findByRole('button', { name: "Open Dima Sabbagh's Application" }),
-    );
+    await user.click(await screen.findByRole('link', { name: "Open Dima Sabbagh's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${DIMA.id}`));
   });
 
-  it('asks for the six active statuses, every verdict, all time and newest first', async () => {
+  it('asks for every Pipeline status, every verdict, all time and newest first', async () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
 
     await renderApp('/applications');
 
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
-    expect(screen.queryByText('Ghada Kanaan')).toBeNull();
-    expect(asked.every((one) => one.status.join() === ACTIVE.join())).toBe(true);
+    expect(screen.getByText('Ghada Kanaan')).toBeVisible();
+    expect(asked.every((one) => one.status.length === 0)).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
       true,
     );
     expect(asked.every((one) => one.received_within === null)).toBe(true);
     expect(asked.every((one) => one.sort === 'newest')).toBe(true);
-    expect(statusTrigger()).toHaveAccessibleName('Pipeline: 6 statuses');
+    expect(pipelineChip('All')).toBeChecked();
     expect(verdictTrigger()).toHaveAccessibleName('Screening: All verdicts');
     expect(rangeTrigger()).toHaveTextContent('All time');
   });
 
-  it('counts every status, including the ones the filter is hiding', async () => {
+  it('shows stable backend totals beside every Pipeline chip', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    const { user } = await renderApp('/applications');
+    await renderApp('/applications');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
-    await openStatuses(user);
-
-    expect(checkItem('New')).toHaveAccessibleName('New, 2');
-    expect(checkItem('Reviewing')).toHaveAccessibleName('Reviewing, 1');
-    expect(checkItem('Rejected')).toHaveAccessibleName('Rejected, 1');
-    expect(checkItem('Withdrawn')).toHaveAccessibleName('Withdrawn, 0');
-    expect(checkItem('Rejected')).toHaveAttribute('aria-checked', 'false');
+    expect(pipelineChip('All')).toHaveAccessibleName('All 5');
+    expect(pipelineChip('New')).toHaveAccessibleName('New 2');
+    expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 1');
+    expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 1');
+    expect(pipelineChip('Withdrawn')).toHaveAccessibleName('Withdrawn 0');
   });
 
-  it('brings a hidden status back into the list and into the address bar', async () => {
+  it('moves to one Pipeline chip and writes it into the address bar', async () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
 
     const { router, user } = await renderApp('/applications');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
-    await openStatuses(user);
-    await user.click(checkItem('Rejected'));
+    await user.click(pipelineChip('Rejected'));
 
-    await waitFor(() =>
-      expect(router.state.location.search).toEqual({ pipeline: [...ACTIVE, 'rejected'] }),
-    );
-    await waitFor(() => expect(asked.at(-1)?.status).toEqual([...ACTIVE, 'rejected']));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: ['rejected'] }));
+    await waitFor(() => expect(asked.at(-1)?.status).toEqual(['rejected']));
     expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
+    expect(screen.queryByText('Dima Sabbagh')).toBeNull();
   });
 
   it('narrows the list to a rolling window and writes it into the address bar', async () => {
@@ -250,17 +233,15 @@ describe('the unified Applications page', () => {
     expect(await screen.findByText('Hani Barakat')).toBeVisible();
   });
 
-  it('counts the statuses over the window the reader is looking at', async () => {
+  it('counts the Pipeline chips over the window the reader is looking at', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    const { user } = await renderApp(`/applications?received=24h`);
+    await renderApp(`/applications?received=24h`);
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
-    await openStatuses(user);
-
-    expect(checkItem('New')).toHaveAccessibleName('New, 1');
-    expect(checkItem('Reviewing')).toHaveAccessibleName('Reviewing, 0');
-    expect(checkItem('Hired')).toHaveAccessibleName('Hired, 0');
+    expect(pipelineChip('New')).toHaveAccessibleName('New 1');
+    expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 0');
+    expect(pipelineChip('Hired')).toHaveAccessibleName('Hired 0');
   });
 
   it('counts every verdict, including the ones the filter is hiding', async () => {
@@ -273,7 +254,7 @@ describe('the unified Applications page', () => {
 
     expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 3');
     expect(checkItem('Pending')).toHaveAccessibleName('Pending, 1');
-    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
+    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 1');
     expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
   });
 
@@ -334,7 +315,7 @@ describe('the unified Applications page', () => {
 
     expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
     expect(screen.queryByText('Dima Sabbagh')).toBeNull();
-    expect(statusTrigger()).toHaveAccessibleName('Pipeline: Rejected');
+    expect(pipelineChip('Rejected')).toBeChecked();
     expect(verdictTrigger()).toHaveAccessibleName('Screening: Disqualified');
     expect(rangeTrigger()).toHaveTextContent('Last 7 days');
     expect(asked.every((one) => one.status.join() === 'rejected')).toBe(true);
@@ -352,7 +333,7 @@ describe('the unified Applications page', () => {
     );
 
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
-    expect(asked.every((one) => one.status.join() === ACTIVE.join())).toBe(true);
+    expect(asked.every((one) => one.status.length === 0)).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
       true,
     );
@@ -371,12 +352,7 @@ describe('the unified Applications page', () => {
 
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
 
-    await waitFor(() =>
-      expect(router.state.location.search).toEqual({
-        pipeline: EVERY_STATUS,
-        screening: EVERY_VERDICT,
-      }),
-    );
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
     expect(await screen.findByText('Hani Barakat')).toBeVisible();
   });
 

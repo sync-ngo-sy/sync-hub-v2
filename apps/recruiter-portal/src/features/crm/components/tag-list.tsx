@@ -16,7 +16,7 @@ export function TagList({ label, names }: TagListProps) {
     <ul aria-label={label} className="flex flex-wrap items-center gap-1.5">
       {upFront.map((name) => (
         <li key={name}>
-          <Badge variant="tag" className="max-w-40 truncate">
+          <Badge variant="tag" size="sm" className="max-w-40 truncate">
             {name}
           </Badge>
         </li>
@@ -36,7 +36,9 @@ export function TagList({ label, names }: TagListProps) {
               <ul aria-label={`${label}, the rest`} className="flex flex-wrap gap-1.5">
                 {rest.map((name) => (
                   <li key={name}>
-                    <Badge variant="tag">{name}</Badge>
+                    <Badge variant="tag" size="sm">
+                      {name}
+                    </Badge>
                   </li>
                 ))}
               </ul>

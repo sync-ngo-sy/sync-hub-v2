@@ -10,24 +10,51 @@ type JobCriteria = components['schemas']['JobCriteria'];
 type JobCriteriaView = components['schemas']['JobCriteriaView'];
 type Problem = components['schemas']['ProblemDetail'];
 
+const STATUSES = ['draft', 'published', 'closed', 'archived'] as const;
+
+function statusCounts(items: JobSummary[]) {
+  return STATUSES.map((status) => ({
+    status,
+    count: items.filter((job) => job.status === status).length,
+  }));
+}
+
+function listed(items: JobSummary[], query: Pick<URLSearchParams, 'get'>): JobSummary[] {
+  const status = query.get('status');
+  const q = query.get('q')?.trim().toLocaleLowerCase();
+  return items.filter(
+    (job) =>
+      (!status || job.status === status) && (!q || job.title.toLocaleLowerCase().includes(q)),
+  );
+}
+
+function uniqueJobs(groups: JobSummary[][]): JobSummary[] {
+  return [...new Map(groups.flat().map((job) => [job.id, job])).values()];
+}
+
 export function listsJobs(items: JobSummary[]) {
   return [
     http.get('/v1/tenants/me/jobs', ({ query, response }) => {
-      const status = query.get('status');
       return response(200).json({
-        items: status ? items.filter((job) => job.status === status) : items,
+        items: listed(items, query),
         next_cursor: null,
+        status_counts: statusCounts(items),
       });
     }),
   ];
 }
 
 export function sortsJobs(byOrder: Record<string, JobSummary[]>, onSort?: (sort: string) => void) {
+  const all = uniqueJobs(Object.values(byOrder));
   return [
     http.get('/v1/tenants/me/jobs', ({ query, response }) => {
       const sort = query.get('sort') ?? 'newest';
       onSort?.(sort);
-      return response(200).json({ items: byOrder[sort] ?? [], next_cursor: null });
+      return response(200).json({
+        items: listed(byOrder[sort] ?? [], query),
+        next_cursor: null,
+        status_counts: statusCounts(all),
+      });
     }),
   ];
 }
@@ -37,6 +64,7 @@ export function failsToListJobs(problem: Problem) {
 }
 
 export function pagesJobs(pages: JobSummary[][]) {
+  const all = pages.flat();
   return [
     http.get('/v1/tenants/me/jobs', ({ query, response }) => {
       const cursor = query.get('cursor');
@@ -44,6 +72,7 @@ export function pagesJobs(pages: JobSummary[][]) {
       return response(200).json({
         items: pages[index] ?? [],
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
+        status_counts: statusCounts(all),
       });
     }),
   ];
@@ -122,10 +151,10 @@ export function managesJobs(initial: JobView[], onChange?: (body: JobChanges) =>
   let jobs = initial;
   return [
     http.get('/v1/tenants/me/jobs', ({ query, response }) => {
-      const status = query.get('status');
       return response(200).json({
-        items: status ? jobs.filter((job) => job.status === status) : jobs,
+        items: listed(jobs, query),
         next_cursor: null,
+        status_counts: statusCounts(jobs),
       });
     }),
     http.patch('/v1/tenants/me/jobs/{job_id}', async ({ params, request, response }) => {

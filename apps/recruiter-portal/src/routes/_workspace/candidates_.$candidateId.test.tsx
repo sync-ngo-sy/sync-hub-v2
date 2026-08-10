@@ -41,9 +41,75 @@ function pool() {
   return within(screen.getByRole('region', { name: 'Talent pool' }));
 }
 
-function card() {
+function candidateHeader() {
+  const header = screen.getByRole('heading', { level: 1, name: 'Amina Haddad' }).closest('header');
+  if (!header) throw new Error('The Candidate heading is not inside its header.');
+  return within(header);
+}
+
+function candidateCard() {
   return within(screen.getByRole('article', { name: 'Amina Haddad' }));
 }
+
+function trail() {
+  return within(screen.getByRole('navigation', { name: 'breadcrumb' }));
+}
+
+describe('where the Candidate view says the reader came from', () => {
+  it('retraces the Talent pool rather than the Candidate search', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(`${AT}?from=talent-pool`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Talent pool' })).toHaveAttribute(
+      'href',
+      '/talent-pool',
+    );
+    expect(crumbs.queryByRole('link', { name: 'Candidates' })).toBeNull();
+    expect(crumbs.getByText('Amina Haddad')).toBeVisible();
+  });
+
+  it('retraces the Application it was opened from and names this page the live profile', async () => {
+    const application = '00000000-0000-4000-8000-000000000301';
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(`${AT}?from=application.${application}`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Applications' })).toHaveAttribute(
+      'href',
+      '/applications',
+    );
+    expect(crumbs.getByRole('link', { name: 'Amina Haddad' })).toHaveAttribute(
+      'href',
+      `/applications/${application}`,
+    );
+    expect(crumbs.getByText('Live profile')).toBeVisible();
+  });
+
+  it('keeps the search a Candidates crumb has to reopen', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD), ...findsCandidates([]));
+
+    await renderApp(FOUND_BY);
+
+    expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
+      'href',
+      '/candidates?q=backend+engineer',
+    );
+  });
+
+  it('falls back to Candidates when nothing says where the reader came from', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(AT);
+
+    expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
+      'href',
+      '/candidates',
+    );
+  });
+});
 
 describe('the Candidate view', () => {
   it('reads the person by id and shows their whole profile', async () => {
@@ -72,8 +138,8 @@ describe('the Candidate view', () => {
 
     await renderApp(AT);
 
-    expect(card().getByText('amina.haddad@example.test')).toBeVisible();
-    expect(card().getByText('+963 11 555 0142')).toBeVisible();
+    expect(candidateCard().getByText('amina.haddad@example.test')).toBeVisible();
+    expect(candidateCard().getByText('+963 11 555 0142')).toBeVisible();
     expect(
       screen.queryByText(
         'What the platform will show you about this person. Sync Hub never hands over an address or a phone number.',
@@ -81,17 +147,22 @@ describe('the Candidate view', () => {
     ).toBeNull();
   });
 
-  it('tops the profile with the card of who they are', async () => {
+  it('names the Candidate in the page header and reads them in the Candidate Card below it', async () => {
     server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
 
     await renderApp(AT);
 
-    expect(card().getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
-    expect(card().getByText('Backend Engineer')).toBeVisible();
-    expect(card().getByText('Backend engineer, 8 years')).toBeVisible();
-    expect(card().getByText('8 years')).toBeVisible();
-    expect(card().getByText('Arabic, English')).toBeVisible();
-    expect(card().queryByText('Snapshot')).toBeNull();
+    expect(
+      candidateHeader().getByRole('heading', { level: 1, name: 'Amina Haddad' }),
+    ).toBeVisible();
+
+    const card = candidateCard();
+    expect(card.getByText('AH')).toBeVisible();
+    expect(card.getByText('Backend Engineer')).toBeVisible();
+    expect(card.getByText('Backend engineer, 8 years')).toBeVisible();
+    expect(card.getByText('8 years experience')).toBeVisible();
+    expect(card.getByText('Aleppo')).toBeVisible();
+    expect(screen.queryByText('Snapshot')).toBeNull();
   });
 
   it('says what little there is rather than an empty page', async () => {
