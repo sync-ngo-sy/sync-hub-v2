@@ -1,4 +1,4 @@
-export const PORTAL_TITLE = 'Sync Recruiter';
+export const PORTAL_TITLE = 'Sync Hub Recruiter';
 
 export function pageTitle(page: string): string {
   return `${page} · ${PORTAL_TITLE}`;

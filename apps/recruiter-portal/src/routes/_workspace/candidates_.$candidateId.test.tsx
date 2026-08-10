@@ -142,7 +142,7 @@ describe('the Candidate view', () => {
     expect(candidateCard().getByText('+963 11 555 0142')).toBeVisible();
     expect(
       screen.queryByText(
-        'What the platform will show you about this person. Sync never hands over an address or a phone number.',
+        'What the platform will show you about this person. Sync Hub never hands over an address or a phone number.',
       ),
     ).toBeNull();
   });

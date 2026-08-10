@@ -1,6 +1,6 @@
 # Platform Portal
 
-The Platform-admin web app: the place where Sync operators inspect platform counts, work the
+The Platform-admin web app: the place where Sync Hub operators inspect platform counts, work the
 Access-request queue, and operate Tenants. Domain vocabulary (Platform admin, Tenant, Recruiter,
 Access request…) is inherited from the
 [Database context](../../supabase/CONTEXT.md) and never redefined here.
@@ -28,7 +28,7 @@ _Avoid_: Tenant CRM, account management, billing.
 
 **Access-request queue**:
 The Platform Portal's work at `/access-requests`: the companies that have asked to be let onto
-Sync, oldest first, with the two decisions that empty it — converting one into a Tenant, or
+Sync Hub, oldest first, with the two decisions that empty it — converting one into a Tenant, or
 dismissing it. Converting retypes nothing: the company, the founding admin and their address all
 come off the request, and the Tenant's address is the only thing the operator supplies (offered
 pre-filled from the company name). This is where Tenants normally come from; the Create-tenant

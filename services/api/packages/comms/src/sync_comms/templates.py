@@ -81,7 +81,7 @@ APPLICATION_CONFIRMATION: Final = _template(
   Their team reviews it from here, and you can follow it in your applications list.
 </p>
 <p>Your reference is {{ application_id }}.</p>
-<p>— Sync</p>
+<p>— Sync Hub</p>
 """,
     text="""
 Hi {{ candidate_name }},
@@ -91,7 +91,7 @@ from here, and you can follow it in your applications list.
 
 Your reference is {{ application_id }}.
 
-— Sync
+— Sync Hub
 """,
 )
 
@@ -104,7 +104,7 @@ APPLICATION_REJECTION: Final = _template(
   <strong>{{ job_title }}</strong> any further. Thank you for the time you gave it.
 </p>
 <p>Your other applications are unaffected, and you are welcome to apply for future roles.</p>
-<p>— Sync</p>
+<p>— Sync Hub</p>
 """,
     text="""
 Hi {{ candidate_name }},
@@ -114,7 +114,7 @@ Thank you for the time you gave it.
 
 Your other applications are unaffected, and you are welcome to apply for future roles.
 
-— Sync
+— Sync Hub
 """,
 )
 
@@ -122,12 +122,12 @@ RECRUITER_MESSAGE: Final = _template(
     subject="{{ subject }}",
     html="""
 {{ body | paragraphs }}
-<p>— {{ tenant_name }}, via Sync</p>
+<p>— {{ tenant_name }}, via Sync Hub</p>
 """,
     text="""
 {{ body }}
 
-— {{ tenant_name }}, via Sync
+— {{ tenant_name }}, via Sync Hub
 """,
 )
 

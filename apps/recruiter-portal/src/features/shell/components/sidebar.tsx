@@ -35,7 +35,7 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
             collapsed ? 'flex-col px-2' : 'justify-between px-5',
           )}
         >
-          <Brand nameHidden={collapsed} />
+          <Brand to="/dashboard" nameHidden={collapsed} />
           {onToggleRail ? (
             <Button
               variant="sidebar"

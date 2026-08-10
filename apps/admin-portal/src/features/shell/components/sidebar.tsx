@@ -35,7 +35,7 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
           )}
         >
           <Link to="/overview" className="font-heading text-lg font-semibold">
-            <span className={collapsed ? 'sr-only' : undefined}>Sync Platform</span>
+            <span className={collapsed ? 'sr-only' : undefined}>Sync Hub Platform</span>
             <span aria-hidden="true" className={collapsed ? undefined : 'hidden'}>
               S
             </span>

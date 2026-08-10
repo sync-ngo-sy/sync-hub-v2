@@ -29,7 +29,7 @@ export function AppCrash({ error }: ErrorComponentProps) {
   return (
     <CenteredScreen>
       <ErrorCard
-        title="Sync didn't start"
+        title="Sync Hub didn't start"
         description={problemMessage(error, 'Something went wrong before the page loaded.')}
         retryLabel="Reload"
         onRetry={() => window.location.reload()}

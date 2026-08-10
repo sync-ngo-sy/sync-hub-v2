@@ -135,7 +135,7 @@ pnpm dev
 ```
 
 None of the portals requires a variable for local development. The recruiter landing offers the
-Sync team's WhatsApp number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to
+Sync Hub team's WhatsApp number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to
 see those links, copy `apps/recruiter-portal/.env.example` to `.env.local`. Left unset, the
 landing just offers no contact — nothing else changes.
 

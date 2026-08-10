@@ -119,7 +119,7 @@ class Settings(BaseSettings):
     resend_api_key: SecretStr | None = None
     #: Resend's sandbox sender, which needs no verified domain. Every deployment that sends
     #: to a real address overrides it with one of its own.
-    email_from: str = "Sync <onboarding@resend.dev>"
+    email_from: str = "Sync Hub <onboarding@resend.dev>"
     email_timeout_seconds: int = Field(default=30, gt=0)
 
     #: Shared with the database webhook and the schedule that call the worker. Neither can

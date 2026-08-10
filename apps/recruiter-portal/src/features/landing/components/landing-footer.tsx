@@ -36,7 +36,7 @@ export function LandingFooter() {
         </div>
 
         <p className="border-t border-border pt-6 text-meta text-muted-foreground">
-          © {new Date().getFullYear()} Sync.
+          © {new Date().getFullYear()} Sync Hub.
         </p>
       </Wrap>
     </footer>

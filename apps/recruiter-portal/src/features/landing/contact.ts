@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CONTACT_SUBJECT = 'Sync for our company';
+export const CONTACT_SUBJECT = 'Sync Hub for our company';
 
 const numberSchema = z.string().regex(/^\+[1-9][\d\s-]{6,18}$/);
 

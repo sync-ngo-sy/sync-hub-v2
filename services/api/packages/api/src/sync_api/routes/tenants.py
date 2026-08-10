@@ -122,7 +122,7 @@ async def list_tenant_members(
     dependencies=[Depends(enforce_auth_rate_limit)],
     responses={
         **TENANT_ACCESS_REFUSED,
-        409: openapi_problem("That email address already has a Sync account."),
+        409: openapi_problem("That email address already has a Sync Hub account."),
         **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
