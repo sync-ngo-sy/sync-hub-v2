@@ -51,6 +51,10 @@ function applicationHeader() {
   return within(header);
 }
 
+function applicantCard() {
+  return within(screen.getByRole('article', { name: REVIEW.snapshot.full_name }));
+}
+
 async function chooseMove(user: UserEvent, label: string) {
   const direct = screen.queryByRole('button', { name: label });
   if (direct) {
@@ -151,18 +155,21 @@ describe('the Application review page', () => {
     );
   });
 
-  it('integrates the applicant and their avatar into the page header', async () => {
+  it('names the applicant in the page header and reads them in the Candidate Card below it', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const header = applicationHeader();
-    expect(header.getByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
-    expect(header.getByText('AH')).toBeVisible();
-    expect(header.getByText('Logistics Manager')).toBeVisible();
-    expect(header.getByText('Field logistics lead')).toBeVisible();
-    expect(header.getByText('+963 11 555 0101')).toBeVisible();
-    expect(header.getByText('9 years experience')).toBeVisible();
+    expect(
+      applicationHeader().getByRole('heading', { level: 1, name: 'Amal Haddad' }),
+    ).toBeVisible();
+
+    const card = applicantCard();
+    expect(card.getByText('AH')).toBeVisible();
+    expect(card.getByText('Logistics Manager')).toBeVisible();
+    expect(card.getByText('Field logistics lead')).toBeVisible();
+    expect(card.getByText('+963 11 555 0101')).toBeVisible();
+    expect(card.getByText('9 years experience')).toBeVisible();
   });
 
   it('reaches the applicant by the address the account confirmed, which no Snapshot holds', async () => {
@@ -170,7 +177,7 @@ describe('the Application review page', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    expect(applicationHeader().getByText('amal.haddad@example.test')).toBeVisible();
+    expect(applicantCard().getByText('amal.haddad@example.test')).toBeVisible();
   });
 
   it('leads from the Application to the Candidate as they are today', async () => {
@@ -282,9 +289,9 @@ describe('the Application review page', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    const header = applicationHeader();
-    expect(header.getByText('Warehouse Officer')).toBeVisible();
-    expect(header.queryByText('Logistics Manager')).toBeNull();
+    const card = applicantCard();
+    expect(card.getByText('Warehouse Officer')).toBeVisible();
+    expect(card.queryByText('Logistics Manager')).toBeNull();
   });
 
   it('shows the skills Screening could not read, because a human still should', async () => {

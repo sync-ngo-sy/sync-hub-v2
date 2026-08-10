@@ -171,12 +171,15 @@ _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechan
 
 **Application review**:
 The page one Application is read on, reached from the Triage list, a Job, the Dashboard or from its
-own address — headed by a Trail and a compact identity band rather than a second profile card. The
-band integrates the Candidate's live avatar with the Snapshot name, headline, Canonical role and
-contact details, then gives the Job applied for, Location, experience and dates their own compact
-fact grid. The Job is a fact rather than a Trail crumb because it is true of the Application however
-the reader arrived, while a crumb is only true of the way they came. It marks the
-live/frozen distinction with a quiet `Snapshot` badge. The confirmed
+own address — headed by an ordinary page header that names the applicant and holds the actions,
+nothing more. Who they are is read below it, in the shared Candidate Card leading the reading
+column where the Pipeline used to start: the card integrates the Candidate's live avatar with the
+Snapshot name, headline, Canonical role and contact details, and the page hands it the Job applied
+for, Location, experience and dates as its facts. Facts live with the person they are true of, in
+one place, rather than being split between a header and a card.
+The Job is a fact rather than a Trail crumb because it is true of the Application however
+the reader arrived, while a crumb is only true of the way they came. The header marks the
+live/frozen distinction with a quiet `Snapshot` badge, beside the name it qualifies. The confirmed
 email and avatar are the two live facts because neither can be frozen with an Application. `Open
 CV` and `Live candidate profile` are distinct bordered actions in the header; the CV's link is
 short-lived and never stored, so the page re-reads the Application rather than holding on to it.
@@ -437,9 +440,11 @@ read only to recover the matched fragment named in the URL; it never reconstruct
 by-id record. This also lets a cold shared link show its evidence. When the directory
 answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
 inventing a profile. The full profile is the shared component that renders the professional
-sections. `CandidateIdentityHeader` is the shared shell above it on both this page and the
-Application review: the same avatar, name, contact and fact-grid treatment, with each page supplying
-its own Trail, actions and facts. Only the Application version carries the `Snapshot` badge.
+sections. `CandidatePageHeader` is the shell above it on both this page and the Application review:
+a Trail, the name, and whatever actions the page offers. The Design System's Candidate Card then
+leads the reading column on both, each page handing it its own facts; the card decides how a
+candidate reads, which is why the Candidate Portal shows the same person the same way. Only the
+Application review carries the `Snapshot` badge.
 The notes and the Tags are the Application review's own interactions, naming a Candidate instead of
 an Application; a Tag offered here is candidate-scoped, which is the other half of the same
 vocabulary.

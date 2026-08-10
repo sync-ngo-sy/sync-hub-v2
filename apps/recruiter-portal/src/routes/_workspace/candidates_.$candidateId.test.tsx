@@ -47,6 +47,10 @@ function candidateHeader() {
   return within(header);
 }
 
+function candidateCard() {
+  return within(screen.getByRole('article', { name: 'Amina Haddad' }));
+}
+
 function trail() {
   return within(screen.getByRole('navigation', { name: 'breadcrumb' }));
 }
@@ -134,8 +138,8 @@ describe('the Candidate view', () => {
 
     await renderApp(AT);
 
-    expect(candidateHeader().getByText('amina.haddad@example.test')).toBeVisible();
-    expect(candidateHeader().getByText('+963 11 555 0142')).toBeVisible();
+    expect(candidateCard().getByText('amina.haddad@example.test')).toBeVisible();
+    expect(candidateCard().getByText('+963 11 555 0142')).toBeVisible();
     expect(
       screen.queryByText(
         'What the platform will show you about this person. Sync never hands over an address or a phone number.',
@@ -143,19 +147,22 @@ describe('the Candidate view', () => {
     ).toBeNull();
   });
 
-  it('tops the profile with the live Candidate identity header', async () => {
+  it('names the Candidate in the page header and reads them in the Candidate Card below it', async () => {
     server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
 
     await renderApp(AT);
 
-    const header = candidateHeader();
-    expect(header.getByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
-    expect(header.getByText('AH')).toBeVisible();
-    expect(header.getByText('Backend Engineer')).toBeVisible();
-    expect(header.getByText('Backend engineer, 8 years')).toBeVisible();
-    expect(header.getByText('8 years experience')).toBeVisible();
-    expect(header.getByText('Aleppo')).toBeVisible();
-    expect(header.queryByText('Snapshot')).toBeNull();
+    expect(
+      candidateHeader().getByRole('heading', { level: 1, name: 'Amina Haddad' }),
+    ).toBeVisible();
+
+    const card = candidateCard();
+    expect(card.getByText('AH')).toBeVisible();
+    expect(card.getByText('Backend Engineer')).toBeVisible();
+    expect(card.getByText('Backend engineer, 8 years')).toBeVisible();
+    expect(card.getByText('8 years experience')).toBeVisible();
+    expect(card.getByText('Aleppo')).toBeVisible();
+    expect(screen.queryByText('Snapshot')).toBeNull();
   });
 
   it('says what little there is rather than an empty page', async () => {

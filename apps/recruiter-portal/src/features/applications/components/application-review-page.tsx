@@ -3,8 +3,11 @@ import { buttonVariants } from '@sync/ui/components/ui/button';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { FileText, UserRound } from 'lucide-react';
-import { CandidateIdentityHeader } from '@/features/profile/components/candidate-identity-header';
-import { CandidateProfile } from '@/features/profile/components/candidate-profile';
+import { CandidatePageHeader } from '@/features/profile/components/candidate-page-header';
+import {
+  CandidateFactsCard,
+  CandidateProfile,
+} from '@/features/profile/components/candidate-profile';
 import { snapshotProfile, yearsOfExperience } from '@/features/profile/profile';
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs';
 import { ReviewCard } from '@/features/shell/components/review-card';
@@ -71,10 +74,9 @@ export function ApplicationReviewPage({
 
   return (
     <>
-      <CandidateIdentityHeader
-        profile={profile}
+      <CandidatePageHeader
+        name={profile.name}
         contextLabel="Snapshot"
-        factsLabel="Application facts"
         breadcrumbs={
           <PageBreadcrumbs
             trail={applicationTrail(origin, { name: profile.name, job: review.job, reading })}
@@ -102,36 +104,45 @@ export function ApplicationReviewPage({
             </Link>
           </>
         }
-        facts={[
-          {
-            label: 'Applied for',
-            value: (
-              <Link
-                to="/jobs/$jobId"
-                params={{ jobId: review.job.id }}
-                search={{ tab: 'applications' as const }}
-                className="hover:text-primary hover:underline"
-              >
-                {review.job.title}
-              </Link>
-            ),
-          },
-          { label: 'Location', value: profile.location },
-          { label: 'Experience', value: experience },
-          {
-            label: 'Applied',
-            value: <time dateTime={review.applied_at}>{absoluteDateTime(review.applied_at)}</time>,
-          },
-          {
-            label: 'Last moved',
-            value: <time dateTime={review.updated_at}>{absoluteDateTime(review.updated_at)}</time>,
-          },
-        ]}
       />
 
       <div className="pt-(--space-section)">
         <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
           <div className="space-y-(--space-grid)">
+            <CandidateFactsCard
+              profile={profile}
+              factsLabel="Application facts"
+              facts={[
+                {
+                  label: 'Applied for',
+                  value: (
+                    <Link
+                      to="/jobs/$jobId"
+                      params={{ jobId: review.job.id }}
+                      search={{ tab: 'applications' as const }}
+                      className="hover:text-primary hover:underline"
+                    >
+                      {review.job.title}
+                    </Link>
+                  ),
+                },
+                { label: 'Location', value: profile.location ?? 'Not provided' },
+                { label: 'Experience', value: experience ?? 'Not provided' },
+                {
+                  label: 'Applied',
+                  value: (
+                    <time dateTime={review.applied_at}>{absoluteDateTime(review.applied_at)}</time>
+                  ),
+                },
+                {
+                  label: 'Last moved',
+                  value: (
+                    <time dateTime={review.updated_at}>{absoluteDateTime(review.updated_at)}</time>
+                  ),
+                },
+              ]}
+            />
+
             <ApplicationPipeline applicationId={applicationId} status={review.status} />
 
             <ReviewCard title="Screening">

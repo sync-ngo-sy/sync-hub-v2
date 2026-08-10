@@ -1,7 +1,10 @@
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { CandidateIdentityHeader } from '@/features/profile/components/candidate-identity-header';
-import { CandidateProfile } from '@/features/profile/components/candidate-profile';
+import { CandidatePageHeader } from '@/features/profile/components/candidate-page-header';
+import {
+  CandidateFactsCard,
+  CandidateProfile,
+} from '@/features/profile/components/candidate-profile';
 import { recordProfile, yearsOfExperience } from '@/features/profile/profile';
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
@@ -51,20 +54,25 @@ export function CandidateViewPage({ record, evidence, filters, origin }: Candida
 
   return (
     <>
-      <CandidateIdentityHeader
-        profile={profile}
+      <CandidatePageHeader
+        name={profile.name}
         breadcrumbs={
           <PageBreadcrumbs trail={candidateTrail(origin, { name: profile.name, filters })} />
         }
-        facts={[
-          { label: 'Location', value: profile.location },
-          { label: 'Experience', value: experience },
-        ]}
       />
 
       <div className="pt-(--space-section)">
         <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
           <div className="space-y-(--space-grid)">
+            <CandidateFactsCard
+              profile={profile}
+              factsLabel="Candidate facts"
+              facts={[
+                { label: 'Location', value: profile.location ?? 'Not provided' },
+                { label: 'Experience', value: experience ?? 'Not provided' },
+              ]}
+            />
+
             <CandidateProfile profile={profile} title="Profile" empty={PROFILE_EMPTY}>
               <MatchEvidenceNote evidence={evidence} />
             </CandidateProfile>

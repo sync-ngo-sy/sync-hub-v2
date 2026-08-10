@@ -270,7 +270,7 @@ describe('the Filter tab', () => {
       expect(router.state.location.pathname).toBe(`/candidates/${LISTED_AMINA.candidate_id}`),
     );
     expect(router.state.location.search).toEqual({ role: 'backend-engineer' });
-    expect(await screen.findByRole('heading', { name: 'Amina Haddad' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
   });
 
   it('offers to loosen the filters when they are what leaves the directory empty', async () => {

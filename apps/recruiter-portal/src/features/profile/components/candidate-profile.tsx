@@ -1,4 +1,4 @@
-import { CandidateCard } from '@sync/ui/components/candidate-card';
+import { CandidateCard, type CandidateFact } from '@sync/ui/components/candidate-card';
 import { Badge } from '@sync/ui/components/ui/badge';
 import type { ReactNode } from 'react';
 import { useLanguageName } from '@/features/reference/hooks/use-languages';
@@ -14,25 +14,22 @@ import {
 
 interface CandidateFactsCardProps {
   profile: FullProfile;
-  contextLabel?: string;
-  note?: string;
+  facts: CandidateFact[];
+  factsLabel: string;
 }
 
-export function CandidateFactsCard({ profile, contextLabel, note }: CandidateFactsCardProps) {
-  const languageName = useLanguageName();
-
+export function CandidateFactsCard({ profile, facts, factsLabel }: CandidateFactsCardProps) {
   return (
     <CandidateCard
       name={profile.name}
       avatarUrl={profile.avatarUrl}
       email={profile.email}
       phone={profile.phone}
-      role={profile.role}
+      canonicalRole={profile.role}
       headline={profile.headline}
-      yearsOfExperience={profile.totalExperienceYears}
-      languages={profile.languages.map((language) => languageName(language.code))}
-      contextLabel={contextLabel}
-      note={note}
+      facts={facts}
+      factsLabel={factsLabel}
+      headingLevel={2}
     />
   );
 }
