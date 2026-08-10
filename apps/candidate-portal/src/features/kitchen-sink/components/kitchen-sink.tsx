@@ -226,29 +226,6 @@ export default function KitchenSink() {
         />
       </section>
 
-      <section className="space-y-3">
-        <h2 className="font-heading text-h3 text-foreground">
-          Candidate card, as the Recruiter reads an Application
-        </h2>
-        <CandidateCard
-          name="Fadi Chalhoub"
-          avatarUrl={null}
-          email="fadi.chalhoub@example.com"
-          phone="+963 11 555 0188"
-          canonicalRole="Full-stack Engineer"
-          headline="Junior full-stack developer"
-          headingLevel={2}
-          factsLabel="Application facts"
-          facts={[
-            { label: 'Applied for', value: 'Data Analyst (part-time)' },
-            { label: 'Location', value: 'Damascus' },
-            { label: 'Experience', value: '2 years experience' },
-            { label: 'Applied', value: 'Aug 10, 2026, 6:15 AM' },
-            { label: 'Last moved', value: 'Aug 10, 2026, 4:08 PM' },
-          ]}
-        />
-      </section>
-
       <Section title="Type">
         <div className="w-full space-y-3">
           <p className="font-heading text-h2 text-foreground">Syria's jobs, in one clear place.</p>
