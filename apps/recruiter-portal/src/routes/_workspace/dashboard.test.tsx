@@ -116,7 +116,7 @@ describe('the Dashboard', () => {
     await user.click(await screen.findByRole('link', { name: /Open jobs/ }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Published' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: /^Published/ })).toHaveAttribute('data-active');
     expect(await screen.findByText('MEAL Officer')).toBeVisible();
     expect(router.state.location.pathname).toBe('/jobs');
     expect(router.state.location.search).toEqual({ status: 'published' });

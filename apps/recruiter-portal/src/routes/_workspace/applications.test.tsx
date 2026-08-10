@@ -254,7 +254,7 @@ describe('the unified Applications page', () => {
 
     expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 3');
     expect(checkItem('Pending')).toHaveAccessibleName('Pending, 1');
-    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
+    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 1');
     expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
   });
 

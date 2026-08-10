@@ -13,7 +13,7 @@ describe('StatBand', () => {
             label: 'Open jobs',
             value: 9,
             icon: BriefcaseBusiness,
-            render: <a href="/jobs">Open jobs</a>,
+            render: <a href="/jobs" />,
           },
         ]}
       />,

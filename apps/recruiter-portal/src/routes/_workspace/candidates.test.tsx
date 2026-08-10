@@ -576,6 +576,6 @@ describe('the AI Search tab', () => {
       expect(router.state.location.pathname).toBe(`/candidates/${AMINA.candidate_id}`),
     );
     expect(router.state.location.search).toEqual({ q: 'engineer', location: 'sy-aleppo' });
-    expect(await screen.findByRole('article', { name: 'Amina Haddad' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
   });
 });

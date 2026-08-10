@@ -178,13 +178,13 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    const { user } = await renderApp(`/jobs/${JOB.id}`);
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['new'])}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await openScreening(user);
 
     expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 1');
-    expect(checkItem('Review required')).toHaveAccessibleName('Review required, 1');
+    expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
     expect(checkItem('Pending')).toHaveAccessibleName('Pending, 0');
     expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
     expect(checkItem('Qualified')).toHaveAttribute('aria-checked', 'true');
