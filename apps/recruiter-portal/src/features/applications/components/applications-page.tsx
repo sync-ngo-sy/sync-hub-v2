@@ -61,12 +61,14 @@ interface ApplicationsPageProps {
   filters: TenantApplicationFilters;
   onFiltersChange: (filters: TenantApplicationFilters) => void;
   onApplicationOpen: (application: TenantApplication) => void;
+  applicationHref: (application: TenantApplication) => string;
 }
 
 export function ApplicationsPage({
   filters,
   onFiltersChange,
   onApplicationOpen,
+  applicationHref,
 }: ApplicationsPageProps) {
   const pipelineFilter = filters.pipeline;
   const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
@@ -139,6 +141,7 @@ export function ApplicationsPage({
           getRowId={(application) => application.id}
           rowLabel={(application) => `${application.candidate_name}'s Application`}
           onRowOpen={onApplicationOpen}
+          rowHref={applicationHref}
           isLoading={applications.isPending}
           sort={{
             by: sort,

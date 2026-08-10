@@ -204,9 +204,7 @@ describe('the Dashboard', () => {
 
     const { router, user } = await renderApp('/dashboard');
     const recent = panel('Recent applications');
-    await user.click(
-      await recent.findByRole('button', { name: "Open Dima Sabbagh's Application" }),
-    );
+    await user.click(await recent.findByRole('link', { name: "Open Dima Sabbagh's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${DIMA.id}`));
   });

@@ -35,7 +35,7 @@ function rowOf(candidate: string) {
 
 function listedInOrder() {
   return screen
-    .getAllByRole('button', { name: /Application$/ })
+    .getAllByRole('link', { name: /Application$/ })
     .map((open) => open.getAttribute('aria-label'));
 }
 
@@ -76,7 +76,8 @@ describe("a Job's Applications tab", () => {
     expect(rowOf('Carla Rizk').getByText('Disqualified')).toBeVisible();
     expect(rowOf('Carla Rizk').getByText('Rejected')).toBeVisible();
 
-    expect(rowOf('Amal Haddad').getByText('Field logistics lead · Aleppo')).toBeVisible();
+    expect(rowOf('Amal Haddad').getByText('Logistics Manager · 9 years · Aleppo')).toBeVisible();
+    expect(rowOf('Amal Haddad').queryByText(/Field logistics lead/)).toBeNull();
     expect(rowOf('Amal Haddad').getByText(relativeTime(AMAL.applied_at))).toHaveAttribute(
       'title',
       absoluteDateTime(AMAL.applied_at),
@@ -337,7 +338,7 @@ describe("a Job's Applications tab", () => {
 
     const { router, user } = await renderApp(`/jobs/${JOB.id}`);
 
-    await user.click(await screen.findByRole('button', { name: "Open Amal Haddad's Application" }));
+    await user.click(await screen.findByRole('link', { name: "Open Amal Haddad's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${AMAL.id}`));
   });

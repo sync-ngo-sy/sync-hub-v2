@@ -33,7 +33,7 @@ describe('Jobs', () => {
     );
 
     const { router, user } = await renderApp('/jobs');
-    await user.click(await screen.findByRole('button', { name: 'Open Field Coordinator' }));
+    await user.click(await screen.findByRole('link', { name: 'Open Field Coordinator' }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/jobs/${FIELD_COORDINATOR.id}`),

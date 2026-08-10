@@ -1,9 +1,10 @@
 import type { DataTableColumn } from '@sync/ui/components/data-table';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { CandidateIdentity } from '@/features/candidates/components/candidate-cells';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import {
   type ApplicationSummary,
-  candidateMeta,
+  candidateIdentity,
   pipelineState,
   screeningState,
 } from '../application';
@@ -14,17 +15,7 @@ export function applicationColumns<TRow extends ApplicationSummary>(
   const candidate: DataTableColumn<TRow> = {
     accessorKey: 'candidate_name',
     header: 'Candidate',
-    cell: ({ row }) => {
-      const meta = candidateMeta(row.original);
-      return (
-        <span className="flex min-w-52 flex-col gap-1">
-          <span>{row.original.candidate_name}</span>
-          {meta ? (
-            <span className="text-meta font-normal text-muted-foreground">{meta}</span>
-          ) : null}
-        </span>
-      );
-    },
+    cell: ({ row }) => <CandidateIdentity {...candidateIdentity(row.original)} />,
   };
 
   const screening: DataTableColumn<TRow> = {

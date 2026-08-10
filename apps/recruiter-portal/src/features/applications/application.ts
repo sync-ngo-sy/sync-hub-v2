@@ -96,8 +96,13 @@ export function screeningState(verdict: ScreeningVerdict): MarkState {
   return SCREENING_STATE[verdict];
 }
 
-export function candidateMeta(application: ApplicationSummary): string {
-  return [application.headline, application.location].filter(Boolean).join(' · ');
+export function candidateIdentity(application: ApplicationSummary) {
+  return {
+    name: application.candidate_name,
+    role: application.canonical_role ?? null,
+    years: application.total_experience_years,
+    location: application.location ?? null,
+  };
 }
 
 export const EVERY_TIME = 'ever';

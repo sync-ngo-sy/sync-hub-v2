@@ -114,6 +114,16 @@ class ApplicationSummary(BaseModel):
     candidate_name: str = Field(description="The Snapshot's name: who they applied as.")
     headline: OptionalLine = None
     location: OptionalLine = None
+    canonical_role: OptionalLine = Field(
+        default=None,
+        description="What the Candidate's Canonical role was called the day they applied. Null "
+        "when they claimed none, which is when a list has only the `headline` to name them by.",
+    )
+    total_experience_years: int = Field(
+        default=0,
+        description="Whole years of work as the profile stood the day this was sent — the same "
+        "number Screening measured against the Job's minimum.",
+    )
     status: ApplicationStatus
     qualification_status: QualificationStatus = Field(description="The Screening verdict.")
     applied_at: datetime

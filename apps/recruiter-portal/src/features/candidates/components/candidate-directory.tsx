@@ -1,7 +1,7 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { Badge } from '@sync/ui/components/ui/badge';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { Star, Users } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
 import { listedCard, type SearchableCandidate } from '../candidate';
@@ -82,6 +82,12 @@ export function CandidateDirectory({
 }: CandidateDirectoryProps) {
   const listed = useCandidateDirectory(filters, order);
   const navigate = useNavigate();
+  const router = useRouter();
+  const candidateLocation = (person: SearchableCandidate) => ({
+    to: '/candidates/$candidateId' as const,
+    params: { candidateId: person.candidate_id },
+    search: searchAddress(filters),
+  });
 
   return (
     <DataTable
@@ -90,13 +96,8 @@ export function CandidateDirectory({
       data={listed.data?.items ?? []}
       getRowId={(person) => person.candidate_id}
       rowLabel={(person) => listedCard(person).fullName}
-      onRowOpen={(person) =>
-        void navigate({
-          to: '/candidates/$candidateId',
-          params: { candidateId: person.candidate_id },
-          search: searchAddress(filters),
-        })
-      }
+      onRowOpen={(person) => void navigate(candidateLocation(person))}
+      rowHref={(person) => router.buildLocation(candidateLocation(person)).href}
       isLoading={listed.isPending}
       error={
         listed.isError

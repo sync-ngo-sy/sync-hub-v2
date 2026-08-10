@@ -83,9 +83,15 @@ interface TalentPoolPageProps {
   reading: PoolReading;
   onReadingChange: (reading: PoolReading) => void;
   onCandidateOpen: (entry: PooledCandidate) => void;
+  candidateHref: (entry: PooledCandidate) => string;
 }
 
-export function TalentPoolPage({ reading, onReadingChange, onCandidateOpen }: TalentPoolPageProps) {
+export function TalentPoolPage({
+  reading,
+  onReadingChange,
+  onCandidateOpen,
+  candidateHref,
+}: TalentPoolPageProps) {
   const saved = useSavedCandidates(reading);
   const [dropping, setDropping] = useState<PooledCandidate | null>(null);
   const narrowed = reading.q.trim() !== '';
@@ -106,6 +112,7 @@ export function TalentPoolPage({ reading, onReadingChange, onCandidateOpen }: Ta
           getRowId={(entry) => entry.candidate_id}
           rowLabel={(entry) => entry.full_name}
           onRowOpen={onCandidateOpen}
+          rowHref={candidateHref}
           rowActions={(entry) => [
             { label: 'Drop from talent pool', onSelect: () => setDropping(entry) },
           ]}

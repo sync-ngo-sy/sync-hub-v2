@@ -45,6 +45,7 @@ interface JobDetailPageProps {
   filters: ApplicationFilters;
   onFiltersChange: (filters: ApplicationFilters) => void;
   onApplicationOpen: (application: ApplicationSummary) => void;
+  applicationHref: (application: ApplicationSummary) => string;
 }
 
 export function JobDetailPage({
@@ -54,6 +55,7 @@ export function JobDetailPage({
   filters,
   onFiltersChange,
   onApplicationOpen,
+  applicationHref,
 }: JobDetailPageProps) {
   const { data: job } = useJob(jobId);
   const change = useChangeJob();
@@ -155,6 +157,7 @@ export function JobDetailPage({
               filters={filters}
               onFiltersChange={onFiltersChange}
               onApplicationOpen={onApplicationOpen}
+              applicationHref={applicationHref}
               onShowLinks={() => onTabChange('links')}
             />
           </WidgetBoundary>

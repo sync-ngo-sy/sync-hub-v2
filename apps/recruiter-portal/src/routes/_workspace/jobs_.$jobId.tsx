@@ -1,5 +1,6 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { z } from 'zod';
+import type { ApplicationSummary } from '@/features/applications/application';
 import {
   applicationsAddress,
   jobApplicationsAddress,
@@ -37,6 +38,12 @@ function JobRoute() {
   const { jobId } = Route.useParams();
   const { tab = 'applications', ...filters } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const router = useRouter();
+  const applicationLocation = (application: ApplicationSummary) => ({
+    to: '/applications/$applicationId' as const,
+    params: { applicationId: application.id },
+    search: { ...applicationsAddress(filters), from: originAddress({ at: 'job' }) },
+  });
 
   if (!job) return <JobNotFound />;
 
@@ -51,13 +58,8 @@ function JobRoute() {
       onFiltersChange={(next) =>
         void navigate({ search: (prev) => ({ ...prev, ...jobApplicationsAddress(next) }) })
       }
-      onApplicationOpen={(application) =>
-        void navigate({
-          to: '/applications/$applicationId',
-          params: { applicationId: application.id },
-          search: { ...applicationsAddress(filters), from: originAddress({ at: 'job' }) },
-        })
-      }
+      onApplicationOpen={(application) => void navigate(applicationLocation(application))}
+      applicationHref={(application) => router.buildLocation(applicationLocation(application)).href}
     />
   );
 }

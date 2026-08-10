@@ -1,8 +1,13 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { z } from 'zod';
 import { JobsPage as JobsFeaturePage } from '@/features/jobs/components/jobs-page';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
-import { DEFAULT_JOB_SORT, JOB_SORT_VALUES, JOB_STATUS_VALUES } from '@/features/jobs/job';
+import {
+  DEFAULT_JOB_SORT,
+  JOB_SORT_VALUES,
+  JOB_STATUS_VALUES,
+  type JobSummary,
+} from '@/features/jobs/job';
 import { warmLocations } from '@/features/reference/reference-queries';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { pageTitle } from '@/lib/page-title';
@@ -31,6 +36,12 @@ export const Route = createFileRoute('/_workspace/jobs')({
 function JobsPage() {
   const { q, status, sort } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const router = useRouter();
+  const jobLocation = (job: JobSummary) => ({
+    to: '/jobs/$jobId' as const,
+    params: { jobId: job.id },
+    search: {},
+  });
 
   return (
     <WidgetBoundary name="Jobs">
@@ -41,9 +52,8 @@ function JobsPage() {
         onQueryChange={(nextQuery) =>
           void navigate({ search: (prev) => ({ ...prev, q: nextQuery }), replace: true })
         }
-        onJobOpen={(job) =>
-          void navigate({ to: '/jobs/$jobId', params: { jobId: job.id }, search: {} })
-        }
+        onJobOpen={(job) => void navigate(jobLocation(job))}
+        jobHref={(job) => router.buildLocation(jobLocation(job)).href}
         onCreateJob={() => void navigate({ to: '/jobs/new', search: {} })}
         onStatusChange={(nextStatus) =>
           void navigate({ search: (prev) => ({ ...prev, status: nextStatus }), replace: true })

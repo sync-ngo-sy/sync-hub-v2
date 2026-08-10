@@ -79,6 +79,7 @@ interface JobsPageProps {
   onStatusChange: (status?: JobStatus) => void;
   onSortChange: (sort: JobSort) => void;
   onJobOpen: (job: JobSummary) => void;
+  jobHref: (job: JobSummary) => string;
   onCreateJob: () => void;
 }
 
@@ -90,6 +91,7 @@ export function JobsPage({
   onStatusChange,
   onSortChange,
   onJobOpen,
+  jobHref,
   onCreateJob,
 }: JobsPageProps) {
   const tenant = useMyTenant();
@@ -179,6 +181,7 @@ export function JobsPage({
           getRowId={(job) => job.id}
           rowLabel={(job) => job.title}
           onRowOpen={onJobOpen}
+          rowHref={jobHref}
           rowActions={(job) => [
             { label: 'Edit job', onSelect: () => setEditing(job) },
             ...jobLifecycleActions(job.status).map((action) => ({

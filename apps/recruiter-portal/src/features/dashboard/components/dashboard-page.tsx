@@ -14,6 +14,7 @@ interface DashboardPageProps {
   recruiterName: string;
   onJobOpen: (job: JobSummary) => void;
   onApplicationOpen: (application: TenantApplication) => void;
+  applicationHref: (application: TenantApplication) => string;
   onCreateJob: () => void;
 }
 
@@ -21,6 +22,7 @@ export function DashboardPage({
   recruiterName,
   onJobOpen,
   onApplicationOpen,
+  applicationHref,
   onCreateJob,
 }: DashboardPageProps) {
   const { tenantName, stats, applications, jobs } = useDashboard();
@@ -56,7 +58,11 @@ export function DashboardPage({
         <ActivityStats stats={stats} />
 
         <div className="grid gap-(--space-grid) lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start">
-          <RecentApplications applications={applications} onApplicationOpen={onApplicationOpen} />
+          <RecentApplications
+            applications={applications}
+            onApplicationOpen={onApplicationOpen}
+            applicationHref={applicationHref}
+          />
 
           <div className="space-y-(--space-grid)">
             <SourcesCard stats={stats} />

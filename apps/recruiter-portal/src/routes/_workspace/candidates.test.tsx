@@ -264,7 +264,7 @@ describe('the Filter tab', () => {
 
     const { user, router } = await renderApp(`${AT}?role=backend-engineer`);
 
-    await user.click(await directory().findByRole('button', { name: 'Open Amina Haddad' }));
+    await user.click(await directory().findByRole('link', { name: 'Open Amina Haddad' }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/candidates/${LISTED_AMINA.candidate_id}`),

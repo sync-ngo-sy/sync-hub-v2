@@ -66,7 +66,7 @@ function receivedHeader() {
 
 function namesInOrder() {
   return screen
-    .getAllByRole('button', { name: /Application$/ })
+    .getAllByRole('link', { name: /Application$/ })
     .map((row) => row.getAttribute('aria-label'));
 }
 
@@ -152,9 +152,7 @@ describe('the unified Applications page', () => {
     );
 
     const { router, user } = await renderApp('/applications');
-    await user.click(
-      await screen.findByRole('button', { name: "Open Dima Sabbagh's Application" }),
-    );
+    await user.click(await screen.findByRole('link', { name: "Open Dima Sabbagh's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${DIMA.id}`));
   });

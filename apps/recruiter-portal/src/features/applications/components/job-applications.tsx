@@ -23,6 +23,7 @@ interface JobApplicationsProps {
   filters: ApplicationFilters;
   onFiltersChange: (filters: ApplicationFilters) => void;
   onApplicationOpen: (application: ApplicationSummary) => void;
+  applicationHref: (application: ApplicationSummary) => string;
   onShowLinks: () => void;
 }
 
@@ -31,6 +32,7 @@ export function JobApplications({
   filters,
   onFiltersChange,
   onApplicationOpen,
+  applicationHref,
   onShowLinks,
 }: JobApplicationsProps) {
   const pipelineFilter = filters.pipeline?.length === 1 ? filters.pipeline : undefined;
@@ -73,6 +75,7 @@ export function JobApplications({
         getRowId={(application) => application.id}
         rowLabel={(application) => `${application.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
+        rowHref={applicationHref}
         isLoading={applications.isPending}
         error={
           applications.isError
