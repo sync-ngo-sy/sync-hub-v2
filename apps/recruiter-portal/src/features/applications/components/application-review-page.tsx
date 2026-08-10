@@ -62,6 +62,7 @@ export function ApplicationReviewPage({
   if (!review) return null;
 
   const verdict = screeningState(review.screening.status);
+  const explanation = screeningExplanation(review.screening);
   const profile = snapshotProfile(review.snapshot, review.candidate);
   const experience =
     profile.totalExperienceYears === null
@@ -136,9 +137,9 @@ export function ApplicationReviewPage({
             <ReviewCard title="Screening">
               <div className="space-y-3">
                 <StatusMark label={verdict.label} tone={verdict.tone} />
-                <p className="text-dense text-muted-foreground">
-                  {screeningExplanation(review.screening)}
-                </p>
+                {explanation ? (
+                  <p className="text-dense text-muted-foreground">{explanation}</p>
+                ) : null}
               </div>
             </ReviewCard>
 

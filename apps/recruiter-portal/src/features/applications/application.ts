@@ -99,11 +99,9 @@ export function screeningState(verdict: ScreeningVerdict): MarkState {
 
 const NOT_SCREENED = 'Screening has not run on this Application yet.';
 
-const NOTHING_FELL_SHORT = 'Nothing in the Application fell short of what this Job asks.';
-
-export function screeningExplanation(screening: ScreeningOutcome): string {
+export function screeningExplanation(screening: ScreeningOutcome): string | null {
   if (screening.status === 'pending') return NOT_SCREENED;
-  return screening.reason ?? NOTHING_FELL_SHORT;
+  return screening.reason ?? null;
 }
 
 export function candidateIdentity(application: ApplicationSummary) {

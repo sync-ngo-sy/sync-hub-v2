@@ -75,15 +75,14 @@ describe('the Notes on the Application review page', () => {
     expect(rewritten.getByText(/edited/)).toBeVisible();
   });
 
-  it('says so plainly when nobody has written anything yet', async () => {
+  it('lists nothing, and still offers the box to write in, when nobody has written yet', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     const { notes } = await openNotes();
 
+    expect(notes.queryByRole('list', { name: 'Notes' })).toBeNull();
     expect(
-      notes.getByText(
-        'Nothing written down yet. The first note is the one your colleagues will read first.',
-      ),
+      notes.getByPlaceholderText('What should your team know about this Application?'),
     ).toBeVisible();
   });
 

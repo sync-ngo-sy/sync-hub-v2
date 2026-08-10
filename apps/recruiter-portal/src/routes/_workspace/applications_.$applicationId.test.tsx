@@ -94,7 +94,7 @@ describe('the Application review page', () => {
     expect(screening.getByText(reason)).toBeVisible();
   });
 
-  it('says nothing fell short on a Qualified verdict, which never carries a reason', async () => {
+  it('leaves a Qualified verdict unexplained rather than claiming Screening never ran', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
@@ -102,9 +102,6 @@ describe('the Application review page', () => {
     const screening = section('Screening');
     expect(await screen.findByRole('region', { name: 'Screening' })).toBeVisible();
     expect(screening.getByText('Qualified')).toBeVisible();
-    expect(
-      screening.getByText('Nothing in the Application fell short of what this Job asks.'),
-    ).toBeVisible();
     expect(screening.queryByText(/Screening has not run/)).toBeNull();
   });
 

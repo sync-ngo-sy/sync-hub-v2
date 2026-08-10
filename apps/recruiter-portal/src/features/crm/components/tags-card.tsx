@@ -70,12 +70,6 @@ export function TagsCard({ tags, subject }: { tags: TagsWidget; subject: CrmSubj
           </ul>
         ) : null}
 
-        {!tags.isPending && !tags.error && tags.on.length === 0 ? (
-          <p className="text-dense text-muted-foreground">
-            {`Not filed under anything yet. A Tag here is how you find this ${subject.one} again.`}
-          </p>
-        ) : null}
-
         {tags.error ? null : (
           <TagPicker
             subject={subject}
