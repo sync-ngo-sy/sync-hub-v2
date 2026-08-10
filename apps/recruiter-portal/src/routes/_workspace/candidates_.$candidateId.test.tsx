@@ -47,6 +47,66 @@ function candidateHeader() {
   return within(header);
 }
 
+function trail() {
+  return within(screen.getByRole('navigation', { name: 'breadcrumb' }));
+}
+
+describe('where the Candidate view says the reader came from', () => {
+  it('retraces the Talent pool rather than the Candidate search', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(`${AT}?from=talent-pool`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Talent pool' })).toHaveAttribute(
+      'href',
+      '/talent-pool',
+    );
+    expect(crumbs.queryByRole('link', { name: 'Candidates' })).toBeNull();
+    expect(crumbs.getByText('Amina Haddad')).toBeVisible();
+  });
+
+  it('retraces the Application it was opened from and names this page the live profile', async () => {
+    const application = '00000000-0000-4000-8000-000000000301';
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(`${AT}?from=application.${application}`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Applications' })).toHaveAttribute(
+      'href',
+      '/applications',
+    );
+    expect(crumbs.getByRole('link', { name: 'Amina Haddad' })).toHaveAttribute(
+      'href',
+      `/applications/${application}`,
+    );
+    expect(crumbs.getByText('Live profile')).toBeVisible();
+  });
+
+  it('keeps the search a Candidates crumb has to reopen', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD), ...findsCandidates([]));
+
+    await renderApp(FOUND_BY);
+
+    expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
+      'href',
+      '/candidates?q=backend+engineer',
+    );
+  });
+
+  it('falls back to Candidates when nothing says where the reader came from', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(AT);
+
+    expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
+      'href',
+      '/candidates',
+    );
+  });
+});
+
 describe('the Candidate view', () => {
   it('reads the person by id and shows their whole profile', async () => {
     const asked: string[] = [];

@@ -31,6 +31,7 @@ export function LineTabsList({ label, value, tabs, className }: LineTabsListProp
           <TabsTrigger
             key={tab.value}
             value={tab.value}
+            aria-label={tab.count === undefined ? tab.label : `${tab.label} ${tab.count}`}
             className="h-10 flex-none rounded-none px-0 py-0 after:hidden"
           >
             <span

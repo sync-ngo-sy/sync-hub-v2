@@ -30,6 +30,44 @@ sidebar. Routes live under the `_workspace` layout, whose guard is the single pl
 Profile is checked before any of its loaders run.
 _Avoid_: App, dashboard area, admin.
 
+**Reading**:
+Which slice of a list somebody is looking at — the filters, the narrowing and the order, as one
+value. `features/applications/reading.ts` holds the Applications Reading and the narrower one a
+Job's Applications tab can answer, and both are defined once as a schema the URL is parsed with;
+the filter types are inferred from that schema rather than written beside it, so the two cannot
+drift. A Reading travels into a detail page's address so a Trail can hand the list back exactly as
+it was left, which is the same reason the Candidate record carries its search.
+_Avoid_: Query state, filter bag (a Reading is what the reader chose, not how it is stored).
+
+**Address**:
+The other direction of a Reading: what it looks like in the URL, with defaults left out so a plain
+list has a plain address. `applicationsAddress` and `jobApplicationsAddress` are the only writers,
+and their return type names every key of the Reading, so adding a filter to the schema fails the
+build until that filter is mapped. That is deliberate — a filter that compiles but never reaches
+the address would be a filter that silently forgets itself on reload. Adding one means: the schema,
+the Address it fails on, the query that sends it, and the control that sets it.
+_Avoid_: Serialise, to-params (name the thing produced, not the act of producing it).
+
+**Origin**:
+The place a reader came through to reach a page, carried in that page's address as `from`. An
+Application is reachable from the Triage list, a Job and the Dashboard; a Candidate record from
+Candidate search, the Talent pool and an Application — so the section that owns an address cannot
+say which way the reader came, and the page it opens must be told. Whichever list holds the link
+names its own Origin, so no page has to guess. It is a closed vocabulary of places, not a stored
+return address: `talent-pool`, `job`, `application.<id>`. Because it lives in the address, a
+pasted link retraces what the Recruiter who copied it saw, and an Origin the Workspace does not
+recognise is ignored rather than obeyed.
+_Avoid_: Referrer, history, back-stack (none of those survive a paste or a refresh).
+
+**Trail**:
+The row of crumbs above a page title, built from the Origin rather than written into the page. A
+crumb is a claim about the way the reader came, so a page with more than one way in cannot state
+one in its own markup; `PageBreadcrumbs` renders what the Origin implies and the trail functions in
+`features/shell/origin.ts` decide the shape. Absent an Origin, a Trail falls back to the section
+that owns the address, which is what a deep link honestly deserves. A fact that holds however the
+reader arrived belongs in the fact grid, not in the Trail.
+_Avoid_: Breadcrumb hierarchy, route ancestry (the destinations form a graph, not a tree).
+
 **Dashboard**:
 The signed-in Recruiter's home: an overview of the Tenant's hiring activity. One
 destination inside the Workspace, not a name for the Workspace itself. Every number on it is the
@@ -132,14 +170,18 @@ Recruiter can paste to somebody else.
 _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechanism).
 
 **Application review**:
-The page one Application is read on, reached from the Triage list or from its own address —
-headed by a breadcrumb and a compact identity band rather than a second profile card. The band
-integrates the Candidate's live avatar with the Snapshot name, headline, Canonical role and contact
-details, then gives Location, experience and dates their own compact fact grid. It marks the
+The page one Application is read on, reached from the Triage list, a Job, the Dashboard or from its
+own address — headed by a Trail and a compact identity band rather than a second profile card. The
+band integrates the Candidate's live avatar with the Snapshot name, headline, Canonical role and
+contact details, then gives the Job applied for, Location, experience and dates their own compact
+fact grid. The Job is a fact rather than a Trail crumb because it is true of the Application however
+the reader arrived, while a crumb is only true of the way they came. It marks the
 live/frozen distinction with a quiet `Snapshot` badge. The confirmed
 email and avatar are the two live facts because neither can be frozen with an Application. `Open
 CV` and `Live candidate profile` are distinct bordered actions in the header; the CV's link is
 short-lived and never stored, so the page re-reads the Application rather than holding on to it.
+`Live candidate profile` names this Application as the Origin it hands on, so the Candidate record
+can lead back to the reading it was opened from.
 
 The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
 and the six-step progress line in one card. There is no static warning beneath it: move outcomes
@@ -387,14 +429,17 @@ tab).
 One person as this Tenant knows them: their whole profile with their email and phone, the fragment
 that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
 Talent pool. The profile is read by id from the directory, so how you arrived changes nothing about
-what you see — a pasted link shows the same person a click from the Talent pool does. Search is
+who you see — a pasted link shows the same person a click from the Talent pool does, and the Origin
+changes only the Trail that leads back. Opened from an Application, the Trail names this page the
+live profile instead of repeating the Candidate's name, which is the same live/frozen distinction
+the `Snapshot` badge makes on the other page. Search is
 read only to recover the matched fragment named in the URL; it never reconstructs or replaces the
 by-id record. This also lets a cold shared link show its evidence. When the directory
 answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
 inventing a profile. The full profile is the shared component that renders the professional
 sections. `CandidateIdentityHeader` is the shared shell above it on both this page and the
 Application review: the same avatar, name, contact and fact-grid treatment, with each page supplying
-its own breadcrumbs, actions and facts. Only the Application version carries the `Snapshot` badge.
+its own Trail, actions and facts. Only the Application version carries the `Snapshot` badge.
 The notes and the Tags are the Application review's own interactions, naming a Candidate instead of
 an Application; a Tag offered here is candidate-scoped, which is the other half of the same
 vocabulary.

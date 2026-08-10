@@ -1,22 +1,10 @@
 import { api } from '@/lib/api';
-import type {
-  ApplicationSort,
-  PipelineStatus,
-  ReceivedWithin,
-  ScreeningVerdict,
-} from '../application';
+import type { TenantApplicationFilters } from '../reading';
 import { statusCountsFrom, verdictCountsFrom } from './use-job-applications';
 
 export const TENANT_APPLICATIONS_PAGE_SIZE = 20;
 
 const PATH = '/v1/tenants/me/applications';
-
-export interface TenantApplicationFilters {
-  pipeline?: PipelineStatus[];
-  screening?: ScreeningVerdict[];
-  received?: ReceivedWithin;
-  sort?: ApplicationSort;
-}
 
 export function useTenantApplications(filters: TenantApplicationFilters) {
   return api.useInfiniteQuery(

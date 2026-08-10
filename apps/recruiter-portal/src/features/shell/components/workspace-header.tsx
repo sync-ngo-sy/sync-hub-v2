@@ -5,11 +5,7 @@ interface WorkspaceHeaderProps extends ComponentProps<'header'> {
   withTabs?: boolean;
 }
 
-export function WorkspaceHeader({
-  withTabs = false,
-  className,
-  ...props
-}: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ withTabs = false, className, ...props }: WorkspaceHeaderProps) {
   return (
     <header
       className={cn(

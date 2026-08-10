@@ -21,12 +21,10 @@ import {
   sortSelection,
   type TenantApplication,
 } from '../application';
-import {
-  type TenantApplicationFilters,
-  useTenantApplications,
-} from '../hooks/use-tenant-applications';
+import { useTenantApplications } from '../hooks/use-tenant-applications';
+import type { TenantApplicationFilters } from '../reading';
 import { applicationColumns } from './application-columns';
-import { ApplicationPipelineTabs } from './application-pipeline-tabs';
+import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 
 const JOB: DataTableColumn<TenantApplication> = {
@@ -91,45 +89,46 @@ export function ApplicationsPage({
 
   return (
     <>
-      <WorkspaceHeader withTabs>
+      <WorkspaceHeader>
         <PageHeader
           title="Applications"
           description="Everyone who has applied, across every Job your Tenant is hiring for."
         />
-
-        <ApplicationPipelineTabs
-          pipeline={pipelineFilter}
-          counts={statusCounts}
-          className="-mb-px mt-5"
-          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
-        />
       </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
-        <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-3">
-          <ChecklistFilter
-            label="Screening"
-            noun="verdicts"
-            options={SCREENING_VERDICTS.map((verdict) => ({
-              value: verdict,
-              label: screeningState(verdict).label,
-            }))}
-            selected={screening}
-            counts={verdictCounts}
-            onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
+        <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+          <ApplicationPipelineFilter
+            pipeline={pipelineFilter}
+            counts={statusCounts}
+            onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
           />
-          <div className="flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" className="shrink-0 text-meta text-muted-foreground">
-              Received
-            </span>
-            <ChoicePicker
-              label="Received"
-              items={RECEIVED_RANGES}
-              value={range}
-              onValueChange={(chosen: ReceivedRange) =>
-                onFiltersChange({ ...filters, received: receivedWithin(chosen) })
-              }
+
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            <ChecklistFilter
+              label="Screening"
+              noun="verdicts"
+              options={SCREENING_VERDICTS.map((verdict) => ({
+                value: verdict,
+                label: screeningState(verdict).label,
+              }))}
+              selected={screening}
+              counts={verdictCounts}
+              onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
             />
+            <div className="flex min-w-0 items-center gap-3">
+              <span aria-hidden="true" className="shrink-0 text-meta text-muted-foreground">
+                Received
+              </span>
+              <ChoicePicker
+                label="Received"
+                items={RECEIVED_RANGES}
+                value={range}
+                onValueChange={(chosen: ReceivedRange) =>
+                  onFiltersChange({ ...filters, received: receivedWithin(chosen) })
+                }
+              />
+            </div>
           </div>
         </div>
 

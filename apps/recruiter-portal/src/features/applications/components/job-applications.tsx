@@ -10,9 +10,10 @@ import {
   screeningSelection,
   screeningState,
 } from '../application';
-import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
+import { useJobApplications } from '../hooks/use-job-applications';
+import type { ApplicationFilters } from '../reading';
 import { applicationColumns } from './application-columns';
-import { ApplicationPipelineTabs } from './application-pipeline-tabs';
+import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 
 const COLUMNS = applicationColumns<ApplicationSummary>();
@@ -45,16 +46,13 @@ export function JobApplications({
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-border">
-        <ApplicationPipelineTabs
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+        <ApplicationPipelineFilter
           pipeline={pipelineFilter}
           counts={statusCounts}
-          className="-mb-px"
           onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
-      </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-3">
         <ChecklistFilter
           label="Screening"
           noun="verdicts"

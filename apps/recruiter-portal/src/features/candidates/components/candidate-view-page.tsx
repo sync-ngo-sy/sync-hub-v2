@@ -1,17 +1,11 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@sync/ui/components/ui/breadcrumb';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { CandidateIdentityHeader } from '@/features/profile/components/candidate-identity-header';
 import { CandidateProfile } from '@/features/profile/components/candidate-profile';
 import { recordProfile, yearsOfExperience } from '@/features/profile/profile';
+import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { candidateTrail, type Origin } from '@/features/shell/origin';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
 import type { MatchEvidence } from '../candidate';
 import type { CandidateRecord } from '../candidate-record';
@@ -45,9 +39,10 @@ interface CandidateViewPageProps {
   record: CandidateRecord;
   evidence: MatchEvidence | null;
   filters: CandidateSearchFilters;
+  origin: Origin | null;
 }
 
-export function CandidateViewPage({ record, evidence, filters }: CandidateViewPageProps) {
+export function CandidateViewPage({ record, evidence, filters, origin }: CandidateViewPageProps) {
   const profile = recordProfile(record);
   const experience =
     profile.totalExperienceYears === null
@@ -59,19 +54,7 @@ export function CandidateViewPage({ record, evidence, filters }: CandidateViewPa
       <CandidateIdentityHeader
         profile={profile}
         breadcrumbs={
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link to="/candidates" search={searchAddress(filters)} />}>
-                  Candidates
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{profile.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <PageBreadcrumbs trail={candidateTrail(origin, { name: profile.name, filters })} />
         }
         facts={[
           { label: 'Location', value: profile.location },

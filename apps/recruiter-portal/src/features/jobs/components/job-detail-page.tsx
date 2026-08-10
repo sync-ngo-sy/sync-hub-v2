@@ -1,14 +1,6 @@
 import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@sync/ui/components/ui/breadcrumb';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
@@ -17,11 +9,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import type { ApplicationSummary } from '@/features/applications/application';
 import { JobApplications } from '@/features/applications/components/job-applications';
-import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
+import type { ApplicationFilters } from '@/features/applications/reading';
 import { FactGrid } from '@/features/shell/components/fact-grid';
 import { LineTabsList } from '@/features/shell/components/line-tabs-list';
+import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
+import { jobTrail } from '@/features/shell/origin';
 import { TrackedLinks } from '@/features/tracked-links/components/tracked-links';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
@@ -92,17 +86,7 @@ export function JobDetailPage({
       onValueChange={(value) => onTabChange(value as JobDetailTab)}
     >
       <WorkspaceHeader withTabs>
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink render={<Link to="/jobs" search={{}} />}>Jobs</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{job.title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <PageBreadcrumbs trail={jobTrail(job.title)} />
 
         <PageHeader
           className="mt-5"

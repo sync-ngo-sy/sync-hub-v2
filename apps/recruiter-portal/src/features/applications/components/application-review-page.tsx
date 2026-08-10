@@ -1,12 +1,4 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@sync/ui/components/ui/breadcrumb';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
@@ -14,11 +6,14 @@ import { FileText, UserRound } from 'lucide-react';
 import { CandidateIdentityHeader } from '@/features/profile/components/candidate-identity-header';
 import { CandidateProfile } from '@/features/profile/components/candidate-profile';
 import { snapshotProfile, yearsOfExperience } from '@/features/profile/profile';
+import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { applicationTrail, type Origin, originAddress } from '@/features/shell/origin';
 import { absoluteDateTime } from '@/lib/dates';
 import { screeningState } from '../application';
 import { useApplication } from '../hooks/use-application';
+import type { TenantApplicationFilters } from '../reading';
 import { ApplicantMessage } from './applicant-message';
 import { ApplicationAnswers } from './application-answers';
 import { ApplicationHistory } from './application-history';
@@ -51,7 +46,17 @@ export function ApplicationNotFound() {
   );
 }
 
-export function ApplicationReviewPage({ applicationId }: { applicationId: string }) {
+interface ApplicationReviewPageProps {
+  applicationId: string;
+  origin: Origin | null;
+  reading: TenantApplicationFilters;
+}
+
+export function ApplicationReviewPage({
+  applicationId,
+  origin,
+  reading,
+}: ApplicationReviewPageProps) {
   const { data: review } = useApplication(applicationId);
 
   if (!review) return null;
@@ -70,45 +75,9 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
         contextLabel="Snapshot"
         factsLabel="Application facts"
         breadcrumbs={
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link to="/jobs" search={{}} />}>Jobs</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  render={
-                    <Link
-                      to="/jobs/$jobId"
-                      params={{ jobId: review.job.id }}
-                      search={{ tab: 'applications' }}
-                    />
-                  }
-                >
-                  {review.job.title}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  render={
-                    <Link
-                      to="/jobs/$jobId"
-                      params={{ jobId: review.job.id }}
-                      search={{ tab: 'applications' }}
-                    />
-                  }
-                >
-                  Applications
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{profile.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <PageBreadcrumbs
+            trail={applicationTrail(origin, { name: profile.name, job: review.job, reading })}
+          />
         }
         actions={
           <>
@@ -124,7 +93,7 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
             <Link
               to="/candidates/$candidateId"
               params={{ candidateId: review.candidate.id }}
-              search={{}}
+              search={{ from: originAddress({ at: 'application', applicationId }) }}
               className={HEADER_ACTION}
             >
               <UserRound aria-hidden="true" />
@@ -133,6 +102,19 @@ export function ApplicationReviewPage({ applicationId }: { applicationId: string
           </>
         }
         facts={[
+          {
+            label: 'Applied for',
+            value: (
+              <Link
+                to="/jobs/$jobId"
+                params={{ jobId: review.job.id }}
+                search={{ tab: 'applications' as const }}
+                className="hover:text-primary hover:underline"
+              >
+                {review.job.title}
+              </Link>
+            ),
+          },
           { label: 'Location', value: profile.location },
           { label: 'Experience', value: experience },
           {

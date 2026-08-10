@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { DashboardPage as DashboardFeaturePage } from '@/features/dashboard/components/dashboard-page';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
 import { warmLocations } from '@/features/reference/reference-queries';
+import { originAddress } from '@/features/shell/origin';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_workspace/dashboard')({
@@ -28,6 +29,7 @@ function DashboardPage() {
         void navigate({
           to: '/applications/$applicationId',
           params: { applicationId: application.id },
+          search: { from: originAddress({ at: 'dashboard' }) },
         })
       }
       onCreateJob={() => void navigate({ to: '/jobs/new', search: {} })}

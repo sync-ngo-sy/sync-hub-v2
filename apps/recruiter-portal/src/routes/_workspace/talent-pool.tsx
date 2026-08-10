@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { originAddress } from '@/features/shell/origin';
 import { TalentPoolPage as TalentPoolFeaturePage } from '@/features/talent-pool/components/talent-pool-page';
 import { warmSavedCandidates } from '@/features/talent-pool/hooks/use-talent-pool';
 import { poolAddress } from '@/features/talent-pool/pool';
@@ -27,7 +28,7 @@ function TalentPoolPage() {
           void navigate({
             to: '/candidates/$candidateId',
             params: { candidateId: entry.candidate_id },
-            search: {},
+            search: { from: originAddress({ at: 'talent-pool' }) },
           })
         }
       />

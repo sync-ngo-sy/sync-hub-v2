@@ -39,8 +39,8 @@ function rowOf(candidate: string) {
   return within(screen.getByRole('row', { name: new RegExp(candidate) }));
 }
 
-function pipelineTab(label: string) {
-  return screen.getByRole('tab', { name: new RegExp(`^${label}(?: |$)`) });
+function pipelineChip(label: string) {
+  return screen.getByRole('radio', { name: new RegExp(`^${label}(?: |$)`) });
 }
 
 function verdictTrigger() {
@@ -173,32 +173,32 @@ describe('the unified Applications page', () => {
     );
     expect(asked.every((one) => one.received_within === null)).toBe(true);
     expect(asked.every((one) => one.sort === 'newest')).toBe(true);
-    expect(pipelineTab('All')).toHaveAttribute('data-active');
+    expect(pipelineChip('All')).toBeChecked();
     expect(verdictTrigger()).toHaveAccessibleName('Screening: All verdicts');
     expect(rangeTrigger()).toHaveTextContent('All time');
   });
 
-  it('shows stable backend totals beside every Pipeline tab', async () => {
+  it('shows stable backend totals beside every Pipeline chip', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
     await renderApp('/applications');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
-    expect(pipelineTab('All')).toHaveAccessibleName('All 5');
-    expect(pipelineTab('New')).toHaveAccessibleName('New 2');
-    expect(pipelineTab('Reviewing')).toHaveAccessibleName('Reviewing 1');
-    expect(pipelineTab('Rejected')).toHaveAccessibleName('Rejected 1');
-    expect(pipelineTab('Withdrawn')).toHaveAccessibleName('Withdrawn 0');
+    expect(pipelineChip('All')).toHaveAccessibleName('All 5');
+    expect(pipelineChip('New')).toHaveAccessibleName('New 2');
+    expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 1');
+    expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 1');
+    expect(pipelineChip('Withdrawn')).toHaveAccessibleName('Withdrawn 0');
   });
 
-  it('moves to one Pipeline tab and writes it into the address bar', async () => {
+  it('moves to one Pipeline chip and writes it into the address bar', async () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
 
     const { router, user } = await renderApp('/applications');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
-    await user.click(pipelineTab('Rejected'));
+    await user.click(pipelineChip('Rejected'));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: ['rejected'] }));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual(['rejected']));
@@ -235,15 +235,15 @@ describe('the unified Applications page', () => {
     expect(await screen.findByText('Hani Barakat')).toBeVisible();
   });
 
-  it('counts the Pipeline tabs over the window the reader is looking at', async () => {
+  it('counts the Pipeline chips over the window the reader is looking at', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
     await renderApp(`/applications?received=24h`);
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
-    expect(pipelineTab('New')).toHaveAccessibleName('New 1');
-    expect(pipelineTab('Reviewing')).toHaveAccessibleName('Reviewing 0');
-    expect(pipelineTab('Hired')).toHaveAccessibleName('Hired 0');
+    expect(pipelineChip('New')).toHaveAccessibleName('New 1');
+    expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 0');
+    expect(pipelineChip('Hired')).toHaveAccessibleName('Hired 0');
   });
 
   it('counts every verdict, including the ones the filter is hiding', async () => {
@@ -317,7 +317,7 @@ describe('the unified Applications page', () => {
 
     expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
     expect(screen.queryByText('Dima Sabbagh')).toBeNull();
-    expect(pipelineTab('Rejected')).toHaveAttribute('data-active');
+    expect(pipelineChip('Rejected')).toBeChecked();
     expect(verdictTrigger()).toHaveAccessibleName('Screening: Disqualified');
     expect(rangeTrigger()).toHaveTextContent('Last 7 days');
     expect(asked.every((one) => one.status.join() === 'rejected')).toBe(true);

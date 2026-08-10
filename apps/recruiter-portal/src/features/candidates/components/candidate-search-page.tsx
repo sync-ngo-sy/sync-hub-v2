@@ -34,11 +34,7 @@ export function CandidateSearchPage({
   const clear = () => onFiltersChange({ q: filters.q });
 
   return (
-    <Tabs
-      className="gap-0"
-      value={tab}
-      onValueChange={(next) => onTabChange(next as CandidateTab)}
-    >
+    <Tabs className="gap-0" value={tab} onValueChange={(next) => onTabChange(next as CandidateTab)}>
       <WorkspaceHeader withTabs>
         <PageHeader title="Candidates" description={DESCRIPTION} />
         <LineTabsList

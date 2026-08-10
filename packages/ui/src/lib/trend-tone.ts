@@ -1,4 +1,4 @@
-import { TrendingUp, type LucideIcon } from 'lucide-react';
+import { type LucideIcon, TrendingUp } from 'lucide-react';
 
 export type TrendTone = 'positive' | 'caution' | 'neutral';
 

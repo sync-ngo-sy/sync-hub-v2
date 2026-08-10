@@ -166,12 +166,7 @@ export function TenantTrackedLinksPage({
           value={filter}
           onValueChange={(value) => onFilterChange(value as LinkFilter)}
         >
-          <LineTabsList
-            label="State"
-            value={filter}
-            tabs={STATE_TABS}
-            className="-mb-px mt-5"
-          />
+          <LineTabsList label="State" value={filter} tabs={STATE_TABS} className="-mb-px mt-5" />
         </Tabs>
       </WorkspaceHeader>
 

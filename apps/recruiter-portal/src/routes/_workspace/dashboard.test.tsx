@@ -90,7 +90,7 @@ describe('the Dashboard', () => {
     const { router, user } = await renderApp('/dashboard');
     await user.click(await screen.findByRole('link', { name: /Awaiting review/ }));
 
-    expect(await screen.findByRole('tab', { name: /^New / })).toHaveAttribute('data-active');
+    expect(await screen.findByRole('radio', { name: /^New / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
     expect(router.state.location.search).toEqual({ pipeline: ['new'] });
   });
@@ -105,7 +105,7 @@ describe('the Dashboard', () => {
       'Last 7 days',
     );
     expect(router.state.location.pathname).toBe('/applications');
-    expect(screen.getByRole('tab', { name: /^All / })).toHaveAttribute('data-active');
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
     expect(router.state.location.search).toEqual({ received: '7d' });
   });
 
@@ -131,7 +131,7 @@ describe('the Dashboard', () => {
     expect(await screen.findByRole('button', { name: /^Screening: / })).toHaveAccessibleName(
       'Screening: Qualified',
     );
-    expect(screen.getByRole('tab', { name: /^All / })).toHaveAttribute('data-active');
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
     expect(router.state.location.search).toEqual({ screening: ['qualified'] });
   });

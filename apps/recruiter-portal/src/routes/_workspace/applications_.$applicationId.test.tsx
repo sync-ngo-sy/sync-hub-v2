@@ -29,6 +29,14 @@ function headerIcon(name: string) {
   return screen.getByRole('region', { name }).querySelector('[data-slot="card-header"] svg');
 }
 
+function trail() {
+  return within(screen.getByRole('navigation', { name: 'breadcrumb' }));
+}
+
+function inUrl(chosen: readonly string[]) {
+  return encodeURIComponent(JSON.stringify(chosen));
+}
+
 function applicationHeader() {
   const header = screen
     .getByRole('heading', { level: 1, name: REVIEW.snapshot.full_name })
@@ -55,13 +63,12 @@ describe('the Application review page', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
     expect(screen.getByText('Field logistics lead')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Field Coordinator' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Applications' })).toHaveAttribute(
+
+    const facts = within(screen.getByLabelText('Application facts'));
+    expect(facts.getByRole('link', { name: 'Field Coordinator' })).toHaveAttribute(
       'href',
       `/jobs/${REVIEW.job.id}?tab=applications`,
     );
-
-    const facts = within(screen.getByLabelText('Application facts'));
     expect(facts.getByText(absoluteDateTime(REVIEW.applied_at))).toBeVisible();
     expect(facts.getByText(absoluteDateTime(REVIEW.updated_at))).toBeVisible();
   });
@@ -151,8 +158,88 @@ describe('the Application review page', () => {
     await renderApp(`/applications/${REVIEW.id}`);
 
     const jump = await screen.findByRole('link', { name: 'Live candidate profile' });
-    expect(jump).toHaveAttribute('href', `/candidates/${REVIEW.candidate.id}`);
+    expect(jump).toHaveAttribute(
+      'href',
+      `/candidates/${REVIEW.candidate.id}?from=application.${REVIEW.id}`,
+    );
     expect(jump).toHaveClass('border-input', 'bg-input-background');
+  });
+
+  it('retraces the Job the reader came through, not the section that owns the address', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}?from=job`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Jobs' })).toHaveAttribute('href', '/jobs');
+    expect(crumbs.getByRole('link', { name: 'Field Coordinator' })).toHaveAttribute(
+      'href',
+      `/jobs/${REVIEW.job.id}?tab=applications`,
+    );
+    expect(crumbs.getByText('Amal Haddad')).toBeVisible();
+  });
+
+  it('gives the Applications crumb back the reading the reader left', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(
+      `/applications/${REVIEW.id}?screening=${inUrl(['qualified'])}&received=7d&sort=oldest`,
+    );
+
+    expect(await trail().findByRole('link', { name: 'Applications' })).toHaveAttribute(
+      'href',
+      `/applications?screening=${inUrl(['qualified'])}&received=7d&sort=oldest`,
+    );
+  });
+
+  it('gives the Job crumb back only the filters that Job’s Applications tab knows', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(
+      `/applications/${REVIEW.id}?from=job&screening=${inUrl(['qualified'])}&received=7d&sort=oldest`,
+    );
+
+    expect(await trail().findByRole('link', { name: 'Field Coordinator' })).toHaveAttribute(
+      'href',
+      `/jobs/${REVIEW.job.id}?screening=${inUrl(['qualified'])}&tab=applications`,
+    );
+  });
+
+  it('retraces the Dashboard the reader came through', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}?from=dashboard`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+      'href',
+      '/dashboard',
+    );
+    expect(crumbs.getByText('Amal Haddad')).toBeVisible();
+  });
+
+  it('falls back to the section that owns the address when nothing says where the reader came from', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const crumbs = trail();
+    expect(await crumbs.findByRole('link', { name: 'Applications' })).toHaveAttribute(
+      'href',
+      '/applications',
+    );
+    expect(crumbs.queryByRole('link', { name: 'Field Coordinator' })).toBeNull();
+  });
+
+  it('ignores an origin the workspace does not recognise', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}?from=somewhere-else`);
+
+    expect(await trail().findByRole('link', { name: 'Applications' })).toHaveAttribute(
+      'href',
+      '/applications',
+    );
   });
 
   it('marks the candidate identity as the Application Snapshot', async () => {
