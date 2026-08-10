@@ -286,7 +286,11 @@ class ScreeningVerdict(BaseModel):
 
     status: QualificationStatus
     reason: str | None = Field(
-        default=None, description="Which criteria decided it. Null until Screening has run."
+        default=None,
+        description=(
+            "Which criteria decided it. Null while the verdict is `pending`, and null on a "
+            "`qualified` one too: a reason lists what fell short, and nothing did."
+        ),
     )
 
 

@@ -11,7 +11,7 @@ import { ReviewCard } from '@/features/shell/components/review-card';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { applicationTrail, type Origin, originAddress } from '@/features/shell/origin';
 import { absoluteDateTime } from '@/lib/dates';
-import { screeningState } from '../application';
+import { screeningExplanation, screeningState } from '../application';
 import { useApplication } from '../hooks/use-application';
 import type { TenantApplicationFilters } from '../reading';
 import { ApplicantMessage } from './applicant-message';
@@ -137,7 +137,7 @@ export function ApplicationReviewPage({
               <div className="space-y-3">
                 <StatusMark label={verdict.label} tone={verdict.tone} />
                 <p className="text-dense text-muted-foreground">
-                  {review.screening.reason ?? 'Screening has not run on this Application yet.'}
+                  {screeningExplanation(review.screening)}
                 </p>
               </div>
             </ReviewCard>

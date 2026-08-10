@@ -143,7 +143,7 @@ export const AMAL_REVIEW: ApplicationReview = {
   status: 'shortlisted',
   screening: {
     status: 'qualified',
-    reason: 'Meets every required skill and both languages.',
+    reason: null,
   },
   snapshot: {
     full_name: 'Amal Haddad',

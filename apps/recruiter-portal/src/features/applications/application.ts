@@ -6,6 +6,7 @@ export type TenantApplication = components['schemas']['TenantApplicationSummary'
 export type ApplicationJob = components['schemas']['ApplicationJob'];
 export type PipelineStatus = components['schemas']['ApplicationStatus'];
 export type ScreeningVerdict = components['schemas']['QualificationStatus'];
+export type ScreeningOutcome = components['schemas']['ScreeningVerdict'];
 export type ReceivedWithin = components['schemas']['ReceivedWithin'];
 export type ApplicationSort = components['schemas']['ApplicationSort'];
 
@@ -94,6 +95,15 @@ export function screeningSelection(chosen: ScreeningVerdict[] | undefined): Scre
 
 export function screeningState(verdict: ScreeningVerdict): MarkState {
   return SCREENING_STATE[verdict];
+}
+
+const NOT_SCREENED = 'Screening has not run on this Application yet.';
+
+const NOTHING_FELL_SHORT = 'Nothing in the Application fell short of what this Job asks.';
+
+export function screeningExplanation(screening: ScreeningOutcome): string {
+  if (screening.status === 'pending') return NOT_SCREENED;
+  return screening.reason ?? NOTHING_FELL_SHORT;
 }
 
 export function candidateIdentity(application: ApplicationSummary) {

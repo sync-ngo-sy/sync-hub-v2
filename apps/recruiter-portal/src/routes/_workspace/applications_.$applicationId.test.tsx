@@ -80,6 +80,21 @@ describe('the Application review page', () => {
   });
 
   it('reads the Screening verdict with the criteria that decided it', async () => {
+    const reason = 'React is required and the application does not list it';
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication({ ...REVIEW, screening: { status: 'disqualified', reason } }),
+    );
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const screening = section('Screening');
+    expect(await screen.findByRole('region', { name: 'Screening' })).toBeVisible();
+    expect(screening.getByText('Disqualified')).toBeVisible();
+    expect(screening.getByText(reason)).toBeVisible();
+  });
+
+  it('says nothing fell short on a Qualified verdict, which never carries a reason', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
@@ -87,7 +102,10 @@ describe('the Application review page', () => {
     const screening = section('Screening');
     expect(await screen.findByRole('region', { name: 'Screening' })).toBeVisible();
     expect(screening.getByText('Qualified')).toBeVisible();
-    expect(screening.getByText('Meets every required skill and both languages.')).toBeVisible();
+    expect(
+      screening.getByText('Nothing in the Application fell short of what this Job asks.'),
+    ).toBeVisible();
+    expect(screening.queryByText(/Screening has not run/)).toBeNull();
   });
 
   it('renders the reviewed profile as the candidate froze it', async () => {

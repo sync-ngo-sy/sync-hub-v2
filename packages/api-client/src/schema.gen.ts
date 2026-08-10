@@ -4168,7 +4168,7 @@ export interface components {
             status: components["schemas"]["QualificationStatus"];
             /**
              * Reason
-             * @description Which criteria decided it. Null until Screening has run.
+             * @description Which criteria decided it. Null while the verdict is `pending`, and null on a `qualified` one too: a reason lists what fell short, and nothing did.
              */
             reason?: string | null;
         };
