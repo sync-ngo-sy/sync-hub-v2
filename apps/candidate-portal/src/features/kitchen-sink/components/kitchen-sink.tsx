@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { CandidateCard } from '@sync/ui/components/candidate-card';
 import {
   Combobox,
   type ComboboxOption,
@@ -184,6 +185,7 @@ const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
   ['card', 'bg-card'],
   ['muted', 'bg-muted'],
+  ['interactive hover', 'bg-interactive-hover'],
   ['accent', 'bg-accent'],
   ['primary', 'bg-primary'],
   ['secondary', 'bg-secondary'],
@@ -206,6 +208,23 @@ export default function KitchenSink() {
           </div>
         ))}
       </Section>
+
+      <section className="space-y-3">
+        <h2 className="font-heading text-h3 text-foreground">Candidate card</h2>
+        <CandidateCard
+          name="Lina Khoury"
+          avatarUrl={null}
+          email="lina@example.test"
+          phone="+963 11 555 0100"
+          canonicalRole="Project Manager"
+          headline="Runs delivery for two field programmes"
+          headingLevel={2}
+          facts={[
+            { label: 'Total experience', value: '6 years' },
+            { label: 'Languages', value: 'Arabic, English' },
+          ]}
+        />
+      </section>
 
       <Section title="Type">
         <div className="w-full space-y-3">

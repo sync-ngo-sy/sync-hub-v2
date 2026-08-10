@@ -218,12 +218,23 @@ class JobSort(StrEnum):
     APPLICATIONS = "applications"
 
 
+class JobStatusCount(BaseModel):
+    """How many of the Tenant's Jobs stand in one lifecycle status."""
+
+    status: JobStatus
+    count: int
+
+
 class JobPage(BaseModel):
     """One page of the tenant's Jobs, in the order that was asked for."""
 
     items: list[JobSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
+    )
+    status_counts: list[JobStatusCount] = Field(
+        description="Every Job lifecycle status, each with the Tenant's total in it. These "
+        "totals are independent of `q`, `status`, sorting and pagination.",
     )
 
 

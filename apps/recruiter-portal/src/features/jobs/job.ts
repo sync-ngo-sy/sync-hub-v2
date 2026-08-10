@@ -5,6 +5,7 @@ export type Job = components['schemas']['JobView'];
 export type JobSummary = components['schemas']['JobSummary'];
 export type JobStatus = components['schemas']['JobStatus'];
 export type JobSort = components['schemas']['JobSort'];
+export type JobStatusCount = components['schemas']['JobStatusCount'];
 export type NewJob = components['schemas']['NewJob'];
 export type JobChanges = components['schemas']['JobChanges'];
 export type EmploymentType = components['schemas']['EmploymentType'];
@@ -65,6 +66,15 @@ export const JOB_SORTS: Record<JobSort, string> = {
 
 export const JOB_STATUS_VALUES = Object.keys(JOB_STATE) as [JobStatus, ...JobStatus[]];
 export const JOB_SORT_VALUES = Object.keys(JOB_SORTS) as [JobSort, ...JobSort[]];
+
+export function jobStatusCounts(counts: JobStatusCount[] = []): Record<JobStatus, number> {
+  return Object.fromEntries(
+    JOB_STATUS_VALUES.map((status) => [
+      status,
+      counts.find((entry) => entry.status === status)?.count ?? 0,
+    ]),
+  ) as Record<JobStatus, number>;
+}
 
 export const DEFAULT_JOB_SORT: JobSort = 'newest';
 

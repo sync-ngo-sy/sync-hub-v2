@@ -352,6 +352,8 @@ def _summary(application: Application, snapshot: ApplicationProfileSnapshot) -> 
         candidate_name=snapshot.full_name,
         headline=snapshot.headline,
         location=snapshot.location,
+        canonical_role=snapshot.canonical_role,
+        total_experience_years=snapshot.total_experience_years,
         status=application.status,
         qualification_status=application.qualification_status,
         applied_at=application.applied_at,

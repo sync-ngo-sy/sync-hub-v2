@@ -110,6 +110,35 @@ describe('DataTable', () => {
     expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(APPLICATIONS[0]);
   });
 
+  it('carries the row destination as a real link, so a reader can take it to a new tab', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({
+      onRowOpen,
+      rowHref: (application) => `/applications/${application.id}`,
+    });
+
+    const opener = screen.getByRole('link', { name: 'Open Lina Khoury' });
+    expect(opener).toHaveAttribute('href', '/applications/a1');
+
+    await user.click(opener);
+
+    expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(APPLICATIONS[0]);
+  });
+
+  it('leaves a click that means another tab to the browser', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({
+      onRowOpen,
+      rowHref: (application) => `/applications/${application.id}`,
+    });
+
+    await user.keyboard('{Meta>}');
+    await user.click(screen.getByRole('link', { name: 'Open Lina Khoury' }));
+    await user.keyboard('{/Meta}');
+
+    expect(onRowOpen).not.toHaveBeenCalled();
+  });
+
   it('runs a named row action from the keyboard without opening the row', async () => {
     const onSelect = vi.fn();
     const onRowOpen = vi.fn();

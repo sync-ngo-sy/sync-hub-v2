@@ -193,7 +193,7 @@ function StepIndicator({
               >
                 <span
                   className={cn(
-                    'flex size-5 items-center justify-center rounded-full border text-meta tabular-nums',
+                    'flex size-5 items-center justify-center rounded-full border text-meta font-mono tabular-nums',
                     position < index
                       ? 'border-transparent bg-primary text-primary-foreground'
                       : 'border-border',

@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@sync/ui/components/ui/avatar';
-import type { CandidateCard } from '../candidate';
+import { cn } from '@sync/ui/lib/utils';
 
 function initials(fullName: string): string {
   return fullName
@@ -11,16 +11,27 @@ function initials(fullName: string): string {
 }
 
 interface CandidateAvatarProps {
-  card: CandidateCard;
+  fullName: string;
+  avatarUrl: string | null;
   size?: 'default' | 'sm' | 'lg' | 'row';
+  className?: string;
+  fallbackClassName?: string;
 }
 
-export function CandidateAvatar({ card, size = 'default' }: CandidateAvatarProps) {
+export function CandidateAvatar({
+  fullName,
+  avatarUrl,
+  size = 'default',
+  className,
+  fallbackClassName,
+}: CandidateAvatarProps) {
   return (
-    <Avatar size={size}>
-      {card.avatarUrl ? <AvatarImage src={card.avatarUrl} alt="" /> : null}
-      <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
-        {initials(card.fullName)}
+    <Avatar size={size} className={className}>
+      {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
+      <AvatarFallback
+        className={cn('bg-accent font-semibold text-accent-foreground', fallbackClassName)}
+      >
+        {initials(fullName)}
       </AvatarFallback>
     </Avatar>
   );

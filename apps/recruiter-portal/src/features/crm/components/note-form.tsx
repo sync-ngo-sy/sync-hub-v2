@@ -73,11 +73,11 @@ export function NoteForm({
 
       <div className="flex justify-end gap-2">
         {onCancel ? (
-          <Button type="button" variant="ghost" disabled={pending} onClick={onCancel}>
+          <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={onCancel}>
             Cancel
           </Button>
         ) : null}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" variant="outline" size="sm" disabled={pending}>
           {pending ? pendingLabel : submitLabel}
         </Button>
       </div>

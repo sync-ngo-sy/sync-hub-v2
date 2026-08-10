@@ -41,13 +41,13 @@ function columnsFor(shares: Map<string, number | null>): DataTableColumn<Tracked
     {
       accessorKey: 'view_count',
       header: 'Views',
-      cell: ({ row }) => <span className="tabular-nums">{row.original.view_count}</span>,
+      cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.view_count}</span>,
     },
     {
       id: 'share',
       header: 'Share',
       cell: ({ row }) => (
-        <span className="tabular-nums text-muted-foreground">
+        <span className="font-mono tabular-nums text-muted-foreground">
           {shares.get(row.original.id) === null ? '—' : `${shares.get(row.original.id) ?? 0}%`}
         </span>
       ),

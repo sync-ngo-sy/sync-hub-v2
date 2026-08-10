@@ -1,7 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/public-sans";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 
 @custom-variant dark (&:is(.dark *));
 @source "../../../apps/**/*.{ts,tsx}";
@@ -9,8 +12,10 @@
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Public Sans Variable', sans-serif;
   --font-heading: var(--font-sans);
+  --font-greeting: 'Bricolage Grotesque Variable', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -35,6 +40,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-interactive-hover: var(--interactive-hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -152,7 +158,7 @@
 }
 
 :root {
-  --background: #EDECE6;
+  --background: #f8f3f3;
   --foreground: #333028;
   --card: #F9F8F2;
   --card-foreground: #333028;
@@ -172,7 +178,8 @@
   --secondary-foreground: #525048;
   --muted-foreground: #5F5E56;
 
-  --muted: rgba(44, 42, 32, 0.082);
+  --muted: #ECEAE5;
+  --interactive-hover: #DDE9E5;
 
   --accent: #DCEFEB;
   --accent-foreground: #006D61;
@@ -199,8 +206,8 @@
   --chart-4: #56B8A9;
   --chart-5: #CAC7BD;
 
-  --tag: #005349;
-  --tag-foreground: #FFFFFF;
+  --tag: #2F2C25;
+  --tag-foreground: #F5F2EA;
 
   --sidebar: #005349;
   --sidebar-foreground: #D9E8E5;
@@ -247,7 +254,8 @@
 
   --secondary: #373530;
   --secondary-foreground: #CAC7BE;
-  --muted: rgba(252, 251, 247, 0.06);
+  --muted: #35332F;
+  --interactive-hover: #293833;
   --muted-foreground: #ADABA2;
 
   --accent: rgba(45, 190, 172, 0.12);
@@ -275,8 +283,8 @@
   --chart-4: #6FDAC9;
   --chart-5: #4F4D47;
 
-  --tag: #016D61;
-  --tag-foreground: #FFFFFF;
+  --tag: #F2F0EB;
+  --tag-foreground: #1F1D19;
 
   --sidebar: #0C0B08;
   --sidebar-foreground: #A7A59C;
@@ -306,6 +314,9 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  html {
+    scrollbar-gutter: stable;
   }
   body {
     @apply bg-background text-foreground font-sans font-normal text-reading antialiased;
