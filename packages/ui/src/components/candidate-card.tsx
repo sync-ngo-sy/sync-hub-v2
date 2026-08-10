@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@sync/ui/components/ui/avatar';
+import { factLabel } from '@sync/ui/lib/fact-label';
 import { cn } from '@sync/ui/lib/utils';
 import { Mail, Phone } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
@@ -109,9 +110,7 @@ export function CandidateCard({
         >
           {shown.map((fact) => (
             <div key={fact.label} className="min-w-0">
-              <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                {fact.label}
-              </dt>
+              <dt className={cn(factLabel, 'text-muted-foreground')}>{fact.label}</dt>
               <dd className="mt-1 truncate text-dense text-foreground">{fact.value}</dd>
             </div>
           ))}

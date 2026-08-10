@@ -83,7 +83,7 @@ export function ChecklistFilter<TValue extends string>({
               }
             >
               <span className="flex-1">{option.label}</span>
-              <span className="text-meta tabular-nums text-muted-foreground">
+              <span className="text-meta font-mono tabular-nums text-muted-foreground">
                 {counts[option.value] ?? 0}
               </span>
             </DropdownMenuCheckboxItem>

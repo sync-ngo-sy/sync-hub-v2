@@ -53,12 +53,14 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
   {
     accessorKey: 'view_count',
     header: 'Views',
-    cell: ({ row }) => <span className="tabular-nums">{row.original.view_count}</span>,
+    cell: ({ row }) => <span className="font-mono tabular-nums">{row.original.view_count}</span>,
   },
   {
     accessorKey: 'application_count',
     header: 'Applications',
-    cell: ({ row }) => <span className="tabular-nums">{row.original.application_count}</span>,
+    cell: ({ row }) => (
+      <span className="font-mono tabular-nums">{row.original.application_count}</span>
+    ),
   },
   {
     accessorKey: 'updated_at',

@@ -72,7 +72,7 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
     id: 'views',
     header: 'Views',
     cell: ({ row }) => (
-      <span className="tabular-nums">{row.original.view_count.toLocaleString()}</span>
+      <span className="font-mono tabular-nums">{row.original.view_count.toLocaleString()}</span>
     ),
   },
   {

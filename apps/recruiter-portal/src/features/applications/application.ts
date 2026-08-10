@@ -49,15 +49,6 @@ export const PIPELINE_STATUSES = [
   'withdrawn',
 ] as const satisfies readonly PipelineStatus[];
 
-export const ACTIVE_PIPELINE_STATUSES = [
-  'new',
-  'reviewing',
-  'shortlisted',
-  'interview',
-  'offer',
-  'hired',
-] as const satisfies readonly PipelineStatus[];
-
 export const PIPELINE_LADDER = [
   'new',
   'reviewing',
@@ -66,8 +57,6 @@ export const PIPELINE_LADDER = [
   'offer',
   'hired',
 ] as const satisfies readonly PipelineStatus[];
-
-export const PIPELINE_STEPS = PIPELINE_LADDER.length;
 
 export const SCREENING_VERDICTS = [
   'pending',
@@ -83,10 +72,6 @@ export function pipelineState(status: PipelineStatus): PipelineState {
 export function pipelineStep(status: PipelineStatus): number | null {
   const place = (PIPELINE_LADDER as readonly PipelineStatus[]).indexOf(status);
   return place === -1 ? null : place + 1;
-}
-
-export function pipelineSelection(chosen: PipelineStatus[] | undefined): PipelineStatus[] {
-  return chosen ?? [...ACTIVE_PIPELINE_STATUSES];
 }
 
 export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {

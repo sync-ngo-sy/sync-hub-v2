@@ -204,7 +204,9 @@ function Entry({ title, subtitle, when, description }: EntryProps) {
     <div className="space-y-1 border-l-2 border-border pl-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <p className="text-reading font-medium text-foreground">{title}</p>
-        {when ? <p className="text-meta tabular-nums text-muted-foreground">{when}</p> : null}
+        {when ? (
+          <p className="text-meta font-mono tabular-nums text-muted-foreground">{when}</p>
+        ) : null}
       </div>
       {subtitle ? <p className="text-dense text-muted-foreground">{subtitle}</p> : null}
       {description ? (

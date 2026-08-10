@@ -34,7 +34,7 @@ export function ChipFilter({ label, value, chips, onValueChange, className }: Ch
         >
           {chip.label}
           {chip.count !== undefined ? (
-            <span className="text-meta tabular-nums opacity-70">{chip.count}</span>
+            <span className="text-meta font-mono tabular-nums opacity-70">{chip.count}</span>
           ) : null}
         </Radio.Root>
       ))}

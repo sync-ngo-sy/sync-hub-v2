@@ -90,7 +90,6 @@
 
   --color-tag: var(--tag);
   --color-tag-foreground: var(--tag-foreground);
-  --color-tag-border: var(--tag-border);
 
   --shadow-sm: var(--elevation-sm);
   --shadow-card: var(--elevation-card);
@@ -209,7 +208,6 @@
 
   --tag: #2F2C25;
   --tag-foreground: #F5F2EA;
-  --tag-border: transparent;
 
   --sidebar: #005349;
   --sidebar-foreground: #D9E8E5;
@@ -287,7 +285,6 @@
 
   --tag: #F2F0EB;
   --tag-foreground: #1F1D19;
-  --tag-border: transparent;
 
   --sidebar: #0C0B08;
   --sidebar-foreground: #A7A59C;
@@ -323,11 +320,5 @@
   }
   body {
     @apply bg-background text-foreground font-sans font-normal text-reading antialiased;
-  }
-}
-
-@layer utilities {
-  .tabular-nums {
-    font-family: var(--font-mono);
   }
 }

@@ -43,7 +43,7 @@ export function LineTabsList({ label, value, tabs, className }: LineTabsListProp
               {tab.label}
             </span>
             {tab.count !== undefined ? (
-              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground tabular-nums">
+              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground font-mono tabular-nums">
                 {tab.count}
               </span>
             ) : null}

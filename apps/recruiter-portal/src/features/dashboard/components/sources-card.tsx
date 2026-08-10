@@ -19,7 +19,9 @@ function SourcesList({ sources }: { sources: LinkViews[] }) {
           className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
         >
           <span className="truncate text-meta text-secondary-foreground">{source.name}</span>
-          <span className="shrink-0 text-meta tabular-nums text-foreground">{source.views}</span>
+          <span className="shrink-0 text-meta font-mono tabular-nums text-foreground">
+            {source.views}
+          </span>
         </li>
       ))}
     </ul>

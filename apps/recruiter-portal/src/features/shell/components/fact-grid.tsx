@@ -1,3 +1,5 @@
+import { factLabel } from '@sync/ui/lib/fact-label';
+import { cn } from '@sync/ui/lib/utils';
 import type { ReactNode } from 'react';
 
 export interface FactGridItem {
@@ -20,9 +22,7 @@ export function FactGrid({ label, facts }: FactGridProps) {
     >
       {facts.map((fact) => (
         <div key={fact.label} className="bg-card px-3 py-2.5">
-          <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-            {fact.label}
-          </dt>
+          <dt className={cn(factLabel, 'text-muted-foreground')}>{fact.label}</dt>
           <dd className="mt-1 text-dense text-foreground">{fact.value ?? 'Not provided'}</dd>
         </div>
       ))}

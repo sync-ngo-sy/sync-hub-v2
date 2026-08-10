@@ -71,7 +71,7 @@ export function JobsOverview({ jobs, onJobOpen, onCreateJob }: JobsOverviewProps
                   <span className="flex shrink-0 flex-col items-end gap-1.5">
                     <StatusMark label={state.label} tone={state.tone} />
                     {job.application_count > 0 ? (
-                      <span className="text-meta tabular-nums text-muted-foreground">
+                      <span className="text-meta font-mono tabular-nums text-muted-foreground">
                         {applicants(job.application_count)}
                       </span>
                     ) : (

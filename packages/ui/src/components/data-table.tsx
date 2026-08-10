@@ -158,7 +158,7 @@ export function DataTable<TRow>({
         compact ? 'py-3' : 'border-t border-border bg-table-header px-5 py-3',
       )}
     >
-      <p className="text-meta tabular-nums text-muted-foreground">
+      <p className="text-meta font-mono tabular-nums text-muted-foreground">
         {`${count.format(rows.length)} shown`}
       </p>
       {error ? <ErrorNotice error={error} fallback="Couldn't load more." /> : null}
