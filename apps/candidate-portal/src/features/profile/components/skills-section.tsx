@@ -147,7 +147,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
             }
             return (
               <li key={field.id}>
-                <Badge variant="secondary" className="h-7 gap-1 pl-2.5 pr-1 text-dense">
+                <Badge variant="tag" className="h-7 gap-1 pl-2.5 pr-1 text-dense">
                   {value}
                   <Button
                     type="button"

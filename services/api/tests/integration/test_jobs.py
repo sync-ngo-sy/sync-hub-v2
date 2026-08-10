@@ -333,7 +333,7 @@ async def test_the_list_can_be_narrowed_to_one_status(
     assert [item["id"] for item in listed.json()["items"]] == [draft["id"]]
 
 
-async def test_the_list_counts_every_status_before_filters_narrow_it(
+async def test_the_chosen_status_does_not_hide_what_the_other_statuses_hold(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
     await an_admin(browser, mailbox)
@@ -343,10 +343,7 @@ async def test_the_list_counts_every_status_before_filters_narrow_it(
     archived = await a_created_job(browser, title="Archived role")
     await change_job(browser, archived["id"], status="archived")
 
-    listed = await browser.get(
-        TENANT_JOBS,
-        params={"status": "published", "q": "Published", "limit": 1},
-    )
+    listed = await browser.get(TENANT_JOBS, params={"status": "published", "limit": 1})
 
     body = listed.json()
     assert [item["id"] for item in body["items"]] == [published["id"]]
@@ -355,6 +352,24 @@ async def test_the_list_counts_every_status_before_filters_narrow_it(
         "published": 1,
         "closed": 1,
         "archived": 1,
+    }
+
+
+async def test_a_search_narrows_the_status_counts_the_way_it_narrows_the_list(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    await a_created_job(browser, title="Draft role")
+    await a_published_job(browser, title="Published role")
+    await a_closed_job(browser, title="Closed role")
+
+    listed = await browser.get(TENANT_JOBS, params={"q": "Published"})
+
+    assert {one["status"]: one["count"] for one in listed.json()["status_counts"]} == {
+        "draft": 0,
+        "published": 1,
+        "closed": 0,
+        "archived": 0,
     }
 
 

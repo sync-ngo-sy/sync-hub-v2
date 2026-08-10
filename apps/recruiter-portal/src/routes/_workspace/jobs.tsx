@@ -17,9 +17,9 @@ const jobSort = z.enum(JOB_SORT_VALUES);
 
 export const Route = createFileRoute('/_workspace/jobs')({
   validateSearch: z.object({
-    q: z.string().trim().max(200).optional(),
-    status: jobStatus.optional(),
-    sort: jobSort.optional(),
+    q: z.string().trim().max(200).optional().catch(undefined),
+    status: jobStatus.optional().catch(undefined),
+    sort: jobSort.optional().catch(undefined),
   }),
   loaderDeps: ({ search }) => ({ q: search.q, status: search.status, sort: search.sort }),
   loader: ({ context, deps }) =>

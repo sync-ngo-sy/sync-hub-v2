@@ -15,8 +15,9 @@ export function JobSearch({ q, onQueryChange }: JobSearchProps) {
   }, 300);
 
   useEffect(() => {
+    commit.cancel();
     setWritten(q ?? '');
-  }, [q]);
+  }, [q, commit]);
 
   return (
     <div className="relative w-full sm:max-w-sm">

@@ -105,17 +105,19 @@ class JobService:
             .options(*WITH_LOCATION)
             .where(Job.tenant_id == recruiter.tenant.id)
         )
-        written = (q or "").strip()
-        if written:
-            query = query.where(Job.title.ilike(containing(written), escape=LIKE_ESCAPE))
-        if status is not None:
-            query = query.where(Job.status == status)
-
         counting = (
             select(Job.status, func.count())
             .where(Job.tenant_id == recruiter.tenant.id)
             .group_by(Job.status)
         )
+        written = (q or "").strip()
+        if written:
+            searched = Job.title.ilike(containing(written), escape=LIKE_ESCAPE)
+            query = query.where(searched)
+            counting = counting.where(searched)
+        if status is not None:
+            query = query.where(Job.status == status)
+
         ordered, cursor_for = _ordering(query, sort, cursor, limit)
         found = list((await self._db.execute(ordered)).tuples())
         counted = dict((await self._db.execute(counting)).tuples().all())

@@ -378,10 +378,6 @@ function CardList<TRow>({
 const OPENER =
   'cursor-pointer rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
 
-/** Every row here is a place the reader can go, so the one control that opens it carries a real
- * href whenever the caller can name one: that is what buys middle-click, ⌘-click, the context
- * menu's "open in new tab", and the destination in the browser's own status bar. A plain click
- * still goes through the router — only the clicks that mean "somewhere else" are left alone. */
 function RowOpener({
   label,
   href,

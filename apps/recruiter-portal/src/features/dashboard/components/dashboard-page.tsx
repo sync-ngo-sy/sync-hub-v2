@@ -39,17 +39,17 @@ export function DashboardPage({
             </Button>
           }
         >
-          <h1 className="font-greeting text-page-title text-foreground dark:text-white">
+          <h1 className="font-greeting text-page-title text-foreground">
             {dashboardGreeting(recruiterName, now)}
           </h1>
-          <p className="flex flex-wrap items-center gap-x-2 text-dense text-muted-foreground dark:text-white/75">
+          <p className="flex flex-wrap items-center gap-x-2 text-dense text-muted-foreground">
             {tenantName ? (
               <>
                 <span>{tenantName}</span>
                 <span aria-hidden="true">·</span>
               </>
             ) : null}
-            <time>{dashboardDate(now)}</time>
+            <time dateTime={now.toISOString()}>{dashboardDate(now)}</time>
           </p>
         </PageHeaderShell>
       </WorkspaceHeader>

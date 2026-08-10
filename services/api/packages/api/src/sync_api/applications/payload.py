@@ -120,7 +120,6 @@ class ApplicationSummary(BaseModel):
         "when they claimed none, which is when a list has only the `headline` to name them by.",
     )
     total_experience_years: int = Field(
-        default=0,
         description="Whole years of work as the profile stood the day this was sent — the same "
         "number Screening measured against the Job's minimum.",
     )

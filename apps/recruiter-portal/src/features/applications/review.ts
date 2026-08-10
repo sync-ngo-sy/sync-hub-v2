@@ -15,13 +15,6 @@ export interface PipelineMove {
   direction: MoveDirection;
 }
 
-const DIRECTIONS = ['onward', 'back', 'rejection'] as const satisfies readonly MoveDirection[];
-
-export interface PipelineMoveGroup {
-  direction: MoveDirection;
-  moves: PipelineMove[];
-}
-
 const TOLD = 'the candidate has been told.';
 
 const TO_REVIEWING: PipelineMove = {
@@ -117,13 +110,6 @@ const OUTCOME: Partial<Record<PipelineStatus, string>> = {
 
 export function pipelineMoves(status: PipelineStatus): PipelineMove[] {
   return PIPELINE_MOVES[status];
-}
-
-export function pipelineMoveGroups(status: PipelineStatus): PipelineMoveGroup[] {
-  return DIRECTIONS.map((direction) => ({
-    direction,
-    moves: pipelineMoves(status).filter((move) => move.direction === direction),
-  })).filter((group) => group.moves.length > 0);
 }
 
 export interface PipelineMoveChoices {

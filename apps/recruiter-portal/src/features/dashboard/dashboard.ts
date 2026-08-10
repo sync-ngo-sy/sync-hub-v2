@@ -21,9 +21,9 @@ export interface Trend {
 }
 
 export function dashboardGreeting(fullName: string, now: Date): string {
-  const firstName = fullName.trim().split(/\s+/)[0] ?? fullName;
+  const firstName = fullName.trim().split(/\s+/)[0];
   const greeting = now.getHours() < 12 ? 'Good morning' : 'Good evening';
-  return `${greeting}, ${firstName}`;
+  return firstName ? `${greeting}, ${firstName}` : greeting;
 }
 
 export function dashboardDate(now: Date): string {

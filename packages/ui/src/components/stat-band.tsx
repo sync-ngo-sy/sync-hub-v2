@@ -8,7 +8,8 @@ import type { ComponentProps, ReactNode } from 'react';
 
 type StatBandVariant = 'band' | 'cards';
 
-const BAND = 'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border';
+const BAND =
+  'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border shadow-card md:grid-cols-4';
 const BAND_CELL = 'flex flex-col gap-2 bg-card p-(--space-card)';
 const CARDS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4';
 const CARD_CELL = cn(cardSurface, 'flex min-h-27 flex-col gap-1.5 px-[18px] py-4');
