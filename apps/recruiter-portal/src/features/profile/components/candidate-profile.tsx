@@ -61,7 +61,7 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
                   <p className="text-meta text-muted-foreground">{profile.location}</p>
                 ) : null}
                 {profile.summary ? (
-                  <p className="max-w-prose text-dense whitespace-pre-line">{profile.summary}</p>
+                  <p className="max-w-prose text-reading whitespace-pre-line">{profile.summary}</p>
                 ) : null}
               </div>
             ) : null}
@@ -101,7 +101,7 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
                 <ul aria-label="Skills" className="flex flex-wrap gap-2">
                   {profile.skills.map((skill) => (
                     <li key={skill.name}>
-                      <Badge variant="tag">
+                      <Badge variant="tag" size="sm">
                         <span>{skill.name}</span>
                         <span className="text-tag-foreground/80">
                           {yearsOfExperience(skill.years_experience)}
@@ -115,7 +115,7 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 
             {profile.languages.length > 0 ? (
               <Group title="Languages">
-                <ul aria-label="Languages" className="flex flex-wrap gap-x-6 gap-y-1 text-dense">
+                <ul aria-label="Languages" className="flex flex-wrap gap-x-6 gap-y-1 text-reading">
                   {profile.languages.map((language) => (
                     <li key={language.code} className="flex items-baseline gap-2">
                       <span>{languageName(language.code)}</span>
@@ -159,7 +159,9 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
                 <ul aria-label="Other skills" className="flex flex-wrap gap-2">
                   {profile.unmappedSkills.map((skill) => (
                     <li key={skill}>
-                      <Badge variant="tag">{skill}</Badge>
+                      <Badge variant="tag" size="sm">
+                        {skill}
+                      </Badge>
                     </li>
                   ))}
                 </ul>
@@ -177,10 +179,10 @@ export function CandidateProfile({ profile, title, hint, empty, children }: Cand
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-4">
-      <h3 className="border-b border-border pb-2 font-heading text-dense font-section text-foreground">
+      <h3 className="border-b border-input pb-2.5 font-heading text-title text-foreground">
         {title}
       </h3>
-      {children}
+      <div className="space-y-5">{children}</div>
     </div>
   );
 }
@@ -204,12 +206,12 @@ function Entry({ title, subtitle, when, description }: EntryProps) {
   return (
     <div className="space-y-1 border-l-2 border-border pl-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <p className="text-dense font-medium text-foreground">{title}</p>
+        <p className="text-reading font-medium text-foreground">{title}</p>
         {when ? <p className="text-meta tabular-nums text-muted-foreground">{when}</p> : null}
       </div>
-      {subtitle ? <p className="text-meta text-muted-foreground">{subtitle}</p> : null}
+      {subtitle ? <p className="text-dense text-muted-foreground">{subtitle}</p> : null}
       {description ? (
-        <p className="max-w-prose text-dense whitespace-pre-line">{description}</p>
+        <p className="max-w-prose text-reading whitespace-pre-line">{description}</p>
       ) : null}
     </div>
   );

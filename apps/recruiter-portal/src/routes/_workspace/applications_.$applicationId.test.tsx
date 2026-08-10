@@ -422,6 +422,35 @@ describe('the CV and the history on the Application review page', () => {
     ]);
   });
 
+  it('keeps a long history to its last six moves until the reader asks for the rest', async () => {
+    const moves = ['reviewing', 'shortlisted', 'interview', 'offer', 'hired'] as const;
+    const history = [
+      REVIEW.history[0],
+      ...Array.from({ length: 8 }, (_, turn) => ({
+        status: moves[turn % moves.length],
+        previous_status: moves[(turn + 1) % moves.length],
+        source: 'recruiter' as const,
+        changed_at: `2026-08-0${(turn % 8) + 1}T1${turn}:00:00Z`,
+      })),
+    ];
+    server.use(...signedInAs(RECRUITER), ...getsApplication({ ...REVIEW, history }));
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = within(await screen.findByRole('region', { name: 'History' }));
+    expect(card.getAllByRole('listitem')).toHaveLength(6);
+    expect(card.queryByText('Applied')).toBeNull();
+
+    await user.click(card.getByRole('button', { name: 'Show 3 earlier moves' }));
+
+    expect(card.getAllByRole('listitem')).toHaveLength(9);
+    expect(card.getByText('Applied')).toBeVisible();
+
+    await user.click(card.getByRole('button', { name: 'Show fewer' }));
+
+    expect(card.getAllByRole('listitem')).toHaveLength(6);
+  });
+
   it('adds the move it has just made to the history', async () => {
     server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW));
 

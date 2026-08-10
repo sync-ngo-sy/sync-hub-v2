@@ -57,7 +57,7 @@ const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
     header: 'Saved',
     cell: ({ row }) =>
       row.original.in_talent_pool ? (
-        <Badge variant="secondary" className="gap-1">
+        <Badge variant="secondary" size="sm">
           <Star aria-hidden="true" className="size-3" />
           In your talent pool
         </Badge>
