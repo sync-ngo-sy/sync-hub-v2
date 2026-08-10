@@ -1,5 +1,5 @@
+import { ChipFilter } from '@sync/ui/components/chip-filter';
 import { PIPELINE_STATUSES, type PipelineStatus, pipelineState } from '../application';
-import { ChipFilter } from './chip-filter';
 
 interface ApplicationPipelineFilterProps {
   pipeline?: PipelineStatus[];
