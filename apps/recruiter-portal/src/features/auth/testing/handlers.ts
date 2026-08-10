@@ -27,8 +27,22 @@ export function rejectsCredentials(problem: components['schemas']['ProblemDetail
   return [http.post('/v1/auth/login', ({ response }) => response(401).json(problem))];
 }
 
-export function logsOut() {
-  return [http.post('/v1/auth/logout', ({ response }) => response(204).empty())];
+export function faultsOnSession(problem: components['schemas']['ProblemDetail']) {
+  return [http.get('/v1/auth/me', ({ response }) => response(500).json(problem))];
+}
+
+export function signedInUntilLogOut(profile: Profile) {
+  let session = true;
+  return [
+    http.get('/v1/auth/me', ({ response }) =>
+      session ? response(200).json(profile) : response(401).json(NO_SESSION),
+    ),
+    http.post('/v1/auth/refresh', ({ response }) => response(401).json(NO_SESSION)),
+    http.post('/v1/auth/logout', ({ response }) => {
+      session = false;
+      return response(204).empty();
+    }),
+  ];
 }
 
 export function confirmsEmail(profile: Profile, onRequest?: (body: ConfirmEmailRequest) => void) {

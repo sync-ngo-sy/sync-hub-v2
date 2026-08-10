@@ -263,15 +263,15 @@ otp_expiry = 3600
 # URL and redeem the token outside the API — exactly what ADR-0005 rules out. Ours carry the
 # `token_hash` to a page in the SPA, which posts it to the API.
 [auth.email.template.invite]
-subject = "You have been invited to Sync"
+subject = "You have been invited to Sync Hub"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.confirmation]
-subject = "Confirm your Sync account"
+subject = "Confirm your Sync Hub account"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Reset your Sync password"
+subject = "Reset your Sync Hub password"
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template

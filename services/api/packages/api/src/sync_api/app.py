@@ -63,7 +63,7 @@ logger = get_logger(__name__)
 API_PREFIX = "/v1"
 
 DESCRIPTION = f"""\
-The Sync recruitment platform's backend. Every error is an RFC 9457 problem+json document.
+The Sync Hub recruitment platform's backend. Every error is an RFC 9457 problem+json document.
 
 Sessions are httpOnly cookies the API sets on sign-in; send requests with credentials and
 never read a token. Every request that changes data must carry a `{CSRF_HEADER}` header —
@@ -109,7 +109,7 @@ def create_app(
             logger.info("api.stopped")
 
     app = FastAPI(
-        title="Sync API",
+        title="Sync Hub API",
         version="0.1.0",
         description=DESCRIPTION,
         lifespan=lifespan,

@@ -46,7 +46,7 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
             <Sidebar profile={profile} onNavigate={() => setDrawerOpen(false)} />
           </SheetContent>
         </Sheet>
-        <Brand />
+        <Brand to="/dashboard" />
       </header>
 
       <main className="min-w-0 px-(--space-gutter) py-(--space-section) lg:pb-16">{children}</main>

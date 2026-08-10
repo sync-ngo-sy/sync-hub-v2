@@ -27,7 +27,7 @@ export function AccessRequests() {
     <section>
       <PageHeader
         title="Access requests"
-        description="Companies asking to be let onto Sync, oldest first. Convert one into a tenant, or dismiss it."
+        description="Companies asking to be let onto Sync Hub, oldest first. Convert one into a tenant, or dismiss it."
       />
       <DataTable
         label="Access requests"

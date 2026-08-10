@@ -92,7 +92,7 @@ def create_app(settings: Settings | None = None, worker: Worker | None = None) -
                 await app.state.worker.aclose()
             logger.info("worker.service_stopped")
 
-    app = FastAPI(title="Sync worker", lifespan=lifespan)
+    app = FastAPI(title="Sync Hub worker", lifespan=lifespan)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

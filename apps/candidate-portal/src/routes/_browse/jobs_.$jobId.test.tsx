@@ -201,7 +201,7 @@ describe('a Job detail page', () => {
     expect(await screen.findByText("This page didn't load")).toBeVisible();
     expect(screen.getByText(SERVER_FAULT.detail as string)).toBeVisible();
     expect(screen.getByRole('banner')).toBeVisible();
-    expect(screen.queryByText("Sync didn't start")).toBeNull();
+    expect(screen.queryByText("Sync Hub didn't start")).toBeNull();
     expect(consoleError).toHaveBeenCalledWith('[route]', expect.objectContaining({ status: 500 }));
   });
 });

@@ -11,8 +11,8 @@ describe('Eyebrow', () => {
   });
 
   it('takes extra classes without losing its own', () => {
-    render(<Eyebrow className="mb-4">Sync for employers</Eyebrow>);
+    render(<Eyebrow className="mb-4">Sync Hub for employers</Eyebrow>);
 
-    expect(screen.getByText('Sync for employers')).toHaveClass('mb-4', 'uppercase');
+    expect(screen.getByText('Sync Hub for employers')).toHaveClass('mb-4', 'uppercase');
   });
 });

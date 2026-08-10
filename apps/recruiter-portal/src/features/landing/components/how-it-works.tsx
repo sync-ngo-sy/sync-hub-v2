@@ -4,7 +4,7 @@ import { Wrap } from './page-parts';
 const STEPS = [
   {
     title: 'Ask for access',
-    body: 'We set your company up with its own Sync. Invite the people who hire with you.',
+    body: 'We set your company up with its own Sync Hub. Invite the people who hire with you.',
   },
   {
     title: 'Publish a job with its criteria',
