@@ -210,6 +210,39 @@ describe('DataTable', () => {
   });
 });
 
+describe('DataTable column widths', () => {
+  const MEASURED: DataTableColumn<Application>[] = [
+    { accessorKey: 'candidate', header: 'Candidate', meta: { width: '30ch' } },
+    { accessorKey: 'job', header: 'Job', meta: { share: 3 } },
+    { id: 'status', header: 'Status', meta: { share: 1 }, cell: () => 'New' },
+  ];
+
+  function widthOf(name: string): string {
+    return screen.getByRole('columnheader', { name }).getAttribute('style') ?? '';
+  }
+
+  it('holds a measured column at its measure, so long text ellipses instead of stretching', () => {
+    renderTable({ columns: MEASURED });
+
+    expect(widthOf('Candidate')).toBe('width: 30ch; max-width: 30ch;');
+  });
+
+  it('splits what is left between the shared columns, by their shares', () => {
+    renderTable({ columns: MEASURED });
+
+    expect(widthOf('Job')).toContain('width: 75%');
+    expect(widthOf('Status')).toContain('width: 25%');
+  });
+
+  it('floors a shared column, so it can never give away all of its room', () => {
+    renderTable({ columns: MEASURED });
+
+    for (const name of ['Job', 'Status']) {
+      expect(widthOf(name)).toContain('min-width: 15ch');
+    }
+  });
+});
+
 describe('DataTable sorted by a column', () => {
   const SORTABLE: DataTableColumn<Application>[] = [
     {

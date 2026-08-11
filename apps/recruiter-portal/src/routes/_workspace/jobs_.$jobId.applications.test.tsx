@@ -76,7 +76,8 @@ describe("a Job's Applications tab", () => {
     expect(rowOf('Carla Rizk').getByText('Disqualified')).toBeVisible();
     expect(rowOf('Carla Rizk').getByText('Rejected')).toBeVisible();
 
-    expect(rowOf('Amal Haddad').getByText('Logistics Manager · 9 years · Aleppo')).toBeVisible();
+    expect(rowOf('Amal Haddad').getByText('Logistics Manager · 9 years')).toBeVisible();
+    expect(rowOf('Amal Haddad').queryByText(/Aleppo/)).toBeNull();
     expect(rowOf('Amal Haddad').queryByText(/Field logistics lead/)).toBeNull();
     expect(rowOf('Amal Haddad').getByText(relativeTime(AMAL.applied_at))).toHaveAttribute(
       'title',

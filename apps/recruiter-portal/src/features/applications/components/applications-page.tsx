@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
@@ -30,17 +31,20 @@ import { ChecklistFilter } from './checklist-filter';
 const JOB: DataTableColumn<TenantApplication> = {
   id: 'job',
   header: 'Job',
+  meta: { share: 1 },
   cell: ({ row }) => (
     <Link
       to="/jobs/$jobId"
       params={{ jobId: row.original.job.id }}
       search={{}}
       onClick={(event) => event.stopPropagation()}
-      className="flex min-w-40 flex-col gap-1 rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="flex min-w-0 flex-col gap-1 rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
     >
-      <span className="font-medium">{row.original.job.title}</span>
+      <TruncatedText className="font-medium">{row.original.job.title}</TruncatedText>
       {row.original.job.location_name ? (
-        <span className="text-meta text-muted-foreground">{row.original.job.location_name}</span>
+        <TruncatedText className="text-meta text-muted-foreground">
+          {row.original.job.location_name}
+        </TruncatedText>
       ) : null}
     </Link>
   ),
