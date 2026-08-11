@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.auth import ACCESS_TOKEN_COOKIE
+from sync_api.auth import SESSION_COOKIE
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant
 from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.candidates import DEFAULT_PASSWORD, a_confirmed_candidate
@@ -83,7 +83,7 @@ async def test_accepting_sets_a_password_and_lands_in_the_tenant(
 
     assert accepted.status_code == 200, accepted.text
     assert accepted.json()["email"] == email
-    assert ACCESS_TOKEN_COOKIE in accepted.cookies
+    assert SESSION_COOKIE in accepted.cookies
 
     tenant = await other_browser.get("/v1/tenants/me")
     assert tenant.status_code == 200, tenant.text

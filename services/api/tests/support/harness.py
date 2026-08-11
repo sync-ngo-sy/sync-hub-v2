@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from base64 import urlsafe_b64decode
 from contextlib import asynccontextmanager
 from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING, Any, cast
@@ -67,3 +69,9 @@ def cookie_attributes(response: Response, name: str) -> dict[str, str]:
             morsel = jar[name]
             return {"value": morsel.value, **{key: str(value) for key, value in morsel.items()}}
     raise AssertionError(f"the response sets no {name} cookie")
+
+
+def session_tokens(value: str) -> dict[str, str]:
+    """Unpack the one cookie Firebase Hosting forwards, so a test can assert on either token."""
+    padded = value + "=" * (-len(value) % 4)
+    return json.loads(urlsafe_b64decode(padded.encode()))
