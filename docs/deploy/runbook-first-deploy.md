@@ -175,26 +175,22 @@ npx firebase-tools@latest deploy --only hosting:candidate-staging --project stag
 Attach the custom domains and add the records. `docs/deploy/dns-records.md` is the table to fill in;
 `tofu output dns_records` prints what the Platform Portal's mapping needs.
 
-## 8. The schedule and the webhook — **out of band**
+## 8. The database webhook — **out of band**
 
-Both carry `SYNC_WORKER_SHARED_SECRET` in a header, which is why neither is in Terraform.
+The schedule is not here any more. It is a `google_cloud_scheduler_job` in each environment root
+and arrives with step 5, because it carries no secret: Cloud Scheduler signs an OIDC token as
+`scheduler@<project>`, and the worker checks the signature, the audience and the account (#278).
+Nothing sensitive enters state, so nothing had to stay outside it.
 
-The schedule is what guarantees nothing is stranded — not the notification. A notification can be
-missed; a job that runs every few minutes cannot miss the same row forever.
+The webhook is different, and cannot be otherwise. It is Postgres calling out, and Postgres cannot
+mint a Google identity token — so `X-Worker-Secret` stands in for IAM on that one path, and the
+thing that carries it stays out of band.
 
-```bash
-gcloud scheduler jobs create http worker-drain \
-  --project sync-ngo-staging --location europe-west3 \
-  --schedule '*/3 * * * *' \
-  --uri "$WORKER_URL/scheduled" --http-method POST \
-  --headers "X-Worker-Secret=$SECRET" \
-  --attempt-deadline 900s
-```
+In the database project, add a webhook on enqueue pointing at `$WORKER_URL/drain`, with header
+`X-Worker-Secret` set to `SYNC_WORKER_SHARED_SECRET`.
 
-The database webhook on enqueue points at `$WORKER_URL/drain` with the same header. The worker is
-publicly invocable precisely because this caller is Postgres, which cannot mint a Google identity
-token — the shared secret is what stands in for IAM, and the endpoints answer 503 rather than
-running when it is unset.
+The worker refuses to serve at all when neither caller is configured, so a missing secret is a 503
+rather than an open endpoint. An unauthenticated drain is a free way to make our OpenAI calls.
 
 ## 9. Verify
 
