@@ -1,0 +1,96 @@
+{
+  "hosting": [
+    {
+      "target": "candidate",
+      "public": "apps/candidate-portal/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "headers": [
+        {
+          "source": "/assets/**",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/index.html",
+          "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+        }
+      ]
+    },
+    {
+      "target": "candidate-staging",
+      "public": "apps/candidate-portal/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/index.html",
+          "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+        }
+      ]
+    },
+    {
+      "target": "recruiter",
+      "public": "apps/recruiter-portal/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "headers": [
+        {
+          "source": "/assets/**",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/index.html",
+          "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+        }
+      ]
+    },
+    {
+      "target": "recruiter-staging",
+      "public": "apps/recruiter-portal/dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/index.html",
+          "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+        }
+      ]
+    },
+    {
+      "target": "api",
+      "public": "infra/firebase/api-site",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "run": { "serviceId": "api", "region": "europe-west3" } }]
+    },
+    {
+      "target": "api-staging",
+      "public": "infra/firebase/api-site",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "run": { "serviceId": "api", "region": "europe-west3" } }]
+    },
+    {
+      "target": "legacy",
+      "public": "infra/firebase/legacy-site",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "redirects": [
+        { "source": "/:rest*", "destination": "https://jobs.sync.ngo/:rest*", "type": 301 }
+      ]
+    }
+  ]
+}

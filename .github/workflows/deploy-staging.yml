@@ -1,0 +1,217 @@
+# Merging to main deploys staging. One build per commit, and the image is tagged by commit so the
+# promotion to production can deploy the identical artifact rather than rebuilding it (#91).
+#
+# Three jobs, in a deliberate order: build, migrate, deploy. Migrations run before anything is
+# deployed and a failure stops the pipeline there, so a schema that did not apply never gets a
+# revision written against it. A failed deploy leaves the previous revision serving.
+#
+# No long-lived Google credentials exist. The organisation forbids service-account keys outright,
+# so federation is the only available shape: the runner exchanges its own OIDC token for a
+# short-lived credential, and the provider refuses any token that did not come from this
+# repository and the `staging` environment. There is no third-party action to pin, and nothing in
+# the repository's secrets that grants access to Google at all.
+
+name: Deploy staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never two deploys at once, and never cancel one halfway: a cancelled apply leaves state locked.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: sync-ngo-staging
+  BUILD_PROJECT: sync-ngo-prod
+  BUILD_PROJECT_NUMBER: "870458118919"
+  WIF_POOL: github
+  WIF_PROVIDER: sync-hub-v2
+  BUILDER_SA: builder@sync-ngo-prod.iam.gserviceaccount.com
+  DEPLOYER_SA: deployer@sync-ngo-staging.iam.gserviceaccount.com
+  REGISTRY: europe-west3-docker.pkg.dev/sync-ngo-prod/sync
+  SUPABASE_PROJECT_REF: qjsqmtemyhvtnurohckb
+  API_ORIGIN: https://api-staging.sync.ngo
+  CANDIDATE_ORIGIN: https://jobs-staging.sync.ngo
+  RECRUITER_ORIGIN: https://app-staging.sync.ngo
+  ADMIN_ORIGIN: https://admin-staging.sync.ngo
+
+jobs:
+  build:
+    name: Build and push
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/${BUILD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="${BUILDER_SA}" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth login --cred-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth configure-docker europe-west3-docker.pkg.dev --quiet
+
+      # The API and worker come out of one build context, one image each, and are what production
+      # later promotes by digest.
+      - name: API and worker
+        run: |
+          set -euo pipefail
+          docker build -f services/api/Dockerfile --target api \
+            -t "${REGISTRY}/api:${GITHUB_SHA}" services/api
+          docker build -f services/api/Dockerfile --target worker \
+            -t "${REGISTRY}/worker:${GITHUB_SHA}" services/api
+          docker push "${REGISTRY}/api:${GITHUB_SHA}"
+          docker push "${REGISTRY}/worker:${GITHUB_SHA}"
+
+      # The Platform Portal is per-environment and cannot be promoted: VITE_ values are compiled
+      # into the bundle, so the staging image is a different artifact from production's by nature.
+      - name: Platform Portal
+        run: |
+          set -euo pipefail
+          docker build -f apps/admin-portal/Dockerfile \
+            --build-arg "VITE_API_BASE_URL=${API_ORIGIN}" \
+            -t "${REGISTRY}/admin-portal-staging:${GITHUB_SHA}" .
+          docker push "${REGISTRY}/admin-portal-staging:${GITHUB_SHA}"
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true
+
+  migrate:
+    name: Migrate staging
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Pinned, unlike CI's: this one runs `db push` against a real database, so the tool that
+      # applies the migration is part of the artifact and moves when we say it moves.
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+
+      # The one place a long-lived credential is unavoidable: Supabase has no federated identity,
+      # so these are repository secrets. They reach nothing in Google.
+      - name: Apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "${SUPABASE_PROJECT_REF}"
+          supabase db push --include-all
+
+  deploy:
+    name: Deploy staging
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # The binary that writes state, pinned for the same reason `.terraform.lock.hcl` pins the
+      # providers: an upgrade should be a commit, not whatever shipped this morning.
+      - name: OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.12.5
+
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/${BUILD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="${DEPLOYER_SA}" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth login --cred-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud config set project "${GCP_PROJECT}" --quiet
+          # Terraform's provider and the Firebase CLI both read application default credentials,
+          # which are separate from the gcloud login above.
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${RUNNER_TEMP}/cred.json" >> "${GITHUB_ENV}"
+
+      - name: Apply
+        working-directory: infra/terraform/envs/staging
+        run: |
+          set -euo pipefail
+          tofu init -input=false
+          tofu apply -input=false -auto-approve \
+            -var="images={\
+            api=\"${REGISTRY}/api:${GITHUB_SHA}\",\
+            worker=\"${REGISTRY}/worker:${GITHUB_SHA}\",\
+            admin-portal=\"${REGISTRY}/admin-portal-staging:${GITHUB_SHA}\"}"
+
+      # Built here rather than in the build job because a bundle is per-environment anyway, and
+      # building it next to the deploy keeps the values that go into it in one place.
+      - name: Build the public portals
+        env:
+          VITE_API_BASE_URL: ${{ env.API_ORIGIN }}
+          VITE_CANDIDATE_PORTAL_URL: ${{ env.CANDIDATE_ORIGIN }}
+          VITE_RECRUITER_PORTAL_URL: ${{ env.RECRUITER_ORIGIN }}
+          VITE_ADMIN_PORTAL_URL: ${{ env.ADMIN_ORIGIN }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm exec turbo run build --filter='@sync/candidate-portal' --filter='@sync/recruiter-portal'
+
+      - name: Deploy the public portals
+        run: |
+          set -euo pipefail
+          npx --yes firebase-tools@15.26.0 deploy --project "${GCP_PROJECT}" \
+            --only hosting:candidate-staging,hosting:recruiter-staging,hosting:api-staging \
+            --non-interactive
+
+      - name: Record what was deployed
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## Staging"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| commit | \`${GITHUB_SHA}\` |"
+            echo "| api | \`${REGISTRY}/api:${GITHUB_SHA}\` |"
+            echo "| worker | \`${REGISTRY}/worker:${GITHUB_SHA}\` |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true

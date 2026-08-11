@@ -1,0 +1,27 @@
+# Governs the one build whose context is the repository root: the Platform Portal
+# (apps/admin-portal/Dockerfile). services/api has its own, next to its own context.
+#
+# Without this the whole tree — history included — is uploaded, and `COPY packages packages`
+# copies whatever node_modules the host happens to have. On a CI runner that directory does not
+# exist yet and the build works by luck; on a laptop it buries the install done inside the image
+# under binaries built for the wrong platform.
+
+.git
+.github
+
+**/node_modules
+**/dist
+**/.turbo
+**/.vite
+
+**/.env
+**/.env.*
+!**/.env.example
+
+supabase/.branches
+supabase/.temp
+
+.claude
+.agents
+.vscode
+**/.DS_Store

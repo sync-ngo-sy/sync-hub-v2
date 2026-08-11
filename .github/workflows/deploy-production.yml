@@ -1,0 +1,302 @@
+# Merging to release promotes to production. It never builds.
+#
+# A rebuild from identical source produces different bytes, because base images and their system
+# packages move underneath a pinned dependency lockfile. So this workflow resolves the commit being
+# released to an image that already exists and deploys it by digest. If it cannot find one it fails
+# and deploys nothing — which is the correct outcome, because the alternative is the rebuild this
+# whole design exists to avoid.
+#
+# That puts a requirement on the merge strategy: the merge into release has to preserve the
+# integration commit. A squash merge discards it, no image is found under the new SHA, and this
+# fails. The check below explains that rather than reporting a bare miss.
+#
+# The gate is the `production` GitHub environment's required reviewer, not the branch name. Google
+# refuses the token unless it comes from this repository and that environment.
+
+name: Deploy production
+
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: sync-ngo-prod
+  BUILD_PROJECT_NUMBER: "870458118919"
+  WIF_POOL: github
+  WIF_PROVIDER: sync-hub-v2
+  DEPLOYER_SA: deployer@sync-ngo-prod.iam.gserviceaccount.com
+  REGISTRY: europe-west3-docker.pkg.dev/sync-ngo-prod/sync
+  SUPABASE_PROJECT_REF: skmsobeqyljduzkjmokr
+  API_ORIGIN: https://api.sync.ngo
+  CANDIDATE_ORIGIN: https://jobs.sync.ngo
+  RECRUITER_ORIGIN: https://app.sync.ngo
+  ADMIN_ORIGIN: https://admin.sync.ngo
+
+jobs:
+  resolve:
+    name: Resolve the artifact
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      api: ${{ steps.digests.outputs.api }}
+      worker: ${{ steps.digests.outputs.worker }}
+      commit: ${{ steps.candidates.outputs.commit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The second parent of a merge commit is the integration commit, and it is not in a
+          # shallow clone.
+          fetch-depth: 0
+
+      # HEAD itself when release fast-forwarded; HEAD^2 when it was a real merge. Both preserve
+      # the integration commit's identity, which is the property that matters.
+      - name: Which commit is being released
+        id: candidates
+        run: |
+          set -euo pipefail
+          candidates="$(git rev-parse HEAD) $(git rev-parse HEAD^2 2>/dev/null || true)"
+          echo "candidates=${candidates}" >> "${GITHUB_OUTPUT}"
+          echo "commit=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+          echo "looking for an image built for: ${candidates}"
+
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/${BUILD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="${DEPLOYER_SA}" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth login --cred-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud config set project "${GCP_PROJECT}" --quiet
+
+      - name: Find the digests
+        id: digests
+        env:
+          CANDIDATES: ${{ steps.candidates.outputs.candidates }}
+        run: |
+          set -euo pipefail
+
+          digest_of() { # digest_of <repository> <tag>
+            gcloud artifacts docker images describe "${REGISTRY}/$1:$2" \
+              --format='value(image_summary.digest)' 2>/dev/null || true
+          }
+
+          # The API and worker only. The Platform Portal's image is not promotable — its API
+          # hostname is compiled in — so it is built for this environment in the `portal` job.
+          for image in api worker; do
+            found=""
+            for sha in ${CANDIDATES}; do
+              digest="$(digest_of "${image}" "${sha}")"
+              if [ -n "${digest}" ]; then
+                found="${REGISTRY}/${image}@${digest}"
+                echo "${image}: built for ${sha}"
+                break
+              fi
+            done
+            if [ -z "${found}" ]; then
+              echo "::error::No ${image} image exists for any of: ${CANDIDATES}."
+              echo "::error::Production never rebuilds. If release was squash-merged, the"
+              echo "::error::integration commit was discarded and there is nothing to promote —"
+              echo "::error::re-merge preserving it."
+              exit 1
+            fi
+            echo "${image}=${found}" >> "${GITHUB_OUTPUT}"
+          done
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true
+
+  portal:
+    name: Build the Platform Portal
+    needs: resolve
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # As the builder, not the deployer: pushing an image and deploying one are different
+      # authorities, and only one identity in this design may write to the registry.
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/${BUILD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="builder@sync-ngo-prod.iam.gserviceaccount.com" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth login --cred-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth configure-docker europe-west3-docker.pkg.dev --quiet
+
+      - name: Build and push
+        id: push
+        run: |
+          set -euo pipefail
+          tag="${REGISTRY}/admin-portal:${GITHUB_SHA}"
+          docker build -f apps/admin-portal/Dockerfile \
+            --build-arg "VITE_API_BASE_URL=${API_ORIGIN}" -t "${tag}" .
+          docker push "${tag}"
+          digest="$(gcloud artifacts docker images describe "${tag}" \
+            --format='value(image_summary.digest)')"
+          test -n "${digest}"
+          echo "image=${REGISTRY}/admin-portal@${digest}" >> "${GITHUB_OUTPUT}"
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true
+
+  migrate:
+    name: Migrate production
+    needs: resolve
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Pinned, unlike CI's: this one runs `db push` against production, so the tool that applies
+      # the migration is part of the artifact and moves when we say it moves.
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+
+      # Before the new revision takes traffic, and backward-compatible by standing rule: traffic
+      # shifts gradually, so the previous revision runs against the new schema for the duration of
+      # a rollout. Expand then contract. Anything destructive takes a manual backup first — see
+      # docs/deploy/runbook-first-deploy.md.
+      - name: Apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "${SUPABASE_PROJECT_REF}"
+          supabase db push --include-all
+
+  deploy:
+    name: Deploy production
+    needs: [resolve, portal, migrate]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # The binary that writes state, pinned for the same reason `.terraform.lock.hcl` pins the
+      # providers: an upgrade should be a commit, not whatever shipped this morning.
+      - name: OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.12.5
+
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/${BUILD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="${DEPLOYER_SA}" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud auth login --cred-file="${RUNNER_TEMP}/cred.json" --quiet
+          gcloud config set project "${GCP_PROJECT}" --quiet
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${RUNNER_TEMP}/cred.json" >> "${GITHUB_ENV}"
+
+      - name: Apply
+        working-directory: infra/terraform/envs/production
+        env:
+          API_IMAGE: ${{ needs.resolve.outputs.api }}
+          WORKER_IMAGE: ${{ needs.resolve.outputs.worker }}
+          ADMIN_IMAGE: ${{ needs.portal.outputs.image }}
+        run: |
+          set -euo pipefail
+          tofu init -input=false
+          tofu apply -input=false -auto-approve \
+            -var="images={api=\"${API_IMAGE}\",worker=\"${WORKER_IMAGE}\",admin-portal=\"${ADMIN_IMAGE}\"}"
+
+      # The portals are the one thing production does rebuild, because VITE_ values are compiled
+      # in and a staging bundle points at staging's API. Nothing about the API or worker rebuilds.
+      - name: Build the public portals
+        env:
+          VITE_API_BASE_URL: ${{ env.API_ORIGIN }}
+          VITE_CANDIDATE_PORTAL_URL: ${{ env.CANDIDATE_ORIGIN }}
+          VITE_RECRUITER_PORTAL_URL: ${{ env.RECRUITER_ORIGIN }}
+          VITE_ADMIN_PORTAL_URL: ${{ env.ADMIN_ORIGIN }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm exec turbo run build --filter='@sync/candidate-portal' --filter='@sync/recruiter-portal'
+
+      - name: Deploy the public portals
+        run: |
+          set -euo pipefail
+          npx --yes firebase-tools@15.26.0 deploy --project "${GCP_PROJECT}" \
+            --only hosting:candidate,hosting:recruiter,hosting:api,hosting:legacy \
+            --non-interactive
+
+      - name: Record what was promoted
+        if: always()
+        env:
+          API_IMAGE: ${{ needs.resolve.outputs.api }}
+          WORKER_IMAGE: ${{ needs.resolve.outputs.worker }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Production"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| released commit | \`${{ needs.resolve.outputs.commit }}\` |"
+            echo "| api | \`${API_IMAGE}\` |"
+            echo "| worker | \`${WORKER_IMAGE}\` |"
+            echo
+            echo "Rolling back: point traffic at the previous revision. The artifact is still in"
+            echo "the registry, so nothing is rebuilt."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true
