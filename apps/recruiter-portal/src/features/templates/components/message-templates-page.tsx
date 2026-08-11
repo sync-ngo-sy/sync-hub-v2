@@ -13,24 +13,12 @@ import { CreateTemplateDialog } from './create-template-dialog';
 import { DeleteTemplateDialog } from './delete-template-dialog';
 import { EditTemplateDialog } from './edit-template-dialog';
 
-function opening(body: string): string {
-  const [first = ''] = body.split('\n');
-  return first.length > 120 ? `${first.slice(0, 120).trimEnd()}…` : first;
-}
-
 const COLUMNS: DataTableColumn<MessageTemplate>[] = [
   {
     accessorKey: 'name',
     header: 'Template',
     meta: { share: 3 },
-    cell: ({ row }) => (
-      <span className="flex min-w-0 flex-col gap-1">
-        <TruncatedText>{row.original.name}</TruncatedText>
-        <TruncatedText className="text-meta font-normal text-muted-foreground">
-          {opening(row.original.body)}
-        </TruncatedText>
-      </span>
-    ),
+    cell: ({ row }) => <TruncatedText>{row.original.name}</TruncatedText>,
   },
   {
     accessorKey: 'subject',
