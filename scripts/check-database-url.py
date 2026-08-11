@@ -37,7 +37,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sync_core.db import POOLER_CONNECT_ARGS, pooler_safe_url
 from sync_core.settings import AsyncPostgresDsn
 
-SECRET = "SYNC_DATABASE_URL"
+#: The secret's name, not its value. Named for what it is: as `SECRET` it read as though it held
+#: the connection string, which is the one thing this module is careful never to hold on to.
+SECRET_ID = "SYNC_DATABASE_URL"
 #: Supabase's pooler answers transaction mode here and session mode on 5432.
 TRANSACTION_MODE_PORT = 6543
 
@@ -50,7 +52,7 @@ def read_secret(project: str) -> str:
             "versions",
             "access",
             "latest",
-            f"--secret={SECRET}",
+            f"--secret={SECRET_ID}",
             f"--project={project}",
         ],
         capture_output=True,
@@ -58,7 +60,7 @@ def read_secret(project: str) -> str:
         check=False,
     )
     if result.returncode != 0:
-        sys.exit(f"could not read {SECRET} from {project}:\n{result.stderr.strip()}")
+        sys.exit(f"could not read {SECRET_ID} from {project}:\n{result.stderr.strip()}")
     return result.stdout
 
 
@@ -108,7 +110,7 @@ def main() -> None:
 
     raw = read_secret(project)
     url = raw.strip()
-    print(f"{SECRET} in {project}")
+    print(f"{SECRET_ID} in {project}")
 
     if raw != url:
         print("  WHITESPACE    the stored value has leading or trailing whitespace — rewrite it")

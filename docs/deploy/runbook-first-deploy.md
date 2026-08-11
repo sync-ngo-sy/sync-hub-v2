@@ -52,8 +52,14 @@ invoker binding is refused on its own.
 
 ## 2. Secret containers, then secret values — **out of band**
 
+Targeted, and this is the one step where that matters. The root module holds the three Cloud Run
+services as well as the secrets, and their images do not exist until step 4 — an untargeted apply
+here creates the containers and then fails on the services, which reads like something is wrong
+when nothing is:
+
 ```bash
-cd infra/terraform/envs/staging && tofu init && tofu apply
+cd infra/terraform/envs/staging && tofu init
+tofu apply -target=google_secret_manager_secret.this
 ```
 
 The containers come from `secret_ids` in `terraform.tfvars`. The versions holding values do not, and
