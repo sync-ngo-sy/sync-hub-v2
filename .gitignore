@@ -47,3 +47,6 @@ supabase/.temp/
 
 # Reachability probe output — contains the tester public IP; never commit (repo is public)
 reachability-report*.txt
+
+# Firebase CLI deploy cache, written next to firebase.json on every deploy.
+.firebase/
