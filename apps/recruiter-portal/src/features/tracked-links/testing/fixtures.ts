@@ -40,7 +40,6 @@ export const NAME_TAKEN = {
 const FIELD_JOB = { id: '00000000-0000-4000-8000-000000000101', title: 'Field Coordinator' };
 const MEAL_JOB = { id: '00000000-0000-4000-8000-000000000103', title: 'MEAL Officer' };
 
-/** The same campaign run on two Jobs: two links to this page, and one channel to the Dashboard. */
 export const TENANT_LINKEDIN_FIELD: TenantTrackedLink = { ...LINKEDIN_POST, job: FIELD_JOB };
 
 export const TENANT_LINKEDIN_MEAL: TenantTrackedLink = {
@@ -53,10 +52,8 @@ export const TENANT_LINKEDIN_MEAL: TenantTrackedLink = {
 
 export const TENANT_WHATSAPP: TenantTrackedLink = { ...WHATSAPP_GROUPS, job: MEAL_JOB };
 
-/** Switched off by hand: the API can narrow on this one. */
 export const TENANT_UNIVERSITY_BOARD: TenantTrackedLink = { ...UNIVERSITY_BOARD, job: FIELD_JOB };
 
-/** Still switched on, but past its date — which only the row's own `expires_at` reveals. */
 export const TENANT_SPRING_CAMPAIGN: TenantTrackedLink = {
   id: '00000000-0000-4000-8000-000000000212',
   name: 'Spring campaign',

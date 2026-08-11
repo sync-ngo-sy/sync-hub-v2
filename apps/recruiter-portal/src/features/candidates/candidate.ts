@@ -3,20 +3,16 @@ import type { PooledCandidate } from '@/features/talent-pool/pool';
 import { said } from '@/lib/said';
 
 export type MatchedCandidate = components['schemas']['MatchedCandidate'];
+export type SearchableCandidate = components['schemas']['SearchableCandidate'];
 export type MatchedSection = components['schemas']['ChunkType'];
 
-/**
- * What a Candidate view has to go on. No endpoint reads one Candidate's profile for a Recruiter,
- * so the person on screen is whatever the list that found them carried — a search hit knows the
- * most, a talent-pool row three fields, and neither carries an address or a phone number.
- */
 export interface CandidateCard {
   id: string;
   fullName: string;
   headline: string | null;
   summary: string | null;
   locationName: string | null;
-  preferredLanguageCode: string | null;
+  languageNames: string[];
   avatarUrl: string | null;
 }
 
@@ -38,8 +34,20 @@ export function matchedCard(match: MatchedCandidate): CandidateCard {
     headline: said(match.headline),
     summary: said(match.summary),
     locationName: said(match.location_name),
-    preferredLanguageCode: said(match.preferred_language_code),
+    languageNames: match.language_names ?? [],
     avatarUrl: said(match.avatar_url),
+  };
+}
+
+export function listedCard(person: SearchableCandidate): CandidateCard {
+  return {
+    id: person.candidate_id,
+    fullName: said(person.full_name) ?? UNNAMED,
+    headline: said(person.headline),
+    summary: said(person.summary),
+    locationName: said(person.location_name),
+    languageNames: person.language_names ?? [],
+    avatarUrl: said(person.avatar_url),
   };
 }
 
@@ -50,15 +58,14 @@ export function pooledCard(pooled: PooledCandidate): CandidateCard {
     headline: said(pooled.headline),
     summary: null,
     locationName: said(pooled.location_name),
-    preferredLanguageCode: null,
-    avatarUrl: null,
+    languageNames: [],
+    avatarUrl: said(pooled.avatar_url),
   };
 }
 
-export function candidateMeta(card: CandidateCard, languageName: string | null): string {
-  return [card.headline, card.locationName, languageName ? `Prefers ${languageName}` : null]
-    .filter(Boolean)
-    .join(' · ');
+export function candidateMeta(card: CandidateCard): string {
+  const spoken = card.languageNames.length > 0 ? `Speaks ${card.languageNames.join(', ')}` : null;
+  return [card.headline, card.locationName, spoken].filter(Boolean).join(' · ');
 }
 
 export interface MatchEvidence {

@@ -18,6 +18,7 @@ from tests.support.jobs import (
     a_published_job,
     browse,
     change_job,
+    counted_again,
     job_views,
     post_job,
     read_public_job,
@@ -312,14 +313,42 @@ async def test_a_visitor_keeps_one_session_across_the_jobs_they_read(
     db_session: AsyncSession,
 ) -> None:
     job = await a_published_job(recruiter)
+    other_job = await a_published_job(recruiter, title="Logistics Officer")
 
     await read_public_job(visitor, job["id"])
-    await read_public_job(visitor, job["id"])
+    await read_public_job(visitor, other_job["id"])
     await read_public_job(another_visitor, job["id"])
 
-    first, again, stranger = await job_views(db_session, job["id"])
-    assert first.session_id == again.session_id
-    assert stranger.session_id not in (None, first.session_id)
+    first_session, stranger_session = [
+        view.session_id for view in await job_views(db_session, job["id"])
+    ]
+    [again] = await job_views(db_session, other_job["id"])
+    assert first_session == again.session_id
+    assert stranger_session not in (None, first_session)
+
+
+async def test_a_refresh_inside_the_window_is_not_a_second_view(
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    job = await a_published_job(recruiter)
+
+    await read_public_job(visitor, job["id"])
+    await read_public_job(visitor, job["id"])
+    await read_public_job(visitor, job["id"])
+
+    assert len(await job_views(db_session, job["id"])) == 1, "a refresh is not new interest"
+
+
+async def test_the_same_browser_coming_back_later_is_counted_again(
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
+) -> None:
+    job = await a_published_job(recruiter)
+    await read_public_job(visitor, job["id"])
+    await counted_again(db_session, job["id"])
+
+    await read_public_job(visitor, job["id"])
+
+    assert len(await job_views(db_session, job["id"])) == 2
 
 
 async def test_a_view_records_no_address_and_no_browser(

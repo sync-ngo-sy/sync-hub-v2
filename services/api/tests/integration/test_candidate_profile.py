@@ -24,6 +24,7 @@ from tests.support.profiles import (
 from tests.support.tenants import an_admin
 
 PROFILE = "/v1/candidates/me/profile"
+EXPERIENCE_TOTAL = f"{PROFILE}/experience-total"
 
 A_FULL_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
@@ -32,7 +33,6 @@ A_FULL_PROFILE: dict[str, Any] = {
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
-    "preferred_language_code": "ar",
     "is_searchable": False,
     "experiences": [
         {
@@ -249,7 +249,7 @@ async def test_a_skill_outside_the_taxonomy_is_refused_and_named(
     assert [error["location"] for error in problem["errors"]] == ["body.skills.1.name"]
 
 
-async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appears(
+async def test_a_language_the_platform_does_not_know_is_refused(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
@@ -257,7 +257,6 @@ async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appe
     response = await browser.put(
         PROFILE,
         json=a_profile(
-            preferred_language_code="zz",
             languages=[
                 {"code": "en", "proficiency": "fluent"},
                 {"code": "qq", "proficiency": "beginner"},
@@ -268,10 +267,7 @@ async def test_a_language_the_platform_does_not_know_is_refused_wherever_it_appe
     assert response.status_code == 422
     problem = response.json()
     assert problem["type"] == "urn:sync:problem:unknown-language"
-    assert [error["location"] for error in problem["errors"]] == [
-        "body.languages.1.code",
-        "body.preferred_language_code",
-    ]
+    assert [error["location"] for error in problem["errors"]] == ["body.languages.1.code"]
 
 
 async def test_a_refused_save_leaves_the_previous_profile_exactly_as_it_was(
@@ -571,6 +567,21 @@ async def test_saving_derives_total_experience_from_the_jobs_that_were_saved(
 
     assert saved.status_code == 200, saved.text
     assert saved.json()["total_experience_years"] == 3
+
+
+async def test_calculating_total_experience_does_not_save_the_jobs(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    calculated = await browser.post(
+        EXPERIENCE_TOTAL,
+        json={"experiences": [a_job((2018, 1), (2020, 12))]},
+    )
+
+    assert calculated.status_code == 200, calculated.text
+    assert calculated.json() == {"total_experience_years": 3}
+    assert (await browser.get(PROFILE)).json()["experiences"] == []
 
 
 async def test_two_jobs_held_at_once_are_one_stretch_of_experience(

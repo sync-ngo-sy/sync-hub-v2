@@ -34,6 +34,11 @@ create index applications_job_tracked_link_idx on applications (job_id, tracked_
 create index applications_cv_id_idx            on applications (cv_id);
 create index applications_job_applied_at_idx   on applications (job_id, applied_at desc, id desc);
 
+-- The tenant-wide reads, which the per-Job indexes above cannot serve: the only other index
+-- leading with `tenant_id` is the `(tenant_id, id)` unique constraint.
+create index applications_tenant_applied_at_idx on applications (tenant_id, applied_at desc, id desc);
+create index applications_tenant_status_idx     on applications (tenant_id, status);
+
 create table application_profile_snapshots (
   application_id uuid primary key references applications (id) on delete cascade,
 
@@ -41,7 +46,14 @@ create table application_profile_snapshots (
   phone     text,
   headline  text,
   summary   text,
-  location  text,
+
+  -- `location` and `canonical_role` are frozen as the *names* they went by the day the
+  -- Application arrived, never as their keys. Re-wording an entry in either vocabulary, or the
+  -- Candidate moving or retraining afterwards, then leaves every Application already judged
+  -- saying exactly what it said. A key would point into today's vocabulary, which is what the
+  -- live profile is for; an Application is the record of a moment.
+  location       text,
+  canonical_role text,
 
   unmapped_skills text[] not null default '{}',
 

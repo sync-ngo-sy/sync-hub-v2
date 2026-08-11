@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from sync_api.candidate_directory.ordering import ORDERINGS, DirectoryOrder
 from sync_api.candidate_directory.payload import (
     CandidateDirectoryPage,
     CandidateRecord,
@@ -11,9 +12,17 @@ from sync_api.candidate_directory.payload import (
 )
 from sync_api.candidates.profile import CandidateProfileService
 from sync_api.crm.access import reachable_candidate
-from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
+from sync_api.pagination import DEFAULT_PAGE_SIZE, cursor_for, ordered_by, page_of
 from sync_core import get_logger
-from sync_core.models import Candidate, CanonicalRole, Location, Profile, User
+from sync_core.models import (
+    Candidate,
+    CandidateLanguage,
+    CanonicalRole,
+    Language,
+    Location,
+    Profile,
+    User,
+)
 from sync_core.searchable import DIRECTORY_PROFILES, narrowed_to, pooled_by
 
 if TYPE_CHECKING:
@@ -37,6 +46,7 @@ class CandidateDirectoryService:
         recruiter: ActingRecruiter,
         *,
         filters: CandidateFilters,
+        order: DirectoryOrder = DirectoryOrder.NEWEST,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> CandidateDirectoryPage:
@@ -46,19 +56,24 @@ class CandidateDirectoryService:
                 "in_talent_pool"
             ),
         ).where(*narrowed_to(DIRECTORY_PROFILES, filters))
+        sorting = ORDERINGS[order]
         found = (
             await self._db.execute(
-                newest_first(
+                ordered_by(
                     listed,
-                    created_at=DIRECTORY_PROFILES.c.created_at,
+                    ordering=sorting,
                     id_=DIRECTORY_PROFILES.c.candidate_id,
                     cursor=cursor,
                     limit=limit,
                 )
             )
         ).all()
-        rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
-        logger.info("directory.candidates_listed", results=len(rows))
+        rows, next_cursor = page_of(
+            found,
+            limit=limit,
+            cursor_for=lambda row: cursor_for(sorting, row, id_=row.candidate_id),
+        )
+        logger.info("directory.candidates_listed", order=order.value, results=len(rows))
         return CandidateDirectoryPage(
             items=[SearchableCandidate.of(row) for row in rows], next_cursor=next_cursor
         )
@@ -93,7 +108,7 @@ class CandidateDirectoryService:
             canonical_role_key=profile.canonical_role_key,
             canonical_role_name=found.canonical_role_name,
             total_experience_years=profile.total_experience_years,
-            preferred_language_code=profile.preferred_language_code,
+            language_names=await self._language_names(candidate_id),
             in_talent_pool=found.in_talent_pool,
             phone=profile.phone,
             email=found.email,
@@ -104,6 +119,15 @@ class CandidateDirectoryService:
             projects=profile.projects,
         )
 
-
-def _cursor(row: Any) -> Cursor:
-    return Cursor(created_at=row.created_at, id=row.candidate_id)
+    async def _language_names(self, candidate_id: UUID) -> list[str]:
+        """Read here rather than off the directory view, which only holds Searchable Candidates —
+        a Candidate reachable through the Talent pool alone is not in it."""
+        rows = await self._db.scalars(
+            select(Language.name)
+            .join_from(
+                CandidateLanguage, Language, Language.code == CandidateLanguage.language_code
+            )
+            .where(CandidateLanguage.candidate_id == candidate_id)
+            .order_by(CandidateLanguage.sort_order, Language.name)
+        )
+        return list(rows)

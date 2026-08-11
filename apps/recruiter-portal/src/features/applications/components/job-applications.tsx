@@ -1,70 +1,29 @@
-import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { DataTable } from '@sync/ui/components/data-table';
 import { Button } from '@sync/ui/components/ui/button';
 import { Inbox } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
-import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import {
   type ApplicationSummary,
-  candidateMeta,
+  hiddenBehind,
   PIPELINE_STATUSES,
-  type PipelineStatus,
-  pipelineState,
   SCREENING_VERDICTS,
-  type ScreeningVerdict,
+  screeningSelection,
   screeningState,
 } from '../application';
-import { type ApplicationFilters, useJobApplications } from '../hooks/use-job-applications';
-import { SegmentedFilter } from './segmented-filter';
+import { useJobApplications } from '../hooks/use-job-applications';
+import type { ApplicationFilters } from '../reading';
+import { applicationColumns } from './application-columns';
+import { ApplicationPipelineFilter } from './application-pipeline-filter';
+import { ChecklistFilter } from './checklist-filter';
 
-const COLUMNS: DataTableColumn<ApplicationSummary>[] = [
-  {
-    accessorKey: 'candidate_name',
-    header: 'Candidate',
-    cell: ({ row }) => {
-      const meta = candidateMeta(row.original);
-      return (
-        <span className="flex min-w-52 flex-col gap-1">
-          <span>{row.original.candidate_name}</span>
-          {meta ? (
-            <span className="text-meta font-normal text-muted-foreground">{meta}</span>
-          ) : null}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: 'qualification_status',
-    header: 'Screening',
-    cell: ({ row }) => {
-      const state = screeningState(row.original.qualification_status);
-      return <StatusChip label={state.label} tone={state.tone} />;
-    },
-  },
-  {
-    accessorKey: 'status',
-    header: 'Pipeline',
-    cell: ({ row }) => {
-      const state = pipelineState(row.original.status);
-      return <StatusChip label={state.label} tone={state.tone} />;
-    },
-  },
-  {
-    accessorKey: 'applied_at',
-    header: 'Received',
-    cell: ({ row }) => (
-      <time dateTime={row.original.applied_at} title={absoluteDateTime(row.original.applied_at)}>
-        {relativeTime(row.original.applied_at)}
-      </time>
-    ),
-  },
-];
+const COLUMNS = applicationColumns<ApplicationSummary>();
 
 interface JobApplicationsProps {
   jobId: string;
   filters: ApplicationFilters;
   onFiltersChange: (filters: ApplicationFilters) => void;
   onApplicationOpen: (application: ApplicationSummary) => void;
+  applicationHref: (application: ApplicationSummary) => string;
   onShowLinks: () => void;
 }
 
@@ -73,43 +32,50 @@ export function JobApplications({
   filters,
   onFiltersChange,
   onApplicationOpen,
+  applicationHref,
   onShowLinks,
 }: JobApplicationsProps) {
-  const applications = useJobApplications(jobId, filters);
-  const active = [filters.screening, filters.pipeline].filter(Boolean).length;
+  const pipelineFilter = filters.pipeline?.length === 1 ? filters.pipeline : undefined;
+  const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
+  const screening = screeningSelection(filters.screening);
+  const applications = useJobApplications(jobId, { pipeline: pipelineFilter, screening });
+  const statusCounts = applications.data?.statusCounts ?? {};
+  const verdictCounts = applications.data?.verdictCounts ?? {};
+  const active = [
+    hiddenBehind(SCREENING_VERDICTS, screening, verdictCounts),
+    hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts),
+  ].filter((hidden) => hidden > 0).length;
 
   return (
-    <div className="space-y-6 pt-4">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-        <SegmentedFilter<ScreeningVerdict>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+        <ApplicationPipelineFilter
+          pipeline={pipelineFilter}
+          counts={statusCounts}
+          onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
+        />
+
+        <ChecklistFilter
           label="Screening"
-          anyLabel="All verdicts"
-          value={filters.screening}
+          noun="verdicts"
           options={SCREENING_VERDICTS.map((verdict) => ({
             value: verdict,
             label: screeningState(verdict).label,
           }))}
-          onChange={(screening) => onFiltersChange({ ...filters, screening })}
-        />
-        <SegmentedFilter<PipelineStatus>
-          label="Pipeline"
-          anyLabel="All statuses"
-          value={filters.pipeline}
-          options={PIPELINE_STATUSES.map((status) => ({
-            value: status,
-            label: pipelineState(status).label,
-          }))}
-          onChange={(pipeline) => onFiltersChange({ ...filters, pipeline })}
+          selected={screening}
+          counts={verdictCounts}
+          onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
         />
       </div>
 
       <DataTable
         label="Applications"
         columns={COLUMNS}
-        data={applications.data ?? []}
+        data={applications.data?.items ?? []}
         getRowId={(application) => application.id}
         rowLabel={(application) => `${application.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
+        rowHref={applicationHref}
         isLoading={applications.isPending}
         error={
           applications.isError
@@ -131,7 +97,12 @@ export function JobApplications({
             active > 0 ? (
               <Button
                 variant="outline"
-                onClick={() => onFiltersChange({ pipeline: undefined, screening: undefined })}
+                onClick={() =>
+                  onFiltersChange({
+                    pipeline: undefined,
+                    screening: undefined,
+                  })
+                }
               >
                 {active === 1 ? 'Clear filter' : 'Clear filters'}
               </Button>

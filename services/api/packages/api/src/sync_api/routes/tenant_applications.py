@@ -7,10 +7,12 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from sync_api.applications import (
     ApplicationReview,
+    ApplicationSort,
     ApplicationStatusChange,
     MatchAssessment,
     MatchAssessmentPage,
     MovedApplication,
+    ReceivedWithin,
     TenantApplicationPage,
 )
 from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
@@ -27,7 +29,7 @@ from sync_api.messaging import OutgoingMessage, QueuedMessage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_assessment_rate_limit
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
-from sync_core.models import ApplicationStatus
+from sync_core.models import ApplicationStatus, QualificationStatus
 
 ROUTER_PREFIX: Final = "/tenants/me/applications"
 
@@ -39,44 +41,82 @@ NOTE_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
     404: openapi_problem("This tenant has no application, or no note on it, with that id."),
 }
 
+ASSESSMENT_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
+    404: openapi_problem("This tenant has no application, or no assessment of it, with that id."),
+}
+
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
 
 
 @router.get(
     "",
     operation_id="listTenantApplications",
-    summary="The tenant's Applications, newest first",
+    summary="The tenant's Applications, newest first unless another order is asked for",
     responses={
         **TENANT_ACCESS_REFUSED,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_tenant_applications(
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
-    application_status: Annotated[
-        ApplicationStatus | None,
-        Query(alias="status", description="Only Applications at this stage."),
+    application_statuses: Annotated[
+        list[ApplicationStatus] | None,
+        Query(
+            alias="status",
+            description="Only Applications in one of these pipeline states. Repeat it to name "
+            "several; omit it for every state.",
+        ),
+    ] = None,
+    qualification_statuses: Annotated[
+        list[QualificationStatus] | None,
+        Query(
+            alias="qualification_status",
+            description="Only Applications the Screening verdict decided one of these ways. "
+            "Repeat it to name several; omit it for every verdict.",
+        ),
     ] = None,
     job_id: Annotated[
         UUID | None, Query(description="Only Applications for this Job of the tenant.")
     ] = None,
+    received_within: Annotated[
+        ReceivedWithin | None,
+        Query(
+            description="Only Applications received inside this rolling window. Omit it for "
+            "every Application the tenant has ever had."
+        ),
+    ] = None,
+    sort: Annotated[
+        ApplicationSort,
+        Query(description="Which end of `applied_at` the list starts at."),
+    ] = ApplicationSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> TenantApplicationPage:
-    """Every Application the tenant has received, across every Job, newest first.
+    """Every Application the tenant has received, across every Job. Page with `next_cursor`,
+    keeping `sort`.
 
     Each row names the Job it came in for — the Job's own triage list can leave that implied,
     and a list spanning all of them cannot. `job_id` narrows this list rather than looking a Job
     up, so another tenant's Job matches nothing here instead of refusing.
+
+    `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+    caller can say how many Applications each one is keeping off the list.
     """
     return await applications.tenant_page(
-        recruiter, status=application_status, job_id=job_id, cursor=cursor, limit=limit
+        recruiter,
+        statuses=application_statuses,
+        qualification_statuses=qualification_statuses,
+        job_id=job_id,
+        received_within=received_within,
+        sort=sort,
+        cursor=cursor,
+        limit=limit,
     )
 
 
@@ -187,6 +227,28 @@ async def list_application_match_assessments(
     return await assessments.page(recruiter, application_id, cursor=cursor, limit=limit)
 
 
+@router.delete(
+    "/{application_id}/assessments/{assessment_id}",
+    operation_id="deleteApplicationMatchAssessment",
+    summary="Throw away one AI match assessment",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**TENANT_ACCESS_REFUSED, **ASSESSMENT_NOT_FOUND},
+)
+async def delete_application_match_assessment(
+    application_id: UUID,
+    assessment_id: UUID,
+    recruiter: ActingRecruiterDep,
+    assessments: MatchAssessmentServiceDep,
+) -> Response:
+    """One reading and no other: the rest of the history keeps the model that wrote each of them.
+
+    Any recruiter of the Tenant may throw one away, and asking again writes a new one rather than
+    bringing this one back.
+    """
+    await assessments.remove(recruiter, application_id, assessment_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/{application_id}/messages",
     operation_id="messageApplicant",
@@ -207,8 +269,9 @@ async def message_applicant(
 ) -> QueuedMessage:
     """Placeholders resolve against this Application, and the response is the exact words queued.
 
-    Each send is its own decision: the same template twice is two messages. The Candidate's
-    verified address is the sender's to resolve, not this request's.
+    Each send is its own decision: the same template twice is two messages. A send may carry its
+    own wording in place of the template's, which changes nothing about the saved template. The
+    Candidate's verified address is the sender's to resolve, not this request's.
     """
     return await outreach.send(recruiter, application_id, body)
 

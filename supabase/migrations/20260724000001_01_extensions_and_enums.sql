@@ -1,7 +1,7 @@
 create extension if not exists vector with schema extensions;
 create extension if not exists moddatetime with schema extensions;
 
-create type account_type as enum ('candidate', 'recruiter');
+create type account_type as enum ('candidate', 'recruiter', 'platform_admin');
 
 create type recruiter_role as enum ('admin', 'recruiter');
 create type tenant_plan   as enum ('free', 'pro', 'enterprise');

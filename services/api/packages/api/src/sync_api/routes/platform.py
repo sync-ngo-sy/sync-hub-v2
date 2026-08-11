@@ -104,7 +104,7 @@ class SetTenantStatusRequest(BaseModel):
 
 
 class AccessRequestView(BaseModel):
-    """A company waiting to be let onto Sync, exactly as its visitor typed it."""
+    """A company waiting to be let onto Sync Hub, exactly as its visitor typed it."""
 
     id: str
     company: str
@@ -208,7 +208,7 @@ async def set_platform_tenant_status(
 @router.get(
     "/access-requests",
     operation_id="listAccessRequests",
-    summary="Companies waiting to be let onto Sync",
+    summary="Companies waiting to be let onto Sync Hub",
     responses=PLATFORM_ACCESS_REFUSED,
 )
 async def list_access_requests(

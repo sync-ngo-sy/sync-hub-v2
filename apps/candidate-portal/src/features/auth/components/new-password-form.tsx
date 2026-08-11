@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { isProblem, problemMessage } from '@/lib/api-problem';
 import { useResetPassword } from '../hooks/use-reset-password';
+import { PASSWORD_POLICY_SUMMARY } from '../password-rules';
 import { DEAD_LINK_PROBLEM, PASSWORD_UNCHANGED_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type NewPasswordValues, newPasswordSchema } from '../schemas/new-password';
 
@@ -30,8 +31,6 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
       await resetPassword.mutateAsync({ body: { token_hash: tokenHash, password } });
       onReset();
     } catch (error) {
-      // Both arrive as a 400: a link nothing can fix belongs on its own screen, a refused
-      // password belongs beside the field the reader can still edit.
       if (isProblem(error, DEAD_LINK_PROBLEM)) {
         onDeadLink();
         return;
@@ -51,6 +50,7 @@ export function NewPasswordForm({ tokenHash, onReset, onDeadLink }: NewPasswordF
       onSubmit={submit}
       isSubmitting={isSubmitting}
       label="New password"
+      description={PASSWORD_POLICY_SUMMARY}
       pendingLabel="Saving…"
       submitLabel="Save new password"
     />

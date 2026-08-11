@@ -1,9 +1,12 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { faultsOnSession, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import { CONTACT_SUBJECT } from '@/features/landing/contact';
 import { HEADLINE_TEXT } from '@/features/landing/headline';
 import { env } from '@/lib/env';
+import { CANDIDATE, RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
+import { server } from '@/testing/server';
 
 const whatsApp = `https://wa.me/963944123456?text=${encodeURIComponent(CONTACT_SUBJECT)}`;
 const email = `mailto:${env.contact.email}?subject=${encodeURIComponent(CONTACT_SUBJECT)}`;
@@ -13,7 +16,7 @@ function hrefsOf(links: HTMLElement[]): (string | null)[] {
 }
 
 describe('the recruiter landing', () => {
-  it('explains Sync to a company and asks for access rather than offering a workspace', async () => {
+  it('explains Sync Hub to a company and asks for access rather than offering a workspace', async () => {
     await renderApp('/');
 
     expect(
@@ -55,10 +58,10 @@ describe('the recruiter landing', () => {
     ).toEqual(['Ask for access', 'Publish a job with its criteria', 'Work the pipeline']);
   });
 
-  it('reaches the Sync team on the one WhatsApp number and address it is configured with', async () => {
+  it('reaches the Sync Hub team on the one WhatsApp number and address it is configured with', async () => {
     await renderApp('/');
 
-    const band = await screen.findByRole('region', { name: 'Start hiring on Sync.' });
+    const band = await screen.findByRole('region', { name: 'Start hiring on Sync Hub.' });
 
     const whatsAppLink = within(band).getByRole('link', { name: /^WhatsApp/ });
     expect(whatsAppLink).toHaveAttribute('href', whatsApp);
@@ -110,6 +113,46 @@ describe('the recruiter landing', () => {
     await renderApp('/');
 
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(document.title).toBe(`Sync Recruiter — ${HEADLINE_TEXT}`);
+    expect(document.title).toBe(`Sync Hub Recruiter — ${HEADLINE_TEXT}`);
+  });
+});
+
+describe('the landing page and a session', () => {
+  it('shows a signed-out visitor the landing page, with a logo that keeps them there', async () => {
+    server.use(...signedOut());
+
+    const { router } = await renderApp('/');
+
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
+    expect(
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Sync Hub' }),
+    ).toHaveAttribute('href', '/');
+  });
+
+  it('sends a signed-in recruiter to the dashboard instead of the landing page', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    const { router } = await renderApp('/');
+
+    expect(router.state.location.pathname).toBe('/dashboard');
+    expect(screen.queryByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeNull();
+  });
+
+  it('sends a signed-in candidate to the wrong-portal notice, not the landing page', async () => {
+    server.use(...signedInAs(CANDIDATE));
+
+    const { router } = await renderApp('/');
+
+    expect(router.state.location.pathname).toBe('/wrong-portal');
+  });
+
+  it('still shows the landing page when the session cannot be read at all', async () => {
+    server.use(...faultsOnSession(SERVER_FAULT));
+
+    const { router } = await renderApp('/');
+
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
   });
 });

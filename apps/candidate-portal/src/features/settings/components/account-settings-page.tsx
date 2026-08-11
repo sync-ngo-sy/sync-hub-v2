@@ -15,16 +15,16 @@ export function AccountSettingsPage({ profile }: { profile: Profile }) {
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Account settings"
-        description="Review the details attached to your Sync account."
+        description="Review the details attached to your Sync Hub account."
       />
 
       <Card>
         <CardHeader>
           <CardTitle>Account information</CardTitle>
-          <CardDescription>This is the identity you use to sign in to Sync.</CardDescription>
+          <CardDescription>This is the identity you use to sign in to Sync Hub.</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">

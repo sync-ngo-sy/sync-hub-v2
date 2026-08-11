@@ -3,7 +3,8 @@
 -- in `sync_core.notifications`, and the code that writes it.
 
 create type notification_type as enum (
-  'cv_parse_failed'
+  'cv_parse_failed',
+  'application_status_changed'
 );
 
 create table notifications (

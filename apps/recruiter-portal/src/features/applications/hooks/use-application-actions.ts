@@ -4,8 +4,6 @@ import { applicationQuery } from './use-application';
 import { jobApplicationsQueryPrefix } from './use-job-applications';
 import { matchAssessmentsQueryKey } from './use-match-assessments';
 
-/** No optimistic move: the server owns which moves are legal, so the page waits for its answer
- * and re-reads the Application — the history and `updated_at` only it can write come back too. */
 export function useMoveApplication(applicationId: string) {
   const queryClient = useQueryClient();
 
@@ -24,6 +22,19 @@ export function useAssessMatch(applicationId: string) {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: matchAssessmentsQueryKey(applicationId) }),
   });
+}
+
+export function useForgetAssessment(applicationId: string) {
+  const queryClient = useQueryClient();
+
+  return api.useMutation(
+    'delete',
+    '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}',
+    {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: matchAssessmentsQueryKey(applicationId) }),
+    },
+  );
 }
 
 export function useMessageApplicant() {

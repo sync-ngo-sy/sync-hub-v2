@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-export const CONTACT_SUBJECT = 'Sync for our company';
+export const CONTACT_SUBJECT = 'Sync Hub for our company';
 
-/** E.164, tolerating the spaces and hyphens a number is written with. */
 const numberSchema = z.string().regex(/^\+[1-9][\d\s-]{6,18}$/);
 
 const addressSchema = z.email();

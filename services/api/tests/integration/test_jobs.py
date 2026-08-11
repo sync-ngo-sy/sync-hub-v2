@@ -18,10 +18,12 @@ from tests.support.jobs import (
     a_closed_job,
     a_created_job,
     a_job,
+    a_published_job,
     an_application,
     change_job,
     post_job,
     read_job,
+    read_public_job,
     set_criteria,
 )
 from tests.support.mailbox import Mailbox
@@ -232,6 +234,92 @@ async def test_the_list_is_newest_first_and_pages_by_cursor(
     assert rest["next_cursor"] is None
 
 
+async def test_the_list_can_be_read_oldest_first(browser: AsyncClient, mailbox: Mailbox) -> None:
+    await an_admin(browser, mailbox)
+    oldest = await a_created_job(browser, title="Oldest")
+    middle = await a_created_job(browser, title="Middle")
+    newest = await a_created_job(browser, title="Newest")
+
+    first_page = await browser.get(TENANT_JOBS, params={"limit": 2, "sort": "oldest"})
+    body = first_page.json()
+    assert [item["id"] for item in body["items"]] == [oldest["id"], middle["id"]]
+
+    rest = await browser.get(
+        TENANT_JOBS, params={"limit": 2, "sort": "oldest", "cursor": body["next_cursor"]}
+    )
+    assert [item["id"] for item in rest.json()["items"]] == [newest["id"]]
+    assert rest.json()["next_cursor"] is None
+
+
+async def test_the_list_can_be_ordered_by_how_many_applications_arrived(
+    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await an_admin(browser, mailbox)
+    busiest = await a_created_job(browser, title="Busiest")
+    await a_created_job(browser, title="Quiet")
+    await a_signed_in_candidate(other_browser, mailbox)
+    await an_application(db_session, busiest["id"], await my_id(other_browser))
+
+    listed = await browser.get(TENANT_JOBS, params={"sort": "applications"})
+
+    assert listed.status_code == 200, listed.text
+    assert [item["title"] for item in listed.json()["items"]] == ["Busiest", "Quiet"]
+    assert [item["title"] for item in (await browser.get(TENANT_JOBS)).json()["items"]] == [
+        "Quiet",
+        "Busiest",
+    ], "the busiest is the older of the two, so this order is not the default one"
+
+
+async def test_the_busiest_first_order_pages_by_cursor(
+    browser: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await an_admin(browser, mailbox)
+    busiest = await a_created_job(browser, title="Busiest")
+    await a_created_job(browser, title="Quiet and older")
+    await a_created_job(browser, title="Quiet and newer")
+    await a_signed_in_candidate(other_browser, mailbox)
+    await an_application(db_session, busiest["id"], await my_id(other_browser))
+
+    first_page = await browser.get(TENANT_JOBS, params={"limit": 2, "sort": "applications"})
+    body = first_page.json()
+    assert [item["title"] for item in body["items"]] == ["Busiest", "Quiet and newer"]
+
+    rest = await browser.get(
+        TENANT_JOBS, params={"limit": 2, "sort": "applications", "cursor": body["next_cursor"]}
+    )
+    assert [item["title"] for item in rest.json()["items"]] == ["Quiet and older"]
+    assert rest.json()["next_cursor"] is None
+
+
+async def test_a_cursor_from_one_order_is_not_a_cursor_for_another(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    await a_created_job(browser, title="One")
+    await a_created_job(browser, title="Two")
+    by_date = (await browser.get(TENANT_JOBS, params={"limit": 1})).json()["next_cursor"]
+    oldest = (await browser.get(TENANT_JOBS, params={"limit": 1, "sort": "oldest"})).json()[
+        "next_cursor"
+    ]
+    by_rank = (await browser.get(TENANT_JOBS, params={"limit": 1, "sort": "applications"})).json()[
+        "next_cursor"
+    ]
+
+    refused = await browser.get(
+        TENANT_JOBS, params={"limit": 1, "sort": "applications", "cursor": by_date}
+    )
+    refused_the_other_way = await browser.get(TENANT_JOBS, params={"limit": 1, "cursor": by_rank})
+    refused_newest_as_oldest = await browser.get(
+        TENANT_JOBS, params={"limit": 1, "sort": "oldest", "cursor": by_date}
+    )
+    refused_oldest_as_newest = await browser.get(TENANT_JOBS, params={"limit": 1, "cursor": oldest})
+
+    assert refused.status_code == 422, refused.text
+    assert refused_the_other_way.status_code == 422, refused_the_other_way.text
+    assert refused_newest_as_oldest.status_code == 422, refused_newest_as_oldest.text
+    assert refused_oldest_as_newest.status_code == 422, refused_oldest_as_newest.text
+
+
 async def test_the_list_can_be_narrowed_to_one_status(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
@@ -243,6 +331,62 @@ async def test_the_list_can_be_narrowed_to_one_status(
     listed = await browser.get(TENANT_JOBS, params={"status": "draft"})
 
     assert [item["id"] for item in listed.json()["items"]] == [draft["id"]]
+
+
+async def test_the_chosen_status_does_not_hide_what_the_other_statuses_hold(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    await a_created_job(browser, title="Draft role")
+    published = await a_published_job(browser, title="Published role")
+    await a_closed_job(browser, title="Closed role")
+    archived = await a_created_job(browser, title="Archived role")
+    await change_job(browser, archived["id"], status="archived")
+
+    listed = await browser.get(TENANT_JOBS, params={"status": "published", "limit": 1})
+
+    body = listed.json()
+    assert [item["id"] for item in body["items"]] == [published["id"]]
+    assert {one["status"]: one["count"] for one in body["status_counts"]} == {
+        "draft": 1,
+        "published": 1,
+        "closed": 1,
+        "archived": 1,
+    }
+
+
+async def test_a_search_narrows_the_status_counts_the_way_it_narrows_the_list(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    await a_created_job(browser, title="Draft role")
+    await a_published_job(browser, title="Published role")
+    await a_closed_job(browser, title="Closed role")
+
+    listed = await browser.get(TENANT_JOBS, params={"q": "Published"})
+
+    assert {one["status"]: one["count"] for one in listed.json()["status_counts"]} == {
+        "draft": 0,
+        "published": 1,
+        "closed": 0,
+        "archived": 0,
+    }
+
+
+async def test_the_list_searches_job_titles_only_ignoring_case(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    matching = await a_created_job(browser, title="Data Analyst")
+    await a_created_job(
+        browser,
+        title="Programme Officer",
+        description="Works alongside the data analyst.",
+    )
+
+    listed = await browser.get(TENANT_JOBS, params={"q": "data analyst"})
+
+    assert [item["id"] for item in listed.json()["items"]] == [matching["id"]]
 
 
 async def test_criteria_are_replaced_whole(browser: AsyncClient, mailbox: Mailbox) -> None:
@@ -524,6 +668,20 @@ async def test_a_job_nobody_has_applied_to_counts_none(
 
     assert job["application_count"] == 0
     assert (await browser.get(TENANT_JOBS)).json()["items"][0]["application_count"] == 0
+
+
+async def test_a_job_carries_how_many_times_it_has_been_read(
+    browser: AsyncClient, visitor: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_published_job(browser)
+    assert job["view_count"] == 0
+
+    await read_public_job(visitor, job["id"])
+
+    listed = await browser.get(TENANT_JOBS)
+    assert [item["view_count"] for item in listed.json()["items"]] == [1]
+    assert (await read_job(browser, job["id"]))["view_count"] == 1
 
 
 async def test_editing_a_published_job_does_not_pretend_it_just_went_live(

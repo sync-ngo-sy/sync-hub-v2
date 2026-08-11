@@ -52,8 +52,9 @@ create table jobs (
     constraint jobs_min_experience_nonneg
     check (minimum_total_experience_years is null or minimum_total_experience_years >= 0),
 
-  status     job_status not null default 'draft',
-  expires_at timestamptz,
+  status       job_status not null default 'draft',
+  expires_at   timestamptz,
+  published_at timestamptz,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -64,11 +65,16 @@ create table jobs (
   constraint jobs_title_length       check (length(title)       <= 200),
   constraint jobs_description_length check (length(description) <= 5000)
 );
+comment on column jobs.published_at is
+  'When this Job first went live. Null while it has never been published, and never rewritten '
+  'by a later republish.';
+
 create index jobs_location_key_idx     on jobs (location_key);
 create index jobs_created_by_idx        on jobs (created_by_recruiter_id);
 create index jobs_status_expires_at_idx on jobs (status, expires_at);
 
 create index jobs_tenant_created_idx        on jobs (tenant_id, created_at desc, id desc);
+create index jobs_tenant_published_at_idx   on jobs (tenant_id, published_at);
 create index jobs_tenant_status_created_idx on jobs (tenant_id, status, created_at desc, id desc);
 
 create index jobs_published_created_idx on jobs (created_at desc, id desc)
@@ -175,11 +181,6 @@ create table ingestion_jobs (
 create index ingestion_jobs_claim_idx on ingestion_jobs (available_at)
   where status in ('pending', 'processing');
 create index ingestion_jobs_status_created_idx on ingestion_jobs (status, created_at);
-
-alter table candidates
-  add constraint candidates_preferred_language_fk
-  foreign key (preferred_language_code) references languages (code);
-create index candidates_preferred_language_idx on candidates (preferred_language_code);
 
 alter table candidates
   add constraint candidates_location_fk

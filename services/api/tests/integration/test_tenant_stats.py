@@ -12,6 +12,7 @@ from tests.support.jobs import (
     an_application,
     change_job,
     change_link,
+    counted_again,
     follow_link,
     read_public_job,
 )
@@ -238,13 +239,14 @@ async def test_a_channel_is_one_row_however_many_jobs_it_was_used_on(
 
 
 async def test_channels_are_ranked_by_the_traffic_they_brought(
-    recruiter: AsyncClient, visitor: AsyncClient
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
     job = await a_published_job(recruiter)
     loud = await a_tracked_link(recruiter, job["id"], name="WhatsApp groups")
     quiet = await a_tracked_link(recruiter, job["id"], name="Print flyer")
     for _ in range(3):
         await follow_link(visitor, loud["token"])
+        await counted_again(db_session, job["id"])
     await follow_link(visitor, quiet["token"])
 
     stats = await stats_of(recruiter)
@@ -256,13 +258,14 @@ async def test_channels_are_ranked_by_the_traffic_they_brought(
 
 
 async def test_visitors_who_arrived_without_a_link_are_their_own_row(
-    recruiter: AsyncClient, visitor: AsyncClient
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Otherwise tracked links read as all of the traffic, when they may be a fraction of it."""
     job = await a_published_job(recruiter)
     link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
     await follow_link(visitor, link["token"])
     await read_public_job(visitor, job["id"])
+    await counted_again(db_session, job["id"])
     await read_public_job(visitor, job["id"])
 
     stats = await stats_of(recruiter)
@@ -302,13 +305,14 @@ async def test_a_retired_link_keeps_the_traffic_it_brought(
 
 
 async def test_the_card_gets_six_channels_and_is_told_how_many_there_are(
-    recruiter: AsyncClient, visitor: AsyncClient
+    recruiter: AsyncClient, visitor: AsyncClient, db_session: AsyncSession
 ) -> None:
     job = await a_published_job(recruiter)
     for position in range(7):
         link = await a_tracked_link(recruiter, job["id"], name=f"Channel {position}")
         for _ in range(7 - position):
             await follow_link(visitor, link["token"])
+            await counted_again(db_session, job["id"])
 
     stats = await stats_of(recruiter)
 

@@ -57,7 +57,7 @@ export function LandingHeader() {
             <SheetContent side="right" className="w-72 gap-6 p-6 pt-14">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <SheetDescription className="sr-only">
-                Browse Sync, or create your profile.
+                Browse Sync Hub, or create your profile.
               </SheetDescription>
               <div className="-mx-2 flex flex-col text-reading font-medium text-secondary-foreground">
                 <Link

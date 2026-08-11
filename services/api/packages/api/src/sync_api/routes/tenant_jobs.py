@@ -18,16 +18,19 @@ from sync_api.jobs import (
     JobCriteria,
     JobCriteriaView,
     JobPage,
+    JobSort,
     JobView,
     NewJob,
     NewTrackedLink,
     TrackedLink,
     TrackedLinkChanges,
+    TrackedLinkReport,
 )
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
 from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus
+from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/tenants/me/jobs"
 
@@ -53,29 +56,45 @@ async def create_job(body: NewJob, recruiter: ActingRecruiterDep, jobs: JobServi
 @router.get(
     "",
     operation_id="listJobs",
-    summary="The tenant's Jobs, newest first",
+    summary="The tenant's Jobs, newest first unless another order is asked for",
     responses={
         **TENANT_ACCESS_REFUSED,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_jobs(
     recruiter: ActingRecruiterDep,
     jobs: JobServiceDep,
+    q: Annotated[
+        str | None,
+        Query(
+            max_length=MAX_LINE_LENGTH,
+            description="Keeps only Jobs whose title contains this, wherever in it and whatever "
+            "the case.",
+            examples=["designer"],
+        ),
+    ] = None,
     job_status: Annotated[
         JobStatus | None,
         Query(alias="status", description="Only Jobs in this state."),
     ] = None,
+    sort: Annotated[
+        JobSort,
+        Query(
+            description="`newest` and `oldest` order by when the Job was written; "
+            "`applications` puts the busiest first, newest first among ties."
+        ),
+    ] = JobSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
-    """Every Job of the tenant, whatever its state. Page with `next_cursor`."""
-    return await jobs.page(recruiter, status=job_status, cursor=cursor, limit=limit)
+    """Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`."""
+    return await jobs.page(recruiter, q=q, status=job_status, sort=sort, cursor=cursor, limit=limit)
 
 
 @router.get(
@@ -146,13 +165,21 @@ async def list_job_applications(
     job_id: UUID,
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
-    application_status: Annotated[
-        ApplicationStatus | None,
-        Query(alias="status", description="Only Applications in this pipeline state."),
+    application_statuses: Annotated[
+        list[ApplicationStatus] | None,
+        Query(
+            alias="status",
+            description="Only Applications in one of these pipeline states. Repeat it to name "
+            "several; omit it for every state.",
+        ),
     ] = None,
-    qualification_status: Annotated[
-        QualificationStatus | None,
-        Query(description="Only Applications the Screening verdict decided this way."),
+    qualification_statuses: Annotated[
+        list[QualificationStatus] | None,
+        Query(
+            alias="qualification_status",
+            description="Only Applications the Screening verdict decided one of these ways. "
+            "Repeat it to name several; omit it for every verdict.",
+        ),
     ] = None,
     cursor: Annotated[
         str | None,
@@ -162,12 +189,16 @@ async def list_job_applications(
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> ApplicationSummaryPage:
-    """The triage list: who applied, where each one stands, and how Screening judged it."""
+    """The triage list: who applied, where each one stands, and how Screening judged it.
+
+    `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
+    caller can say how many Applications each one is keeping off the list.
+    """
     return await applications.page(
         recruiter,
         job_id,
-        status=application_status,
-        qualification_status=qualification_status,
+        statuses=application_statuses,
+        qualification_statuses=qualification_statuses,
         cursor=cursor,
         limit=limit,
     )
@@ -176,7 +207,7 @@ async def list_job_applications(
 @router.post(
     "/{job_id}/links",
     operation_id="createTrackedJobLink",
-    summary="Name a campaign link to the Job",
+    summary="Name a Tracked link to the Job",
     status_code=status.HTTP_201_CREATED,
     responses={
         **TENANT_ACCESS_REFUSED,
@@ -197,20 +228,19 @@ async def create_tracked_job_link(
 @router.get(
     "/{job_id}/links",
     operation_id="listTrackedJobLinks",
-    summary="The Job's campaign links and their traffic",
+    summary="The Job's Tracked links and all of its traffic",
     responses={**TENANT_ACCESS_REFUSED, **JOB_NOT_FOUND},
 )
 async def list_tracked_job_links(
     job_id: UUID, recruiter: ActingRecruiterDep, links: TrackedLinkServiceDep
-) -> list[TrackedLink]:
-    """Every link of the Job, oldest first, each with the views it has brought."""
+) -> TrackedLinkReport:
     return await links.links(recruiter, job_id)
 
 
 @router.patch(
     "/{job_id}/links/{link_id}",
     operation_id="changeTrackedJobLink",
-    summary="Rename a campaign link or turn it off",
+    summary="Rename a Tracked link or turn it off",
     responses={
         **TENANT_ACCESS_REFUSED,
         404: openapi_problem("This tenant has no such Job, or the Job has no such link."),

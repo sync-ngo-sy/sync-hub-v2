@@ -68,15 +68,23 @@ def messages_to(application_id: str | UUID) -> str:
 
 
 async def send_message(
-    recruiter: AsyncClient, application_id: str | UUID, template_id: str | UUID
+    recruiter: AsyncClient,
+    application_id: str | UUID,
+    template_id: str | UUID,
+    edited: dict[str, Any] | None = None,
 ) -> Response:
-    return await recruiter.post(messages_to(application_id), json={"template_id": str(template_id)})
+    return await recruiter.post(
+        messages_to(application_id), json={"template_id": str(template_id), "edited": edited}
+    )
 
 
 async def a_sent_message(
-    recruiter: AsyncClient, application_id: str | UUID, template_id: str | UUID
+    recruiter: AsyncClient,
+    application_id: str | UUID,
+    template_id: str | UUID,
+    edited: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    response = await send_message(recruiter, application_id, template_id)
+    response = await send_message(recruiter, application_id, template_id, edited)
     assert response.status_code == 201, response.text
     sent: dict[str, Any] = response.json()
     return sent

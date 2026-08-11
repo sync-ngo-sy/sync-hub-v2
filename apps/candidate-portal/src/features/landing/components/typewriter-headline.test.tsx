@@ -21,7 +21,6 @@ describe('the typewriter headline', () => {
   it('reveals the sentence a character at a time, holding the finished layout throughout', () => {
     render(<TypewriterHeadline />);
 
-    // Every character is already in the DOM, so nothing reflows as the line types itself.
     expect(screen.getByText('S')).not.toBeVisible();
     expect(screen.getByText('.')).not.toBeVisible();
 

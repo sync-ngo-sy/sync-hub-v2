@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import ColumnElement, func, literal_column, select
+from sqlalchemy import ColumnElement, exists, func, literal_column, select
 
 from sync_api.jobs.access import location_name, open_job, public_jobs
 from sync_api.jobs.criteria import (
@@ -29,6 +29,11 @@ logger = get_logger(__name__)
 
 #: Inlined, not bound: as a parameter it reaches the driver as a `regconfig` with no codec.
 ENGLISH: Final[ColumnElement[str]] = literal_column("'english'")
+
+#: How long one browser's readings of one Job through one channel count as the same view. A
+#: refresh, a back button and a second look are the same interest, and counting each of them
+#: would make "views" a measure of restlessness.
+VIEW_WINDOW: Final = timedelta(minutes=30)
 
 
 class JobBrowseService:
@@ -76,7 +81,6 @@ class JobBrowseService:
         return await self._detail(job, tenant)
 
     async def by_link(self, token: str, visitor: Visitor) -> PublicJob:
-        """A campaign landing. A link that has been turned off or has run out is simply gone."""
         link = await self._db.scalar(select(TrackedJobLink).where(TrackedJobLink.token == token))
         if link is None or not _usable(link):
             raise _dead_link()
@@ -92,19 +96,42 @@ class JobBrowseService:
     async def _record_view(
         self, job_id: UUID, visitor: Visitor, *, tracked_link_id: UUID | None
     ) -> None:
+        recorded = False
         async with transaction(self._db):
-            self._db.add(
-                JobViewEvent(
-                    job_id=job_id,
-                    tracked_link_id=tracked_link_id,
-                    session_id=visitor.session_id,
-                    visitor_hash=visitor.visitor_hash,
+            key = f"{visitor.session_id}:{job_id}:{tracked_link_id or 'direct'}"
+            await self._db.scalar(select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0))))
+            if not await self._counted_recently(job_id, visitor, tracked_link_id):
+                self._db.add(
+                    JobViewEvent(
+                        job_id=job_id,
+                        tracked_link_id=tracked_link_id,
+                        session_id=visitor.session_id,
+                        visitor_hash=visitor.visitor_hash,
+                    )
                 )
-            )
+                recorded = True
+        if not recorded:
+            return
         logger.info(
             "jobs.viewed",
             job_id=str(job_id),
             tracked_link_id=None if tracked_link_id is None else str(tracked_link_id),
+        )
+
+    async def _counted_recently(
+        self, job_id: UUID, visitor: Visitor, tracked_link_id: UUID | None
+    ) -> bool:
+        return bool(
+            await self._db.scalar(
+                select(
+                    exists().where(
+                        JobViewEvent.job_id == job_id,
+                        JobViewEvent.session_id == visitor.session_id,
+                        JobViewEvent.tracked_link_id.is_not_distinct_from(tracked_link_id),
+                        JobViewEvent.viewed_at > func.now() - VIEW_WINDOW,
+                    )
+                )
+            )
         )
 
     async def _detail(self, job: Job, tenant: Tenant) -> PublicJob:

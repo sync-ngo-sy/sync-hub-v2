@@ -31,7 +31,6 @@ describe('filling the form from a CV', () => {
 
     expect(filled.full_name).toBe('Lina H. Khoury');
     expect(filled.headline).toBe('Backend engineer, 8 years');
-    // Empty rather than null: the form is fully controlled, and null would uncontrol an input.
     expect(filled.phone).toBe('');
     expect(filled.experiences).toEqual([
       {
@@ -90,7 +89,6 @@ describe('filling the form from a CV', () => {
     const current = aForm({ skills: [{ name: 'Python', years_experience: '3.5' }] });
     const filled = filledFromCv(
       current,
-      // The API's draft carries the saved years, which are not the ones the form now holds.
       aDraft({ skills: [{ name: 'Python', years_experience: 3 }] }),
     );
 
@@ -128,22 +126,14 @@ describe('filling the form from a CV', () => {
     expect(filled.unmapped_skills).toEqual([{ value: 'Kobo Toolbox' }]);
   });
 
-  // A CV says nothing about any of the three: where a Candidate is, is a Location they picked
-  // from a list; the language they want to be written to in is a setting; and Global search is
-  // an opt-in. Taking the draft's copies would quietly revert edits the form has not saved.
   it('leaves the settings a CV cannot speak for exactly as the form holds them', () => {
-    const current = aForm({
-      location_key: 'sy-rif-dimashq',
-      preferred_language_code: 'fr',
-      is_searchable: true,
-    });
+    const current = aForm({ location_key: 'sy-rif-dimashq', is_searchable: true });
     const filled = filledFromCv(
       current,
-      aDraft({ location_key: 'sy-aleppo', preferred_language_code: 'ar', is_searchable: false }),
+      aDraft({ location_key: 'sy-aleppo', is_searchable: false }),
     );
 
     expect(filled.location_key).toBe('sy-rif-dimashq');
-    expect(filled.preferred_language_code).toBe('fr');
     expect(filled.is_searchable).toBe(true);
   });
 });

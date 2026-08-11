@@ -5,9 +5,6 @@ import { ChartCardShell } from './chart-card';
 import { PageHeaderShell } from './page-header';
 import { StatCardShell } from './stat-card';
 
-// Each skeleton reuses the shell of the molecule it stands in for, and is hidden from
-// assistive technology: the surface that swaps it for real content owns announcing that.
-
 export function placeholderKeys(count: number, prefix: string) {
   return Array.from({ length: count }, (_, index) => `${prefix}-${index}`);
 }

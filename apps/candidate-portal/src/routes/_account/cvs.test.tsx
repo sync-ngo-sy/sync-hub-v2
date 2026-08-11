@@ -17,8 +17,6 @@ describe('the address the CVs used to have', () => {
     expect(await screen.findByRole('heading', { name: READY_CV.display_name })).toBeVisible();
   });
 
-  // Replaced rather than pushed, so Back from the profile goes where the reader came from
-  // instead of bouncing through the old address again.
   it('leaves no step in the history to go back through', async () => {
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
 

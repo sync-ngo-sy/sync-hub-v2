@@ -1,12 +1,14 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
+import { Tabs } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
 import { Link2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { LineTabsList } from '@/features/shell/components/line-tabs-list';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useTenantTrackedLinks } from '../hooks/use-tenant-tracked-links';
@@ -24,7 +26,11 @@ import { CopyAddressButton } from './copy-address-button';
 const DESCRIPTION =
   'Every link your Tenant has minted, across every Job, and the Job views each one brought.';
 
-/** Long enough that typing a word is one request rather than five. */
+const STATE_TABS = LINK_FILTER_ORDER.map((state) => ({
+  value: state,
+  label: LINK_FILTERS[state].label,
+}));
+
 const SETTLE_MS = 300;
 
 const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
@@ -59,19 +65,20 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
     header: 'State',
     cell: ({ row }) => {
       const state = trackedLinkState(row.original);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {
     id: 'views',
     header: 'Views',
     cell: ({ row }) => (
-      <span className="tabular-nums">{row.original.view_count.toLocaleString()}</span>
+      <span className="font-mono tabular-nums">{row.original.view_count.toLocaleString()}</span>
     ),
   },
   {
     id: 'expires',
     header: 'Expires',
+    meta: { priority: 'hidden' },
     cell: ({ row }) =>
       row.original.expires_at ? (
         <time
@@ -92,12 +99,6 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   },
 ];
 
-/**
- * Four different nothings, which read as four different sentences. A search that matched none is
- * not a Tenant with no links, and neither is a page of links the state filter happened to hide —
- * that last one is only ever the date-sorted filters, and it says so rather than claiming the
- * Tenant has nothing.
- */
 function emptyMessage({
   q,
   filter,
@@ -126,10 +127,6 @@ interface TenantTrackedLinksPageProps {
   onFilterChange: (filter: LinkFilter) => void;
 }
 
-/**
- * The tenant's links, reported across every Job. It does not manage them: renaming, minting and
- * turning one off stay on the Job that owns it, which is where the row leads.
- */
 export function TenantTrackedLinksPage({
   q,
   filter,
@@ -161,11 +158,20 @@ export function TenantTrackedLinksPage({
   const hidden = hiddenByDate(arrived, filter);
 
   return (
-    <div className="space-y-8">
-      <PageHeader title="Tracked links" description={DESCRIPTION} />
+    <>
+      <WorkspaceHeader withTabs>
+        <PageHeader title="Tracked links" description={DESCRIPTION} />
+        <Tabs
+          className="gap-0"
+          value={filter}
+          onValueChange={(value) => onFilterChange(value as LinkFilter)}
+        >
+          <LineTabsList label="State" value={filter} tabs={STATE_TABS} className="-mb-px mt-5" />
+        </Tabs>
+      </WorkspaceHeader>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-1.5 sm:max-w-xs sm:flex-1">
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        <div className="flex max-w-xs flex-col gap-1.5">
           <label htmlFor={searchId} className="text-meta text-muted-foreground">
             Search by name
           </label>
@@ -178,51 +184,41 @@ export function TenantTrackedLinksPage({
           />
         </div>
 
-        <Tabs value={filter} onValueChange={(value) => onFilterChange(value as LinkFilter)}>
-          <TabsList aria-label="State">
-            {LINK_FILTER_ORDER.map((state) => (
-              <TabsTrigger key={state} value={state}>
-                {LINK_FILTERS[state].label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <DataTable
+          label="Tracked links"
+          columns={COLUMNS}
+          data={shown}
+          getRowId={(link) => link.id}
+          rowLabel={(link) => `${link.name} on ${link.job.title}`}
+          isLoading={links.isPending}
+          error={
+            links.error
+              ? {
+                  message: problemMessage(links.error, "Couldn't load your tracked links."),
+                  onRetry: () => void links.refetch(),
+                }
+              : undefined
+          }
+          empty={{
+            icon: Link2,
+            message: emptyMessage({ q, filter, hidden, more: links.hasNextPage }),
+            action: hidden ? (
+              <Button disabled={!links.hasNextPage} onClick={() => void links.fetchNextPage()}>
+                Keep looking
+              </Button>
+            ) : (
+              <Link to="/jobs" className={buttonVariants({ variant: 'outline' })}>
+                Go to Jobs
+              </Link>
+            ),
+          }}
+          loadMore={{
+            hasMore: links.hasNextPage,
+            isLoading: links.isFetchingNextPage,
+            onLoadMore: () => void links.fetchNextPage(),
+          }}
+        />
       </div>
-
-      <DataTable
-        label="Tracked links"
-        columns={COLUMNS}
-        data={shown}
-        getRowId={(link) => link.id}
-        rowLabel={(link) => `${link.name} on ${link.job.title}`}
-        isLoading={links.isPending}
-        error={
-          links.error
-            ? {
-                message: problemMessage(links.error, "Couldn't load your tracked links."),
-                onRetry: () => void links.refetch(),
-              }
-            : undefined
-        }
-        empty={{
-          icon: Link2,
-          message: emptyMessage({ q, filter, hidden, more: links.hasNextPage }),
-          action: hidden ? (
-            <Button disabled={!links.hasNextPage} onClick={() => void links.fetchNextPage()}>
-              Keep looking
-            </Button>
-          ) : (
-            <Link to="/jobs" className={buttonVariants({ variant: 'outline' })}>
-              Go to Jobs
-            </Link>
-          ),
-        }}
-        loadMore={{
-          hasMore: links.hasNextPage,
-          isLoading: links.isFetchingNextPage,
-          onLoadMore: () => void links.fetchNextPage(),
-        }}
-      />
-    </div>
+    </>
   );
 }

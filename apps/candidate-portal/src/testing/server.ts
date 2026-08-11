@@ -12,19 +12,6 @@ import {
 } from '@/features/reference/testing/handlers';
 import { CANONICAL_ROLES, CANONICAL_SKILLS, LANGUAGES, LOCATIONS } from './fixtures';
 
-/**
- * The bell lives in the account shell, so every signed-in render asks what it should say. These
- * two answer "nothing to report" for tests that are about something else; a test that cares says
- * otherwise with `server.use`.
- *
- * The taxonomies are here for the same reason: every picker asks for them, and only a test about
- * the pickers cares what comes back. So are the CVs: they are the profile editor's first section,
- * so every render of it asks, including the tests that are about a field further down.
- *
- * The rest are the destinations a test lands on while it is on its way somewhere else: My
- * Applications is where the account shell opens, the landing lists the newest jobs, and every
- * render asks who is signed in. A test about any of them says otherwise with `server.use`.
- */
 export const server = setupServer(
   ...countsUnread(0),
   ...listsNotifications([]),

@@ -1,7 +1,6 @@
 import { cn } from '@sync/ui/lib/utils';
 import type { ReactNode } from 'react';
 
-/** The small-caps label that opens a landing section. */
 export function Eyebrow({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <p
@@ -15,7 +14,6 @@ export function Eyebrow({ className, children }: { className?: string; children:
   );
 }
 
-/** A landing CTA sits between the app's `lg` button and its own type scale. */
 export const HERO_BUTTON = 'h-11 px-5.5 text-[0.9375rem]';
 
 export const NAV_BUTTON = 'h-10 px-4 text-dense';

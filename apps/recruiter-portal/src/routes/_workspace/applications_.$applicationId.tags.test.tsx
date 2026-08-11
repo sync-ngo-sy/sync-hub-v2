@@ -67,16 +67,13 @@ describe('the Tags on the Application review page', () => {
     expect(filed.queryByText('Relocating')).toBeNull();
   });
 
-  it('says so plainly when the Application is filed under nothing', async () => {
+  it('lists nothing, and still offers the picker, when the Application is filed under nothing', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     const { tags } = await openTags();
 
-    expect(
-      tags.getByText(
-        'Not filed under anything yet. A Tag here is how you find this Application again.',
-      ),
-    ).toBeVisible();
+    expect(tags.queryByRole('list', { name: 'Tags on this Application' })).toBeNull();
+    expect(tags.getByRole('button', { name: 'Add a Tag' })).toBeVisible();
   });
 
   it('offers the whole vocabulary, marking what is already on', async () => {

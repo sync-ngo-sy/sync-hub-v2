@@ -17,10 +17,8 @@ describe('the Tracked-link landing', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: PUBLIC_JOB.title })).toBeVisible();
     expect(screen.getByText(/You will own the design system/)).toBeVisible();
-    // The API counted the arrival against this link's name, and that is the whole of it.
     expect(counted).toHaveBeenCalledWith(TOKEN);
     expect(screen.queryByText(/campaign|tracked|referral/i)).toBeNull();
-    // No hop to /jobs/<id> either: a redirect would spend a second view on the way.
     expect(router.state.location.pathname).toBe(`/l/${TOKEN}`);
   });
 

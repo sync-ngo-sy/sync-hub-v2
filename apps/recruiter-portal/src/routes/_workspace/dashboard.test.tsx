@@ -1,32 +1,26 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AMAL_REVIEW } from '@/features/applications/testing/fixtures';
-import { getsApplication } from '@/features/applications/testing/handlers';
+import { AMAL_REVIEW, DIMA, ELIAS, FARAH } from '@/features/applications/testing/fixtures';
+import {
+  failsToListTenantApplications,
+  getsApplication,
+  listsTenantApplications,
+} from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import {
   A_BUSY_WEEK,
-  DIMA,
-  ELIAS,
-  FARAH,
   MEAL_OFFICER,
   NOTHING_YET,
   statsWith,
-  TODAY,
 } from '@/features/dashboard/testing/fixtures';
-import {
-  failsToListTenantApplications,
-  failsToServeStats,
-  holdsStats,
-  listsTenantApplications,
-  servesStats,
-} from '@/features/dashboard/testing/handlers';
+import { failsToServeStats, holdsStats, servesStats } from '@/features/dashboard/testing/handlers';
 import {
   FIELD_COORDINATOR,
   FIELD_COORDINATOR_VIEW,
   PROGRAMME_OFFICER,
 } from '@/features/jobs/testing/fixtures';
 import { failsToListJobs, getsJob, listsJobs } from '@/features/jobs/testing/handlers';
-import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
+import { RECRUITER, SERVER_FAULT, TODAY } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -37,7 +31,6 @@ function panel(name: string) {
   return within(screen.getByRole('region', { name }));
 }
 
-/** Everything answering, which is the starting point for most of these. */
 function aWorkingDashboard() {
   return [
     ...signedInAs(RECRUITER),
@@ -48,7 +41,6 @@ function aWorkingDashboard() {
 }
 
 describe('the Dashboard', () => {
-  // Only the clock: the rows render relative times, and MSW and user events keep real timers.
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(TODAY);
@@ -58,13 +50,17 @@ describe('the Dashboard', () => {
     vi.useRealTimers();
   });
 
-  it('names the Tenant it is counting for', async () => {
+  it('greets the Recruiter and names the Tenant it is counting for', async () => {
+    vi.setSystemTime(new Date(2026, 7, 9, 9));
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
-    expect(screen.getByText('Aman Relief')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Rana' }),
+    ).toBeVisible();
+    expect(await screen.findByText('Aman Relief')).toBeVisible();
+    expect(screen.getByText('Sunday, 9 August 2026')).toBeVisible();
   });
 
   it('shows the counts the API reports, with no arithmetic of its own', async () => {
@@ -86,6 +82,58 @@ describe('the Dashboard', () => {
     expect(stats.getByText('Qualified by screening')).toBeVisible();
     expect(stats.getByText('61')).toBeVisible();
     expect(stats.getByText('78% pass rate')).toBeVisible();
+  });
+
+  it('sends Awaiting review to the Applications the number counted', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Awaiting review/ }));
+
+    expect(await screen.findByRole('radio', { name: /^New / })).toBeChecked();
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(router.state.location.search).toEqual({ pipeline: ['new'] });
+  });
+
+  it('sends Applications this week to the week, terminal Applications included', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Applications this week/ }));
+
+    expect(await screen.findByRole('combobox', { name: 'Received' })).toHaveTextContent(
+      'Last 7 days',
+    );
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
+    expect(router.state.location.search).toEqual({ received: '7d' });
+  });
+
+  it('sends Open jobs to the published Jobs the number counted', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Open jobs/ }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: /^Published/ })).toHaveAttribute('data-active');
+    expect(await screen.findByText('MEAL Officer')).toBeVisible();
+    expect(router.state.location.pathname).toBe('/jobs');
+    expect(router.state.location.search).toEqual({ status: 'published' });
+  });
+
+  it('sends Qualified by screening to the verdict, whatever the Pipeline did next', async () => {
+    server.use(...aWorkingDashboard());
+
+    const { router, user } = await renderApp('/dashboard');
+    await user.click(await screen.findByRole('link', { name: /Qualified by screening/ }));
+
+    expect(await screen.findByRole('button', { name: /^Screening: / })).toHaveAccessibleName(
+      'Screening: Qualified',
+    );
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(router.state.location.search).toEqual({ screening: ['qualified'] });
   });
 
   it('compares this week with the one before it', async () => {
@@ -156,9 +204,7 @@ describe('the Dashboard', () => {
 
     const { router, user } = await renderApp('/dashboard');
     const recent = panel('Recent applications');
-    await user.click(
-      await recent.findByRole('button', { name: "Open Dima Sabbagh's Application" }),
-    );
+    await user.click(await recent.findByRole('link', { name: "Open Dima Sabbagh's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${DIMA.id}`));
   });
@@ -183,20 +229,27 @@ describe('the Dashboard', () => {
 
     expect(await jobs.findByText('18 applications')).toBeVisible();
     expect(jobs.getByText('9 applications')).toBeVisible();
-    // The draft has none, so its row says when it was last touched instead.
     expect(jobs.getByText(/^Updated/)).toBeVisible();
   });
 
-  it('draws where applicants come from, ranked', async () => {
+  it('lists where applicants come from, ranked by views without chart decoration', async () => {
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
-    const chart = await sources.findByRole('img');
-    expect(chart).toHaveAccessibleName(/LinkedIn post: 342 views/);
-    expect(chart).toHaveAccessibleName(/WhatsApp groups: 281 views/);
-    expect(chart).toHaveAccessibleName(/Direct: 190 views/);
+    const rows = within(await sources.findByRole('list', { name: 'Views by source' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+
+    expect(rows).toEqual([
+      'LinkedIn post342',
+      'WhatsApp groups281',
+      'Direct190',
+      'Facebook page97',
+    ]);
+    expect(sources.queryByText(/%/)).not.toBeInTheDocument();
+    expect(sources.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('says how many channels it is showing you out of how many there are', async () => {
@@ -235,7 +288,6 @@ describe('the Dashboard', () => {
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
-    // A count of channels on a link to a page of links would describe neither.
     expect(await sources.findByRole('link', { name: 'All links' })).toBeVisible();
   });
 
@@ -300,7 +352,6 @@ describe('the Dashboard', () => {
     const { user } = await renderApp('/dashboard');
     const recent = panel('Recent applications');
     expect(await recent.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
-    // The counts beside it are a different read, and they answered.
     expect(screen.getByText('78% pass rate')).toBeVisible();
 
     server.use(...listsTenantApplications(RECENT));
@@ -322,7 +373,6 @@ describe('the Dashboard', () => {
     const stats = within(await screen.findByRole('region', { name: 'Hiring at a glance' }));
     expect(await stats.findByRole('alert')).toBeVisible();
     expect(await panel('Where applicants find you').findByRole('alert')).toBeVisible();
-    // And nothing else on the page went with them.
     expect(await panel('Recent applications').findByText('Dima Sabbagh')).toBeVisible();
     expect(panel('Your jobs').getByText('Field Coordinator')).toBeVisible();
   });
@@ -358,7 +408,6 @@ describe('the Dashboard', () => {
     await renderApp('/dashboard');
 
     expect(await screen.findByRole('status', { name: 'Loading the counts' })).toBeVisible();
-    // The Jobs panel does not wait on the counts beside it.
     expect(panel('Your jobs').getByText('Field Coordinator')).toBeVisible();
 
     held.arrive();
@@ -367,7 +416,7 @@ describe('the Dashboard', () => {
     expect(screen.queryByRole('status', { name: 'Loading the counts' })).not.toBeInTheDocument();
   });
 
-  it('writes a new Job without leaving the Dashboard', async () => {
+  it('sends a recruiter writing a new Job to the full-page wizard', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...servesStats(NOTHING_YET),
@@ -375,10 +424,11 @@ describe('the Dashboard', () => {
       ...listsJobs([]),
     );
 
-    const { user } = await renderApp('/dashboard');
+    const { router, user } = await renderApp('/dashboard');
     await user.click(screen.getByRole('button', { name: 'Create job' }));
 
-    expect(await screen.findByRole('heading', { name: 'Create a Job' })).toBeVisible();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/jobs/new'));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create a Job' })).toBeVisible();
     expect(screen.getByLabelText('Title')).toBeVisible();
   });
 });

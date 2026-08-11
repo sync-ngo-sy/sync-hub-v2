@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sync_api.auth.password_policy import enforce_password_policy
 from sync_api.auth.registration import identity_undone_on_failure
 from sync_core import get_logger, transaction
 from sync_core.models import AccountType, PlatformAdmin, Profile
@@ -32,9 +33,11 @@ async def create_platform_admin(
     is reached by `scripts/create_platform_admin.py` against a target environment instead. The
     address is confirmed on the spot — there is no portal to send a confirmation link to yet.
 
-    Raises the `GoTrueError` the identity provider gave (an address already registered, a password
-    it refused), so the caller can say so in the words its own surface uses.
+    Raises `PasswordPolicyError` for a password the policy refuses, and otherwise the
+    `GoTrueError` the identity provider gave (an address already registered, a password it
+    refused), so the caller can say so in the words its own surface uses.
     """
+    enforce_password_policy(password)
     user = await gotrue.create_user(email=email, password=password, confirmed=True)
     async with identity_undone_on_failure(gotrue, user.id), transaction(session):
         session.add(

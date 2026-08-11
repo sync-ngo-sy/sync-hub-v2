@@ -4,7 +4,15 @@ import { VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { Note } from '@/features/crm/note';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
-import type { ApplicationSummary, PipelineStatus } from '../application';
+import {
+  type ApplicationSummary,
+  PIPELINE_STATUSES,
+  type PipelineStatus,
+  RECEIVED_WITHIN_VALUES,
+  type ReceivedWithin,
+  SCREENING_VERDICTS,
+  type TenantApplication,
+} from '../application';
 import type { MatchAssessment } from '../assessment';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
 import { TAG_PATH, TAGS_PATH } from '../hooks/use-application-tags';
@@ -18,8 +26,10 @@ type OutgoingMessage = components['schemas']['OutgoingMessage'];
 type QueuedMessage = components['schemas']['QueuedMessage'];
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
+const TENANT_PATH = '/v1/tenants/me/applications';
 const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
 const ASSESSMENTS_PATH = '/v1/tenants/me/applications/{application_id}/assessments';
+const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}';
 const MESSAGES_PATH = '/v1/tenants/me/applications/{application_id}/messages';
 
 const NO_SUCH_APPLICATION: Problem = {
@@ -30,24 +40,118 @@ const NO_SUCH_APPLICATION: Problem = {
 };
 
 export interface AskedFor {
-  status: string | null;
-  qualification_status: string | null;
+  status: string[];
+  qualification_status: string[];
+}
+
+function chosen(named: string[], value: string): boolean {
+  return named.length === 0 || named.includes(value);
+}
+
+function countedByStatus(items: ApplicationSummary[]) {
+  return PIPELINE_STATUSES.map((status) => ({
+    status,
+    count: items.filter((item) => item.status === status).length,
+  }));
+}
+
+function countedByVerdict(items: ApplicationSummary[]) {
+  return SCREENING_VERDICTS.map((verdict) => ({
+    verdict,
+    count: items.filter((item) => item.qualification_status === verdict).length,
+  }));
 }
 
 export function listsJobApplications(items: ApplicationSummary[], asked?: AskedFor[]) {
   return [
     http.get(PATH, ({ query, response }) => {
-      const status = query.get('status');
-      const qualification = query.get('qualification_status');
-      asked?.push({ status, qualification_status: qualification });
+      const statuses = query.getAll('status');
+      const verdicts = query.getAll('qualification_status');
+      asked?.push({ status: statuses, qualification_status: verdicts });
+      const ofThisVerdict = items.filter((item) => chosen(verdicts, item.qualification_status));
+      const ofThisStatus = items.filter((item) => chosen(statuses, item.status));
       return response(200).json({
-        items: items
-          .filter((item) => (status ? item.status === status : true))
-          .filter((item) => (qualification ? item.qualification_status === qualification : true)),
+        items: ofThisVerdict.filter((item) => chosen(statuses, item.status)),
         next_cursor: null,
+        status_counts: countedByStatus(ofThisVerdict),
+        verdict_counts: countedByVerdict(ofThisStatus),
       });
     }),
   ];
+}
+
+const WINDOW_DAYS: Record<ReceivedWithin, number> = { '24h': 1, '7d': 7, '30d': 30 };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export interface TenantAskedFor {
+  status: string[];
+  qualification_status: string[];
+  received_within: string | null;
+  sort: string | null;
+}
+
+function inTheWindow(item: TenantApplication, window: string | null): boolean {
+  const named = RECEIVED_WITHIN_VALUES.find((one) => one === window);
+  if (!named) return true;
+  return new Date(item.applied_at).getTime() > Date.now() - WINDOW_DAYS[named] * DAY;
+}
+
+function byReceived(sort: string | null) {
+  const newestFirst = sort !== 'oldest';
+  return (one: TenantApplication, other: TenantApplication) => {
+    const gap = Date.parse(one.applied_at) - Date.parse(other.applied_at);
+    return newestFirst ? -gap : gap;
+  };
+}
+
+export function listsTenantApplications(items: TenantApplication[], asked?: TenantAskedFor[]) {
+  return [
+    http.get(TENANT_PATH, ({ query, response }) => {
+      const statuses = query.getAll('status');
+      const verdicts = query.getAll('qualification_status');
+      const window = query.get('received_within');
+      const sort = query.get('sort');
+      asked?.push({
+        status: statuses,
+        qualification_status: verdicts,
+        received_within: window,
+        sort,
+      });
+      const inWindow = items.filter((item) => inTheWindow(item, window));
+      const ofThisStatus = inWindow.filter((item) => chosen(statuses, item.status));
+      const ofThisVerdict = inWindow.filter((item) => chosen(verdicts, item.qualification_status));
+      const limit = Number(query.get('limit') ?? inWindow.length);
+      return response(200).json({
+        items: ofThisStatus
+          .filter((item) => chosen(verdicts, item.qualification_status))
+          .sort(byReceived(sort))
+          .slice(0, limit),
+        next_cursor: null,
+        status_counts: countedByStatus(ofThisVerdict),
+        verdict_counts: countedByVerdict(ofThisStatus),
+      });
+    }),
+  ];
+}
+
+export function pagesTenantApplications(pages: TenantApplication[][]) {
+  return [
+    http.get(TENANT_PATH, ({ query, response }) => {
+      const cursor = query.get('cursor');
+      const index = cursor === null ? 0 : Number(cursor);
+      return response(200).json({
+        items: pages[index] ?? [],
+        next_cursor: index + 1 < pages.length ? String(index + 1) : null,
+        status_counts: countedByStatus(pages.flat()),
+        verdict_counts: countedByVerdict(pages.flat()),
+      });
+    }),
+  ];
+}
+
+export function failsToListTenantApplications(problem: Problem) {
+  return [http.get(TENANT_PATH, ({ response }) => response(500).json(problem))];
 }
 
 export function pagesJobApplications(pages: ApplicationSummary[][]) {
@@ -58,6 +162,8 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
       return response(200).json({
         items: pages[index] ?? [],
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
+        status_counts: countedByStatus(pages.flat()),
+        verdict_counts: countedByVerdict(pages.flat()),
       });
     }),
   ];
@@ -81,7 +187,6 @@ export function failsToGetApplication(problem: Problem) {
   return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
 }
 
-/** Moves the Application for real, so a test reads the page the way a Recruiter would. */
 export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
   let current = review;
   return [
@@ -128,6 +233,13 @@ const NO_SUCH_TAG: Problem = {
   title: 'Not Found',
   status: 404,
   detail: 'This tenant has no application or no tag with that id.',
+};
+
+const NO_SUCH_ASSESSMENT: Problem = {
+  type: 'urn:sync:problem:assessment-not-found',
+  title: 'Not Found',
+  status: 404,
+  detail: 'This tenant has no application, or no assessment of it, with that id.',
 };
 
 const WROTE_AT = '2026-08-03T12:00:00Z';
@@ -329,6 +441,46 @@ export function failsToAssessMatch(
   ];
 }
 
+export function forgetsMatchAssessments(initial: MatchAssessment[], forgotten?: string[]) {
+  let items = [...initial];
+  return [
+    http.get(ASSESSMENTS_PATH, ({ response }) => response(200).json({ items, next_cursor: null })),
+    http.delete(ASSESSMENT_PATH, ({ params, response }) => {
+      if (!items.some((item) => item.id === params.assessment_id)) {
+        return response(404).json(NO_SUCH_ASSESSMENT);
+      }
+      forgotten?.push(params.assessment_id);
+      items = items.filter((item) => item.id !== params.assessment_id);
+      return response(204).empty();
+    }),
+  ];
+}
+
+export function holdsMatchAssessmentDeletion(initial: MatchAssessment[]) {
+  const gate = holding();
+  let items = [...initial];
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get(ASSESSMENTS_PATH, ({ response }) =>
+        response(200).json({ items, next_cursor: null }),
+      ),
+      http.delete(ASSESSMENT_PATH, async ({ params, response }) => {
+        await gate.held;
+        items = items.filter((item) => item.id !== params.assessment_id);
+        return response(204).empty();
+      }),
+    ],
+  };
+}
+
+export function refusesMatchAssessmentDeletion(initial: MatchAssessment[], problem: Problem) {
+  return [
+    ...listsMatchAssessments(initial),
+    http.delete(ASSESSMENT_PATH, ({ response }) => response(500).json(problem)),
+  ];
+}
+
 export function holdsMatchAssessment(initial: MatchAssessment[], written: MatchAssessment) {
   const gate = holding();
   let items = [...initial];
@@ -347,11 +499,10 @@ export function holdsMatchAssessment(initial: MatchAssessment[], written: MatchA
   };
 }
 
-export function messagesApplicant(queued: QueuedMessage, asked?: string[]) {
+export function messagesApplicant(queued: QueuedMessage, asked?: OutgoingMessage[]) {
   return [
     http.post(MESSAGES_PATH, async ({ request, response }) => {
-      const { template_id } = (await request.json()) as OutgoingMessage;
-      asked?.push(template_id);
+      asked?.push((await request.json()) as OutgoingMessage);
       return response(201).json(queued);
     }),
   ];
@@ -374,7 +525,6 @@ export function holdsMessage(queued: QueuedMessage) {
   };
 }
 
-/** Holds the page open until the caller lets it arrive, so a test can see the skeleton. */
 export function holdsJobApplications(items: ApplicationSummary[]) {
   const gate = holding();
   return {
@@ -382,7 +532,12 @@ export function holdsJobApplications(items: ApplicationSummary[]) {
     handlers: [
       http.get(PATH, async ({ response }) => {
         await gate.held;
-        return response(200).json({ items, next_cursor: null });
+        return response(200).json({
+          items,
+          next_cursor: null,
+          status_counts: countedByStatus(items),
+          verdict_counts: countedByVerdict(items),
+        });
       }),
     ],
   };

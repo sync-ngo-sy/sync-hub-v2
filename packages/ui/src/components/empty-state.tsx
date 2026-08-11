@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 
 interface EmptyStateProps {
   icon: LucideIcon;
-  /** One sentence — icon, sentence and one action are all mandatory, per §7.6. */
   message: string;
   action: ReactNode;
   className?: string;

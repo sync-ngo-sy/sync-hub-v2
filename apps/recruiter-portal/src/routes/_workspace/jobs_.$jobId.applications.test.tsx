@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { SCREENING_VERDICTS } from '@/features/applications/application';
 import { AMAL, AMAL_REVIEW, BASSEL, CARLA } from '@/features/applications/testing/fixtures';
 import {
   type AskedFor,
@@ -21,26 +23,37 @@ import { server } from '@/testing/server';
 
 const JOB = FIELD_COORDINATOR_VIEW;
 
+const EVERY_VERDICT = [...SCREENING_VERDICTS];
+
+function inUrl(chosen: readonly string[]) {
+  return encodeURIComponent(JSON.stringify(chosen));
+}
+
 function rowOf(candidate: string) {
   return within(screen.getByRole('row', { name: new RegExp(candidate) }));
 }
 
 function listedInOrder() {
   return screen
-    .getAllByRole('button', { name: /Application$/ })
+    .getAllByRole('link', { name: /Application$/ })
     .map((open) => open.getAttribute('aria-label'));
 }
 
-function control(name: 'Screening' | 'Pipeline') {
-  return within(screen.getByRole('group', { name }));
+function screeningTrigger() {
+  return screen.getByRole('button', { name: /^Screening: / });
 }
 
-function segment(name: 'Screening' | 'Pipeline', label: string) {
-  return control(name).getByRole('button', { name: label });
+async function openScreening(user: UserEvent) {
+  await user.click(screeningTrigger());
+  await screen.findByRole('menu');
+}
+
+function checkItem(label: string) {
+  return screen.getByRole('menuitemcheckbox', { name: new RegExp(`^${label}`) });
 }
 
 describe("a Job's Applications tab", () => {
-  it('lists the Applications the API sent, with both chips and a hoverable received time', async () => {
+  it('lists the Applications the API sent, with both marks and a hoverable received time', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(JOB),
@@ -63,11 +76,171 @@ describe("a Job's Applications tab", () => {
     expect(rowOf('Carla Rizk').getByText('Disqualified')).toBeVisible();
     expect(rowOf('Carla Rizk').getByText('Rejected')).toBeVisible();
 
-    expect(rowOf('Amal Haddad').getByText('Field logistics lead · Aleppo')).toBeVisible();
+    expect(rowOf('Amal Haddad').getByText('Logistics Manager · 9 years · Aleppo')).toBeVisible();
+    expect(rowOf('Amal Haddad').queryByText(/Field logistics lead/)).toBeNull();
     expect(rowOf('Amal Haddad').getByText(relativeTime(AMAL.applied_at))).toHaveAttribute(
       'title',
       absoluteDateTime(AMAL.applied_at),
     );
+  });
+
+  it('starts on All and leaves Pipeline out of the request and address bar', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    await renderApp(`/jobs/${JOB.id}`);
+
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    expect(screen.getByText('Bassel Nasser')).toBeVisible();
+    expect(screen.getByText('Carla Rizk')).toBeVisible();
+    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(screen.getByRole('radio', { name: 'All 3' })).toBeChecked();
+  });
+
+  it('shows the API count on every Pipeline chip', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    expect(screen.getByRole('radio', { name: 'New 1' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Shortlisted 1' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Rejected 1' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Withdrawn 0' })).toBeVisible();
+  });
+
+  it('opens one Pipeline status and writes it into the address bar', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.click(screen.getByRole('radio', { name: 'Rejected 1' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: ['rejected'] }));
+    await waitFor(() => expect(asked.at(-1)?.status).toEqual(['rejected']));
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+    expect(screen.queryByText('Amal Haddad')).toBeNull();
+  });
+
+  it('returns to every status when All is picked', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['new'])}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.click(screen.getByRole('radio', { name: 'All 3' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(asked.at(-1)?.status).toEqual([]));
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+  });
+
+  it('asks for every verdict until the reader says otherwise', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    await renderApp(`/jobs/${JOB.id}`);
+
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
+      true,
+    );
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: All verdicts');
+  });
+
+  it('counts every verdict, narrowed by what the Pipeline filter is hiding', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['new'])}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await openScreening(user);
+
+    expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 1');
+    expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
+    expect(checkItem('Pending')).toHaveAccessibleName('Pending, 0');
+    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
+    expect(checkItem('Qualified')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('narrows to one verdict and says so on the trigger', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(
+      `/jobs/${JOB.id}?screening=${inUrl(['qualified', 'review_required'])}`,
+    );
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await openScreening(user);
+    await user.click(checkItem('Review required'));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ screening: ['qualified'] }));
+    await waitFor(() => expect(asked.at(-1)?.qualification_status).toEqual(['qualified']));
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: Qualified');
+  });
+
+  it('will not let the last checked verdict be unchecked', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL]));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await openScreening(user);
+
+    expect(checkItem('Qualified')).toHaveAttribute('aria-disabled', 'true');
+    expect(checkItem('Pending')).not.toHaveAttribute('aria-disabled');
+  });
+
+  it('puts every verdict back when All verdicts is picked', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await openScreening(user);
+    await user.click(screen.getByRole('menuitem', { name: 'All verdicts' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ screening: EVERY_VERDICT }));
+    await waitFor(() => expect(asked.at(-1)?.qualification_status).toEqual(EVERY_VERDICT));
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: All verdicts');
   });
 
   it('sends both filters to the API at once and leaves them in the address bar', async () => {
@@ -78,27 +251,27 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}`);
-
-    await user.click(await control('Screening').findByRole('button', { name: 'Review required' }));
-    await waitFor(() =>
-      expect(router.state.location.search).toEqual({ screening: 'review_required' }),
+    const { router, user } = await renderApp(
+      `/jobs/${JOB.id}?pipeline=${inUrl(['shortlisted'])}&screening=${inUrl([
+        'qualified',
+        'review_required',
+      ])}`,
     );
-    await waitFor(() =>
-      expect(asked.at(-1)).toEqual({ status: null, qualification_status: 'review_required' }),
-    );
+    expect(await screen.findByText('Bassel Nasser')).toBeVisible();
 
-    await user.click(control('Pipeline').getByRole('button', { name: 'Shortlisted' }));
+    await openScreening(user);
+    await user.click(checkItem('Qualified'));
+
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
-        screening: 'review_required',
-        pipeline: 'shortlisted',
+        pipeline: ['shortlisted'],
+        screening: ['review_required'],
       }),
     );
     await waitFor(() =>
       expect(asked.at(-1)).toEqual({
-        status: 'shortlisted',
-        qualification_status: 'review_required',
+        status: ['shortlisted'],
+        qualification_status: ['review_required'],
       }),
     );
 
@@ -114,15 +287,16 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    await renderApp(`/jobs/${JOB.id}?pipeline=rejected&screening=disqualified`);
+    await renderApp(
+      `/jobs/${JOB.id}?pipeline=${inUrl(['rejected'])}&screening=${inUrl(['disqualified'])}`,
+    );
 
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
     expect(screen.queryByText('Amal Haddad')).toBeNull();
-    expect(segment('Screening', 'Disqualified')).toHaveAttribute('aria-pressed', 'true');
-    expect(segment('Pipeline', 'Rejected')).toHaveAttribute('aria-pressed', 'true');
-    expect(segment('Screening', 'All verdicts')).toHaveAttribute('aria-pressed', 'false');
-    expect(asked.every((one) => one.status === 'rejected')).toBe(true);
-    expect(asked.every((one) => one.qualification_status === 'disqualified')).toBe(true);
+    expect(screen.getByRole('radio', { name: 'Rejected 1' })).toBeChecked();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: Disqualified');
+    expect(asked.every((one) => one.status.join() === 'rejected')).toBe(true);
+    expect(asked.every((one) => one.qualification_status.join() === 'disqualified')).toBe(true);
   });
 
   it('leaves the other filter alone when only one is set', async () => {
@@ -133,22 +307,25 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    await renderApp(`/jobs/${JOB.id}?screening=qualified`);
+    await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
-    expect(asked.every((one) => one.status === null)).toBe(true);
-    expect(asked.every((one) => one.qualification_status === 'qualified')).toBe(true);
-    expect(segment('Pipeline', 'All statuses')).toHaveAttribute('aria-pressed', 'true');
+    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(asked.every((one) => one.qualification_status.join() === 'qualified')).toBe(true);
+    expect(screen.getByRole('radio', { name: 'All 1' })).toBeChecked();
   });
 
   it('drops a filter the platform cannot honour rather than failing the page', async () => {
     const asked: AskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL], asked));
 
-    await renderApp(`/jobs/${JOB.id}?pipeline=on-a-yacht`);
+    await renderApp(`/jobs/${JOB.id}?pipeline=on-a-yacht&screening=on-a-yacht`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
-    expect(asked.every((one) => one.status === null)).toBe(true);
+    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
+      true,
+    );
   });
 
   it('takes the reader to the Application the row stands for', async () => {
@@ -161,7 +338,7 @@ describe("a Job's Applications tab", () => {
 
     const { router, user } = await renderApp(`/jobs/${JOB.id}`);
 
-    await user.click(await screen.findByRole('button', { name: "Open Amal Haddad's Application" }));
+    await user.click(await screen.findByRole('link', { name: "Open Amal Haddad's Application" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${AMAL.id}`));
   });
@@ -251,7 +428,9 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=hired&screening=pending`);
+    const { router, user } = await renderApp(
+      `/jobs/${JOB.id}?pipeline=${inUrl(['new'])}&screening=${inUrl(['review_required'])}`,
+    );
 
     expect(
       await screen.findByText('No Application on this Job matches both filters.'),
@@ -260,7 +439,7 @@ describe("a Job's Applications tab", () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({}));
-    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
   });
 
   it('counts the filters it blames an empty view on', async () => {
@@ -270,7 +449,7 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=hired`);
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['hired'])}`);
 
     expect(
       await screen.findByText('No Application on this Job matches that filter.'),
@@ -289,18 +468,25 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}?screening=qualified`);
+    const { router, user } = await renderApp(
+      `/jobs/${JOB.id}?pipeline=${inUrl(['new'])}&screening=${inUrl(['qualified'])}`,
+    );
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await user.click(screen.getByRole('tab', { name: 'Tracked links' }));
     await waitFor(() =>
-      expect(router.state.location.search).toEqual({ tab: 'links', screening: 'qualified' }),
+      expect(router.state.location.search).toEqual({
+        tab: 'links',
+        pipeline: ['new'],
+        screening: ['qualified'],
+      }),
     );
 
     await user.click(screen.getByRole('tab', { name: 'Applications' }));
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
-    expect(segment('Screening', 'Qualified')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('radio', { name: 'New 1' })).toBeChecked();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: Qualified');
   });
 });

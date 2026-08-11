@@ -1,7 +1,11 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { z } from 'zod';
-import { PIPELINE_STATUSES, SCREENING_VERDICTS } from '@/features/applications/application';
-import type { ApplicationFilters } from '@/features/applications/hooks/use-job-applications';
+import type { ApplicationSummary } from '@/features/applications/application';
+import {
+  applicationsAddress,
+  jobApplicationsAddress,
+  jobApplicationsReading,
+} from '@/features/applications/reading';
 import {
   JobDetailPage,
   type JobDetailTab,
@@ -9,17 +13,14 @@ import {
 } from '@/features/jobs/components/job-detail-page';
 import { ensureJob } from '@/features/jobs/hooks/use-job';
 import { warmReferenceData } from '@/features/reference/reference-queries';
+import { originAddress } from '@/features/shell/origin';
 import { pageTitle } from '@/lib/page-title';
 
 const jobTab = z.enum(['applications', 'criteria', 'links']);
-const pipelineStatus = z.enum(PIPELINE_STATUSES);
-const screeningVerdict = z.enum(SCREENING_VERDICTS);
 
 export const Route = createFileRoute('/_workspace/jobs_/$jobId')({
-  validateSearch: z.object({
+  validateSearch: jobApplicationsReading.extend({
     tab: jobTab.optional().catch(undefined),
-    pipeline: pipelineStatus.optional().catch(undefined),
-    screening: screeningVerdict.optional().catch(undefined),
   }),
   loader: async ({ context, params }) => {
     const [job] = await Promise.all([
@@ -35,8 +36,14 @@ export const Route = createFileRoute('/_workspace/jobs_/$jobId')({
 function JobRoute() {
   const job = Route.useLoaderData();
   const { jobId } = Route.useParams();
-  const { tab = 'applications', pipeline, screening } = Route.useSearch();
+  const { tab = 'applications', ...filters } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const router = useRouter();
+  const applicationLocation = (application: ApplicationSummary) => ({
+    to: '/applications/$applicationId' as const,
+    params: { applicationId: application.id },
+    search: { ...applicationsAddress(filters), from: originAddress({ at: 'job' }) },
+  });
 
   if (!job) return <JobNotFound />;
 
@@ -47,16 +54,12 @@ function JobRoute() {
       onTabChange={(nextTab: JobDetailTab) =>
         void navigate({ search: (prev) => ({ ...prev, tab: nextTab }), replace: true })
       }
-      filters={{ pipeline, screening }}
-      onFiltersChange={(filters: ApplicationFilters) =>
-        void navigate({ search: (prev) => ({ ...prev, ...filters }) })
+      filters={filters}
+      onFiltersChange={(next) =>
+        void navigate({ search: (prev) => ({ ...prev, ...jobApplicationsAddress(next) }) })
       }
-      onApplicationOpen={(application) =>
-        void navigate({
-          to: '/applications/$applicationId',
-          params: { applicationId: application.id },
-        })
-      }
+      onApplicationOpen={(application) => void navigate(applicationLocation(application))}
+      applicationHref={(application) => router.buildLocation(applicationLocation(application)).href}
     />
   );
 }

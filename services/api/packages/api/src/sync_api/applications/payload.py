@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
+from typing import Final
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -112,10 +114,33 @@ class ApplicationSummary(BaseModel):
     candidate_name: str = Field(description="The Snapshot's name: who they applied as.")
     headline: OptionalLine = None
     location: OptionalLine = None
+    canonical_role: OptionalLine = Field(
+        default=None,
+        description="What the Candidate's Canonical role was called the day they applied. Null "
+        "when they claimed none, which is when a list has only the `headline` to name them by.",
+    )
+    total_experience_years: int = Field(
+        description="Whole years of work as the profile stood the day this was sent — the same "
+        "number Screening measured against the Job's minimum.",
+    )
     status: ApplicationStatus
     qualification_status: QualificationStatus = Field(description="The Screening verdict.")
     applied_at: datetime
     updated_at: datetime
+
+
+class ApplicationStatusCount(BaseModel):
+    """How many Applications of the list being read stand in one Pipeline status."""
+
+    status: ApplicationStatus
+    count: int
+
+
+class ApplicationVerdictCount(BaseModel):
+    """How many of the Job's Applications the Screening verdict decided one way."""
+
+    verdict: QualificationStatus
+    count: int
 
 
 class ApplicationSummaryPage(BaseModel):
@@ -124,6 +149,20 @@ class ApplicationSummaryPage(BaseModel):
     items: list[ApplicationSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
+    )
+    status_counts: list[ApplicationStatusCount] = Field(
+        default_factory=list,
+        description="Every Pipeline status the platform has, in Pipeline order, each with how "
+        "many of the Job's Applications stand in it. Counted before `status` narrows anything, "
+        "so a filter that hides some of them still says how many it is hiding. The other "
+        "filters do narrow it: the counts describe the list the reader is looking at.",
+    )
+    verdict_counts: list[ApplicationVerdictCount] = Field(
+        default_factory=list,
+        description="Every Screening verdict the platform has, each with how many of the Job's "
+        "Applications it decided that way. Counted before `qualification_status` narrows "
+        "anything, so a filter that hides some of them still says how much it is hiding. The "
+        "other filters do narrow it: the counts describe the list the reader is looking at.",
     )
 
 
@@ -145,12 +184,58 @@ class TenantApplicationSummary(ApplicationSummary):
     job: ApplicationJob
 
 
+class ReceivedWithin(StrEnum):
+    """The rolling windows the tenant's Application list can be narrowed to.
+
+    Rolling rather than calendar, exactly as the Dashboard's counts are: `7d` is the last 168
+    hours rather than this week so far. A Tenant has no timezone, so a calendar week would have
+    to be computed in one, and the wrong one turns a Recruiter's morning into yesterday.
+    """
+
+    DAY = "24h"
+    WEEK = "7d"
+    MONTH = "30d"
+
+
+RECEIVED_WITHIN_DAYS: Final[dict[ReceivedWithin, int]] = {
+    ReceivedWithin.DAY: 1,
+    ReceivedWithin.WEEK: 7,
+    ReceivedWithin.MONTH: 30,
+}
+
+
+class ApplicationSort(StrEnum):
+    """The orders the tenant's Application list can be read in.
+
+    Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
+    spanning Jobs has no number of its own to be busiest by.
+    """
+
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
 class TenantApplicationPage(BaseModel):
-    """One page of the tenant's Applications, newest first across every Job."""
+    """One page of the tenant's Applications, in the order that was asked for, across every Job."""
 
     items: list[TenantApplicationSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
+    )
+    status_counts: list[ApplicationStatusCount] = Field(
+        default_factory=list,
+        description="Every Pipeline status the platform has, in Pipeline order, each with how "
+        "many of the tenant's Applications stand in it. Counted before `status` narrows "
+        "anything, so a filter that hides some of them still says how many it is hiding. The "
+        "other filters do narrow it: the counts describe the list the reader is looking at.",
+    )
+    verdict_counts: list[ApplicationVerdictCount] = Field(
+        default_factory=list,
+        description="Every Screening verdict the platform has, each with how many of the "
+        "tenant's Applications it decided that way. Counted before `qualification_status` "
+        "narrows anything, so a filter that hides some of them still says how much it is "
+        "hiding. The other filters do narrow it: the counts describe the list the reader is "
+        "looking at.",
     )
 
 
@@ -162,6 +247,11 @@ class ApplicationSnapshot(BaseModel):
     headline: OptionalLine = None
     summary: OptionalParagraph = None
     location: OptionalLine = None
+    canonical_role: OptionalLine = Field(
+        default=None,
+        description="What the Candidate's Canonical role was called the day they applied. Null "
+        "when they claimed none.",
+    )
     unmapped_skills: list[str] = Field(
         default_factory=list,
         description="Skills the candidate claims that the platform has no Canonical name for. "
@@ -195,7 +285,11 @@ class ScreeningVerdict(BaseModel):
 
     status: QualificationStatus
     reason: str | None = Field(
-        default=None, description="Which criteria decided it. Null until Screening has run."
+        default=None,
+        description=(
+            "Which criteria decided it. Null while the verdict is `pending`, and null on a "
+            "`qualified` one too: a reason lists what fell short, and nothing did."
+        ),
     )
 
 
@@ -229,11 +323,29 @@ class ReviewedJob(BaseModel):
     title: str
 
 
+class ReviewedCandidate(BaseModel):
+    """Who applied, as they stand today — and only the two facts a Snapshot cannot freeze.
+
+    Everything a Recruiter judges by is read off the `snapshot`. These two are not there
+    because freezing them would be a lie: only the authentication store holds a confirmed
+    address, and an avatar is a file that moves rather than a value that was true once.
+    """
+
+    id: UUID
+    email: str | None = Field(
+        default=None,
+        description="Read from the authentication store, which is the only place a confirmed "
+        "address lives. Null when the account has none.",
+    )
+    avatar_url: str | None = None
+
+
 class ApplicationReview(BaseModel):
     """One Application, whole: everything reviewing it takes, and no other tool."""
 
     id: UUID
     job: ReviewedJob
+    candidate: ReviewedCandidate
     status: ApplicationStatus
     screening: ScreeningVerdict
     snapshot: ApplicationSnapshot

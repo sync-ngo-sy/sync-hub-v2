@@ -27,6 +27,10 @@ It applies everything in `supabase/migrations` to a fresh database. To reset it 
 supabase db reset
 ```
 
+Migration files may be folded while a change is still being consolidated. After pulling such a
+change, reset the local stack so the database is replayed from the current migration set; applying
+only the edited file on top of an older local history does not reproduce a fresh environment.
+
 Read the generated URLs and keys at any time with:
 
 ```bash
@@ -131,7 +135,7 @@ pnpm dev
 ```
 
 None of the portals requires a variable for local development. The recruiter landing offers the
-Sync team's WhatsApp number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to
+Sync Hub team's WhatsApp number and email from `VITE_CONTACT_WHATSAPP` and `VITE_CONTACT_EMAIL`; to
 see those links, copy `apps/recruiter-portal/.env.example` to `.env.local`. Left unset, the
 landing just offers no contact — nothing else changes.
 
@@ -220,7 +224,7 @@ clicking around survives it.
 One password for every seeded account, on all three portals:
 
 ```text
-sync-demo-2026
+Sync-Demo-2026
 ```
 
 The three to start from:

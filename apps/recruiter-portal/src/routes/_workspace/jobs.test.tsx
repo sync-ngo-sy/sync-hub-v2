@@ -1,5 +1,5 @@
 import type { components } from '@sync/api-client';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { listsJobApplications } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
@@ -11,14 +11,13 @@ import {
 } from '@/features/jobs/testing/fixtures';
 import {
   changesJob,
-  createsJob,
   getsJob,
   listsJobs,
   managesJobs,
   pagesJobs,
   refusesJobChange,
-  refusesJobCreation,
   refusesJobEdit,
+  sortsJobs,
 } from '@/features/jobs/testing/handlers';
 import { RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -34,7 +33,7 @@ describe('Jobs', () => {
     );
 
     const { router, user } = await renderApp('/jobs');
-    await user.click(await screen.findByRole('button', { name: 'Open Field Coordinator' }));
+    await user.click(await screen.findByRole('link', { name: 'Open Field Coordinator' }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/jobs/${FIELD_COORDINATOR.id}`),
@@ -49,15 +48,99 @@ describe('Jobs', () => {
 
     const { router, user } = await renderApp('/jobs?status=published');
 
-    expect(screen.getByRole('tab', { name: 'Published' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: /^Published/ })).toHaveAttribute('data-active');
     expect(await screen.findByText('Field Coordinator')).toBeVisible();
     expect(screen.queryByText('Programme Officer')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: 'Draft' }));
+    await user.click(screen.getByRole('tab', { name: /^Draft/ }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ status: 'draft' }));
     expect(await screen.findByText('Programme Officer')).toBeVisible();
     expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+  });
+
+  it('shows stable backend totals beside every status tab', async () => {
+    const closed = { ...FIELD_COORDINATOR, id: 'closed', status: 'closed' as const };
+    const archived = { ...PROGRAMME_OFFICER, id: 'archived', status: 'archived' as const };
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER, closed, archived]),
+    );
+
+    await renderApp('/jobs?status=published');
+
+    expect(screen.getByRole('tab', { name: 'All 4' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Draft 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published 1' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: 'Closed 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Archived 1' })).toBeVisible();
+  });
+
+  it('searches Job titles through the URL and keeps total counts unchanged', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
+
+    const { router, user } = await renderApp('/jobs');
+    await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'programme');
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: 'programme' }));
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+    expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'All 2' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Draft 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published 1' })).toBeVisible();
+  });
+
+  it('shows the views and the applications each Job has drawn', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
+
+    await renderApp('/jobs');
+
+    const busy = within(await screen.findByRole('row', { name: /Field Coordinator/ }));
+    expect(busy.getByText('764')).toBeVisible();
+    expect(busy.getByText('18')).toBeVisible();
+
+    const quiet = within(screen.getByRole('row', { name: /Programme Officer/ }));
+    expect(quiet.getAllByText('0')).toHaveLength(2);
+  });
+
+  it('keeps the chosen order in the URL and sends it to the Jobs API', async () => {
+    const orders: string[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...sortsJobs(
+        {
+          newest: [PROGRAMME_OFFICER, FIELD_COORDINATOR],
+          applications: [FIELD_COORDINATOR, PROGRAMME_OFFICER],
+        },
+        (sort) => orders.push(sort),
+      ),
+    );
+
+    const { router, user } = await renderApp('/jobs');
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+
+    await user.click(screen.getByLabelText('Order'));
+    await user.click(await screen.findByRole('option', { name: 'Most applications' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'applications' }));
+    await waitFor(() => expect(orders).toContain('applications'));
+    await waitFor(() =>
+      expect(screen.getAllByRole('row')[1]).toHaveTextContent('Field Coordinator'),
+    );
+  });
+
+  it('reads an order out of the URL rather than assuming the newest', async () => {
+    const orders: string[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...sortsJobs({ oldest: [PROGRAMME_OFFICER] }, (sort) => orders.push(sort)),
+    );
+
+    await renderApp('/jobs?sort=oldest');
+
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+    expect(orders).toContain('oldest');
+    expect(orders).not.toContain('newest');
   });
 
   it('loads the next cursor page on demand', async () => {
@@ -73,150 +156,14 @@ describe('Jobs', () => {
     expect(screen.getByText('2 shown')).toBeVisible();
   });
 
-  it('validates a new draft beside the fields before sending it', async () => {
+  it('sends a recruiter creating a Job to the full-page wizard', async () => {
     server.use(...signedInAs(RECRUITER), ...listsJobs([]));
 
-    const { user } = await renderApp('/jobs');
+    const { router, user } = await renderApp('/jobs');
     await user.click(screen.getByRole('button', { name: 'Create your first job' }));
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
-    expect(await screen.findByText('Enter a job title.')).toBeVisible();
-    expect(screen.getByText('Enter a job description.')).toBeVisible();
-  });
-
-  it('creates a Job as a draft through the API', async () => {
-    const onCreate = vi.fn();
-    server.use(
-      ...signedInAs(RECRUITER),
-      ...listsJobs([]),
-      ...createsJob(FIELD_COORDINATOR_VIEW, onCreate),
-    );
-
-    const { user } = await renderApp('/jobs');
-    await user.click(screen.getByRole('button', { name: 'Create job' }));
-    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
-    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
-    await user.click(screen.getByLabelText('Location'));
-    expect(await screen.findByText('Syria')).toBeVisible();
-    await user.click(screen.getByRole('option', { name: 'Aleppo' }));
-    await user.click(screen.getByLabelText('Employment type'));
-    await user.click(await screen.findByRole('option', { name: 'Full time' }));
-    await user.click(screen.getByLabelText('Work mode'));
-    await user.click(await screen.findByRole('option', { name: 'On-site' }));
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-
-    await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledExactlyOnceWith({
-        title: 'Field Coordinator',
-        description: 'Coordinate field teams.',
-        location_key: 'sy-aleppo',
-        employment_type: 'full_time',
-        work_mode: 'onsite',
-        expires_at: null,
-      }),
-    );
-    expect(await screen.findByText('Draft saved')).toBeVisible();
-  });
-
-  it('offers employment type and work mode as fixed sets, never as text boxes', async () => {
-    server.use(...signedInAs(RECRUITER), ...listsJobs([]));
-
-    const { user } = await renderApp('/jobs');
-    await user.click(screen.getByRole('button', { name: 'Create job' }));
-
-    for (const [field, choices] of [
-      [
-        'Employment type',
-        ['Full time', 'Part time', 'Contract', 'Temporary', 'Internship', 'Volunteer'],
-      ],
-      ['Work mode', ['On-site', 'Hybrid', 'Remote']],
-    ] as const) {
-      const control = screen.getByLabelText(field);
-      expect(control.tagName).not.toBe('INPUT');
-      await user.click(control);
-      const offered = await screen.findAllByRole('option');
-      expect(offered.map((option) => option.textContent)).toEqual(['Not set', ...choices]);
-      await user.keyboard('{Escape}');
-    }
-  });
-
-  it('leaves a Job free to be remote and still say where its team is', async () => {
-    const onCreate = vi.fn();
-    server.use(
-      ...signedInAs(RECRUITER),
-      ...listsJobs([]),
-      ...createsJob(FIELD_COORDINATOR_VIEW, onCreate),
-    );
-
-    const { user } = await renderApp('/jobs');
-    await user.click(screen.getByRole('button', { name: 'Create job' }));
-    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
-    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
-    await user.click(screen.getByLabelText('Location'));
-    expect(await screen.findByText('Syria')).toBeVisible();
-    await user.click(screen.getByRole('option', { name: 'Aleppo' }));
-    await user.click(screen.getByLabelText('Work mode'));
-    await user.click(await screen.findByRole('option', { name: 'Remote' }));
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-
-    await waitFor(() =>
-      expect(onCreate).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ location_key: 'sy-aleppo', work_mode: 'remote' }),
-      ),
-    );
-  });
-
-  it('puts a server rejection beneath the new Job field it names', async () => {
-    const rejected: components['schemas']['ValidationProblemDetail'] = {
-      type: 'urn:sync:problem:validation',
-      title: 'Invalid request',
-      status: 422,
-      detail: 'One field needs attention.',
-      errors: [
-        {
-          location: 'body.title',
-          message: 'A Job with this title already exists.',
-          type: 'value_error',
-        },
-      ],
-    };
-    server.use(...signedInAs(RECRUITER), ...listsJobs([]), ...refusesJobCreation(rejected));
-
-    const { user } = await renderApp('/jobs');
-    await user.click(screen.getByRole('button', { name: 'Create job' }));
-    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
-    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-
-    expect(await screen.findByText('A Job with this title already exists.')).toBeVisible();
-  });
-
-  it('puts a rejection of either fixed set beneath the field it names', async () => {
-    const rejected: components['schemas']['ValidationProblemDetail'] = {
-      type: 'urn:sync:problem:validation',
-      title: 'Invalid request',
-      status: 422,
-      detail: 'Two fields need attention.',
-      errors: [
-        {
-          location: 'body.employment_type',
-          message: 'That is not an employment type.',
-          type: 'enum',
-        },
-        { location: 'body.work_mode', message: 'That is not a work mode.', type: 'enum' },
-      ],
-    };
-    server.use(...signedInAs(RECRUITER), ...listsJobs([]), ...refusesJobCreation(rejected));
-
-    const { user } = await renderApp('/jobs');
-    await user.click(screen.getByRole('button', { name: 'Create job' }));
-    await user.type(screen.getByLabelText('Title'), 'Field Coordinator');
-    await user.type(screen.getByLabelText('Description'), 'Coordinate field teams.');
-    await user.click(screen.getByRole('button', { name: 'Save draft' }));
-
-    expect(await screen.findByText('That is not an employment type.')).toBeVisible();
-    expect(screen.getByText('That is not a work mode.')).toBeVisible();
-    expect(screen.queryByText("This Job couldn't be saved.")).not.toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/jobs/new'));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Create a Job' })).toBeVisible();
   });
 
   it('loads a Job and saves its edits through the API', async () => {
@@ -316,7 +263,7 @@ describe('Jobs', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalledExactlyOnceWith({ status: 'published' }));
     expect(await screen.findByText('Job published')).toBeVisible();
 
-    await user.click(screen.getByRole('tab', { name: 'Published' }));
+    await user.click(screen.getByRole('tab', { name: /^Published/ }));
     expect(await screen.findByText('Programme Officer')).toBeVisible();
   });
 

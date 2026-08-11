@@ -4,8 +4,6 @@ import { Badge } from '@sync/ui/components/ui/badge';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Star, Users } from 'lucide-react';
-import { useLanguages } from '@/features/reference/hooks/use-languages';
-import { languageName } from '@/features/reference/options';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { useTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
 import { problemMessage } from '@/lib/api-problem';
@@ -35,7 +33,6 @@ interface CandidateResultsProps {
 
 export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
   const matches = useCandidateSearch(filters);
-  const languages = useLanguages();
   const pool = useTalentPool();
 
   if (!isAsked(filters)) {
@@ -88,7 +85,6 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
             <CandidateResult
               match={match}
               filters={filters}
-              languageName={languageName(languages.data, match.preferred_language_code)}
               saved={pool.holds(match.candidate_id)}
             />
           </li>
@@ -98,8 +94,6 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
   );
 }
 
-/** The API answers one page and offers no cursor, so a full page is a ceiling rather than a
- * total, and saying "20 matches" of an unknown many would be a lie. */
 function howMany(shown: number): string {
   if (shown >= SEARCH_LIMIT) {
     return `The closest ${shown}. Narrow the search to reach past them.`;
@@ -110,13 +104,12 @@ function howMany(shown: number): string {
 interface CandidateResultProps {
   match: MatchedCandidate;
   filters: CandidateSearchFilters;
-  languageName: string | null;
   saved: boolean;
 }
 
-function CandidateResult({ match, filters, languageName, saved }: CandidateResultProps) {
+function CandidateResult({ match, filters, saved }: CandidateResultProps) {
   const card = matchedCard(match);
-  const meta = candidateMeta(card, languageName);
+  const meta = candidateMeta(card);
   const evidence = matchEvidence(match);
 
   return (
@@ -125,11 +118,11 @@ function CandidateResult({ match, filters, languageName, saved }: CandidateResul
       params={{ candidateId: card.id }}
       search={searchAddress(filters)}
       aria-label={card.fullName}
-      className="block space-y-3 rounded-lg border border-border p-4 outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="block space-y-3 rounded-lg border border-border p-4 outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-start gap-3">
-          <CandidateAvatar card={card} />
+          <CandidateAvatar fullName={card.fullName} avatarUrl={card.avatarUrl} />
           <div className="min-w-0 space-y-1">
             <p className="text-dense font-medium text-foreground">{card.fullName}</p>
             {meta ? <p className="text-meta text-muted-foreground">{meta}</p> : null}

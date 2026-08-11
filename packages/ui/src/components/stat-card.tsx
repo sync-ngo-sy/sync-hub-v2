@@ -1,22 +1,13 @@
 import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { cardSurface } from '@sync/ui/lib/card-surface';
+import { TREND_TONE, type TrendTone } from '@sync/ui/lib/trend-tone';
 import { cn } from '@sync/ui/lib/utils';
-import { type LucideIcon, TrendingUp } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 
-type TrendTone = 'positive' | 'caution' | 'neutral';
-
-const TREND_TONE: Record<TrendTone, { color: string; icon?: LucideIcon }> = {
-  positive: { color: 'text-success-foreground', icon: TrendingUp },
-  caution: { color: 'text-warning-foreground' },
-  neutral: { color: 'text-muted-foreground' },
-};
-
-/** The card StatCard and its skeleton share, so the two cannot drift apart. */
 export function StatCardShell({ className, children, ...props }: ComponentProps<typeof Card>) {
   return (
-    <Card className={cn(cardSurface, 'gap-0', className)} {...props}>
-      <CardContent className="flex flex-col gap-2.5">{children}</CardContent>
+    <Card className={cn(cardSurface, 'gap-0 py-4', className)} {...props}>
+      <CardContent className="flex flex-col gap-2.5 px-[18px]">{children}</CardContent>
     </Card>
   );
 }
@@ -24,8 +15,6 @@ export function StatCardShell({ className, children, ...props }: ComponentProps<
 interface StatCardProps {
   label: string;
   value: ReactNode;
-  /** A `positive` tone carries the trend icon, so it never rests on color; the others say it
-   * in words, as the mockup does. */
   trend?: { label: string; tone?: TrendTone };
   className?: string;
 }
@@ -36,7 +25,9 @@ export function StatCard({ label, value, trend, className }: StatCardProps) {
   return (
     <StatCardShell className={className}>
       <span className="text-meta text-muted-foreground">{label}</span>
-      <span className="font-heading text-figure tabular-nums text-foreground">{value}</span>
+      <span className="font-mono text-figure font-semibold tabular-nums text-foreground">
+        {value}
+      </span>
       {trend ? (
         <span className={cn('flex items-center gap-1.5 text-xs', color)}>
           {TrendIcon ? <TrendIcon aria-hidden="true" className="size-3.5" /> : null}

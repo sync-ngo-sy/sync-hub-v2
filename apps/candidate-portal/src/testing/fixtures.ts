@@ -65,14 +65,12 @@ const PHARMACIST: components['schemas']['PublicJobSummary'] = {
   created_at: '2026-07-27T09:00:00Z',
 };
 
-/** Newest first, as the API returns them: the third carries neither location nor type. */
 export const PUBLIC_JOBS: components['schemas']['PublicJobSummary'][] = [
   FRONTEND_DEVELOPER,
   FIELD_COORDINATOR,
   PHARMACIST,
 ];
 
-/** The next page the API would hand back, so Load-more has somewhere to go. */
 export const MORE_PUBLIC_JOBS: components['schemas']['PublicJobSummary'][] = [
   {
     id: '00000000-0000-4000-8000-000000000104',
@@ -87,7 +85,6 @@ export const MORE_PUBLIC_JOBS: components['schemas']['PublicJobSummary'][] = [
   },
 ];
 
-/** The first summary, read whole: criteria, questions and all. */
 export const PUBLIC_JOB: components['schemas']['PublicJob'] = {
   ...FRONTEND_DEVELOPER,
   expires_at: '2026-09-30T09:00:00Z',
@@ -117,7 +114,6 @@ export const PUBLIC_JOB: components['schemas']['PublicJob'] = {
   ],
 };
 
-/** A Job with nothing to ask for: the criteria block has to stay off the page. */
 export const BARE_PUBLIC_JOB: components['schemas']['PublicJob'] = {
   ...PHARMACIST,
   description: 'Dispensing at our Damascus branch.',
@@ -282,7 +278,6 @@ export const CV_LIMIT_REACHED: components['schemas']['CvConflictProblemDetail'] 
   detail: 'You can keep 5 CVs at a time. Delete one you no longer need first.',
 };
 
-/** The API says the same thing two ways, depending on what the unread CV was asked to do. */
 export const CV_NOT_READY_FOR_DRAFT: components['schemas']['ProblemDetail'] = {
   type: 'urn:sync:problem:cv-not-ready',
   title: 'Conflict',
@@ -298,7 +293,6 @@ export const CV_NOT_READY_FOR_CURRENT: components['schemas']['ProblemDetail'] = 
     'This CV has not been read yet, so it cannot be the current one. Wait for it to be processed, or pick one that already has been.',
 };
 
-/** A profile with something in every section, so a test can see all of them load. */
 export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   full_name: CANDIDATE.full_name,
   phone: '+963 11 555 0100',
@@ -306,7 +300,6 @@ export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
   canonical_role_key: 'project-manager',
-  preferred_language_code: 'ar',
   is_searchable: false,
   total_experience_years: 6,
   experiences: [
@@ -353,17 +346,11 @@ export const EMPTY_PROFILE: components['schemas']['CandidateProfile'] = {
   total_experience_years: 0,
 };
 
-/**
- * What one CV says. The API never reads a place or a setting off a document: it copies
- * `location_key`, `preferred_language_code` and `is_searchable` from the candidate as *saved*,
- * and this draft is one for a candidate who had none of the three saved yet.
- */
 export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   full_name: 'Lina Khoury',
   is_searchable: false,
   headline: 'Backend engineer, 8 years',
   location_key: null,
-  preferred_language_code: null,
   experiences: [
     {
       job_title: 'Backend engineer',
@@ -385,7 +372,6 @@ function aNotification(
   return { read_at: null, created_at: '2026-07-31T09:00:00Z', ...over };
 }
 
-/** About {@link FAILED_CV}, so the deep link lands on a CV the CVs page can actually show. */
 export const CV_FAILURE_NOTIFICATION = aNotification({
   id: '00000000-0000-4000-8000-000000000301',
   payload: {
@@ -408,7 +394,6 @@ export const MOVED_NOTIFICATION = aNotification({
   },
 });
 
-/** The one already opened, so read and unread can be told apart on screen. */
 export const READ_NOTIFICATION = aNotification({
   id: '00000000-0000-4000-8000-000000000303',
   created_at: '2026-07-29T09:00:00Z',
@@ -423,14 +408,12 @@ export const READ_NOTIFICATION = aNotification({
   },
 });
 
-/** Newest first, as the API returns them: both payload types, one of them already read. */
 export const NOTIFICATIONS: Notification[] = [
   CV_FAILURE_NOTIFICATION,
   MOVED_NOTIFICATION,
   READ_NOTIFICATION,
 ];
 
-/** The next page the API would hand back, so Load-more has somewhere to go. */
 export const MORE_NOTIFICATIONS: Notification[] = [
   aNotification({
     id: '00000000-0000-4000-8000-000000000304',
@@ -446,7 +429,6 @@ export const MORE_NOTIFICATIONS: Notification[] = [
   }),
 ];
 
-/** A slice of the taxonomy, in the category-then-name order the API answers in. */
 export const CANONICAL_SKILLS: components['schemas']['CanonicalSkill'][] = [
   { name: 'PostgreSQL', category: 'Databases' },
   { name: 'Redis', category: 'Databases' },
@@ -545,7 +527,6 @@ export const WEAK_PASSWORD: components['schemas']['ProblemDetail'] = {
   detail: "That password does not meet the identity provider's requirements.",
 };
 
-/** The shape of a rejection that belongs to no field the reader can see. */
 export const MALFORMED_REQUEST: components['schemas']['ValidationProblemDetail'] = {
   type: 'urn:sync:problem:validation-error',
   title: 'Unprocessable Entity',

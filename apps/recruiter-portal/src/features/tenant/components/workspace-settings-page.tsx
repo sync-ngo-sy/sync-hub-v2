@@ -1,7 +1,9 @@
 import { PageHeader } from '@sync/ui/components/page-header';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
+import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
 import { TagVocabulary } from '@/features/crm/components/tag-vocabulary';
+import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { TeamRoster } from '@/features/team/components/team-roster';
 import { WorkspaceIdentity } from './workspace-identity';
 
@@ -15,18 +17,29 @@ interface WorkspaceSettingsPageProps {
 
 export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: WorkspaceSettingsPageProps) {
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Settings"
-        description="Your team, the Tags they file by, and the Tenant they all work for."
-      />
+    <Tabs
+      className="gap-0"
+      value={tab}
+      onValueChange={(value) => onTabChange(value as SettingsTab)}
+    >
+      <WorkspaceHeader withTabs>
+        <PageHeader
+          title="Settings"
+          description="Your team, the Tags they file by, and the Tenant they all work for."
+        />
+        <LineTabsList
+          label="Workspace settings"
+          value={tab}
+          tabs={[
+            { value: 'team', label: 'Team' },
+            { value: 'tags', label: 'Tags' },
+            { value: 'tenant', label: 'Tenant' },
+          ]}
+          className="-mb-px mt-5"
+        />
+      </WorkspaceHeader>
 
-      <Tabs value={tab} onValueChange={(value) => onTabChange(value as SettingsTab)}>
-        <TabsList aria-label="Workspace settings">
-          <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="tags">Tags</TabsTrigger>
-          <TabsTrigger value="tenant">Tenant</TabsTrigger>
-        </TabsList>
+      <div className="pt-(--space-section)">
         <TabsContent value="team">
           <WidgetBoundary name="The team">
             <TeamRoster profileId={profileId} />
@@ -42,7 +55,7 @@ export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: Workspace
             <WorkspaceIdentity />
           </WidgetBoundary>
         </TabsContent>
-      </Tabs>
-    </div>
+      </div>
+    </Tabs>
   );
 }

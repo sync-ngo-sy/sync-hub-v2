@@ -111,6 +111,10 @@ class Settings(BaseSettings):
     cv_max_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
 
+    #: What a candidate may hand us, not what we keep: every photo is re-encoded to one
+    #: small WebP before it is stored.
+    avatar_max_upload_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
+
     openai_api_key: SecretStr | None = None
     openai_cv_model: str = "gpt-4o-mini"
     openai_assessment_model: str = "gpt-4o-mini"
@@ -125,7 +129,7 @@ class Settings(BaseSettings):
     resend_api_key: SecretStr | None = None
     #: Resend's sandbox sender, which needs no verified domain. Every deployment that sends
     #: to a real address overrides it with one of its own.
-    email_from: str = "Sync <onboarding@resend.dev>"
+    email_from: str = "Sync Hub <onboarding@resend.dev>"
     email_timeout_seconds: int = Field(default=30, gt=0)
 
     #: Shared with the database webhook and the schedule that call the worker. Neither can

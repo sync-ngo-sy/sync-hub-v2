@@ -199,37 +199,69 @@ describe("a Job's Tracked links tab", () => {
     expect(rowOf('LinkedIn post').getByText('Live')).toBeVisible();
   });
 
-  it('charts the views each link brought, the busiest first', async () => {
+  it('charts every source of the views, the busiest first, Direct among them', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(JOB),
-      ...listsTrackedLinks([UNIVERSITY_BOARD, LINKEDIN_POST, WHATSAPP_GROUPS]),
+      ...listsTrackedLinks([UNIVERSITY_BOARD, LINKEDIN_POST, WHATSAPP_GROUPS], 100),
     );
 
     await renderApp(LINKS);
 
     expect(
       await screen.findByRole('img', {
-        name: 'Views per tracked link. LinkedIn post: 342 views. WhatsApp groups: 281 views. University board: 41 views.',
+        name: 'Views per source. LinkedIn post: 342 views, 45%. WhatsApp groups: 281 views, 37%. Direct: 100 views, 13%. University board: 41 views, 5%.',
       }),
     ).toBeInTheDocument();
   });
 
-  it('says the chart is waiting when no link has brought a view yet', async () => {
+  it('reports Direct as zero when every view arrived through a link', async () => {
+    const tracked = { ...JOB, view_count: 342 };
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(tracked),
+      ...listsTrackedLinks([LINKEDIN_POST]),
+    );
+
+    await renderApp(LINKS);
+
+    expect(
+      await screen.findByRole('img', {
+        name: 'Views per source. LinkedIn post: 342 views, 100%. Direct: 0 views, 0%.',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows each link as a share of everything the Job has drawn', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(JOB),
+      ...listsTrackedLinks([LINKEDIN_POST, WHATSAPP_GROUPS, UNIVERSITY_BOARD], 100),
+    );
+
+    await renderApp(LINKS);
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
+
+    expect(rowOf('LinkedIn post').getByText('45%')).toBeVisible();
+    expect(rowOf('WhatsApp groups').getByText('37%')).toBeVisible();
+    expect(rowOf('University board').getByText('5%')).toBeVisible();
+  });
+
+  it('says the chart is waiting when nobody has read the Job yet', async () => {
+    const unread = { ...JOB, view_count: 0 };
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(unread),
       ...listsTrackedLinks([{ ...LINKEDIN_POST, view_count: 0 }]),
     );
 
     await renderApp(LINKS);
 
     expect(
-      await screen.findByText(
-        'No views yet — the counts fill in as candidates open this Job through these links.',
-      ),
+      await screen.findByText('No views yet — the counts fill in as candidates open this Job.'),
     ).toBeVisible();
-    expect(screen.queryByRole('img', { name: /Views per tracked link/ })).toBeNull();
+    expect(screen.queryByRole('img', { name: /Views per source/ })).toBeNull();
+    expect(rowOf('LinkedIn post').getByText('—')).toBeVisible();
   });
 
   it('explains what a tracked link is for when the Job has none', async () => {
@@ -243,7 +275,7 @@ describe("a Job's Tracked links tab", () => {
         'A tracked link is a named address for this Job, so you can tell which channel brought which views.',
       ),
     ).toBeVisible();
-    expect(screen.queryByRole('img', { name: /Views per tracked link/ })).toBeNull();
+    expect(screen.queryByRole('img', { name: /Views per source/ })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Mint the first link' }));
     await user.type(screen.getByLabelText('Name'), 'Alumni newsletter');
@@ -251,6 +283,18 @@ describe("a Job's Tracked links tab", () => {
 
     const dialog = within(await screen.findByRole('dialog'));
     expect(await dialog.findByText('http://localhost:5173/l/MintedTok3n')).toBeVisible();
+  });
+
+  it('reports Direct traffic when the Job has no tracked links', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsTrackedLinks([], JOB.view_count));
+
+    await renderApp(LINKS);
+
+    expect(
+      await screen.findByRole('img', {
+        name: `Views per source. Direct: ${JOB.view_count} views, 100%.`,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('stands a skeleton in the table while the links are on the wire', async () => {

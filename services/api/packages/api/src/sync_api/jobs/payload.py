@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Annotated, Any, Final
 from uuid import UUID
 
@@ -192,6 +193,10 @@ class JobSummary(BaseModel):
         "unchanged by a later republish.",
     )
     application_count: int = Field(description="How many Applications this Job has received.")
+    view_count: int = Field(
+        description="How many times this Job's page has been read, through a Tracked link or "
+        "not. One browser reading it repeatedly counts once per half hour, per channel."
+    )
 
 
 class JobView(JobSummary):
@@ -205,12 +210,31 @@ class JobView(JobSummary):
     )
 
 
+class JobSort(StrEnum):
+    """The orders the tenant's own Jobs list can be read in."""
+
+    NEWEST = "newest"
+    OLDEST = "oldest"
+    APPLICATIONS = "applications"
+
+
+class JobStatusCount(BaseModel):
+    """How many of the Tenant's Jobs stand in one lifecycle status."""
+
+    status: JobStatus
+    count: int
+
+
 class JobPage(BaseModel):
-    """One page of the tenant's Jobs, newest first."""
+    """One page of the tenant's Jobs, in the order that was asked for."""
 
     items: list[JobSummary]
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
+    )
+    status_counts: list[JobStatusCount] = Field(
+        description="Every Job lifecycle status, each with the Tenant's total in it. These "
+        "totals are independent of `q`, `status`, sorting and pagination.",
     )
 
 
@@ -257,7 +281,7 @@ class PublicJobPage(BaseModel):
 class NewTrackedLink(BaseModel):
     """A named link to a Job, so the views and applications it brings can be told apart."""
 
-    name: Line = Field(description="What the campaign is called, unique per Job.")
+    name: Line = Field(description="The channel or placement this link represents, unique per Job.")
     expires_at: Expiry = None
 
 
@@ -275,8 +299,6 @@ class TrackedLinkChanges(BaseModel):
 
 
 class TrackedLink(BaseModel):
-    """One campaign link, and how much traffic it has brought."""
-
     id: UUID
     name: str
     token: str = Field(description="The unguessable part of the public URL.")
@@ -284,6 +306,12 @@ class TrackedLink(BaseModel):
     expires_at: datetime | None = None
     created_at: datetime
     view_count: int = Field(description="Job views that arrived through this link.")
+
+
+class TrackedLinkReport(BaseModel):
+    items: list[TrackedLink]
+    direct_view_count: int
+    view_count: int
 
 
 class LinkedJob(BaseModel):

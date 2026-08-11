@@ -12,8 +12,6 @@ export const Route = createFileRoute('/_account')({
     if (!profile) {
       throw redirect({ to: '/login', search: { returnTo: location.href } });
     }
-    // Turned away here rather than in the component, so none of the account's own
-    // loaders ever run for an account that does not belong in it.
     if (!isCandidate(profile)) {
       throw redirect({ to: '/wrong-portal' });
     }

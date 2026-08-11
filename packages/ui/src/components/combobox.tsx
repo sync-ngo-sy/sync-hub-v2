@@ -16,14 +16,11 @@ export interface ComboboxOptionGroup {
 interface ComboboxBaseProps {
   options: ComboboxOption[] | ComboboxOptionGroup[];
   placeholder?: string;
-  /** One sentence, shown in place of the list when the query matches nothing. */
   emptyMessage?: string;
-  /** While true the panel says the list is still arriving, never that it is empty. */
   loading?: boolean;
   loadingMessage?: string;
   disabled?: boolean;
   id?: string;
-  /** Fires when the field itself is left, so a form can answer it without waiting for submit. */
   onBlur?: FocusEventHandler<HTMLInputElement>;
   className?: string;
   'aria-label'?: string;
@@ -49,7 +46,6 @@ export type ComboboxProps = SingleComboboxProps | MultipleComboboxProps;
 
 type Selection = ComboboxOption | ComboboxOption[] | null;
 
-/** The primitive names a group by `value` and nests its options under `items`. */
 interface PrimitiveGroup {
   value: string;
   items: ComboboxOption[];
@@ -62,13 +58,10 @@ function isGrouped(
   return first !== undefined && 'options' in first;
 }
 
-/** A value the options don't cover keeps its place in the selection rather than vanishing —
- * the list may still be arriving — and wears the value itself until its label turns up. */
 function optionFor(options: ComboboxOption[], value: string): ComboboxOption {
   return options.find((option) => option.value === value) ?? { value, label: value };
 }
 
-/** The primitive selects whole option objects; consumers only ever handle the values. */
 function toSelection(
   options: ComboboxOption[],
   value: string | string[] | null | undefined,
@@ -85,7 +78,7 @@ function toSelection(
 const MESSAGE_SURFACE = 'px-1.5 py-2 text-sm text-muted-foreground';
 
 const FIELD_SURFACE =
-  'flex w-full items-center gap-1 rounded-lg border border-input bg-transparent py-1 pr-1 pl-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 has-disabled:cursor-not-allowed has-disabled:opacity-50 dark:bg-input/30 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40';
+  'flex min-h-9 w-full items-center gap-1 rounded-lg border border-input bg-input-background py-1 pr-1.5 pl-3 text-sm transition-colors focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-ring has-aria-invalid:outline-2 has-aria-invalid:-outline-offset-2 has-aria-invalid:outline-destructive has-disabled:cursor-not-allowed has-disabled:opacity-50';
 
 export function Combobox(props: ComboboxProps) {
   const {
@@ -161,7 +154,7 @@ export function Combobox(props: ComboboxProps) {
                   {selected.map((option) => (
                     <ComboboxPrimitive.Chip
                       key={option.value}
-                      className="flex items-center gap-1 rounded-md bg-muted py-0.5 pr-1 pl-2 text-dense text-muted-foreground"
+                      className="flex items-center gap-1 rounded-md bg-secondary py-0.5 pr-1 pl-2 text-dense text-secondary-foreground ring-1 ring-border ring-inset dark:bg-muted dark:text-muted-foreground dark:ring-0"
                     >
                       {option.label}
                       <ComboboxPrimitive.ChipRemove

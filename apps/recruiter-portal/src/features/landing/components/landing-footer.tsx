@@ -6,7 +6,6 @@ import { Wrap } from './page-parts';
 
 const LINK = 'block text-dense text-secondary-foreground hover:text-foreground';
 
-/** Only destinations that exist: a footer full of pages nobody built is worse than a short one. */
 export function LandingFooter() {
   return (
     <footer className="border-t border-border pt-12 pb-8">
@@ -37,7 +36,7 @@ export function LandingFooter() {
         </div>
 
         <p className="border-t border-border pt-6 text-meta text-muted-foreground">
-          © {new Date().getFullYear()} Sync.
+          © {new Date().getFullYear()} Sync Hub.
         </p>
       </Wrap>
     </footer>

@@ -1,16 +1,16 @@
 import type { components } from '@sync/api-client';
-import type { StatusTone } from '@sync/ui/components/status-chip';
+import type { StatusTone } from '@sync/ui/components/status-mark';
 
 export type Job = components['schemas']['JobView'];
 export type JobSummary = components['schemas']['JobSummary'];
 export type JobStatus = components['schemas']['JobStatus'];
+export type JobSort = components['schemas']['JobSort'];
+export type JobStatusCount = components['schemas']['JobStatusCount'];
 export type NewJob = components['schemas']['NewJob'];
 export type JobChanges = components['schemas']['JobChanges'];
 export type EmploymentType = components['schemas']['EmploymentType'];
 export type WorkMode = components['schemas']['WorkMode'];
 
-/** Keyed by the generated union, so a value the platform adds fails to compile until it has a
- * word here. The pickers are these maps, in this order. */
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   full_time: 'Full time',
   part_time: 'Part time',
@@ -40,10 +40,10 @@ interface JobState {
 }
 
 const JOB_STATE: Record<JobStatus, JobState> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  published: { label: 'Published', tone: 'positive' },
-  closed: { label: 'Closed', tone: 'neutral' },
-  archived: { label: 'Archived', tone: 'neutral' },
+  draft: { label: 'Draft', tone: 'waiting' },
+  published: { label: 'Published', tone: 'active' },
+  closed: { label: 'Closed', tone: 'ended' },
+  archived: { label: 'Archived', tone: 'ended' },
 };
 
 export function jobState(status: JobStatus): JobState {
@@ -57,6 +57,26 @@ export function jobMeta(job: JobSummary): string {
       .join(' · ') || 'Details not set'
   );
 }
+
+export const JOB_SORTS: Record<JobSort, string> = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  applications: 'Most applications',
+};
+
+export const JOB_STATUS_VALUES = Object.keys(JOB_STATE) as [JobStatus, ...JobStatus[]];
+export const JOB_SORT_VALUES = Object.keys(JOB_SORTS) as [JobSort, ...JobSort[]];
+
+export function jobStatusCounts(counts: JobStatusCount[] = []): Record<JobStatus, number> {
+  return Object.fromEntries(
+    JOB_STATUS_VALUES.map((status) => [
+      status,
+      counts.find((entry) => entry.status === status)?.count ?? 0,
+    ]),
+  ) as Record<JobStatus, number>;
+}
+
+export const DEFAULT_JOB_SORT: JobSort = 'newest';
 
 export interface JobLifecycleAction {
   label: string;

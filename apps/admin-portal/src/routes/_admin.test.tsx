@@ -33,7 +33,7 @@ describe('the admin access guard', () => {
 
     expect(router.state.location.pathname).toBe('/wrong-portal');
     expect(
-      await screen.findByRole('heading', { name: 'This is the Sync Platform Portal' }),
+      await screen.findByRole('heading', { name: 'This is the Sync Hub Platform Portal' }),
     ).toBeVisible();
     expect(screen.getByText(/candidate account/)).toBeVisible();
   });
@@ -45,7 +45,7 @@ describe('the admin access guard', () => {
 
     expect(router.state.location.pathname).toBe('/wrong-portal');
     expect(
-      await screen.findByRole('heading', { name: 'This is the Sync Platform Portal' }),
+      await screen.findByRole('heading', { name: 'This is the Sync Hub Platform Portal' }),
     ).toBeVisible();
     expect(screen.getByText(/recruiter account/)).toBeVisible();
   });

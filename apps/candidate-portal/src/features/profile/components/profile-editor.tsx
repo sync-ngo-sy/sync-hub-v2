@@ -18,6 +18,7 @@ import { ExperiencesSection } from './experiences-section';
 import { FilledNotice } from './filled-notice';
 import { IdentitySection } from './identity-section';
 import { LanguagesSection } from './languages-section';
+import { MyCandidateCard } from './my-candidate-card';
 import { ProfileSection } from './profile-section';
 import { ProjectsSection } from './projects-section';
 import { SkillsSection } from './skills-section';
@@ -32,13 +33,9 @@ export function ProfileEditor() {
     handleSubmit,
     reset,
     setError,
-    formState: { errors, isDirty, isSubmitting },
+    formState: { dirtyFields, errors, isDirty, isSubmitting },
   } = useForm<ProfileFormValues>({
-    // `raw` keeps the form's own string values coming back from the resolver; the schema's
-    // parsed shape is the request body, and `toProfile` is where it is asked for.
     resolver: zodResolver(profileSchema, undefined, { raw: true }),
-    // A field answers as soon as it has been left, not only when Save is pressed — but never
-    // while it is still being typed into for the first time.
     mode: 'onTouched',
     defaultValues: toFormValues(profile),
   });
@@ -68,9 +65,6 @@ export function ProfileEditor() {
   });
 
   return (
-    // The CVs come first, and outside the form: upload first and everything below fills in, so
-    // the reading order is the order things happen in. Outside, because a button in a form
-    // submits it, and none of the CV actions are a profile save.
     <div className="space-y-6">
       <ProfileSection
         title="CVs"
@@ -82,7 +76,6 @@ export function ProfileEditor() {
       </ProfileSection>
 
       {fill.refusal ? (
-        // Gray rather than red: `--destructive` is reserved for irreversible actions (§8).
         <Alert className="bg-muted">
           <CircleAlert aria-hidden="true" />
           <AlertTitle>That CV did not fill the form</AlertTitle>
@@ -94,9 +87,11 @@ export function ProfileEditor() {
         <FilledNotice cvName={fill.filledBy} onUndo={fill.undo} onDismiss={fill.dismiss} />
       ) : null}
 
+      <MyCandidateCard />
+
       <form onSubmit={submit} noValidate className="space-y-6">
         <IdentitySection control={control} />
-        <ExperiencesSection control={control} />
+        <ExperiencesSection control={control} experiencesDirty={Boolean(dirtyFields.experiences)} />
         <EducationsSection control={control} />
         <SkillsSection control={control} />
         <LanguagesSection control={control} />

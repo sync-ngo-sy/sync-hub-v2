@@ -65,7 +65,7 @@ export function LandingHeader() {
             <SheetContent side="right" className="w-72 gap-6 p-6 pt-14">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <SheetDescription className="sr-only">
-                Read what Sync does for employers, or ask for access.
+                Read what Sync Hub does for employers, or ask for access.
               </SheetDescription>
               <div className="-mx-2 flex flex-col text-reading font-medium text-secondary-foreground">
                 {SECTIONS.map(({ href, label }) => (

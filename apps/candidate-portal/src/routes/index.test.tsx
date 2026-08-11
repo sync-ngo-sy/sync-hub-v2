@@ -1,5 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { faultsOnSession, signedInAs, signedOut } from '@/features/auth/testing/handlers';
 import {
   listsJobs,
   publishesNothing,
@@ -8,7 +9,7 @@ import {
 } from '@/features/jobs/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/components/headline';
 import { env } from '@/lib/env';
-import { PUBLIC_JOBS } from '@/testing/fixtures';
+import { CANDIDATE, PUBLIC_JOBS, RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { stubMatchMedia } from '@/testing/media-query';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
@@ -38,7 +39,7 @@ describe('the candidate landing', () => {
       'href',
       '/signup',
     );
-    expect(within(hero).getByRole('link', { name: 'See Sync for employers' })).toHaveAttribute(
+    expect(within(hero).getByRole('link', { name: 'See Sync Hub for employers' })).toHaveAttribute(
       'href',
       env.recruiterPortalUrl,
     );
@@ -75,7 +76,6 @@ describe('the candidate landing', () => {
 
     const index = await screen.findByRole('list', { name: 'Newest roles' });
 
-    // Newest first, as the API orders them, each row leading to that Job.
     expect(
       within(index)
         .getAllByRole('link')
@@ -86,7 +86,6 @@ describe('the candidate landing', () => {
     expect(
       within(developer).getByText('Levant Digital · Damascus · Remote · Full time'),
     ).toBeVisible();
-    // Neither location nor employment type: the meta line carries only what the Job has.
     const pharmacist = within(index).getByRole('link', { name: /Pharmacist/ });
     expect(within(pharmacist).getByText('Sham Care')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Browse all jobs' })).toHaveAttribute('href', '/jobs');
@@ -144,9 +143,47 @@ describe('the candidate landing', () => {
     await renderApp('/');
 
     const headline = await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT });
-    // The animated headline carries the sentence twice — once for assistive tech, once as the
-    // characters it reveals. Static text carries it exactly once, with nothing hidden.
     expect(headline.textContent).toBe(HEADLINE_TEXT);
     expect(headline.querySelector('[style*="hidden"]')).toBeNull();
+  });
+});
+
+describe('the landing page and a session', () => {
+  it('shows a signed-out visitor the landing page, with a logo that keeps them there', async () => {
+    server.use(...signedOut(), ...listsJobs(PUBLIC_JOBS));
+
+    const { router } = await renderApp('/');
+
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
+    expect(
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Sync Hub' }),
+    ).toHaveAttribute('href', '/');
+  });
+
+  it('sends a signed-in candidate to their applications instead of the landing page', async () => {
+    server.use(...signedInAs(CANDIDATE));
+
+    const { router } = await renderApp('/');
+
+    expect(router.state.location.pathname).toBe('/applications');
+    expect(screen.queryByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeNull();
+  });
+
+  it('sends a signed-in recruiter to the wrong-portal notice, not the landing page', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    const { router } = await renderApp('/');
+
+    expect(router.state.location.pathname).toBe('/wrong-portal');
+  });
+
+  it('still shows the landing page when the session cannot be read at all', async () => {
+    server.use(...faultsOnSession(SERVER_FAULT), ...listsJobs(PUBLIC_JOBS));
+
+    const { router } = await renderApp('/');
+
+    expect(await screen.findByRole('heading', { level: 1, name: HEADLINE_TEXT })).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
   });
 });

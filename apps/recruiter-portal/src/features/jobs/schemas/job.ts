@@ -2,14 +2,13 @@ import { z } from 'zod';
 import {
   EMPLOYMENT_TYPE_LABELS,
   type EmploymentType,
+  type NewJob,
   WORK_MODE_LABELS,
   type WorkMode,
 } from '../job';
 
 const optionalLine = z.string().trim().max(200, 'Keep this to 200 characters or fewer.');
 
-// Each fixed set the API owns, plus the blank that means the recruiter has not said yet. The
-// values come off the label maps, which are keyed by the generated client's own unions.
 const employmentType = ['', ...Object.keys(EMPLOYMENT_TYPE_LABELS)] as ['', ...EmploymentType[]];
 const workMode = ['', ...Object.keys(WORK_MODE_LABELS)] as ['', ...WorkMode[]];
 
@@ -35,3 +34,38 @@ export const jobFormSchema = z.object({
 });
 
 export type JobFormValues = z.infer<typeof jobFormSchema>;
+
+export const EMPTY_JOB: JobFormValues = {
+  title: '',
+  description: '',
+  locationKey: '',
+  employmentType: '',
+  workMode: '',
+  expiresAt: '',
+};
+
+export const jobDraftSchema = z
+  .object({
+    title: z.string().catch(''),
+    description: z.string().catch(''),
+    locationKey: z.string().catch(''),
+    employmentType: z.enum(employmentType).catch(''),
+    workMode: z.enum(workMode).catch(''),
+    expiresAt: z.string().catch(''),
+  })
+  .catch(EMPTY_JOB);
+
+function optional(value: string): string | null {
+  return value.trim() || null;
+}
+
+export function toNewJob(values: JobFormValues): NewJob {
+  return {
+    title: values.title.trim(),
+    description: values.description.trim(),
+    location_key: optional(values.locationKey),
+    employment_type: values.employmentType || null,
+    work_mode: values.workMode || null,
+    expires_at: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
+  };
+}

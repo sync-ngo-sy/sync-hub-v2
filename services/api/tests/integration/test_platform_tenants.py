@@ -243,7 +243,7 @@ async def test_a_suspended_tenants_recruiters_are_refused_and_told_why(
     refused = await other_browser.get("/v1/tenants/me")
     assert refused.status_code == 403, refused.text
     assert refused.json()["type"] == TENANT_SUSPENDED
-    assert refused.json()["detail"] == "This tenant is suspended. Contact Sync to restore it."
+    assert refused.json()["detail"] == "This tenant is suspended. Contact Sync Hub to restore it."
 
 
 async def test_restoring_a_tenant_gives_its_recruiters_their_access_back(

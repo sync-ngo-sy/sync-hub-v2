@@ -5,8 +5,6 @@ type CandidateProfile = components['schemas']['CandidateProfile'];
 type ProfileDraft = components['schemas']['ProfileDraft'];
 type Proficiency = components['schemas']['LanguageProficiency'];
 
-/** The bounds `sync_core.profile` and `sync_api.text` enforce, restated so a rejection can
- * happen in the field instead of a round trip away. */
 export const MAX_ENTRIES = 50;
 const MAX_LINE = 200;
 const MAX_PARAGRAPH = 5000;
@@ -17,8 +15,6 @@ const MAX_YEARS_EXPERIENCE = 999.9;
 const MIN_LANGUAGE_CODE = 2;
 const MAX_LANGUAGE_CODE = 8;
 
-/** Every proficiency the API has — the type makes sure of that — in the order the editor
- * offers them, and what to call each on screen. */
 export const PROFICIENCY_LABELS: Record<Proficiency, string> = {
   beginner: 'Beginner',
   intermediate: 'Intermediate',
@@ -32,7 +28,6 @@ const PROFICIENCIES = Object.keys(PROFICIENCY_LABELS) as [Proficiency, ...Profic
 const line = (missing: string) =>
   z.string().trim().min(1, missing).max(MAX_LINE, `Use ${MAX_LINE} characters or fewer.`);
 
-/** Blank means "not set", never "set to nothing" — the API's `_blank_as_unset`. */
 const blankAsUnset = (raw: string) => (raw.trim() === '' ? null : raw.trim());
 
 const optionalText = (limit: number) =>
@@ -77,19 +72,11 @@ const languageCode = z
   .min(1, 'Choose a language.')
   .refine(isLanguageCode, LANGUAGE_CODE_MESSAGE);
 
-const optionalLanguageCode = z
-  .string()
-  .trim()
-  .refine((raw) => raw === '' || isLanguageCode(raw), LANGUAGE_CODE_MESSAGE)
-  .transform(blankAsUnset);
-
 const yearsOfExperience = z
   .string()
   .trim()
   .min(1, 'Enter years of experience.')
   .refine((raw) => /^\d*\.?\d+$/.test(raw), 'Enter years as a number.')
-  // `candidate_skills.years_experience` is `numeric(4,1)`, which would round a second decimal
-  // place away without saying so.
   .refine((raw) => /^\d*(\.\d)?$/.test(raw), 'Years go to one decimal place, like 3 or 3.5.')
   .refine(
     (raw) => Number(raw) <= MAX_YEARS_EXPERIENCE,
@@ -111,10 +98,8 @@ interface Period {
   end_month: number | null;
 }
 
-/** Where a complaint about an end date belongs: on whichever half of it was filled in. */
 const endOf = (entry: Period) => (entry.end_year !== null ? 'end_year' : 'end_month');
 
-/** The `*_ordered` CHECK, restated: comparable only once both years are known. */
 function refuseAnEndBeforeItsStart(entry: Period, ctx: z.RefinementCtx): void {
   if (entry.start_year === null || entry.end_year === null) return;
   const start = entry.start_year * 100 + (entry.start_month ?? 1);
@@ -138,7 +123,6 @@ const experience = z
     description: optionalParagraph,
   })
   .superRefine((entry, ctx) => {
-    // The `cexp_current_has_no_end` CHECK, restated.
     if (entry.is_current && (entry.end_year !== null || entry.end_month !== null)) {
       ctx.addIssue({
         code: 'custom',
@@ -191,8 +175,8 @@ const unmappedSkill = z.object({ value: line('Enter the skill.') });
 const section = <Entry extends z.ZodType>(entry: Entry, plural: string) =>
   z.array(entry).max(MAX_ENTRIES, `List at most ${MAX_ENTRIES} ${plural}.`);
 
-/** One entry per skill and per language, as `_refuse_repeats` does it — flagged on the repeat,
- * so the entry the candidate meant to keep is left alone. */
+const profileExperiences = section(experience, 'jobs');
+
 function refuseRepeats(
   keys: string[],
   ctx: z.RefinementCtx,
@@ -214,10 +198,9 @@ export const profileSchema = z
     summary: optionalParagraph,
     location_key: optionalLine,
     canonical_role_key: optionalLine,
-    preferred_language_code: optionalLanguageCode,
     is_searchable: z.boolean(),
     total_experience_years: z.number(),
-    experiences: section(experience, 'jobs'),
+    experiences: profileExperiences,
     educations: section(education, 'qualifications'),
     skills: section(skill, 'skills'),
     languages: section(language, 'languages'),
@@ -237,8 +220,6 @@ export const profileSchema = z
       (index) => ['languages', index, 'code'],
       'This language is already listed.',
     );
-    // The API deduplicates these case-insensitively instead of refusing them, which would take
-    // an entry off the page without saying so.
     refuseRepeats(
       profile.unmapped_skills.map((entry) => entry.value.toLowerCase()),
       ctx,
@@ -255,10 +236,15 @@ export const profileSchema = z
 
 export type ProfileFormValues = z.input<typeof profileSchema>;
 
-/** The validated form as a whole-profile `PUT` body. Only ever called with values the resolver
- * has already accepted, which is why it can parse rather than re-derive. */
 export function toProfile(values: ProfileFormValues): CandidateProfile {
   return profileSchema.parse(values);
+}
+
+export function toProfileExperiences(
+  values: ProfileFormValues['experiences'],
+): CandidateProfile['experiences'] | null {
+  const parsed = profileExperiences.safeParse(values);
+  return parsed.success ? parsed.data : null;
 }
 
 type Entry<Name extends keyof ProfileFormValues> = ProfileFormValues[Name] extends (infer Item)[]
@@ -301,15 +287,9 @@ export const BLANK_PROJECT: Entry<'projects'> = {
 
 export const BLANK_UNMAPPED_SKILL: Entry<'unmapped_skills'> = { value: '' };
 
-/** An absent value is an empty field, whatever it was on the wire. */
 const orEmpty = (value: string | number | null | undefined) =>
   value === null || value === undefined ? '' : String(value);
 
-/**
- * The profile the API answered with, as the fully-controlled value tree the form edits. A CV's
- * draft goes through here too: it is a profile whose skills may not know their years yet, and an
- * unknown number is an empty field like any other.
- */
 export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileFormValues {
   return {
     full_name: profile.full_name,
@@ -318,7 +298,6 @@ export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileF
     summary: orEmpty(profile.summary),
     location_key: orEmpty(profile.location_key),
     canonical_role_key: orEmpty(profile.canonical_role_key),
-    preferred_language_code: orEmpty(profile.preferred_language_code),
     is_searchable: profile.is_searchable,
     total_experience_years:
       'total_experience_years' in profile ? profile.total_experience_years : 0,

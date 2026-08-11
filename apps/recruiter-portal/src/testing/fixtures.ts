@@ -1,5 +1,7 @@
 import type { components } from '@sync/api-client';
 
+export const TODAY = new Date('2026-08-04T09:00:00Z');
+
 export const RECRUITER: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000011',
   email: 'rana@aman.test',
@@ -94,4 +96,10 @@ export const LANGUAGES: components['schemas']['Language'][] = [
   { code: 'en', name: 'English' },
   { code: 'fr', name: 'French' },
   { code: 'tr', name: 'Turkish' },
+];
+
+export const CANONICAL_ROLES: components['schemas']['CanonicalRole'][] = [
+  { key: 'backend-engineer', name: 'Backend Engineer' },
+  { key: 'frontend-engineer', name: 'Frontend Engineer' },
+  { key: 'nurse', name: 'Nurse' },
 ];

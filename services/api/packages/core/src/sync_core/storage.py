@@ -21,6 +21,8 @@ logger = get_logger(__name__)
 
 CV_BUCKET: Final = "cvs"
 
+AVATAR_BUCKET: Final = "avatars"
+
 CV_MEDIA_TYPES: Final[dict[str, str]] = {
     "application/pdf": ".pdf",
     "application/msword": ".doc",
@@ -36,6 +38,18 @@ DEFAULT_CV_MEDIA_TYPE: Final = "application/pdf"
 
 def cv_object_path(candidate_id: UUID, cv_id: UUID, media_type: str) -> str:
     return f"{candidate_id}/{cv_id}{CV_MEDIA_TYPES[media_type]}"
+
+
+def avatar_object_path(candidate_id: UUID, avatar_id: UUID) -> str:
+    return f"{avatar_folder(candidate_id)}/{avatar_id}.webp"
+
+
+def avatar_folder(candidate_id: UUID) -> str:
+    return str(candidate_id)
+
+
+def avatar_path_from_url(candidate_id: UUID, url: str) -> str:
+    return f"{avatar_folder(candidate_id)}/{url.rsplit('/', 1)[-1]}"
 
 
 def cv_media_type_of(storage_path: str) -> str:
@@ -58,12 +72,15 @@ class ObjectNotFoundError(StorageError):
 
 
 class Storage:
-    def __init__(self, client: AsyncStorageClient, http: AsyncClient) -> None:
+    """One bucket, reached with the service-role key. Build one per bucket the API writes."""
+
+    def __init__(self, client: AsyncStorageClient, http: AsyncClient, *, bucket: str) -> None:
         self._client = client
         self._http = http
+        self._name = bucket
 
     @classmethod
-    def build(cls, settings: Settings) -> Storage:
+    def build(cls, settings: Settings, *, bucket: str = CV_BUCKET) -> Storage:
         http = AsyncClient(timeout=STORAGE_TIMEOUT_SECONDS)
         key = settings.supabase_service_role_key.get_secret_value()
         return cls(
@@ -75,11 +92,16 @@ class Storage:
                 http_client=http,
             ),
             http,
+            bucket=bucket,
         )
 
-    async def upload(self, path: str, content: BufferedReader, *, media_type: str) -> None:
+    async def upload(self, path: str, content: BufferedReader | bytes, *, media_type: str) -> None:
         with _storage_failures("upload", path):
             await self._bucket.upload(path, content, {"content-type": media_type})
+
+    async def public_url(self, path: str) -> str:
+        with _storage_failures("address", path):
+            return await self._bucket.get_public_url(path)
 
     async def download(self, path: str) -> bytes:
         with _storage_failures("download", path):
@@ -97,9 +119,14 @@ class Storage:
         with _storage_failures("remove", path):
             await self._bucket.remove([path])
 
+    async def paths_under(self, folder: str) -> list[str]:
+        with _storage_failures("list", folder):
+            entries = await self._bucket.list(folder)
+        return [f"{folder}/{entry['name']}" for entry in entries if _stored_object(entry)]
+
     @property
     def _bucket(self) -> AsyncBucketProxy:
-        return self._client.from_(CV_BUCKET)
+        return self._client.from_(self._name)
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -134,3 +161,7 @@ class _storage_failures:  # noqa: N801 — reads as a statement at the call site
         if str(status) == "404" or code in MISSING_OBJECT_CODES:
             raise ObjectNotFoundError(f"no object at {self._path}") from exc
         raise StorageError(f"Storage could not {self._step} {self._path}") from exc
+
+
+def _stored_object(entry: dict[str, object]) -> bool:
+    return bool(entry.get("id"))

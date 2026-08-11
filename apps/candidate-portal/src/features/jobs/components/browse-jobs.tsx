@@ -21,15 +21,13 @@ export function BrowseJobs({ signedIn, filters, onFiltersChange }: BrowseJobsPro
   const filtered = isFiltered(filters);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader title="Jobs" description="Open roles across Syria, newest first." />
 
       <JobFilterBar filters={filters} onChange={onFiltersChange} />
 
       {jobs.isPending ? (
         <div role="status" aria-label="Loading jobs">
-          {/* Enough rows to fill a phone, not the twenty a page holds: the rest would be a wall
-              of grey below the fold. */}
           <ListSkeleton rows={6} />
         </div>
       ) : null}

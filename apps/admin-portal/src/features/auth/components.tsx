@@ -1,3 +1,4 @@
+import { PasswordInput } from '@sync/ui/components/password-input';
 import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
@@ -6,6 +7,7 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 import { problemMessage } from '@/lib/api-problem';
 import type { Profile } from './current-profile';
 import { useLogIn, useLogOut, useRequestPasswordReset, useResetPassword } from './hooks';
+import { PASSWORD_POLICY_SUMMARY } from './password-rules';
 
 function Screen({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -44,9 +46,8 @@ export function LoginForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="password">Password</Label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
@@ -71,7 +72,7 @@ export function LoginForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
 export function SignInScreen({ onSignedIn }: { onSignedIn: (profile: Profile) => void }) {
   return (
     <Screen title="Sign in">
-      <p className="text-muted-foreground">Operate the Sync platform.</p>
+      <p className="text-muted-foreground">Operate the Sync Hub platform.</p>
       <LoginForm onSignedIn={onSignedIn} />
     </Screen>
   );
@@ -160,13 +161,17 @@ export function ResetPasswordScreen({
       >
         <div className="space-y-1.5">
           <Label htmlFor="new-password">New password</Label>
-          <Input
+          <PasswordInput
             id="new-password"
-            type="password"
+            autoComplete="new-password"
+            aria-describedby="new-password-policy"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
           />
+          <p id="new-password-policy" className="text-dense text-muted-foreground">
+            {PASSWORD_POLICY_SUMMARY}
+          </p>
         </div>
         {error ? (
           <p role="alert" className="text-destructive">
@@ -184,7 +189,7 @@ export function ResetPasswordScreen({
 export function WrongPortalScreen({ accountType }: { accountType: Profile['account_type'] }) {
   const logOut = useLogOut();
   return (
-    <Screen title="This is the Sync Platform Portal">
+    <Screen title="This is the Sync Hub Platform Portal">
       <p className="text-muted-foreground">
         You're signed in with a {accountType} account, which this portal does not serve.
       </p>

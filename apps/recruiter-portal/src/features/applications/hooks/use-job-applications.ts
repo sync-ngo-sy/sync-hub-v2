@@ -1,17 +1,28 @@
 import { api } from '@/lib/api';
 import type { PipelineStatus, ScreeningVerdict } from '../application';
+import type { ApplicationFilters } from '../reading';
 
 export const APPLICATIONS_PAGE_SIZE = 20;
 
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 
-export interface ApplicationFilters {
-  pipeline?: PipelineStatus;
-  screening?: ScreeningVerdict;
+export type StatusCounts = Partial<Record<PipelineStatus, number>>;
+export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;
+
+export function statusCountsFrom(
+  counted: { status: PipelineStatus; count: number }[] | undefined,
+): StatusCounts {
+  return Object.fromEntries((counted ?? []).map((one) => [one.status, one.count])) as StatusCounts;
 }
 
-/** Every Job's triage list at once: a move made on the review page changes which filters a row
- * belongs under, and this page cannot know which lists are still cached behind it. */
+export function verdictCountsFrom(
+  counted: { verdict: ScreeningVerdict; count: number }[] | undefined,
+): VerdictCounts {
+  return Object.fromEntries(
+    (counted ?? []).map((one) => [one.verdict, one.count]),
+  ) as VerdictCounts;
+}
+
 export function jobApplicationsQueryPrefix() {
   return api.queryOptions('get', PATH, { params: { path: { job_id: '' } } }).queryKey.slice(0, 2);
 }
@@ -33,7 +44,11 @@ export function useJobApplications(jobId: string, filters: ApplicationFilters) {
     {
       initialPageParam: null,
       getNextPageParam: (page) => page.next_cursor,
-      select: (data) => data.pages.flatMap((page) => page.items),
+      select: (data) => ({
+        items: data.pages.flatMap((page) => page.items),
+        statusCounts: statusCountsFrom(data.pages[0]?.status_counts),
+        verdictCounts: verdictCountsFrom(data.pages[0]?.verdict_counts),
+      }),
     },
   );
 }

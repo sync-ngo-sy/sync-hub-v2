@@ -14,10 +14,13 @@ import {
   failsToAssessMatch,
   failsToListMatchAssessments,
   failsToPageMatchAssessments,
+  forgetsMatchAssessments,
   getsApplication,
   holdsMatchAssessment,
+  holdsMatchAssessmentDeletion,
   listsMatchAssessments,
   pagesMatchAssessments,
+  refusesMatchAssessmentDeletion,
 } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { absoluteDateTime } from '@/lib/dates';
@@ -132,23 +135,6 @@ describe('the match assessments already on an Application', () => {
     expect(await widget().findByText('54% of what the Job asks for')).toBeVisible();
     expect(widget().queryByRole('button', { name: 'Show older assessments' })).toBeNull();
   });
-
-  it('says the assessment is advice, so it is not read as a second Screening verdict', async () => {
-    server.use(
-      ...signedInAs(RECRUITER),
-      ...getsApplication(REVIEW),
-      ...listsMatchAssessments([LATEST_ASSESSMENT]),
-    );
-
-    await renderApp(`/applications/${REVIEW.id}`);
-
-    expect(await screen.findByRole('region', { name: WIDGET })).toBeVisible();
-    expect(
-      widget().getByText(
-        'Advice drawn from the Snapshot and the Job — it does not change the Screening verdict.',
-      ),
-    ).toBeVisible();
-  });
 });
 
 describe('asking an AI to assess a match', () => {
@@ -259,6 +245,95 @@ describe('asking an AI to assess a match', () => {
 
     expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
     expect(widget().queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('throwing a reading away', () => {
+  it('takes the reading off the history and leaves the others where they were', async () => {
+    const forgotten: string[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...forgetsMatchAssessments([LATEST_ASSESSMENT, EARLIER_ASSESSMENT], forgotten),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const latest = within(await screen.findByRole('listitem', { name: /82%/ }));
+    await user.click(latest.getByRole('button', { name: /^Delete/ }));
+
+    await waitFor(() => expect(widget().queryByText('82% of what the Job asks for')).toBeNull());
+    expect(widget().getByText('54% of what the Job asks for')).toBeVisible();
+    expect(forgotten).toEqual([LATEST_ASSESSMENT.id]);
+  });
+
+  it('leaves the last reading gone and the Application saying it was never assessed', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...forgetsMatchAssessments([LATEST_ASSESSMENT]),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const latest = within(await screen.findByRole('listitem', { name: /82%/ }));
+    await user.click(latest.getByRole('button', { name: /^Delete/ }));
+
+    expect(
+      await widget().findByText('No AI has read this Application against the Job yet.'),
+    ).toBeVisible();
+  });
+
+  it('offers no second deletion while one is still on its way', async () => {
+    const held = holdsMatchAssessmentDeletion([LATEST_ASSESSMENT, EARLIER_ASSESSMENT]);
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW), ...held.handlers);
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const latest = within(await screen.findByRole('listitem', { name: /82%/ }));
+    await user.click(latest.getByRole('button', { name: /^Delete/ }));
+
+    const earlier = within(screen.getByRole('listitem', { name: /54%/ }));
+    await waitFor(() => expect(earlier.getByRole('button', { name: /^Delete/ })).toBeDisabled());
+
+    held.arrive();
+
+    await waitFor(() => expect(widget().queryByText('82% of what the Job asks for')).toBeNull());
+    expect(widget().getByRole('button', { name: /^Delete/ })).toBeEnabled();
+  });
+
+  it('puts the reason beside the reading it could not delete, and keeps the reading', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...refusesMatchAssessmentDeletion([LATEST_ASSESSMENT, EARLIER_ASSESSMENT], SERVER_FAULT),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const latest = within(await screen.findByRole('listitem', { name: /82%/ }));
+    await user.click(latest.getByRole('button', { name: /^Delete/ }));
+
+    expect(await latest.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
+    expect(latest.getByText('82% of what the Job asks for')).toBeVisible();
+    expect(within(screen.getByRole('listitem', { name: /54%/ })).queryByRole('alert')).toBeNull();
+  });
+
+  it('names what it could not do when the server refuses without saying why', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...refusesMatchAssessmentDeletion([LATEST_ASSESSMENT], { ...SERVER_FAULT, detail: null }),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const latest = within(await screen.findByRole('listitem', { name: /82%/ }));
+    await user.click(latest.getByRole('button', { name: /^Delete/ }));
+
+    expect(await latest.findByRole('alert')).toHaveTextContent(
+      "That reading couldn't be deleted. It is still on record.",
+    );
   });
 });
 

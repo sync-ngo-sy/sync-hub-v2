@@ -1,14 +1,98 @@
 import type { components } from '@sync/api-client';
 import { FIELD_COORDINATOR } from '@/features/jobs/testing/fixtures';
-import type { ApplicationSummary } from '../application';
+import type { ApplicationJob, ApplicationSummary, TenantApplication } from '../application';
 import type { MatchAssessment } from '../assessment';
 import type { ApplicationReview } from '../review';
+
+export const FIELD: ApplicationJob = {
+  id: FIELD_COORDINATOR.id,
+  title: FIELD_COORDINATOR.title,
+  location_name: FIELD_COORDINATOR.location_name,
+};
+
+export const MEAL: ApplicationJob = {
+  id: '00000000-0000-4000-8000-000000000103',
+  title: 'MEAL Officer',
+  location_name: 'Damascus',
+};
+
+export const DIMA: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000311',
+  candidate_name: 'Dima Sabbagh',
+  headline: 'Monitoring officer',
+  location: 'Damascus',
+  canonical_role: 'MEAL Officer',
+  total_experience_years: 6,
+  status: 'new',
+  qualification_status: 'qualified',
+  applied_at: '2026-08-04T07:00:00Z',
+  updated_at: '2026-08-04T07:00:00Z',
+  job: MEAL,
+};
+
+export const FARAH: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000312',
+  candidate_name: 'Farah Doumani',
+  headline: null,
+  location: null,
+  canonical_role: null,
+  total_experience_years: 0,
+  status: 'new',
+  qualification_status: 'qualified',
+  applied_at: '2026-08-03T09:00:00Z',
+  updated_at: '2026-08-03T09:00:00Z',
+  job: FIELD,
+};
+
+export const ELIAS: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000313',
+  candidate_name: 'Elias Murad',
+  headline: 'Data assistant',
+  location: 'Homs',
+  canonical_role: 'Data Analyst',
+  total_experience_years: 1,
+  status: 'reviewing',
+  qualification_status: 'pending',
+  applied_at: '2026-08-03T08:00:00Z',
+  updated_at: '2026-08-03T08:00:00Z',
+  job: MEAL,
+};
+
+export const GHADA: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000314',
+  candidate_name: 'Ghada Kanaan',
+  headline: 'Warehouse supervisor',
+  location: 'Latakia',
+  canonical_role: 'Warehouse Manager',
+  total_experience_years: 11,
+  status: 'rejected',
+  qualification_status: 'disqualified',
+  applied_at: '2026-08-02T09:00:00Z',
+  updated_at: '2026-08-05T09:00:00Z',
+  job: FIELD,
+};
+
+export const HANI: TenantApplication = {
+  id: '00000000-0000-4000-8000-000000000315',
+  candidate_name: 'Hani Barakat',
+  headline: 'Cash programming officer',
+  location: 'Homs',
+  canonical_role: 'Programme Officer',
+  total_experience_years: 8,
+  status: 'hired',
+  qualification_status: 'qualified',
+  applied_at: '2026-06-01T09:00:00Z',
+  updated_at: '2026-06-20T09:00:00Z',
+  job: MEAL,
+};
 
 export const AMAL: ApplicationSummary = {
   id: '00000000-0000-4000-8000-000000000301',
   candidate_name: 'Amal Haddad',
   headline: 'Field logistics lead',
   location: 'Aleppo',
+  canonical_role: 'Logistics Manager',
+  total_experience_years: 9,
   status: 'new',
   qualification_status: 'qualified',
   applied_at: '2026-08-02T09:00:00Z',
@@ -20,6 +104,8 @@ export const BASSEL: ApplicationSummary = {
   candidate_name: 'Bassel Nasser',
   headline: null,
   location: 'Damascus',
+  canonical_role: null,
+  total_experience_years: 4,
   status: 'shortlisted',
   qualification_status: 'review_required',
   applied_at: '2026-08-01T09:00:00Z',
@@ -31,6 +117,8 @@ export const CARLA: ApplicationSummary = {
   candidate_name: 'Carla Rizk',
   headline: 'Programme assistant',
   location: null,
+  canonical_role: 'Programme Assistant',
+  total_experience_years: 2,
   status: 'rejected',
   qualification_status: 'disqualified',
   applied_at: '2026-07-30T09:00:00Z',
@@ -44,14 +132,18 @@ export const MOVE_REFUSED: components['schemas']['ProblemDetail'] = {
   detail: 'A shortlisted application cannot become new.',
 };
 
-/** Everything a Snapshot can carry, so a test that hides a section says so by taking it away. */
 export const AMAL_REVIEW: ApplicationReview = {
   id: AMAL.id,
   job: { id: FIELD_COORDINATOR.id, title: FIELD_COORDINATOR.title },
+  candidate: {
+    id: '00000000-0000-4000-8000-000000000041',
+    email: 'amal.haddad@example.test',
+    avatar_url: null,
+  },
   status: 'shortlisted',
   screening: {
     status: 'qualified',
-    reason: 'Meets every required skill and both languages.',
+    reason: null,
   },
   snapshot: {
     full_name: 'Amal Haddad',
@@ -60,6 +152,7 @@ export const AMAL_REVIEW: ApplicationReview = {
     total_experience_years: 9,
     summary: 'Nine years moving relief cargo across northern Syria.',
     location: 'Aleppo',
+    canonical_role: 'Logistics Manager',
     unmapped_skills: ['Convoy planning', 'Customs clearance'],
     experiences: [
       {

@@ -62,7 +62,6 @@ function JobRow({ job }: { job: JobSummary }) {
     <Link
       to="/jobs/$jobId"
       params={{ jobId: job.id }}
-      // A hover is not a read, and reading a Job counts a view against the employer's numbers.
       preload={false}
       className={cn(INDEX_ROW, 'group justify-between')}
     >
@@ -99,7 +98,6 @@ function JobIndexSkeleton() {
   );
 }
 
-/** Kept in the index's own register: a card here would be the only one on the page. */
 function JobIndexFailure({ onRetry }: { onRetry: () => void }) {
   return (
     <div className={cn(INDEX_ROW, 'items-center justify-between border-t')}>

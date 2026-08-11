@@ -1,13 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormField } from '@sync/ui/components/form-field';
+import { PasswordInput } from '@sync/ui/components/password-input';
 import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { isProblem, problemMessage } from '@/lib/api-problem';
 import { useSignUp } from '../hooks/use-sign-up';
 import { EMAIL_TAKEN_PROBLEM, WEAK_PASSWORD_PROBLEM } from '../problems';
 import { type SignUpValues, signUpSchema } from '../schemas/sign-up';
+import { PasswordChecklist } from './password-checklist';
 
 export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void }) {
   const signUp = useSignUp();
@@ -18,16 +20,16 @@ export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void
     formState: { isSubmitting },
   } = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { full_name: '', email: '', password: '' },
+    defaultValues: { full_name: '', email: '', password: '', confirm_password: '' },
   });
+  const password = useWatch({ control, name: 'password' });
 
-  const submit = handleSubmit(async (values) => {
+  const submit = handleSubmit(async ({ full_name, email, password: chosen }) => {
     try {
-      await signUp.mutateAsync({ body: values });
-      onSignedUp(values.email);
+      await signUp.mutateAsync({ body: { full_name, email, password: chosen } });
+      onSignedUp(email);
     } catch (error) {
       const message = problemMessage(error, "Couldn't create your account. Try again.");
-      // Named rejections only. Rate limiting is a 4xx too, and it belongs to nobody's field.
       if (isProblem(error, EMAIL_TAKEN_PROBLEM)) {
         setError('email', { message });
         return;
@@ -41,7 +43,7 @@ export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-5">
+    <form onSubmit={submit} noValidate className="relative space-y-5">
       <FormField control={control} name="full_name" label="Full name">
         {(field) => <Input {...field} autoComplete="name" />}
       </FormField>
@@ -50,13 +52,18 @@ export function SignUpForm({ onSignedUp }: { onSignedUp: (email: string) => void
         {(field) => <Input {...field} type="email" autoComplete="email" />}
       </FormField>
 
-      <FormField
-        control={control}
-        name="password"
-        label="Password"
-        description="At least 8 characters."
-      >
-        {(field) => <Input {...field} type="password" autoComplete="new-password" />}
+      <div className="space-y-4">
+        <FormField control={control} name="password" label="Password">
+          {(field) => <PasswordInput {...field} autoComplete="new-password" />}
+        </FormField>
+
+        <div className="lg:absolute lg:top-1/2 lg:left-full lg:ml-10 lg:w-56 lg:-translate-y-1/2">
+          <PasswordChecklist password={password} />
+        </div>
+      </div>
+
+      <FormField control={control} name="confirm_password" label="Confirm password">
+        {(field) => <PasswordInput {...field} autoComplete="new-password" />}
       </FormField>
 
       <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">

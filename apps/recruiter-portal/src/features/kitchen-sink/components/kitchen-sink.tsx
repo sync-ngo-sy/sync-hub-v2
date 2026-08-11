@@ -4,7 +4,7 @@ import {
   type ComboboxOptionGroup,
 } from '@sync/ui/components/combobox';
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { STATUS_TONES, StatusChip, type StatusTone } from '@sync/ui/components/status-chip';
+import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Avatar, AvatarFallback } from '@sync/ui/components/ui/avatar';
 import { Button } from '@sync/ui/components/ui/button';
@@ -45,28 +45,28 @@ const APPLICATIONS: DemoApplication[] = [
     id: 'a1',
     candidate: 'Lina Khoury',
     job: 'Field Coordinator, Aleppo',
-    screening: { tone: 'positive', label: 'Qualified' },
+    screening: { tone: 'active', label: 'Qualified' },
     stage: { tone: 'interview', label: 'Interview' },
   },
   {
     id: 'a2',
     candidate: 'Yara Salloum',
     job: 'Logistics Assistant',
-    screening: { tone: 'negative', label: 'Disqualified' },
-    stage: { tone: 'negative', label: 'Rejected' },
+    screening: { tone: 'ended', label: 'Disqualified' },
+    stage: { tone: 'rejected', label: 'Rejected' },
   },
   {
     id: 'a3',
     candidate: 'Omar Haddad',
     job: 'MEAL Officer, Idlib',
-    screening: { tone: 'review-required', label: 'Review required' },
-    stage: { tone: 'neutral', label: 'New' },
+    screening: { tone: 'attention', label: 'Review required' },
+    stage: { tone: 'new', label: 'New' },
   },
   {
     id: 'a4',
     candidate: 'Rana Deeb',
     job: 'Programme Manager',
-    screening: { tone: 'positive', label: 'Qualified' },
+    screening: { tone: 'active', label: 'Qualified' },
     stage: { tone: 'hired', label: 'Hired' },
   },
 ];
@@ -83,8 +83,8 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
     accessorKey: 'candidate',
     header: 'Candidate',
     cell: ({ row }) => (
-      <span className="flex items-center gap-2">
-        <Avatar size="sm">
+      <span className="flex items-center gap-2.5">
+        <Avatar size="row">
           <AvatarFallback>{initials(row.original.candidate)}</AvatarFallback>
         </Avatar>
         {row.original.candidate}
@@ -95,12 +95,12 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
   {
     id: 'screening',
     header: 'Screening',
-    cell: ({ row }) => <StatusChip {...row.original.screening} />,
+    cell: ({ row }) => <StatusMark {...row.original.screening} />,
   },
   {
     id: 'stage',
     header: 'Status',
-    cell: ({ row }) => <StatusChip {...row.original.stage} />,
+    cell: ({ row }) => <StatusMark {...row.original.stage} />,
   },
 ];
 
@@ -217,16 +217,29 @@ function Pickers() {
   );
 }
 
-/** Spelled out rather than interpolated, so Tailwind's scanner can see every class. */
 const SURFACES: [label: string, swatch: string][] = [
   ['background', 'bg-background'],
   ['card', 'bg-card'],
+  ['input', 'bg-input-background'],
   ['muted', 'bg-muted'],
+  ['interactive hover', 'bg-interactive-hover'],
   ['accent', 'bg-accent'],
   ['primary', 'bg-primary'],
   ['secondary', 'bg-secondary'],
+  ['deep', 'bg-deep'],
   ['sidebar', 'bg-sidebar'],
   ['destructive', 'bg-destructive'],
+];
+
+const STATUSES: [label: string, swatch: string][] = [
+  ['new', 'bg-status-new'],
+  ['review', 'bg-status-review'],
+  ['shortlisted', 'bg-status-shortlisted'],
+  ['interview', 'bg-status-interview'],
+  ['offer', 'bg-status-offer'],
+  ['hired', 'bg-status-hired'],
+  ['rejected', 'bg-status-rejected'],
+  ['withdrawn', 'bg-status-withdrawn'],
 ];
 
 export default function KitchenSink() {
@@ -251,11 +264,23 @@ export default function KitchenSink() {
         ))}
       </Section>
 
+      <Section title="Status colours">
+        {STATUSES.map(([label, swatch]) => (
+          <div key={label} className="space-y-1.5">
+            <div className={`size-8 rounded-sm ${swatch}`} />
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+        ))}
+      </Section>
+
       <Section title="Buttons">
         <Button>Create job</Button>
         <Button variant="secondary">Secondary</Button>
         <Button variant="outline">Outline</Button>
         <Button variant="ghost">Ghost</Button>
+        <span className="rounded-lg bg-sidebar p-2">
+          <Button variant="sidebar">Sidebar</Button>
+        </span>
         <Button variant="link">Link</Button>
         <Button variant="destructive">Delete workspace</Button>
         <Button disabled>Disabled</Button>
@@ -305,9 +330,9 @@ export default function KitchenSink() {
         </div>
       </Section>
 
-      <Section title="Status chips">
+      <Section title="Status marks">
         {STATUS_TONES.map((tone) => (
-          <StatusChip key={tone} tone={tone} label={tone} />
+          <StatusMark key={tone} tone={tone} label={tone} />
         ))}
       </Section>
 

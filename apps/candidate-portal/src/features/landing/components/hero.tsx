@@ -1,14 +1,16 @@
 import { Eyebrow, HERO_BUTTON, UNDERLINE_LINK } from '@sync/ui/components/landing';
 import { buttonVariants } from '@sync/ui/components/ui/button';
+import { useMediaQuery } from '@sync/ui/hooks/use-media-query';
 import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
-import { usePrefersReducedMotion } from '../hooks/use-prefers-reduced-motion';
 import { Wrap } from './editorial';
 import { StaticHeadline } from './headline';
 import TypewriterHeadline from './typewriter-headline';
 
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
 export function Hero() {
-  const reducedMotion = usePrefersReducedMotion();
+  const reducedMotion = useMediaQuery(REDUCED_MOTION);
 
   return (
     <section className="pt-[clamp(3.5rem,9vw,8rem)] pb-[clamp(3rem,7vw,6rem)]">

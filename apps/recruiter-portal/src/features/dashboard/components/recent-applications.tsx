@@ -1,9 +1,14 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
-import { StatusChip } from '@sync/ui/components/status-chip';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
-import { candidateMeta, pipelineState, screeningState } from '@/features/applications/application';
+import {
+  candidateIdentity,
+  pipelineState,
+  screeningState,
+} from '@/features/applications/application';
+import { CandidateIdentity } from '@/features/candidates/components/candidate-cells';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import type { TenantApplication } from '../dashboard';
@@ -14,26 +19,19 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'candidate',
     header: 'Candidate',
-    cell: ({ row }) => {
-      const meta = candidateMeta(row.original);
-      return (
-        <span className="flex min-w-40 flex-col gap-1">
-          <span>{row.original.candidate_name}</span>
-          {meta ? (
-            <span className="text-meta font-normal text-muted-foreground">{meta}</span>
-          ) : null}
-        </span>
-      );
-    },
+    cell: ({ row }) => <CandidateIdentity {...candidateIdentity(row.original)} />,
   },
   {
     id: 'job',
     header: 'Job',
-    cell: ({ row }) => <span className="text-muted-foreground">{row.original.job.title}</span>,
+    cell: ({ row }) => (
+      <span className="font-medium text-foreground">{row.original.job.title}</span>
+    ),
   },
   {
     id: 'received',
     header: 'Received',
+    meta: { priority: 'hidden' },
     cell: ({ row }) => (
       <time
         dateTime={row.original.applied_at}
@@ -49,7 +47,7 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
     header: 'Screening',
     cell: ({ row }) => {
       const state = screeningState(row.original.qualification_status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
   {
@@ -57,7 +55,7 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
     header: 'Pipeline',
     cell: ({ row }) => {
       const state = pipelineState(row.original.status);
-      return <StatusChip label={state.label} tone={state.tone} />;
+      return <StatusMark label={state.label} tone={state.tone} />;
     },
   },
 ];
@@ -65,9 +63,14 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
 interface RecentApplicationsProps {
   applications: PanelRead<TenantApplication[]>;
   onApplicationOpen: (application: TenantApplication) => void;
+  applicationHref: (application: TenantApplication) => string;
 }
 
-export function RecentApplications({ applications, onApplicationOpen }: RecentApplicationsProps) {
+export function RecentApplications({
+  applications,
+  onApplicationOpen,
+  applicationHref,
+}: RecentApplicationsProps) {
   const recent = applications.data ?? [];
 
   return (
@@ -92,6 +95,7 @@ export function RecentApplications({ applications, onApplicationOpen }: RecentAp
         getRowId={(row) => row.id}
         rowLabel={(row) => `${row.candidate_name}'s Application`}
         onRowOpen={onApplicationOpen}
+        rowHref={applicationHref}
         isLoading={applications.isPending}
         error={
           applications.error

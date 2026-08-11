@@ -4,6 +4,7 @@ import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import {
+  calculatesExperience,
   failsToLoadProfile,
   faultsOnSave,
   hasProfile,
@@ -43,7 +44,6 @@ async function openProfile() {
   return renderApp('/profile');
 }
 
-/** The profile, open and saveable — `sent.body` is the whole-profile body the form put back. */
 async function openProfileThatSaves(saved: CandidateProfile = CANDIDATE_PROFILE) {
   const sent: { body?: CandidateProfile } = {};
   server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
@@ -62,7 +62,6 @@ describe('the profile editor', () => {
     expect(screen.getByLabelText('Full name')).toHaveValue(CANDIDATE_PROFILE.full_name);
     expect(screen.getByLabelText('Headline')).toHaveValue('Field coordinator, 6 years');
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
-    expect(screen.getByLabelText('Preferred language')).toHaveValue('Arabic');
     expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).not.toBeChecked();
 
     const job = entry('Job 1');
@@ -79,8 +78,12 @@ describe('the profile editor', () => {
 
     const skill = entry('Skill 1');
     expect(skill.getByLabelText('Skill')).toHaveValue('Python');
-    expect(skill.getByLabelText('Years')).toHaveValue('3.5');
-    expect(entry('Other skill 1').getByLabelText('Skill')).toHaveValue('Kobo Toolbox');
+    expect(skill.getByLabelText('Years')).toHaveValue(3.5);
+    expect(skill.getByLabelText('Years')).toHaveAttribute('type', 'number');
+    expect(skill.getByLabelText('Years')).toHaveAttribute('step', '1');
+    expect(
+      within(screen.getByRole('region', { name: 'Other skills' })).getByText('Kobo Toolbox'),
+    ).toBeVisible();
 
     const language = entry('Language 1');
     expect(language.getByLabelText('Language')).toHaveValue('Arabic');
@@ -257,7 +260,6 @@ describe('the profile editor', () => {
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
-    // Not 'sy-damascus': the two are separate places, and the one chosen is the one saved.
     expect(sent.body?.location_key).toBe('sy-rif-dimashq');
   });
 
@@ -286,30 +288,33 @@ describe('the profile editor', () => {
   it('shows the total experience the API derived, with no way to type one', async () => {
     await openProfile();
 
-    expect(screen.getByText('6 years')).toBeVisible();
+    const experience = within(screen.getByRole('region', { name: 'Experience' }));
+    expect(experience.getByText('6 years')).toBeVisible();
     expect(screen.queryByLabelText('Total experience')).toBeNull();
   });
 
-  it('saves the preferred language chosen by name as its code', async () => {
-    const { user, sent } = await openProfileThatSaves();
+  it('recalculates total experience after a date changes without saving', async () => {
+    const calculated = vi.fn();
+    const saved = vi.fn();
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    server.use(...calculatesExperience(4, calculated), ...savesProfile(CANDIDATE_PROFILE, saved));
 
-    await user.click(screen.getByLabelText('Preferred language'));
-    await user.click(screen.getByRole('option', { name: 'French' }));
+    const { user } = await renderApp('/profile');
+    const startYear = entry('Job 1').getByLabelText('Start year');
+    await user.clear(startYear);
+    await user.type(startYear, '2022');
+
+    await waitFor(() =>
+      expect(calculated).toHaveBeenLastCalledWith([expect.objectContaining({ start_year: 2022 })]),
+    );
+    const experience = within(screen.getByRole('region', { name: 'Experience' }));
+    expect(experience.getByText('4 years')).toBeVisible();
+    expect(saved).not.toHaveBeenCalled();
+
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(sent.body?.preferred_language_code).toBe('fr');
-  });
-
-  it('lets the candidate say they have no preferred language', async () => {
-    const { user, sent } = await openProfileThatSaves();
-
-    await user.click(screen.getByLabelText('Preferred language'));
-    await user.click(screen.getByRole('option', { name: 'No preference' }));
-    await save(user);
-
-    expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(sent.body?.preferred_language_code).toBeNull();
+    expect(experience.getByText('6 years')).toBeVisible();
   });
 
   it('says the skill list is missing rather than that there are no skills', async () => {
@@ -334,6 +339,17 @@ describe('the profile editor', () => {
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
     expect(sent.body?.unmapped_skills).toEqual(['Kobo Toolbox', 'Sphere Standards']);
+  });
+
+  it('deletes an Other skill from its pill', async () => {
+    const { user, sent } = await openProfileThatSaves();
+    const otherSkills = within(screen.getByRole('region', { name: 'Other skills' }));
+
+    await user.click(otherSkills.getByRole('button', { name: 'Remove Kobo Toolbox' }));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.unmapped_skills).toEqual([]);
   });
 
   it('blames the searchable switch when Global search needs a CV first', async () => {
@@ -383,6 +399,39 @@ describe('the profile editor', () => {
 
     expect(await screen.findByText("This page didn't load")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
+});
+
+describe('the Candidate Card on the profile', () => {
+  it('shows the candidate the way a recruiter will read them', async () => {
+    await openProfile();
+
+    const card = within(await screen.findByRole('article', { name: 'Lina Khoury' }));
+    expect(card.getByText('Lina Khoury')).toBeVisible();
+    expect(card.getByText('Project Manager')).toBeVisible();
+    expect(card.getByText(CANDIDATE.email)).toBeVisible();
+    expect(card.getByText('+963 11 555 0100')).toBeVisible();
+    expect(card.getByText('6 years')).toBeVisible();
+    expect(card.getByText('Arabic')).toBeVisible();
+  });
+
+  it('leaves out what the profile does not say, rather than labelling it empty', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...hasProfile({
+        ...CANDIDATE_PROFILE,
+        phone: null,
+        canonical_role_key: null,
+        languages: [],
+      }),
+    );
+    await renderApp('/profile');
+
+    const card = within(await screen.findByRole('article', { name: 'Lina Khoury' }));
+    expect(card.getByText(CANDIDATE.email)).toBeVisible();
+    expect(card.queryByText('Phone')).toBeNull();
+    expect(card.queryByText('Languages')).toBeNull();
+    expect(card.queryByText('Project Manager')).toBeNull();
   });
 });
 

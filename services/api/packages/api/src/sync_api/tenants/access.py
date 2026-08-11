@@ -58,7 +58,7 @@ def acting_recruiter(profile: ActingProfile) -> ActingRecruiter:
         raise Problem(
             status=403,
             type=TENANT_SUSPENDED_PROBLEM_TYPE,
-            detail="This tenant is suspended. Contact Sync to restore it.",
+            detail="This tenant is suspended. Contact Sync Hub to restore it.",
         )
 
     return ActingRecruiter(

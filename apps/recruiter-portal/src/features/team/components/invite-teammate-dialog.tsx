@@ -19,7 +19,7 @@ export function InviteTeammateDialog({ open, onOpenChange }: InviteTeammateDialo
         <DialogHeader>
           <DialogTitle>Invite a teammate</DialogTitle>
           <DialogDescription>
-            Sync emails them an invitation. They choose their own password, and join your Tenant
+            Sync Hub emails them an invitation. They choose their own password, and join your Tenant
             once they have.
           </DialogDescription>
         </DialogHeader>

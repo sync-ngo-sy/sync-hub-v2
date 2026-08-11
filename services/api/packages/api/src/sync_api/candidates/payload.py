@@ -235,11 +235,6 @@ class ProfileClaims(BaseModel):
         "the candidate's own answer.",
         examples=["frontend-engineer"],
     )
-    preferred_language_code: LanguageCode | None = Field(
-        default=None,
-        description="A recruiter search filter, and never read off a CV: the language a "
-        "document happens to be written in is not a preference.",
-    )
     is_searchable: bool = Field(
         default=False,
         description="Opt in to cross-tenant Global search. Requires a current, ready CV.",
@@ -273,6 +268,14 @@ class CandidateProfile(ProfileClaims):
         "carries it back so a `GET` body stays a valid one, and it is ignored. A wrong number "
         "is corrected by fixing the work history.",
     )
+
+
+class ExperienceTotalRequest(BaseModel):
+    experiences: list[ProfileExperience] = _section("Jobs to calculate as one work history.")
+
+
+class ExperienceTotal(BaseModel):
+    total_experience_years: int = Field(ge=0)
 
 
 class ProfileDraft(ProfileClaims):

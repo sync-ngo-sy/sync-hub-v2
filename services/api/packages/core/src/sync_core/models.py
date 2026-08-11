@@ -291,7 +291,7 @@ t_candidate_directory_profiles = Table(
     Column("canonical_role_key", Text),
     Column("canonical_role_name", Text),
     Column("total_experience_years", Integer),
-    Column("preferred_language_code", Text),
+    Column("language_names", ARRAY(Text())),
     schema="public",
 )
 
@@ -310,7 +310,7 @@ t_candidate_search_profiles = Table(
     Column("canonical_role_key", Text),
     Column("canonical_role_name", Text),
     Column("total_experience_years", Integer),
-    Column("preferred_language_code", Text),
+    Column("language_names", ARRAY(Text())),
     schema="public",
 )
 
@@ -347,11 +347,6 @@ class Candidate(Base):
         ForeignKeyConstraint(
             ["location_key"], ["public.locations.key"], name="candidates_location_fk"
         ),
-        ForeignKeyConstraint(
-            ["preferred_language_code"],
-            ["public.languages.code"],
-            name="candidates_preferred_language_fk",
-        ),
         PrimaryKeyConstraint("id", name="candidates_pkey"),
         Index("candidates_canonical_role_idx", "canonical_role_key"),
         Index("candidates_current_cv_id_idx", "current_cv_id"),
@@ -362,7 +357,6 @@ class Candidate(Base):
             postgresql_where="(is_searchable AND (deleted_at IS NULL))",
         ),
         Index("candidates_location_key_idx", "location_key"),
-        Index("candidates_preferred_language_idx", "preferred_language_code"),
         Index(
             "candidates_searchable_idx",
             "id",
@@ -402,14 +396,12 @@ class Candidate(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     location_key: Mapped[str | None] = mapped_column(Text)
     canonical_role_key: Mapped[str | None] = mapped_column(Text)
-    preferred_language_code: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
     cv: Mapped[Optional["Cv"]] = relationship("Cv", foreign_keys=[id, current_cv_id], viewonly=True)
     location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
-    language: Mapped[Optional["Language"]] = relationship("Language", viewonly=True)
 
 
 class CanonicalRole(Base):
@@ -1637,9 +1629,8 @@ class JobViewEvent(Base):
             "job_view_events_session_job_idx",
             "session_id",
             "job_id",
+            "tracked_link_id",
             "viewed_at",
-            "id",
-            postgresql_where="(tracked_link_id IS NOT NULL)",
         ),
         {"schema": "public"},
     )
@@ -1895,6 +1886,7 @@ class ApplicationProfileSnapshot(Base):
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
+    canonical_role: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 

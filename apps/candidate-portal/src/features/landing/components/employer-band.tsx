@@ -11,7 +11,7 @@ export function EmployerBand() {
             href={env.recruiterPortalUrl}
             className="whitespace-nowrap border-b border-accent-foreground text-accent-foreground"
           >
-            See Sync for employers <span aria-hidden="true">→</span>
+            See Sync Hub for employers <span aria-hidden="true">→</span>
           </a>
         </p>
       </Wrap>

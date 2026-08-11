@@ -1,18 +1,32 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { buttonVariants } from '@sync/ui/components/ui/button';
+import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Star } from 'lucide-react';
 import { useState } from 'react';
-import { candidateMeta, pooledCard } from '@/features/candidates/candidate';
+import { pooledCard } from '@/features/candidates/candidate';
+import {
+  CandidateNameCell,
+  NOTHING,
+  yearsOf,
+} from '@/features/candidates/components/candidate-cells';
+import { TagList } from '@/features/crm/components/tag-list';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useSavedCandidates } from '../hooks/use-talent-pool';
-import type { PooledCandidate } from '../pool';
+import {
+  NOBODY_SAVED,
+  nobodyMatches,
+  type PooledCandidate,
+  type PoolReading,
+  type TalentPoolOrder,
+} from '../pool';
 import { DropCandidateDialog } from './drop-candidate-dialog';
+import { PoolSearch } from './pool-search';
 
 const DESCRIPTION =
-  'People your team wants to reach again, whether or not they have ever applied. The most recently saved come first.';
+  'People your team wants to reach again, whether or not they have ever applied. Everything a row says about them is read live, except the day you saved them.';
 
 const TO_SEARCH = (
   <Link to="/candidates" search={{}} className={buttonVariants({ variant: 'outline' })}>
@@ -24,21 +38,39 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Candidate',
+    meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
+    cell: ({ row }) => <CandidateNameCell card={pooledCard(row.original)} />,
+  },
+  {
+    accessorKey: 'canonical_role_name',
+    header: 'Role',
+    cell: ({ row }) => row.original.canonical_role_name ?? NOTHING,
+  },
+  {
+    accessorKey: 'total_experience_years',
+    header: 'Experience',
+    cell: ({ row }) => yearsOf(row.original.total_experience_years),
+  },
+  {
+    accessorKey: 'location_name',
+    header: 'Location',
+    cell: ({ row }) => row.original.location_name ?? NOTHING,
+  },
+  {
+    accessorKey: 'tags',
+    header: 'Tags',
     cell: ({ row }) => {
-      const meta = candidateMeta(pooledCard(row.original), null);
+      const tags = row.original.tags ?? [];
+      if (tags.length === 0) return NOTHING;
       return (
-        <span className="flex min-w-52 flex-col gap-1">
-          <span>{row.original.full_name}</span>
-          {meta ? (
-            <span className="text-meta font-normal text-muted-foreground">{meta}</span>
-          ) : null}
-        </span>
+        <TagList label={`Tags on ${row.original.full_name}`} names={tags.map((tag) => tag.name)} />
       );
     },
   },
   {
     accessorKey: 'added_at',
     header: 'Saved',
+    meta: { sort: { ascending: 'oldest', descending: 'newest' } },
     cell: ({ row }) => (
       <time dateTime={row.original.added_at} title={absoluteDateTime(row.original.added_at)}>
         {relativeTime(row.original.added_at)}
@@ -48,50 +80,77 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
 ];
 
 interface TalentPoolPageProps {
+  reading: PoolReading;
+  onReadingChange: (reading: PoolReading) => void;
   onCandidateOpen: (entry: PooledCandidate) => void;
+  candidateHref: (entry: PooledCandidate) => string;
 }
 
-export function TalentPoolPage({ onCandidateOpen }: TalentPoolPageProps) {
-  const saved = useSavedCandidates();
+export function TalentPoolPage({
+  reading,
+  onReadingChange,
+  onCandidateOpen,
+  candidateHref,
+}: TalentPoolPageProps) {
+  const saved = useSavedCandidates(reading);
   const [dropping, setDropping] = useState<PooledCandidate | null>(null);
+  const narrowed = reading.q.trim() !== '';
 
   return (
-    <div className="space-y-8">
-      <PageHeader title="Talent pool" description={DESCRIPTION} />
+    <>
+      <WorkspaceHeader>
+        <PageHeader title="Talent pool" description={DESCRIPTION} />
+      </WorkspaceHeader>
 
-      <DataTable
-        label="Saved Candidates"
-        columns={COLUMNS}
-        data={saved.data ?? []}
-        getRowId={(entry) => entry.candidate_id}
-        rowLabel={(entry) => entry.full_name}
-        onRowOpen={onCandidateOpen}
-        rowActions={(entry) => [
-          { label: 'Drop from talent pool', onSelect: () => setDropping(entry) },
-        ]}
-        isLoading={saved.isPending}
-        error={
-          saved.isError
-            ? {
-                message: problemMessage(saved.error, "Couldn't read your talent pool."),
-                onRetry: () => void saved.refetch(),
-              }
-            : undefined
-        }
-        empty={{
-          icon: Star,
-          message:
-            'Nobody saved yet — search reaches every Candidate on the platform who has opted into being found.',
-          action: TO_SEARCH,
-        }}
-        loadMore={{
-          hasMore: saved.hasNextPage,
-          isLoading: saved.isFetchingNextPage,
-          onLoadMore: () => void saved.fetchNextPage(),
-        }}
-      />
+      <div className="space-y-(--space-section) pt-(--space-section)">
+        <PoolSearch q={reading.q} onSearch={(q) => onReadingChange({ ...reading, q })} />
 
-      {dropping ? <DropCandidateDialog entry={dropping} onClose={() => setDropping(null)} /> : null}
-    </div>
+        <DataTable
+          label="Saved Candidates"
+          columns={COLUMNS}
+          data={saved.data ?? []}
+          getRowId={(entry) => entry.candidate_id}
+          rowLabel={(entry) => entry.full_name}
+          onRowOpen={onCandidateOpen}
+          rowHref={candidateHref}
+          rowActions={(entry) => [
+            { label: 'Drop from talent pool', onSelect: () => setDropping(entry) },
+          ]}
+          isLoading={saved.isPending}
+          error={
+            saved.isError
+              ? {
+                  message: problemMessage(saved.error, "Couldn't read your talent pool."),
+                  onRetry: () => void saved.refetch(),
+                }
+              : undefined
+          }
+          sort={{
+            by: reading.order,
+            onChange: (by) => onReadingChange({ ...reading, order: by as TalentPoolOrder }),
+          }}
+          empty={{
+            icon: Star,
+            message: narrowed ? nobodyMatches(reading.q) : NOBODY_SAVED,
+            action: narrowed ? (
+              <Button variant="outline" onClick={() => onReadingChange({ ...reading, q: '' })}>
+                Clear search
+              </Button>
+            ) : (
+              TO_SEARCH
+            ),
+          }}
+          loadMore={{
+            hasMore: saved.hasNextPage,
+            isLoading: saved.isFetchingNextPage,
+            onLoadMore: () => void saved.fetchNextPage(),
+          }}
+        />
+
+        {dropping ? (
+          <DropCandidateDialog entry={dropping} onClose={() => setDropping(null)} />
+        ) : null}
+      </div>
+    </>
   );
 }

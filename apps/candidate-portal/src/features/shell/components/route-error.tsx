@@ -23,14 +23,13 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
   );
 }
 
-/** The last resort: the shell itself failed, so a reload is the only way out. */
 export function AppCrash({ error }: ErrorComponentProps) {
   useEffect(() => reportError(error, { boundary: 'app-shell' }), [error]);
 
   return (
     <CenteredScreen>
       <ErrorCard
-        title="Sync didn't start"
+        title="Sync Hub didn't start"
         description={problemMessage(error, 'Something went wrong before the page loaded.')}
         retryLabel="Reload"
         onRetry={() => window.location.reload()}

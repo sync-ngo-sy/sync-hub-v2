@@ -10,7 +10,7 @@ export function Hero() {
     <section className="pt-[clamp(3.5rem,8vw,6.5rem)] pb-[clamp(3rem,6vw,5rem)]">
       <Wrap>
         <div>
-          <Eyebrow className={cn(RISE, 'mb-6')}>Sync for employers</Eyebrow>
+          <Eyebrow className={cn(RISE, 'mb-6')}>Sync Hub for employers</Eyebrow>
 
           <h1
             className={cn(
@@ -29,8 +29,8 @@ export function Hero() {
               'mt-6 max-w-[34rem] text-reading text-secondary-foreground motion-safe:delay-150',
             )}
           >
-            Publish a job with the criteria that actually matter, and Sync measures every applicant
-            against them the moment they apply. Your pipeline starts sorted, not stacked.
+            Publish a job with the criteria that actually matter, and Sync Hub measures every
+            applicant against them the moment they apply. Your pipeline starts sorted, not stacked.
           </p>
 
           <div

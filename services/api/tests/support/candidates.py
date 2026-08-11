@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
     from tests.support.mailbox import Mailbox
 
-DEFAULT_PASSWORD: Final = "correct-horse-battery"
+DEFAULT_PASSWORD: Final = "Correct-Horse9"
 
 DELETION: Final = "/v1/candidates/me/deletion"
 

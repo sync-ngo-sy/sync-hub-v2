@@ -2,6 +2,7 @@ import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 
 type CandidateProfile = components['schemas']['CandidateProfile'];
+type ProfileExperience = components['schemas']['ProfileExperience'];
 type ProblemDetail = components['schemas']['ProblemDetail'];
 type ValidationProblemDetail = components['schemas']['ValidationProblemDetail'];
 
@@ -13,7 +14,6 @@ export function failsToLoadProfile(problem: ProblemDetail) {
   return [http.get('/v1/candidates/me/profile', ({ response }) => response(500).json(problem))];
 }
 
-/** `onSave` is how a test reads the whole-profile body the form put back. */
 export function savesProfile(saved: CandidateProfile, onSave?: (body: CandidateProfile) => void) {
   return [
     http.put('/v1/candidates/me/profile', async ({ request, response }) => {
@@ -23,7 +23,19 @@ export function savesProfile(saved: CandidateProfile, onSave?: (body: CandidateP
   ];
 }
 
-/** Answers with the body it was sent, as a whole-profile replace does. */
+export function calculatesExperience(
+  total: number,
+  onCalculate?: (experiences: ProfileExperience[]) => void,
+) {
+  return [
+    http.post('/v1/candidates/me/profile/experience-total', async ({ request, response }) => {
+      const body = await request.json();
+      onCalculate?.(body.experiences ?? []);
+      return response(200).json({ total_experience_years: total });
+    }),
+  ];
+}
+
 export function echoesProfile(onSave?: (body: CandidateProfile) => void) {
   return [
     http.put('/v1/candidates/me/profile', async ({ request, response }) => {
@@ -44,4 +56,17 @@ export function refusesSearchable(problem: ProblemDetail) {
 
 export function faultsOnSave(problem: ProblemDetail) {
   return [http.put('/v1/candidates/me/profile', ({ response }) => response(500).json(problem))];
+}
+
+export function savesPhoto(avatarUrl: string, onUpload?: (contentType: string | null) => void) {
+  return [
+    http.put('/v1/candidates/me/avatar', ({ request, response }) => {
+      onUpload?.(request.headers.get('content-type'));
+      return response(200).json({ avatar_url: avatarUrl });
+    }),
+  ];
+}
+
+export function refusesPhoto(problem: ProblemDetail, status: 413 | 415) {
+  return [http.put('/v1/candidates/me/avatar', ({ response }) => response(status).json(problem))];
 }

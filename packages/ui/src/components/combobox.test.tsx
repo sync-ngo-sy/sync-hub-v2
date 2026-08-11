@@ -15,7 +15,6 @@ const GROUPED_SKILLS = [
   { label: 'Operations', options: [LOGISTICS, FLEET] },
 ];
 
-/** The option a screen reader would read as the current one. */
 function highlighted(combobox: HTMLElement) {
   const id = combobox.getAttribute('aria-activedescendant');
   return id ? document.getElementById(id) : null;
@@ -92,8 +91,6 @@ describe('Combobox', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Skill' }));
 
-    // Base UI appends an invisible character to live regions to force the announcement,
-    // so both messages are matched loosely.
     const message = screen.getByText('Loading skills…', { exact: false });
     expect(message.closest('[aria-live="polite"]')).toBeInTheDocument();
     expect(screen.queryByText('No skill by that name.', { exact: false })).not.toBeInTheDocument();

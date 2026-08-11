@@ -2,9 +2,9 @@ import { Button } from '@sync/ui/components/ui/button';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Inbox } from 'lucide-react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataTable, type DataTableColumn, type DataTableProps } from './data-table';
-import { StatusChip } from './status-chip';
+import { StatusMark } from './status-mark';
 
 interface Application {
   id: string;
@@ -18,7 +18,7 @@ const COLUMNS: DataTableColumn<Application>[] = [
   {
     id: 'status',
     header: 'Status',
-    cell: () => <StatusChip tone="neutral" label="New" />,
+    cell: () => <StatusMark tone="new" label="New" />,
   },
 ];
 
@@ -110,6 +110,35 @@ describe('DataTable', () => {
     expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(APPLICATIONS[0]);
   });
 
+  it('carries the row destination as a real link, so a reader can take it to a new tab', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({
+      onRowOpen,
+      rowHref: (application) => `/applications/${application.id}`,
+    });
+
+    const opener = screen.getByRole('link', { name: 'Open Lina Khoury' });
+    expect(opener).toHaveAttribute('href', '/applications/a1');
+
+    await user.click(opener);
+
+    expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(APPLICATIONS[0]);
+  });
+
+  it('leaves a click that means another tab to the browser', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({
+      onRowOpen,
+      rowHref: (application) => `/applications/${application.id}`,
+    });
+
+    await user.keyboard('{Meta>}');
+    await user.click(screen.getByRole('link', { name: 'Open Lina Khoury' }));
+    await user.keyboard('{/Meta}');
+
+    expect(onRowOpen).not.toHaveBeenCalled();
+  });
+
   it('runs a named row action from the keyboard without opening the row', async () => {
     const onSelect = vi.fn();
     const onRowOpen = vi.fn();
@@ -173,10 +202,122 @@ describe('DataTable', () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it('pins the lead column so a phone can scroll the rest of the row', () => {
+  it('pins the lead column so a narrow tablet can scroll the rest of the row', () => {
     renderTable();
 
     expect(screen.getByRole('columnheader', { name: 'Candidate' })).toHaveClass('max-lg:sticky');
     expect(screen.getByRole('cell', { name: 'Lina Khoury' })).toHaveClass('max-lg:sticky');
+  });
+});
+
+describe('DataTable sorted by a column', () => {
+  const SORTABLE: DataTableColumn<Application>[] = [
+    {
+      accessorKey: 'candidate',
+      header: 'Candidate',
+      meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
+    },
+    { accessorKey: 'job', header: 'Job' },
+  ];
+
+  it('leaves a column alone when nothing has asked for it to be sortable', () => {
+    renderTable({ columns: SORTABLE });
+
+    expect(screen.queryByRole('button', { name: 'Candidate' })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Candidate' })).not.toHaveAttribute(
+      'aria-sort',
+    );
+  });
+
+  it('offers only the columns that say they can be sorted', () => {
+    renderTable({ columns: SORTABLE, sort: { by: 'name', onChange: vi.fn() } });
+
+    expect(screen.getByRole('button', { name: 'Candidate' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Job' })).not.toBeInTheDocument();
+  });
+
+  it('says which way the sorted column is going, and says nothing on the others', () => {
+    renderTable({ columns: SORTABLE, sort: { by: 'name', onChange: vi.fn() } });
+
+    expect(screen.getByRole('columnheader', { name: 'Candidate' })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    expect(screen.getByRole('columnheader', { name: 'Job' })).not.toHaveAttribute('aria-sort');
+  });
+
+  it('turns the sorted column around rather than asking for the same order twice', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({ columns: SORTABLE, sort: { by: 'name', onChange } });
+
+    await user.click(screen.getByRole('button', { name: 'Candidate' }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('name_reversed');
+  });
+
+  it('starts an unsorted column ascending, whichever order the table is in', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({ columns: SORTABLE, sort: { by: 'newest', onChange } });
+
+    await user.click(screen.getByRole('button', { name: 'Candidate' }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('name');
+  });
+});
+
+describe('DataTable on a narrow viewport', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('trades the grid for one card per row, keeping the lead cell as the title', () => {
+    renderTable();
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    const list = screen.getByRole('list', { name: 'Applications' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText('Lina Khoury')).toBeInTheDocument();
+  });
+
+  it('turns the remaining columns into labelled detail rows', () => {
+    renderTable();
+
+    const [first] = within(screen.getByRole('list', { name: 'Applications' })).getAllByRole(
+      'listitem',
+    );
+    expect(first).toHaveTextContent('Job');
+    expect(first).toHaveTextContent('Field Coordinator');
+    expect(first).toHaveTextContent('Status');
+  });
+
+  it('drops the columns a card has no room for', () => {
+    renderTable({
+      columns: [
+        { accessorKey: 'candidate', header: 'Candidate' },
+        { accessorKey: 'job', header: 'Job', meta: { priority: 'hidden' } },
+      ],
+    });
+
+    expect(screen.getByText('Lina Khoury')).toBeInTheDocument();
+    expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+  });
+
+  it('still opens a row, and still counts what is shown', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({ onRowOpen });
+
+    await user.click(screen.getByRole('button', { name: 'Open Yara Salloum' }));
+
+    expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(APPLICATIONS[1]);
+    expect(screen.getByText('2 shown')).toBeInTheDocument();
   });
 });

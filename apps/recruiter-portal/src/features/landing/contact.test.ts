@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONTACT_SUBJECT, contactChannels, emailHref, whatsAppHref } from './contact';
 
-describe('the links that reach the Sync team', () => {
+describe('the links that reach the Sync Hub team', () => {
   it('deep-links WhatsApp with the digits of the configured number', () => {
     expect(whatsAppHref('+963944123456')).toContain('https://wa.me/963944123456?');
   });
@@ -41,7 +41,6 @@ describe('the contact the environment configures', () => {
     });
   });
 
-  // Offering nothing beats offering a dead link, and beats refusing to render the portal at all.
   it('offers no channel it has not been configured with', () => {
     expect(contactChannels({ whatsapp: '', email: '' })).toEqual({ whatsapp: null, email: null });
   });

@@ -10,7 +10,7 @@ export function NotificationsPage() {
   const notifications = useMyNotifications();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-(--space-section)">
       <PageHeader
         title="Notifications"
         description="Everything the platform has told you, newest first. Opening one marks it read."
@@ -22,8 +22,6 @@ export function NotificationsPage() {
         </div>
       ) : null}
 
-      {/* Only when there is nothing on screen: a page already holding notifications answers a
-          failed Load more at the button, not with a panel that disowns the list above it. */}
       {notifications.isError && !notifications.data ? (
         <ErrorCard
           title="Couldn't load your notifications"

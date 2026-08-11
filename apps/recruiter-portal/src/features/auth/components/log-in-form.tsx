@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { PasswordInput } from '@sync/ui/components/password-input';
 import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
@@ -27,7 +28,6 @@ export function LogInForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
     try {
       onSignedIn(await logIn.mutateAsync({ body: values }));
     } catch (error) {
-      // Credentials are a field problem, not a toast: it belongs beside what the reader typed.
       setError('password', {
         message: problemMessage(error, "Couldn't sign you in. Try again."),
       });
@@ -54,9 +54,8 @@ export function LogInForm({ onSignedIn }: { onSignedIn: (profile: Profile) => vo
 
       <div className="space-y-1.5">
         <Label htmlFor={passwordId}>Password</Label>
-        <Input
+        <PasswordInput
           id={passwordId}
-          type="password"
           autoComplete="current-password"
           aria-invalid={errors.password ? true : undefined}
           {...register('password')}

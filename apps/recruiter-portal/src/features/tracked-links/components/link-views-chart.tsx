@@ -1,46 +1,24 @@
-import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from 'recharts';
 import { type LinkViews, viewsSummary } from '../tracked-link';
 
-const ROW_HEIGHT = 44;
-
 export default function LinkViewsChart({ bars }: { bars: LinkViews[] }) {
+  const most = Math.max(...bars.map((bar) => bar.views), 1);
+
   return (
-    <div role="img" aria-label={viewsSummary(bars)} className="w-full">
-      <BarChart
-        responsive
-        style={{ width: '100%', height: bars.length * ROW_HEIGHT }}
-        accessibilityLayer={false}
-        data={bars}
-        layout="vertical"
-        barCategoryGap={12}
-        margin={{ top: 4, right: 44, bottom: 4, left: 0 }}
-      >
-        <XAxis type="number" hide />
-        <YAxis
-          type="category"
-          dataKey="name"
-          width={140}
-          tickLine={false}
-          axisLine={false}
-          tick={{ fill: 'var(--secondary-foreground)', fontSize: 13 }}
-        />
-        <Bar
-          dataKey="views"
-          radius={5}
-          barSize={10}
-          isAnimationActive={false}
-          background={{ fill: 'var(--muted)', radius: 5 }}
-        >
-          {bars.map((bar) => (
-            <Cell key={bar.id} fill={bar.fill} />
-          ))}
-          <LabelList
-            dataKey="views"
-            position="right"
-            className="fill-foreground text-meta tabular-nums"
-          />
-        </Bar>
-      </BarChart>
+    <div role="img" aria-label={viewsSummary(bars)} className="flex flex-col gap-3.5">
+      {bars.map((bar) => (
+        <div key={bar.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
+          <span className="truncate text-meta text-secondary-foreground">{bar.name}</span>
+          <span className="text-meta font-mono tabular-nums text-foreground">
+            {bar.views} · {bar.share ?? 0}%
+          </span>
+          <span className="col-span-2 mt-1.5 block h-2 overflow-hidden rounded-full bg-muted">
+            <span
+              className="block h-full rounded-full"
+              style={{ width: `${(bar.views / most) * 100}%`, background: bar.fill }}
+            />
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

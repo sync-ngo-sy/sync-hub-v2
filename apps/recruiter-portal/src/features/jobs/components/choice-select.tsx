@@ -17,8 +17,64 @@ export interface ChoiceField<Value extends string> {
   'aria-invalid'?: boolean;
 }
 
-/** Every closed set a Job carries, rendered the same way: the whole set on screen, in the
- * order the map lists it, and nowhere to type a value that is not in it. */
+interface ChoicePickerProps<Value extends string> {
+  value: Value;
+  items: Record<Value, string>;
+  onValueChange: (value: Value) => void;
+  name?: string;
+  id?: string;
+  label?: string;
+  disabled?: boolean;
+  onBlur?: () => void;
+  describedBy?: string;
+  invalid?: boolean;
+  className?: string;
+}
+
+export function ChoicePicker<Value extends string>({
+  value,
+  items,
+  onValueChange,
+  name,
+  id,
+  label,
+  disabled,
+  onBlur,
+  describedBy,
+  invalid,
+  className,
+}: ChoicePickerProps<Value>) {
+  return (
+    <Select
+      items={items}
+      name={name}
+      value={value}
+      disabled={disabled}
+      onValueChange={(next) => {
+        if (next !== null) onValueChange(next as Value);
+      }}
+    >
+      <SelectTrigger
+        id={id}
+        aria-label={label}
+        onBlur={onBlur}
+        className={className}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.entries(items) as [Value, string][]).map(([itemValue, itemLabel]) => (
+          <SelectItem key={itemValue} value={itemValue}>
+            {itemLabel}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function ChoiceSelect<Value extends string>({
   field,
   items,
@@ -31,29 +87,17 @@ export function ChoiceSelect<Value extends string>({
   onValueChange?: (value: Value | null) => void;
 }) {
   return (
-    <Select
+    <ChoicePicker
       items={items}
       name={field.name}
       value={field.value}
       disabled={field.disabled}
-      onValueChange={onValueChange}
-    >
-      <SelectTrigger
-        id={field.id}
-        onBlur={field.onBlur}
-        className="w-full"
-        aria-describedby={field['aria-describedby']}
-        aria-invalid={field['aria-invalid']}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {(Object.entries(items) as [Value, string][]).map(([value, label]) => (
-          <SelectItem key={value} value={value}>
-            {label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      onValueChange={(value) => onValueChange(value)}
+      id={field.id}
+      onBlur={field.onBlur}
+      className="w-full"
+      describedBy={field['aria-describedby']}
+      invalid={field['aria-invalid']}
+    />
   );
 }

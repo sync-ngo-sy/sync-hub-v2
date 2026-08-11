@@ -51,7 +51,7 @@ class CandidateMatch:
     canonical_role_key: str | None
     canonical_role_name: str | None
     total_experience_years: int
-    preferred_language_code: str | None
+    language_names: list[str]
     in_talent_pool: bool
     chunk_type: str | None
     chunk_text: str
@@ -129,7 +129,7 @@ def _match(row: Any) -> CandidateMatch:
         canonical_role_key=row.canonical_role_key,
         canonical_role_name=row.canonical_role_name,
         total_experience_years=row.total_experience_years,
-        preferred_language_code=row.preferred_language_code,
+        language_names=row.language_names,
         in_talent_pool=row.in_talent_pool,
         chunk_type=row.chunk_type,
         chunk_text=row.chunk_text,

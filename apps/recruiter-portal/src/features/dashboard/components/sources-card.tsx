@@ -3,18 +3,31 @@ import { SkeletonText } from '@sync/ui/components/skeletons';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { ChartSpline } from 'lucide-react';
-import { lazy, Suspense } from 'react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
-import { viewsRanked } from '@/features/tracked-links/tracked-link';
+import { type LinkViews, viewsRanked } from '@/features/tracked-links/tracked-link';
 import { problemMessage } from '@/lib/api-problem';
 import { sourcesSubtitle, type TenantStats } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
-const LinkViewsChart = lazy(() => import('@/features/tracked-links/components/link-views-chart'));
+function SourcesList({ sources }: { sources: LinkViews[] }) {
+  return (
+    <ul aria-label="Views by source" className="divide-y divide-border">
+      {sources.map((source) => (
+        <li
+          key={source.id}
+          className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+        >
+          <span className="truncate text-meta text-secondary-foreground">{source.name}</span>
+          <span className="shrink-0 text-meta font-mono tabular-nums text-foreground">
+            {source.views}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-/** Where a tenant's Job views came from, ranked. The API merges its tracked links by name and
- * returns only what fits here, so the card draws what it is given and links to the rest. */
 export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
   const sources = stats.data?.sources ?? [];
 
@@ -54,17 +67,15 @@ export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
       ) : null}
 
       {sources.length > 0 ? (
-        <Suspense fallback={<SkeletonText lines={4} />}>
-          <LinkViewsChart
-            bars={viewsRanked(
-              sources.map((source) => ({
-                id: source.name,
-                name: source.name,
-                views: source.views,
-              })),
-            )}
-          />
-        </Suspense>
+        <SourcesList
+          sources={viewsRanked(
+            sources.map((source) => ({
+              id: source.name,
+              name: source.name,
+              views: source.views,
+            })),
+          )}
+        />
       ) : null}
     </DashboardPanel>
   );
