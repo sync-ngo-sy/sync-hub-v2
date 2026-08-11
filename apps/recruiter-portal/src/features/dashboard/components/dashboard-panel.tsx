@@ -7,6 +7,7 @@ interface DashboardPanelProps {
   description?: string;
   action?: ReactNode;
   footer?: ReactNode;
+  flush?: boolean;
   children: ReactNode;
 }
 
@@ -15,6 +16,7 @@ export function DashboardPanel({
   description,
   action,
   footer,
+  flush = false,
   children,
 }: DashboardPanelProps) {
   const headingId = useId();
@@ -33,7 +35,7 @@ export function DashboardPanel({
             <CardDescription className="text-meta">{description}</CardDescription>
           ) : null}
         </CardHeader>
-        <CardContent>{children}</CardContent>
+        <CardContent className={flush ? 'px-0' : undefined}>{children}</CardContent>
         {footer ? (
           <CardFooter className="text-meta text-muted-foreground">{footer}</CardFooter>
         ) : null}

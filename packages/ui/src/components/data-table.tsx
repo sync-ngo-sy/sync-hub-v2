@@ -24,6 +24,7 @@ import {
   getCoreRowModel,
   type Row,
   type RowData,
+  type Table as TanstackTable,
   useReactTable,
 } from '@tanstack/react-table';
 import {
@@ -34,7 +35,7 @@ import {
   type LucideIcon,
   MoreHorizontal,
 } from 'lucide-react';
-import type { MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
 
@@ -49,6 +50,8 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     priority?: ColumnPriority;
     sort?: ColumnSort;
+    share?: number;
+    width?: string;
   }
 }
 
@@ -83,6 +86,7 @@ export interface DataTableProps<TRow> {
   empty: { icon: LucideIcon; message: string; action: ReactNode };
   loadMore?: { hasMore: boolean; isLoading?: boolean; onLoadMore: () => void };
   sort?: DataTableSort;
+  flush?: boolean;
   className?: string;
 }
 
@@ -90,6 +94,7 @@ const SKELETON_ROW_KEYS = placeholderKeys(5, 'skeleton-row');
 const count = new Intl.NumberFormat();
 
 const CELL_BORDER = 'border-b border-border';
+const EDGE_PADDING = '[&_tr>*:first-child]:ps-(--space-card) [&_tr>*:last-child]:pe-(--space-card)';
 const TABLE_CARD = 'overflow-hidden rounded-lg border border-border bg-card shadow-card';
 const LEAD_COLUMN = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-card';
 const LEAD_HEADER = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-table-header';
@@ -103,6 +108,33 @@ function priorityOf<TRow>(cell: Cell<TRow, unknown>, index: number): ColumnPrior
 function termOf<TRow>(cell: Cell<TRow, unknown>): string {
   const { header } = cell.column.columnDef;
   return typeof header === 'string' ? header : cell.column.id;
+}
+
+const SHARE_FLOOR = '15ch';
+
+/** A `max-width` is what lets a column hold a width the browser would otherwise widen to fit the
+ * text, so the cell inside it ellipses instead of stretching the table. The `min-width` puts a floor
+ * under that, because a shared column with no floor keeps giving room away until it is nothing but
+ * padding; once every column is at its floor the table is wider than its box and scrolls instead. */
+function columnWidths<TRow>(table: TanstackTable<TRow>): Map<string, CSSProperties> {
+  const columns = table.getAllColumns();
+  const shared = columns.filter((column) => column.columnDef.meta?.share);
+  const total = shared.reduce((sum, column) => sum + (column.columnDef.meta?.share ?? 0), 0);
+
+  const widths = new Map<string, CSSProperties>();
+
+  for (const column of columns) {
+    const { share, width } = column.columnDef.meta ?? {};
+    if (width) widths.set(column.id, { width, maxWidth: width });
+    else if (share)
+      widths.set(column.id, {
+        width: `${((share / total) * 100).toFixed(3)}%`,
+        minWidth: SHARE_FLOOR,
+        maxWidth: 0,
+      });
+  }
+
+  return widths;
 }
 
 export function DataTable<TRow>({
@@ -119,6 +151,7 @@ export function DataTable<TRow>({
   empty,
   loadMore,
   sort,
+  flush = false,
   className,
 }: DataTableProps<TRow>) {
   const compact = useMediaQuery(COMPACT);
@@ -134,6 +167,7 @@ export function DataTable<TRow>({
   });
 
   const rows = table.getRowModel().rows;
+  const widths = columnWidths(table);
   const skeletonCellKeys = placeholderKeys(columns.length + (rowActions ? 1 : 0), 'cell');
   const loadingFirstPage = isLoading && rows.length === 0;
 
@@ -155,7 +189,7 @@ export function DataTable<TRow>({
     <div
       className={cn(
         'flex flex-wrap items-center justify-between gap-3',
-        compact ? 'py-3' : 'border-t border-border bg-table-header px-5 py-3',
+        compact ? 'py-3' : 'border-t border-border bg-table-header px-(--space-card) py-3',
       )}
     >
       <p className="text-meta font-mono tabular-nums text-muted-foreground">
@@ -194,18 +228,25 @@ export function DataTable<TRow>({
 
   return (
     <div className={className}>
-      <div className={TABLE_CARD}>
-        <Table aria-label={label} className="border-separate border-spacing-0">
+      <div className={flush ? undefined : TABLE_CARD}>
+        <Table aria-label={label} className={cn('border-separate border-spacing-0', EDGE_PADDING)}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header, index) => {
                   const sorting = sortingOf(header.column.columnDef.meta?.sort, sort);
+                  const width = widths.get(header.column.id);
                   return (
                     <TableHead
                       key={header.id}
                       aria-sort={sorting?.direction ?? undefined}
-                      className={cn(CELL_BORDER, 'bg-table-header', index === 0 && LEAD_HEADER)}
+                      style={width}
+                      className={cn(
+                        CELL_BORDER,
+                        'bg-table-header',
+                        flush && 'border-t',
+                        index === 0 && LEAD_HEADER,
+                      )}
                     >
                       {sorting ? (
                         <SortButton {...sorting}>
@@ -218,7 +259,9 @@ export function DataTable<TRow>({
                   );
                 })}
                 {rowActions ? (
-                  <TableHead className={cn(CELL_BORDER, 'w-px bg-table-header')}>
+                  <TableHead
+                    className={cn(CELL_BORDER, 'w-px bg-table-header', flush && 'border-t')}
+                  >
                     <span className="sr-only">Actions</span>
                   </TableHead>
                 ) : null}
@@ -252,6 +295,7 @@ export function DataTable<TRow>({
                     {row.getVisibleCells().map((cell, index) => (
                       <TableCell
                         key={cell.id}
+                        style={widths.get(cell.column.id)}
                         className={cn(CELL_BORDER, index === 0 && cn(LEAD_COLUMN, 'font-medium'))}
                       >
                         {index === 0 && onRowOpen ? (
@@ -376,7 +420,7 @@ function CardList<TRow>({
 }
 
 const OPENER =
-  'cursor-pointer rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
+  'block w-full cursor-pointer rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
 
 function RowOpener({
   label,
