@@ -66,6 +66,11 @@ services = {
       SYNC_SUPABASE_URL = "https://skmsobeqyljduzkjmokr.supabase.co"
       # The sender is the worker's business, not the API's — see the note above it.
       SYNC_EMAIL_FROM = "Sync <noreply@send.sync.ngo>"
+      # Required by Settings, which both services build in full. The worker needs them for real:
+      # the emails it sends carry links into the portals. Without them the container exits at
+      # import, which is how the first staging revision died.
+      SYNC_RECRUITER_PORTAL_URL = "https://app.sync.ngo"
+      SYNC_ADMIN_PORTAL_URL     = "https://admin.sync.ngo"
     }
 
     secret_env = {

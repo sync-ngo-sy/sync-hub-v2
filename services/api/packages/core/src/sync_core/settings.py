@@ -14,7 +14,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 AsyncPostgresDsn = Annotated[PostgresDsn, UrlConstraints(allowed_schemes=["postgresql+asyncpg"])]
 
@@ -84,7 +84,11 @@ class Settings(BaseSettings):
     #: Plain strings rather than AnyHttpUrl, because pydantic renders a URL with a trailing
     #: slash and a browser's Origin header never has one — the comparison is literal, so
     #: "https://jobs.sync.ngo/" would match nothing.
-    cors_allowed_origins: tuple[str, ...] = ()
+    #: `NoDecode` because the field is a tuple, and pydantic-settings JSON-decodes a complex type
+    #: inside the environment source — before any validator runs. `a,b` is not JSON, so the
+    #: splitter below never got the chance and the process died at import with a bare
+    #: JSONDecodeError. This is the annotation that hands the raw string to it instead.
+    cors_allowed_origins: Annotated[tuple[str, ...], NoDecode] = ()
 
     auth_cookie_secure: bool = True
     auth_cookie_same_site: SameSite = SameSite.LAX
