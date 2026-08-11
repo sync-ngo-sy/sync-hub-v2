@@ -23,6 +23,12 @@ variable "staging_project" {
   default = "sync-ngo-staging"
 }
 
+variable "state_bucket" {
+  description = "Terraform state bucket. Not managed here — it holds the state that would manage it."
+  type        = string
+  default     = "sync-ngo-tfstate"
+}
+
 variable "budget_amount" {
   description = "Monthly budget in USD. Deliberately low: everything here is meant to sit inside free tiers, so any movement is a misconfiguration."
   type        = number
