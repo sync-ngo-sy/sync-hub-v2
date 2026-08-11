@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Badge } from '@sync/ui/components/ui/badge';
 import { Button } from '@sync/ui/components/ui/button';
@@ -23,9 +24,10 @@ function columns(profileId: string): DataTableColumn<Member>[] {
     {
       accessorKey: 'full_name',
       header: 'Member',
+      meta: { share: 3 },
       cell: ({ row }) => (
-        <span className="flex min-w-40 items-center gap-2">
-          {row.original.full_name}
+        <span className="flex min-w-0 items-center gap-2">
+          <TruncatedText>{row.original.full_name}</TruncatedText>
           {row.original.id === profileId ? (
             <Badge variant="outline" size="sm">
               You
@@ -37,8 +39,11 @@ function columns(profileId: string): DataTableColumn<Member>[] {
     {
       accessorKey: 'email',
       header: 'Email',
+      meta: { share: 4 },
       cell: ({ row }) => (
-        <span className="font-normal text-muted-foreground">{row.original.email}</span>
+        <TruncatedText className="font-normal text-muted-foreground">
+          {row.original.email}
+        </TruncatedText>
       ),
     },
     {

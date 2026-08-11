@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button } from '@sync/ui/components/ui/button';
 import { MailPlus, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -12,28 +13,18 @@ import { CreateTemplateDialog } from './create-template-dialog';
 import { DeleteTemplateDialog } from './delete-template-dialog';
 import { EditTemplateDialog } from './edit-template-dialog';
 
-function opening(body: string): string {
-  const [first = ''] = body.split('\n');
-  return first.length > 120 ? `${first.slice(0, 120).trimEnd()}…` : first;
-}
-
 const COLUMNS: DataTableColumn<MessageTemplate>[] = [
   {
     accessorKey: 'name',
     header: 'Template',
-    cell: ({ row }) => (
-      <span className="flex min-w-52 flex-col gap-1">
-        <span>{row.original.name}</span>
-        <span className="text-meta font-normal text-muted-foreground">
-          {opening(row.original.body)}
-        </span>
-      </span>
-    ),
+    meta: { share: 3 },
+    cell: ({ row }) => <TruncatedText>{row.original.name}</TruncatedText>,
   },
   {
     accessorKey: 'subject',
     header: 'Subject',
-    cell: ({ row }) => <span className="flex min-w-52">{row.original.subject}</span>,
+    meta: { share: 5 },
+    cell: ({ row }) => <TruncatedText>{row.original.subject}</TruncatedText>,
   },
   {
     accessorKey: 'updated_at',

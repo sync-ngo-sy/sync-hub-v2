@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Badge } from '@sync/ui/components/ui/badge';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
@@ -25,13 +26,14 @@ const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Name',
-    meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
+    meta: { share: 4, sort: { ascending: 'name', descending: 'name_reversed' } },
     cell: ({ row }) => <CandidateNameCell card={listedCard(row.original)} />,
   },
   {
     accessorKey: 'canonical_role_name',
     header: 'Role',
-    cell: ({ row }) => row.original.canonical_role_name ?? NOTHING,
+    meta: { share: 3 },
+    cell: ({ row }) => <TruncatedText>{row.original.canonical_role_name ?? NOTHING}</TruncatedText>,
   },
   {
     accessorKey: 'total_experience_years',
@@ -42,9 +44,10 @@ const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
   {
     accessorKey: 'language_names',
     header: 'Languages',
+    meta: { share: 3 },
     cell: ({ row }) => {
       const spoken = row.original.language_names ?? [];
-      return spoken.length > 0 ? spoken.join(', ') : NOTHING;
+      return <TruncatedText>{spoken.length > 0 ? spoken.join(', ') : NOTHING}</TruncatedText>;
     },
   },
   {

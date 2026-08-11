@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, Link2, Plus } from 'lucide-react';
@@ -22,17 +23,23 @@ import { RenameLinkDialog } from './rename-link-dialog';
 
 function columnsFor(shares: Map<string, number | null>): DataTableColumn<TrackedLink>[] {
   return [
-    { accessorKey: 'name', header: 'Link' },
+    {
+      accessorKey: 'name',
+      header: 'Link',
+      meta: { share: 3 },
+      cell: ({ row }) => <TruncatedText>{row.original.name}</TruncatedText>,
+    },
     {
       accessorKey: 'token',
       header: 'Address',
+      meta: { share: 4 },
       cell: ({ row }) => {
         const address = trackedLinkAddress(row.original.token);
         return (
           <span className="flex items-center gap-2">
-            <span className="max-w-64 truncate font-normal text-muted-foreground" title={address}>
+            <TruncatedText className="min-w-0 font-normal text-muted-foreground">
               {address}
-            </span>
+            </TruncatedText>
             <CopyAddressButton link={row.original} />
           </span>
         );

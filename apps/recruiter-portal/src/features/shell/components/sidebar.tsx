@@ -32,7 +32,9 @@ export function Sidebar({ profile, collapsed = false, onNavigate, onToggleRail }
         <div
           className={cn(
             'mb-8 flex items-center gap-2',
-            collapsed ? 'flex-col px-2' : 'justify-between px-5',
+            collapsed
+              ? 'mx-2 flex-col gap-6 border-b border-sidebar-border pb-5'
+              : 'justify-between px-5',
           )}
         >
           <Brand to="/dashboard" nameHidden={collapsed} />

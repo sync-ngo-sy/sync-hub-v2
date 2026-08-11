@@ -5,6 +5,7 @@ import {
 } from '@sync/ui/components/combobox';
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Avatar, AvatarFallback } from '@sync/ui/components/ui/avatar';
 import { Button } from '@sync/ui/components/ui/button';
@@ -82,6 +83,7 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
   {
     accessorKey: 'candidate',
     header: 'Candidate',
+    meta: { share: 3 },
     cell: ({ row }) => (
       <span className="flex items-center gap-2.5">
         <Avatar size="row">
@@ -91,7 +93,12 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
       </span>
     ),
   },
-  { accessorKey: 'job', header: 'Job' },
+  {
+    accessorKey: 'job',
+    header: 'Job',
+    meta: { width: '25ch' },
+    cell: ({ row }) => <TruncatedText>{row.original.job}</TruncatedText>,
+  },
   {
     id: 'screening',
     header: 'Screening',

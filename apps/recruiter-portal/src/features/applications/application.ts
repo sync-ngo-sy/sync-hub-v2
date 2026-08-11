@@ -94,7 +94,6 @@ export function candidateIdentity(application: ApplicationSummary) {
     name: application.candidate_name,
     role: application.canonical_role ?? null,
     years: application.total_experience_years,
-    location: application.location ?? null,
   };
 }
 

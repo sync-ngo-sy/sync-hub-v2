@@ -49,7 +49,9 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
         <Brand to="/dashboard" />
       </header>
 
-      <main className="min-w-0 px-(--space-gutter) py-(--space-section) lg:pb-16">{children}</main>
+      <main className="mx-auto min-w-0 w-full max-w-(--measure-workspace) px-(--space-gutter) py-(--space-section) lg:pb-16">
+        {children}
+      </main>
     </div>
   );
 }
