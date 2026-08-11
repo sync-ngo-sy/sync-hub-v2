@@ -22,7 +22,17 @@ AsyncPostgresDsn = Annotated[PostgresDsn, UrlConstraints(allowed_schemes=["postg
 class Environment(StrEnum):
     LOCAL = "local"
     CI = "ci"
+    STAGING = "staging"
     PRODUCTION = "production"
+
+    @property
+    def is_deployed(self) -> bool:
+        """Staging is a deployed environment and gets production's rules, not local's.
+
+        It shares a registrable domain with production, which is the only reason this
+        distinction has to exist at all — see `_keep_session_cookies_host_only`.
+        """
+        return self in {Environment.STAGING, Environment.PRODUCTION}
 
 
 class LogFormat(StrEnum):
@@ -169,7 +179,7 @@ class Settings(BaseSettings):
         Refused rather than warned about: the failure it prevents is staging's cookie being
         accepted by production's API, which no test in either environment would notice.
         """
-        if self.auth_cookie_domain is not None and self.environment is Environment.PRODUCTION:
+        if self.auth_cookie_domain is not None and self.environment.is_deployed:
             message = (
                 "auth_cookie_domain must stay unset in deployed environments; a shared parent "
                 "domain would send one environment's session cookie to the other's API."

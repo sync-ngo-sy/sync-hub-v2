@@ -46,6 +46,7 @@ on:
         type: choice
         options:
           - sync-ngo-prod
+          - sync-ngo-staging
       reason:
         description: Why this is being granted (recorded in the run summary)
         required: true

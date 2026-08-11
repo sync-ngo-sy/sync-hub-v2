@@ -7,3 +7,4 @@
 # One project id per line. Everything after '#' is ignored.
 
 sync-ngo-prod # hosts the public API; the careers board calls it anonymously
+sync-ngo-staging # same API, same anonymous callers; staging proves the path before production runs it

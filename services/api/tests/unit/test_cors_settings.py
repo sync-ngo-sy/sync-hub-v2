@@ -60,10 +60,15 @@ def test_the_session_cookie_is_host_only_by_default() -> None:
     assert settings_with().auth_cookie_domain is None
 
 
-def test_a_cookie_domain_is_refused_in_a_deployed_environment() -> None:
-    """The leak this prevents: staging's session cookie reaching production's API."""
+@pytest.mark.parametrize("environment", [Environment.STAGING, Environment.PRODUCTION])
+def test_a_cookie_domain_is_refused_in_a_deployed_environment(environment: Environment) -> None:
+    """The leak this prevents: staging's session cookie reaching production's API.
+
+    Staging is the half that would do the leaking, so covering only production would leave the
+    rule pointing away from the environment it exists for.
+    """
     with pytest.raises(ValidationError, match="must stay unset"):
-        settings_with(environment=Environment.PRODUCTION, auth_cookie_domain=".sync.ngo")
+        settings_with(environment=environment, auth_cookie_domain=".sync.ngo")
 
 
 def test_a_cookie_domain_is_still_allowed_locally() -> None:
