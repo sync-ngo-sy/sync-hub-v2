@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from httpx import AsyncClient
 
-from sync_api.auth.cookies import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, SessionCookies
+from sync_api.auth.cookies import SESSION_COOKIE, SessionCookies, pack_session
 from sync_api.auth.gotrue import GoTrue, sdk_client
 from sync_api.auth.service import ActingProfile, AuthService, SignedIn
 from sync_api.auth.tokens import JwtVerifier
@@ -44,8 +44,7 @@ class Authentication:
 
 
 __all__ = [
-    "ACCESS_TOKEN_COOKIE",
-    "REFRESH_TOKEN_COOKIE",
+    "SESSION_COOKIE",
     "ActingProfile",
     "AuthService",
     "Authentication",
@@ -53,4 +52,5 @@ __all__ = [
     "JwtVerifier",
     "SessionCookies",
     "SignedIn",
+    "pack_session",
 ]
