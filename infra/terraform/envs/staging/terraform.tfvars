@@ -37,11 +37,12 @@ services = {
       SYNC_CORS_ALLOWED_ORIGINS = "https://jobs-staging.sync.ngo,https://app-staging.sync.ngo,https://admin-staging.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app-staging.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin-staging.sync.ngo"
-      # Resend's sandbox sender, which needs no verified domain. Sending as @sync.ngo would need
-      # DKIM and SPF records on the domain that carries the organisation's Workspace mail, and #86
-      # is explicit that mail records stay untouched. Production sends from a subdomain instead, so
-      # the root domain's SPF and DMARC are never involved — see the note in production's tfvars.
-      SYNC_EMAIL_FROM = "Sync staging <onboarding@resend.dev>"
+      # Both environments send from send.sync.ngo, because a second verified domain costs money
+      # the project does not have. The local part and the display name carry the distinction
+      # instead, so a recipient can always tell which environment wrote to them -- which is the
+      # failure that actually reaches a person. What sharing a domain does not solve is sending
+      # reputation: a staging mistake is spent on production's sender. See #275.
+      SYNC_EMAIL_FROM = "Sync Hub Staging <staging@send.sync.ngo>"
     }
 
     secret_env = {
@@ -73,7 +74,7 @@ services = {
       SYNC_ENVIRONMENT  = "staging"
       SYNC_SUPABASE_URL = "https://qjsqmtemyhvtnurohckb.supabase.co"
       # The sender is the worker's business, not the API's — see the note above it.
-      SYNC_EMAIL_FROM = "Sync staging <onboarding@resend.dev>"
+      SYNC_EMAIL_FROM = "Sync Hub Staging <staging@send.sync.ngo>"
       # Required by Settings, which both services build in full. The worker needs them for real:
       # the emails it sends carry links into the portals. Without them the container exits at
       # import, which is how the first staging revision died.

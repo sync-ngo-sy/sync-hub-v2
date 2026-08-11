@@ -83,12 +83,28 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def refuse_a_real_environment(settings: Settings) -> None:
-    """A seed invents people, so it only ever runs somewhere nobody else is looking."""
+    """A seed invents people, so it only ever runs where nobody real is looking.
+
+    Local and staging qualify. Production never does, and the check is on the environment rather
+    than on the hostname, so a staging database reachable at an unfamiliar address still passes
+    and a production one still cannot -- see `scripts/reset-staging-db.sh`, which draws the same
+    line for the same reason.
+    """
+    if settings.environment is Environment.PRODUCTION:
+        raise SystemExit(
+            f"Refusing to seed {settings.supabase_url}: this is production. The seed invents "
+            "people, and inventing them here would put them in front of real users."
+        )
     host = settings.supabase_url.host or ""
-    if settings.environment is not Environment.LOCAL or host not in LOCAL_HOSTS:
+    if settings.environment is Environment.LOCAL and host not in LOCAL_HOSTS:
+        raise SystemExit(
+            f"Refusing to seed {settings.supabase_url}: SYNC_ENVIRONMENT says local but the host "
+            "is not. One of the two is wrong, and guessing which is not this script's job."
+        )
+    if settings.environment not in {Environment.LOCAL, Environment.STAGING}:
         raise SystemExit(
             f"Refusing to seed {settings.supabase_url} (SYNC_ENVIRONMENT="
-            f"{settings.environment.value}). This script only runs against a local stack."
+            f"{settings.environment.value}). Only local and staging are seedable."
         )
 
 
