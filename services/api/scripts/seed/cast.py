@@ -77,7 +77,7 @@ class SeededOperator:
     full_name: str
 
 
-OPERATOR: Final = SeededOperator(email="ops@sync.example", full_name="Nour Sabbagh")
+OPERATOR: Final = SeededOperator(email="anton@sync.ngo", full_name="Anton Najjar")
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +107,8 @@ class SeededTenant:
         return (self.admin, *self.team)
 
 
+#: Every address is on sync.ngo. Real people, so an invite that escapes reaches a colleague
+#: rather than a stranger, and a bounce lands on our own mail server rather than a customer's.
 NORTHBRIDGE: Final = SeededTenant(
     key="northbridge",
     name="Northbridge Talent",
@@ -114,15 +116,13 @@ NORTHBRIDGE: Final = SeededTenant(
     plan=TenantPlan.PRO,
     from_access_request=True,
     admin=SeededRecruiter(
-        key="rana",
-        email="rana.khalil@northbridge.example",
-        full_name="Rana Khalil",
+        key="lama",
+        email="lama@sync.ngo",
+        full_name="Lama Haddad",
         role=RecruiterRole.ADMIN,
     ),
     team=[
-        SeededRecruiter(
-            key="yusuf", email="yusuf.nasser@northbridge.example", full_name="Yusuf Nasser"
-        ),
+        SeededRecruiter(key="kamal", email="kamal@sync.ngo", full_name="Kamal Nasser"),
         SeededRecruiter(
             key="lina", email="lina.haddad@northbridge.example", full_name="Lina Haddad"
         ),
@@ -136,20 +136,22 @@ NORTHBRIDGE: Final = SeededTenant(
     ],
 )
 
-CEDAR: Final = SeededTenant(
-    key="cedar",
-    name="Cedar Health Group",
-    slug="cedar-health",
+#: An employer hiring directly, rather than an agency hiring on someone else's behalf. Both
+#: shapes exist in the product and the Recruiter Portal has to read sensibly for each.
+SYRIATEL: Final = SeededTenant(
+    key="syriatel",
+    name="Syriatel Engineering",
+    slug="syriatel-engineering",
     plan=TenantPlan.FREE,
     admin=SeededRecruiter(
-        key="maya",
-        email="maya.sarkis@cedar-health.example",
-        full_name="Maya Sarkis",
+        key="syriatel_admin",
+        email="syriatel-recruiter@sync.ngo",
+        full_name="Syriatel Recruiting",
         role=RecruiterRole.ADMIN,
     ),
     team=[
         SeededRecruiter(
-            key="tarek", email="tarek.aboud@cedar-health.example", full_name="Tarek Aboud"
+            key="tarek", email="tarek.aboud@syriatel-engineering.example", full_name="Tarek Aboud"
         ),
     ],
 )
@@ -158,19 +160,19 @@ CEDAR: Final = SeededTenant(
 #: has an account that meets the "this tenant is suspended" screen on sign-in.
 PALMYRA: Final = SeededTenant(
     key="palmyra",
-    name="Palmyra Logistics",
-    slug="palmyra-logistics",
+    name="Palmyra Cloud",
+    slug="palmyra-cloud",
     plan=TenantPlan.ENTERPRISE,
     is_active=False,
     admin=SeededRecruiter(
         key="samir",
-        email="samir.daoud@palmyra-logistics.example",
+        email="samir.daoud@palmyra-cloud.example",
         full_name="Samir Daoud",
         role=RecruiterRole.ADMIN,
     ),
 )
 
-TENANTS: Final = (NORTHBRIDGE, CEDAR, PALMYRA)
+TENANTS: Final = (NORTHBRIDGE, SYRIATEL, PALMYRA)
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,9 +197,9 @@ ACCESS_REQUESTS: Final = (
         tenant=NORTHBRIDGE.key,
     ),
     SeededAccessRequest(
-        company="Aleppo Textiles Co.",
+        company="Aleppo Data Systems",
         full_name="Hala Mansour",
-        email="hala.mansour@aleppotextiles.example",
+        email="hala.mansour@aleppodata.example",
         outcome="pending",
         created_days_ago=9,
     ),
@@ -209,9 +211,9 @@ ACCESS_REQUESTS: Final = (
         created_days_ago=4,
     ),
     SeededAccessRequest(
-        company="Damascus Medical Supplies",
+        company="Damascus Cloud Works",
         full_name="Noor Ajami",
-        email="noor.ajami@dms.example",
+        email="noor.ajami@damascuscloud.example",
         outcome="pending",
         created_days_ago=1,
     ),
@@ -264,12 +266,12 @@ class SeededCandidate:
         return self.profile.full_name
 
 
-AMINA: Final = SeededCandidate(
-    key="amina",
-    email="amina.haddad@example.com",
+ABDULQADER: Final = SeededCandidate(
+    key="abdulqader",
+    email="abdulqader@sync.ngo",
     joined_days_ago=52,
     profile=CandidateProfile(
-        full_name="Amina Haddad",
+        full_name="AbdulQader Qassab",
         phone="+963 11 555 0134",
         headline="Backend engineer, 8 years",
         summary=(
@@ -334,7 +336,7 @@ AMINA: Final = SeededCandidate(
                     "A double-entry ledger library that refuses to lose a transaction, however "
                     "hard the caller tries."
                 ),
-                repository_url="https://example.com/amina/ledger",
+                repository_url="https://github.com/SuperMo0/ledger",
                 start_year=2022,
                 start_month=3,
             ),
@@ -343,22 +345,24 @@ AMINA: Final = SeededCandidate(
     ),
     cvs=[
         SeededCv(
-            display_name="amina-haddad-cv.pdf",
+            display_name="abdulqader-qassab-cv.pdf",
             created_days_ago=14,
             is_current=True,
             parse_drifts=True,
         ),
-        SeededCv(display_name="amina-haddad-cv-2024.pdf", created_days_ago=40, trims=1),
-        SeededCv(display_name="amina-old-draft.pdf", created_days_ago=48, deleted=True, trims=2),
+        SeededCv(display_name="abdulqader-qassab-cv-2024.pdf", created_days_ago=40, trims=1),
+        SeededCv(
+            display_name="abdulqader-old-draft.pdf", created_days_ago=48, deleted=True, trims=2
+        ),
     ],
 )
 
-BASHIR: Final = SeededCandidate(
-    key="bashir",
-    email="bashir.nassar@example.com",
+MOWAFAK: Final = SeededCandidate(
+    key="mowafak",
+    email="mowafak@sync.ngo",
     joined_days_ago=41,
     profile=CandidateProfile(
-        full_name="Bashir Nassar",
+        full_name="Mowafak Almahaini",
         phone="+963 21 555 0199",
         headline="Frontend engineer, 7 years",
         summary=(
@@ -430,7 +434,7 @@ BASHIR: Final = SeededCandidate(
     # The other format a CV arrives in, so the .docx path is exercised by something.
     cvs=[
         SeededCv(
-            display_name="bashir-nassar.docx", kind="docx", created_days_ago=20, is_current=True
+            display_name="mowafak-almahaini.docx", kind="docx", created_days_ago=20, is_current=True
         ),
     ],
 )
@@ -530,7 +534,7 @@ LAYLA: Final = SeededCandidate(
                 start_month=4,
                 is_current=True,
                 description=(
-                    "Built the demand forecast the logistics team plans against, and the "
+                    "Built the capacity forecast the platform team plans against, and the "
                     "dashboards that show when it is wrong."
                 ),
             ),
@@ -840,7 +844,7 @@ RAMI: Final = SeededCandidate(
     cvs=[],
 )
 
-CANDIDATES: Final = (AMINA, BASHIR, KARIM, LAYLA, NADIA, FADI, HIBA, ZIAD, RAMI)
+CANDIDATES: Final = (ABDULQADER, MOWAFAK, KARIM, LAYLA, NADIA, FADI, HIBA, ZIAD, RAMI)
 
 
 # ── Jobs, criteria and the links that bring traffic ──────────────────────────────────────
@@ -877,13 +881,13 @@ AN_ON_CALL_ROTA: Final = "Are you willing to join an on-call rota?"
 A_START_DATE: Final = "When could you start?"
 A_DESIGN_SYSTEM: Final = "Have you shipped and owned a design system?"
 A_PORTFOLIO: Final = "Where can we see your work?"
-CLINICAL_DATA: Final = "Have you worked with clinical trial data before?"
+NETWORK_DATA: Final = "Have you worked with network telemetry or billing data before?"
 
 JOBS: Final = (
     SeededJob(
         key="backend",
         tenant=NORTHBRIDGE.key,
-        author="rana",
+        author="lama",
         status=JobStatus.PUBLISHED,
         created_days_ago=44,
         published_days_ago=42,
@@ -959,7 +963,7 @@ JOBS: Final = (
     SeededJob(
         key="frontend",
         tenant=NORTHBRIDGE.key,
-        author="yusuf",
+        author="kamal",
         status=JobStatus.PUBLISHED,
         created_days_ago=31,
         published_days_ago=29,
@@ -1012,7 +1016,7 @@ JOBS: Final = (
     SeededJob(
         key="devops",
         tenant=NORTHBRIDGE.key,
-        author="rana",
+        author="lama",
         status=JobStatus.PUBLISHED,
         created_days_ago=22,
         published_days_ago=20,
@@ -1100,7 +1104,7 @@ JOBS: Final = (
     SeededJob(
         key="designer",
         tenant=NORTHBRIDGE.key,
-        author="yusuf",
+        author="kamal",
         status=JobStatus.DRAFT,
         created_days_ago=3,
         new=NewJob(
@@ -1164,7 +1168,7 @@ JOBS: Final = (
     SeededJob(
         key="internship",
         tenant=NORTHBRIDGE.key,
-        author="rana",
+        author="lama",
         status=JobStatus.ARCHIVED,
         created_days_ago=70,
         published_days_ago=69,
@@ -1182,20 +1186,20 @@ JOBS: Final = (
         criteria=JobCriteria(),
     ),
     SeededJob(
-        key="clinical",
-        tenant=CEDAR.key,
-        author="maya",
+        key="network-data",
+        tenant=SYRIATEL.key,
+        author="syriatel_admin",
         status=JobStatus.PUBLISHED,
         created_days_ago=18,
         published_days_ago=17,
         direct_views=16,
         new=NewJob(
-            title="Clinical Data Manager",
+            title="Data Platform Engineer",
             description=(
-                "You will own the data behind our trials: the schema, the checks that catch a "
-                "bad entry the week it happens, and the reports the regulator reads.\n\n"
-                "Experience with clinical data is welcome but not the only way in - somebody "
-                "who has been rigorous with somebody else's messy data will do well here."
+                "You will own the data behind the network: the schema, the checks that catch a "
+                "bad record the week it lands, and the reports the regulator reads.\n\n"
+                "Telecom experience is welcome but not the only way in - somebody who has been "
+                "rigorous with somebody else's messy data will do well here."
             ),
             location_key="sy-damascus",
             employment_type=EmploymentType.FULL_TIME,
@@ -1214,7 +1218,7 @@ JOBS: Final = (
             ],
             questions=[
                 JobQuestion(
-                    question_text=CLINICAL_DATA,
+                    question_text=NETWORK_DATA,
                     question_type=YES_NO,
                     is_required=False,
                     accepted_boolean_answer=True,
@@ -1223,8 +1227,8 @@ JOBS: Final = (
         ),
         links=[
             SeededLink(
-                key="clinical-bulletin",
-                name="Ministry of Health bulletin",
+                key="network-bulletin",
+                name="Syriatel careers bulletin",
                 views=26,
                 created_days_ago=16,
             ),
@@ -1232,7 +1236,7 @@ JOBS: Final = (
     ),
     SeededJob(
         key="pharmacy",
-        tenant=CEDAR.key,
+        tenant=SYRIATEL.key,
         author="tarek",
         status=JobStatus.PUBLISHED,
         created_days_ago=8,
@@ -1318,7 +1322,7 @@ REJECTED = ApplicationStatus.REJECTED
 APPLICATIONS: Final = (
     # ── Senior Backend Engineer: every verdict the domain has, on one Job ──
     SeededApplication(
-        candidate="amina",
+        candidate="abdulqader",
         job="backend",
         applied_days_ago=39,
         via="backend-linkedin",
@@ -1327,16 +1331,16 @@ APPLICATIONS: Final = (
         assessments=2,
         notes=[
             (
-                "rana",
+                "lama",
                 "Strongest application we have had for this "
                 "role. Ledger rewrite is exactly our problem.",
             ),
             (
-                "yusuf",
+                "kamal",
                 "Phone screen: clear on transactions, asked "
                 "good questions about on-call. Moving on.",
             ),
-            ("rana", "Offer accepted, starting the 1st. Closing the job."),
+            ("lama", "Offer accepted, starting the 1st. Closing the job."),
         ],
         tags=["Phone screened", "Take-home sent", "Culture fit"],
         messages=["Interview invitation", "Offer letter"],
@@ -1351,9 +1355,9 @@ APPLICATIONS: Final = (
         assessments=1,
         notes=[
             (
-                "yusuf",
+                "kamal",
                 "Infrastructure-first, less product code than "
-                "Amina, but would raise the floor for everyone.",
+                "AbdulQader, but would raise the floor for everyone.",
             ),
         ],
         tags=[
@@ -1381,7 +1385,7 @@ APPLICATIONS: Final = (
     ),
     # No Python on the profile at all, so the required skill refuses him outright.
     SeededApplication(
-        candidate="bashir",
+        candidate="mowafak",
         job="backend",
         applied_days_ago=2,
         via="backend-facebook",
@@ -1395,7 +1399,7 @@ APPLICATIONS: Final = (
         answers={A_RIGHT_TO_WORK: True, AN_ON_CALL_ROTA: True, A_START_DATE: "Right away."},
         moves=[REVIEWING, REJECTED],
         notes=[
-            ("rana", "Too junior for this one. Worth keeping for the internship next summer."),
+            ("lama", "Too junior for this one. Worth keeping for the internship next summer."),
         ],
         tags=[
             "Salary mismatch",
@@ -1403,15 +1407,15 @@ APPLICATIONS: Final = (
     ),
     # ── Frontend Engineer ──
     SeededApplication(
-        candidate="bashir",
+        candidate="mowafak",
         job="frontend",
         applied_days_ago=26,
         via="frontend-linkedin",
-        answers={A_DESIGN_SYSTEM: True, A_PORTFOLIO: "https://example.com/bashir"},
+        answers={A_DESIGN_SYSTEM: True, A_PORTFOLIO: "https://github.com/SuperMo0"},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER],
         assessments=1,
         notes=[
-            ("yusuf", "Design system work is real - saw the Storybook. Strong on accessibility."),
+            ("kamal", "Design system work is real - saw the Storybook. Strong on accessibility."),
             ("lina", "Panel liked him. Offer out, waiting to hear."),
         ],
         tags=["Phone screened", "Culture fit"],
@@ -1428,7 +1432,7 @@ APPLICATIONS: Final = (
         moves=[REVIEWING, SHORTLISTED],
         notes=[
             (
-                "yusuf",
+                "kamal",
                 "Eighteen months of work, so short of the bar on paper. "
                 "React work looks fine for the level.",
             ),
@@ -1446,7 +1450,7 @@ APPLICATIONS: Final = (
         moves=[REJECTED, REVIEWING, REJECTED],
         notes=[
             (
-                "yusuf",
+                "kamal",
                 "Rejected in error - she is a designer, not "
                 "an engineer, but I want Lina to see this.",
             ),
@@ -1467,14 +1471,14 @@ APPLICATIONS: Final = (
         moves=[REVIEWING, SHORTLISTED],
         assessments=1,
         notes=[
-            ("rana", "Same person as the backend shortlist. Decide which role we want him in."),
+            ("lama", "Same person as the backend shortlist. Decide which role we want him in."),
         ],
         tags=[
             "Phone screened",
         ],
     ),
     SeededApplication(
-        candidate="amina",
+        candidate="abdulqader",
         job="devops",
         applied_days_ago=1,
         answers={AN_ON_CALL_ROTA: True},
@@ -1510,7 +1514,7 @@ APPLICATIONS: Final = (
         ],
     ),
     SeededApplication(
-        candidate="amina",
+        candidate="abdulqader",
         job="analyst",
         applied_days_ago=3,
         moves=[
@@ -1545,19 +1549,22 @@ APPLICATIONS: Final = (
             ("lina", "Clearly a QA engineer applying sideways. Told her so kindly."),
         ],
     ),
-    # ── Cedar Health: the same Candidates, a Tenant that shares nothing with Northbridge ──
+    # ── Syriatel: the same Candidates, a Tenant that shares nothing with Northbridge ──
     SeededApplication(
         candidate="layla",
-        job="clinical",
+        job="network-data",
         applied_days_ago=13,
-        via="clinical-bulletin",
-        answers={CLINICAL_DATA: True},
+        via="network-bulletin",
+        answers={NETWORK_DATA: True},
         moves=[
             REVIEWING,
         ],
         assessments=1,
         notes=[
-            ("maya", "Trial data experience is thin but the rigour is there. Second interview."),
+            (
+                "syriatel_admin",
+                "Telemetry experience is thin but the rigour is there. Second interview.",
+            ),
         ],
         tags=[
             "Interview booked",
@@ -1568,7 +1575,7 @@ APPLICATIONS: Final = (
     ),
     SeededApplication(
         candidate="nadia",
-        job="clinical",
+        job="network-data",
         applied_days_ago=6,
         notes=[
             ("tarek", "Left the trial-data question blank, hence the flag. Worth a call anyway."),
@@ -1598,8 +1605,8 @@ TAGS: Final = (
     SeededTag(NORTHBRIDGE.key, "Culture fit", TagScope.APPLICATION),
     SeededTag(NORTHBRIDGE.key, "Salary mismatch", TagScope.APPLICATION),
     SeededTag(NORTHBRIDGE.key, "Needs a call", TagScope.APPLICATION),
-    SeededTag(CEDAR.key, "Clinical background", TagScope.CANDIDATE),
-    SeededTag(CEDAR.key, "Interview booked", TagScope.APPLICATION),
+    SeededTag(SYRIATEL.key, "Systems background", TagScope.CANDIDATE),
+    SeededTag(SYRIATEL.key, "Interview booked", TagScope.APPLICATION),
 )
 
 
@@ -1618,7 +1625,7 @@ class SeededCandidateRecord:
 CANDIDATE_RECORDS: Final = (
     SeededCandidateRecord(
         tenant=NORTHBRIDGE.key,
-        candidate="amina",
+        candidate="abdulqader",
         pooled=True,
         pooled_days_ago=38,
         tags=[
@@ -1626,7 +1633,7 @@ CANDIDATE_RECORDS: Final = (
         ],
         notes=[
             (
-                "rana",
+                "lama",
                 "Hired for the backend role. Keeping the record for the reference we owe her.",
             ),
         ],
@@ -1639,12 +1646,12 @@ CANDIDATE_RECORDS: Final = (
         tags=["Strong hire", "Keep warm"],
         notes=[
             (
-                "rana",
+                "lama",
                 "Two shortlists at once. If the backend offer "
                 "lands elsewhere, he is the platform hire.",
             ),
             (
-                "yusuf",
+                "kamal",
                 "Found him through Global search before he "
                 "applied - worth remembering that worked.",
             ),
@@ -1688,21 +1695,21 @@ CANDIDATE_RECORDS: Final = (
         ],
     ),
     SeededCandidateRecord(
-        tenant=CEDAR.key,
+        tenant=SYRIATEL.key,
         candidate="layla",
         pooled=True,
         pooled_days_ago=12,
         tags=[
-            "Clinical background",
+            "Systems background",
         ],
         notes=[
-            ("maya", "Northbridge is also talking to her. Move quickly."),
+            ("syriatel_admin", "Northbridge is also talking to her. Move quickly."),
         ],
     ),
     # Found through Global search, never applied here: the third way a Tenant reaches somebody.
     SeededCandidateRecord(
-        tenant=CEDAR.key,
-        candidate="bashir",
+        tenant=SYRIATEL.key,
+        candidate="mowafak",
         pooled=True,
         pooled_days_ago=9,
         notes=[
@@ -1725,7 +1732,7 @@ class SeededTemplate:
 TEMPLATES: Final = (
     SeededTemplate(
         tenant=NORTHBRIDGE.key,
-        author="rana",
+        author="lama",
         name="Interview invitation",
         created_days_ago=45,
         subject="{{ job_title }} at {{ tenant_name }} - interview?",
@@ -1739,7 +1746,7 @@ TEMPLATES: Final = (
     ),
     SeededTemplate(
         tenant=NORTHBRIDGE.key,
-        author="yusuf",
+        author="kamal",
         name="Take-home assignment",
         created_days_ago=44,
         subject="A small exercise for {{ job_title }}",
@@ -1754,7 +1761,7 @@ TEMPLATES: Final = (
     ),
     SeededTemplate(
         tenant=NORTHBRIDGE.key,
-        author="rana",
+        author="lama",
         name="Offer letter",
         created_days_ago=40,
         subject="An offer from {{ tenant_name }}",
@@ -1781,8 +1788,8 @@ TEMPLATES: Final = (
         ),
     ),
     SeededTemplate(
-        tenant=CEDAR.key,
-        author="maya",
+        tenant=SYRIATEL.key,
+        author="syriatel_admin",
         name="Screening call invite",
         created_days_ago=17,
         subject="{{ tenant_name }}: a 20-minute call about {{ job_title }}",
