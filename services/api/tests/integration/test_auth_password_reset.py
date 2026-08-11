@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 
 from httpx import AsyncClient, Response
 
-from sync_api.auth import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
+from sync_api.auth import SESSION_COOKIE, pack_session
 from tests.conftest import ADMIN_PORTAL_URL, CANDIDATE_PORTAL_URL, RECRUITER_PORTAL_URL
 from tests.support.candidates import a_confirmed_candidate, a_signup, sign_in
-from tests.support.harness import present_only
+from tests.support.harness import present_only, session_tokens
 from tests.support.mailbox import Mailbox
 from tests.support.platform_admins import a_platform_admin
 from tests.support.tenants import an_admin
@@ -83,12 +83,12 @@ async def test_resetting_ends_the_sessions_that_were_already_open(
 ) -> None:
     signup = await a_confirmed_candidate(browser, mailbox)
     await sign_in(browser, signup)
-    intruders_refresh_token = browser.cookies[REFRESH_TOKEN_COOKIE]
+    intruders_refresh_token = session_tokens(browser.cookies[SESSION_COOKIE])["r"]
 
     await ask_to_reset(browser, signup.email)
     await follow_the_reset_link(browser, mailbox, signup.email)
 
-    present_only(browser, REFRESH_TOKEN_COOKIE, intruders_refresh_token, path="/v1/auth")
+    present_only(browser, SESSION_COOKIE, pack_session("", intruders_refresh_token))
     assert (await browser.post("/v1/auth/refresh")).status_code == 401
 
 
@@ -109,7 +109,7 @@ async def test_confirming_a_reset_starts_no_session(browser: AsyncClient, mailbo
 
     await follow_the_reset_link(browser, mailbox, signup.email)
 
-    assert ACCESS_TOKEN_COOKIE not in browser.cookies
+    assert SESSION_COOKIE not in browser.cookies
     assert (await browser.get("/v1/auth/me")).status_code == 401
 
 

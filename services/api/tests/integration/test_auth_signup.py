@@ -4,7 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sync_api.auth import ACCESS_TOKEN_COOKIE
+from sync_api.auth import SESSION_COOKIE
 from sync_core import Settings
 from sync_core.models import AccountType, Candidate, Profile
 from tests.conftest import CANDIDATE_PORTAL_URL
@@ -65,7 +65,7 @@ async def test_signup_sends_a_confirmation_email(browser: AsyncClient, mailbox: 
 async def test_signup_starts_no_session(browser: AsyncClient) -> None:
     response = await sign_up(browser, a_signup())
 
-    assert ACCESS_TOKEN_COOKIE not in response.cookies
+    assert SESSION_COOKIE not in response.cookies
     assert (await browser.get("/v1/auth/me")).status_code == 401
 
 
