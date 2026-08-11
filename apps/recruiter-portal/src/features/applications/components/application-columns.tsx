@@ -15,7 +15,7 @@ export function applicationColumns<TRow extends ApplicationSummary>(
   const candidate: DataTableColumn<TRow> = {
     accessorKey: 'candidate_name',
     header: 'Candidate',
-    meta: { share: 3 },
+    meta: job ? { width: '30ch' } : { share: 1 },
     cell: ({ row }) => <CandidateIdentity {...candidateIdentity(row.original)} />,
   };
 

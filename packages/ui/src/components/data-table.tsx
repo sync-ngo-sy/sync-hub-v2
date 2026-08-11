@@ -110,8 +110,12 @@ function termOf<TRow>(cell: Cell<TRow, unknown>): string {
   return typeof header === 'string' ? header : cell.column.id;
 }
 
+const SHARE_FLOOR = '15ch';
+
 /** A `max-width` is what lets a column hold a width the browser would otherwise widen to fit the
- * text, so the cell inside it ellipses instead of stretching the table. */
+ * text, so the cell inside it ellipses instead of stretching the table. The `min-width` puts a floor
+ * under that, because a shared column with no floor keeps giving room away until it is nothing but
+ * padding; once every column is at its floor the table is wider than its box and scrolls instead. */
 function columnWidths<TRow>(table: TanstackTable<TRow>): Map<string, CSSProperties> {
   const columns = table.getAllColumns();
   const shared = columns.filter((column) => column.columnDef.meta?.share);
@@ -123,7 +127,11 @@ function columnWidths<TRow>(table: TanstackTable<TRow>): Map<string, CSSProperti
     const { share, width } = column.columnDef.meta ?? {};
     if (width) widths.set(column.id, { width, maxWidth: width });
     else if (share)
-      widths.set(column.id, { width: `${((share / total) * 100).toFixed(3)}%`, maxWidth: 0 });
+      widths.set(column.id, {
+        width: `${((share / total) * 100).toFixed(3)}%`,
+        minWidth: SHARE_FLOOR,
+        maxWidth: 0,
+      });
   }
 
   return widths;

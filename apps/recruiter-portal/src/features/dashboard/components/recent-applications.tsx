@@ -20,13 +20,13 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'candidate',
     header: 'Candidate',
-    meta: { share: 3 },
+    meta: { width: '30ch' },
     cell: ({ row }) => <CandidateIdentity {...candidateIdentity(row.original)} />,
   },
   {
     id: 'job',
     header: 'Job',
-    meta: { width: '25ch' },
+    meta: { share: 1 },
     cell: ({ row }) => (
       <TruncatedText className="font-medium text-foreground">
         {row.original.job.title}

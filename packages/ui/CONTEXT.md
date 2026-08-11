@@ -61,11 +61,18 @@ _Avoid_: Profile header, summary card, identity band.
 **Share**:
 The width intent a Data Table column declares. A column with a `share` is free text — a name, a
 Job title, an address — and the shares split every pixel the other columns do not ask for, in
-proportion. A column with a fixed `width` (`25ch`) holds that width whatever the table does. A
+proportion. A column with a fixed `width` (`30ch`) holds that width whatever the table does. A
 column with neither is as wide as its longest value, which is right for a date, a count, or a
 Status Mark, because a reader cannot make those longer. A shared or fixed column reaches its
 width by giving up its own text: the cell inside it ellipses. So one long value never widens a
-table and never makes it scroll sideways.
+table.
+
+A shared column gives up room before a fixed one does, so the share belongs to a column that can
+afford to grow and shrink, not to the column that names the row: a reader looks for the name in
+the same place in every row, and on a wide screen an identity column with the share holds the
+name far away from the next fact. A shared column stops at a floor of 15 characters. When every
+column sits on its floor, the table is wider than its box, and the box scrolls sideways — which
+is better than a column that squeezes down to its own padding.
 _Avoid_: Flex, weight, colspan.
 
 **Truncated Text**:
