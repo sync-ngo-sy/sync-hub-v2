@@ -181,10 +181,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Pinned, unlike CI's: this one runs `db push` against production, so the tool that applies
+      # the migration is part of the artifact and moves when we say it moves.
       - name: Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.113.0
 
       # Before the new revision takes traffic, and backward-compatible by standing rule: traffic
       # shifts gradually, so the previous revision runs against the new schema for the duration of
@@ -220,8 +222,12 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
+      # The binary that writes state, pinned for the same reason `.terraform.lock.hcl` pins the
+      # providers: an upgrade should be a commit, not whatever shipped this morning.
       - name: OpenTofu
         uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.12.5
 
       - name: Authenticate to Google Cloud
         run: |
@@ -267,7 +273,7 @@ jobs:
       - name: Deploy the public portals
         run: |
           set -euo pipefail
-          npx --yes firebase-tools@latest deploy --project "${GCP_PROJECT}" \
+          npx --yes firebase-tools@15.26.0 deploy --project "${GCP_PROJECT}" \
             --only hosting:candidate,hosting:recruiter,hosting:api,hosting:legacy \
             --non-interactive
 
