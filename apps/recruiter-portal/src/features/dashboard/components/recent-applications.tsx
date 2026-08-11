@@ -26,7 +26,7 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'job',
     header: 'Job',
-    meta: { share: 4 },
+    meta: { width: '25ch' },
     cell: ({ row }) => (
       <TruncatedText className="font-medium text-foreground">
         {row.original.job.title}

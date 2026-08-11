@@ -58,6 +58,29 @@ its own — anything a reader can do to a candidate belongs to the page, not to 
 describes them.
 _Avoid_: Profile header, summary card, identity band.
 
+**Share**:
+The width intent a Data Table column declares. A column with a `share` is free text — a name, a
+Job title, an address — and the shares split every pixel the other columns do not ask for, in
+proportion. A column with a fixed `width` (`25ch`) holds that width whatever the table does. A
+column with neither is as wide as its longest value, which is right for a date, a count, or a
+Status Mark, because a reader cannot make those longer. A shared or fixed column reaches its
+width by giving up its own text: the cell inside it ellipses. So one long value never widens a
+table and never makes it scroll sideways.
+_Avoid_: Flex, weight, colspan.
+
+**Truncated Text**:
+The rendering of a value too long for its column: one line, an ellipsis, and the whole text in a
+tooltip. The tooltip exists only while the text is really clipped, measured from the element, so
+a value that fits carries no tooltip at all. It takes a focus stop of its own unless a row opener
+already holds one.
+_Avoid_: Ellipsis, clamp, overflow text.
+
+**Flush**:
+A Data Table with no card of its own, for when it already sits in one. A panel with a table
+inside would otherwise read as a box in a box, and spend two paddings and two borders on the same
+edge.
+_Avoid_: Bare, borderless, naked.
+
 **Promotion**:
 The move of a component from one portal's feature into the Design System, permitted only
 when a second consumer appears. Until then the component stays where it was born.

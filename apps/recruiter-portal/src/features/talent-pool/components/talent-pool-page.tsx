@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Star } from 'lucide-react';
@@ -45,7 +46,7 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
     accessorKey: 'canonical_role_name',
     header: 'Role',
     meta: { share: 3 },
-    cell: ({ row }) => row.original.canonical_role_name ?? NOTHING,
+    cell: ({ row }) => <TruncatedText>{row.original.canonical_role_name ?? NOTHING}</TruncatedText>,
   },
   {
     accessorKey: 'total_experience_years',

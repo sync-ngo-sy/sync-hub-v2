@@ -1,6 +1,7 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button } from '@sync/ui/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
@@ -13,8 +14,18 @@ import { platformTenantsQuery, useResendFoundingAdminInvite } from './tenant-que
 import { TenantStatusDialog } from './tenant-status-dialog';
 
 const tenantColumns: DataTableColumn<PlatformTenant>[] = [
-  { accessorKey: 'name', header: 'Tenant', meta: { share: 3 } },
-  { accessorKey: 'slug', header: 'Address', meta: { priority: 'hidden', share: 3 } },
+  {
+    accessorKey: 'name',
+    header: 'Tenant',
+    meta: { share: 3 },
+    cell: ({ row }) => <TruncatedText>{row.original.name}</TruncatedText>,
+  },
+  {
+    accessorKey: 'slug',
+    header: 'Address',
+    meta: { priority: 'hidden', share: 3 },
+    cell: ({ row }) => <TruncatedText>{row.original.slug}</TruncatedText>,
+  },
   { accessorKey: 'plan', header: 'Plan', cell: ({ row }) => tenantPlanLabel(row.original.plan) },
   { accessorKey: 'member_count', header: 'Members' },
   {

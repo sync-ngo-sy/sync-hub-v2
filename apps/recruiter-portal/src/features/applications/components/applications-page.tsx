@@ -31,7 +31,7 @@ import { ChecklistFilter } from './checklist-filter';
 const JOB: DataTableColumn<TenantApplication> = {
   id: 'job',
   header: 'Job',
-  meta: { share: 4 },
+  meta: { width: '25ch' },
   cell: ({ row }) => (
     <Link
       to="/jobs/$jobId"

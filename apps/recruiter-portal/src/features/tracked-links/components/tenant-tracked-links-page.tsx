@@ -1,9 +1,11 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Tabs } from '@sync/ui/components/ui/tabs';
+import { cn } from '@sync/ui/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Link2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -40,25 +42,25 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
     meta: { share: 3 },
     cell: ({ row }) => (
       <span className="flex min-w-0 flex-col gap-1">
-        <span>{row.original.name}</span>
-        <span className="text-meta font-normal text-muted-foreground">
+        <TruncatedText>{row.original.name}</TruncatedText>
+        <TruncatedText className="text-meta font-normal text-muted-foreground">
           {`Minted ${relativeTime(row.original.created_at)}`}
-        </span>
+        </TruncatedText>
       </span>
     ),
   },
   {
     id: 'job',
     header: 'Job',
-    meta: { share: 4 },
+    meta: { width: '25ch' },
     cell: ({ row }) => (
       <Link
         to="/jobs/$jobId"
         params={{ jobId: row.original.job.id }}
         search={{}}
-        className={buttonVariants({ variant: 'link', size: 'sm' })}
+        className={cn(buttonVariants({ variant: 'link', size: 'sm' }), 'max-w-full')}
       >
-        {row.original.job.title}
+        <TruncatedText className="min-w-0">{row.original.job.title}</TruncatedText>
       </Link>
     ),
   },

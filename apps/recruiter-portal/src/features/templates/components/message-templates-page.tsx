@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button } from '@sync/ui/components/ui/button';
 import { MailPlus, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -23,11 +24,11 @@ const COLUMNS: DataTableColumn<MessageTemplate>[] = [
     header: 'Template',
     meta: { share: 3 },
     cell: ({ row }) => (
-      <span className="flex min-w-52 flex-col gap-1">
-        <span>{row.original.name}</span>
-        <span className="text-meta font-normal text-muted-foreground">
+      <span className="flex min-w-0 flex-col gap-1">
+        <TruncatedText>{row.original.name}</TruncatedText>
+        <TruncatedText className="text-meta font-normal text-muted-foreground">
           {opening(row.original.body)}
-        </span>
+        </TruncatedText>
       </span>
     ),
   },
@@ -35,7 +36,7 @@ const COLUMNS: DataTableColumn<MessageTemplate>[] = [
     accessorKey: 'subject',
     header: 'Subject',
     meta: { share: 5 },
-    cell: ({ row }) => <span className="flex min-w-52">{row.original.subject}</span>,
+    cell: ({ row }) => <TruncatedText>{row.original.subject}</TruncatedText>,
   },
   {
     accessorKey: 'updated_at',

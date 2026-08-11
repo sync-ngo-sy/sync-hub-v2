@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button } from '@sync/ui/components/ui/button';
 import { Plus, Tags } from 'lucide-react';
 import { useState } from 'react';
@@ -11,7 +12,12 @@ import { DeleteTagDialog } from './delete-tag-dialog';
 import { RenameTagDialog } from './rename-tag-dialog';
 
 const COLUMNS: DataTableColumn<Tag>[] = [
-  { accessorKey: 'name', header: 'Tag', meta: { share: 5 } },
+  {
+    accessorKey: 'name',
+    header: 'Tag',
+    meta: { share: 5 },
+    cell: ({ row }) => <TruncatedText>{row.original.name}</TruncatedText>,
+  },
   {
     accessorKey: 'scope',
     header: 'Files',

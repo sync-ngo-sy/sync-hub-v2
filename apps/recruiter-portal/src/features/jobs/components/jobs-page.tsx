@@ -1,6 +1,7 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { Tabs } from '@sync/ui/components/ui/tabs';
@@ -38,8 +39,10 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
     meta: { share: 5 },
     cell: ({ row }) => (
       <span className="flex min-w-0 flex-col gap-1">
-        <span>{row.original.title}</span>
-        <span className="text-meta font-normal text-muted-foreground">{jobMeta(row.original)}</span>
+        <TruncatedText>{row.original.title}</TruncatedText>
+        <TruncatedText className="text-meta font-normal text-muted-foreground">
+          {jobMeta(row.original)}
+        </TruncatedText>
       </span>
     ),
   },

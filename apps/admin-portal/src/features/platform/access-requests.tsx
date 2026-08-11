@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -12,9 +13,24 @@ import { ConvertRequestDialog } from './convert-request-dialog';
 import { DismissRequestDialog } from './dismiss-request-dialog';
 
 const requestColumns: DataTableColumn<AccessRequest>[] = [
-  { accessorKey: 'company', header: 'Company', meta: { share: 3 } },
-  { accessorKey: 'full_name', header: 'Asked by', meta: { share: 3 } },
-  { accessorKey: 'email', header: 'Email', meta: { share: 4 } },
+  {
+    accessorKey: 'company',
+    header: 'Company',
+    meta: { share: 3 },
+    cell: ({ row }) => <TruncatedText>{row.original.company}</TruncatedText>,
+  },
+  {
+    accessorKey: 'full_name',
+    header: 'Asked by',
+    meta: { share: 3 },
+    cell: ({ row }) => <TruncatedText>{row.original.full_name}</TruncatedText>,
+  },
+  {
+    accessorKey: 'email',
+    header: 'Email',
+    meta: { share: 4 },
+    cell: ({ row }) => <TruncatedText>{row.original.email}</TruncatedText>,
+  },
   { id: 'asked', header: 'Asked', cell: ({ row }) => askedOn(row.original.created_at) },
 ];
 

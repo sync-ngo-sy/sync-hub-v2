@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Badge } from '@sync/ui/components/ui/badge';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
@@ -32,7 +33,7 @@ const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
     accessorKey: 'canonical_role_name',
     header: 'Role',
     meta: { share: 3 },
-    cell: ({ row }) => row.original.canonical_role_name ?? NOTHING,
+    cell: ({ row }) => <TruncatedText>{row.original.canonical_role_name ?? NOTHING}</TruncatedText>,
   },
   {
     accessorKey: 'total_experience_years',
@@ -46,7 +47,7 @@ const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
     meta: { share: 3 },
     cell: ({ row }) => {
       const spoken = row.original.language_names ?? [];
-      return spoken.length > 0 ? spoken.join(', ') : NOTHING;
+      return <TruncatedText>{spoken.length > 0 ? spoken.join(', ') : NOTHING}</TruncatedText>;
     },
   },
   {

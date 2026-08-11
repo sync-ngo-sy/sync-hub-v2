@@ -24,6 +24,7 @@ import {
   getCoreRowModel,
   type Row,
   type RowData,
+  type Table as TanstackTable,
   useReactTable,
 } from '@tanstack/react-table';
 import {
@@ -34,7 +35,7 @@ import {
   type LucideIcon,
   MoreHorizontal,
 } from 'lucide-react';
-import type { MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { EmptyState } from './empty-state';
 import { placeholderKeys } from './skeletons';
 
@@ -50,6 +51,7 @@ declare module '@tanstack/react-table' {
     priority?: ColumnPriority;
     sort?: ColumnSort;
     share?: number;
+    width?: string;
   }
 }
 
@@ -93,7 +95,6 @@ const count = new Intl.NumberFormat();
 
 const CELL_BORDER = 'border-b border-border';
 const EDGE_PADDING = '[&_tr>*:first-child]:ps-(--space-card) [&_tr>*:last-child]:pe-(--space-card)';
-const SHARED_COLUMN = 'max-w-0 truncate';
 const TABLE_CARD = 'overflow-hidden rounded-lg border border-border bg-card shadow-card';
 const LEAD_COLUMN = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-card';
 const LEAD_HEADER = 'max-lg:sticky max-lg:start-0 max-lg:z-10 max-lg:bg-table-header';
@@ -109,19 +110,23 @@ function termOf<TRow>(cell: Cell<TRow, unknown>): string {
   return typeof header === 'string' ? header : cell.column.id;
 }
 
-/** The free-text columns split every pixel the short columns don't need, in proportion to their
- * share; `max-width: 0` is what lets one shrink past its own text so a long value ellipses
- * instead of widening the table. */
-function shareWidths<TRow>(columns: DataTableColumn<TRow>[]): Map<string, string> {
-  const shared = columns.filter((column) => column.meta?.share);
-  const total = shared.reduce((sum, column) => sum + (column.meta?.share ?? 0), 0);
+/** A `max-width` is what lets a column hold a width the browser would otherwise widen to fit the
+ * text, so the cell inside it ellipses instead of stretching the table. */
+function columnWidths<TRow>(table: TanstackTable<TRow>): Map<string, CSSProperties> {
+  const columns = table.getAllColumns();
+  const shared = columns.filter((column) => column.columnDef.meta?.share);
+  const total = shared.reduce((sum, column) => sum + (column.columnDef.meta?.share ?? 0), 0);
 
-  return new Map(
-    shared.map((column, index) => [
-      column.id ?? ('accessorKey' in column ? String(column.accessorKey) : String(index)),
-      `${(((column.meta?.share ?? 0) / total) * 100).toFixed(3)}%`,
-    ]),
-  );
+  const widths = new Map<string, CSSProperties>();
+
+  for (const column of columns) {
+    const { share, width } = column.columnDef.meta ?? {};
+    if (width) widths.set(column.id, { width, maxWidth: width });
+    else if (share)
+      widths.set(column.id, { width: `${((share / total) * 100).toFixed(3)}%`, maxWidth: 0 });
+  }
+
+  return widths;
 }
 
 export function DataTable<TRow>({
@@ -154,7 +159,7 @@ export function DataTable<TRow>({
   });
 
   const rows = table.getRowModel().rows;
-  const widths = shareWidths(columns);
+  const widths = columnWidths(table);
   const skeletonCellKeys = placeholderKeys(columns.length + (rowActions ? 1 : 0), 'cell');
   const loadingFirstPage = isLoading && rows.length === 0;
 
@@ -227,12 +232,11 @@ export function DataTable<TRow>({
                     <TableHead
                       key={header.id}
                       aria-sort={sorting?.direction ?? undefined}
-                      style={width ? { width } : undefined}
+                      style={width}
                       className={cn(
                         CELL_BORDER,
                         'bg-table-header',
                         flush && 'border-t',
-                        width && SHARED_COLUMN,
                         index === 0 && LEAD_HEADER,
                       )}
                     >
@@ -283,16 +287,8 @@ export function DataTable<TRow>({
                     {row.getVisibleCells().map((cell, index) => (
                       <TableCell
                         key={cell.id}
-                        style={
-                          widths.has(cell.column.id)
-                            ? { width: widths.get(cell.column.id) }
-                            : undefined
-                        }
-                        className={cn(
-                          CELL_BORDER,
-                          widths.has(cell.column.id) && SHARED_COLUMN,
-                          index === 0 && cn(LEAD_COLUMN, 'font-medium'),
-                        )}
+                        style={widths.get(cell.column.id)}
+                        className={cn(CELL_BORDER, index === 0 && cn(LEAD_COLUMN, 'font-medium'))}
                       >
                         {index === 0 && onRowOpen ? (
                           <RowOpener
@@ -416,7 +412,7 @@ function CardList<TRow>({
 }
 
 const OPENER =
-  'cursor-pointer rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
+  'block w-full cursor-pointer rounded-sm text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50';
 
 function RowOpener({
   label,

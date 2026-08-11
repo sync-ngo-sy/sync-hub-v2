@@ -7,15 +7,22 @@ interface TruncatedTextProps {
   className?: string;
 }
 
+/** A clipped value has to be readable without a mouse, so it takes a focus stop of its own — but
+ * only when nothing around it already has one, because a row opener is a link or a button and
+ * neither may hold another focusable element. */
 export function TruncatedText({ children, className }: TruncatedTextProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const [hidden, setHidden] = useState<string | null>(null);
+  const [ownFocus, setOwnFocus] = useState(false);
 
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
 
-    const measure = () => setHidden(node.scrollWidth > node.clientWidth ? children : null);
+    const measure = () => {
+      setHidden(node.scrollWidth > node.clientWidth ? children : null);
+      setOwnFocus(node.closest('a, button') === null);
+    };
     measure();
 
     if (typeof ResizeObserver === 'undefined') return;
@@ -28,7 +35,11 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
     <Tooltip disabled={hidden === null}>
       <TooltipTrigger
         render={
-          <span ref={ref} className={cn('block truncate', className)}>
+          <span
+            ref={ref}
+            tabIndex={hidden !== null && ownFocus ? 0 : undefined}
+            className={cn('block truncate', className)}
+          >
             {children}
           </span>
         }
