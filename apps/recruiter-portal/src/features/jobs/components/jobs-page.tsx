@@ -35,8 +35,9 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
   {
     accessorKey: 'title',
     header: 'Job',
+    meta: { share: 5 },
     cell: ({ row }) => (
-      <span className="flex min-w-52 flex-col gap-1">
+      <span className="flex min-w-0 flex-col gap-1">
         <span>{row.original.title}</span>
         <span className="text-meta font-normal text-muted-foreground">{jobMeta(row.original)}</span>
       </span>

@@ -12,9 +12,9 @@ import { ConvertRequestDialog } from './convert-request-dialog';
 import { DismissRequestDialog } from './dismiss-request-dialog';
 
 const requestColumns: DataTableColumn<AccessRequest>[] = [
-  { accessorKey: 'company', header: 'Company' },
-  { accessorKey: 'full_name', header: 'Asked by' },
-  { accessorKey: 'email', header: 'Email' },
+  { accessorKey: 'company', header: 'Company', meta: { share: 3 } },
+  { accessorKey: 'full_name', header: 'Asked by', meta: { share: 3 } },
+  { accessorKey: 'email', header: 'Email', meta: { share: 4 } },
   { id: 'asked', header: 'Asked', cell: ({ row }) => askedOn(row.original.created_at) },
 ];
 

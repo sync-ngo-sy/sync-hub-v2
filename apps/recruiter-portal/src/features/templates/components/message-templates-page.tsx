@@ -21,6 +21,7 @@ const COLUMNS: DataTableColumn<MessageTemplate>[] = [
   {
     accessorKey: 'name',
     header: 'Template',
+    meta: { share: 3 },
     cell: ({ row }) => (
       <span className="flex min-w-52 flex-col gap-1">
         <span>{row.original.name}</span>
@@ -33,6 +34,7 @@ const COLUMNS: DataTableColumn<MessageTemplate>[] = [
   {
     accessorKey: 'subject',
     header: 'Subject',
+    meta: { share: 5 },
     cell: ({ row }) => <span className="flex min-w-52">{row.original.subject}</span>,
   },
   {

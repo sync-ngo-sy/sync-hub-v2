@@ -82,6 +82,7 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
   {
     accessorKey: 'candidate',
     header: 'Candidate',
+    meta: { share: 3 },
     cell: ({ row }) => (
       <span className="flex items-center gap-2.5">
         <Avatar size="row">
@@ -91,7 +92,7 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
       </span>
     ),
   },
-  { accessorKey: 'job', header: 'Job' },
+  { accessorKey: 'job', header: 'Job', meta: { share: 4 } },
   {
     id: 'screening',
     header: 'Screening',

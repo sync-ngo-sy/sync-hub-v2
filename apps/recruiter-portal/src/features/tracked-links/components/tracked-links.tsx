@@ -22,10 +22,11 @@ import { RenameLinkDialog } from './rename-link-dialog';
 
 function columnsFor(shares: Map<string, number | null>): DataTableColumn<TrackedLink>[] {
   return [
-    { accessorKey: 'name', header: 'Link' },
+    { accessorKey: 'name', header: 'Link', meta: { share: 3 } },
     {
       accessorKey: 'token',
       header: 'Address',
+      meta: { share: 4 },
       cell: ({ row }) => {
         const address = trackedLinkAddress(row.original.token);
         return (

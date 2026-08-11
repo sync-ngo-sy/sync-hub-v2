@@ -11,7 +11,7 @@ import { DeleteTagDialog } from './delete-tag-dialog';
 import { RenameTagDialog } from './rename-tag-dialog';
 
 const COLUMNS: DataTableColumn<Tag>[] = [
-  { accessorKey: 'name', header: 'Tag' },
+  { accessorKey: 'name', header: 'Tag', meta: { share: 5 } },
   {
     accessorKey: 'scope',
     header: 'Files',

@@ -13,8 +13,8 @@ import { platformTenantsQuery, useResendFoundingAdminInvite } from './tenant-que
 import { TenantStatusDialog } from './tenant-status-dialog';
 
 const tenantColumns: DataTableColumn<PlatformTenant>[] = [
-  { accessorKey: 'name', header: 'Tenant' },
-  { accessorKey: 'slug', header: 'Address', meta: { priority: 'hidden' } },
+  { accessorKey: 'name', header: 'Tenant', meta: { share: 3 } },
+  { accessorKey: 'slug', header: 'Address', meta: { priority: 'hidden', share: 3 } },
   { accessorKey: 'plan', header: 'Plan', cell: ({ row }) => tenantPlanLabel(row.original.plan) },
   { accessorKey: 'member_count', header: 'Members' },
   {

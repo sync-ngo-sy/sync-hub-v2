@@ -23,8 +23,9 @@ function columns(profileId: string): DataTableColumn<Member>[] {
     {
       accessorKey: 'full_name',
       header: 'Member',
+      meta: { share: 3 },
       cell: ({ row }) => (
-        <span className="flex min-w-40 items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
           {row.original.full_name}
           {row.original.id === profileId ? (
             <Badge variant="outline" size="sm">
@@ -37,6 +38,7 @@ function columns(profileId: string): DataTableColumn<Member>[] {
     {
       accessorKey: 'email',
       header: 'Email',
+      meta: { share: 4 },
       cell: ({ row }) => (
         <span className="font-normal text-muted-foreground">{row.original.email}</span>
       ),

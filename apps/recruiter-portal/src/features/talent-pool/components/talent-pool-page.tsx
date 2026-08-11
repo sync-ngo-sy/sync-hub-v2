@@ -38,12 +38,13 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Candidate',
-    meta: { sort: { ascending: 'name', descending: 'name_reversed' } },
+    meta: { share: 4, sort: { ascending: 'name', descending: 'name_reversed' } },
     cell: ({ row }) => <CandidateNameCell card={pooledCard(row.original)} />,
   },
   {
     accessorKey: 'canonical_role_name',
     header: 'Role',
+    meta: { share: 3 },
     cell: ({ row }) => row.original.canonical_role_name ?? NOTHING,
   },
   {
@@ -59,6 +60,7 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
   {
     accessorKey: 'tags',
     header: 'Tags',
+    meta: { share: 4 },
     cell: ({ row }) => {
       const tags = row.original.tags ?? [];
       if (tags.length === 0) return NOTHING;

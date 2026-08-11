@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
@@ -19,13 +20,17 @@ const COLUMNS: DataTableColumn<TenantApplication>[] = [
   {
     id: 'candidate',
     header: 'Candidate',
+    meta: { share: 3 },
     cell: ({ row }) => <CandidateIdentity {...candidateIdentity(row.original)} />,
   },
   {
     id: 'job',
     header: 'Job',
+    meta: { share: 4 },
     cell: ({ row }) => (
-      <span className="font-medium text-foreground">{row.original.job.title}</span>
+      <TruncatedText className="font-medium text-foreground">
+        {row.original.job.title}
+      </TruncatedText>
     ),
   },
   {
@@ -77,6 +82,7 @@ export function RecentApplications({
     <DashboardPanel
       title="Recent applications"
       description="The newest Applications your Tenant has received, across every Job."
+      flush
       footer={
         recent.length > 0 ? (
           <span>
@@ -89,6 +95,7 @@ export function RecentApplications({
       }
     >
       <DataTable
+        flush
         label="Recent applications"
         columns={COLUMNS}
         data={recent}

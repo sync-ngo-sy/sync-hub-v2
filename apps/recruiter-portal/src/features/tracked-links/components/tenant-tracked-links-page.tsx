@@ -37,8 +37,9 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   {
     id: 'name',
     header: 'Link',
+    meta: { share: 3 },
     cell: ({ row }) => (
-      <span className="flex min-w-40 flex-col gap-1">
+      <span className="flex min-w-0 flex-col gap-1">
         <span>{row.original.name}</span>
         <span className="text-meta font-normal text-muted-foreground">
           {`Minted ${relativeTime(row.original.created_at)}`}
@@ -49,6 +50,7 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   {
     id: 'job',
     header: 'Job',
+    meta: { share: 4 },
     cell: ({ row }) => (
       <Link
         to="/jobs/$jobId"
