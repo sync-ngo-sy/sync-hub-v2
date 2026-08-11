@@ -32,6 +32,26 @@ def test_a_comma_separated_list_is_accepted_because_it_is_set_by_hand() -> None:
     assert origins == ("https://jobs.sync.ngo", "https://app.sync.ngo")
 
 
+def test_a_comma_separated_list_is_accepted_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The path a deployed service actually takes, which the test above does not reach.
+
+    Passing the value as a keyword argument goes through the init source and never decodes.
+    A real deployment sets an environment variable, and pydantic-settings JSON-decodes a
+    complex type there before any validator runs -- so this passed everywhere and still
+    killed the first Cloud Run revision at import.
+    """
+    for field, value in REQUIRED.items():
+        raw = value.get_secret_value() if isinstance(value, SecretStr) else value
+        monkeypatch.setenv(f"SYNC_{field.upper()}", str(raw))
+    monkeypatch.setenv("SYNC_CORS_ALLOWED_ORIGINS", "https://jobs.sync.ngo, https://app.sync.ngo")
+
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+
+    assert settings.cors_allowed_origins == ("https://jobs.sync.ngo", "https://app.sync.ngo")
+
+
 def test_a_wildcard_is_refused() -> None:
     with pytest.raises(ValidationError, match="never '\\*'"):
         settings_with(cors_allowed_origins="*")

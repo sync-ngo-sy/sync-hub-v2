@@ -28,6 +28,13 @@ resource "google_cloud_run_v2_service" "this" {
           cpu    = var.cpu
           memory = var.memory
         }
+
+        # CPU only while a request is in flight. The provider leaves this false, which bills every
+        # live instance for CPU it is not using -- the opposite of the scale-to-zero costing
+        # ADR-0016 is built on -- and imposes a 512Mi floor that the Platform Portal's 256Mi
+        # cannot meet. Every service here is request-driven, the worker included: it drains inside
+        # its request, under `request_timeout`, not after answering.
+        cpu_idle = true
       }
 
       dynamic "ports" {
