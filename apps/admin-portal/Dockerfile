@@ -39,4 +39,7 @@ COPY --from=build /repo/apps/admin-portal/dist /usr/share/nginx/html
 # $PORT. Nothing else in the template is substituted, hence the explicit variable list.
 ENV NGINX_ENVSUBST_FILTER=PORT PORT=8080
 COPY apps/admin-portal/nginx.conf.template /etc/nginx/templates/default.conf.template
+# Deliberately not under templates/: everything there is rendered into conf.d/ and would become a
+# second, standalone config file rather than only an include.
+COPY apps/admin-portal/security-headers.conf /etc/nginx/security-headers.conf
 EXPOSE 8080
