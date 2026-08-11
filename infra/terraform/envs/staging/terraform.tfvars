@@ -14,12 +14,17 @@ secret_ids = [
 
 # Tags, not digests: staging deploys whatever the integration branch just built, and the pipeline
 # passes the commit-tagged image with -var. Production pins digests instead (#91).
+#
+# `protect_from_deletion = false` throughout, and only here. The module defaults it on so that
+# production cannot be replaced by a plan nobody read; staging is the environment that exists to be
+# torn down and rebuilt, so it opts out explicitly rather than inheriting the guard by accident.
 services = {
   api = {
-    image           = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/api:latest"
-    service_account = "runtime@sync-ngo-staging.iam.gserviceaccount.com"
-    public          = true
-    max_instances   = 4
+    image                 = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/api:latest"
+    service_account       = "runtime@sync-ngo-staging.iam.gserviceaccount.com"
+    protect_from_deletion = false
+    public                = true
+    max_instances         = 4
     # The API hardcodes 8000 and ignores Cloud Run's PORT.
     container_port     = 8000
     startup_probe_path = "/v1/health/ready"
@@ -49,8 +54,9 @@ services = {
   }
 
   worker = {
-    image           = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/worker:latest"
-    service_account = "runtime@sync-ngo-staging.iam.gserviceaccount.com"
+    image                 = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/worker:latest"
+    service_account       = "runtime@sync-ngo-staging.iam.gserviceaccount.com"
+    protect_from_deletion = false
     # Public, and not by oversight: the database webhook that announces an enqueue is Postgres
     # calling out, and Postgres cannot mint a Google identity token. X-Worker-Secret is what
     # stands in for IAM, and the endpoints fail closed when it is unset.
@@ -88,13 +94,14 @@ services = {
   # possible — everyone who tests staging has a sync.ngo Workspace account, and a gate that only
   # exists in production is a gate nobody has ever seen fail.
   admin-portal = {
-    image           = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/admin-portal-staging:latest"
-    service_account = "runtime@sync-ngo-staging.iam.gserviceaccount.com"
-    region          = "europe-west1"
-    max_instances   = 2
-    memory          = "256Mi"
-    domain          = "admin-staging.sync.ngo"
-    iap             = true
-    iap_members     = ["domain:sync.ngo"]
+    image                 = "europe-west3-docker.pkg.dev/sync-ngo-prod/sync/admin-portal-staging:latest"
+    service_account       = "runtime@sync-ngo-staging.iam.gserviceaccount.com"
+    protect_from_deletion = false
+    region                = "europe-west1"
+    max_instances         = 2
+    memory                = "256Mi"
+    domain                = "admin-staging.sync.ngo"
+    iap                   = true
+    iap_members           = ["domain:sync.ngo"]
   }
 }

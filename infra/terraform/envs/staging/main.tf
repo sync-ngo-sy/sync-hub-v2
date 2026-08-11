@@ -29,12 +29,14 @@ module "service" {
   source   = "../../modules/service"
   for_each = var.services
 
-  name               = each.key
-  project            = var.project
-  project_number     = data.google_project.this.number
-  region             = coalesce(each.value.region, var.region)
-  image              = coalesce(lookup(var.images, each.key, null), each.value.image)
-  service_account    = each.value.service_account
+  name                  = each.key
+  project               = var.project
+  project_number        = data.google_project.this.number
+  region                = coalesce(each.value.region, var.region)
+  image                 = coalesce(lookup(var.images, each.key, null), each.value.image)
+  service_account       = each.value.service_account
+  protect_from_deletion = each.value.protect_from_deletion
+
   min_instances      = each.value.min_instances
   max_instances      = each.value.max_instances
   ingress            = each.value.ingress

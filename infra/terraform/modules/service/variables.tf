@@ -26,6 +26,16 @@ variable "service_account" {
   type        = string
 }
 
+variable "protect_from_deletion" {
+  description = <<-EOT
+    Refuse to delete the service. Defaults on, so an environment has to opt out in its tfvars
+    rather than opt in: the failure this guards is a plan that quietly proposes a replacement of a
+    live service, and production is the one place nobody is watching for it.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "min_instances" {
   type    = number
   default = 0

@@ -6,7 +6,7 @@ resource "google_cloud_run_v2_service" "this" {
 
   iap_enabled = var.iap
 
-  deletion_protection = false
+  deletion_protection = var.protect_from_deletion
 
   template {
     service_account = var.service_account
