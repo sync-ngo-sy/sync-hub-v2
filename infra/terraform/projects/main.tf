@@ -26,6 +26,15 @@ locals {
     "sts.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    # The environment roots read `data.google_project` for the project number the IAP service
+    # agent is named after. Without this the very first apply against a new project fails on the
+    # data source, before it proposes a single resource.
+    "cloudresourcemanager.googleapis.com",
+    # The two public portals and the API's hostname are Firebase Hosting sites. The sites
+    # themselves are created out of band -- Terraform does not manage them (ADR-0016) -- but the
+    # project cannot hold one until these are on.
+    "firebase.googleapis.com",
+    "firebasehosting.googleapis.com",
   ]
 
   # The pipeline applies Terraform rather than pushing a revision by hand, so the deployer needs
