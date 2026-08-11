@@ -6,8 +6,11 @@ Made by `services/api/scripts/seed_demo.py` — see
 [the local-dev runbook](./runbook-local-dev.md#5-seed-the-stack-with-demo-data) for how to run it.
 The script prints this same list on every run, so it cannot go stale.
 
-These are local fixtures for a stack on your own machine. The seed refuses to run against
-anything but a local Supabase, and none of these people exist.
+These are fixtures. The seed runs against a local stack or against staging, and refuses
+production outright.
+
+The six `@sync.ngo` addresses are real colleagues, chosen so that an invite which escapes reaches
+one of us rather than a stranger. Everything else is invented and undeliverable.
 
 ## Password
 
@@ -21,22 +24,22 @@ The same for all 17 accounts, on all three portals.
 
 | Address            | Who                        |
 | ------------------ | -------------------------- |
-| `ops@sync.example` | Nour Sabbagh, the operator |
+| `anton@sync.ngo`   | Anton Najjar, the operator |
 
 ## Recruiter Portal — `http://127.0.0.1:5174`
 
 | Address                                 | Tenant                       | Role                     |
 | --------------------------------------- | ---------------------------- | ------------------------ |
-| `rana.khalil@northbridge.example`        | Northbridge Talent (pro)     | admin                    |
-| `yusuf.nasser@northbridge.example`       | Northbridge Talent           | recruiter                |
+| `lama@sync.ngo`                          | Northbridge Talent (pro)     | admin                    |
+| `kamal@sync.ngo`                         | Northbridge Talent           | recruiter                |
 | `lina.haddad@northbridge.example`        | Northbridge Talent           | recruiter                |
 | `omar.zeid@northbridge.example`          | Northbridge Talent           | recruiter, **deactivated** |
-| `maya.sarkis@cedar-health.example`       | Cedar Health Group (free)    | admin                    |
-| `tarek.aboud@cedar-health.example`       | Cedar Health Group           | recruiter                |
-| `samir.daoud@palmyra-logistics.example`  | Palmyra Logistics (**suspended**) | admin               |
+| `syriatel-recruiter@sync.ngo`            | Syriatel Engineering (free)  | admin                    |
+| `tarek.aboud@syriatel-engineering.example` | Syriatel Engineering       | recruiter                |
+| `samir.daoud@palmyra-cloud.example`      | Palmyra Cloud (**suspended**) | admin                   |
 
 Northbridge is the busy one: seven Jobs, sixteen Applications, campaign links, notes, Tags, a
-Talent pool and Message templates. Cedar Health proves tenant isolation — it shares Candidates
+Talent pool and Message templates. Syriatel proves tenant isolation — it shares Candidates
 with Northbridge and can see none of its records. Palmyra is suspended, so signing in as Samir
 is how you reach the "this tenant is suspended" screen.
 
@@ -44,8 +47,8 @@ is how you reach the "this tenant is suspended" screen.
 
 | Address                     | State worth testing                                         |
 | --------------------------- | ----------------------------------------------------------- |
-| `amina.haddad@example.com`  | 3 CVs (one soft-deleted), hired once, withdrew once, searchable |
-| `bashir.nassar@example.com` | uploaded a `.docx`, holds an offer, disqualified elsewhere   |
+| `abdulqader@sync.ngo`       | 3 CVs (one soft-deleted), hired once, withdrew once, searchable |
+| `mowafak@sync.ngo`          | uploaded a `.docx`, holds an offer, disqualified elsewhere   |
 | `karim.sabbagh@example.com` | two live shortlists at once                                 |
 | `layla.kassem@example.com`  | applied to two different Tenants                            |
 | `nadia.rahal@example.com`   | outside Syria (Lebanon); rejected, un-rejected, rejected again |
