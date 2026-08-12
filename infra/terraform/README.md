@@ -26,6 +26,11 @@ export TF_VAR_billing_account=...   # gcloud billing accounts list
 ``` Budget alerts go to the
 billing account's IAM recipients, so no notification channel has to exist.
 
+CI plans this root on every pull request and never applies it -- see the `Projects root applied`
+check. A plan with `-refresh=false` compares configuration against state without reading a single
+resource, which is exactly the "declared but never applied" signal, and lets the `planner` identity
+hold nothing but read on the state bucket.
+
 State lives in `gs://sync-ngo-tfstate` (europe-west3, versioned, public access prevented),
 one prefix per environment. The bucket cannot be managed by the state it holds, so it is
 created once by `scripts/bootstrap-terraform-state.sh`.

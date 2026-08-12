@@ -288,6 +288,43 @@ resource "google_service_account_iam_member" "builder_federation" {
   member             = "principalSet://iam.googleapis.com/${local.wif_pool}/attribute.environment/${each.value}"
 }
 
+# Reads state and nothing else, so a pull request can tell whether this root has been applied.
+#
+# CI never applies `projects/`, deliberately: doing so would hand a deploy token billing and
+# project-creation authority. The gap that leaves is that a merged change here takes effect only
+# when somebody remembers to run it, and nothing says so -- #282, which cost a confusing `404` in
+# an unrelated deploy step.
+#
+# A plan with `-refresh=false` compares configuration against state without querying the cloud,
+# which is exactly the "declared but never applied" signal, and needs no read on any resource. It
+# notably needs no billing access: refreshing `google_billing_budget` would, and this identity
+# must not have it.
+resource "google_service_account" "planner" {
+  project      = var.production_project
+  account_id   = "planner"
+  display_name = "Terraform plan (read-only)"
+  description  = "Reads Terraform state so CI can report an unapplied projects root. No keys."
+
+  depends_on = [google_project_service.this]
+}
+
+# objectViewer, not objectAdmin: a plan reads state and must not be able to write it. The job runs
+# with `-lock=false` for the same reason -- taking a lock is a write.
+resource "google_storage_bucket_iam_member" "planner_state" {
+  bucket = var.state_bucket
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.planner.email}"
+}
+
+# Bound to the repository rather than to a GitHub environment, because a pull request does not run
+# in one. The provider already refuses any token not issued to this repository, so this is the
+# narrowest binding available to a check that must run before a merge.
+resource "google_service_account_iam_member" "planner_federation" {
+  service_account_id = google_service_account.planner.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${local.wif_pool}/attribute.repository/${var.github_repository}"
+}
+
 # The pipeline applies Terraform, so it needs the state it applies against. Scoped to the bucket
 # rather than granted at project level, and the bucket is not managed here -- it cannot be, since
 # it holds the state that would manage it.
