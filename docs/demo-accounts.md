@@ -34,7 +34,7 @@ The same password for every account, on all three portals.
 
 | Address                                 | Tenant                       | Role                     |
 | --------------------------------------- | ---------------------------- | ------------------------ |
-| `lama@sync.ngo`                          | Northbridge Talent (pro)     | admin                    |
+| `lamas@sync.ngo`                          | Northbridge Talent (pro)     | admin                    |
 | `kamal@sync.ngo`                         | Northbridge Talent           | recruiter                |
 | `lina.haddad@northbridge.example`        | Northbridge Talent           | recruiter                |
 | `omar.zeid@northbridge.example`          | Northbridge Talent           | recruiter, **deactivated** |

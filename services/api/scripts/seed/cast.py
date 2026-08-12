@@ -123,7 +123,7 @@ NORTHBRIDGE: Final = SeededTenant(
     from_access_request=True,
     admin=SeededRecruiter(
         key="lama",
-        email="lama@sync.ngo",
+        email="lamas@sync.ngo",
         full_name="Lama Haddad",
         role=RecruiterRole.ADMIN,
     ),
