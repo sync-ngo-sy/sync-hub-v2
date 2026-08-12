@@ -25,7 +25,12 @@ export TF_VAR_billing_account=...   # gcloud billing accounts list
 cd infra/terraform/projects && tofu init && tofu apply
 ```
 
-CI never applies this root, so a change merged here does nothing until somebody runs it (#282).
+CI never applies this root -- doing so would hand a deploy token billing and project-creation
+authority, which nothing else in this design has. What CI does instead is *notice*: the
+`Projects root applied` check plans with `-refresh=false` on every pull request and fails when
+this root has changes nobody has run. So a merged change here still does nothing until you run
+the command above, but you find out from a red check rather than from a `404` in an unrelated
+deploy step (#282).
 
 Production is adopted rather than created, so on a fresh state it needs importing first:
 
