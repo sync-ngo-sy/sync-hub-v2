@@ -82,6 +82,10 @@ regions of which `europe-west3` is not one. That is why the Platform Portal's se
 `region = "europe-west1"` while everything else stays in Frankfurt; ADR-0016 has the reasoning, and
 it ends in a cookie rather than in latency.
 
-Resources created by hand before this existed — the workload identity pool and provider, the
-applier service account, the exception tag — are not in state yet and need `terraform import`
-when the stack that owns them is written.
+The workload identity pool, its provider and the org-policy applier were created by hand before
+this existed, and have been imported. `projects/` now plans clean against them, so CI's own
+authentication is finally described by the thing that manages it.
+
+The domain-sharing exception tag is still outside — it is created once by
+`scripts/bootstrap-drs-tag-exception.sh` and granted per project by a reviewed commit to
+`infra/org-policies/exception-projects.txt`, which is the review gate rather than an oversight.

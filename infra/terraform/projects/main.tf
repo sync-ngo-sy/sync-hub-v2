@@ -59,11 +59,11 @@ locals {
   ]
   runtime_roles = ["roles/secretmanager.secretAccessor", "roles/logging.logWriter"]
 
-  # The pool and provider were created by scripts/bootstrap-ci-org-policy.sh and are not in this
-  # state, so they are referenced by name. The provider already refuses any token not issued to
-  # this repository; these principals narrow that to a named GitHub environment, which is what
-  # makes the production gate a review rather than a branch name.
-  wif_pool = "projects/${local.project_numbers.production}/locations/global/workloadIdentityPools/github"
+  # The pool is a resource here now, so this follows it rather than restating its path. The
+  # provider refuses any token not issued by this repository; these principals narrow that to a
+  # named GitHub environment, which is what makes the production gate a review rather than a
+  # branch name.
+  wif_pool = google_iam_workload_identity_pool.github.name
 
   github_environments = {
     production = "production"
@@ -205,6 +205,52 @@ resource "google_artifact_registry_repository_iam_member" "builder_push" {
   repository = google_artifact_registry_repository.images.name
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.builder.email}"
+}
+
+# The pool and its provider were created by hand before this configuration existed, and were
+# imported rather than recreated. Everything CI can do rests on them: delete them and every
+# deploy stops, with nothing in the repository saying how to rebuild them. That was the reason
+# to bring them in.
+resource "google_iam_workload_identity_pool" "github" {
+  project                   = var.production_project
+  workload_identity_pool_id = "github"
+  display_name              = "GitHub Actions"
+
+  depends_on = [google_project_service.this]
+}
+
+# `attribute_condition` is the outer gate: a token from any other repository is refused here,
+# before any principalSet is consulted. The bindings below then narrow that to a named GitHub
+# environment, which is what makes the production gate a review rather than a branch name.
+resource "google_iam_workload_identity_pool_provider" "sync_hub_v2" {
+  project                            = var.production_project
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
+  workload_identity_pool_provider_id = "sync-hub-v2"
+  display_name                       = "sync-ngo-sy/sync-hub-v2"
+  attribute_condition                = "assertion.repository=='${var.github_repository}'"
+
+  attribute_mapping = {
+    "google.subject"        = "assertion.sub"
+    "attribute.actor"       = "assertion.actor"
+    "attribute.repository"  = "assertion.repository"
+    "attribute.environment" = "assertion.environment"
+    "attribute.gate"        = "assertion.environment+\":\"+assertion.actor"
+  }
+
+  oidc {
+    issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+}
+
+# Applies organisation policy from the Org policy workflow. Separate from every deploy identity:
+# policy authority is the one thing a compromised deploy must not be able to widen.
+resource "google_service_account" "org_policy_applier" {
+  project      = var.production_project
+  account_id   = "org-policy-applier"
+  display_name = "Org policy applier (GitHub Actions)"
+  description  = "Applies project-scoped org policies from sync-ngo-sy/sync-hub-v2. No keys; WIF only."
+
+  depends_on = [google_project_service.this]
 }
 
 # Federation, not keys: the organisation forbids creating service-account keys outright, which is
