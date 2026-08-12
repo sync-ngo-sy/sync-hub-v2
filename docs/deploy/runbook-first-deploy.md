@@ -28,10 +28,9 @@ Production is adopted rather than created, so on a fresh state it needs importin
 tofu import google_project.production sync-ngo-prod
 ```
 
-The workload identity pool, its provider, the applier service account and the domain-sharing
-exception tag were all created by hand before this configuration existed. They are not in state and
-need `terraform import` when the stack that owns them is written — until then, do not let a plan talk
-you into recreating them.
+The workload identity pool, its provider and the applier service account were created by hand
+before this configuration existed and have since been imported, so a plan leaves them alone. The
+domain-sharing exception tag is still outside Terraform on purpose — see 1a.
 
 ## 1a. The domain-sharing exception
 
