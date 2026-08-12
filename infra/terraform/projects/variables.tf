@@ -40,3 +40,12 @@ variable "budget_thresholds" {
   type        = list(number)
   default     = [0.5, 0.9, 1.0]
 }
+
+variable "github_repository" {
+  description = <<-EOT
+    The one repository whose tokens the provider accepts. This is the outer gate: a token from
+    anywhere else is refused before any principal binding is consulted.
+  EOT
+  type        = string
+  default     = "sync-ngo-sy/sync-hub-v2"
+}
