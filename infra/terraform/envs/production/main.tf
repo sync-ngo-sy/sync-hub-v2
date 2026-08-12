@@ -1,3 +1,7 @@
+locals {
+  worker_audience = "https://sync-hub-worker/${var.project}"
+}
+
 provider "google" {
   project = var.project
   region  = var.region
@@ -62,4 +66,45 @@ output "service_uris" {
 # the records to add at the registrar (#86).
 output "dns_records" {
   value = { for name, service in module.service : name => service.dns_records if length(service.dns_records) > 0 }
+}
+
+# ---------------------------------------------------------------- schedule -----
+# The guarantee that nothing is stranded. A notification can be missed; a job that runs every
+# few minutes cannot miss the same row forever -- which is why this belongs in code rather than
+# in whatever somebody typed once.
+#
+# It carries no secret. Cloud Scheduler signs an OIDC token as the scheduler account and the
+# worker checks the signature, the audience and the account, so nothing sensitive lands in
+# Terraform state. The database webhook still uses the shared secret, because Postgres cannot
+# mint a token -- that one stays out of band.
+resource "google_cloud_scheduler_job" "worker_drain" {
+  count = var.worker_schedule == null ? 0 : 1
+
+  project     = var.project
+  region      = var.region
+  name        = "worker-drain"
+  description = "Drains and sweeps the worker queues. See #278."
+  schedule    = var.worker_schedule
+  time_zone   = "Etc/UTC"
+
+  # A drain is slower than a page load, and a burst can take minutes. Stopping early is safe --
+  # the next tick picks up whatever is left -- but cutting a job off mid-row is not.
+  attempt_deadline = "900s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    uri         = "${module.service["worker"].uri}/scheduled"
+    http_method = "POST"
+
+    # An audience of our choosing rather than the service URL: the URL is only known after the
+    # service is created, and referring to it from the service's own configuration is a cycle.
+    # The value is arbitrary as long as the token and the worker agree on it.
+    oidc_token {
+      service_account_email = var.scheduler_service_account
+      audience              = local.worker_audience
+    }
+  }
 }

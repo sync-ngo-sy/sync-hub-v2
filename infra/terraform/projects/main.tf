@@ -153,6 +153,20 @@ resource "google_service_account" "deployer" {
   depends_on = [google_project_service.this]
 }
 
+# Calls the worker's drain on a schedule, and is the only identity that may. It holds no key
+# and no shared secret: Cloud Scheduler signs a token for it, and the worker checks that the
+# token names this account. Rotating it means deleting an account, not editing a header.
+resource "google_service_account" "scheduler" {
+  for_each = local.envs
+
+  project      = each.value.project_id
+  account_id   = "scheduler"
+  display_name = "Worker schedule (${each.key})"
+  description  = "Cloud Scheduler mints OIDC tokens as this account to call the worker's drain."
+
+  depends_on = [google_project_service.this]
+}
+
 resource "google_service_account" "runtime" {
   for_each = local.envs
 

@@ -74,7 +74,7 @@ printf '%s' "$VALUE" | gcloud secrets versions add SYNC_DATABASE_URL --project s
 | `SYNC_DATABASE_URL` | The **transaction pooler** connection string with its scheme rewritten to `postgresql+asyncpg://`. Copy it from the dashboard's transaction-pooler entry rather than assembling it — the username is `postgres.<project-ref>`, not `postgres`, and the port is the pooler's. Not the direct connection: many short-lived Cloud Run instances against a direct connection is how the connection limit gets exhausted. Prepared statements are already disabled for this in `sync_core/db.py`, which is what a transaction-mode pooler requires. |
 | `SYNC_SUPABASE_SERVICE_ROLE_KEY` | Database project API settings. |
 | `SYNC_SUPABASE_ANON_KEY` | Database project API settings. |
-| `SYNC_WORKER_SHARED_SECRET` | Generated here: `openssl rand -hex 32`. Shared with the schedule and the database webhook below. |
+| `SYNC_WORKER_SHARED_SECRET` | Generated here: `openssl rand -hex 32`. Read by the enqueue trigger, which needs it in the database Vault too — see 8. The schedule does not use it. |
 | `SYNC_RESEND_API_KEY` | Resend. The worker refuses to start without it. |
 | `SYNC_OPENAI_API_KEY` | OpenAI. Without it the worker logs parses it cannot do and the API answers 503 on search and assessment. |
 
@@ -175,26 +175,26 @@ npx firebase-tools@latest deploy --only hosting:candidate-staging --project stag
 Attach the custom domains and add the records. `docs/deploy/dns-records.md` is the table to fill in;
 `tofu output dns_records` prints what the Platform Portal's mapping needs.
 
-## 8. The schedule and the webhook — **out of band**
+## 8. Telling the worker there is something to do — **out of band**
 
-Both carry `SYNC_WORKER_SHARED_SECRET` in a header, which is why neither is in Terraform.
+Both callers are in code now. The schedule is a `google_cloud_scheduler_job` in each environment
+root and arrives with step 5, authenticating with an OIDC token (#278). The enqueue notification is
+a trigger, and arrives with the migrations in step 3 — not a webhook built in the dashboard, which
+writes into a `supabase_functions` schema that exists only once somebody has pressed its button.
 
-The schedule is what guarantees nothing is stranded — not the notification. A notification can be
-missed; a job that runs every few minutes cannot miss the same row forever.
+What is left out of band is the pair of values the trigger reads, because a migration is committed
+and a secret is not. Once per environment, in the database:
 
-```bash
-gcloud scheduler jobs create http worker-drain \
-  --project sync-ngo-staging --location europe-west3 \
-  --schedule '*/3 * * * *' \
-  --uri "$WORKER_URL/scheduled" --http-method POST \
-  --headers "X-Worker-Secret=$SECRET" \
-  --attempt-deadline 900s
+```sql
+select vault.create_secret('https://<worker-host>/drain',  'worker_drain_url');
+select vault.create_secret('<SYNC_WORKER_SHARED_SECRET>',  'worker_shared_secret');
 ```
 
-The database webhook on enqueue points at `$WORKER_URL/drain` with the same header. The worker is
-publicly invocable precisely because this caller is Postgres, which cannot mint a Google identity
-token — the shared secret is what stands in for IAM, and the endpoints answer 503 rather than
-running when it is unset.
+Until both exist the trigger does nothing and enqueues still succeed — the schedule collects the
+rows on its next pass. That is deliberate: a notification is latency, an insert is a CV.
+
+The worker refuses to serve when neither caller is configured, so a missing secret is a 503 rather
+than an open endpoint. An unauthenticated drain is a free way to make our OpenAI calls.
 
 ## 9. Verify
 
