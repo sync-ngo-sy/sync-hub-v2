@@ -224,7 +224,7 @@ clicking around survives it.
 One password for every seeded account, on all three portals:
 
 ```text
-Sync-Demo-2026
+printed by the seed when it finishes
 ```
 
 The three to start from:
