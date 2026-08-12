@@ -18,9 +18,14 @@ command failing with `invalid_grant` on the state bucket actually means.
 
 ## 1. Projects, APIs, registry, identities
 
+The billing account has no default and is not in the repository, which is public. Supply it here:
+
 ```bash
+export TF_VAR_billing_account=...   # gcloud billing accounts list
 cd infra/terraform/projects && tofu init && tofu apply
 ```
+
+CI never applies this root, so a change merged here does nothing until somebody runs it (#282).
 
 Production is adopted rather than created, so on a fresh state it needs importing first:
 

@@ -14,9 +14,16 @@ creates. Production already exists and is adopted rather than created:
 cd infra/terraform/projects && tofu import google_project.production sync-ngo-prod
 ```
 
-Applying it needs, on the billing account `0146E0-8E025A-3D8296`, permission to attach
+Applying it needs, on the billing account, permission to attach
 billing to a new project and to manage budgets — `roles/billing.user` and
-`roles/billing.costsManager`, or `roles/billing.admin` for both. Budget alerts go to the
+`roles/billing.costsManager`, or `roles/billing.admin` for both.
+
+The account itself has no default and is not written down here, because the repository is public
+and it is the one identifier worth a stranger's time. Export it before applying `projects/`:
+
+```bash
+export TF_VAR_billing_account=...   # gcloud billing accounts list
+``` Budget alerts go to the
 billing account's IAM recipients, so no notification channel has to exist.
 
 State lives in `gs://sync-ngo-tfstate` (europe-west3, versioned, public access prevented),

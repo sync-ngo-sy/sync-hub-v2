@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING, Final
 
 from dotenv import load_dotenv
@@ -38,6 +39,8 @@ from seed import cast
 from seed.history import backdate
 from seed.identities import Identities, Removed, purge, tenants_by_slug, users_by_email
 from seed.world import Seeded, World
+from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 
 from sync_api.auth import GoTrue
 from sync_core import Database, Environment, Storage, configure_logging, get_settings
@@ -48,7 +51,7 @@ from sync_worker import ReembedEngine, ReembedPolicy
 load_dotenv("./../.env")
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import AsyncGenerator, Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -176,8 +179,9 @@ async def run(*, arguments: argparse.Namespace) -> int:
                     storage=storage,
                     settings=settings,
                 )
-                seeded = await world.build()
-                await backdate(session, seeded)
+                async with worker_left_asleep(session):
+                    seeded = await world.build()
+                    await backdate(session, seeded)
 
             embedded = 0
             if not arguments.no_embed:
@@ -187,6 +191,36 @@ async def run(*, arguments: argparse.Namespace) -> int:
         await database.dispose()
         await storage.aclose()
     return 0
+
+
+#: Triggers that tell the deployed worker an enqueue happened. The seed derives its own parses
+#: with `_NeverParses` and settles its own jobs; a live worker woken by these would claim the
+#: same rows and put a real model against fixtures that were never meant to reach one.
+NOTIFY_TRIGGERS: Final = (
+    ("ingestion_jobs", "ingestion_jobs_notify_worker"),
+    ("communications", "communications_notify_worker"),
+)
+
+
+@asynccontextmanager
+async def worker_left_asleep(session: AsyncSession) -> AsyncGenerator[None]:
+    """Hold the enqueue notifications down while the seed writes.
+
+    Restored in `finally`, so an interrupted seed does not leave an environment that has
+    quietly stopped telling its worker there is work -- which would look like the worker
+    being broken, days later, to somebody who never ran a seed.
+    """
+    for table, trigger in NOTIFY_TRIGGERS:
+        with suppress(ProgrammingError):
+            await session.execute(text(f"alter table {table} disable trigger {trigger}"))
+    await session.commit()
+    try:
+        yield
+    finally:
+        for table, trigger in NOTIFY_TRIGGERS:
+            with suppress(ProgrammingError):
+                await session.execute(text(f"alter table {table} enable trigger {trigger}"))
+        await session.commit()
 
 
 async def _already_seeded(session: AsyncSession) -> bool:

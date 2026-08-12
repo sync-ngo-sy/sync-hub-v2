@@ -4,8 +4,21 @@ variable "org_id" {
 }
 
 variable "billing_account" {
-  type    = string
-  default = "0146E0-8E025A-3D8296"
+  description = <<-EOT
+    Billing account the projects attach to, and the one identifier here with no default.
+
+    It is not a credential and knowing it grants nothing, but it names the account that pays for
+    everything and this repository is public -- which makes it the most useful line in the file to
+    somebody writing a convincing email to a colleague. The rest (org id, project numbers, service
+    account addresses) Google already puts in error messages and service-agent addresses.
+
+    Supply it out of band, the same way every secret value is:
+
+        export TF_VAR_billing_account=...
+
+    Only `projects/` needs it. The environment roots never touch billing.
+  EOT
+  type        = string
 }
 
 variable "region" {
