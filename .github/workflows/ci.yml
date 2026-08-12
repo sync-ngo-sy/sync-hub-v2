@@ -90,7 +90,10 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned, like the deploy workflows. `latest` resolves through GitHub's release API on
+          # every run, unauthenticated, so a run fails on somebody else's traffic -- exit 127,
+          # "command not found", before a single migration is read.
+          version: 2.113.0
 
       - name: Install dependencies
         run: uv sync --locked
@@ -129,7 +132,10 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned, like the deploy workflows. `latest` resolves through GitHub's release API on
+          # every run, unauthenticated, so a run fails on somebody else's traffic -- exit 127,
+          # "command not found", before a single migration is read.
+          version: 2.113.0
 
       - name: Start Supabase
         run: supabase start -x studio,imgproxy,edge-runtime,realtime,vector,analytics,meta
