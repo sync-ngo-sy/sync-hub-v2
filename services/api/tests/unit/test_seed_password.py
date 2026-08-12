@@ -10,6 +10,7 @@ The guard is cheap and the failure was not, so it is a test.
 
 from __future__ import annotations
 
+import importlib
 import re
 from pathlib import Path
 
@@ -29,21 +30,15 @@ def test_the_password_is_not_a_literal_in_the_source() -> None:
 
 
 def test_two_runs_do_not_share_a_password() -> None:
-    """Read from source rather than re-importing, because the module is cached per process."""
-    source = CAST_SOURCE.read_text()
-    namespace: dict[str, object] = {}
-    exec(  # noqa: S102 - executing our own module's password line, to prove it varies
-        "import secrets\n"
-        + next(line for line in source.splitlines() if line.startswith("PASSWORD")),
-        namespace,
-    )
-    first = namespace["PASSWORD"]
-    exec(  # noqa: S102
-        "import secrets\n"
-        + next(line for line in source.splitlines() if line.startswith("PASSWORD")),
-        namespace,
-    )
-    assert first != namespace["PASSWORD"]
+    """Reloading the module is what a second `seed_demo.py` invocation does, in one process."""
+    first = cast.PASSWORD
+    try:
+        second = importlib.reload(cast).PASSWORD
+        assert first != second
+    finally:
+        # Every other test in this session reads `cast.PASSWORD`; leaving a reloaded module
+        # behind would hand them a different object than the one the fixtures were built from.
+        importlib.reload(cast)
 
 
 def test_the_password_is_long_enough_to_be_worth_generating() -> None:
