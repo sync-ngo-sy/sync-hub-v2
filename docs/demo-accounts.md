@@ -14,11 +14,15 @@ one of us rather than a stranger. Everything else is invented and undeliverable.
 
 ## Password
 
-```text
-Sync-Demo-2026
-```
+**Generated on every run and printed once, when the seed finishes.** It is not written down here
+and never has a fixed value.
 
-The same for all 17 accounts, on all three portals.
+It used to be a constant in `cast.py`. That was safe while the seed refused to run anywhere but a
+laptop, and stopped being safe the moment it could seed a deployed environment: a password in a
+public repository is a live credential on any internet-facing environment it has been used
+against. If you missed it, run the seed again -- it is cheaper than recovering one.
+
+The same password for every account, on all three portals.
 
 ## Platform Portal — `http://127.0.0.1:5175`
 

@@ -13,6 +13,7 @@ date would drift out of "this week" by the second day.
 
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
@@ -43,9 +44,14 @@ from sync_core.models import (
     WorkMode,
 )
 
-#: One password for every seeded account, so signing in as anybody is one thing to remember.
-#: Local fixtures only — `seed_demo.py` refuses to run against anything but a local stack.
-PASSWORD: Final = "Sync-Demo-2026"
+#: One password for every seeded account, so signing in as anybody is one thing to remember --
+#: and a fresh one on every run, printed once when the seed finishes.
+#:
+#: It used to be a constant in this file. That was safe while the seed refused to run anywhere but
+#: a laptop, and stopped being safe the moment it could seed a deployed environment: a committed
+#: password in a public repository is a live credential on any internet-facing environment it has
+#: been used against. Generated means it cannot outlive the run that made it.
+PASSWORD: Final = f"Sync-Demo-{secrets.token_urlsafe(18)}"
 
 Skill = ProfileSkill
 Spoken = ProfileLanguage
