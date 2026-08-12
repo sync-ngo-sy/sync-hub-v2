@@ -153,6 +153,74 @@ jobs:
         if: always()
         run: supabase stop --no-backup
 
+  # CI applies the environment roots and deliberately never applies `projects/`: that root creates
+  # projects, attaches billing and grants project-level IAM, and automating it would hand a deploy
+  # token authority the whole design refuses it.
+  #
+  # The gap that leaves is that a change merged there takes effect only when somebody remembers to
+  # run it, and nothing says so. It cost a `404 Requested entity was not found` in an unrelated
+  # deploy step -- correct configuration, in a root nothing had applied (#282).
+  #
+  # So: plan, never apply. `-refresh=false` compares configuration against state without reading a
+  # single resource, which is precisely the "declared but never applied" signal and needs no
+  # permission beyond the state bucket. It notably needs no billing access; refreshing
+  # `google_billing_budget` would, and this identity must not have it.
+  projects-applied:
+    name: Projects root applied
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.12.5
+
+      - name: Authenticate to Google Cloud
+        run: |
+          set -euo pipefail
+          provider="projects/870458118919/locations/global/workloadIdentityPools/github/providers/sync-hub-v2"
+          curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=//iam.googleapis.com/${provider}" \
+            | jq -r '.value' > "${RUNNER_TEMP}/oidc.jwt"
+          test -s "${RUNNER_TEMP}/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "${provider}" \
+            --service-account="planner@sync-ngo-prod.iam.gserviceaccount.com" \
+            --credential-source-file="${RUNNER_TEMP}/oidc.jwt" \
+            --output-file="${RUNNER_TEMP}/cred.json" --quiet
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${RUNNER_TEMP}/cred.json" >> "${GITHUB_ENV}"
+
+      # `-lock=false` because taking a lock is a write, and this identity holds objectViewer.
+      # `-detailed-exitcode` makes 2 mean "there is something to apply", which is the failure.
+      - name: Plan
+        working-directory: infra/terraform/projects
+        env:
+          TF_VAR_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          tofu init -input=false
+          if tofu plan -input=false -refresh=false -lock=false -detailed-exitcode -no-color; then
+            echo "The projects root matches its state."
+          else
+            code=$?
+            if [ "${code}" -eq 2 ]; then
+              echo "::error::infra/terraform/projects has changes that have never been applied."
+              echo "::error::CI does not apply this root on purpose -- it holds billing and project"
+              echo "::error::authority. Run it by hand, then this check passes:"
+              echo "::error::  export TF_VAR_billing_account=...   # gcloud billing accounts list"
+              echo "::error::  cd infra/terraform/projects && tofu init && tofu apply"
+            fi
+            exit "${code}"
+          fi
+
+      - name: Revoke credentials
+        if: always()
+        run: gcloud auth revoke --all --quiet || true
+
   images:
     # Named per matrix value, not both targets: GitHub appends it in parentheses, so
     # "Images (api, worker)" rendered as "Images (api, worker) (api)". The worker leg is
