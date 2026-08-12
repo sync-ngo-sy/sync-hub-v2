@@ -1,6 +1,11 @@
 project = "sync-ngo-staging"
 region  = "europe-west3"
 
+# Every three minutes. This, not the database webhook, is what guarantees nothing is
+# stranded -- a notification can be missed, a schedule cannot miss the same row forever.
+worker_schedule           = "*/3 * * * *"
+scheduler_service_account = "scheduler@sync-ngo-staging.iam.gserviceaccount.com"
+
 # Every one of these needs a version written out of band before the first deploy: a service
 # referencing a secret with no version has revisions that fail to start. See infra/terraform/README.md.
 secret_ids = [
@@ -73,6 +78,11 @@ services = {
     env = {
       SYNC_ENVIRONMENT  = "staging"
       SYNC_SUPABASE_URL = "https://qjsqmtemyhvtnurohckb.supabase.co"
+      # What the schedule's token has to say for the worker to believe it. Neither is secret:
+      # the token is signed by Google and scoped to this audience, so knowing the pair proves
+      # nothing without Google's signature. See #278.
+      SYNC_WORKER_SCHEDULER_SERVICE_ACCOUNT = "scheduler@sync-ngo-staging.iam.gserviceaccount.com"
+      SYNC_WORKER_SCHEDULER_AUDIENCE        = "https://sync-hub-worker/sync-ngo-staging"
       # The sender is the worker's business, not the API's — see the note above it.
       SYNC_EMAIL_FROM = "Sync Hub Staging <staging@send.sync.ngo>"
       # Required by Settings, which both services build in full. The worker needs them for real:

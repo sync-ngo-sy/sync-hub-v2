@@ -49,3 +49,18 @@ variable "services" {
   }))
   default = {}
 }
+
+variable "worker_schedule" {
+  description = <<-EOT
+    Cron for the drain-and-sweep, or null to create no schedule. Null is for an environment that
+    has no worker yet; a deployed one without a schedule strands rows silently.
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "scheduler_service_account" {
+  description = "Identity Cloud Scheduler mints its OIDC token as. Created in the projects root."
+  type        = string
+  default     = null
+}
