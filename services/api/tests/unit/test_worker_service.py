@@ -17,8 +17,10 @@ from httpx import ASGITransport, AsyncClient
 from pydantic import SecretStr
 
 from sync_core import Settings
+from sync_worker.oidc import SchedulerTokens
 from sync_worker.runner import DrainReport
 from sync_worker.service import SECRET_HEADER, create_app
+from tests.unit import test_worker_oidc as oidc_support
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -177,3 +179,125 @@ async def test_concurrent_calls_are_safe(secured: Settings) -> None:
     # rest find an empty queue.
     assert sum(response.json()["total_processed"] for response in responses) == 6
     assert worker.peak_in_flight > 1
+
+
+# ── The schedule's token, beside the webhook's secret ──────────────────────────────────────
+
+
+@pytest.fixture
+def token_secured(secured: Settings) -> Settings:
+    """Both callers configured, which is how a deployed worker actually runs."""
+    return secured.model_copy(
+        update={
+            "worker_scheduler_service_account": oidc_support.CALLER,
+            "worker_scheduler_audience": oidc_support.AUDIENCE,
+        }
+    )
+
+
+@asynccontextmanager
+async def _client_with_stub_keys(
+    settings: Settings, worker: StubWorker
+) -> AsyncGenerator[AsyncClient]:
+    """The app as it is built in production, with only the JWKS fetch replaced."""
+    app = create_app(settings=settings, worker=worker)  # pyright: ignore[reportArgumentType]
+    async with (
+        LifespanManager(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client,
+    ):
+        app.state.scheduler_tokens = SchedulerTokens(
+            audience=oidc_support.AUDIENCE,
+            service_account=oidc_support.CALLER,
+            keys=oidc_support.StubKeys(),  # pyright: ignore[reportArgumentType]
+        )
+        yield client
+
+
+async def test_the_schedule_drains_with_a_token_and_no_secret(token_secured: Settings) -> None:
+    worker = StubWorker(pending=2)
+    async with _client_with_stub_keys(token_secured, worker) as client:
+        response = await client.post(
+            "/scheduled", headers={"Authorization": f"Bearer {oidc_support.a_token()}"}
+        )
+
+    assert response.status_code == 200, response.text
+    assert worker.calls == ["sweep", "drain"]
+
+
+async def test_the_webhook_still_drains_with_the_secret(token_secured: Settings) -> None:
+    """The token path must not close the door Postgres has to come through."""
+    worker = StubWorker(pending=2)
+    async with _client_with_stub_keys(token_secured, worker) as client:
+        response = await client.post("/drain", headers={SECRET_HEADER: SECRET})
+
+    assert response.status_code == 200, response.text
+    assert worker.calls == ["drain"]
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        pytest.param({"Authorization": "Bearer not-a-jwt"}, id="nonsense token"),
+        pytest.param({"Authorization": oidc_support.a_token()}, id="no Bearer scheme"),
+        pytest.param({"Authorization": "Bearer "}, id="empty token"),
+        pytest.param({SECRET_HEADER: "wrong"}, id="wrong secret"),
+        pytest.param({}, id="nothing at all"),
+    ],
+)
+async def test_a_caller_it_cannot_place_is_refused(
+    token_secured: Settings, headers: dict[str, str]
+) -> None:
+    worker = StubWorker(pending=3)
+    async with _client_with_stub_keys(token_secured, worker) as client:
+        response = await client.post("/drain", headers=headers)
+
+    assert response.status_code == 401
+    assert worker.calls == []
+
+
+async def test_a_bad_token_does_not_fall_through_to_the_secret_path(
+    token_secured: Settings,
+) -> None:
+    """A rejected token is a rejected request, not a prompt to try the other credential."""
+    worker = StubWorker(pending=3)
+    async with _client_with_stub_keys(token_secured, worker) as client:
+        response = await client.post(
+            "/drain",
+            headers={
+                "Authorization": f"Bearer {oidc_support.a_token(email='nobody@evil.example')}"
+            },
+        )
+
+    assert response.status_code == 401
+    assert worker.calls == []
+
+
+async def test_the_token_path_alone_is_enough_to_serve(worker_settings: Settings) -> None:
+    """No shared secret at all: the service still has a caller it can recognise, so it serves."""
+    only_tokens = worker_settings.model_copy(
+        update={
+            "worker_scheduler_service_account": oidc_support.CALLER,
+            "worker_scheduler_audience": oidc_support.AUDIENCE,
+        }
+    )
+    worker = StubWorker(pending=1)
+    async with _client_with_stub_keys(only_tokens, worker) as client:
+        response = await client.post(
+            "/scheduled", headers={"Authorization": f"Bearer {oidc_support.a_token()}"}
+        )
+
+    assert response.status_code == 200, response.text
+
+
+async def test_half_a_token_configuration_opens_no_door(worker_settings: Settings) -> None:
+    """An audience with no expected caller would admit any Google token minted for this URL."""
+    half = worker_settings.model_copy(update={"worker_scheduler_audience": oidc_support.AUDIENCE})
+    worker = StubWorker(pending=1)
+    async with _client(half, worker) as client:
+        response = await client.post(
+            "/scheduled", headers={"Authorization": f"Bearer {oidc_support.a_token()}"}
+        )
+
+    # Nothing is configured that can recognise anybody, so it refuses to serve at all.
+    assert response.status_code == 503
+    assert worker.calls == []

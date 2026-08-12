@@ -1812,6 +1812,7 @@ version = "0.1.0"
 source = { editable = "packages/worker" }
 dependencies = [
     { name = "fastapi" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "sync-comms" },
     { name = "sync-core" },
     { name = "sync-ingestion" },
@@ -1823,6 +1824,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.139.2" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
     { name = "sync-comms", editable = "packages/comms" },
     { name = "sync-core", editable = "packages/core" },
     { name = "sync-ingestion", editable = "packages/ingestion" },

@@ -10,6 +10,9 @@ requires-python = ">=3.12"
 dependencies = [
     # The worker is an HTTP service now, not a loop: a webhook and a schedule call it.
     "fastapi>=0.139.2",
+    # Verifying the schedule's OIDC token. Used directly, so declared directly rather than
+    # inherited from whatever else happens to pull it in.
+    "pyjwt[crypto]>=2.10",
     "uvicorn[standard]>=0.51.0",
     "sync-comms",
     "sync-core",

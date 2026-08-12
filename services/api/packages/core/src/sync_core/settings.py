@@ -136,9 +136,14 @@ class Settings(BaseSettings):
     email_from: str = "Sync Hub <onboarding@resend.dev>"
     email_timeout_seconds: int = Field(default=30, gt=0)
 
-    #: Shared with the database webhook and the schedule that call the worker. Neither can
-    #: mint a Google identity token, so this is what stands in for IAM.
+    #: Shared with the database webhook that calls the worker. Postgres cannot mint a Google
+    #: identity token, so this is what stands in for IAM on that path -- and only that one.
     worker_shared_secret: SecretStr | None = None
+    #: The schedule authenticates with a signed token instead, so its job definition carries
+    #: nothing worth stealing and can live in Terraform. Both must be set for that path to open:
+    #: an audience with no expected caller would admit any Google token minted for this URL.
+    worker_scheduler_service_account: str | None = None
+    worker_scheduler_audience: str | None = None
     #: Ceiling on one invocation, so a continuously fed queue cannot keep a request alive
     #: until the platform kills it mid-job. Stopping early is safe; the schedule calls again.
     worker_drain_max_rows: int = Field(default=500, ge=1)
