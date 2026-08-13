@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My applications — sync</title>
+<link rel="stylesheet" href="./plate.css">
+<style>
+  .track {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 0 12px; flex-wrap: wrap;
+  }
+  .node { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono);
+    font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-3); }
+  .node.done { color: var(--ink-2); }
+  .node.now  { color: var(--tint); font-weight: 600; }
+  .span { flex: 1; height: 1px; background: var(--rule); min-width: 20px; }
+  .span.done { background: var(--ink-2); }
+
+  .rec { border-bottom: 1px solid var(--rule); padding: 20px 0; }
+  .rec-top { display: grid; grid-template-columns: 60px 1fr auto; gap: 20px; align-items: start; }
+  .rec-title { font-size: clamp(18px, 2.1vw, 24px); line-height: 1.14; letter-spacing: -0.028em; font-weight: 560; }
+  .rec-org { font-size: 13.5px; color: var(--ink-2); }
+  .rec-org b { color: var(--ink); font-weight: 560; }
+  .rec-side { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .rec-when { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+  .rec-open { padding-left: 80px; }
+  .said { font-size: 13.5px; color: var(--ink-2); max-width: 66ch; margin: 0; }
+  .said b { color: var(--ink); font-weight: 560; }
+  .rec-acts { display: flex; gap: 9px; padding-top: 14px; flex-wrap: wrap; }
+
+  .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule);
+    border: 1px solid var(--rule); margin-top: 24px; }
+  .legend > div { background: var(--plate); padding: 15px 16px; display: flex; flex-direction: column; gap: 7px; }
+  .legend p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+  .legend .covers { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-3); }
+
+  @media (max-width: 820px) {
+    .rec-top { grid-template-columns: 44px 1fr; gap: 14px; }
+    .rec-side { grid-column: 2; flex-direction: row; align-items: center; text-align: left; gap: 10px; }
+    .rec-open { padding-left: 0; }
+    .legend { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<!--
+THESIS: The portal as an instrument of verification. It refuses the job-board card grid and its
+predictable opposite, the monochrome SaaS dashboard.
+OWN-WORLD: Security intaglio on pale security paper. Two inks — #0B1F1C engraving, #0E8074 tint —
+plus #A32B22 void. Ruled plates, double rules, per-employer guilloche rosettes,
+struck endorsements, serial numbering. Geist for engraving, Plex Mono for serials.
+STORY: A candidate reads their own record and is told only what is true: three stages, and silence
+between them is honest rather than neglectful.
+FIRST VIEWPORT: Ledger head, double rule, "Your record" at 88px with the holder's serial in the
+plate margin. The open application leads, its three-node track struck across the plate.
+FORM: The Verified Instrument, candidate 6 of 7, seed key 13a6bc9c.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
+<div class="sheet">
+
+  <header class="ledger">
+    <a class="chev" href="./register.html">
+      <img class="mark-img" src="./logo.png" alt="" width="23" height="20">
+      <b>sync</b>
+    </a>
+    <nav>
+      <a href="./register.html">Jobs</a>
+      <a href="./record.html" aria-current="page">My applications</a>
+      <a href="./profile.html">Profile</a>
+    </nav>
+    <span class="holder">
+      <span class="nm">Amina Haddad</span>
+      <span class="stamp">AH</span>
+      <button class="themer" type="button" aria-label="Switch light or dark"><svg class="sun" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 .9v2M8 13.1v2M.9 8h2M13.1 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><svg class="moon" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.9 5.9 0 1 0 7 7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+    </span>
+  </header>
+
+  <div class="rule-double"></div>
+
+  <h1 class="sr-only">Your applications</h1>
+
+  <main class="register">
+    <div class="listhead">
+      <span class="lead"><b>4 applications</b><span class="aside">1 waiting for a decision</span></span>
+      <button class="sortby" type="button">Newest first <svg width="9" height="6" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    </div>
+
+    <article class="rec">
+      <div class="rec-top">
+        <span class="seal-slot"><canvas data-registry="levant-digital" aria-hidden="true"></canvas></span>
+        <span class="e-body">
+          <span class="rec-title">Frontend Developer (Remote)</span>
+          <span class="rec-org"><b>Levant Digital</b> · Damascus · Applied 29 July</span>
+        </span>
+        <span class="rec-side">
+          <span class="stage reviewing">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1 5h8" stroke="currentColor" stroke-width="1.6"/></svg>
+            Reviewing
+          </span>
+          <span class="rec-when">Updated 2 days ago</span>
+        </span>
+      </div>
+      <div class="rec-open">
+        <div class="track">
+          <span class="node done">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="currentColor"/></svg>
+            Submitted
+          </span>
+          <span class="span done"></span>
+          <span class="node now">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1 5h8" stroke="currentColor" stroke-width="1.6"/></svg>
+            Reviewing
+          </span>
+          <span class="span"></span>
+          <span class="node">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.4 2"/></svg>
+            Decision
+          </span>
+        </div>
+        <p class="said">
+          <b>Levant Digital is reading your application.</b> We will tell you when they decide.
+          We do not show what happens inside their team.
+        </p>
+        <div class="rec-acts">
+          <a class="act counter" href="./role.html">View job</a>
+          <button class="act rescind" type="button">Cancel application</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-top">
+        <span class="seal-slot"><canvas data-registry="aman-relief" aria-hidden="true"></canvas></span>
+        <span class="e-body">
+          <span class="rec-title">Field Coordinator</span>
+          <span class="rec-org"><b>Aman Relief</b> · Aleppo · Applied 9 August</span>
+        </span>
+        <span class="rec-side">
+          <span class="stage submitted">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="currentColor"/></svg>
+            Submitted
+          </span>
+          <span class="rec-when">5 days ago</span>
+        </span>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-top">
+        <span class="seal-slot"><canvas data-registry="sham-care" aria-hidden="true"></canvas></span>
+        <span class="e-body">
+          <span class="rec-title">Pharmacist</span>
+          <span class="rec-org"><b>Sham Care</b> · Damascus · Applied 2 June</span>
+        </span>
+        <span class="rec-side">
+          <span class="stage hired">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="currentColor"/><path d="M2.6 5.2 4.3 6.9 7.4 3.4" fill="none" stroke="#F8FAF8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Hired
+          </span>
+          <span class="rec-when">6 June</span>
+        </span>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-top">
+        <span class="seal-slot"><canvas data-registry="northbridge" aria-hidden="true"></canvas></span>
+        <span class="e-body">
+          <span class="rec-title">Support Engineer</span>
+          <span class="rec-org"><b>Northbridge</b> · Remote · Applied 14 April</span>
+        </span>
+        <span class="rec-side">
+          <span class="stage void">
+            <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1.6 8.4 8.4 1.6" stroke="currentColor" stroke-width="1.6"/></svg>
+            Not selected
+          </span>
+          <span class="rec-when">2 May</span>
+        </span>
+      </div>
+    </article>
+
+    <div class="legend">
+      <div>
+        <span class="stage submitted">
+          <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="currentColor"/></svg>
+          Submitted
+        </span>
+        <p>They have your application. You can still cancel it.</p>
+      </div>
+      <div>
+        <span class="stage reviewing">
+          <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1 5h8" stroke="currentColor" stroke-width="1.6"/></svg>
+          Reviewing
+        </span>
+        <p>The employer is reading it. This can take time, and we will not send you small updates.</p>
+      </div>
+      <div>
+        <span class="stage void">
+          <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1.6 8.4 8.4 1.6" stroke="currentColor" stroke-width="1.6"/></svg>
+          Decision
+        </span>
+        <p>Shows Hired, Not selected, or Cancelled. This is the only other time we contact you.</p>
+      </div>
+    </div>
+  </main>
+  <div class="rule-double"></div>
+
+  <footer class="foot">
+    <span class="mono">Sync · Syrian Arab Republic</span>
+    <a href="#">About Sync</a>
+    <a href="#">For employers</a>
+    <a href="#">Privacy</a>
+  </footer>
+
+</div>
+
+<script src="./guilloche.js"></script>
+<script src="./theme.js"></script>
+</body>
+</html>

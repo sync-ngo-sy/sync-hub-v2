@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Candidate portal — design prototype</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --chrome: #101114;
+    --chrome-2: #1b1d22;
+    --edge: #2c2f36;
+    --text: #f2f3f5;
+    --dim: #8b909a;
+    --hot: #ffffff;
+    --bar-h: 68px;
+  }
+  body {
+    background: #16181c;
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .stage {
+    flex: 1;
+    padding: 22px 16px calc(var(--bar-h) + 26px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: auto;
+  }
+  .frame-shell {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 18px 60px rgb(0 0 0 / 0.5);
+    transform-origin: top center;
+    flex: none;
+  }
+  iframe { display: block; border: 0; width: 100%; height: 100%; }
+
+  .bar {
+    position: fixed; inset: auto 0 0 0; height: var(--bar-h);
+    background: var(--chrome); border-top: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center; gap: 26px;
+    padding: 0 18px; flex-wrap: wrap;
+  }
+  .group { display: flex; align-items: center; gap: 8px; }
+  .lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--dim);
+  }
+  .arrow {
+    width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--edge);
+    background: var(--chrome-2); color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .arrow:hover { background: #262931; }
+  .vname {
+    min-width: 210px; text-align: center; font-size: 14px; font-weight: 560;
+    letter-spacing: -0.01em;
+  }
+  .vname b { color: var(--hot); }
+  .vname span { color: var(--dim); font-weight: 400; }
+  .seg { display: flex; border: 1px solid var(--edge); border-radius: 7px; overflow: hidden; }
+  .seg button {
+    background: var(--chrome-2); border: 0; padding: 7px 12px; cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--dim);
+    border-left: 1px solid var(--edge);
+  }
+  .seg button:first-child { border-left: 0; }
+  .seg button[aria-pressed="true"] { background: #f2f3f5; color: #101114; font-weight: 600; }
+  .meta { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; color: var(--dim); }
+  :focus-visible { outline: 2px solid #6ea8ff; outline-offset: 2px; }
+  @media (max-width: 760px) { .bar { height: auto; padding: 10px; gap: 12px; } .vname { min-width: 0; } }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="frame-shell" id="shell">
+    <iframe id="frame" title="Prototype screen" src="./register.html"></iframe>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="group">
+    <span class="lbl">Variant</span>
+    <button class="arrow" id="prev" aria-label="Previous variant">←</button>
+    <span class="vname" id="vname"></span>
+    <button class="arrow" id="next" aria-label="Next variant">→</button>
+  </div>
+  <div class="group">
+    <span class="lbl">Width</span>
+    <div class="seg" id="widths">
+      <button data-w="1440">1440</button>
+      <button data-w="1280">1280</button>
+      <button data-w="834">834</button>
+      <button data-w="390">390</button>
+    </div>
+  </div>
+  <span class="meta" id="readout"></span>
+</div>
+
+<script>
+  const VARIANTS = [
+    { key: 'register', name: 'Jobs',            note: 'browse + filter' },
+    { key: 'role',     name: 'One job',         note: 'detail + apply' },
+    { key: 'record',   name: 'My applications', note: 'stages' },
+    { key: 'profile',  name: 'Profile',         note: 'card + sections' },
+  ];
+  const HEIGHTS = { 1440: 900, 1280: 900, 834: 1000, 390: 900 };
+
+  const frame = document.getElementById('frame');
+  const shell = document.getElementById('shell');
+  const stage = document.getElementById('stage');
+  const vname = document.getElementById('vname');
+  const readout = document.getElementById('readout');
+
+  const params = new URLSearchParams(location.search);
+  let vi = Math.max(0, VARIANTS.findIndex(v => v.key === (params.get('variant') || 'register')));
+  let w = Number(params.get('w')) || 1280;
+
+  function fit() {
+    const avail = stage.clientWidth - 32;
+    const scale = Math.min(1, avail / w);
+    shell.style.width = w + 'px';
+    shell.style.height = HEIGHTS[w] + 'px';
+    shell.style.transform = `scale(${scale})`;
+    shell.style.marginBottom = (HEIGHTS[w] * scale - HEIGHTS[w]) + 'px';
+    readout.textContent = `${w}×${HEIGHTS[w]} · ${Math.round(scale * 100)}%`;
+  }
+
+  function render(push) {
+    const v = VARIANTS[vi];
+    if (frame.dataset.key !== v.key) {
+      frame.src = `./${v.key}.html`;
+      frame.dataset.key = v.key;
+    }
+    vname.innerHTML = `<b>${v.key.toUpperCase()} — ${v.name}</b> <span>${v.note}</span>`;
+    document.querySelectorAll('#widths button').forEach(b =>
+      b.setAttribute('aria-pressed', String(Number(b.dataset.w) === w)));
+    fit();
+    if (push) {
+      const q = new URLSearchParams({ variant: v.key, w: String(w) });
+      history.replaceState(null, '', `?${q}`);
+    }
+  }
+
+  document.getElementById('prev').onclick = () => { vi = (vi - 1 + VARIANTS.length) % VARIANTS.length; render(true); };
+  document.getElementById('next').onclick = () => { vi = (vi + 1) % VARIANTS.length; render(true); };
+  document.getElementById('widths').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    w = Number(b.dataset.w); render(true);
+  };
+  addEventListener('keydown', e => {
+    const t = e.target;
+    if (t && (t.matches('input, textarea') || t.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') { vi = (vi - 1 + VARIANTS.length) % VARIANTS.length; render(true); }
+    if (e.key === 'ArrowRight') { vi = (vi + 1) % VARIANTS.length; render(true); }
+  });
+  addEventListener('resize', fit);
+  render(false);
+</script>
+</body>
+</html>

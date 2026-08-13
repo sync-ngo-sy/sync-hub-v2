@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open roles — sync</title>
+<link rel="stylesheet" href="./plate.css">
+</head>
+<body>
+<!--
+THESIS: The portal as an instrument of verification. It refuses the job-board card grid and its
+predictable opposite, the monochrome SaaS dashboard.
+OWN-WORLD: Security intaglio on pale security paper. Two inks — #0B1F1C engraving, #0E8074 tint —
+plus #A32B22 void. Ruled plates, double rules, per-employer guilloche rosettes,
+struck endorsements, serial numbering. Geist for engraving, Plex Mono for serials.
+STORY: A candidate sees employers carrying marks that cannot be forged, reads roles as register
+entries, and applies knowing the record states only what is true.
+FIRST VIEWPORT: Ledger head, engraved wordmark and nav on a ruled baseline, double rule beneath.
+"Open roles" set at 88px, tight. Register serial in the plate margin at right. Ruled search line
+like a certificate's fill-in field. Struck endorsements. Entries each led by a drawn guilloche seal.
+FORM: The Verified Instrument, candidate 6 of 7, seed key 13a6bc9c.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
+<div class="sheet">
+
+  <header class="ledger">
+    <a class="chev" href="./register.html">
+      <img class="mark-img" src="./logo.png" alt="" width="23" height="20">
+      <b>sync</b>
+    </a>
+    <nav>
+      <a href="./register.html" aria-current="page">Jobs</a>
+      <a href="./record.html">My applications</a>
+      <a href="./profile.html">Profile</a>
+    </nav>
+    <span class="holder">
+      <span class="nm">Amina Haddad</span>
+      <span class="stamp">AH</span>
+      <button class="themer" type="button" aria-label="Switch light or dark"><svg class="sun" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 .9v2M8 13.1v2M.9 8h2M13.1 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><svg class="moon" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.9 5.9 0 1 0 7 7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+    </span>
+  </header>
+
+  <div class="rule-double"></div>
+
+  <h1 class="sr-only">Open roles</h1>
+
+  <form class="ruled-field" onsubmit="return false">
+    <span class="lab">Search for</span>
+    <span class="line">
+      <input placeholder="Role, skill or organisation" aria-label="Search roles, skills or organisations">
+      <svg width="17" height="17" viewBox="0 0 17 17" aria-hidden="true">
+        <circle cx="7.2" cy="7.2" r="5.4" fill="none" stroke="#0B1F1C" stroke-width="1.5"/>
+        <path d="M11.3 11.3 15.5 15.5" stroke="#0B1F1C" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </span>
+  </form>
+
+  <div class="filters">
+    <span class="fil"><span class="lb">Location</span>
+      <span class="pick"><select class="in" aria-label="Location">
+        <option>All of Syria</option><option selected>Damascus</option><option>Rif Dimashq</option>
+        <option>Aleppo</option><option>Homs</option><option>Latakia</option>
+      </select><svg class="caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+    </span>
+    <span class="fil"><span class="lb">Job type</span>
+      <span class="pick"><select class="in" aria-label="Job type">
+        <option selected>Any job type</option><option>Full-time</option><option>Contract</option><option>Part-time</option>
+      </select><svg class="caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+    </span>
+    <span class="fil"><span class="lb">Where you work</span>
+      <span class="pick"><select class="in" aria-label="Where you work">
+        <option>Anywhere</option><option selected>Remote</option><option>At the office</option>
+      </select><svg class="caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+    </span>
+    <button class="rescind" type="button">Clear filters</button>
+  </div>
+
+  <main class="register">
+    <div class="listhead">
+      <span class="lead"><b>12 jobs</b><span class="aside">of 24 open</span></span>
+      <button class="sortby" type="button">Newest first <svg width="9" height="6" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    </div>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="levant-digital" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Frontend Developer (Remote)</span>
+        <span class="e-org"><b>Levant Digital</b> · Damascus · Full-time</span>
+        <span class="e-req"><span>React</span><span>TypeScript</span><span>3+ years</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">2 days ago</span>
+      </span>
+    </a>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="levant-digital-2" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Data Analyst</span>
+        <span class="e-org"><b>Levant Digital</b> · Damascus · Full-time</span>
+        <span class="e-req"><span>SQL</span><span>Python</span><span>Reporting</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">3 days ago</span>
+      </span>
+    </a>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="northbridge" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Support Engineer</span>
+        <span class="e-org"><b>Northbridge</b> · Remote · Full-time</span>
+        <span class="e-req"><span>Linux</span><span>On-call</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">4 days ago</span>
+      </span>
+    </a>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="aman-relief" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Field Coordinator</span>
+        <span class="e-org"><b>Aman Relief</b> · Aleppo · Contract</span>
+        <span class="e-req"><span>Logistics</span><span>Arabic</span><span>English</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">5 days ago</span>
+      </span>
+    </a>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="aman-relief-homs" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Monitoring &amp; Evaluation Officer</span>
+        <span class="e-org"><b>Aman Relief</b> · Homs · Contract</span>
+        <span class="e-req"><span>M&amp;E</span><span>Reporting</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">1 week ago</span>
+      </span>
+    </a>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="sham-care" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Pharmacist</span>
+        <span class="e-org"><b>Sham Care</b> · Damascus · Full-time</span>
+        <span class="e-req"><span>Dispensing</span><span>Licensed</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">1 week ago</span>
+      </span>
+    </a>
+
+    <a class="entry" href="./role.html">
+      <span class="seal-slot"><canvas data-registry="sham-care-latakia" aria-hidden="true"></canvas></span>
+      <span class="e-body">
+        <span class="e-title">Accountant</span>
+        <span class="e-org"><b>Sham Care</b> · Latakia · Full-time</span>
+        <span class="e-req"><span>Payroll</span><span>Excel</span></span>
+      </span>
+      <span class="e-side">
+        <span class="e-when">2 weeks ago</span>
+      </span>
+    </a>
+
+    <div class="notice">
+      <span class="seal-slot"><canvas data-registry="sync-registry-authority" aria-hidden="true"></canvas></span>
+      <p>
+        <b>Every employer has its own stamp.</b> No two employers share one, and a job without a
+        stamp is not on this list. Sync shows a job only while someone is
+        really hiring for it. When a job closes, we remove it the same day.
+      </p>
+    </div>
+
+    <div style="display:flex;justify-content:center;padding:30px 0 8px">
+      <button class="act counter" type="button">Show 5 more</button>
+    </div>
+  </main>
+  <div class="rule-double"></div>
+
+  <footer class="foot">
+    <span class="mono">Sync · Syrian Arab Republic</span>
+    <a href="#">About Sync</a>
+    <a href="#">For employers</a>
+    <a href="#">Privacy</a>
+  </footer>
+
+</div>
+
+<script src="./guilloche.js"></script>
+<script src="./theme.js"></script>
+</body>
+</html>
