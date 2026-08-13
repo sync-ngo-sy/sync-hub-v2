@@ -50,3 +50,6 @@ reachability-report*.txt
 
 # Firebase CLI deploy cache, written next to firebase.json on every deploy.
 .firebase/
+
+# impeccable design-tool runtime state (pids, ports, heartbeats)
+.impeccable/

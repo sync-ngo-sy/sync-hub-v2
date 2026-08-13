@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your profile — sync</title>
+<link rel="stylesheet" href="./plate.css">
+<style>
+  .cols { display: grid; grid-template-columns: 1fr 340px; gap: clamp(24px, 4vw, 56px);
+    padding: clamp(26px, 3.4vw, 38px) var(--gut) 8px; align-items: start; }
+
+  .block { padding-top: 30px; }
+  .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+    padding-bottom: 9px; border-bottom: 2px solid var(--rule-firm); }
+  .block-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.012em; }
+  .addbtn { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--tint); background: none; border: 0; cursor: pointer; padding: 4px 0;
+    text-decoration: underline; text-underline-offset: 3px; }
+
+  .row2 { display: grid; grid-template-columns: 112px 1fr; gap: 16px;
+    padding: 13px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+  .row2 dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--ink-3); }
+  .row2 dd { margin: 0; font-size: 14.5px; color: var(--ink); }
+  .row2 dd.empty { color: var(--void); }
+
+  .job2 { display: flex; justify-content: space-between; gap: 16px;
+    padding: 14px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+  .job2 .what { display: flex; flex-direction: column; gap: 3px; }
+  .job2 .what b { font-size: 14.5px; font-weight: 560; }
+  .job2 .what span { font-size: 12.5px; color: var(--ink-2); }
+  .job2 .whn { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+
+  .chipset { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 0 4px; }
+  .chipset span { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-2); border: 1px solid var(--rule); padding: 4px 9px; }
+  .chipset span.yrs { color: var(--ink-3); }
+
+  /* ── the candidate card ── */
+  .rail { position: sticky; top: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .card { border: 1px solid var(--rule-firm); background: var(--plate); }
+  .card-plate { position: relative; padding: 18px 18px 16px; }
+  .card-in { position: relative; display: flex; flex-direction: column; gap: 12px; }
+  .portrait { display: flex; align-items: center; gap: 13px; }
+  .portrait .pic {
+    width: 62px; height: 62px; flex: none; border-radius: 50%;
+    border: 1px solid var(--ink); box-shadow: inset 0 0 0 3px var(--plate), inset 0 0 0 4px var(--tint-2);
+    background: var(--plate-2); display: grid; place-items: center;
+    font-size: 20px; font-weight: 620; letter-spacing: -0.02em;
+  }
+  .portrait .who2 { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .portrait .who2 b { font-size: 18px; font-weight: 620; letter-spacing: -0.028em; line-height: 1.1; }
+  .portrait .who2 span { font-size: 12.5px; color: var(--ink-2); }
+  .contact { display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
+  .contact a { font-size: 12.5px; color: var(--ink-2); text-decoration: none; }
+  .contact a:hover { color: var(--tint); text-decoration: underline; }
+
+  /* brand marks: a filled set of their own, so they stay recognisable */
+  .socials { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 1px; }
+  .socials a { display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink-2); text-decoration: none; }
+  .socials a:hover { color: var(--tint); }
+  .socials a:hover svg { fill: var(--tint); }
+  .socials svg { fill: var(--ink-3); flex: none; transition: fill 120ms ease; }
+  .card-skills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .card-skills span { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--ink); background: var(--plate-2);
+    border: 1px solid var(--rule); padding: 3px 7px; }
+  .card-skills span.more { background: transparent; color: var(--ink-3); border-style: dashed; }
+  .card-facts { display: flex; gap: 16px; flex-wrap: wrap;
+    padding-top: 11px; border-top: 1px solid var(--rule); }
+  .card-facts div { display: flex; flex-direction: column; gap: 1px; }
+  .card-facts dt { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-3); }
+  .card-facts dd { margin: 0; font-size: 13px; font-weight: 560; }
+  .card-foot { border-top: 1px solid var(--rule-firm); padding: 9px 18px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-3); }
+  .card-foot b { color: var(--tint); font-weight: 600; }
+
+  .cvbox { border: 1px solid var(--rule); }
+  .cvbox h2 { margin: 0; font-size: 13px; font-weight: 600; padding: 13px 15px 9px; }
+  .cv { display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+    padding: 10px 15px; border-top: 1px solid var(--rule); }
+  .cv .nm2 { font-size: 12.5px; font-weight: 500; }
+  .cv .dt2 { font-family: var(--mono); font-size: 9.5px; color: var(--ink-3); }
+
+  .saved { display: flex; align-items: center; gap: 9px; padding: 13px 0 0; flex-wrap: wrap; }
+  .saved span { font-size: 12px; color: var(--ink-3); }
+
+  /* ── fill-in fields: a certificate's ruled line, not a boxed input ── */
+  /* the fill-in line IS the row rule — never both */
+  .f { display: grid; grid-template-columns: 112px 1fr; gap: 16px;
+    padding: 9px 0 14px; align-items: baseline; }
+  .f > .lb { font-family: var(--mono); font-size: 10px; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--ink-3); padding-top: 6px; }
+  .f .wrap2 { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+
+  .duo { display: grid; grid-template-columns: 128px 1fr; gap: 12px; }
+
+  .bad .in { border-bottom-color: var(--void); }
+  .bad .in:focus { box-shadow: 0 1px 0 0 var(--void); }
+  .why { font-size: 11.5px; color: var(--void); display: flex; align-items: center; gap: 6px; }
+  .hint { font-size: 11.5px; color: var(--ink-3); }
+  .count { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+
+  /* save bar — appears only when something is dirty */
+  .dirty {
+    position: sticky; bottom: 0; margin-top: 22px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--tint-wash); border: 1px solid var(--tint);
+    padding: 11px 15px;
+  }
+  .dirty p { margin: 0; font-size: 12.5px; color: var(--ink-2); flex: 1; min-width: 180px; }
+
+  @media (max-width: 900px) {
+    .cols { grid-template-columns: 1fr; }
+    .rail { position: static; order: -1; }
+    .row2 { grid-template-columns: 1fr; gap: 3px; }
+    /* the label stacks over its line, so the field gets the whole width */
+    .f { grid-template-columns: 1fr; gap: 4px; padding: 6px 0 14px; }
+    .f > .lb { padding-top: 0; }
+    .duo { grid-template-columns: 118px 1fr; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<!--
+THESIS: The portal as an instrument of verification. It refuses the job-board card grid and its
+predictable opposite, the monochrome SaaS dashboard.
+OWN-WORLD: Security intaglio on pale security paper. Two inks — #0B1F1C engraving, #0E8074 tint —
+plus #A32B22 void. Ruled plates, double rules, guilloche rosettes, stamped
+marks, serial numbering. Public Sans for the record, Plex Mono for serials.
+STORY: A candidate keeps one profile, sees exactly what an employer will read, and is told plainly
+what is still missing before they can apply.
+FIRST VIEWPORT: Ledger head, double rule, "Your profile" at 88px with the holder serial in the
+plate margin. The candidate card sits in a bordered rail at right over a faint guilloche ground,
+carrying photo, name, role, contact, five skills and two facts. Sections open as ruled schedules.
+FORM: The Verified Instrument, candidate 6 of 7, seed key 13a6bc9c.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
+<div class="sheet">
+
+  <header class="ledger">
+    <a class="chev" href="./register.html">
+      <img class="mark-img" src="./logo.png" alt="" width="23" height="20">
+      <b>sync</b>
+    </a>
+    <nav>
+      <a href="./register.html">Jobs</a>
+      <a href="./record.html">My applications</a>
+      <a href="./profile.html" aria-current="page">Profile</a>
+    </nav>
+    <span class="holder">
+      <span class="nm">Amina Haddad</span>
+      <span class="stamp">AH</span>
+      <button class="themer" type="button" aria-label="Switch light or dark"><svg class="sun" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 .9v2M8 13.1v2M.9 8h2M13.1 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><svg class="moon" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.9 5.9 0 1 0 7 7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+    </span>
+  </header>
+
+  <div class="rule-double"></div>
+
+  <h1 class="sr-only">Your profile</h1>
+
+  <div class="cols">
+    <main>
+      <section class="block" style="padding-top:0">
+        <div class="block-head">
+          <h2>Your details</h2>
+          <span class="count">Editing</span>
+        </div>
+
+        <form onsubmit="return false">
+          <div class="f">
+            <span class="lb">Full name</span>
+            <span class="wrap2">
+              <input class="in" value="Amina Haddad" aria-label="Full name">
+            </span>
+          </div>
+
+          <div class="f">
+            <span class="lb">What you do</span>
+            <span class="wrap2">
+              <span class="pick">
+                <select class="in" aria-label="What you do">
+                  <option selected>Frontend Developer</option>
+                  <option>Backend Developer</option>
+                  <option>Data Analyst</option>
+                  <option>Pharmacist</option>
+                </select>
+                <svg class="caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">
+                  <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="#5C716B" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="hint">Choose from the list so employers can find you by it.</span>
+            </span>
+          </div>
+
+          <div class="f">
+            <span class="lb">Where you live</span>
+            <span class="wrap2">
+              <span class="pick">
+                <select class="in" aria-label="Where you live">
+                  <option selected>Damascus</option>
+                  <option>Rif Dimashq</option>
+                  <option>Aleppo</option>
+                  <option>Homs</option>
+                  <option>Latakia</option>
+                </select>
+                <svg class="caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">
+                  <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="#5C716B" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </span>
+            </span>
+          </div>
+
+          <div class="f">
+            <span class="lb">Phone</span>
+            <span class="wrap2">
+              <span class="duo">
+                <span class="pick">
+                  <select class="in" aria-label="Country">
+                    <option selected>Syria +963</option>
+                    <option>Lebanon +961</option>
+                    <option>Jordan +962</option>
+                    <option>Türkiye +90</option>
+                  </select>
+                  <svg class="caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">
+                    <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="#5C716B" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <input class="in" value="944 123 456" inputmode="tel" aria-label="Phone number">
+              </span>
+            </span>
+          </div>
+
+          <div class="f bad">
+            <span class="lb">Email</span>
+            <span class="wrap2">
+              <input class="in" value="amina.haddad@example" aria-label="Email" aria-invalid="true" aria-describedby="email-why">
+              <span class="why" id="email-why">
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                  <circle cx="6" cy="6" r="5.1" fill="none" stroke="#A32B22" stroke-width="1.4"/>
+                  <path d="M6 3.2v3.4M6 8.5v.6" stroke="#A32B22" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                This address has no ending, like .com. Add one to save.
+              </span>
+            </span>
+          </div>
+
+          <div class="f">
+            <span class="lb">About you</span>
+            <span class="wrap2">
+              <textarea class="in" aria-label="About you">I build websites that are easy to use for everyone, for teams across the region.</textarea>
+              <span class="count">82 of 300 characters</span>
+            </span>
+          </div>
+
+          <div class="dirty">
+            <p>You changed 2 things. Nothing is saved until you press Save.</p>
+            <button class="act counter" type="button">Undo</button>
+            <button class="act" type="button">Save changes</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Work history</h2>
+          <button class="addbtn" type="button">Add a job</button>
+        </div>
+        <div class="job2">
+          <span class="what"><b>Frontend Developer</b><span>Levant Digital · Damascus</span></span>
+          <span class="whn">Jan 2023 — now</span>
+        </div>
+        <div class="job2">
+          <span class="what"><b>Junior Developer</b><span>Sham Care · Damascus</span></span>
+          <span class="whn">Jun 2020 — Dec 2022</span>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Education</h2>
+          <button class="addbtn" type="button">Add a qualification</button>
+        </div>
+        <div class="job2">
+          <span class="what"><b>BSc Informatics Engineering</b><span>Damascus University</span></span>
+          <span class="whn">2016 — 2020</span>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Skills</h2>
+          <button class="addbtn" type="button">Add a skill</button>
+        </div>
+        <div class="chipset">
+          <span>React <b class="yrs">6y</b></span>
+          <span>TypeScript <b class="yrs">5y</b></span>
+          <span>CSS <b class="yrs">6y</b></span>
+          <span>Node.js <b class="yrs">3y</b></span>
+          <span>Figma <b class="yrs">4y</b></span>
+          <span>Testing <b class="yrs">3y</b></span>
+          <span>Accessibility <b class="yrs">2y</b></span>
+          <span>SQL <b class="yrs">2y</b></span>
+          <span>Git <b class="yrs">6y</b></span>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Languages</h2>
+          <button class="addbtn" type="button">Add a language</button>
+        </div>
+        <dl>
+          <div class="row2"><dt>Arabic</dt><dd>Native</dd></div>
+          <div class="row2"><dt>English</dt><dd>Fluent</dd></div>
+          <div class="row2"><dt>French</dt><dd>Intermediate</dd></div>
+        </dl>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Links</h2>
+          <button class="addbtn" type="button">Edit</button>
+        </div>
+        <dl>
+          <div class="row2"><dt>LinkedIn</dt><dd>linkedin.com/in/aminahaddad</dd></div>
+          <div class="row2"><dt>GitHub</dt><dd>github.com/aminahaddad</dd></div>
+          <div class="row2"><dt>Portfolio</dt><dd class="empty">Not added yet</dd></div>
+        </dl>
+        <div class="saved">
+          <button class="act" type="button">Save changes</button>
+          <span>Nothing is saved until you press Save.</span>
+        </div>
+      </section>
+    </main>
+
+    <aside class="rail">
+      <div class="card">
+        <div class="card-plate">
+          <div class="card-in">
+            <div class="portrait">
+              <span class="pic">AH</span>
+              <span class="who2">
+                <b>Amina Haddad</b>
+                <span>Frontend Developer</span>
+                <span>Damascus, Syria</span>
+              </span>
+            </div>
+            <div class="contact">
+              <a href="mailto:amina.haddad@example.com">amina.haddad@example.com</a>
+              <a href="tel:+963944123456">+963 944 123 456</a>
+            </div>
+            <div class="socials">
+              <a href="#" aria-label="LinkedIn profile">
+                <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+                aminahaddad
+              </a>
+              <a href="#" aria-label="GitHub profile">
+                <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.96 0-1.32.47-2.39 1.24-3.23-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.23 0 4.63-2.8 5.65-5.48 5.95.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
+                aminahaddad
+              </a>
+            </div>
+            <div class="card-skills">
+              <span>React</span><span>TypeScript</span><span>CSS</span>
+              <span>Node.js</span><span>Figma</span><span class="more">+4 more</span>
+            </div>
+            <dl class="card-facts">
+              <div><dt>Experience</dt><dd>6 years</dd></div>
+              <div><dt>Languages</dt><dd>Arabic, English, French</dd></div>
+            </dl>
+          </div>
+        </div>
+        <div class="card-foot">
+          <span>This is what employers see</span>
+          <b>Complete</b>
+        </div>
+      </div>
+
+      <div class="cvbox">
+        <h2>Your CVs</h2>
+        <div class="cv"><span class="nm2">Frontend 2026.pdf</span><span class="dt2">Read · Current</span></div>
+        <div class="cv"><span class="nm2">Amina-CV-2024.pdf</span><span class="dt2">Read</span></div>
+        <div class="cv"><span class="nm2">scan.pdf</span><span class="dt2" style="color:var(--void)">Could not read</span></div>
+        <div class="cv"><button class="addbtn" type="button">Upload a CV</button></div>
+      </div>
+    </aside>
+  </div>
+  <div class="rule-double"></div>
+
+  <footer class="foot">
+    <span class="mono">Sync · Syrian Arab Republic</span>
+    <a href="#">About Sync</a>
+    <a href="#">For employers</a>
+    <a href="#">Privacy</a>
+  </footer>
+
+</div>
+
+<script src="./guilloche.js"></script>
+<script src="./theme.js"></script>
+</body>
+</html>
