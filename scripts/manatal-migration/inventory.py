@@ -13,7 +13,20 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Final
 
-from manatal import HEADLINE_KEYS, ID_KEYS, NAME_KEYS, PHONE_KEYS, SKILL_KEYS
+from manatal import (
+    COMPANY_KEYS,
+    DEGREE_KEYS,
+    DESCRIPTION_KEYS,
+    HEADLINE_KEYS,
+    ID_KEYS,
+    LOCATION_KEYS,
+    NAME_KEYS,
+    PHONE_KEYS,
+    PICTURE_KEYS,
+    SKILL_KEYS,
+    TAG_KEYS,
+    UNIVERSITY_KEYS,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -53,6 +66,23 @@ FIELD_MAP: Final[dict[str, Mapped]] = {
     **{key: Mapped(Home.MIGRATED, "profiles.phone") for key in PHONE_KEYS},
     **{key: Mapped(Home.MIGRATED, "candidates.headline") for key in HEADLINE_KEYS},
     **{key: Mapped(Home.MIGRATED, "candidates.unmapped_skills") for key in SKILL_KEYS},
+    **{
+        key: Mapped(Home.MIGRATED, "candidates.location_key, matched by name")
+        for key in LOCATION_KEYS
+    },
+    **{
+        key: Mapped(Home.MIGRATED, "candidate_experiences, with the position")
+        for key in COMPANY_KEYS
+    },
+    **{key: Mapped(Home.MIGRATED, "candidate_educations.degree") for key in DEGREE_KEYS},
+    **{key: Mapped(Home.MIGRATED, "candidate_educations.institution") for key in UNIVERSITY_KEYS},
+    **{
+        key: Mapped(Home.MIGRATED, "a Note, private to the importing Tenant")
+        for key in DESCRIPTION_KEYS
+    },
+    **{key: Mapped(Home.MIGRATED, "profiles.avatar_url") for key in PICTURE_KEYS},
+    **{key: Mapped(Home.MIGRATED, "tenant_tags and an assignment") for key in TAG_KEYS},
+    "custom_fields": Mapped(Home.MIGRATED, "a Note, private to the importing Tenant"),
     "resume": Mapped(Home.MIGRATED, "the cvs bucket, then the CV parse"),
     "resume_url": Mapped(Home.MIGRATED, "the cvs bucket, then the CV parse"),
     "updated_at": Mapped(Home.MIGRATED, "the ledger"),
@@ -64,6 +94,23 @@ FIELD_MAP: Final[dict[str, Mapped]] = {
     "educations": Mapped(Home.ARCHIVED, "candidate_educations, from the CV parse"),
     "languages": Mapped(Home.ARCHIVED, "candidate_languages, from the CV parse"),
     # Manatal's own workflow, which does not survive the move by design.
+    # Demographic data this platform does not collect. Not an oversight and not a gap to close:
+    # a schema with nowhere to put somebody's gender cannot screen on it by accident.
+    "gender": Mapped(Home.IGNORED, "Sync holds no demographic data, by design"),
+    "birth_date": Mapped(Home.IGNORED, "Sync holds no demographic data, by design"),
+    # Manatal's own bookkeeping, meaningless once it is switched off.
+    "hash": Mapped(Home.IGNORED, "Manatal's own identifier"),
+    "external_id": Mapped(Home.IGNORED, "Manatal's own identifier"),
+    "creator": Mapped(Home.IGNORED, "a Manatal user id, which names nobody here"),
+    "source_type": Mapped(Home.IGNORED, "how they reached Manatal, which Sync cannot restate"),
+    "source_details": Mapped(Home.IGNORED, "how they reached Manatal, which Sync cannot restate"),
+    "source_other": Mapped(Home.IGNORED, "how they reached Manatal, which Sync cannot restate"),
+    "zipcode": Mapped(Home.IGNORED, "the location taxonomy is as fine-grained as Sync gets"),
+    "candidate_industries": Mapped(Home.IGNORED, "Sync has no industry taxonomy"),
+    "current_department": Mapped(Home.IGNORED, "Sync records the company, not the department"),
+    # Read this one before the run rather than after.
+    "consent": Mapped(Home.DECIDE, "nothing yet — and it bears on Global search"),
+    "consent_date": Mapped(Home.DECIDE, "nothing yet — and it bears on Global search"),
     "stage": Mapped(Home.IGNORED, "Sync has its own Pipeline, per Application"),
     "status": Mapped(Home.IGNORED, "Sync has its own Pipeline, per Application"),
     "owner": Mapped(Home.IGNORED, "imports are attributed to the configured Recruiter"),

@@ -50,6 +50,12 @@ class Entry:
     file_hash: str | None = None
     attempts: int = 0
     error: str | None = None
+    #: The two structured facts Manatal keeps as fields. Kept here so publishing can fall back
+    #: to them without asking an ATS that may be switched off by then.
+    position: str | None = None
+    company: str | None = None
+    degree: str | None = None
+    university: str | None = None
 
 
 class Ledger:

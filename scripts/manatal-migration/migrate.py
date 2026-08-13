@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import io
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -40,6 +42,10 @@ if TYPE_CHECKING:
 
 DEFAULT_BASE_URL: Final = "https://api.manatal.com/open/v3"
 
+#: Stands in for the importing Recruiter when the run never imports anything — `--inventory`
+#: reads Manatal and stops, so it has nobody to attribute anything to.
+NOBODY: Final = UUID(int=0)
+
 
 @dataclass(frozen=True, slots=True)
 class Options:
@@ -55,6 +61,8 @@ class Options:
     timeout_seconds: float
     ledger_path: Path
     archive_path: Path
+    sample: int
+    archiving: bool
     publish_only: bool
     inventory_only: bool
     verify_only: bool
@@ -78,6 +86,19 @@ def options() -> Options:
         help="Check what the ledger claims is really in the platform. Writes nothing.",
     )
     parsed.add_argument(
+        "--sample",
+        type=int,
+        default=0,
+        help="With --inventory, read only this many candidates. A first look at an account does "
+        "not need all of it, and reads less of somebody's data than a full walk.",
+    )
+    parsed.add_argument(
+        "--no-archive",
+        action="store_true",
+        help="Do not write the raw record archive. Only sensible with --inventory: a real "
+        "migration wants it, because Manatal is about to stop existing.",
+    )
+    parsed.add_argument(
         "--archive",
         type=Path,
         default=ARCHIVE_PATH,
@@ -91,27 +112,33 @@ def options() -> Options:
     )
     arguments = parsed.parse_args()
 
-    missing = [
-        name
-        for name in (
+    # An inventory only reads Manatal. It touches no database and writes nothing to the
+    # platform, so demanding the platform's credentials for one would be asking for the keys to
+    # a house it never enters.
+    needed = (
+        ("MANATAL_API_TOKEN",)
+        if arguments.inventory
+        else (
             "SYNC_DATABASE_URL",
             "SYNC_SUPABASE_URL",
             "SYNC_SUPABASE_SERVICE_ROLE_KEY",
             "MANATAL_RECRUITER_ID",
         )
-        if not os.environ.get(name)
-    ]
-    if not (arguments.publish_only or arguments.verify) and not os.environ.get("MANATAL_API_TOKEN"):
+    )
+    missing = [name for name in needed if not os.environ.get(name)]
+    if not (
+        arguments.publish_only or arguments.verify or arguments.inventory
+    ) and not os.environ.get("MANATAL_API_TOKEN"):
         missing.append("MANATAL_API_TOKEN")
     if missing:
         raise SystemExit(f"Set these first: {', '.join(missing)}. See README.md.")
 
     return Options(
-        database_url=os.environ["SYNC_DATABASE_URL"],
-        supabase_url=os.environ["SYNC_SUPABASE_URL"],
-        service_role_key=os.environ["SYNC_SUPABASE_SERVICE_ROLE_KEY"],
+        database_url=os.environ.get("SYNC_DATABASE_URL", ""),
+        supabase_url=os.environ.get("SYNC_SUPABASE_URL", ""),
+        service_role_key=os.environ.get("SYNC_SUPABASE_SERVICE_ROLE_KEY", ""),
         manatal_token=os.environ.get("MANATAL_API_TOKEN", ""),
-        recruiter_id=UUID(os.environ["MANATAL_RECRUITER_ID"]),
+        recruiter_id=UUID(os.environ.get("MANATAL_RECRUITER_ID", str(NOBODY))),
         base_url=os.environ.get("MANATAL_API_BASE_URL", DEFAULT_BASE_URL),
         page_size=int(os.environ.get("MANATAL_PAGE_SIZE", "50")),
         limit=int(os.environ.get("MANATAL_LIMIT", "10000")),
@@ -119,6 +146,8 @@ def options() -> Options:
         timeout_seconds=float(os.environ.get("MANATAL_TIMEOUT_SECONDS", "120")),
         ledger_path=arguments.ledger,
         archive_path=arguments.archive,
+        sample=arguments.sample,
+        archiving=not arguments.no_archive,
         publish_only=arguments.publish_only,
         inventory_only=arguments.inventory,
         verify_only=arguments.verify,
@@ -147,11 +176,13 @@ class Migration:
         self._importer = importer
         self._concurrency = concurrency
         self._gate = asyncio.Semaphore(concurrency)
+        self._locations: dict[str, str] = {}
 
     async def import_everyone(self, *, limit: int) -> int:
         """Every candidate Manatal holds that this migration has not settled yet."""
         if self._manatal is None:
             return 0
+        self._locations = await writes.location_keys(self._pool)
         everyone = await self._manatal.everyone(limit=limit)
         # Before anything is written: Manatal is being switched off, so a field with no home
         # here still has to survive somewhere.
@@ -247,6 +278,8 @@ class Migration:
                     full_name=candidate.full_name or candidate.email,
                     headline=candidate.headline,
                     phone=candidate.phone,
+                    avatar_url=candidate.picture_url,
+                    location_key=writes.location_key_of(candidate.location, self._locations),
                     unmapped_skills=candidate.skills,
                 )
             except BaseException:
@@ -271,6 +304,11 @@ class Migration:
                     await writes.remove_cv_row(self._pool, stored.cv_id)
                     raise
             await writes.add_to_talent_pool(self._pool, self._importer, candidate_id)
+            if candidate.tags:
+                await writes.apply_tags(self._pool, self._importer, candidate_id, candidate.tags)
+            written = _note_from(candidate)
+            if written:
+                await writes.keep_note(self._pool, self._importer, candidate_id, written)
         except BaseException:
             if provisioned:
                 await self._undo(candidate_id)
@@ -308,7 +346,18 @@ class Migration:
             self._ledger.record(entry)
             return False
 
-        await writes.publish_profile(self._pool, candidate_id, cv_id, profile)
+        await writes.publish_profile(
+            self._pool,
+            candidate_id,
+            cv_id,
+            profile,
+            writes.FromManatal(
+                position=entry.position,
+                company=entry.company,
+                degree=entry.degree,
+                university=entry.university,
+            ),
+        )
         entry.state = State.PUBLISHED
         self._ledger.record(entry)
         return True
@@ -320,6 +369,22 @@ class Migration:
             await self._supabase.delete_account(candidate_id)
         except Exception as broke:
             say(f"  ! left an account behind for {candidate_id}: {broke}")
+
+
+def _note_from(candidate: Candidate) -> str:
+    """What a recruiter typed in Manatal, plus whatever the account kept in custom fields.
+
+    Both are free text nobody here can key on, and both are somebody's work. A Note is where
+    work like that lives in this platform.
+    """
+    written = [candidate.description] if candidate.description else []
+    custom = candidate.raw.get("custom_fields")
+    if isinstance(custom, dict):
+        written += [f"{key.replace('_', ' ')}: {value}" for key, value in custom.items() if value]
+    if not written:
+        return ""
+    joined = "\n".join(written)
+    return f"From Manatal:\n{joined}"
 
 
 def _decided(
@@ -335,6 +400,10 @@ def _decided(
         state=state,
         full_name=candidate.full_name,
         email=candidate.email,
+        position=candidate.headline,
+        company=candidate.current_company,
+        degree=candidate.latest_degree,
+        university=candidate.latest_university,
         candidate_id=None if candidate_id is None else str(candidate_id),
         cv_id=None if cv_id is None else str(cv_id),
         file_hash=file_hash,
@@ -349,11 +418,24 @@ def say(message: str) -> None:
     print(message, flush=True)
 
 
+def readable_output() -> None:
+    """Make stdout carry any name Manatal holds, whatever codepage the console starts in.
+
+    Windows still opens a console in a legacy codepage, and this report is full of people's
+    names. A migration must not die three hours in because a console could not encode one.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 async def inventory(chosen: Options, manatal: Manatal) -> int:
     """What the account holds, and where each field goes. Writes nothing to the platform."""
-    everyone = await manatal.everyone(limit=chosen.limit)
-    kept = Archive(chosen.archive_path).keep(everyone)
-    say(f"Archived {kept} records to {chosen.archive_path}.")
+    reading = chosen.sample or chosen.limit
+    everyone = await manatal.everyone(limit=reading)
+    if chosen.archiving:
+        kept = Archive(chosen.archive_path).keep(everyone)
+        say(f"Archived {kept} records to {chosen.archive_path}.")
     say("")
     for line in census_of(everyone).as_lines():
         say(line)
@@ -379,6 +461,18 @@ async def verify(
 
 
 async def run(chosen: Options) -> int:
+    if chosen.inventory_only:
+        manatal = Manatal.build(
+            base_url=chosen.base_url,
+            token=chosen.manatal_token,
+            timeout_seconds=chosen.timeout_seconds,
+            page_size=chosen.page_size,
+        )
+        try:
+            return await inventory(chosen, manatal)
+        finally:
+            await manatal.aclose()
+
     ledger = Ledger.at(chosen.ledger_path)
     archive = Archive(chosen.archive_path)
     pool = await writes.connect(chosen.database_url)
@@ -398,10 +492,6 @@ async def run(chosen: Options) -> int:
         )
     )
     try:
-        if chosen.inventory_only:
-            if manatal is None:  # pragma: no cover — --inventory always builds a client
-                raise SystemExit("--inventory needs MANATAL_API_TOKEN.")
-            return await inventory(chosen, manatal)
         if chosen.verify_only:
             return await verify(chosen, pool, supabase, manatal)
 
@@ -452,6 +542,7 @@ def _report(ledger: Ledger) -> int:
 
 
 def main() -> None:
+    readable_output()
     try:
         raise SystemExit(asyncio.run(run(options())))
     except (ManatalError, CandidateGoneError) as broke:

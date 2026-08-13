@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 import asyncpg
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from profile_rows import Profile
 
@@ -85,6 +85,28 @@ async def importer(pool: asyncpg.Pool, recruiter_id: UUID) -> Importer:
     return Importer(recruiter_id=row["id"], tenant_id=row["tenant_id"])
 
 
+async def location_keys(pool: asyncpg.Pool) -> dict[str, str]:
+    """The location taxonomy, keyed by lowercased name.
+
+    Manatal stores a typed string — "Mersin, Turkey" — and this platform stores a key. Matching
+    is on the name, exactly, one comma-separated part at a time: "Turkey" resolves, "Mersin"
+    does not, and nothing is invented in between. A candidate whose location does not resolve
+    keeps none rather than a wrong one.
+    """
+    rows = await pool.fetch("select key, name from locations")
+    return {row["name"].strip().lower(): row["key"] for row in rows}
+
+
+def location_key_of(typed: str | None, taxonomy: Mapping[str, str]) -> str | None:
+    if not typed:
+        return None
+    for part in reversed([piece.strip() for piece in typed.split(",") if piece.strip()]):
+        found = taxonomy.get(part.lower())
+        if found:
+            return found
+    return None
+
+
 async def create_candidate(
     pool: asyncpg.Pool,
     account_id: UUID,
@@ -92,6 +114,8 @@ async def create_candidate(
     full_name: str,
     headline: str | None,
     phone: str | None = None,
+    avatar_url: str | None = None,
+    location_key: str | None = None,
     unmapped_skills: Sequence[str] = (),
 ) -> None:
     """The two rows a Candidate is, in one transaction, as signup writes them.
@@ -102,20 +126,23 @@ async def create_candidate(
     async with pool.acquire() as connection, connection.transaction():
         await connection.execute(
             """
-            insert into profiles (id, account_type, full_name, phone)
-            values ($1, 'candidate', $2, $3)
+            insert into profiles (id, account_type, full_name, phone, avatar_url)
+            values ($1, 'candidate', $2, $3, $4)
             """,
             account_id,
             full_name,
             phone,
+            avatar_url,
         )
         await connection.execute(
             """
-            insert into candidates (id, headline, unmapped_skills, is_imported_from_manatal)
-            values ($1, $2, $3, true)
+            insert into candidates
+                (id, headline, location_key, unmapped_skills, is_imported_from_manatal)
+            values ($1, $2, $3, $4, true)
             """,
             account_id,
             headline,
+            location_key,
             list(unmapped_skills),
         )
 
@@ -189,6 +216,56 @@ async def add_to_talent_pool(pool: asyncpg.Pool, given: Importer, candidate_id: 
     )
 
 
+async def keep_note(
+    pool: asyncpg.Pool, given: Importer, candidate_id: UUID, note_text: str
+) -> None:
+    """What a recruiter wrote about them in Manatal, kept as what it is here: a Note, private to
+    the Tenant that wrote it. Not the candidate's own summary — nobody asked them."""
+    await pool.execute(
+        """
+        insert into notes (tenant_id, candidate_id, recruiter_id, note_text)
+        select $1, $2, $3, $4
+        where not exists (
+            select 1 from notes
+             where tenant_id = $1 and candidate_id = $2 and note_text = $4
+        )
+        """,
+        given.tenant_id,
+        candidate_id,
+        given.recruiter_id,
+        note_text,
+    )
+
+
+async def apply_tags(
+    pool: asyncpg.Pool, given: Importer, candidate_id: UUID, tags: Sequence[str]
+) -> None:
+    """Manatal's labels become this Tenant's own Tags, created on first sight."""
+    for name in tags:
+        async with pool.acquire() as connection, connection.transaction():
+            tag_id = await connection.fetchval(
+                """
+                insert into tenant_tags (tenant_id, name, scope) values ($1, $2, 'candidate')
+                on conflict (tenant_id, scope, name) do update set name = excluded.name
+                returning id
+                """,
+                given.tenant_id,
+                name,
+            )
+            await connection.execute(
+                """
+                insert into candidate_tag_assignments
+                    (tenant_id, candidate_id, tag_id, added_by_recruiter_id)
+                values ($1, $2, $3, $4)
+                on conflict do nothing
+                """,
+                given.tenant_id,
+                candidate_id,
+                tag_id,
+                given.recruiter_id,
+            )
+
+
 async def parse_state(pool: asyncpg.Pool, cv_id: UUID) -> ParseState:
     row = await pool.fetchrow(
         "select parsing_status::text as status, parsed_cv_data from cvs where id = $1", cv_id
@@ -231,8 +308,59 @@ async def profile_is_empty(pool: asyncpg.Pool, candidate_id: UUID) -> bool:
     return not filled
 
 
+@dataclass(frozen=True, slots=True)
+class FromManatal:
+    """The two structured facts Manatal keeps as fields rather than inside the CV."""
+
+    position: str | None = None
+    company: str | None = None
+    degree: str | None = None
+    university: str | None = None
+
+    def experiences(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
+        if not (self.position or self.company):
+            return []
+        return [
+            (
+                candidate_id,
+                0,
+                (self.position or "Not stated")[:200],
+                (self.company or None) and self.company[:200],
+                None,
+                None,
+                None,
+                None,
+                True,
+                None,
+            )
+        ]
+
+    def educations(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
+        if not (self.degree or self.university):
+            return []
+        return [
+            (
+                candidate_id,
+                0,
+                (self.university or "Not stated")[:200],
+                (self.degree or None) and self.degree[:200],
+                None,
+                None,
+                None,
+            )
+        ]
+
+
+#: What the CV parse is measured against when it finds nothing: an empty ATS record.
+NOTHING_FROM_MANATAL: Final = FromManatal()
+
+
 async def publish_profile(
-    pool: asyncpg.Pool, candidate_id: UUID, cv_id: UUID, profile: Profile
+    pool: asyncpg.Pool,
+    candidate_id: UUID,
+    cv_id: UUID,
+    profile: Profile,
+    from_manatal: FromManatal = NOTHING_FROM_MANATAL,
 ) -> None:
     """Write the parse into the profile and make the Candidate findable, in one transaction.
 
@@ -262,6 +390,11 @@ async def publish_profile(
             _merged(await _unmapped_skills(connection, candidate_id), profile.unmapped_skills),
             cv_id,
         )
+        # Manatal's own current role and qualification, but only where the CV said nothing of
+        # the kind. The parse is richer where it has anything to say; this is what stops an
+        # unreadable CV losing the two facts the ATS was sure of.
+        experiences = profile.experiences or from_manatal.experiences(candidate_id)
+        educations = profile.educations or from_manatal.educations(candidate_id)
         await connection.executemany(
             """
             insert into candidate_experiences
@@ -269,7 +402,7 @@ async def publish_profile(
                  end_year, end_month, is_current, description)
             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             """,
-            profile.experiences,
+            experiences,
         )
         await connection.executemany(
             """
@@ -278,7 +411,7 @@ async def publish_profile(
                  description)
             values ($1, $2, $3, $4, $5, $6, $7)
             """,
-            profile.educations,
+            educations,
         )
         await connection.executemany(
             """

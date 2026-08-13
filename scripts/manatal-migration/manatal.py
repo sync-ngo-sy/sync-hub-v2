@@ -22,7 +22,17 @@ CANDIDATES_PATH: Final = "/candidates/"
 #: check this list against reality before trusting a run.
 ID_KEYS: Final = ("id", "pk")
 NAME_KEYS: Final = ("full_name", "name")
-NAMED_KEYS: Final = ("name", "label", "title")
+#: Manatal names the thing inside a list entry differently per list: `skill_name` in skills,
+#: `tag_name` in tags. Reading only `name` here is how a whole field goes silently missing,
+#: which is exactly what `--inventory` against a real account caught.
+NAMED_KEYS: Final = ("skill_name", "tag_name", "name", "label", "title")
+LOCATION_KEYS: Final = ("candidate_location", "address", "location")
+COMPANY_KEYS: Final = ("current_company", "company")
+DEGREE_KEYS: Final = ("latest_degree", "degree")
+UNIVERSITY_KEYS: Final = ("latest_university", "university", "school")
+DESCRIPTION_KEYS: Final = ("description", "summary", "notes")
+PICTURE_KEYS: Final = ("picture", "photo", "avatar")
+TAG_KEYS: Final = ("candidate_tags", "tags", "labels")
 PHONE_KEYS: Final = ("phone_number", "phone", "mobile", "mobile_number")
 HEADLINE_KEYS: Final = ("current_position", "job_title", "title", "headline")
 SKILL_KEYS: Final = ("skills", "skill_set")
@@ -55,6 +65,17 @@ class Candidate:
     updated_at: datetime | None = None
     headline: str | None = None
     phone: str | None = None
+    #: Free text as Manatal words it: "Mersin, Turkey". The platform keys location to a
+    #: taxonomy, so this is matched against it rather than stored as typed.
+    location: str | None = None
+    current_company: str | None = None
+    #: The one qualification Manatal keeps as fields rather than inside the CV.
+    latest_degree: str | None = None
+    latest_university: str | None = None
+    #: Whatever a recruiter typed about them in Manatal.
+    description: str | None = None
+    picture_url: str | None = None
+    tags: tuple[str, ...] = ()
     #: Free-text skills as Manatal words them. This platform keys skills to a taxonomy, so the
     #: ones it does not recognise belong in `candidates.unmapped_skills` — which is what these
     #: are until a CV parse maps some of them.
@@ -235,7 +256,14 @@ def _candidate(record: Mapping[str, Any]) -> Candidate:
         updated_at=_moment(record.get("updated_at")) or _moment(record.get("created_at")),
         headline=_first(record, HEADLINE_KEYS) or None,
         phone=_first(record, PHONE_KEYS) or None,
-        skills=_skills(record),
+        skills=_named_list(record, SKILL_KEYS),
+        location=_first(record, LOCATION_KEYS) or None,
+        current_company=_first(record, COMPANY_KEYS) or None,
+        latest_degree=_first(record, DEGREE_KEYS) or None,
+        latest_university=_first(record, UNIVERSITY_KEYS) or None,
+        description=_first(record, DESCRIPTION_KEYS) or None,
+        picture_url=_first(record, PICTURE_KEYS) or None,
+        tags=_named_list(record, TAG_KEYS),
         raw=record,
     )
 
@@ -249,9 +277,9 @@ def _first(record: Mapping[str, Any], keys: Sequence[str]) -> str:
     return ""
 
 
-def _skills(record: Mapping[str, Any]) -> tuple[str, ...]:
-    """Manatal's skills, however this account lists them: strings, or objects with a name."""
-    for key in SKILL_KEYS:
+def _named_list(record: Mapping[str, Any], keys: Sequence[str]) -> tuple[str, ...]:
+    """A list Manatal keeps as strings, or as objects naming the thing. Deduplicated, in order."""
+    for key in keys:
         listed = record.get(key)
         if not isinstance(listed, list):
             continue
