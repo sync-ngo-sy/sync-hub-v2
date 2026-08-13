@@ -18,6 +18,9 @@ from typing import TYPE_CHECKING, Final
 from uuid import UUID
 
 import platform_writes as writes
+from archive import DEFAULT_PATH as ARCHIVE_PATH
+from archive import Archive
+from inventory import census_of
 from ledger import DEFAULT_PATH, Entry, Ledger, State
 from manatal import (
     CandidateGoneError,
@@ -26,7 +29,9 @@ from manatal import (
     ResumeMissingError,
 )
 from profile_rows import profile_from
+from progress import Progress
 from supabase_rest import AddressTakenError, Supabase
+from verify import Verification
 
 if TYPE_CHECKING:
     import asyncpg
@@ -49,7 +54,10 @@ class Options:
     concurrency: int
     timeout_seconds: float
     ledger_path: Path
+    archive_path: Path
     publish_only: bool
+    inventory_only: bool
+    verify_only: bool
 
 
 def options() -> Options:
@@ -58,6 +66,22 @@ def options() -> Options:
         "--publish-only",
         action="store_true",
         help="Skip Manatal entirely and only write profiles for CVs the worker has now parsed.",
+    )
+    parsed.add_argument(
+        "--inventory",
+        action="store_true",
+        help="Report what Manatal actually holds and where each field goes. Writes nothing.",
+    )
+    parsed.add_argument(
+        "--verify",
+        action="store_true",
+        help="Check what the ledger claims is really in the platform. Writes nothing.",
+    )
+    parsed.add_argument(
+        "--archive",
+        type=Path,
+        default=ARCHIVE_PATH,
+        help=f"Where every raw Manatal record is kept (default {ARCHIVE_PATH}).",
     )
     parsed.add_argument(
         "--ledger",
@@ -77,7 +101,7 @@ def options() -> Options:
         )
         if not os.environ.get(name)
     ]
-    if not arguments.publish_only and not os.environ.get("MANATAL_API_TOKEN"):
+    if not (arguments.publish_only or arguments.verify) and not os.environ.get("MANATAL_API_TOKEN"):
         missing.append("MANATAL_API_TOKEN")
     if missing:
         raise SystemExit(f"Set these first: {', '.join(missing)}. See README.md.")
@@ -94,7 +118,10 @@ def options() -> Options:
         concurrency=int(os.environ.get("MANATAL_CONCURRENCY", "4")),
         timeout_seconds=float(os.environ.get("MANATAL_TIMEOUT_SECONDS", "120")),
         ledger_path=arguments.ledger,
+        archive_path=arguments.archive,
         publish_only=arguments.publish_only,
+        inventory_only=arguments.inventory,
+        verify_only=arguments.verify,
     )
 
 
@@ -107,6 +134,7 @@ class Migration:
         supabase: Supabase,
         manatal: Manatal | None,
         ledger: Ledger,
+        archive: Archive,
         *,
         importer: writes.Importer,
         concurrency: int,
@@ -115,6 +143,7 @@ class Migration:
         self._supabase = supabase
         self._manatal = manatal
         self._ledger = ledger
+        self._archive = archive
         self._importer = importer
         self._concurrency = concurrency
         self._gate = asyncio.Semaphore(concurrency)
@@ -124,6 +153,11 @@ class Migration:
         if self._manatal is None:
             return 0
         everyone = await self._manatal.everyone(limit=limit)
+        # Before anything is written: Manatal is being switched off, so a field with no home
+        # here still has to survive somewhere.
+        kept = self._archive.keep(everyone)
+        say(f"Archived {kept} new records to {self._archive.path} ({len(self._archive)} in total).")
+
         outstanding = [
             candidate
             for candidate in everyone
@@ -133,11 +167,11 @@ class Migration:
             f"Manatal holds {len(everyone)} candidates; "
             f"{len(everyone) - len(outstanding)} already done, {len(outstanding)} to bring across."
         )
-        done = 0
+        walking = Progress(total=len(outstanding))
         for batch in _batched(outstanding, self._concurrency * 4):
             await asyncio.gather(*(self._bring_across(candidate) for candidate in batch))
-            done += len(batch)
-            say(f"  … {done}/{len(outstanding)}")
+            walking.advance(len(batch))
+            say(walking.line())
         return len(outstanding)
 
     async def publish_parsed(self) -> int:
@@ -151,9 +185,13 @@ class Migration:
             return 0
         taxonomy, languages = await writes.vocabularies(self._pool)
         published = 0
+        publishing = Progress(total=len(waiting))
         for entry in waiting:
             if await self._publish(entry, taxonomy, languages):
                 published += 1
+            publishing.advance()
+            if publishing.done % 50 == 0 or publishing.done == publishing.total:
+                say(publishing.line())
         say(f"Published {published} of {len(waiting)} profiles waiting on a parse.")
         return published
 
@@ -208,6 +246,8 @@ class Migration:
                     candidate_id,
                     full_name=candidate.full_name or candidate.email,
                     headline=candidate.headline,
+                    phone=candidate.phone,
+                    unmapped_skills=candidate.skills,
                 )
             except BaseException:
                 await self._undo(candidate_id)
@@ -309,8 +349,38 @@ def say(message: str) -> None:
     print(message, flush=True)
 
 
+async def inventory(chosen: Options, manatal: Manatal) -> int:
+    """What the account holds, and where each field goes. Writes nothing to the platform."""
+    everyone = await manatal.everyone(limit=chosen.limit)
+    kept = Archive(chosen.archive_path).keep(everyone)
+    say(f"Archived {kept} records to {chosen.archive_path}.")
+    say("")
+    for line in census_of(everyone).as_lines():
+        say(line)
+    return 0
+
+
+async def verify(
+    chosen: Options, pool: asyncpg.Pool, supabase: Supabase, manatal: Manatal | None
+) -> int:
+    """Read the platform back and compare it with the ledger. Writes nothing."""
+    in_manatal: list[str] = []
+    if manatal is not None:
+        in_manatal = [
+            candidate.external_id
+            for candidate in await manatal.everyone(limit=chosen.limit)
+            if candidate.external_id
+        ]
+    ledger = Ledger.at(chosen.ledger_path)
+    verdict = await Verification(pool, supabase, ledger).run(in_manatal=in_manatal)
+    for line in verdict.as_lines():
+        say(line)
+    return 0 if verdict.is_sound else 1
+
+
 async def run(chosen: Options) -> int:
     ledger = Ledger.at(chosen.ledger_path)
+    archive = Archive(chosen.archive_path)
     pool = await writes.connect(chosen.database_url)
     supabase = Supabase.build(
         url=chosen.supabase_url,
@@ -319,7 +389,7 @@ async def run(chosen: Options) -> int:
     )
     manatal = (
         None
-        if chosen.publish_only
+        if chosen.publish_only or (chosen.verify_only and not chosen.manatal_token)
         else Manatal.build(
             base_url=chosen.base_url,
             token=chosen.manatal_token,
@@ -328,6 +398,13 @@ async def run(chosen: Options) -> int:
         )
     )
     try:
+        if chosen.inventory_only:
+            if manatal is None:  # pragma: no cover — --inventory always builds a client
+                raise SystemExit("--inventory needs MANATAL_API_TOKEN.")
+            return await inventory(chosen, manatal)
+        if chosen.verify_only:
+            return await verify(chosen, pool, supabase, manatal)
+
         given = await writes.importer(pool, chosen.recruiter_id)
         say(
             f"Bringing candidates in as recruiter {given.recruiter_id} of tenant {given.tenant_id}."
@@ -337,6 +414,7 @@ async def run(chosen: Options) -> int:
             supabase,
             manatal,
             ledger,
+            archive,
             importer=given,
             concurrency=chosen.concurrency,
         )
@@ -368,6 +446,8 @@ def _report(ledger: Ledger) -> int:
     if tally.get(State.FAILED):
         say("Run this again to retry only what failed.")
         return 1
+    say("")
+    say("Then `--verify` reads the platform back and checks every claim in that ledger.")
     return 0
 
 

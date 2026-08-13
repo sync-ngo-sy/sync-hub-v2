@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any, Final
@@ -15,6 +15,17 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 CANDIDATES_PATH: Final = "/candidates/"
+
+#: Where Manatal has been seen to put each thing. Several spellings per field on purpose: its
+#: API has shifted across versions and accounts differ, so this tries each rather than assuming
+#: one. `migrate.py --inventory` reports what the account actually returns, which is how you
+#: check this list against reality before trusting a run.
+ID_KEYS: Final = ("id", "pk")
+NAME_KEYS: Final = ("full_name", "name")
+NAMED_KEYS: Final = ("name", "label", "title")
+PHONE_KEYS: Final = ("phone_number", "phone", "mobile", "mobile_number")
+HEADLINE_KEYS: Final = ("current_position", "job_title", "title", "headline")
+SKILL_KEYS: Final = ("skills", "skill_set")
 
 #: What the platform's `cvs` bucket accepts. A resume in anything else cannot become a CV here.
 MEDIA_TYPES: Final[dict[str, str]] = {
@@ -43,6 +54,15 @@ class Candidate:
     email: str
     updated_at: datetime | None = None
     headline: str | None = None
+    phone: str | None = None
+    #: Free-text skills as Manatal words them. This platform keys skills to a taxonomy, so the
+    #: ones it does not recognise belong in `candidates.unmapped_skills` — which is what these
+    #: are until a CV parse maps some of them.
+    skills: tuple[str, ...] = ()
+    #: The record exactly as Manatal returned it, carried so the migration can archive every
+    #: field — including the ones this platform has no home for. After Manatal is switched off
+    #: an unarchived field is gone for good; an archived one can still be backfilled.
+    raw: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,16 +229,44 @@ def _media_type(answered: Response, filename: str) -> str | None:
 
 def _candidate(record: Mapping[str, Any]) -> Candidate:
     return Candidate(
-        external_id=_text(record.get("id")) or _text(record.get("pk")),
+        external_id=_first(record, ID_KEYS),
         full_name=_full_name(record),
         email=_email(record),
         updated_at=_moment(record.get("updated_at")) or _moment(record.get("created_at")),
-        headline=_text(record.get("current_position")) or None,
+        headline=_first(record, HEADLINE_KEYS) or None,
+        phone=_first(record, PHONE_KEYS) or None,
+        skills=_skills(record),
+        raw=record,
     )
 
 
+def _first(record: Mapping[str, Any], keys: Sequence[str]) -> str:
+    """The first of these keys the record actually carries."""
+    for key in keys:
+        found = _text(record.get(key))
+        if found:
+            return found
+    return ""
+
+
+def _skills(record: Mapping[str, Any]) -> tuple[str, ...]:
+    """Manatal's skills, however this account lists them: strings, or objects with a name."""
+    for key in SKILL_KEYS:
+        listed = record.get(key)
+        if not isinstance(listed, list):
+            continue
+        named = [
+            _first(entry, NAMED_KEYS) if isinstance(entry, dict) else _text(entry)
+            for entry in listed
+        ]
+        kept = tuple(dict.fromkeys(name for name in named if name))
+        if kept:
+            return kept
+    return ()
+
+
 def _full_name(record: Mapping[str, Any]) -> str:
-    stated = _text(record.get("full_name")) or _text(record.get("name"))
+    stated = _first(record, NAME_KEYS)
     if stated:
         return stated
     parts = (_text(record.get("first_name")), _text(record.get("last_name")))

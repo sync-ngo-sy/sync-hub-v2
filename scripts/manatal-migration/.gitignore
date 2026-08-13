@@ -3,6 +3,11 @@
 manatal-migration-ledger.json
 *-ledger.json
 
+# The archive is every Manatal record verbatim — the most sensitive file this migration
+# produces. Same rule, harder: it belongs on the machine that ran it.
+manatal-candidates.jsonl
+*.jsonl
+
 .venv/
 __pycache__/
 .pytest_cache/

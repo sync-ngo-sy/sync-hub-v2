@@ -94,6 +94,14 @@ class Supabase:
     async def remove_cv(self, path: str) -> None:
         await self._request("DELETE", f"/storage/v1/object/{CV_BUCKET}/{path}")
 
+    async def read_cv(self, path: str) -> bytes | None:
+        """The stored bytes, or None where the bucket has nothing at that path. Used by the
+        verification pass to checksum what actually landed rather than trust the row."""
+        answered = await self._request("GET", f"/storage/v1/object/{CV_BUCKET}/{path}")
+        if answered.status_code == 404:
+            return None
+        return _checked(answered, f"read {path}").content
+
     async def aclose(self) -> None:
         await self._http.aclose()
 

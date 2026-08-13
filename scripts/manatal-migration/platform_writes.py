@@ -16,10 +16,15 @@ from uuid import UUID, uuid4
 import asyncpg
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from profile_rows import Profile
 
 #: What `cv_object_path` produces in the platform: the candidate's own folder, the CV's id, and
 #: the extension the media type implies.
+#: What the platform caps a profile section at.
+MAX_SKILLS: Final = 50
+
 EXTENSIONS: Final[dict[str, str]] = {
     "application/pdf": ".pdf",
     "application/msword": ".doc",
@@ -81,7 +86,13 @@ async def importer(pool: asyncpg.Pool, recruiter_id: UUID) -> Importer:
 
 
 async def create_candidate(
-    pool: asyncpg.Pool, account_id: UUID, *, full_name: str, headline: str | None
+    pool: asyncpg.Pool,
+    account_id: UUID,
+    *,
+    full_name: str,
+    headline: str | None,
+    phone: str | None = None,
+    unmapped_skills: Sequence[str] = (),
 ) -> None:
     """The two rows a Candidate is, in one transaction, as signup writes them.
 
@@ -90,17 +101,22 @@ async def create_candidate(
     """
     async with pool.acquire() as connection, connection.transaction():
         await connection.execute(
-            "insert into profiles (id, account_type, full_name) values ($1, 'candidate', $2)",
+            """
+            insert into profiles (id, account_type, full_name, phone)
+            values ($1, 'candidate', $2, $3)
+            """,
             account_id,
             full_name,
+            phone,
         )
         await connection.execute(
             """
-            insert into candidates (id, headline, is_imported_from_manatal)
-            values ($1, $2, true)
+            insert into candidates (id, headline, unmapped_skills, is_imported_from_manatal)
+            values ($1, $2, $3, true)
             """,
             account_id,
             headline,
+            list(unmapped_skills),
         )
 
 
@@ -240,7 +256,10 @@ async def publish_profile(
             candidate_id,
             profile.headline,
             profile.summary,
-            profile.unmapped_skills,
+            # Union rather than replace: Manatal's own skill list was written at import and the
+            # parse only knows what the CV says. Losing the ATS's skills to a thinner CV would
+            # be the migration quietly deleting data it had already brought across.
+            _merged(await _unmapped_skills(connection, candidate_id), profile.unmapped_skills),
             cv_id,
         )
         await connection.executemany(
@@ -295,6 +314,21 @@ async def address_is_taken(pool: asyncpg.Pool, email: str) -> bool:
     return bool(
         await pool.fetchval("select exists (select 1 from auth.users where email = $1)", email)
     )
+
+
+async def _unmapped_skills(connection: asyncpg.Connection, candidate_id: UUID) -> Sequence[str]:
+    written = await connection.fetchval(
+        "select unmapped_skills from candidates where id = $1", candidate_id
+    )
+    return list(written or ())
+
+
+def _merged(kept: Sequence[str], added: Sequence[str]) -> list[str]:
+    """Both lists, in order, without repeating a skill that differs only in case."""
+    seen: dict[str, str] = {}
+    for skill in (*kept, *added):
+        seen.setdefault(skill.strip().lower(), skill.strip())
+    return [skill for skill in seen.values() if skill][:MAX_SKILLS]
 
 
 def _path(candidate_id: UUID, cv_id: UUID, media_type: str) -> str:
