@@ -59,7 +59,7 @@ carries Workspace mail, is untouched:
 | --- | --- | --- |
 | `send.sync.ngo` | TXT | `v=spf1 include:amazonses.com ~all` |
 | `send.sync.ngo` | MX (10) | `feedback-smtp.us-east-1.amazonses.com.` |
-| `resend._domainkey.send.sync.ngo` | TXT | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDQm4jvMP…` (full value in the provider) |
+| `resend._domainkey.send.sync.ngo` | TXT | the DKIM public key — read it from the sending provider |
 | `send.send.sync.ngo` | TXT | `v=spf1 include:amazonses.com ~all` |
 | `send.send.sync.ngo` | MX (10) | `feedback-smtp.eu-west-1.amazonses.com.` |
 
