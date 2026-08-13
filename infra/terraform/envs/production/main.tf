@@ -121,3 +121,8 @@ module "monitoring" {
   alert_email    = var.alert_email
   uptime_targets = var.uptime_targets
 }
+
+output "monitoring_dashboard" {
+  description = "Where to look when an alert fires."
+  value       = module.monitoring.dashboard_url
+}
