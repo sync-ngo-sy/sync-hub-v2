@@ -47,6 +47,7 @@ locals {
   #                        only the runtime identity holds.
   #   iap.admin            bind who the Platform Portal's gate lets through
   #   firebasehosting.admin  deploy the two static portals
+  #   cloudscheduler.admin create the drain schedule, which the environment root declares
   #
   # Nothing here grants billing, project creation, or organisation-policy authority, so a stolen
   # deploy token cannot widen its own blast radius.
@@ -56,6 +57,7 @@ locals {
     "roles/secretmanager.admin",
     "roles/iap.admin",
     "roles/firebasehosting.admin",
+    "roles/cloudscheduler.admin",
   ]
   runtime_roles = ["roles/secretmanager.secretAccessor", "roles/logging.logWriter"]
 
