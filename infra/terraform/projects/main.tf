@@ -21,6 +21,7 @@ locals {
     # The Platform Portal's gate, and the schedule that guarantees the queue drains.
     "iap.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "billingbudgets.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "sts.googleapis.com",
@@ -369,4 +370,36 @@ resource "google_billing_budget" "this" {
       threshold_percent = threshold_rules.value
     }
   }
+}
+
+# A guard on the account rather than on our two projects, because the exposure is the other nine.
+# Four `gen-lang-client-*` projects sit under this organisation, each minted by somebody creating a
+# Gemini API key, each holding a live key, each billing here. None is in this configuration, so
+# none is reviewed -- and a leaked key spends against the same account production does.
+#
+# The budget tracks last month rather than a number somebody picked: "more than we spent last
+# month" needs no guess, cannot go stale, and is the shape of the signal we actually want.
+resource "google_billing_budget" "account" {
+  billing_account = var.billing_account
+  display_name    = "sync.ngo — all projects"
+
+  budget_filter {
+    calendar_period = "MONTH"
+  }
+
+  amount {
+    last_period_amount = true
+  }
+
+  threshold_rules {
+    threshold_percent = 1.0
+  }
+
+  threshold_rules {
+    threshold_percent = 1.5
+  }
+
+  # No `all_updates_rule`, so this reaches the billing account's administrators. Routing it to
+  # alerts@sync.ngo instead would mean a notification channel in a project, and a budget that
+  # only warns the project it lives in is the opposite of the point.
 }
