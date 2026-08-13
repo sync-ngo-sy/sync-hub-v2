@@ -1,4 +1,4 @@
-# Merging to release promotes to production. It never builds.
+# Tagging promotes to production. It never builds.
 #
 # A rebuild from identical source produces different bytes, because base images and their system
 # packages move underneath a pinned dependency lockfile. So this workflow resolves the commit being
@@ -6,18 +6,23 @@
 # and deploys nothing — which is the correct outcome, because the alternative is the rebuild this
 # whole design exists to avoid.
 #
-# That puts a requirement on the merge strategy: the merge into release has to preserve the
-# integration commit. A squash merge discards it, no image is found under the new SHA, and this
-# fails. The check below explains that rather than reporting a bare miss.
+# A tag is why that resolution is now trivial. It points at the very commit staging built, so the
+# SHA being released is the SHA the image is tagged with, and there is nothing to reconstruct. The
+# branch this replaced could not say that: merging into it minted a new commit, so the workflow had
+# to guess between HEAD and HEAD^2, and a squash merge silently discarded the only SHA that had an
+# image. That whole class of failure is gone rather than documented.
 #
-# The gate is the `production` GitHub environment's required reviewer, not the branch name. Google
-# refuses the token unless it comes from this repository and that environment.
+# It also names the release. `v1.4.0` is what shipped, readable in one line of git history, and a
+# rollback is deploying the previous tag rather than reasoning about what a branch pointed at.
+#
+# The gate is the `production` GitHub environment's required reviewer, not the tag. Google refuses
+# the token unless it comes from this repository and that environment.
 
 name: Deploy production
 
 on:
   push:
-    branches: [release]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -51,25 +56,19 @@ jobs:
     outputs:
       api: ${{ steps.digests.outputs.api }}
       worker: ${{ steps.digests.outputs.worker }}
-      commit: ${{ steps.candidates.outputs.commit }}
+      commit: ${{ steps.release.outputs.commit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          # The second parent of a merge commit is the integration commit, and it is not in a
-          # shallow clone.
-          fetch-depth: 0
 
-      # HEAD itself when release fast-forwarded; HEAD^2 when it was a real merge. Both preserve
-      # the integration commit's identity, which is the property that matters.
+      # The tag points at the commit itself, so this is the commit staging built and tagged the
+      # image with. No reconstruction, and nothing a merge strategy can discard.
       - name: Which commit is being released
-        id: candidates
+        id: release
         run: |
           set -euo pipefail
-          candidates="$(git rev-parse HEAD) $(git rev-parse HEAD^2 2>/dev/null || true)"
-          echo "candidates=${candidates}" >> "${GITHUB_OUTPUT}"
-          echo "commit=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
-          echo "looking for an image built for: ${candidates}"
+          echo "commit=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "releasing ${GITHUB_REF_NAME} at ${GITHUB_SHA}"
 
       - name: Authenticate to Google Cloud
         run: |
@@ -88,36 +87,23 @@ jobs:
 
       - name: Find the digests
         id: digests
-        env:
-          CANDIDATES: ${{ steps.candidates.outputs.candidates }}
         run: |
           set -euo pipefail
-
-          digest_of() { # digest_of <repository> <tag>
-            gcloud artifacts docker images describe "${REGISTRY}/$1:$2" \
-              --format='value(image_summary.digest)' 2>/dev/null || true
-          }
 
           # The API and worker only. The Platform Portal's image is not promotable — its API
           # hostname is compiled in — so it is built for this environment in the `portal` job.
           for image in api worker; do
-            found=""
-            for sha in ${CANDIDATES}; do
-              digest="$(digest_of "${image}" "${sha}")"
-              if [ -n "${digest}" ]; then
-                found="${REGISTRY}/${image}@${digest}"
-                echo "${image}: built for ${sha}"
-                break
-              fi
-            done
-            if [ -z "${found}" ]; then
-              echo "::error::No ${image} image exists for any of: ${CANDIDATES}."
-              echo "::error::Production never rebuilds. If release was squash-merged, the"
-              echo "::error::integration commit was discarded and there is nothing to promote —"
-              echo "::error::re-merge preserving it."
+            digest="$(gcloud artifacts docker images describe "${REGISTRY}/${image}:${GITHUB_SHA}" \
+              --format='value(image_summary.digest)' 2>/dev/null || true)"
+            if [ -z "${digest}" ]; then
+              echo "::error::No ${image} image exists for ${GITHUB_SHA}."
+              echo "::error::Production never rebuilds, and only a commit staging has already built"
+              echo "::error::can be promoted. Tag a commit that reached main and deployed to"
+              echo "::error::staging, not one that is only on a branch."
               exit 1
             fi
-            echo "${image}=${found}" >> "${GITHUB_OUTPUT}"
+            echo "${image}: ${digest}"
+            echo "${image}=${REGISTRY}/${image}@${digest}" >> "${GITHUB_OUTPUT}"
           done
 
       - name: Revoke credentials
