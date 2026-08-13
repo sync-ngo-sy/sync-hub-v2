@@ -179,6 +179,10 @@ jobs:
         uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.12.5
+          # The action wraps `tofu` in a script that reports the run through step outputs, and
+          # that wrapper does not pass `-detailed-exitcode`'s 2 back to the shell -- it answers 0.
+          # This check is built entirely on telling 2 apart from 0, so the wrapper has to go.
+          tofu_wrapper: false
 
       - name: Authenticate to Google Cloud
         run: |
@@ -203,19 +207,27 @@ jobs:
         run: |
           set -euo pipefail
           tofu init -input=false
-          if tofu plan -input=false -refresh=false -lock=false -detailed-exitcode -no-color; then
-            echo "The projects root matches its state."
-          else
-            code=$?
-            if [ "${code}" -eq 2 ]; then
+
+          # Read the code into a variable rather than branching on the command. An `if` treats
+          # every non-zero alike, so the one number this check is about -- 2, meaning there is
+          # something to apply -- arrives looking exactly like the failure of the plan itself.
+          set +e
+          tofu plan -input=false -refresh=false -lock=false -detailed-exitcode -no-color
+          code=$?
+          set -e
+
+          case "${code}" in
+            0) echo "The projects root matches its state." ;;
+            2)
               echo "::error::infra/terraform/projects has changes that have never been applied."
               echo "::error::CI does not apply this root on purpose -- it holds billing and project"
               echo "::error::authority. Run it by hand, then this check passes:"
               echo "::error::  export TF_VAR_billing_account=...   # gcloud billing accounts list"
               echo "::error::  cd infra/terraform/projects && tofu init && tofu apply"
-            fi
-            exit "${code}"
-          fi
+              exit 1
+              ;;
+            *) echo "::error::The plan itself failed (exit ${code})."; exit "${code}" ;;
+          esac
 
       - name: Revoke credentials
         if: always()
