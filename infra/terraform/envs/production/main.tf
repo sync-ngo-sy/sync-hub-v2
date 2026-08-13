@@ -1,5 +1,9 @@
 locals {
   worker_audience = "https://sync-hub-worker/${var.project}"
+
+  # Derived rather than declared: a hand-set name is one more thing that can disagree
+  # with the project it labels, and this appears in the subject line of every alert.
+  environment = replace(var.project, "sync-ngo-", "")
 }
 
 provider "google" {
@@ -107,4 +111,13 @@ resource "google_cloud_scheduler_job" "worker_drain" {
       audience              = local.worker_audience
     }
   }
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  project        = var.project
+  environment    = local.environment
+  alert_email    = var.alert_email
+  uptime_targets = var.uptime_targets
 }
