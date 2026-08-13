@@ -20,10 +20,28 @@ admin *is* a Profile, and is exactly one of the three — the `account_type` dis
 each child table's composite foreign key make the other two physically unreferenceable.
 _Avoid_: User, Account.
 
+**Phone**:
+One reachable number on a Profile, held as the country it belongs to (`phone_country`, an ISO
+country) beside the number itself in E.164. Two columns rather than one string, because the
+country somebody chose is not always recoverable from the number — `+1` is twenty-odd countries
+— and a flag that changes on reload reads as the platform losing their answer. Every portal
+writes it through one picker, and an Application freezes the number it was sent with.
+_Avoid_: Mobile, Contact number, Dial code (that is the `+963`, not the field).
+
 **Candidate**:
 A Profile in the job-seeker role: owns a professional profile and applies to Jobs. One of
 the three kinds a Profile can be, and never a second one as well.
 _Avoid_: Job-seeker, User. (Reserve "Applicant" for the act of applying, not the person.)
+
+**Complete profile**:
+A Candidate profile carrying everything the platform needs to place somebody: a CV that was
+read, their name, Phone, Canonical role, Location, headline and summary, and at least one job,
+one qualification, one skill and one language. `candidates.profile_completed_at` records when it
+became one and cannot be set on a profile that is not — a CHECK holds the single-row fields and a
+trigger holds the counts, so completeness is a fact the database keeps rather than a claim the
+backend makes. Saving an unfinished profile is always allowed; applying to a Job and opting into
+Searchable are what it gates.
+_Avoid_: Complete, 100%, Profile score, Verified profile.
 
 **Recruiter**:
 A Profile in the staff role, belonging to exactly one Tenant. One of the three kinds a
@@ -78,13 +96,27 @@ and not by convention: a trigger refuses every update and delete on those tables
 histories, for the backend's service role like anybody else, because RLS does not apply to it.
 _Avoid_: Copy, Archive.
 
+**Stage**:
+What a Candidate is told about their own Application, projected from its status rather than equal
+to it — Received, In review, then the outcome. Everything a Tenant does between arrival and a
+decision is one Stage, so a Recruiter shortlisting and un-shortlisting somebody is invisible and
+silent. A Candidate is notified when the Stage changes and at no other time, which is what lets
+the pipeline stay as non-linear as hiring really is.
+_Avoid_: Status (the Tenant's word, and it has eight values), step, progress.
+
+**Placement**:
+A hire the Candidate confirmed. Moving an Application to `hired` records what the Tenant says
+happened and the day it started; the Candidate is asked, and only their yes makes it a Placement.
+A claim nobody confirmed stays a claim, and nothing counts it.
+_Avoid_: Hire, Hired (that is a status), Success, Conversion.
+
 ### Search
 
 **Searchable**:
 A Candidate's explicit opt-in (`is_searchable`) to be found by any Tenant — through Global
-search and through the Candidate directory alike; it is one opt-in, not two. Opting in needs a current CV that was actually *read*: a
-document that failed to parse would otherwise leave somebody told they could be found and
-appearing nowhere. Being found is not the same as being contacted: no list of
+search and through the Candidate directory alike; it is one opt-in, not two. Opting in needs a Complete profile and a current CV that was actually
+*read*: a document that failed to parse, or a profile with too little in it to match on, would
+otherwise leave somebody told they could be found and appearing nowhere. Being found is not the same as being contacted: no list of
 Candidates ever carries a phone or an email, and a Tenant reads either only by opening one
 Candidate's profile, one at a time.
 _Avoid_: Public, Listed, Visible.
@@ -172,8 +204,8 @@ _Avoid_: Email (the channel), Notification.
 
 **Notification**:
 An in-app message to one Profile, carrying a typed payload and a read/unread state — how
-Candidates learn about status changes and CV parse failures. Never delivered externally;
-distinct from a Communication. One about a status change names the Application it is about,
+Candidates learn about Stage changes and CV parse failures. Never delivered externally;
+distinct from a Communication. One about a Stage change names the Application it is about,
 which is what every reader of the table joins on; one about a CV parse names none, because it
 is about a CV.
 _Avoid_: Alert, Push, Message.
@@ -236,7 +268,9 @@ everywhere else is a **country**, so somebody outside Syria has an answer that i
 than a governorate they are not in. A place is chosen from the list or left unset — never
 typed — which is what makes filtering by it an equality on the key: Damascus no longer
 answers for Rif Dimashq. Full-text search reaches the name through the relation, so a Job is
-still found by the word a person would type.
+still found by the word a person would type. An onsite or hybrid Job always names one, because a
+place somebody has to travel to is the whole point; a remote Job names the place a Candidate must
+be *based*, and leaving it unset means **Anywhere**.
 _Avoid_: City, Place string, Region, Address.
 
 **Employment type**:
@@ -250,9 +284,11 @@ _Avoid_: Contract type, Job type, Employment status.
 
 **Work mode**:
 How much of a Job's work happens where its team is — `onsite`, `hybrid`, `remote`. An enum,
-for the same reasons as Employment type. It answers a different question from **Location**
-and never stands in for one: remote is not a place, and a remote Job still records the
-Location its team sits in, which is what stops "Remote" being typed into the place taxonomy.
+for the same reasons as Employment type, and answered by every published Job, because a listing
+that will not say is one nobody can judge. It answers a different question from **Location** and
+never stands in for one: remote is not a place, which is what stops "Remote" being typed into the
+place taxonomy. One of the hard filters over Browse, so looking for remote work is asking the
+platform rather than reading every listing to find out.
 _Avoid_: Remote, Location type, Arrangement, Workplace.
 
 **CV**:
@@ -284,8 +320,10 @@ leave a verdict citing requirements the Job no longer has.
 _Avoid_: Scoring, Ranking, Matching.
 
 **AI match assessment**:
-A Recruiter's on-demand second opinion on one Application: a percentage and an explanation
-a model wrote, read from the same Snapshot and Job criteria Screening measured. Advisory,
-and append-only — each run adds one more, stamped with the model and prompt version that
-wrote it, and none of them touches the Screening verdict.
-_Avoid_: Match score, AI screening, Ranking.
+A model's reading of one Application: a percentage and an explanation, from the same Snapshot and
+Job criteria Screening measured. Written for every Application as it arrives, and again whenever a
+Recruiter asks for another. Advisory, and append-only — each run adds one more, stamped with the
+model and prompt version that wrote it, and none of them touches the Screening verdict. The
+**Current assessment** (`applications.current_match_assessment_id`) is the one of them a pipeline
+sorts and filters by; every reading behind it stays exactly as its own model wrote it.
+_Avoid_: AI screening, Ranking, Verdict (that word is Screening's).

@@ -79,7 +79,12 @@ that panel's own Retry. Each of its four stats is a Dashboard deep-link.
 _Avoid_: Home, overview page.
 
 **Source**:
-A named channel Job views arrived through. On the Dashboard it is tenant-wide: equal Tracked-link
+A named channel Job views arrived through, and the Applications those views turned into. Every
+surface that reports one — the Dashboard card, a Job's Tracked links tab, the Tracked links page —
+says views, Applications and the rate between them, because a channel that delivers crowds and no
+applicants is the thing worth knowing and a view count alone hides it. Ranking stays on views: a
+link with two views and one Application would otherwise lead the card on a rate made of noise. On
+the Dashboard it is tenant-wide: equal Tracked-link
 names are added across Jobs. On a Job's Tracked links tab it belongs to that Job and each link stays
 distinct. `Direct` is the Source for visitors who reached a Job with no link at all; the Dashboard
 omits it at zero views, while a Job report keeps it visible at zero so every share is explicit.
@@ -201,9 +206,10 @@ One named action on the Application review, offered only where the platform allo
 where the Application stands — so the buttons on screen are the moves that exist, and the
 current status sits above the action row. Adjacent backward and onward moves remain centred while
 `More moves` sits at the right edge. A move forward or back is named
-for its stage, a decision for the decision ("Mark as hired", "Reject"), and each says in its
-outcome toast that the candidate was told, because every move notifies them and a rejection also
-emails them. Each move carries one
+for its stage, a decision for the decision ("Mark as hired", "Reject"). A move says in its outcome
+toast whether the candidate was told, which is not every move: they read a Stage, not a status, so
+a move inside one Stage reaches nobody, and only a move that changes the Stage notifies. A
+rejection also emails them. Each move carries one
 icon: a left arrow for a backward move, a right arrow for an onward move, and a rejection mark for
 Reject. The compact actions wrap at the edge of the card. Only the adjacent move back and the
 adjacent move onward are primary buttons;
@@ -257,8 +263,8 @@ _Avoid_: Sub-page, partial, fragment.
 
 **Match assessment**:
 An AI's reading of how much of what a Job asks for one Application evidences — a percentage, an
-explanation, the strengths and the gaps — asked for on the Application review and read there,
-newest first. Advice, and the page says so: it carries no Status Mark and no colour, because the
+explanation, the strengths and the gaps — written for every Application as it arrives, asked for
+again whenever a Recruiter doubts one, and read on the Application review, newest first. Advice, and the page says so: it carries no Status Mark and no colour, because the
 surface already has a Screening verdict and a second marked state would read as a second verdict.
 The percentage is spelled out as what it measures rather than shown bare. Asking again appends rather
 than replaces, so every past reading stays with the model and prompt version that wrote it, and
@@ -270,7 +276,18 @@ decision, and the Recruiter can always ask for another. The one going leaves to 
 the API is told, so the list is seen shortening rather than found shorter; the readings left
 behind are untouched, each still with the model and prompt version that wrote it. A refusal lands
 beside the reading it could not delete, in the server's own words, and that reading stays.
-_Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
+_Avoid_: AI score, rating, fit verdict (a verdict is Screening's).
+
+**Match score**:
+The Current assessment's percentage, used to sort Applications while keeping its explanation
+available to the Recruiter. It never changes or reorders a Screening verdict, which remains the
+only result that refuses anybody.
+_Avoid_: Rank, fit, rating, AI verdict.
+
+**Placement**:
+A hire this Tenant claimed and the Candidate confirmed. Marking an Application hired asks for the
+day it starts; until the Candidate answers, the hire remains unconfirmed and is not a Placement.
+_Avoid_: Hire, filled, closed won.
 
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, opened as an editable draft on
