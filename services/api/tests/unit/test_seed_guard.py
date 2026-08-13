@@ -23,6 +23,9 @@ def settings_for(environment: Environment, supabase_url: str) -> Settings:
         _env_file=None,  # pyright: ignore[reportCallIssue]
         environment=environment,
         supabase_url=supabase_url,
+        # A deployed environment refuses the in-memory rate-limit store, and two of these cases
+        # are deployed; the seed guard turns on the environment, not on this.
+        rate_limit_storage_uri="async+redis://cache:6379/0",
         **REQUIRED,
     )
 

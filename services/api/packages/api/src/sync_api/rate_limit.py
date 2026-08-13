@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends, Request
 from limits import RateLimitItemPerSecond
-from limits.aio.storage import MemoryStorage
+from limits.aio.storage import Storage
 from limits.aio.strategies import MovingWindowRateLimiter
+from limits.storage import storage_from_string
 
 from sync_api.dependencies import ActingRecruiterDep
 from sync_api.problems import RATE_LIMITED_PROBLEM_TYPE, Problem
@@ -19,9 +20,9 @@ MINIMUM_RETRY_AFTER_SECONDS = 1
 
 
 class RateLimiter:
-    def __init__(self, *, max_requests: int, window_seconds: float) -> None:
+    def __init__(self, storage: Storage, *, max_requests: int, window_seconds: float) -> None:
         self._limit = RateLimitItemPerSecond(max_requests, int(window_seconds))
-        self._window = MovingWindowRateLimiter(MemoryStorage())
+        self._window = MovingWindowRateLimiter(storage)
 
     async def consume(self, endpoint: str, caller: str) -> float | None:
         if await self._window.hit(self._limit, endpoint, caller):
@@ -30,29 +31,49 @@ class RateLimiter:
         return stats.reset_time - time()
 
 
-def build_auth_rate_limiter(settings: Settings) -> RateLimiter:
+def build_rate_limit_storage(settings: Settings) -> Storage:
+    """The one store every limiter shares, so a window belongs to the deployment, not a process.
+
+    `storage_from_string` returns a synchronous backend unless the scheme is `async+…`; the
+    limiter awaits `hit`, so a sync store would only fail at the first request. Refused here.
+    """
+    storage = storage_from_string(settings.rate_limit_storage_uri)
+    if not isinstance(storage, Storage):
+        message = (
+            f"rate_limit_storage_uri needs an async scheme ('async+…', e.g. 'async+redis://…'); "
+            f"{settings.rate_limit_storage_uri!r} resolved to a synchronous store."
+        )
+        raise TypeError(message)
+    return storage
+
+
+def build_auth_rate_limiter(settings: Settings, storage: Storage) -> RateLimiter:
     return RateLimiter(
+        storage,
         max_requests=settings.auth_rate_limit_max_requests,
         window_seconds=settings.auth_rate_limit_window_seconds,
     )
 
 
-def build_public_rate_limiter(settings: Settings) -> RateLimiter:
+def build_public_rate_limiter(settings: Settings, storage: Storage) -> RateLimiter:
     return RateLimiter(
+        storage,
         max_requests=settings.public_rate_limit_max_requests,
         window_seconds=settings.public_rate_limit_window_seconds,
     )
 
 
-def build_access_request_rate_limiter(settings: Settings) -> RateLimiter:
+def build_access_request_rate_limiter(settings: Settings, storage: Storage) -> RateLimiter:
     return RateLimiter(
+        storage,
         max_requests=settings.access_request_rate_limit_max_requests,
         window_seconds=settings.access_request_rate_limit_window_seconds,
     )
 
 
-def build_assessment_rate_limiter(settings: Settings) -> RateLimiter:
+def build_assessment_rate_limiter(settings: Settings, storage: Storage) -> RateLimiter:
     return RateLimiter(
+        storage,
         max_requests=settings.assessment_rate_limit_max_requests,
         window_seconds=settings.assessment_rate_limit_window_seconds,
     )

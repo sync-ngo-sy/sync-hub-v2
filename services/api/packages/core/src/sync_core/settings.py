@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     #: JSONDecodeError. This is the annotation that hands the raw string to it instead.
     cors_allowed_origins: Annotated[tuple[str, ...], NoDecode] = ()
 
+    #: Which upstream peers uvicorn may believe when they set `X-Forwarded-For`. Left at
+    #: loopback the header is trusted only from 127.0.0.1, so behind a load balancer every
+    #: caller resolves to the balancer's own address and one client's flood spends the whole
+    #: fleet's rate-limit budget. Set per deployment to the balancer's range — or `*` only
+    #: where the platform strips and re-sets the header itself, as Cloud Run does — so
+    #: `request.client.host` is the real caller and a header forged from outside is ignored.
+    forwarded_allow_ips: str = "127.0.0.1"
+
     auth_cookie_secure: bool = True
     auth_cookie_same_site: SameSite = SameSite.LAX
     #: Deliberately unset: a host-only cookie is what stops staging's session from being sent
@@ -97,6 +105,13 @@ class Settings(BaseSettings):
     #: domain would travel between them, and SameSite=Lax attaches the cookie cross-origin
     #: without one. Enforced below rather than merely documented.
     auth_cookie_domain: str | None = None
+    #: The store every rate limiter shares. `async+memory://` keeps a separate window per
+    #: process, which is only right for a single instance or a test: the real quota is then the
+    #: configured value times the running instance count. A deployed environment is refused this
+    #: default below and must name a store shared across processes — `async+redis://host:6379/0`
+    #: — so one window is enforced across the fleet. The scheme must be `async+…`; the redis
+    #: client is an install-time extra the deployment image carries, not a default dependency.
+    rate_limit_storage_uri: str = "async+memory://"
     auth_rate_limit_max_requests: int = Field(default=20, ge=1)
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     recruiter_portal_url: AnyHttpUrl
@@ -192,6 +207,26 @@ class Settings(BaseSettings):
             message = (
                 "auth_cookie_domain must stay unset in deployed environments; a shared parent "
                 "domain would send one environment's session cookie to the other's API."
+            )
+            raise ValueError(message)
+        return self
+
+    @model_validator(mode="after")
+    def _keep_rate_limits_off_process_memory_when_deployed(self) -> Settings:
+        """A deployed environment on the in-memory store is the rate-limit defect itself.
+
+        Refused rather than warned about, and for the same reason as the cookie domain above: a
+        deployment autoscales, so every instance keeps its own window and the real quota becomes
+        the limit times the instance count — a silent multiplier no test in the environment sees.
+        The scheme has to name a store shared across processes.
+        """
+        if self.environment.is_deployed and urlsplit(self.rate_limit_storage_uri).scheme.endswith(
+            "memory"
+        ):
+            message = (
+                "rate_limit_storage_uri must name a shared store in deployed environments; the "
+                "in-memory store keeps a separate window per instance, so the limit stops meaning "
+                "anything once the deployment scales past one."
             )
             raise ValueError(message)
         return self

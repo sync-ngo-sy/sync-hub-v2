@@ -60,8 +60,10 @@ WORKDIR /app
 FROM runtime AS api
 COPY --from=build-api --chown=app:app /app/.venv /app/.venv
 EXPOSE 8000
-# No `--reload` and no `--workers`: one process per container, scaled by the orchestrator.
-CMD ["uvicorn", "sync_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# One process per container, scaled by the orchestrator — no `--reload`, no `--workers`. The
+# console script runs uvicorn with the trusted-proxy boundary set from settings, which the bare
+# `uvicorn` command could not do.
+CMD ["sync-api"]
 
 
 FROM runtime AS worker

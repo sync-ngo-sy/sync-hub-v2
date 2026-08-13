@@ -16,6 +16,7 @@ from sync_api.rate_limit import (
     build_assessment_rate_limiter,
     build_auth_rate_limiter,
     build_public_rate_limiter,
+    build_rate_limit_storage,
 )
 from sync_api.routes import (
     access_requests,
@@ -94,10 +95,16 @@ def create_app(
         app.state.avatar_storage = avatar_storage
         app.state.embedder = embedder or _openai_embedder(resolved)
         app.state.assessor = assessor or _openai_assessor(resolved)
-        app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
-        app.state.public_rate_limiter = build_public_rate_limiter(resolved)
-        app.state.assessment_rate_limiter = build_assessment_rate_limiter(resolved)
-        app.state.access_request_rate_limiter = build_access_request_rate_limiter(resolved)
+        rate_limit_storage = build_rate_limit_storage(resolved)
+        app.state.rate_limit_storage = rate_limit_storage
+        app.state.auth_rate_limiter = build_auth_rate_limiter(resolved, rate_limit_storage)
+        app.state.public_rate_limiter = build_public_rate_limiter(resolved, rate_limit_storage)
+        app.state.assessment_rate_limiter = build_assessment_rate_limiter(
+            resolved, rate_limit_storage
+        )
+        app.state.access_request_rate_limiter = build_access_request_rate_limiter(
+            resolved, rate_limit_storage
+        )
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield
