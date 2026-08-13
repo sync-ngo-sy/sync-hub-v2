@@ -160,6 +160,18 @@ cd infra/terraform/envs/staging
 tofu apply -var='images={api="…/api:'$SHA'",worker="…/worker:'$SHA'",admin-portal="…/admin-portal-staging:'$SHA'"}'
 ```
 
+Production is not applied by hand. It is promoted by tagging a commit that staging has already
+built and deployed:
+
+```bash
+git tag v1.0.0 <sha-on-main>   # a commit staging deployed, not one only on a branch
+git push origin v1.0.0
+```
+
+The tag points at that commit, so the SHA being released is the SHA its images carry — nothing to
+reconstruct, and nothing a merge strategy can discard. The `production` environment's required
+reviewer is the gate. A rollback is deploying the previous tag.
+
 Three services: the API, the worker, and the Platform Portal's static server. The first two are in
 Frankfurt next to the database; the third is in `europe-west1` because it needs a mapped hostname and
 mappings do not exist in Frankfurt (ADR-0016).
@@ -205,6 +217,30 @@ rows on its next pass. That is deliberate: a notification is latency, an insert 
 
 The worker refuses to serve when neither caller is configured, so a missing secret is a 503 rather
 than an open endpoint. An unauthenticated drain is a free way to make our OpenAI calls.
+
+## 8a. The first Platform admin — **out of band**
+
+A migration cannot make one: the auth user and its password belong to the identity provider, not to
+the schema. Nor can an endpoint — the first Platform admin has nobody to authorise them. **The seed
+is not the answer either; it refuses production outright, by design.**
+
+```bash
+cd services/api
+SYNC_ENVIRONMENT=production \
+SYNC_SUPABASE_URL=https://<ref>.supabase.co \
+SYNC_DATABASE_URL="$(gcloud secrets versions access latest --secret=SYNC_DATABASE_URL --project sync-ngo-prod)" \
+SYNC_SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret=SYNC_SUPABASE_SERVICE_ROLE_KEY --project sync-ngo-prod)" \
+SYNC_SUPABASE_ANON_KEY="$(gcloud secrets versions access latest --secret=SYNC_SUPABASE_ANON_KEY --project sync-ngo-prod)" \
+SYNC_RECRUITER_PORTAL_URL=https://app.sync.ngo \
+SYNC_ADMIN_PORTAL_URL=https://admin.sync.ngo \
+uv run python scripts/create_platform_admin.py --email you@sync.ngo --full-name "Your Name"
+```
+
+The password is read from the terminal, never from an argument — arguments are in the history of
+every shell that ran them. It must meet the same policy the portals enforce.
+
+Production carries exactly this one account and nothing else. Every other person and tenant arrives
+through the product: an access request, converted, which invites its admin.
 
 ## 9. Verify
 
