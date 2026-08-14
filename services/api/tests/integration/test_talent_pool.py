@@ -184,6 +184,8 @@ POOLED_KEYS: Final = {
     "total_experience_years",
     "tags",
     "added_at",
+    "is_imported_from_manatal",
+    "is_claimed",
 }
 
 IN_ORDER: Final[dict[str, tuple[str, str, str]]] = {
@@ -247,6 +249,7 @@ async def test_a_pooled_row_says_who_the_candidate_is_today(
     assert row["total_experience_years"] == 8
     assert row["avatar_url"] is None
     assert row["tags"] == []
+    assert row["is_imported_from_manatal"] is False
 
 
 async def test_a_pooled_row_carries_this_tenants_own_filing_of_them(
