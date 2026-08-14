@@ -37,10 +37,16 @@ locals {
                   }
                 }
               }]
-              # No `color` here. An XyChart threshold refuses it -- "color cannot be specified
-              # within a XyChart Threshold" -- and the whole apply fails on the dashboard, after
-              # the services it is meant to watch have already been updated.
-              thresholds = [{ value = 1, direction = "BELOW", label = "no drain in 5 min" }]
+              # `value` and `label`, and nothing else. An XyChart threshold refuses both `color`
+              # and `direction` -- they belong to a scorecard's gauge, which is a different widget
+              # with a different schema. Terraform cannot catch either: the dashboard is opaque
+              # JSON to the provider, so it validates, plans, and fails against the API.
+              #
+              # It fails in the worst place, too. The dashboard is the last resource in the apply,
+              # so a deploy updates every service and *then* goes red. Removing one field at a
+              # time costs a full deploy cycle per attempt; the line below is what the schema
+              # actually permits.
+              thresholds = [{ value = 1, label = "no drain in 5 min" }]
               yAxis      = { label = "runs / 5 min", scale = "LINEAR" }
             }
           }
