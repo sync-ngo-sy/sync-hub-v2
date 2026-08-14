@@ -64,3 +64,19 @@ variable "scheduler_service_account" {
   type        = string
   default     = null
 }
+
+variable "alert_email" {
+  description = "Group that receives every alert. Membership changes without a production apply."
+  type        = string
+  default     = "alerts@sync.ngo"
+}
+
+variable "uptime_targets" {
+  description = "Hostnames probed from Google's edge. Healthy is not always 200 -- see the module."
+  type = map(object({
+    host            = string
+    path            = optional(string, "/")
+    accepted_status = optional(number, 200)
+  }))
+  default = {}
+}
