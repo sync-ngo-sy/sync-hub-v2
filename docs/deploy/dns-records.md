@@ -36,11 +36,39 @@ pointing at unrelated third-party infrastructure is removed from the zone in the
 
 ## Actual values
 
-Fill these in as each domain is attached, so the zone can be reconstructed from this file.
+Read back from the zone on 2026-08-13, so this file and the zone agree. DNS is the one part of the
+design outside Terraform, which makes this table the only place the zone is written down.
 
-| Hostname | Type | Value | Added |
-| --- | --- | --- | --- |
-| | | | |
+The eight hostnames, all `CNAME`, all at the registrar:
+
+| Hostname | Type | Value |
+| --- | --- | --- |
+| `jobs.sync.ngo` | CNAME | `sync-ngo-jobs.web.app.` |
+| `app.sync.ngo` | CNAME | `sync-ngo-app.web.app.` |
+| `api.sync.ngo` | CNAME | `sync-ngo-api.web.app.` |
+| `admin.sync.ngo` | CNAME | `ghs.googlehosted.com.` |
+| `jobs-staging.sync.ngo` | CNAME | `sync-ngo-jobs-staging.web.app.` |
+| `app-staging.sync.ngo` | CNAME | `sync-ngo-app-staging.web.app.` |
+| `api-staging.sync.ngo` | CNAME | `sync-ngo-api-staging.web.app.` |
+| `admin-staging.sync.ngo` | CNAME | `ghs.googlehosted.com.` |
+
+Mail, for the platform's own sending. All under `send.sync.ngo` — the root domain's SPF, which
+carries Workspace mail, is untouched:
+
+| Hostname | Type | Value |
+| --- | --- | --- |
+| `send.sync.ngo` | TXT | `v=spf1 include:amazonses.com ~all` |
+| `send.sync.ngo` | MX (10) | `feedback-smtp.us-east-1.amazonses.com.` |
+| `resend._domainkey.send.sync.ngo` | TXT | the DKIM public key — read it from the sending provider |
+| `send.send.sync.ngo` | TXT | `v=spf1 include:amazonses.com ~all` |
+| `send.send.sync.ngo` | MX (10) | `feedback-smtp.eu-west-1.amazonses.com.` |
+
+**Two sending regions are present and only one can be current.** `send.sync.ngo` answers with
+`us-east-1` and `send.send.sync.ngo` with `eu-west-1`, which is what a domain configured twice
+looks like — once in each region. Everything else in this platform is in Europe deliberately, and
+outbound mail carries candidate names and addresses, so the US pair is the one to question rather
+than the one to keep. Whichever is retired, its records should be removed here and at the
+registrar rather than left to be rediscovered. See #86.
 
 ## Order of operations
 
