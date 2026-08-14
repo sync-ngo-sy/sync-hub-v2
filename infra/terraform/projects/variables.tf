@@ -62,3 +62,29 @@ variable "github_repository" {
   type        = string
   default     = "sync-ngo-sy/sync-hub-v2"
 }
+
+variable "org_admins" {
+  description = <<-EOT
+    Principals holding organisation-level authority. Authoritative: anything not listed here is
+    removed on the next apply.
+
+    One entry is a single point of failure -- lose that account and org recovery goes through
+    Google support with proof of domain ownership. The break-glass is Workspace: a super admin can
+    always grant themselves organizationAdmin back. Verify that someone still can before trusting
+    this list to be short.
+  EOT
+  type        = list(string)
+  default     = ["user:subscription@sync.ngo"]
+}
+
+variable "project_creators" {
+  description = <<-EOT
+    Who may create projects. Currently the whole Workspace domain, which is how five projects
+    nobody owns came to exist -- generating a Gemini key in AI Studio creates one silently.
+
+    Narrowing this to a group is the fix, and it breaks AI Studio for everybody not in that group,
+    so it is a decision rather than a default.
+  EOT
+  type        = list(string)
+  default     = ["domain:sync.ngo"]
+}
