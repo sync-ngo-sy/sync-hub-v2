@@ -37,7 +37,10 @@ locals {
                   }
                 }
               }]
-              thresholds = [{ value = 1, color = "RED", direction = "BELOW", label = "no drain in 5 min" }]
+              # No `color` here. An XyChart threshold refuses it -- "color cannot be specified
+              # within a XyChart Threshold" -- and the whole apply fails on the dashboard, after
+              # the services it is meant to watch have already been updated.
+              thresholds = [{ value = 1, direction = "BELOW", label = "no drain in 5 min" }]
               yAxis      = { label = "runs / 5 min", scale = "LINEAR" }
             }
           }
