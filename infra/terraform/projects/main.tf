@@ -21,6 +21,7 @@ locals {
     # The Platform Portal's gate, and the schedule that guarantees the queue drains.
     "iap.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "billingbudgets.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "sts.googleapis.com",
@@ -48,9 +49,12 @@ locals {
   #   iap.admin            bind who the Platform Portal's gate lets through
   #   firebasehosting.admin  deploy the two static portals
   #   cloudscheduler.admin create the drain schedule, which the environment root declares
+  #   monitoring.editor    alert policies, notification channels and uptime checks
+  #   logging.configWriter log-based metrics, which the alerts count
   #
   # Nothing here grants billing, project creation, or organisation-policy authority, so a stolen
-  # deploy token cannot widen its own blast radius.
+  # deploy token cannot widen its own blast radius. Neither monitoring role can read a log entry
+  # or a metric value -- they define what is collected, not what was.
   deployer_roles = [
     "roles/run.admin",
     "roles/iam.serviceAccountUser",
@@ -58,6 +62,8 @@ locals {
     "roles/iap.admin",
     "roles/firebasehosting.admin",
     "roles/cloudscheduler.admin",
+    "roles/monitoring.editor",
+    "roles/logging.configWriter",
   ]
   runtime_roles = ["roles/secretmanager.secretAccessor", "roles/logging.logWriter"]
 
@@ -364,4 +370,47 @@ resource "google_billing_budget" "this" {
       threshold_percent = threshold_rules.value
     }
   }
+}
+
+# ---------------------------------------------------------------- org IAM ------
+# `_binding` rather than `_member`, and that is the whole point: these are authoritative, so a
+# grant made by hand at the console is reverted by the next apply and shows up in the plan before
+# that. An additive `_member` would have declared what we intended and stayed silent about what
+# was actually there.
+#
+# What was actually there: `deployer@sync-ngo-staging` held roles/owner on the organisation. The
+# identity GitHub Actions federates into for staging deploys was Owner of every project in the
+# org, production included, inheriting past every carefully scoped project-level role in this
+# file -- while the comment above them said "nothing in staging can authenticate as anything in
+# production". Nobody granted it deliberately; it survived bootstrap and nothing ever looked.
+#
+# Applying this root is how you find out. It is deliberately not run by CI, so read the plan.
+resource "google_organization_iam_binding" "owner" {
+  org_id  = var.org_id
+  role    = "roles/owner"
+  members = []
+}
+
+resource "google_organization_iam_binding" "organization_admin" {
+  org_id  = var.org_id
+  role    = "roles/resourcemanager.organizationAdmin"
+  members = var.org_admins
+}
+
+resource "google_organization_iam_binding" "org_policy_admin" {
+  org_id  = var.org_id
+  role    = "roles/orgpolicy.policyAdmin"
+  members = var.org_admins
+}
+
+resource "google_organization_iam_binding" "tag_admin" {
+  org_id  = var.org_id
+  role    = "roles/resourcemanager.tagAdmin"
+  members = var.org_admins
+}
+
+resource "google_organization_iam_binding" "project_creator" {
+  org_id  = var.org_id
+  role    = "roles/resourcemanager.projectCreator"
+  members = var.project_creators
 }
