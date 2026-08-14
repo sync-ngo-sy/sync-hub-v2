@@ -31,16 +31,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      # `.claude/skills/` is vendored agent tooling -- 107 JavaScript files, ~67,000 lines, none
-      # of it ours and none of it reachable from any application. Scanned, it is 67,000 lines of
-      # somebody else's code in this repository's security results, and it lengthens the slowest
-      # step of the loop for a finding nobody here can act on: the fix belongs upstream.
-      # `skills-lock.json` records where each skill came from, so an upstream advisory is answered
-      # by re-vendoring, not by a CodeQL alert. `.agents/skills` is a symlink to the same tree and
-      # is listed so the exclusion holds if CodeQL ever follows it.
-      #
-      # `prototype/` is deliberately absent: it is ours, so it stays scanned.
       - name: Initialise CodeQL
         uses: github/codeql-action/init@v3
         with:
