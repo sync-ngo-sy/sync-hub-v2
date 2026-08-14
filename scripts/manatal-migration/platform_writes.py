@@ -316,6 +316,9 @@ class FromManatal:
     company: str | None = None
     degree: str | None = None
     university: str | None = None
+    graduation_year: int | None = None
+    #: The platform's own proficiency for their English, where the account recorded one.
+    english: str | None = None
 
     def experiences(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
         if not (self.position or self.company):
@@ -336,7 +339,7 @@ class FromManatal:
         ]
 
     def educations(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
-        if not (self.degree or self.university):
+        if not (self.degree or self.university or self.graduation_year):
             return []
         return [
             (
@@ -345,10 +348,15 @@ class FromManatal:
                 (self.university or "Not stated")[:200],
                 (self.degree or None) and self.degree[:200],
                 None,
-                None,
+                self.graduation_year,
                 None,
             )
         ]
+
+    def languages(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
+        if not self.english:
+            return []
+        return [(candidate_id, 0, "en", self.english)]
 
 
 #: What the CV parse is measured against when it finds nothing: an empty ATS record.
@@ -395,6 +403,7 @@ async def publish_profile(
         # unreadable CV losing the two facts the ATS was sure of.
         experiences = profile.experiences or from_manatal.experiences(candidate_id)
         educations = profile.educations or from_manatal.educations(candidate_id)
+        languages = profile.languages or from_manatal.languages(candidate_id)
         await connection.executemany(
             """
             insert into candidate_experiences
@@ -425,7 +434,7 @@ async def publish_profile(
             insert into candidate_languages (candidate_id, sort_order, language_code, proficiency)
             values ($1, $2, $3, $4::language_proficiency)
             """,
-            profile.languages,
+            languages,
         )
         await connection.executemany(
             """

@@ -33,6 +33,16 @@ UNIVERSITY_KEYS: Final = ("latest_university", "university", "school")
 DESCRIPTION_KEYS: Final = ("description", "summary", "notes")
 PICTURE_KEYS: Final = ("picture", "photo", "avatar")
 TAG_KEYS: Final = ("candidate_tags", "tags", "labels")
+
+#: Custom fields are where this account keeps most of what its recruiters ask for. Manatal
+#: flattens the label a recruiter typed into a key, so "Spoken English Proficiency Level"
+#: arrives as `spokenenglishproficiencylevel`. Confirmed against the live account rather than
+#: guessed: `--inventory` counts these one by one.
+SPOKEN_ENGLISH_KEYS: Final = ("spokenenglishproficiencylevel", "spokenenglish")
+WRITTEN_ENGLISH_KEYS: Final = ("writtenenglishproficiencylevel", "writtenenglish")
+GRADUATION_YEAR_KEYS: Final = ("graduationyear", "graduation_year")
+HIGHEST_DEGREE_KEYS: Final = ("highestdegree", "highest_degree")
+LINKEDIN_KEYS: Final = ("linkedinprofile", "linkedin", "linkedin_url")
 PHONE_KEYS: Final = ("phone_number", "phone", "mobile", "mobile_number")
 HEADLINE_KEYS: Final = ("current_position", "job_title", "title", "headline")
 SKILL_KEYS: Final = ("skills", "skill_set")
@@ -76,6 +86,13 @@ class Candidate:
     description: str | None = None
     picture_url: str | None = None
     tags: tuple[str, ...] = ()
+    #: How well they read and write English, as this account's own custom fields put it.
+    #: Free text like "Intermediate - comfortable work conversations", mapped to the
+    #: platform's own proficiency scale rather than stored as typed.
+    english_spoken: str | None = None
+    english_written: str | None = None
+    graduation_year: int | None = None
+    linkedin_url: str | None = None
     #: Free-text skills as Manatal words them. This platform keys skills to a taxonomy, so the
     #: ones it does not recognise belong in `candidates.unmapped_skills` — which is what these
     #: are until a CV parse maps some of them.
@@ -264,8 +281,24 @@ def _candidate(record: Mapping[str, Any]) -> Candidate:
         description=_first(record, DESCRIPTION_KEYS) or None,
         picture_url=_first(record, PICTURE_KEYS) or None,
         tags=_named_list(record, TAG_KEYS),
+        english_spoken=_custom(record, SPOKEN_ENGLISH_KEYS) or None,
+        english_written=_custom(record, WRITTEN_ENGLISH_KEYS) or None,
+        graduation_year=_year(_custom(record, GRADUATION_YEAR_KEYS)),
+        linkedin_url=_custom(record, LINKEDIN_KEYS) or None,
         raw=record,
     )
+
+
+def _custom(record: Mapping[str, Any], keys: Sequence[str]) -> str:
+    """A value out of the custom fields blob, by any of the keys it might carry."""
+    custom = record.get("custom_fields")
+    return _first(custom, keys) if isinstance(custom, dict) else ""
+
+
+def _year(stated: str) -> int | None:
+    """Manatal stores a graduation year as a whole date. Only the year has a home here."""
+    digits = stated.strip()[:4]
+    return int(digits) if digits.isdigit() and 1900 <= int(digits) <= 2100 else None
 
 
 def _first(record: Mapping[str, Any], keys: Sequence[str]) -> str:

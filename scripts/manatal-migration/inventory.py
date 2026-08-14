@@ -37,6 +37,9 @@ if TYPE_CHECKING:
 #: the report into a data dump of somebody's CV.
 SAMPLE_LENGTH: Final = 60
 
+#: Blobs whose own keys are worth counting one by one.
+NESTED: Final = ("custom_fields",)
+
 
 class Home(StrEnum):
     """What the migration does with a field."""
@@ -83,6 +86,20 @@ FIELD_MAP: Final[dict[str, Mapped]] = {
     **{key: Mapped(Home.MIGRATED, "profiles.avatar_url") for key in PICTURE_KEYS},
     **{key: Mapped(Home.MIGRATED, "tenant_tags and an assignment") for key in TAG_KEYS},
     "custom_fields": Mapped(Home.MIGRATED, "a Note, private to the importing Tenant"),
+    "custom_fields.spokenenglishproficiencylevel": Mapped(
+        Home.MIGRATED, "candidate_languages (en), and the Note in full"
+    ),
+    "custom_fields.writtenenglishproficiencylevel": Mapped(
+        Home.MIGRATED, "candidate_languages (en), and the Note in full"
+    ),
+    "custom_fields.graduationyear": Mapped(Home.MIGRATED, "candidate_educations.graduation_year"),
+    "custom_fields.highestdegree": Mapped(
+        Home.MIGRATED, "candidate_educations.degree, where Manatal's own is empty"
+    ),
+    "custom_fields.linkedinprofile": Mapped(Home.MIGRATED, "the Note — Sync holds no social links"),
+    "custom_fields.reference": Mapped(Home.MIGRATED, "the Note"),
+    "custom_fields.positiontype": Mapped(Home.MIGRATED, "the Note"),
+    "custom_fields.role": Mapped(Home.IGNORED, "a Manatal portal role, meaningless here"),
     "resume": Mapped(Home.MIGRATED, "the cvs bucket, then the CV parse"),
     "resume_url": Mapped(Home.MIGRATED, "the cvs bucket, then the CV parse"),
     "updated_at": Mapped(Home.MIGRATED, "the ledger"),
@@ -156,6 +173,12 @@ class Census:
             self.counted += 1
             for key, value in candidate.raw.items():
                 self.fields.setdefault(key, Field(key=key)).saw(value)
+                # An account keeps everything its recruiters actually asked for in custom
+                # fields, so counting the blob as one field hides the real inventory.
+                if key in NESTED and isinstance(value, dict):
+                    for inner, held in value.items():
+                        nested = f"{key}.{inner}"
+                        self.fields.setdefault(nested, Field(key=nested)).saw(held)
         return self
 
     def by_home(self, home: Home) -> list[Field]:

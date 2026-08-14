@@ -56,6 +56,8 @@ class Entry:
     company: str | None = None
     degree: str | None = None
     university: str | None = None
+    graduation_year: int | None = None
+    english: str | None = None
 
 
 class Ledger:

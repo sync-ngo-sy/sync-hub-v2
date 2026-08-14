@@ -23,6 +23,32 @@ MAX_LINE: Final = 200
 #: types a real figure.
 UNSTATED_YEARS: Final = 0.0
 
+#: The platform's own scale. An account writes free text against its own rubric —
+#: "Intermediate - comfortable work conversations with some hesitation" — and the word it
+#: leads with is the part that maps. Anything unrecognised is left out rather than guessed at,
+#: because a wrong proficiency is worse than an absent one: a Job can require one.
+PROFICIENCY: Final[dict[str, str]] = {
+    "native": "native",
+    "bilingual": "native",
+    "mother": "native",
+    "fluent": "fluent",
+    "professional": "fluent",
+    "proficient": "fluent",
+    "advanced": "advanced",
+    "upper": "advanced",
+    "intermediate": "intermediate",
+    "conversational": "intermediate",
+    "moderate": "intermediate",
+    "beginner": "beginner",
+    "basic": "beginner",
+    "elementary": "beginner",
+    "limited": "beginner",
+    "none": "beginner",
+}
+
+#: Strongest first, so the better of somebody's spoken and written English is the one kept.
+PROFICIENCY_ORDER: Final = ("native", "fluent", "advanced", "intermediate", "beginner")
+
 YEAR_RANGE: Final = range(1900, 2101)
 MONTH_RANGE: Final = range(1, 13)
 
@@ -120,6 +146,23 @@ def profile_from(
             for order, entry in enumerate(_entries(parsed, "projects"))
         ],
     )
+
+
+def proficiency_of(*stated: str | None) -> str | None:
+    """The platform's proficiency for however this account words it, strongest of those given.
+
+    Two fields describe one language — reading and writing — and `candidate_languages` holds one
+    row per language. Taking the stronger is the honest reduction: it is the level they have
+    demonstrated in at least one direction, and the Note keeps both in full.
+    """
+    found = {
+        PROFICIENCY[word]
+        for text in stated
+        if text
+        for word in [text.strip().split()[0].strip(" -:,.").lower()]
+        if word in PROFICIENCY
+    }
+    return next((level for level in PROFICIENCY_ORDER if level in found), None)
 
 
 def _entries(parsed: Mapping[str, Any], key: str) -> list[Mapping[str, Any]]:

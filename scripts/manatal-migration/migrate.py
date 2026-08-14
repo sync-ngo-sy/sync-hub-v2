@@ -30,7 +30,7 @@ from manatal import (
     ManatalError,
     ResumeMissingError,
 )
-from profile_rows import profile_from
+from profile_rows import proficiency_of, profile_from
 from progress import Progress
 from supabase_rest import AddressTakenError, Supabase
 from verify import Verification
@@ -356,6 +356,8 @@ class Migration:
                 company=entry.company,
                 degree=entry.degree,
                 university=entry.university,
+                graduation_year=entry.graduation_year,
+                english=entry.english,
             ),
         )
         entry.state = State.PUBLISHED
@@ -369,6 +371,18 @@ class Migration:
             await self._supabase.delete_account(candidate_id)
         except Exception as broke:
             say(f"  ! left an account behind for {candidate_id}: {broke}")
+
+
+def _custom_degree(candidate: Candidate) -> str | None:
+    """The degree an account keeps in its own custom field, when Manatal's own is empty."""
+    custom = candidate.raw.get("custom_fields")
+    if not isinstance(custom, dict):
+        return None
+    for key in ("highestdegree", "highest_degree"):
+        stated = custom.get(key)
+        if isinstance(stated, str) and stated.strip():
+            return stated.strip()
+    return None
 
 
 def _note_from(candidate: Candidate) -> str:
@@ -402,8 +416,12 @@ def _decided(
         email=candidate.email,
         position=candidate.headline,
         company=candidate.current_company,
-        degree=candidate.latest_degree,
+        # Fallback chain: the dedicated field first, then the custom one an account keeps its
+        # own version of, so a candidate with only one of the two still lands with a degree.
+        degree=candidate.latest_degree or _custom_degree(candidate),
         university=candidate.latest_university,
+        graduation_year=candidate.graduation_year,
+        english=proficiency_of(candidate.english_spoken, candidate.english_written),
         candidate_id=None if candidate_id is None else str(candidate_id),
         cv_id=None if cv_id is None else str(cv_id),
         file_hash=file_hash,
