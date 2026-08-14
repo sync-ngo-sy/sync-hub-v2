@@ -21,6 +21,7 @@ locals {
     # The Platform Portal's gate, and the schedule that guarantees the queue drains.
     "iap.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "billingbudgets.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "sts.googleapis.com",
@@ -48,9 +49,12 @@ locals {
   #   iap.admin            bind who the Platform Portal's gate lets through
   #   firebasehosting.admin  deploy the two static portals
   #   cloudscheduler.admin create the drain schedule, which the environment root declares
+  #   monitoring.editor    alert policies, notification channels and uptime checks
+  #   logging.configWriter log-based metrics, which the alerts count
   #
   # Nothing here grants billing, project creation, or organisation-policy authority, so a stolen
-  # deploy token cannot widen its own blast radius.
+  # deploy token cannot widen its own blast radius. Neither monitoring role can read a log entry
+  # or a metric value -- they define what is collected, not what was.
   deployer_roles = [
     "roles/run.admin",
     "roles/iam.serviceAccountUser",
@@ -58,6 +62,8 @@ locals {
     "roles/iap.admin",
     "roles/firebasehosting.admin",
     "roles/cloudscheduler.admin",
+    "roles/monitoring.editor",
+    "roles/logging.configWriter",
   ]
   runtime_roles = ["roles/secretmanager.secretAccessor", "roles/logging.logWriter"]
 
@@ -365,3 +371,4 @@ resource "google_billing_budget" "this" {
     }
   }
 }
+

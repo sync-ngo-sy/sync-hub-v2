@@ -121,3 +121,10 @@ services = {
     iap_members           = ["domain:sync.ngo"]
   }
 }
+
+uptime_targets = {
+  api   = { host = "api-staging.sync.ngo", path = "/v1/health/ready" }
+  app   = { host = "app-staging.sync.ngo" }
+  jobs  = { host = "jobs-staging.sync.ngo" }
+  admin = { host = "admin-staging.sync.ngo", accepted_status = 302 }
+}
