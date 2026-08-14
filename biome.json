@@ -15,7 +15,6 @@
       "!**/*.gen.ts",
       "!**/routeTree.gen.ts",
       "!**/*.css",
-      "!.agents/skills/impeccable",
       "!.claude/skills/impeccable",
       "!prototype",
       "!docs",
