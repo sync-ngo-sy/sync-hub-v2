@@ -419,6 +419,14 @@ async def test_a_search_and_a_sort_answer_together(
         people["amal"],
         people["rana"],
     ]
+
+
+async def test_the_pool_says_a_candidate_signed_up_and_has_signed_in(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
     """The ordinary case, so the flags a migrated Candidate carries have something to differ
     from."""
     await an_application_to_this_tenant(recruiter, other_browser, mailbox, db_session)

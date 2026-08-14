@@ -79,8 +79,12 @@ export const RIMA_SAVED: PooledCandidate = {
 export const MIGRATED_SAVED: PooledCandidate = {
   candidate_id: '00000000-0000-4000-8000-000000000034',
   full_name: 'Bashir Nassar',
+  avatar_url: null,
   headline: 'Logistics officer',
   location_name: 'Homs',
+  canonical_role_name: null,
+  total_experience_years: 0,
+  tags: [],
   added_at: '2026-07-18T09:00:00Z',
   is_imported_from_manatal: true,
   is_claimed: false,
