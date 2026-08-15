@@ -143,7 +143,11 @@ export function ApplicationReviewPage({
               ]}
             />
 
-            <ApplicationPipeline applicationId={applicationId} status={review.status} />
+            <ApplicationPipeline
+              applicationId={applicationId}
+              status={review.status}
+              hire={review.hire ?? null}
+            />
 
             <ReviewCard title="Screening">
               <div className="space-y-3">

@@ -42,12 +42,12 @@ async def test_notification_payloads_are_documented_as_a_discriminated_union(
     payload = schemas["Notification"]["properties"]["payload"]
     members = {member["$ref"].rsplit("/", 1)[-1] for member in payload["oneOf"]}
 
-    assert members == {"CvParseFailed", "CvParseSucceeded", "ApplicationStatusChanged"}
+    assert members == {"CvParseFailed", "CvParseSucceeded", "ApplicationStageChanged"}
     assert payload["discriminator"]["propertyName"] == "type"
     assert set(payload["discriminator"]["mapping"]) == {
         "cv_parse_failed",
         "cv_parse_succeeded",
-        "application_status_changed",
+        "application_stage_changed",
     }
     for member in members:
         assert "type" in schemas[member]["properties"], f"{member} does not carry the discriminator"
@@ -62,6 +62,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
 
     assert sorted(operation_ids) == [
         "acceptInvite",
+        "answerHireClaim",
         "askForAccess",
         "assessApplicationMatch",
         "browseJobs",

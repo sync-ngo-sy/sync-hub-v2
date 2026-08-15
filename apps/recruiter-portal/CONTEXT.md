@@ -196,7 +196,8 @@ can lead back to the reading it was opened from.
 The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
 and the six-step progress line in one card. There is no static warning beneath it: move outcomes
 already say the Candidate was notified, while a refused move still explains itself inside the
-Pipeline. The current segment keeps strong contrast in either theme and a small static dot beside
+Pipeline. A claimed hire reads there too — the day it names, and whether the Candidate has
+confirmed it — so an unconfirmed claim is visible rather than silently uncounted. The current segment keeps strong contrast in either theme and a small static dot beside
 `now` carries the accent colour. Screening and Tags lead the two-column review below; the Snapshot,
 answers, Match
 assessments and notes follow on the wider reading side, while the Applicant message and history
@@ -211,7 +212,10 @@ current status sits above the action row. Adjacent backward and onward moves rem
 for its stage, a decision for the decision ("Mark as hired", "Reject"). A move says in its outcome
 toast whether the candidate was told, which is not every move: they read a Stage, not a status, so
 a move inside one Stage reaches nobody, and only a move that changes the Stage notifies. A
-rejection also emails them. Each move carries one
+rejection also emails them. `Mark as hired` is the one move that asks something first: it opens a
+dialog for the day the work started, because a hire is a claim about a particular day and the
+Candidate is asked to confirm that day. A refusal of that move stays inside the dialog that asked;
+every other refusal reports on the Pipeline card. Each move carries one
 icon: a left arrow for a backward move, a right arrow for an onward move, and a rejection mark for
 Reject. The compact actions wrap at the edge of the card. Only the adjacent move back and the
 adjacent move onward are primary buttons;

@@ -69,7 +69,9 @@ async def test_a_candidate_applies_and_sees_it_in_their_applications(
 
     assert application["job"]["id"] == job["id"]
     assert application["job"]["title"] == job["title"]
-    assert application["status"] == "new"
+    assert application["stage"] == "received"
+    assert application["can_withdraw"] is True
+    assert application["hire"] is None
     assert [item["id"] for item in await my_applications(other_browser)] == [application["id"]]
 
 
@@ -861,6 +863,8 @@ async def test_a_candidate_recruiters_can_find_still_applies(
 
     application = await an_accepted_application(other_browser, job["id"])
 
-    assert application["status"] == "new"
+    assert application["stage"] == "received"
+    assert application["can_withdraw"] is True
+    assert application["hire"] is None
     assert (await my_profile(other_browser))["is_searchable"] is True
     assert await completed_at(db_session, candidate_id) is not None

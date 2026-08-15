@@ -5,7 +5,7 @@ import type { FileRouteTypes } from '@/routeTree.gen';
 
 export type Notification = components['schemas']['Notification'];
 
-type ApplicationStatus = components['schemas']['ApplicationStatus'];
+type ApplicationStage = components['schemas']['ApplicationStage'];
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 
@@ -18,14 +18,11 @@ export function isUnread(notification: Notification): boolean {
   return notification.read_at == null;
 }
 
-const STATUS_WORDS: Record<ApplicationStatus, string> = {
-  new: 'New',
-  reviewing: 'Under review',
-  shortlisted: 'Shortlisted',
-  interview: 'Interview',
-  offer: 'Offer',
+const STAGE_WORDS: Record<ApplicationStage, string> = {
+  received: 'Received',
+  in_review: 'In review',
   hired: 'Hired',
-  rejected: 'Not selected',
+  not_selected: 'Not selected',
   withdrawn: 'Withdrawn',
 };
 
@@ -54,10 +51,10 @@ export function notificationCopy({ payload }: Notification): NotificationCopy {
         to: '/profile',
         search: { fill: payload.cv_id },
       };
-    case 'application_status_changed':
+    case 'application_stage_changed':
       return {
         headline: `${payload.job_title} at ${payload.tenant_name}`,
-        detail: `Moved from ${STATUS_WORDS[payload.previous_status]} to ${STATUS_WORDS[payload.status]}.`,
+        detail: `Moved from ${STAGE_WORDS[payload.previous_stage]} to ${STAGE_WORDS[payload.stage]}.`,
         icon: Send,
         to: '/applications',
       };

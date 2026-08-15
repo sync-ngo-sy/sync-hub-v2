@@ -13,41 +13,61 @@ import { ArrowLeft, ArrowRight, CircleAlert, CircleX, MoreHorizontal } from 'luc
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { problemDetail } from '@/lib/api-problem';
+import { calendarDay } from '@/lib/dates';
 import { PIPELINE_LADDER, type PipelineStatus, pipelineState, pipelineStep } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
-import { type PipelineMove, pipelineMoveChoices, pipelineOutcome } from '../review';
+import {
+  type ClaimedHire,
+  hireState,
+  moveOutcome,
+  type PipelineMove,
+  pipelineMoveChoices,
+  pipelineOutcome,
+} from '../review';
+import { MarkAsHiredDialog } from './mark-as-hired-dialog';
 
 interface ApplicationPipelineProps {
   applicationId: string;
   status: PipelineStatus;
+  hire: ClaimedHire | null;
 }
 
-export function ApplicationPipeline({ applicationId, status }: ApplicationPipelineProps) {
+export function ApplicationPipeline({ applicationId, status, hire }: ApplicationPipelineProps) {
   const headingId = useId();
   const moving = useMoveApplication(applicationId);
   const [refusal, setRefusal] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState<PipelineMove | null>(null);
   const state = pipelineState(status);
   const step = pipelineStep(status);
   const choices = pipelineMoveChoices(status);
   const outcome = pipelineOutcome(status);
   const onlyMenu = choices.adjacent.length === 0;
 
-  async function makeMove(move: PipelineMove) {
+  async function makeMove(move: PipelineMove, startDate?: string) {
+    const moved = await moving.mutateAsync({
+      params: { path: { application_id: applicationId } },
+      body: { status: move.target, start_date: startDate ?? null },
+    });
+    toast.success(moveOutcome(move, moved.candidate_notified));
+  }
+
+  // A hire is a claim about a particular day, so it asks for one before it is made — and a
+  // refusal belongs in that dialog. Every other move goes straight through, and reports back
+  // on the card.
+  function choose(move: PipelineMove) {
     setRefusal(null);
-    try {
-      await moving.mutateAsync({
-        params: { path: { application_id: applicationId } },
-        body: { status: move.target },
-      });
-      toast.success(move.success);
-    } catch (error) {
+    if (move.target === 'hired') {
+      setClaiming(move);
+      return;
+    }
+    void makeMove(move).catch((error: unknown) => {
       setRefusal(
         problemDetail(
           error,
           `This Application couldn't move to ${pipelineState(move.target).label}.`,
         ),
       );
-    }
+    });
   }
 
   return (
@@ -83,7 +103,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                       <DropdownMenuItem
                         key={move.label}
                         variant={move.direction === 'rejection' ? 'destructive' : 'default'}
-                        onClick={() => void makeMove(move)}
+                        onClick={() => choose(move)}
                       >
                         {move.direction === 'back' ? <ArrowLeft aria-hidden="true" /> : null}
                         {move.direction === 'rejection' ? <CircleX aria-hidden="true" /> : null}
@@ -101,7 +121,7 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
                   size="sm"
                   variant={index === choices.adjacent.length - 1 ? 'default' : 'outline'}
                   disabled={moving.isPending}
-                  onClick={() => void makeMove(move)}
+                  onClick={() => choose(move)}
                 >
                   {move.direction === 'back' ? (
                     <ArrowLeft aria-hidden="true" data-icon="inline-start" />
@@ -161,6 +181,15 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
 
           {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}
 
+          {hire ? (
+            <div className="space-y-1 rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-dense text-foreground">
+                Started <time dateTime={hire.start_date}>{calendarDay(hire.start_date)}</time>
+              </p>
+              <p className="text-meta text-muted-foreground">{hireState(hire)}</p>
+            </div>
+          ) : null}
+
           {refusal ? (
             <Alert>
               <CircleAlert aria-hidden="true" />
@@ -170,6 +199,16 @@ export function ApplicationPipeline({ applicationId, status }: ApplicationPipeli
           ) : null}
         </CardContent>
       </Card>
+
+      {claiming ? (
+        <MarkAsHiredDialog
+          onClose={() => setClaiming(null)}
+          onConfirm={async (startDate) => {
+            await makeMove(claiming, startDate);
+            setClaiming(null);
+          }}
+        />
+      ) : null}
     </section>
   );
 }

@@ -385,7 +385,7 @@ async def test_the_database_refuses_a_payload_filed_under_another_type(
             text(
                 "insert into notifications (recipient_profile_id, type, payload) "
                 "values (:recipient, 'cv_parse_failed', "
-                '\'{"type": "application_status_changed"}\'::jsonb)'
+                '\'{"type": "application_stage_changed"}\'::jsonb)'
             ),
             {"recipient": recipient},
         )

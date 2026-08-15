@@ -166,8 +166,8 @@ async def test_a_status_change_notification_cannot_name_no_application(
         await db_session.execute(
             text(
                 "insert into notifications (recipient_profile_id, type, payload) values "
-                "(:id, 'application_status_changed', "
-                '\'{"type": "application_status_changed"}\'::jsonb)'
+                "(:id, 'application_stage_changed', "
+                '\'{"type": "application_stage_changed"}\'::jsonb)'
             ),
             {"id": candidate_id},
         )

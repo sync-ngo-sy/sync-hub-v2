@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Final
 from uuid import UUID
@@ -26,11 +26,13 @@ from sync_core.models import (
     ApplicationQuestionType,
     ApplicationStatus,
     EmploymentType,
+    HireConfirmation,
     QualificationStatus,
     StatusChangeSource,
     WorkMode,
 )
 from sync_core.profile import MAX_ENTRIES
+from sync_core.stages import ApplicationStage
 
 
 class SubmittedAnswer(BaseModel):
@@ -89,17 +91,52 @@ class AppliedJob(BaseModel):
     work_mode: WorkMode | None = None
 
 
+class ClaimedHire(BaseModel):
+    """A Tenant's claim to have hired somebody, and what the Candidate said about it.
+
+    Only a `confirmed` one is a Placement. A claim they have not answered is still only a
+    claim, and nothing counts it.
+    """
+
+    start_date: date = Field(description="The day the Tenant says the work started.")
+    confirmation: HireConfirmation = Field(
+        description="The Candidate's answer. `unanswered` until they give one."
+    )
+    claimed_at: datetime = Field(description="When the Tenant said so.")
+    answered_at: datetime | None = Field(
+        default=None, description="When the Candidate answered. Null while they have not."
+    )
+
+
+class HireAnswer(BaseModel):
+    """The Candidate's answer to a claimed hire. It is given once and stands."""
+
+    confirmed: bool = Field(description="True if they did start the job the Tenant named.")
+
+
 class Application(BaseModel):
     """One of the caller's own Applications.
 
-    Never the Screening verdict: what a Job screened on and how it landed is the Recruiter's
-    to say, not something a candidate reads off their own dashboard.
+    Never the Tenant's internal status, and never the Screening verdict: a Candidate reads the
+    Stage their Application has reached, and what a Job screened on is the Recruiter's to say.
     """
 
     id: UUID
     job: AppliedJob
     cv_id: UUID
-    status: ApplicationStatus
+    stage: ApplicationStage = Field(
+        description="How far this has got. Everything a Tenant does between arrival and a "
+        "decision reads as `in_review`."
+    )
+    can_withdraw: bool = Field(
+        description="Whether leaving is still possible. False once the Application has an "
+        "outcome, and once it has been withdrawn."
+    )
+    hire: ClaimedHire | None = Field(
+        default=None,
+        description="The hire this Tenant claims, when it claims one. An `unanswered` claim is "
+        "the Candidate's to confirm or deny.",
+    )
     applied_at: datetime
     updated_at: datetime
 
@@ -365,6 +402,11 @@ class ApplicationReview(BaseModel):
     snapshot: ApplicationSnapshot
     answers: list[AnsweredQuestion]
     history: list[StatusHistoryEntry] = Field(description="Every move it has made, oldest first.")
+    hire: ClaimedHire | None = Field(
+        default=None,
+        description="The hire this Tenant claimed, and whether the Candidate has confirmed it. "
+        "A claim they have not answered is not a Placement.",
+    )
     cv: ApplicationCv
     applied_at: datetime
     updated_at: datetime
@@ -414,12 +456,41 @@ class ApplicationStatusChange(BaseModel):
         description="Where it goes. `withdrawn` is refused here: leaving is the candidate's "
         "own move, and theirs alone."
     )
+    start_date: date | None = Field(
+        default=None,
+        description="The day the work started. Required by `hired` and refused by every other "
+        "status: a hire is a claim about a particular day, and the Candidate is asked to "
+        "confirm that day.",
+    )
+
+    @model_validator(mode="after")
+    def _a_hire_names_the_day_it_started(self) -> ApplicationStatusChange:
+        hiring = self.status is ApplicationStatus.HIRED
+        if hiring and self.start_date is None:
+            raise ValueError("marking somebody hired needs the day they started")
+        if not hiring and self.start_date is not None:
+            raise ValueError(f"a {self.status.value} application has no start date")
+        return self
 
 
 class MovedApplication(BaseModel):
-    """Where an Application stands after a move, and where it came from."""
+    """Where an Application stands after a move, where it came from, and what the Candidate
+    heard about it."""
 
     id: UUID
     status: ApplicationStatus
     previous_status: ApplicationStatus
+    candidate_notified: bool = Field(
+        description="Whether this move reached the Candidate. False when it left the Stage they "
+        "read unchanged — which is every move among the undecided statuses."
+    )
+    changed_at: datetime
+
+
+class WithdrawnApplication(BaseModel):
+    """Where the caller's own Application stands after they left it."""
+
+    id: UUID
+    stage: ApplicationStage
+    previous_stage: ApplicationStage
     changed_at: datetime

@@ -1316,10 +1316,16 @@ export interface paths {
         head?: never;
         /**
          * Move an Application through the pipeline
-         * @description Move it anywhere the pipeline allows, backwards included, and tell the candidate.
+         * @description Move it anywhere the pipeline allows, backwards included.
          *
-         *     Every move notifies them in-app; a rejection also queues the one email a human decision
-         *     earns. The Screening verdict is untouched, whatever the Application's status becomes.
+         *     The candidate reads a Stage rather than these statuses, so only a move that changes that
+         *     Stage reaches them — `candidate_notified` says whether this one did. Moving between
+         *     `reviewing`, `shortlisted`, `interview` and `offer` is silent by design.
+         *
+         *     A rejection also queues the one email a human decision earns. A `hired` move records what
+         *     the tenant says happened and the day it started, and asks the candidate to confirm it: until
+         *     they do, it is a claim rather than a Placement. The Screening verdict is untouched, whatever
+         *     the Application's status becomes.
          */
         patch: operations["changeApplicationStatus"];
         trace?: never;
@@ -1658,6 +1664,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/applications/{application_id}/hire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or deny that you were hired
+         * @description A Tenant says it hired the caller and names the day. This is the caller's answer.
+         *
+         *     Only a yes makes it a Placement; a no leaves the Tenant's claim on record as a claim, and
+         *     moves nothing. The Application stays where the Tenant put it either way — what happened is
+         *     the Recruiter's to record, and whether it is true is the Candidate's to say.
+         */
+        post: operations["answerHireClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1729,8 +1759,8 @@ export interface components {
          * Application
          * @description One of the caller's own Applications.
          *
-         *     Never the Screening verdict: what a Job screened on and how it landed is the Recruiter's
-         *     to say, not something a candidate reads off their own dashboard.
+         *     Never the Tenant's internal status, and never the Screening verdict: a Candidate reads the
+         *     Stage their Application has reached, and what a Job screened on is the Recruiter's to say.
          */
         Application: {
             /**
@@ -1744,7 +1774,15 @@ export interface components {
              * Format: uuid
              */
             cv_id: string;
-            status: components["schemas"]["ApplicationStatus"];
+            /** @description How far this has got. Everything a Tenant does between arrival and a decision reads as `in_review`. */
+            stage: components["schemas"]["ApplicationStage"];
+            /**
+             * Can Withdraw
+             * @description Whether leaving is still possible. False once the Application has an outcome, and once it has been withdrawn.
+             */
+            can_withdraw: boolean;
+            /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
+            hire?: components["schemas"]["ClaimedHire"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -1823,7 +1861,7 @@ export interface components {
              * @description Received in the 7 days before `last_7d`, which is what makes a week-on-week comparison possible.
              */
             previous_7d: number;
-            by_stage: components["schemas"]["StageCounts"];
+            by_status: components["schemas"]["PipelineStatusCounts"];
             by_qualification: components["schemas"]["QualificationCounts"];
             /**
              * Pass Rate
@@ -1916,6 +1954,8 @@ export interface components {
              * @description Every move it has made, oldest first.
              */
             history: components["schemas"]["StatusHistoryEntry"][];
+            /** @description The hire this Tenant claimed, and whether the Candidate has confirmed it. A claim they have not answered is not a Placement. */
+            hire?: components["schemas"]["ClaimedHire"] | null;
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Applied At
@@ -1998,6 +2038,45 @@ export interface components {
          */
         ApplicationSort: "newest" | "oldest";
         /**
+         * ApplicationStage
+         * @description What a Candidate is told about their own Application.
+         *
+         *     Five values against the pipeline's eight, and deliberately: everything a Tenant does
+         *     between arrival and a decision is one Stage, so shortlisting somebody and un-shortlisting
+         *     them is invisible from the other side — which is what lets a Recruiter move an Application
+         *     as freely as hiring really needs.
+         * @enum {string}
+         */
+        ApplicationStage: "received" | "in_review" | "hired" | "not_selected" | "withdrawn";
+        /**
+         * ApplicationStageChanged
+         * @description An Application has reached a different Stage.
+         *
+         *     A Tenant's internal status is not here and never will be: a Candidate hears that their
+         *     Application is in review, not that a Recruiter moved them from shortlisted to interview
+         *     and back again.
+         */
+        ApplicationStageChanged: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "application_stage_changed";
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** @description Where the Application stands now. */
+            stage: components["schemas"]["ApplicationStage"];
+            /** @description Where it stood until this move. */
+            previous_stage: components["schemas"]["ApplicationStage"];
+        };
+        /**
          * ApplicationStatus
          * @enum {string}
          */
@@ -2009,30 +2088,11 @@ export interface components {
         ApplicationStatusChange: {
             /** @description Where it goes. `withdrawn` is refused here: leaving is the candidate's own move, and theirs alone. */
             status: components["schemas"]["ApplicationStatus"];
-        };
-        /**
-         * ApplicationStatusChanged
-         * @description An Application has moved. Every move produces one of these, whoever caused it.
-         */
-        ApplicationStatusChanged: {
             /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Start Date
+             * @description The day the work started. Required by `hired` and refused by every other status: a hire is a claim about a particular day, and the Candidate is asked to confirm that day.
              */
-            type: "application_status_changed";
-            /**
-             * Application Id
-             * Format: uuid
-             */
-            application_id: string;
-            /** Job Title */
-            job_title: string;
-            /** Tenant Name */
-            tenant_name: string;
-            /** @description Where the Application stands now. */
-            status: components["schemas"]["ApplicationStatus"];
-            /** @description Where it stood until this move. */
-            previous_status: components["schemas"]["ApplicationStatus"];
+            start_date?: string | null;
         };
         /**
          * ApplicationStatusCount
@@ -2454,6 +2514,34 @@ export interface components {
          */
         ChunkType: "identity" | "experience" | "education" | "skills" | "languages" | "project";
         /**
+         * ClaimedHire
+         * @description A Tenant's claim to have hired somebody, and what the Candidate said about it.
+         *
+         *     Only a `confirmed` one is a Placement. A claim they have not answered is still only a
+         *     claim, and nothing counts it.
+         */
+        ClaimedHire: {
+            /**
+             * Start Date
+             * Format: date
+             * @description The day the Tenant says the work started.
+             */
+            start_date: string;
+            /** @description The Candidate's answer. `unanswered` until they give one. */
+            confirmation: components["schemas"]["HireConfirmation"];
+            /**
+             * Claimed At
+             * Format: date-time
+             * @description When the Tenant said so.
+             */
+            claimed_at: string;
+            /**
+             * Answered At
+             * @description When the Candidate answered. Null while they have not.
+             */
+            answered_at?: string | null;
+        };
+        /**
          * CommunicationStatus
          * @enum {string}
          */
@@ -2794,6 +2882,22 @@ export interface components {
              */
             status: "ok";
         };
+        /**
+         * HireAnswer
+         * @description The Candidate's answer to a claimed hire. It is given once and stands.
+         */
+        HireAnswer: {
+            /**
+             * Confirmed
+             * @description True if they did start the job the Tenant named.
+             */
+            confirmed: boolean;
+        };
+        /**
+         * HireConfirmation
+         * @enum {string}
+         */
+        HireConfirmation: "unanswered" | "confirmed" | "denied";
         /**
          * InvalidField
          * @description One rejected input, located by where it appeared in the request.
@@ -3428,7 +3532,8 @@ export interface components {
         };
         /**
          * MovedApplication
-         * @description Where an Application stands after a move, and where it came from.
+         * @description Where an Application stands after a move, where it came from, and what the Candidate
+         *     heard about it.
          */
         MovedApplication: {
             /**
@@ -3438,6 +3543,11 @@ export interface components {
             id: string;
             status: components["schemas"]["ApplicationStatus"];
             previous_status: components["schemas"]["ApplicationStatus"];
+            /**
+             * Candidate Notified
+             * @description Whether this move reached the Candidate. False when it left the Stage they read unchanged — which is every move among the undecided statuses.
+             */
+            candidate_notified: boolean;
             /**
              * Changed At
              * Format: date-time
@@ -3639,7 +3749,7 @@ export interface components {
              * Payload
              * @description What happened. `type` says which shape the rest of this object takes.
              */
-            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["CvParseSucceeded"] | components["schemas"]["ApplicationStatusChanged"];
+            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["CvParseSucceeded"] | components["schemas"]["ApplicationStageChanged"];
             /**
              * Read At
              * @description When the caller read this. Null while it is still unread.
@@ -3688,6 +3798,33 @@ export interface components {
              * Format: email
              */
             email: string;
+        };
+        /**
+         * PipelineStatusCounts
+         * @description Every status of the Pipeline, including the ones nobody is working any more.
+         *
+         *     The tenant's own eight, not the five a Candidate reads: this is the internal pipeline, and
+         *     a Stage is what the other side is told. Complete on purpose — the parts sum to the total,
+         *     so a reader can add up whichever subset they mean by "in play" without the API having
+         *     decided that for them.
+         */
+        PipelineStatusCounts: {
+            /** New */
+            new: number;
+            /** Reviewing */
+            reviewing: number;
+            /** Shortlisted */
+            shortlisted: number;
+            /** Interview */
+            interview: number;
+            /** Offer */
+            offer: number;
+            /** Hired */
+            hired: number;
+            /** Rejected */
+            rejected: number;
+            /** Withdrawn */
+            withdrawn: number;
         };
         /**
          * PlatformOverviewView
@@ -4389,31 +4526,6 @@ export interface components {
             views: number;
         };
         /**
-         * StageCounts
-         * @description Every stage of the Pipeline, including the ones nobody is working any more.
-         *
-         *     Complete on purpose: the parts sum to the total, so a reader can add up whichever subset
-         *     they mean by "in play" without the API having decided that for them.
-         */
-        StageCounts: {
-            /** New */
-            new: number;
-            /** Reviewing */
-            reviewing: number;
-            /** Shortlisted */
-            shortlisted: number;
-            /** Interview */
-            interview: number;
-            /** Offer */
-            offer: number;
-            /** Hired */
-            hired: number;
-            /** Rejected */
-            rejected: number;
-            /** Withdrawn */
-            withdrawn: number;
-        };
-        /**
          * StatusChangeSource
          * @enum {string}
          */
@@ -4821,6 +4933,24 @@ export interface components {
             errors: components["schemas"]["InvalidField"][];
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * WithdrawnApplication
+         * @description Where the caller's own Application stands after they left it.
+         */
+        WithdrawnApplication: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            stage: components["schemas"]["ApplicationStage"];
+            previous_stage: components["schemas"]["ApplicationStage"];
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
         };
         /**
          * WorkMode
@@ -9885,13 +10015,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The request did not match the expected shape. */
+            /** @description A `hired` move carries no `start_date`, or another status carries one. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
@@ -11150,7 +11280,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MovedApplication"];
+                    "application/json": components["schemas"]["WithdrawnApplication"];
                 };
             };
             /** @description There is no valid session. */
@@ -11181,6 +11311,86 @@ export interface operations {
                 };
             };
             /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    answerHireClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HireAnswer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimedHire"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No Application of the caller's has that id, or nobody has claimed to have hired them for it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The claim has already been answered. An answer is given once. */
             409: {
                 headers: {
                     [name: string]: unknown;

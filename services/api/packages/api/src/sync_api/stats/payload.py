@@ -18,11 +18,13 @@ class JobCounts(BaseModel):
     )
 
 
-class StageCounts(BaseModel):
-    """Every stage of the Pipeline, including the ones nobody is working any more.
+class PipelineStatusCounts(BaseModel):
+    """Every status of the Pipeline, including the ones nobody is working any more.
 
-    Complete on purpose: the parts sum to the total, so a reader can add up whichever subset
-    they mean by "in play" without the API having decided that for them.
+    The tenant's own eight, not the five a Candidate reads: this is the internal pipeline, and
+    a Stage is what the other side is told. Complete on purpose — the parts sum to the total,
+    so a reader can add up whichever subset they mean by "in play" without the API having
+    decided that for them.
     """
 
     new: int
@@ -54,7 +56,7 @@ class ApplicationCounts(BaseModel):
         description="Received in the 7 days before `last_7d`, which is what makes a week-on-week "
         "comparison possible."
     )
-    by_stage: StageCounts
+    by_status: PipelineStatusCounts
     by_qualification: QualificationCounts
     pass_rate: int | None = Field(
         description="The percentage of screened Applications that qualified, 0-100. Null when "

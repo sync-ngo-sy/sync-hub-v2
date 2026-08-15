@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Final
 
 from sync_api.problems import APPLICATION_TRANSITION_PROBLEM_TYPE, Problem
 from sync_core.models import ApplicationStatus, ApplicationStatusHistory, StatusChangeSource
-from sync_core.notifications import ApplicationStatusChanged, notify
+from sync_core.notifications import ApplicationStageChanged, notify
+from sync_core.stages import stage_of
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.applications.access import Applied
+    from sync_core.stages import ApplicationStage
 
 #: The states an Application is still being decided in, and which a Recruiter moves freely
 #: among — a pipeline that only ever went forwards would not match how hiring actually goes.
@@ -51,11 +53,15 @@ MOVES: Final[
 
 @dataclass(frozen=True, slots=True)
 class Moved:
-    """One move that happened, and the history row recording it."""
+    """One move that happened, the history row recording it, and whether it was worth telling
+    the Candidate about."""
 
     status_history_id: UUID
     status: ApplicationStatus
     previous_status: ApplicationStatus
+    stage: ApplicationStage
+    previous_stage: ApplicationStage
+    candidate_notified: bool
     changed_at: datetime
 
 
@@ -67,7 +73,11 @@ async def move_application(
     source: StatusChangeSource,
     by: UUID,
 ) -> Moved:
-    """Move the Application, append the history, and tell the Candidate.
+    """Move the Application, append the history, and tell the Candidate if the Stage changed.
+
+    Every move is recorded; only a move that changes what the Candidate is told produces a
+    Notification. Shortlisting somebody and un-shortlisting them is two entries in the history
+    and silence at the other end.
 
     No transaction of its own: the caller's is what keeps the three from ever disagreeing, and
     what takes the notification back with a move that turns out not to have happened.
@@ -76,6 +86,7 @@ async def move_application(
     _refuse_impossible_move(application.status, to, source)
 
     previous, application.status = application.status, to
+    previous_stage, stage = stage_of(previous), stage_of(to)
     history = ApplicationStatusHistory(
         application_id=application.id,
         change_source=source,
@@ -85,21 +96,25 @@ async def move_application(
     )
     session.add(history)
     await session.flush()
-    await notify(
-        session,
-        application.candidate_id,
-        ApplicationStatusChanged(
-            application_id=application.id,
-            job_title=applied.job.title,
-            tenant_name=applied.tenant_name,
-            status=to,
-            previous_status=previous,
-        ),
-    )
+    if stage is not previous_stage:
+        await notify(
+            session,
+            application.candidate_id,
+            ApplicationStageChanged(
+                application_id=application.id,
+                job_title=applied.job.title,
+                tenant_name=applied.tenant_name,
+                stage=stage,
+                previous_stage=previous_stage,
+            ),
+        )
     return Moved(
         status_history_id=history.id,
         status=to,
         previous_status=previous,
+        stage=stage,
+        previous_stage=previous_stage,
+        candidate_notified=stage is not previous_stage,
         changed_at=history.created_at,
     )
 

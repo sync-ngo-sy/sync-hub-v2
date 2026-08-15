@@ -615,7 +615,7 @@ async def test_moving_is_only_for_recruiters_of_the_tenant(
     assert by_a_rival.status_code == 404, by_a_rival.text
 
 
-async def test_every_move_reaches_the_candidates_bell(
+async def test_a_move_that_changes_the_stage_reaches_the_candidates_bell(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
@@ -624,18 +624,70 @@ async def test_every_move_reaches_the_candidates_bell(
     job = await a_published_job(recruiter)
     await a_candidate_who_can_apply(other_browser, mailbox, db_session)
     application = await an_accepted_application(other_browser, job["id"])
+
+    moved = await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
+
+    assert moved["candidate_notified"] is True
+    [told] = await my_notifications(other_browser)
+    assert told["payload"]["type"] == "application_stage_changed"
+    assert told["payload"]["stage"] == "in_review"
+    assert told["payload"]["previous_stage"] == "received"
+    assert told["payload"]["application_id"] == application["id"]
+    assert told["payload"]["job_title"] == job["title"]
+    assert told["payload"]["tenant_name"]
+
+
+async def test_moving_inside_one_stage_tells_the_candidate_nothing(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Shortlisting somebody and un-shortlisting them is the Tenant's business, not theirs."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
+
+    for status in (
+        ApplicationStatus.SHORTLISTED,
+        ApplicationStatus.INTERVIEW,
+        ApplicationStatus.OFFER,
+        ApplicationStatus.SHORTLISTED,
+    ):
+        moved = await a_moved_application(recruiter, application["id"], status)
+        assert moved["candidate_notified"] is False, status
+
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
+        "in_review"
+    ]
+    assert len(await status_history_of(db_session, application["id"])) == 6, (
+        "every move is still recorded, however quiet it was"
+    )
+
+
+async def test_a_notification_names_the_stage_and_never_the_internal_status(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
     await a_moved_application(recruiter, application["id"], ApplicationStatus.SHORTLISTED)
 
-    [newest, older] = await my_notifications(other_browser)
+    [told] = await my_notifications(other_browser)
 
-    assert newest["payload"]["type"] == "application_status_changed"
-    assert newest["payload"]["status"] == "shortlisted"
-    assert newest["payload"]["previous_status"] == "reviewing"
-    assert newest["payload"]["application_id"] == application["id"]
-    assert newest["payload"]["job_title"] == job["title"]
-    assert newest["payload"]["tenant_name"]
-    assert older["payload"]["status"] == "reviewing"
+    assert set(told["payload"]) == {
+        "type",
+        "application_id",
+        "job_title",
+        "tenant_name",
+        "stage",
+        "previous_stage",
+    }
+    assert "shortlisted" not in str(told["payload"])
 
 
 async def test_a_move_that_is_refused_tells_the_candidate_nothing(
@@ -651,9 +703,7 @@ async def test_a_move_that_is_refused_tells_the_candidate_nothing(
 
     await move_to(recruiter, application["id"], ApplicationStatus.OFFER)
 
-    assert [item["payload"]["status"] for item in await my_notifications(other_browser)] == [
-        "hired"
-    ]
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == ["hired"]
 
 
 async def test_a_rejection_a_human_decided_also_queues_the_email(
@@ -677,8 +727,8 @@ async def test_a_rejection_a_human_decided_also_queues_the_email(
     assert isinstance(payload, ApplicationRejection)
     assert payload.job_title == job["title"]
     assert payload.candidate_name == "Amina Haddad"
-    assert [item["payload"]["status"] for item in await my_notifications(other_browser)] == [
-        "rejected"
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
+        "not_selected"
     ]
 
 
@@ -756,10 +806,10 @@ async def test_a_candidate_withdraws_and_the_job_is_closed_to_them_for_good(
 
     withdrawn = await a_withdrawn_application(other_browser, application["id"])
 
-    assert withdrawn["status"] == "withdrawn"
-    assert withdrawn["previous_status"] == "new"
+    assert withdrawn["stage"] == "withdrawn"
+    assert withdrawn["previous_stage"] == "received"
     assert withdrawn["changed_at"]
-    assert [item["status"] for item in await my_applications(other_browser)] == ["withdrawn"]
+    assert [item["stage"] for item in await my_applications(other_browser)] == ["withdrawn"]
     refused = await apply_to(other_browser, job["id"])
     assert refused.status_code == 409, refused.text
     assert refused.json()["type"] == "urn:sync:problem:duplicate-application"
@@ -817,7 +867,7 @@ async def test_the_withdrawal_is_recorded_as_the_candidates_own(
     _submission, withdrawal = await status_history_of(db_session, application["id"])
     assert withdrawal.new_status is ApplicationStatus.WITHDRAWN
     assert withdrawal.change_source is StatusChangeSource.CANDIDATE
-    assert [item["payload"]["status"] for item in await my_notifications(other_browser)] == [
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
         "withdrawn"
     ]
     [confirmation] = await communications_of(db_session, application["id"])

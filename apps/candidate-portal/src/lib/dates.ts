@@ -26,3 +26,12 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
 export function absoluteDateTime(iso: string): string {
   return ABSOLUTE.format(new Date(iso));
 }
+
+const CALENDAR_DAY = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' });
+
+export function calendarDay(iso: string): string {
+  // Built from the parts rather than parsed: `new Date('2026-09-01')` is UTC midnight, which
+  // renders as the day before anywhere west of Greenwich.
+  const [year = 0, month = 1, day = 1] = iso.split('-').map(Number);
+  return CALENDAR_DAY.format(new Date(year, month - 1, day));
+}

@@ -187,6 +187,19 @@ export function failsToGetApplication(problem: Problem) {
   return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
 }
 
+//: The API's Stage projection, restated for the fake server so a move it answers says whether
+//: the candidate heard about it. The portal itself never projects: it reads the answer.
+const STAGE_OF: Record<PipelineStatus, string> = {
+  new: 'received',
+  reviewing: 'in_review',
+  shortlisted: 'in_review',
+  interview: 'in_review',
+  offer: 'in_review',
+  hired: 'hired',
+  rejected: 'not_selected',
+  withdrawn: 'withdrawn',
+};
+
 export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
   let current = review;
   return [
@@ -196,7 +209,7 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
         : response(404).json(NO_SUCH_APPLICATION),
     ),
     http.patch(REVIEW_PATH, async ({ request, response }) => {
-      const { status } = (await request.json()) as StatusChange;
+      const { status, start_date } = (await request.json()) as StatusChange;
       asked?.push(status);
       const previous = current.status;
       const changed_at = '2026-08-03T10:00:00Z';
@@ -207,9 +220,23 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
           ...current.history,
           { status, previous_status: previous, source: 'recruiter', changed_at },
         ],
+        hire: start_date
+          ? {
+              start_date,
+              confirmation: 'unanswered' as const,
+              claimed_at: changed_at,
+              answered_at: null,
+            }
+          : current.hire,
         updated_at: changed_at,
       };
-      return response(200).json({ id: current.id, status, previous_status: previous, changed_at });
+      return response(200).json({
+        id: current.id,
+        status,
+        previous_status: previous,
+        candidate_notified: STAGE_OF[status] !== STAGE_OF[previous],
+        changed_at,
+      });
     }),
   ];
 }

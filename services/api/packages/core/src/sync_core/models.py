@@ -11,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     Computed,
+    Date,
     DateTime,
     Enum,
     ForeignKeyConstraint,
@@ -97,6 +98,12 @@ class EmploymentType(enum.StrEnum):
     VOLUNTEER = "volunteer"
 
 
+class HireConfirmation(enum.StrEnum):
+    UNANSWERED = "unanswered"
+    CONFIRMED = "confirmed"
+    DENIED = "denied"
+
+
 class IngestionStatus(enum.StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -127,7 +134,7 @@ class LocationKind(enum.StrEnum):
 class NotificationType(enum.StrEnum):
     CV_PARSE_FAILED = "cv_parse_failed"
     CV_PARSE_SUCCEEDED = "cv_parse_succeeded"
-    APPLICATION_STATUS_CHANGED = "application_status_changed"
+    APPLICATION_STAGE_CHANGED = "application_stage_changed"
 
 
 class QualificationStatus(enum.StrEnum):
@@ -417,11 +424,11 @@ class Candidate(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     location_key: Mapped[str | None] = mapped_column(Text)
     canonical_role_key: Mapped[str | None] = mapped_column(Text)
-    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     linkedin_url: Mapped[str | None] = mapped_column(Text)
     github_url: Mapped[str | None] = mapped_column(Text)
     portfolio_url: Mapped[str | None] = mapped_column(Text)
     profile_completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
@@ -553,6 +560,19 @@ class Location(Base):
         ),
         nullable=False,
     )
+
+
+t_placements = Table(
+    "placements",
+    Base.metadata,
+    Column("application_id", Uuid),
+    Column("tenant_id", Uuid),
+    Column("claimed_by_recruiter_id", Uuid),
+    Column("start_date", Date),
+    Column("claimed_at", DateTime(True)),
+    Column("confirmed_at", DateTime(True)),
+    schema="public",
+)
 
 
 class SkillCategory(Base):
@@ -1009,8 +1029,8 @@ class Profile(Base):
     )
     avatar_url: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
-    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     phone_country: Mapped[str | None] = mapped_column(Text)
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     user: Mapped["User"] = relationship("User", viewonly=True)
 
@@ -1940,6 +1960,7 @@ class ApplicationProfileSnapshot(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     phone: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
@@ -1947,7 +1968,6 @@ class ApplicationProfileSnapshot(Base):
     linkedin_url: Mapped[str | None] = mapped_column(Text)
     github_url: Mapped[str | None] = mapped_column(Text)
     portfolio_url: Mapped[str | None] = mapped_column(Text)
-    phone_country: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 
@@ -2376,8 +2396,8 @@ class Notification(Base):
             "(payload ->> 'type'::text) = type::text", name="notifications_payload_type_matches"
         ),
         CheckConstraint(
-            "type::text <> 'application_status_changed'::text OR application_id IS NOT NULL",
-            name="notifications_status_change_has_an_application",
+            "type::text <> 'application_stage_changed'::text OR application_id IS NOT NULL",
+            name="notifications_stage_change_has_an_application",
         ),
         ForeignKeyConstraint(
             ["application_id", "recipient_profile_id"],
@@ -2423,3 +2443,58 @@ class Notification(Base):
 
     application: Mapped[Optional["Application"]] = relationship("Application", viewonly=True)
     recipient_profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
+
+
+class HireClaim(Base):
+    __tablename__ = "hire_claims"
+    __table_args__ = (
+        CheckConstraint(
+            "confirmation = 'unanswered'::hire_confirmation) = (answered_at IS NULL",
+            name="hire_claim_answer_has_its_moment",
+        ),
+        ForeignKeyConstraint(
+            ["status_history_id"],
+            ["public.application_status_history.id"],
+            ondelete="CASCADE",
+            name="hire_claims_status_history_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "application_id"],
+            ["public.applications.tenant_id", "public.applications.id"],
+            ondelete="CASCADE",
+            name="hire_claims_tenant_id_application_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "claimed_by_recruiter_id"],
+            ["public.recruiters.tenant_id", "public.recruiters.id"],
+            name="hire_claims_tenant_id_claimed_by_recruiter_id_fkey",
+        ),
+        PrimaryKeyConstraint("application_id", name="hire_claims_pkey"),
+        Index("hire_claims_tenant_confirmation_idx", "tenant_id", "confirmation"),
+        {"schema": "public"},
+    )
+
+    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    claimed_by_recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    status_history_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    start_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    confirmation: Mapped[HireConfirmation] = mapped_column(
+        Enum(
+            HireConfirmation,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="hire_confirmation",
+        ),
+        nullable=False,
+        server_default=text("'unanswered'::hire_confirmation"),
+    )
+    claimed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    answered_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    status_history: Mapped["ApplicationStatusHistory"] = relationship(
+        "ApplicationStatusHistory", viewonly=True
+    )
+    application: Mapped["Application"] = relationship("Application", viewonly=True)
+    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)

@@ -7,7 +7,8 @@ type ApplicationConflict = components['schemas']['ApplicationConflictProblemDeta
 type SubmissionRefused = components['schemas']['SubmissionRefusedProblemDetail'];
 type NewApplication = components['schemas']['NewApplication'];
 type Problem = components['schemas']['ProblemDetail'];
-type MovedApplication = components['schemas']['MovedApplication'];
+type WithdrawnApplication = components['schemas']['WithdrawnApplication'];
+type ClaimedHire = components['schemas']['ClaimedHire'];
 
 export function listsApplications(items: Application[]) {
   return [
@@ -84,7 +85,7 @@ export function withholdsApplication() {
 }
 
 export function withdrawsApplication(
-  moved: MovedApplication,
+  moved: WithdrawnApplication,
   onWithdraw?: (applicationId: string) => void,
 ) {
   return [
@@ -99,7 +100,7 @@ export function withholdsWithdrawal() {
   return [
     http.post('/v1/applications/{application_id}/withdraw', async ({ response }) => {
       await delay('infinite');
-      return response(200).json({} as MovedApplication);
+      return response(200).json({} as WithdrawnApplication);
     }),
   ];
 }
@@ -107,6 +108,24 @@ export function withholdsWithdrawal() {
 export function refusesWithdrawal(problem: Problem) {
   return [
     http.post('/v1/applications/{application_id}/withdraw', ({ response }) =>
+      response(409).json(problem),
+    ),
+  ];
+}
+
+export function answersHireClaim(hire: ClaimedHire, onAnswer?: (confirmed: boolean) => void) {
+  return [
+    http.post('/v1/applications/{application_id}/hire', async ({ request, response }) => {
+      const body = (await request.json()) as { confirmed: boolean };
+      onAnswer?.(body.confirmed);
+      return response(200).json(hire);
+    }),
+  ];
+}
+
+export function refusesHireAnswer(problem: Problem) {
+  return [
+    http.post('/v1/applications/{application_id}/hire', ({ response }) =>
       response(409).json(problem),
     ),
   ];

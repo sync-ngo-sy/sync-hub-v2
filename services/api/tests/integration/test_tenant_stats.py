@@ -35,7 +35,7 @@ NO_JOBS = {
     "published_last_week": 0,
 }
 
-NO_STAGES = {
+NO_STATUSES = {
     "new": 0,
     "reviewing": 0,
     "shortlisted": 0,
@@ -54,7 +54,7 @@ async def test_a_tenant_with_nothing_in_it_counts_nothing(recruiter: AsyncClient
 
     assert stats["jobs"] == NO_JOBS
     assert stats["applications"]["total"] == 0
-    assert stats["applications"]["by_stage"] == NO_STAGES
+    assert stats["applications"]["by_status"] == NO_STATUSES
     assert stats["applications"]["by_qualification"] == NO_VERDICTS
     assert stats["sources"] == []
     assert stats["sources_total"] == 0
@@ -137,7 +137,7 @@ async def test_applications_are_counted_into_rolling_windows(
     assert stats["previous_7d"] == 1
 
 
-async def test_every_stage_is_reported_and_the_parts_sum_to_the_total(
+async def test_every_pipeline_status_is_reported_and_the_parts_sum_to_the_total(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
@@ -145,30 +145,30 @@ async def test_every_stage_is_reported_and_the_parts_sum_to_the_total(
 ) -> None:
     await a_signed_in_candidate(other_browser, mailbox)
     candidate = await my_id(other_browser)
-    stages = [
+    statuses = [
         ApplicationStatus.REVIEWING,
         ApplicationStatus.INTERVIEW,
         ApplicationStatus.REJECTED,
         ApplicationStatus.WITHDRAWN,
     ]
-    for stage in stages:
-        job = await a_published_job(recruiter, title=f"Hiring a {stage.value}")
+    for status in statuses:
+        job = await a_published_job(recruiter, title=f"Hiring a {status.value}")
         application = await an_application(db_session, job["id"], candidate)
-        await decide(db_session, application, status=stage)
+        await decide(db_session, application, status=status)
     untouched = await a_published_job(recruiter, title="Nobody has looked")
     await an_application(db_session, untouched["id"], candidate)
 
     stats = (await stats_of(recruiter))["applications"]
 
-    assert stats["by_stage"] == {
-        **NO_STAGES,
+    assert stats["by_status"] == {
+        **NO_STATUSES,
         "new": 1,
         "reviewing": 1,
         "interview": 1,
         "rejected": 1,
         "withdrawn": 1,
     }
-    assert sum(stats["by_stage"].values()) == stats["total"] == 5
+    assert sum(stats["by_status"].values()) == stats["total"] == 5
 
 
 async def test_a_withdrawn_application_was_still_received_that_week(

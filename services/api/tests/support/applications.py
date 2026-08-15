@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 
 from sync_core.models import (
     Application,
@@ -17,11 +17,13 @@ from sync_core.models import (
     ApplicationProject,
     ApplicationQualificationHistory,
     ApplicationSkill,
+    ApplicationStatus,
     ApplicationStatusHistory,
     Candidate,
     Communication,
     Cv,
     CvParsingStatus,
+    HireClaim,
 )
 from tests.support.candidates import Signup, a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv
@@ -33,10 +35,12 @@ if TYPE_CHECKING:
     from httpx import AsyncClient, Response
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_core.models import ApplicationStatus
     from tests.support.mailbox import Mailbox
 
 APPLICATIONS: Final = "/v1/applications"
+
+#: The day a claimed hire says the work started, when a test does not care which day it was.
+A_START_DATE: Final = date(2026, 9, 1)
 
 TENANT_APPLICATIONS: Final = "/v1/tenants/me/applications"
 
@@ -211,20 +215,62 @@ async def a_reviewed_application(
 
 
 async def move_to(
-    recruiter: AsyncClient, application_id: str | UUID, status: ApplicationStatus | str
+    recruiter: AsyncClient,
+    application_id: str | UUID,
+    status: ApplicationStatus | str,
+    *,
+    start_date: date | str | None = None,
 ) -> Response:
-    return await recruiter.patch(
-        f"{TENANT_APPLICATIONS}/{application_id}", json={"status": str(status)}
-    )
+    """A `hired` move needs the day the work started, so one is supplied unless the caller
+    names its own — a test about the pipeline should not have to care which day it was."""
+    change: dict[str, Any] = {"status": str(status)}
+    if start_date is not None:
+        change["start_date"] = str(start_date)
+    elif str(status) == ApplicationStatus.HIRED.value:
+        change["start_date"] = str(A_START_DATE)
+    return await recruiter.patch(f"{TENANT_APPLICATIONS}/{application_id}", json=change)
 
 
 async def a_moved_application(
-    recruiter: AsyncClient, application_id: str | UUID, status: ApplicationStatus | str
+    recruiter: AsyncClient,
+    application_id: str | UUID,
+    status: ApplicationStatus | str,
+    *,
+    start_date: date | str | None = None,
 ) -> dict[str, Any]:
-    response = await move_to(recruiter, application_id, status)
+    response = await move_to(recruiter, application_id, status, start_date=start_date)
     assert response.status_code == 200, response.text
     moved: dict[str, Any] = response.json()
     return moved
+
+
+async def answer_the_hire(
+    browser: AsyncClient, application_id: str | UUID, *, confirmed: bool
+) -> Response:
+    return await browser.post(
+        f"{APPLICATIONS}/{application_id}/hire", json={"confirmed": confirmed}
+    )
+
+
+async def an_answered_hire(
+    browser: AsyncClient, application_id: str | UUID, *, confirmed: bool
+) -> dict[str, Any]:
+    response = await answer_the_hire(browser, application_id, confirmed=confirmed)
+    assert response.status_code == 200, response.text
+    answered: dict[str, Any] = response.json()
+    return answered
+
+
+async def hire_claim_of(session: AsyncSession, application_id: str | UUID) -> HireClaim | None:
+    session.expire_all()
+    return await session.get(HireClaim, UUID(str(application_id)))
+
+
+async def placements(session: AsyncSession) -> list[UUID]:
+    """Every Placement the platform has, read through the view that defines one."""
+    session.expire_all()
+    rows = await session.execute(text("select application_id from placements"))
+    return [row[0] for row in rows]
 
 
 async def withdraw(browser: AsyncClient, application_id: str | UUID) -> Response:

@@ -8,8 +8,10 @@ from fastapi import APIRouter, Query, status
 from sync_api.applications import (
     Application,
     ApplicationPage,
-    MovedApplication,
+    ClaimedHire,
+    HireAnswer,
     NewApplication,
+    WithdrawnApplication,
 )
 from sync_api.dependencies import ActingCandidateDep, ApplicationServiceDep, VisitorDep
 from sync_api.errors import openapi_problem
@@ -79,9 +81,37 @@ async def withdraw_my_application(
     application_id: UUID,
     candidate: ActingCandidateDep,
     applications: ApplicationServiceDep,
-) -> MovedApplication:
+) -> WithdrawnApplication:
     """Leave the process. This is irreversible, and re-applying to that Job is impossible."""
     return await applications.withdraw(candidate, application_id)
+
+
+@router.post(
+    "/{application_id}/hire",
+    operation_id="answerHireClaim",
+    summary="Confirm or deny that you were hired",
+    responses={
+        **CANDIDATE_ACCESS_REFUSED,
+        404: openapi_problem(
+            "No Application of the caller's has that id, or nobody has claimed to have hired "
+            "them for it."
+        ),
+        409: openapi_problem("The claim has already been answered. An answer is given once."),
+    },
+)
+async def answer_hire_claim(
+    application_id: UUID,
+    body: HireAnswer,
+    candidate: ActingCandidateDep,
+    applications: ApplicationServiceDep,
+) -> ClaimedHire:
+    """A Tenant says it hired the caller and names the day. This is the caller's answer.
+
+    Only a yes makes it a Placement; a no leaves the Tenant's claim on record as a claim, and
+    moves nothing. The Application stays where the Tenant put it either way — what happened is
+    the Recruiter's to record, and whether it is true is the Candidate's to say.
+    """
+    return await applications.answer_hire(candidate, application_id, body)
 
 
 @router.get(
