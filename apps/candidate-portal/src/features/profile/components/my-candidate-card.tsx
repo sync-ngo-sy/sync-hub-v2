@@ -44,7 +44,6 @@ export function MyCandidateCard() {
         headline={profile.headline}
         facts={facts}
         factsLabel="Your facts"
-        headingLevel={2}
       />
       <PhotoPicker hasPhoto={Boolean(account.avatar_url)} />
     </div>

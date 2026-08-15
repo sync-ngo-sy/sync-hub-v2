@@ -30,7 +30,6 @@ export function CandidateFactsCard({ profile, facts, factsLabel }: CandidateFact
       headline={profile.headline}
       facts={facts}
       factsLabel={factsLabel}
-      headingLevel={2}
     />
   );
 }

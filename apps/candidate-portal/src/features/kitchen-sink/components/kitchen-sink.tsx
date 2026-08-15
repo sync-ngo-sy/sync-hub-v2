@@ -218,7 +218,6 @@ export default function KitchenSink() {
           phone="+963 11 555 0100"
           canonicalRole="Project Manager"
           headline="Runs delivery for two field programmes"
-          headingLevel={2}
           links={{
             linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
             portfolioUrl: 'https://lina-khoury.dev',

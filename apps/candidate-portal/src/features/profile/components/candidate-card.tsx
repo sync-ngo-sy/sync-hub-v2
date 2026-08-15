@@ -71,7 +71,6 @@ interface CandidateCardProps {
   links: ProfileLinks;
   facts?: CandidateFact[];
   factsLabel?: string;
-  headingLevel?: 1 | 2;
   className?: string;
 }
 
@@ -85,11 +84,9 @@ export function CandidateCard({
   links,
   facts = [],
   factsLabel = 'Candidate facts',
-  headingLevel = 1,
   className,
 }: CandidateCardProps) {
   const nameId = useId();
-  const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const shown = facts.filter((fact) => fact.value !== null && fact.value !== undefined);
   const shownLinks = destinations(links);
 
@@ -110,9 +107,9 @@ export function CandidateCard({
         </Avatar>
 
         <div className="min-w-0 space-y-1">
-          <Heading id={nameId} className="truncate font-heading text-title text-foreground">
+          <h2 id={nameId} className="truncate font-heading text-title text-foreground">
             {name}
-          </Heading>
+          </h2>
 
           {canonicalRole || headline ? (
             <p className="truncate text-dense text-muted-foreground">

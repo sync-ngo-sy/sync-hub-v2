@@ -34,14 +34,8 @@ describe('CandidateCard', () => {
     expect(screen.getByRole('article', { name: 'Lina Khoury' })).toBeVisible();
   });
 
-  it('carries the page’s own heading, because the page is about this person', () => {
+  it('names the person under the page heading, never as a second h1', () => {
     render(<CandidateCard {...WHOLE} />);
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Lina Khoury' })).toBeVisible();
-  });
-
-  it('can sit under a page heading without creating a second h1', () => {
-    render(<CandidateCard {...WHOLE} headingLevel={2} />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Lina Khoury' })).toBeVisible();
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
