@@ -3,7 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/aler
 import { Button } from '@sync/ui/components/ui/button';
 import { useBlocker } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { type FieldErrors, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CvsSection } from '@/features/cvs/components/cvs-section';
 import { MAX_CVS } from '@/features/cvs/cv';
@@ -25,6 +25,26 @@ import { ProfileSection } from './profile-section';
 import { ProjectsSection } from './projects-section';
 import { SkillsSection } from './skills-section';
 import { UnsavedChangesDialog } from './unsaved-changes-dialog';
+
+const ANSWERED_IN_ORDER = [
+  'full_name',
+  'phone',
+  'headline',
+  'location_key',
+  'canonical_role_key',
+  'summary',
+  'educations',
+  'skills',
+  'languages',
+] as const satisfies readonly (keyof ProfileFormValues)[];
+
+function whatIsStillMissing(errors: FieldErrors<ProfileFormValues>): string {
+  for (const name of ANSWERED_IN_ORDER) {
+    const message = (errors[name] as { message?: string } | undefined)?.message;
+    if (message) return message;
+  }
+  return 'Some answers are still missing. Look for the fields marked in red.';
+}
 
 export function ProfileEditor() {
   const { data: profile } = useMyProfile();
@@ -49,23 +69,26 @@ export function ProfileEditor() {
     withResolver: true,
   });
 
-  const submit = handleSubmit(async (values) => {
-    try {
-      const saved = await saveProfile.mutateAsync({ body: toProfile(values) });
-      reset(toFormValues(saved));
-      fill.dismiss();
-      toast.success('Profile saved.');
-    } catch (error) {
-      const rejection = profileRejection(error);
-      if (!rejection) {
-        toast.error(problemMessage(error, "Your profile couldn't be saved. Try again."));
-        return;
+  const submit = handleSubmit(
+    async (values) => {
+      try {
+        const saved = await saveProfile.mutateAsync({ body: toProfile(values) });
+        reset(toFormValues(saved));
+        fill.dismiss();
+        toast.success('Profile saved.');
+      } catch (error) {
+        const rejection = profileRejection(error);
+        if (!rejection) {
+          toast.error(problemMessage(error, "Your profile couldn't be saved. Try again."));
+          return;
+        }
+        for (const { name, message } of rejection.fields) setError(name, { message });
+        if (rejection.root) setError('root', { message: rejection.root });
+        toast.error(rejection.root ?? rejection.fields[0]?.message ?? "Your profile wasn't saved.");
       }
-      for (const { name, message } of rejection.fields) setError(name, { message });
-      if (rejection.root) setError('root', { message: rejection.root });
-      toast.error(rejection.root ?? rejection.fields[0]?.message ?? "Your profile wasn't saved.");
-    }
-  });
+    },
+    (errors) => toast.error(whatIsStillMissing(errors)),
+  );
 
   return (
     <div className="space-y-6">

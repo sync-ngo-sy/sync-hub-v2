@@ -15,6 +15,7 @@ import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../s
 import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
+import { SectionError } from './section-error';
 
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
@@ -27,6 +28,7 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
       description="The ones you speak, and how well."
       needed="One language needed to apply"
     >
+      <SectionError control={control} name="languages" />
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Language ${index + 1}`}

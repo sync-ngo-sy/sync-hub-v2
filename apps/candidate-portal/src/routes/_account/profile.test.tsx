@@ -660,6 +660,26 @@ describe('profile progress', () => {
     expect(unexpected).not.toHaveBeenCalled();
   });
 
+  it('says which section is empty, on the section and in a toast', async () => {
+    const unexpected = vi.fn();
+    server.use(...signedInAs(CANDIDATE));
+    server.use(...hasProfile({ ...CANDIDATE_PROFILE, skills: [], languages: [] }));
+    server.use(...savesProfile(CANDIDATE_PROFILE, unexpected));
+
+    const { user } = await renderApp('/profile');
+    await user.click(screen.getByRole('switch', { name: 'Let recruiters find me' }));
+    await save(user);
+
+    const skills = within(await screen.findByRole('region', { name: 'Skills' }));
+    expect(skills.getByRole('alert')).toHaveTextContent('Add a skill, or turn the switch off.');
+    const languages = within(screen.getByRole('region', { name: 'Languages' }));
+    expect(languages.getByRole('alert')).toHaveTextContent(
+      'Add a language, or turn the switch off.',
+    );
+    expect(await screen.findAllByText('Add a skill, or turn the switch off.')).toHaveLength(2);
+    expect(unexpected).not.toHaveBeenCalled();
+  });
+
   it('leaves the optional sections out of the count', async () => {
     server.use(...signedInAs(CANDIDATE), ...listsCvs([CURRENT_CV]));
     server.use(

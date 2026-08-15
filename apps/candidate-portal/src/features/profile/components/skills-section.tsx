@@ -17,6 +17,7 @@ import {
 import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
+import { SectionError } from './section-error';
 
 export function SkillsSection({ control }: { control: Control<ProfileFormValues> }) {
   const skills = useFieldArray({ control, name: 'skills' });
@@ -48,6 +49,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
         description="Chosen from the platform's list — these are what Screening reads."
         needed="One skill needed to apply"
       >
+        <SectionError control={control} name="skills" />
         <EntryList
           ids={skills.fields.map((field) => field.id)}
           label={(index) => `Skill ${index + 1}`}

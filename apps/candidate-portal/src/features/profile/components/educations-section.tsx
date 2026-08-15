@@ -6,6 +6,7 @@ import { type Control, useFieldArray } from 'react-hook-form';
 import { BLANK_EDUCATION, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
+import { SectionError } from './section-error';
 
 export function EducationsSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'educations' });
@@ -16,6 +17,7 @@ export function EducationsSection({ control }: { control: Control<ProfileFormVal
       description="Degrees, diplomas and courses."
       needed="One qualification needed to apply"
     >
+      <SectionError control={control} name="educations" />
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Qualification ${index + 1}`}
