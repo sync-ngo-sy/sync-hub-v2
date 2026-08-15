@@ -59,8 +59,11 @@ _Avoid_: Status, pipeline stage, step.
 
 **Profile progress**:
 How much of a Complete profile the Candidate has and which requirements are still unfinished.
-Optional Projects and Links never prevent 100%; the database's Complete-profile marker is what
-actually gates applying.
+A ring carries the percentage, the notice above the editor lists what is left as things to do,
+and every field and section the rule asks for says so where it sits — in the description rather
+than the label, because a label is the field's accessible name. Optional Projects and Links never
+prevent 100%; the database's Complete-profile marker is what actually gates applying, and the
+browser restates the rule only so the editor can answer before a save rather than after it.
 _Avoid_: Completion score, profile strength, onboarding progress.
 
 **Candidate Card**:
