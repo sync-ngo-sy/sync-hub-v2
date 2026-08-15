@@ -5,7 +5,7 @@ connection, the generated SQLAlchemy models, and structured logging.
 
 - `settings.py` — the whole process configuration, read from `SYNC_`-prefixed environment
   variables. Nothing has a secret for a default.
-- `db.py` — one async engine over asyncpg (ADR-0004), handing out sessions and
+- `db.py` — one async engine over asyncpg, handing out sessions and
   transactions. The backend is the only data client; this is the whole data path.
 - `models.py` — **generated** from the migrated schema by `scripts/generate_models.py`.
   Never edit it; change a migration and regenerate. Relationships are `viewonly` — write by

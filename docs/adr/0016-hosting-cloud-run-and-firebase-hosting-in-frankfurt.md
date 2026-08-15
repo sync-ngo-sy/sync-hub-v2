@@ -44,7 +44,7 @@ an endpoint that one day sets a cache header would be publishing one user's data
 
 ## Three portals, one gate, and it is the Platform Portal
 
-There are three applications, not two (ADR-0011), and only one of them is ours to lock.
+There are three applications, not two, and only one of them is ours to lock.
 
 The Platform Portal is staff-only, so it is served from a small static-serving Cloud Run service
 with Identity-Aware Proxy enabled, restricted to the `sync.ngo` Workspace domain. IAP now runs
@@ -74,7 +74,7 @@ The Platform Portal's Cloud Run service is deployed in `europe-west1`, not `euro
 everything else. It serves static files, so its region costs nothing in latency, and the chain
 that forces the move is worth writing down because it looks arbitrary otherwise:
 
-- Sessions are host-only cookies with `SameSite=Lax` (ADR-0005). That works across
+- Sessions are host-only cookies with `SameSite=Lax`. That works across
   `admin.sync.ngo` → `api.sync.ngo` because they share one registrable domain.
 - Served instead from its `run.app` URL, the portal would be cross-*site* to the API —
   `run.app` is a public suffix — and `SameSite=Lax` would not attach the session cookie at all.
@@ -105,10 +105,9 @@ separate quotas, separate budgets, and nothing in staging able to authenticate a
 production. Deploy identities are per project and per environment.
 
 Serving the API anonymously needs `allUsers` as invoker, which Domain Restricted Sharing forbids.
-The exception is a tag binding rather than a blanket removal of the constraint — ADR-0010 records
-why, and the short version is that turning the constraint off requires organisation-scoped
-authority over every other constraint including the key-creation ban that makes federated
-identity mandatory.
+The exception is a tag binding rather than a blanket removal of the constraint: turning the
+constraint off requires organisation-scoped authority over every other constraint, including the
+key-creation ban that makes federated identity mandatory.
 
 ## Flat staging hostnames
 
@@ -127,7 +126,7 @@ free. The naming is uglier and cheaper.
 Session isolation between the two environments is the host-only cookie and nothing else. Setting
 a cookie domain of `.sync.ngo` would send staging's session cookie to production's API — a leak
 neither environment's tests would detect — so the API refuses a cookie domain in a deployed
-environment by configuration rather than by convention (ADR-0005).
+environment by configuration rather than by convention.
 
 ## DNS stays where it is
 

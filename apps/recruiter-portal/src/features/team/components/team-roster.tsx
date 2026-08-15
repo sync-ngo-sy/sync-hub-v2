@@ -110,6 +110,7 @@ export function TeamRoster({ profileId }: { profileId: string }) {
             ? memberChanges(member, profileId).map((change) => ({
                 label: change.label,
                 onSelect: () => setAsking({ member, change }),
+                destructive: change.destructive,
               }))
             : []
         }
