@@ -153,11 +153,13 @@ async def purge(
     async with transaction(session), without_the_written_once_guard(session):
         # `candidates_current_cv_fk` is ON DELETE RESTRICT: the pointer lets go before the CV
         # can. `is_searchable` goes with it — `candidates_searchable_needs_cv` will not have a
-        # Candidate be findable with no CV, and it is right about that.
+        # Candidate be findable with no CV, and it is right about that. The Complete-profile
+        # marker goes in the same statement, for the same reason: a Complete profile is one with
+        # a CV to apply with, and this row is about to have none.
         await session.execute(
             update(Candidate)
             .where(Candidate.id.in_(people))
-            .values(current_cv_id=None, is_searchable=False)
+            .values(current_cv_id=None, is_searchable=False, profile_completed_at=None)
         )
 
         # Anything filed about a person or by a tenant. Both scopes, because a seeded Tenant may

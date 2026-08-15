@@ -130,9 +130,15 @@ async def completed_at(session: AsyncSession, candidate_id: UUID) -> datetime | 
 
 
 async def make_no_cv_current(session: AsyncSession, candidate_id: UUID) -> None:
-    """A candidate back to holding no CV — the one state applying still refuses."""
+    """A candidate back to holding no CV — the one state applying still refuses.
+
+    The Complete-profile marker goes in the same statement: a Complete profile is one with a CV
+    to apply with, and a CHECK says so.
+    """
     await session.execute(
-        update(Candidate).where(Candidate.id == candidate_id).values(current_cv_id=None)
+        update(Candidate)
+        .where(Candidate.id == candidate_id)
+        .values(current_cv_id=None, profile_completed_at=None)
     )
     await session.commit()
 

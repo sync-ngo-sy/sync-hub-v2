@@ -357,8 +357,8 @@ async def test_the_searchable_flag_goes_on_and_off_again(
     await a_signed_in_candidate(browser, mailbox)
     await give_a_current_cv(db_session, await my_id(browser))
 
-    opted_in = await browser.put(PROFILE, json=a_profile(is_searchable=True))
-    opted_out = await browser.put(PROFILE, json=a_profile(is_searchable=False))
+    opted_in = await browser.put(PROFILE, json=a_filled_profile(is_searchable=True))
+    opted_out = await browser.put(PROFILE, json=a_filled_profile(is_searchable=False))
 
     assert opted_in.status_code == 200, opted_in.text
     assert opted_in.json()["is_searchable"] is True
