@@ -55,7 +55,10 @@ A_JOBS_CRITERIA: dict[str, Any] = {
 AN_APPLICANTS_PROFILE: dict[str, Any] = a_profile(
     headline="Backend engineer, 8 years",
     summary="Builds payment systems that stay up.",
-    location="Damascus, Syria",
+    phone="+963115550100",
+    phone_country="SY",
+    location_key="sy-damascus",
+    canonical_role_key="backend-engineer",
     experiences=[
         {
             "job_title": "Senior Engineer",

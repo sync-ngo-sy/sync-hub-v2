@@ -21,6 +21,7 @@ from sync_api.problems import (
 )
 from sync_api.uploads import discard_on_failure
 from sync_core import ObjectNotFoundError, get_logger, transaction
+from sync_core.completeness import refresh_completeness
 from sync_core.models import Candidate, CvParsingStatus
 from sync_core.models import Cv as CvRow
 from sync_core.storage import cv_object_path
@@ -132,16 +133,16 @@ class CvService:
                     detail="This CV has not been read yet, so it cannot be the current one. "
                     "Wait for it to be processed, or pick one that already has been.",
                 )
-            # Guarded, so making the current CV current again is not a profile change: any
-            # update of the candidate row enqueues a re-embedding of their whole profile.
-            await self._db.execute(
-                update(Candidate)
-                .where(
-                    Candidate.id == candidate_id,
-                    Candidate.current_cv_id.is_distinct_from(cv_id),
+            # Read under the lock this method already holds, so that making the current CV
+            # current again writes nothing: any update of the candidate row enqueues a
+            # re-embedding of their whole profile.
+            if await self._current_cv_id(candidate_id) != cv_id:
+                await self._db.execute(
+                    update(Candidate)
+                    .where(Candidate.id == candidate_id)
+                    .values(current_cv_id=cv_id)
                 )
-                .values(current_cv_id=cv_id)
-            )
+                await refresh_completeness(self._db, candidate_id)
 
         logger.info("cvs.made_current", candidate_id=str(candidate_id), cv_id=str(cv_id))
         return await self._as_payload(candidate_id, cv)

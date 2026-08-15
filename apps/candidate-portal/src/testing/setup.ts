@@ -9,6 +9,7 @@ configure({ asyncUtilTimeout: 5_000 });
 window.matchMedia ??= stubMatchMedia(() => false);
 
 window.scrollTo = vi.fn();
+Element.prototype.scrollIntoView ??= vi.fn();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 

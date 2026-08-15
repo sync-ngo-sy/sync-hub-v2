@@ -66,12 +66,27 @@ create table candidates (
 
   is_searchable boolean not null default false,
 
+  profile_completed_at timestamptz,
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
 
   foreign key (id, account_type) references profiles (id, account_type) on delete cascade,
   constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null),
+  constraint candidates_searchable_needs_a_complete_profile check (
+    not is_searchable or profile_completed_at is not null
+  ),
+  constraint candidates_completed_profile_is_filled_in check (
+    profile_completed_at is null
+    or (
+      current_cv_id is not null
+      and headline is not null and btrim(headline) <> ''
+      and summary  is not null and btrim(summary)  <> ''
+      and location_key is not null
+      and canonical_role_key is not null
+    )
+  ),
 
   constraint candidates_headline_length check (length(headline) <= 200),
   constraint candidates_summary_length  check (length(summary)  <= 5000),

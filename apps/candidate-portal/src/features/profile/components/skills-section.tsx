@@ -8,6 +8,8 @@ import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-skills';
 import { skillGroups } from '@/features/reference/options';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import {
   BLANK_SKILL,
   BLANK_UNMAPPED_SKILL,
@@ -17,6 +19,7 @@ import {
 import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
+import { SectionError } from './section-error';
 
 export function SkillsSection({ control }: { control: Control<ProfileFormValues> }) {
   const skills = useFieldArray({ control, name: 'skills' });
@@ -25,6 +28,8 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
   const listed = useWatch({ control, name: 'skills' });
   const otherValues = useWatch({ control, name: 'unmapped_skills' });
   const [editingOther, setEditingOther] = useState<number | null>(null);
+  const unanswered = useUnanswered(control, FIELDS_IN.skills);
+  const othersUnanswered = useUnanswered(control, FIELDS_IN['other-skills']);
 
   const addOther = () => {
     const index = others.fields.length;
@@ -44,9 +49,13 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
   return (
     <>
       <ProfileSection
+        id="skills"
         title="Skills"
         description="Chosen from the platform's list — these are what Screening reads."
+        needed="One skill needed to apply"
+        unanswered={unanswered}
       >
+        <SectionError control={control} name="skills" />
         <EntryList
           ids={skills.fields.map((field) => field.id)}
           label={(index) => `Skill ${index + 1}`}
@@ -102,9 +111,11 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
       </ProfileSection>
 
       <ProfileSection
+        id="other-skills"
         title="Other skills"
         description="Skills the platform has no name for, written however you like. Recruiters read
           these; Screening does not."
+        unanswered={othersUnanswered}
       >
         {others.fields.length === 0 ? (
           <p className="text-dense text-muted-foreground">

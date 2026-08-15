@@ -370,3 +370,50 @@ async def test_renaming_a_recruiter_enqueues_nothing(
 
     queued = await db_session.scalar(text("select count(*) from candidate_embedding_jobs"))
     assert queued == 0
+
+
+MARK_COMPLETE = text("update candidates set profile_completed_at = now() where id = :id")
+
+FILL_THE_ROWS_OWN_FIELDS = text(
+    "update candidates set headline = 'Open to work', summary = 'Ships boring things.', "
+    "location_key = 'sy-damascus', canonical_role_key = 'backend-engineer' where id = :id"
+)
+
+
+async def test_a_completion_marker_needs_the_fields_the_candidate_row_itself_holds(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="candidates_completed_profile_is_filled_in"):
+        await db_session.execute(MARK_COMPLETE, {"id": await my_id(browser)})
+    await db_session.rollback()
+
+
+async def test_the_service_role_cannot_mark_a_profile_complete_that_is_not(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+    await db_session.execute(FILL_THE_ROWS_OWN_FIELDS, {"id": candidate_id})
+
+    await db_session.execute(MARK_COMPLETE, {"id": candidate_id})
+
+    with pytest.raises(IntegrityError, match="is not complete"):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+async def test_global_search_cannot_be_switched_on_without_the_marker(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+
+    with pytest.raises(IntegrityError, match="candidates_searchable_needs_a_complete_profile"):
+        await db_session.execute(
+            text("update candidates set is_searchable = true where id = :id"), {"id": candidate_id}
+        )
+    await db_session.rollback()

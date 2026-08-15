@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 from sqlalchemy import func, literal, literal_column, select, text
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.orm import aliased
 
 from sync_core.models import CandidateProfileChunk
@@ -220,17 +221,22 @@ def _eligible(
 
 
 def _mentioning(keywords: str | None) -> tuple[ColumnElement[bool], ...]:
+    """Read against the whole profile rather than one fragment at a time. A complete profile is
+    always several fragments, so `-React` asked of each on its own excludes nobody: the education
+    of somebody who lists React does not mention it either."""
     if not keywords:
         return ()
     mentioned = aliased(CandidateProfileChunk, name="mentioned")
-    return (
-        select(literal(1))
-        .select_from(mentioned)
-        .where(
-            mentioned.candidate_id == CandidateProfileChunk.candidate_id,
-            mentioned.search_vector.op("@@")(func.websearch_to_tsquery(ENGLISH, keywords)),
+    whole = (
+        select(
+            func.to_tsvector(
+                ENGLISH,
+                func.string_agg(
+                    mentioned.chunk_text, aggregate_order_by(literal("\n"), mentioned.chunk_index)
+                ),
+            )
         )
-        .limit(1)
+        .where(mentioned.candidate_id == CandidateProfileChunk.candidate_id)
         .scalar_subquery()
-        .is_not(None),
     )
+    return (whole.op("@@")(func.websearch_to_tsquery(ENGLISH, keywords)),)
