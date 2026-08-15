@@ -327,11 +327,11 @@ async def _derived(session: AsyncSession) -> None:
              where t.id = n.id and t.told_index = t.hop_index
         """)
     )
-    # The CV parse failure is told when the parse gave up.
+    # A CV notification is told when the read finished, one way or the other.
     await session.execute(
         text(
             "update notifications n set created_at = c.created_at + interval '4 minutes' "
-            "from cvs c where n.type = 'cv_parse_failed' "
+            "from cvs c where n.type in ('cv_parse_failed', 'cv_parse_succeeded') "
             "and (n.payload ->> 'cv_id')::uuid = c.id"
         )
     )

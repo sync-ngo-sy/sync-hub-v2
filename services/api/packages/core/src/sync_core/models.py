@@ -126,6 +126,7 @@ class LocationKind(enum.StrEnum):
 
 class NotificationType(enum.StrEnum):
     CV_PARSE_FAILED = "cv_parse_failed"
+    CV_PARSE_SUCCEEDED = "cv_parse_succeeded"
     APPLICATION_STATUS_CHANGED = "application_status_changed"
 
 

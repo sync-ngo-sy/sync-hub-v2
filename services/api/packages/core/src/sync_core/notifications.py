@@ -23,6 +23,18 @@ class CvParseFailed(BaseModel):
     )
 
 
+class CvParseSucceeded(BaseModel):
+    """The platform read a CV. What it found is on the CV, as `parsed_cv_data`."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal[NotificationType.CV_PARSE_SUCCEEDED] = NotificationType.CV_PARSE_SUCCEEDED
+    cv_id: UUID = Field(description="The CV that was read, and the one a draft is built from.")
+    display_name: str = Field(
+        description="The name of the file the candidate uploaded, so the message can name it."
+    )
+
+
 class ApplicationStatusChanged(BaseModel):
     """An Application has moved. Every move produces one of these, whoever caused it."""
 
@@ -39,15 +51,13 @@ class ApplicationStatusChanged(BaseModel):
 
 
 NotificationPayload = Annotated[
-    CvParseFailed | ApplicationStatusChanged, Field(discriminator="type")
+    CvParseFailed | CvParseSucceeded | ApplicationStatusChanged, Field(discriminator="type")
 ]
 
-_STORED_PAYLOAD: Final[TypeAdapter[CvParseFailed | ApplicationStatusChanged]] = TypeAdapter(
-    NotificationPayload
-)
+_STORED_PAYLOAD: Final[TypeAdapter[NotificationPayload]] = TypeAdapter(NotificationPayload)
 
 
-def payload_of(stored: dict[str, Any]) -> CvParseFailed | ApplicationStatusChanged:
+def payload_of(stored: dict[str, Any]) -> NotificationPayload:
     return _STORED_PAYLOAD.validate_python(stored)
 
 

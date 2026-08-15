@@ -44,12 +44,25 @@ type CandidateProfile = components['schemas']['CandidateProfile'];
 
 const PARSED_CV = { ...PROCESSING_CV, parsing_status: 'ready' as const, detected_language: 'en' };
 
+const QUEUED_CV = {
+  ...PROCESSING_CV,
+  id: '00000000-0000-4000-8000-000000000206',
+  display_name: 'just-uploaded.pdf',
+  parsing_status: 'uploaded' as const,
+};
+
 const FILLED_HEADLINE = CV_DRAFT.headline as string;
 const OWN_HEADLINE = CANDIDATE_PROFILE.headline as string;
 
-async function openProfile(handlers: HttpHandler[] = [], profile = CANDIDATE_PROFILE) {
+async function openProfile(
+  handlers: HttpHandler[] = [],
+  {
+    profile = CANDIDATE_PROFILE,
+    at = '/profile',
+  }: { profile?: CandidateProfile; at?: string } = {},
+) {
   server.use(...signedInAs(CANDIDATE), ...hasProfile(profile), ...handlers);
-  return renderApp('/profile');
+  return renderApp(at);
 }
 
 function aPdf(name = 'lina-khoury-cv.pdf'): File {
@@ -221,6 +234,25 @@ describe('waiting for a CV to be read', () => {
     expect(await screen.findByText('Reading')).toBeVisible();
     expect(await screen.findByText('Ready')).toBeVisible();
     expect(screen.queryByText('Reading')).toBeNull();
+  });
+
+  it('spins on the row being read, and stops once it has been', async () => {
+    await openProfile([...listsCvsInTurn([PROCESSING_CV], [PARSED_CV]), ...drafts(CV_DRAFT)]);
+
+    const spinner = `Reading “${PROCESSING_CV.display_name}”`;
+    expect(await screen.findByRole('progressbar', { name: spinner })).toBeVisible();
+
+    await waitFor(() => expect(screen.queryByRole('progressbar', { name: spinner })).toBeNull());
+  });
+
+  it('spins on every CV still to be read, and on none that is settled', async () => {
+    await openProfile([...listsCvs([QUEUED_CV, PROCESSING_CV, READY_CV, FAILED_CV])]);
+
+    const spinners = await screen.findAllByRole('progressbar');
+    expect(spinners.map((node) => node.getAttribute('aria-label'))).toEqual([
+      `Reading “${QUEUED_CV.display_name}”`,
+      `Reading “${PROCESSING_CV.display_name}”`,
+    ]);
   });
 
   it('explains a failed parse and invites another file', async () => {
@@ -436,6 +468,27 @@ describe('a CV filling the form', () => {
     await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
     expect(asked).toHaveBeenCalledTimes(1);
     expect(asked).toHaveBeenCalledWith(PROCESSING_CV.id);
+  });
+
+  it('fills when a CV that was already being read on arrival finishes', async () => {
+    await openProfile([...listsCvsInTurn([PROCESSING_CV], [PARSED_CV]), ...drafts(CV_DRAFT)]);
+
+    expect(await screen.findByText('Reading')).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(
+      screen.getByText(`The fields below now say what “${PARSED_CV.display_name}” says`),
+    ).toBeVisible();
+  });
+
+  it('leaves a CV that was already read on arrival to be asked for', async () => {
+    const asked = vi.fn();
+    await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT, asked)]);
+
+    expect(await screen.findByRole('heading', { name: READY_CV.display_name })).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+    expect(asked).not.toHaveBeenCalled();
   });
 
   it('leaves the fields alone while the CV is still being read', async () => {
@@ -710,6 +763,65 @@ describe('uploading a CV and saving what it filled', () => {
   });
 });
 
+describe('arriving from the notification about a parse', () => {
+  it('fills the form from the CV the address names, and says which one spoke', async () => {
+    await openProfile([...listsCvs([CURRENT_CV, READY_CV]), ...drafts(CV_DRAFT)], {
+      at: `/profile?fill=${READY_CV.id}`,
+    });
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(
+      screen.getByText(`The fields below now say what “${READY_CV.display_name}” says`),
+    ).toBeVisible();
+    expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
+  });
+
+  it('asks that CV for the draft, and no other', async () => {
+    const asked = vi.fn();
+    await openProfile([...listsCvs([CURRENT_CV, READY_CV]), ...drafts(CV_DRAFT, asked)], {
+      at: `/profile?fill=${READY_CV.id}`,
+    });
+
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    expect(asked).toHaveBeenCalledTimes(1);
+    expect(asked).toHaveBeenCalledWith(READY_CV.id);
+  });
+
+  it('puts back what the fields held when the fill is undone', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)], {
+      at: `/profile?fill=${READY_CV.id}`,
+    });
+    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+
+    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+    expect(screen.getByText('Everything is saved.')).toBeVisible();
+  });
+
+  it('fills nothing from a CV that is gone, and leaves the page usable', async () => {
+    const asked = vi.fn();
+    await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT, asked)], {
+      at: '/profile?fill=00000000-0000-4000-8000-000000000999',
+    });
+
+    expect(await screen.findByRole('heading', { name: READY_CV.display_name })).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+    expect(asked).not.toHaveBeenCalled();
+  });
+
+  it('fills nothing from a CV the platform could not read', async () => {
+    const asked = vi.fn();
+    await openProfile([...listsCvs([FAILED_CV]), ...drafts(CV_DRAFT, asked)], {
+      at: `/profile?fill=${FAILED_CV.id}`,
+    });
+
+    expect(await screen.findByText("Couldn't be read")).toBeVisible();
+    expect(headline()).toHaveValue(OWN_HEADLINE);
+    expect(asked).not.toHaveBeenCalled();
+  });
+});
+
 describe('undoing a fill', () => {
   it('puts back exactly what the form held, hand-written and unsaved included', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
@@ -761,7 +873,7 @@ describe('undoing a fill', () => {
   it('fills an empty profile with nothing to undo, and says so all the same', async () => {
     const { user } = await openProfile(
       [...listsCvs([READY_CV]), ...drafts(CV_DRAFT), ...savesProfile(EMPTY_PROFILE)],
-      EMPTY_PROFILE,
+      { profile: EMPTY_PROFILE },
     );
     await fillFrom(user, READY_CV);
 

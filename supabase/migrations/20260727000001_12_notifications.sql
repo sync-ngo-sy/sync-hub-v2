@@ -4,6 +4,7 @@
 
 create type notification_type as enum (
   'cv_parse_failed',
+  'cv_parse_succeeded',
   'application_status_changed'
 );
 
