@@ -148,6 +148,67 @@ create trigger forbid_searchable_without_a_readable_cv
   for each row when (new.is_searchable)
   execute function forbid_searchable_without_a_readable_cv();
 
+-- The half of the Complete-profile rule one row cannot answer. `candidates` holds the CHECK over
+-- its own columns (migration 02); the name and the Phone are on `profiles`, the CV has to have
+-- been read rather than merely uploaded, and four sections are counted in four other tables.
+--
+-- Deferred, because a profile is saved whole: the row is written and its sections are deleted and
+-- re-inserted in one transaction, so an immediate check would read the sections half way through
+-- being replaced. At commit it reads the state the transaction is actually committing.
+--
+-- It re-reads the row rather than trusting `new`, so a marker set and then cleared again before
+-- commit refuses nothing, and a candidate deleted in the same transaction refuses nothing either.
+create function refuse_an_unearned_completion() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  claims   public.candidates;
+  identity public.profiles;
+begin
+  select * into claims from public.candidates where id = new.id;
+  if not found or claims.profile_completed_at is null then
+    return null;
+  end if;
+
+  select * into identity from public.profiles where id = claims.id;
+  if btrim(identity.full_name) = '' then
+    raise exception 'candidate % is not complete: it has no name', claims.id
+      using errcode = 'check_violation';
+  end if;
+  if identity.phone is null or identity.phone_country is null then
+    raise exception 'candidate % is not complete: it has no phone', claims.id
+      using errcode = 'check_violation';
+  end if;
+
+  if not exists (
+    select 1 from public.cvs
+    where id = claims.current_cv_id and candidate_id = claims.id
+      and parsing_status = 'ready' and deleted_at is null
+  ) then
+    raise exception 'candidate % is not complete: no CV of theirs has been read', claims.id
+      using errcode = 'check_violation';
+  end if;
+
+  if not exists (select 1 from public.candidate_experiences where candidate_id = claims.id)
+    or not exists (select 1 from public.candidate_educations where candidate_id = claims.id)
+    or not exists (select 1 from public.candidate_skills     where candidate_id = claims.id)
+    or not exists (select 1 from public.candidate_languages  where candidate_id = claims.id)
+  then
+    raise exception 'candidate % is not complete: a required section is empty', claims.id
+      using errcode = 'check_violation';
+  end if;
+
+  return null;  -- AFTER trigger
+end;
+$$;
+
+create constraint trigger refuse_an_unearned_completion
+  after insert or update on candidates
+  deferrable initially deferred
+  for each row when (new.profile_completed_at is not null)
+  execute function refuse_an_unearned_completion();
+
 -- A Snapshot is the frozen profile an Application was judged from, and the two histories are
 -- the record of what was decided and when. All of it was guarded by convention only, which is
 -- no guard at all against this platform's own backend: it holds the service role, so RLS does

@@ -11,7 +11,7 @@ from tests.support.applications import (
 )
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_published_job
-from tests.support.profiles import a_profile, give_a_current_cv, my_id
+from tests.support.profiles import a_filled_profile, give_a_current_cv, my_id
 
 if TYPE_CHECKING:
     from httpx import AsyncClient, Response
@@ -167,18 +167,21 @@ async def delete_note(recruiter: AsyncClient, url: str, note_id: str | UUID) -> 
 async def a_searchable_candidate(
     browser: AsyncClient, mailbox: Mailbox, session: AsyncSession, label: str = "searchable"
 ) -> UUID:
-    """A Candidate who has applied nowhere, but let Global search show them to everyone."""
+    """A Candidate who has applied nowhere, but let Global search show them to everyone.
+
+    Their profile is a Complete one, because an incomplete profile cannot opt in at all.
+    """
     await a_signed_in_candidate(browser, mailbox, label)
     candidate_id = await my_id(browser)
     await give_a_current_cv(session, candidate_id)
-    opted_in = await browser.put(CANDIDATE_PROFILE, json=a_profile(is_searchable=True))
+    opted_in = await browser.put(CANDIDATE_PROFILE, json=a_filled_profile(is_searchable=True))
     assert opted_in.status_code == 200, opted_in.text
     return candidate_id
 
 
 async def stop_being_searchable(browser: AsyncClient) -> None:
     """The Candidate takes themselves back out of Global search."""
-    opted_out = await browser.put(CANDIDATE_PROFILE, json=a_profile(is_searchable=False))
+    opted_out = await browser.put(CANDIDATE_PROFILE, json=a_filled_profile(is_searchable=False))
     assert opted_out.status_code == 200, opted_out.text
 
 

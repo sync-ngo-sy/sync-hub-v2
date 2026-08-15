@@ -13,6 +13,7 @@ import { useMyProfile } from '../hooks/use-my-profile';
 import { useSaveProfile } from '../hooks/use-save-profile';
 import { profileRejection } from '../rejection';
 import { type ProfileFormValues, profileSchema, toFormValues, toProfile } from '../schemas/profile';
+import { CompletionNotice } from './completion-notice';
 import { EducationsSection } from './educations-section';
 import { ExperiencesSection } from './experiences-section';
 import { FilledNotice } from './filled-notice';
@@ -89,6 +90,8 @@ export function ProfileEditor() {
       ) : null}
 
       <MyCandidateCard />
+
+      <CompletionNotice />
 
       <form onSubmit={submit} noValidate className="space-y-6">
         <IdentitySection control={control} />

@@ -104,7 +104,8 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="is_searchable"
         label="Let recruiters find me"
-        description="Adds you to Global search. Needs a current CV that has been read."
+        description={`Adds you to Global search. Needs a complete profile, and a current CV the
+          platform has read.`}
         orientation="horizontal"
       >
         {({ value, onChange, ...field }) => (

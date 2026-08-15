@@ -14,7 +14,9 @@ from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
     EMPTY_PROFILE,
     SECTIONS,
+    a_filled_profile,
     a_profile,
+    completed_at,
     embedding_jobs,
     give_a_current_cv,
     my_id,
@@ -25,6 +27,7 @@ from tests.support.tenants import an_admin
 
 PROFILE = "/v1/candidates/me/profile"
 EXPERIENCE_TOTAL = f"{PROFILE}/experience-total"
+SEARCHABLE_REFUSAL = "urn:sync:problem:searchable-needs-a-complete-profile"
 
 A_FULL_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
@@ -386,7 +389,8 @@ async def test_opting_in_without_a_cv_is_refused(browser: AsyncClient, mailbox: 
     )
 
     assert refused.status_code == 409
-    assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
+    assert refused.json()["type"] == SEARCHABLE_REFUSAL
+    assert "a CV that has been read" in refused.json()["detail"]
     assert (await browser.get(PROFILE)).json() == EMPTY_PROFILE
 
 
@@ -401,7 +405,87 @@ async def test_opting_in_before_the_cv_is_parsed_is_refused(
     refused = await browser.put(PROFILE, json=a_profile(is_searchable=True))
 
     assert refused.status_code == 409
-    assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
+    assert refused.json()["type"] == SEARCHABLE_REFUSAL
+
+
+async def test_opting_in_with_a_read_cv_but_a_thin_profile_is_refused_and_says_what_is_missing(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    await give_a_current_cv(db_session, await my_id(browser))
+
+    refused = await browser.put(PROFILE, json=a_filled_profile(languages=[], is_searchable=True))
+
+    assert refused.status_code == 409, refused.text
+    detail = refused.json()["detail"]
+    assert refused.json()["type"] == SEARCHABLE_REFUSAL
+    assert "at least one language" in detail
+    assert "a summary" not in detail
+    assert (await browser.get(PROFILE)).json() == EMPTY_PROFILE
+
+
+async def test_a_complete_profile_may_opt_into_global_search(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    await give_a_current_cv(db_session, await my_id(browser))
+
+    opted_in = await browser.put(PROFILE, json=a_filled_profile(is_searchable=True))
+
+    assert opted_in.status_code == 200, opted_in.text
+    assert opted_in.json()["is_searchable"] is True
+
+
+async def test_a_profile_becomes_complete_in_the_save_that_finishes_it(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+
+    part_way = await browser.put(PROFILE, json=a_filled_profile(summary=None))
+    assert part_way.status_code == 200, part_way.text
+    assert await completed_at(db_session, candidate_id) is None
+
+    finished = await browser.put(PROFILE, json=a_filled_profile())
+
+    assert finished.status_code == 200, finished.text
+    assert await completed_at(db_session, candidate_id) is not None
+
+
+async def test_a_profile_taken_back_apart_is_not_complete_any_more(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+    await browser.put(PROFILE, json=a_filled_profile(is_searchable=True))
+
+    emptied = await browser.put(PROFILE, json=a_filled_profile(skills=[]))
+
+    assert emptied.status_code == 200, emptied.text
+    assert await completed_at(db_session, candidate_id) is None
+    # Opting out has to reach Postgres before the marker does: a Searchable profile with no
+    # marker is a CHECK violation, and one save cannot land half of itself.
+    assert (await browser.get(PROFILE)).json()["is_searchable"] is False
+
+
+async def test_the_optional_sections_never_stand_between_a_profile_and_complete(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+
+    saved = await browser.put(
+        PROFILE,
+        json=a_filled_profile(
+            projects=[], unmapped_skills=[], linkedin_url=None, github_url=None, portfolio_url=None
+        ),
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert await completed_at(db_session, candidate_id) is not None
 
 
 async def test_a_recruiter_is_refused_at_the_candidate_routes(

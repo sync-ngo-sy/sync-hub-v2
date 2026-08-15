@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 from uuid import uuid4
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +45,6 @@ from tests.support.jobs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
-    AN_EDUCATION,
     AN_EXPERIENCE,
     a_filled_profile,
     a_saved_profile,
@@ -363,31 +363,64 @@ async def test_applying_with_neither_a_job_nor_a_qualification_is_refused_and_sa
     refused = await apply_to(other_browser, job["id"])
 
     assert refused.status_code == 422, refused.text
-    assert "either a job or a qualification" in refused.json()["detail"]
+    detail = refused.json()["detail"]
+    assert "at least one job" in detail
+    assert "at least one qualification" in detail
 
 
-async def test_either_a_job_or_a_qualification_is_enough(
+@pytest.mark.parametrize(
+    ("without", "named"),
+    [
+        ({"experiences": []}, "at least one job"),
+        ({"educations": []}, "at least one qualification"),
+        ({"languages": []}, "at least one language"),
+        ({"summary": None}, "a summary"),
+        ({"headline": None}, "a headline"),
+        ({"location_key": None}, "where you are"),
+        ({"canonical_role_key": None}, "what kind of work you do"),
+        ({"phone": None, "phone_country": None}, "a phone number and the country it belongs to"),
+    ],
+)
+async def test_a_job_and_a_qualification_are_both_asked_for_like_every_other_requirement(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    without: dict[str, Any],
+    named: str,
+) -> None:
+    """One missing answer refuses the Application, and the refusal names that answer."""
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_saved_profile(other_browser, a_filled_profile(**without))
+
+    refused = await apply_to(other_browser, job["id"])
+
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["type"] == "urn:sync:problem:incomplete-profile"
+    assert named in refused.json()["detail"]
+
+
+async def test_the_optional_sections_never_stand_between_a_candidate_and_applying(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """Projects, Other skills and Links are worth having, and nobody is held back for not
+    having them."""
     job = await a_published_job(recruiter)
     await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
     await a_saved_profile(
-        other_browser, a_filled_profile(experiences=[], educations=[AN_EDUCATION])
+        other_browser,
+        a_filled_profile(
+            projects=[], unmapped_skills=[], linkedin_url=None, github_url=None, portfolio_url=None
+        ),
     )
-    only_educated = await apply_to(other_browser, job["id"])
-    assert only_educated.status_code == 201, only_educated.text
 
-    await a_saved_profile(
-        other_browser, a_filled_profile(experiences=[AN_EXPERIENCE], educations=[])
-    )
-    elsewhere = await a_published_job(recruiter)
+    accepted = await apply_to(other_browser, job["id"])
 
-    only_employed = await apply_to(other_browser, elsewhere["id"])
-
-    assert only_employed.status_code == 201, only_employed.text
+    assert accepted.status_code == 201, accepted.text
 
 
 async def test_an_empty_profile_is_refused_before_anything_is_written(

@@ -76,7 +76,8 @@ class CandidateDeletion:
 
         The scrub lands first and whole: `candidates_searchable_needs_cv` refuses a Searchable
         candidate with no current CV, so dropping `current_cv_id` and opting out of Global search
-        have to reach Postgres in the same flush.
+        have to reach Postgres in the same flush. The Complete-profile marker goes with them, for
+        the same reason one flush over: the fields it stands on are being emptied.
 
         Then the CVs, because `forbid_deleting_current_cv` fires for the service role too and
         needs `current_cv_id` already NULL. The embedding job goes last: every write above it
@@ -100,6 +101,7 @@ class CandidateDeletion:
             candidate.portfolio_url = None
             candidate.unmapped_skills = []
             candidate.is_searchable = False
+            candidate.profile_completed_at = None
             candidate.deleted_at = now
             await self._db.flush()
 

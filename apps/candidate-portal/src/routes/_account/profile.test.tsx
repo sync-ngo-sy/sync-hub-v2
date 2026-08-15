@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
+import { listsCvs } from '@/features/cvs/testing/handlers';
 import {
   calculatesExperience,
   failsToLoadProfile,
@@ -16,8 +17,9 @@ import { failsToLoadCanonicalSkills } from '@/features/reference/testing/handler
 import {
   CANDIDATE,
   CANDIDATE_PROFILE,
+  CURRENT_CV,
   MALFORMED_REQUEST,
-  SEARCHABLE_NEEDS_CV,
+  SEARCHABLE_NEEDS_A_COMPLETE_PROFILE,
   SERVER_FAULT,
   UNKNOWN_SKILL,
 } from '@/testing/fixtures';
@@ -450,15 +452,17 @@ describe('the profile editor', () => {
     expect(sent.body?.portfolio_url).toBeNull();
   });
 
-  it('blames the searchable switch when Global search needs a CV first', async () => {
+  it('blames the searchable switch when Global search needs a complete profile', async () => {
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
-    server.use(...refusesSearchable(SEARCHABLE_NEEDS_CV));
+    server.use(...refusesSearchable(SEARCHABLE_NEEDS_A_COMPLETE_PROFILE));
 
     const { user } = await renderApp('/profile');
     await user.click(screen.getByRole('switch', { name: 'Let recruiters find me' }));
     await save(user);
 
-    expect(await screen.findByText(SEARCHABLE_NEEDS_CV.detail as string)).toBeVisible();
+    expect(
+      await screen.findByText(SEARCHABLE_NEEDS_A_COMPLETE_PROFILE.detail as string),
+    ).toBeVisible();
     expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).toHaveAttribute(
       'aria-invalid',
     );
@@ -595,5 +599,56 @@ describe('leaving the profile editor', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/jobs'));
     expect(screen.queryByText('Leave without saving?')).toBeNull();
+  });
+});
+
+describe('profile progress', () => {
+  it('says how far along the profile is, and what is still missing', async () => {
+    await openProfile();
+
+    expect(await screen.findByText('Your profile is 91% complete')).toBeVisible();
+    expect(screen.getByText('Upload a CV and wait for it to be read')).toBeVisible();
+  });
+
+  it('names every unfinished requirement at once', async () => {
+    server.use(...signedInAs(CANDIDATE));
+    server.use(
+      ...hasProfile({
+        ...CANDIDATE_PROFILE,
+        summary: null,
+        canonical_role_key: null,
+        languages: [],
+      }),
+    );
+
+    await renderApp('/profile');
+
+    expect(await screen.findByText('Your profile is 64% complete')).toBeVisible();
+    for (const action of [
+      'Upload a CV and wait for it to be read',
+      'Choose what you do',
+      'Write a summary',
+      'Add at least one language',
+    ]) {
+      expect(screen.getByText(action)).toBeVisible();
+    }
+  });
+
+  it('leaves the optional sections out of the count', async () => {
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([CURRENT_CV]));
+    server.use(
+      ...hasProfile({
+        ...CANDIDATE_PROFILE,
+        projects: [],
+        unmapped_skills: [],
+        linkedin_url: null,
+        github_url: null,
+        portfolio_url: null,
+      }),
+    );
+
+    await renderApp('/profile');
+
+    expect(await screen.findByText('Your profile is complete')).toBeVisible();
   });
 });
