@@ -43,7 +43,8 @@ create table application_profile_snapshots (
   application_id uuid primary key references applications (id) on delete cascade,
 
   full_name text not null,
-  phone     text,
+  phone         text,
+  phone_country text,
   headline  text,
   summary   text,
 
@@ -63,7 +64,32 @@ create table application_profile_snapshots (
   total_experience_years int not null
     constraint asnap_total_experience_nonneg check (total_experience_years >= 0),
 
-  captured_at timestamptz not null default now()
+  -- The Links travel with the Application, like every other thing the Candidate was reviewed on,
+  -- and in the same shape the live columns hold: a Snapshot cannot contain something a profile
+  -- could not.
+  linkedin_url  text,
+  github_url    text,
+  portfolio_url text,
+
+  captured_at timestamptz not null default now(),
+
+  constraint asnap_phone_is_e164 check (phone ~ '^\+[1-9][0-9]{1,14}$'),
+  constraint asnap_phone_has_a_country check (num_nonnulls(phone, phone_country) <> 1),
+  constraint asnap_phone_country_is_iso check (phone_country ~ '^[A-Z]{2}$'),
+
+  constraint asnap_linkedin_url_shape check (
+    linkedin_url is null
+    or (linkedin_url like 'https://www.linkedin.com/in/%' and length(linkedin_url) <= 2000)
+  ),
+  constraint asnap_github_url_shape check (
+    github_url is null
+    or (github_url like 'https://github.com/%' and length(github_url) <= 2000)
+  ),
+  constraint asnap_portfolio_url_shape check (
+    portfolio_url is null
+    or ((portfolio_url like 'http://%' or portfolio_url like 'https://%')
+        and length(portfolio_url) <= 2000)
+  )
 );
 
 create table application_experiences (
