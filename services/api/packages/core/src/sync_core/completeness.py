@@ -25,12 +25,6 @@ if TYPE_CHECKING:
 
 
 class Requirement(StrEnum):
-    """One thing a Complete profile has, in the order the editor asks for it.
-
-    Projects, Other skills and Links are deliberately not here: they are worth having, and
-    nobody is held back from applying for not having them.
-    """
-
     CV = "cv"
     FULL_NAME = "full_name"
     PHONE = "phone"
@@ -46,9 +40,6 @@ class Requirement(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ProfileFacts:
-    """What the rule reads, and nothing else — so a profile, a draft of one and a form part way
-    through being typed can all be measured by the same function."""
-
     has_a_read_cv: bool = False
     full_name: str | None = None
     phone: str | None = None
@@ -68,12 +59,6 @@ def _said(value: str | None) -> bool:
 
 
 def missing_requirements(facts: ProfileFacts) -> tuple[Requirement, ...]:
-    """Every requirement the profile has not met, in `Requirement` order.
-
-    A Phone is present when both halves of it are: the number on its own names no country, and
-    a country on its own is nothing to dial. That the number is one that country can *dial* is
-    held where it is stored — the payload refuses it, and so does a CHECK.
-    """
     met = {
         Requirement.CV: facts.has_a_read_cv,
         Requirement.FULL_NAME: _said(facts.full_name),
@@ -91,11 +76,6 @@ def missing_requirements(facts: ProfileFacts) -> tuple[Requirement, ...]:
 
 
 def completion_percent(missing: tuple[Requirement, ...]) -> int:
-    """How far along the profile is, as a whole percent.
-
-    Integer arithmetic, rounding halves up, because the browser states this rule too and the two
-    have to answer the same number — and `round()` and `Math.round()` do not agree on a half.
-    """
     total = len(Requirement)
     met = total - len(missing)
     return (met * 100 + total // 2) // total
@@ -119,7 +99,6 @@ def _counted(section: _Section, candidate_id: UUID) -> ColumnElement[int]:
 
 
 async def profile_facts(session: AsyncSession, candidate_id: UUID) -> ProfileFacts:
-    """The saved profile, as the rule reads it: one statement across the six tables it spans."""
     row = (
         await session.execute(
             select(
@@ -168,16 +147,10 @@ async def profile_facts(session: AsyncSession, candidate_id: UUID) -> ProfileFac
 async def refresh_completeness(
     session: AsyncSession, candidate_id: UUID
 ) -> tuple[Requirement, ...]:
-    """Bring `profile_completed_at` up to date with the profile as it now stands, and say what is
-    still missing. The caller's transaction owns the commit, so the marker lands with the save
-    that earned it rather than after it.
-
-    The row is written only when the answer changes: any update of it enqueues a re-embedding of
-    the whole profile, and "when it became Complete" is not a timestamp to move on every save.
-    """
+    await session.flush()
     missing = missing_requirements(await profile_facts(session, candidate_id))
     candidate = await session.get(Candidate, candidate_id)
-    if candidate is None:  # pragma: no cover — every caller holds this row
+    if candidate is None:  # pragma: no cover
         raise LookupError(f"no candidate row for {candidate_id}")
 
     if missing and candidate.profile_completed_at is not None:
