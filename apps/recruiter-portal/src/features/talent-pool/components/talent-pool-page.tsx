@@ -117,7 +117,11 @@ export function TalentPoolPage({
           onRowOpen={onCandidateOpen}
           rowHref={candidateHref}
           rowActions={(entry) => [
-            { label: 'Drop from talent pool', onSelect: () => setDropping(entry) },
+            {
+              label: 'Drop from talent pool',
+              onSelect: () => setDropping(entry),
+              destructive: true,
+            },
           ]}
           isLoading={saved.isPending}
           error={

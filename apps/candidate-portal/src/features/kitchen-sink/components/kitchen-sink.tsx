@@ -17,7 +17,7 @@ import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import { Info, Search } from 'lucide-react';
+import { Info, Search, Trash2 } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -244,6 +244,10 @@ export default function KitchenSink() {
         <Button variant="ghost">Ghost</Button>
         <Button variant="link">Link</Button>
         <Button variant="destructive">Delete account</Button>
+        <Button variant="destructive-outline">
+          <Trash2 data-icon="inline-start" />
+          Delete CV
+        </Button>
         <Button disabled>Disabled</Button>
         <Button size="sm">Small</Button>
         <Button size="lg">Large</Button>

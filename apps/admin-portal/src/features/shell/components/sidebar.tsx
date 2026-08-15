@@ -110,11 +110,11 @@ function NavLink({ destination: { to, label, icon: Icon }, collapsed, onNavigate
       onClick={onNavigate}
       activeProps={{ 'aria-current': 'page' }}
       className={cn(
-        'flex items-center rounded-md p-2.5 text-dense hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground',
+        'group relative flex items-center rounded-md p-2.5 text-dense font-nav hover:bg-sidebar-accent/60 aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground aria-[current=page]:before:absolute aria-[current=page]:before:inset-y-2 aria-[current=page]:before:left-0 aria-[current=page]:before:w-0.75 aria-[current=page]:before:rounded-full aria-[current=page]:before:bg-sidebar-primary',
         collapsed ? 'justify-center' : 'gap-2.5',
       )}
     >
-      <Icon className="size-4.5 shrink-0" />
+      <Icon className="size-4.5 shrink-0 group-aria-[current=page]:text-sidebar-accent-foreground" />
       <span className={collapsed ? 'sr-only' : undefined}>{label}</span>
     </Link>
   );

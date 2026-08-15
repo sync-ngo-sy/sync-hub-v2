@@ -56,7 +56,7 @@ export function EntryList({
           const removeButton = (
             <Button
               type="button"
-              variant="ghost"
+              variant="destructive-outline"
               size={compact ? 'icon-xs' : 'sm'}
               className={compact ? 'absolute top-2 right-2' : undefined}
               aria-label={`Remove ${label(index)}`}
