@@ -101,6 +101,15 @@ def test_an_address_carrying_somebody_elses_credentials_is_not_a_portfolio(typed
         portfolio_address(typed)
 
 
+def test_credentials_are_refused_on_every_kind_of_link_alike() -> None:
+    """A stored address is rendered as a live link, so the one that opens it has to be the one
+    that was typed — not the one left after a normalizer quietly dropped a `user@` from it."""
+    with pytest.raises(ValueError, match="LinkedIn"):
+        linkedin_address("https://evil@www.linkedin.com/in/amina-haddad")
+    with pytest.raises(ValueError, match="GitHub"):
+        github_address("https://evil:secret@github.com/amina-haddad")
+
+
 @pytest.mark.parametrize(
     "typed",
     [

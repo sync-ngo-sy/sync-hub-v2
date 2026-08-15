@@ -30,7 +30,6 @@ function entry(label: string) {
   return within(screen.getByRole('group', { name: label }));
 }
 
-/** The editor's own fields. The card above carries links named the same, by design. */
 function links() {
   return within(screen.getByRole('region', { name: 'Links' }));
 }

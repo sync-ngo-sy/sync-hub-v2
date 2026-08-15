@@ -473,6 +473,21 @@ an Application; a Tag offered here is candidate-scoped, which is the other half 
 vocabulary.
 _Avoid_: Candidate detail (a Profile is the Candidate's own; this is the Tenant's reading of it).
 
+**Candidate Card**:
+The one block that says who a Candidate is — avatar, name, Canonical role, headline, the two ways
+to reach them, and the Links. It leads the reading column on the Application review and on the
+Candidate view, and this portal owns it: the Candidate Portal owns its own, because a Recruiter
+reads a candidate to judge them and a Candidate reads themselves to correct themselves. It owns
+the name heading, at level two, because a page header already names the person above it. Email,
+phone and the Links are the card's own, rendered from the profile it is given rather than passed
+in as facts, so no page here can show a person and leave one out. Everything else is a fact the
+page supplies, because what is worth saying differs by page — the Application review names the
+Job and the dates it moved, the Candidate view names the Location and the experience. Facts sit
+under a hairline rule with no fill of their own, so the card never reads as a box inside a box.
+It holds no actions: anything a reader can do to a Candidate belongs to the page header, not to
+the block that describes them.
+_Avoid_: Profile header, summary card, identity band.
+
 **Full profile**:
 The portal value that puts a live Candidate record and a frozen Application Snapshot into the
 same rendering shape. `FullProfile` is rendered by `CandidateProfile`; the conversion functions

@@ -58,6 +58,13 @@ describe('a GitHub address', () => {
   );
 });
 
+describe('credentials on an address', () => {
+  it('are refused on every kind of link alike, so a stored address is the one that opens', () => {
+    expect(linkedinAddress('https://evil@www.linkedin.com/in/amina-haddad')).toBeNull();
+    expect(githubAddress('https://evil:secret@github.com/amina-haddad')).toBeNull();
+  });
+});
+
 describe('a portfolio address', () => {
   it.each([
     ['amina-haddad.dev', 'https://amina-haddad.dev'],

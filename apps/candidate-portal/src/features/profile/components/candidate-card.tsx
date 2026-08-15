@@ -68,7 +68,7 @@ interface CandidateCardProps {
   phone?: string | null;
   canonicalRole?: string | null;
   headline?: string | null;
-  links?: ProfileLinks;
+  links: ProfileLinks;
   facts?: CandidateFact[];
   factsLabel?: string;
   headingLevel?: 1 | 2;
@@ -82,7 +82,7 @@ export function CandidateCard({
   phone,
   canonicalRole,
   headline,
-  links = {},
+  links,
   facts = [],
   factsLabel = 'Candidate facts',
   headingLevel = 1,

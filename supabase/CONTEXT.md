@@ -40,8 +40,9 @@ different question and a list would have to say what every entry is. Each is sto
 normalised form, which a CHECK holds: a LinkedIn is `https://www.linkedin.com/in/…`, a GitHub
 is the account rather than one of its repositories, and a portfolio is an address a browser
 would open. A handle typed on its own becomes the whole address before it is stored, and a CV
-parse fills the same three fields. Recruiters read them off the live profile; Screening never
-does, and an Application freezes none of them.
+parse fills the same three fields. An Application freezes all three in its Snapshot, in the same
+columns and under the same CHECKs, so an address changed afterwards never rewrites what a
+Recruiter already read. Screening reads none of them, on either side.
 _Avoid_: Social links, Profiles, URLs.
 
 **Complete profile**:
@@ -96,7 +97,7 @@ _Avoid_: Submission, Entry.
 
 **Snapshot**:
 The frozen, candidate-reviewed profile captured when an Application is created — identity,
-experience, education, skills, languages, projects (the `application_*` tables). Distinct
+Links, experience, education, skills, languages, projects (the `application_*` tables). Distinct
 from the live Candidate profile *and* from the raw AI output in `cvs.parsed_cv_data`; it
 may differ from both. Carries the Candidate's Total experience as it stood that day, so a
 verdict can be re-explained years later from the Snapshot alone. Anything drawn from a

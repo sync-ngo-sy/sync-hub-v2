@@ -11,6 +11,7 @@ class PhotoThatLoads {
 
 const WHOLE = {
   name: 'Lina Khoury',
+  links: {},
   avatarUrl: 'https://cdn.example.test/lina.webp',
   email: 'lina@example.test',
   phone: '+963 11 555 0100',
@@ -72,7 +73,7 @@ describe('CandidateCard', () => {
   });
 
   it('needs nothing but a name', () => {
-    render(<CandidateCard name="Lina Khoury" />);
+    render(<CandidateCard name="Lina Khoury" links={{}} />);
 
     expect(screen.getByText('Lina Khoury')).toBeVisible();
     expect(screen.queryByRole('link')).toBeNull();
@@ -99,10 +100,10 @@ describe('CandidateCard', () => {
     expect(screen.queryByText('Languages')).toBeNull();
   });
 
-  it('names its fact list, so a page reading two people can tell them apart', () => {
-    render(<CandidateCard {...WHOLE} factsLabel="Application facts" />);
+  it('names its fact list, so a reader knows whose facts these are', () => {
+    render(<CandidateCard {...WHOLE} factsLabel="Your facts" />);
 
-    const facts = within(screen.getByLabelText('Application facts'));
+    const facts = within(screen.getByLabelText('Your facts'));
     expect(facts.getByText('6 years')).toBeVisible();
   });
 
@@ -124,17 +125,17 @@ describe('CandidateCard', () => {
 
   it('falls back to the initials when there is no photo at all', async () => {
     vi.stubGlobal('Image', PhotoThatLoads);
-    render(<CandidateCard name="Lina Khoury" />);
+    render(<CandidateCard name="Lina Khoury" links={{}} />);
 
     expect(screen.getByText('LK')).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector('img')).toBeNull());
   });
 
   it('takes the first two initials of a longer name, and copes with one', () => {
-    const { rerender } = render(<CandidateCard name="Amina  Nour  Haddad" />);
+    const { rerender } = render(<CandidateCard name="Amina  Nour  Haddad" links={{}} />);
     expect(screen.getByText('AN')).toBeInTheDocument();
 
-    rerender(<CandidateCard name="Amina" />);
+    rerender(<CandidateCard name="Amina" links={{}} />);
     expect(screen.getByText('A')).toBeInTheDocument();
   });
 });
@@ -182,7 +183,7 @@ describe('the Links on a Candidate Card', () => {
   });
 
   it('says nothing at all where the candidate claimed none', () => {
-    render(<CandidateCard name="Lina Khoury" />);
+    render(<CandidateCard name="Lina Khoury" links={{}} />);
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });

@@ -99,7 +99,7 @@ def _address(value: str, shape: str) -> SplitResult:
     if not trimmed or any(character.isspace() for character in trimmed):
         raise ValueError(shape)
     address = urlsplit(trimmed if _SCHEME.match(trimmed) else f"https://{trimmed.lstrip('/')}")
-    if address.scheme not in ("http", "https"):
+    if address.scheme not in ("http", "https") or "@" in address.netloc:
         raise ValueError(shape)
     return address
 
