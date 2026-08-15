@@ -148,16 +148,6 @@ create trigger forbid_searchable_without_a_readable_cv
   for each row when (new.is_searchable)
   execute function forbid_searchable_without_a_readable_cv();
 
--- The half of the Complete-profile rule one row cannot answer. `candidates` holds the CHECK over
--- its own columns (migration 02); the name and the Phone are on `profiles`, the CV has to have
--- been read rather than merely uploaded, and four sections are counted in four other tables.
---
--- Deferred, because a profile is saved whole: the row is written and its sections are deleted and
--- re-inserted in one transaction, so an immediate check would read the sections half way through
--- being replaced. At commit it reads the state the transaction is actually committing.
---
--- It re-reads the row rather than trusting `new`, so a marker set and then cleared again before
--- commit refuses nothing, and a candidate deleted in the same transaction refuses nothing either.
 create function refuse_an_unearned_completion() returns trigger
 language plpgsql
 set search_path = ''
@@ -199,7 +189,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  return null;  -- AFTER trigger
+  return null;
 end;
 $$;
 

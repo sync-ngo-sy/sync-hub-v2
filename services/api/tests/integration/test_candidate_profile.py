@@ -465,8 +465,6 @@ async def test_a_profile_taken_back_apart_is_not_complete_any_more(
 
     assert emptied.status_code == 200, emptied.text
     assert await completed_at(db_session, candidate_id) is None
-    # Opting out has to reach Postgres before the marker does: a Searchable profile with no
-    # marker is a CHECK violation, and one save cannot land half of itself.
     assert (await browser.get(PROFILE)).json()["is_searchable"] is False
 
 

@@ -66,11 +66,6 @@ create table candidates (
 
   is_searchable boolean not null default false,
 
-  -- When this profile became Complete, and null while it is not one. The fields a Complete
-  -- profile needs from this row are held here; the name, the Phone, the CV having been *read*
-  -- and the four sections are counted in other tables, so a trigger holds those (migration 07).
-  -- Projects, Other skills and Links are absent on purpose: they are worth having, and nobody is
-  -- held back from applying for not having them.
   profile_completed_at timestamptz,
 
   created_at timestamptz not null default now(),

@@ -389,7 +389,6 @@ async def test_a_job_and_a_qualification_are_both_asked_for_like_every_other_req
     without: dict[str, Any],
     named: str,
 ) -> None:
-    """One missing answer refuses the Application, and the refusal names that answer."""
     job = await a_published_job(recruiter)
     await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
     await a_saved_profile(other_browser, a_filled_profile(**without))
@@ -407,8 +406,6 @@ async def test_the_optional_sections_never_stand_between_a_candidate_and_applyin
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
-    """Projects, Other skills and Links are worth having, and nobody is held back for not
-    having them."""
     job = await a_published_job(recruiter)
     await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
     await a_saved_profile(

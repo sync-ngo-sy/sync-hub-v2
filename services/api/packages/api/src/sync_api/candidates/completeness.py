@@ -4,8 +4,6 @@ from typing import Final
 
 from sync_core.completeness import Requirement
 
-#: Each requirement in the words a Candidate would use, so that a refusal reads as a sentence
-#: rather than as a list of column names.
 PHRASES: Final[dict[Requirement, str]] = {
     Requirement.CV: "a CV that has been read",
     Requirement.FULL_NAME: "your name",
@@ -22,8 +20,6 @@ PHRASES: Final[dict[Requirement, str]] = {
 
 
 def named(missing: tuple[Requirement, ...]) -> str:
-    """What is missing, as one readable phrase. Refusing without naming it sends nobody
-    anywhere."""
     phrases = [PHRASES[requirement] for requirement in missing]
     if len(phrases) <= 1:
         return "".join(phrases)

@@ -93,7 +93,7 @@ async def an_applicant_who_can_apply(
     label: str = "applicant",
     **changes: Any,
 ) -> Applicant:
-    """What applying insists on: a current CV that has been read, and a Complete profile."""
+    """The two things applying insists on: a current CV, and a Complete profile."""
     signup = await a_signed_in_candidate(browser, mailbox, label)
     candidate_id = await my_id(browser)
     cv_id = await give_a_current_cv(session, candidate_id)

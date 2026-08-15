@@ -122,7 +122,6 @@ def _settled(parsing_status: CvParsingStatus) -> dict[str, Any]:
 
 
 async def completed_at(session: AsyncSession, candidate_id: UUID) -> datetime | None:
-    """The Complete-profile marker, read fresh: it is written by the API, not by this session."""
     session.expire_all()
     return await session.scalar(
         select(Candidate.profile_completed_at).where(Candidate.id == candidate_id)
@@ -130,11 +129,7 @@ async def completed_at(session: AsyncSession, candidate_id: UUID) -> datetime | 
 
 
 async def make_no_cv_current(session: AsyncSession, candidate_id: UUID) -> None:
-    """A candidate back to holding no CV — the one state applying still refuses.
-
-    The Complete-profile marker goes in the same statement: a Complete profile is one with a CV
-    to apply with, and a CHECK says so.
-    """
+    """A candidate back to holding no CV — the one state applying still refuses."""
     await session.execute(
         update(Candidate)
         .where(Candidate.id == candidate_id)

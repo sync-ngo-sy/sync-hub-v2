@@ -1,5 +1,4 @@
 {
-  "about": "The Complete-profile rule, stated once. The API reads this file in tests/unit/test_completeness.py and the Candidate Portal reads it in features/profile/completeness.test.ts, so a rule changed on one side and not the other fails CI. Facts left out of a case take the defaults: no read CV, every field unset, every section empty.",
   "requirements": [
     "cv",
     "full_name",
@@ -164,7 +163,9 @@
     },
     {
       "name": "a name on its own is one requirement of eleven",
-      "facts": { "full_name": "Amina Haddad" },
+      "facts": {
+        "full_name": "Amina Haddad"
+      },
       "missing": [
         "cv",
         "phone",

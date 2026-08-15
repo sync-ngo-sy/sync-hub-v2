@@ -393,8 +393,6 @@ async def test_a_completion_marker_needs_the_fields_the_candidate_row_itself_hol
 async def test_the_service_role_cannot_mark_a_profile_complete_that_is_not(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The backend holds the service role, which RLS does not apply to. This trigger fires for it
-    like anybody else, so Complete stays a fact the database keeps rather than a claim."""
     await a_signed_in_candidate(browser, mailbox)
     candidate_id = await my_id(browser)
     await give_a_current_cv(db_session, candidate_id)

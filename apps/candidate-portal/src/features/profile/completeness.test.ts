@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-// The one statement of the Complete-profile rule the API's own suite reads too, so a rule
-// changed on one side and not the other fails CI rather than passing twice.
 import fixture from '../../../../../fixtures/profile-completeness.json';
 import {
   completionPercent,

@@ -1,12 +1,3 @@
-/**
- * The Complete-profile rule the API and the database hold, restated here so the editor can say
- * how far along the Candidate is while they are still typing rather than after a save. The two
- * statements are held to one list by `fixtures/profile-completeness.json`, which both suites read.
- *
- * Projects, Other skills and Links are deliberately absent: they are worth having, and nobody is
- * held back from applying for not having them.
- */
-
 export const REQUIREMENTS = [
   'cv',
   'full_name',
@@ -72,10 +63,6 @@ export function missingRequirements(facts: ProfileFacts): Requirement[] {
   return REQUIREMENTS.filter((requirement) => !met[requirement]);
 }
 
-/**
- * Integer arithmetic rounding halves up, because the API states this rule too and the two have to
- * answer the same number — `Math.round()` and Python's `round()` do not agree on a half.
- */
 export function completionPercent(missing: readonly Requirement[]): number {
   const total = REQUIREMENTS.length;
   const met = total - missing.length;

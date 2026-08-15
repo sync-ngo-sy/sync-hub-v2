@@ -167,10 +167,7 @@ async def delete_note(recruiter: AsyncClient, url: str, note_id: str | UUID) -> 
 async def a_searchable_candidate(
     browser: AsyncClient, mailbox: Mailbox, session: AsyncSession, label: str = "searchable"
 ) -> UUID:
-    """A Candidate who has applied nowhere, but let Global search show them to everyone.
-
-    Their profile is a Complete one, because an incomplete profile cannot opt in at all.
-    """
+    """A Candidate who has applied nowhere, but let Global search show them to everyone."""
     await a_signed_in_candidate(browser, mailbox, label)
     candidate_id = await my_id(browser)
     await give_a_current_cv(session, candidate_id)

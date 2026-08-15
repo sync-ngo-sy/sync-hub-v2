@@ -105,11 +105,6 @@ class CandidateProfileService:
             candidate.summary = profile.summary
             candidate.location_key = profile.location_key
             candidate.canonical_role_key = profile.canonical_role_key
-            # Opted out first and back in last, either side of the marker being worked out below.
-            # A CHECK refuses Searchable on a profile with no marker, so a save that takes a
-            # Searchable profile back apart has to drop the flag before the marker goes, and a
-            # save that finishes one has to set it after the marker lands. An IntegrityError is
-            # not an answer anybody can read.
             candidate.is_searchable = False
             candidate.linkedin_url = profile.linkedin_url
             candidate.github_url = profile.github_url
@@ -129,8 +124,6 @@ class CandidateProfileService:
                 await self._db.execute(section)
             self._db.add_all(_rows_for(candidate_id, profile, skills))
 
-            # After the sections, and inside the same transaction: the marker is a fact about
-            # the profile being committed, not about the one that was there when the save began.
             missing = await refresh_completeness(self._db, candidate_id)
             if profile.is_searchable and missing:
                 raise Problem(
@@ -214,11 +207,6 @@ async def whole_candidate(
 
 
 async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
-    """A profile the platform has never judged Complete is one no Tenant can be asked to judge.
-
-    The marker decides it — a fact the database keeps rather than a rule read twice. What is
-    still missing is worked out only to say so: "422" alone sends nobody anywhere.
-    """
     missing = await refresh_completeness(session, candidate_id)
     if missing:
         raise Problem(

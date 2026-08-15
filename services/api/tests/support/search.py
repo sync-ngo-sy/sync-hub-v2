@@ -27,9 +27,6 @@ MALFORMED_SKILL_FILTER: Final = "urn:sync:problem:malformed-skill-filter"
 MALFORMED_LANGUAGE_FILTER: Final = "urn:sync:problem:malformed-language-filter"
 INVALID_CURSOR: Final = "urn:sync:problem:invalid-cursor"
 
-#: What a Complete profile asks for that no search or directory fixture cares about — and
-#: without which none of them could opt into Global search at all. Every line here is overridden
-#: by the shape a test passes, and none of the words in it appears in any query these suites ask.
 COMPLETING: Final[dict[str, Any]] = {
     "phone": "+963115550100",
     "phone_country": "SY",
