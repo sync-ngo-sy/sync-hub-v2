@@ -111,6 +111,7 @@ class CandidateDirectoryService:
             language_names=await self._language_names(candidate_id),
             in_talent_pool=found.in_talent_pool,
             phone=profile.phone,
+            phone_country=profile.phone_country,
             email=found.email,
             experiences=profile.experiences,
             educations=profile.educations,

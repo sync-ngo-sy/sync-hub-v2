@@ -254,6 +254,55 @@ async def test_a_candidate_whose_cv_was_never_read_cannot_become_searchable(
     await db_session.rollback()
 
 
+A_PHONE = text("update profiles set phone = :phone, phone_country = :country where id = :id")
+
+
+@pytest.mark.parametrize(
+    "number", ["0963115550134", "963115550134", "+963 11 555 0134", "+0115550134", "reach me"]
+)
+async def test_a_number_that_is_not_e164_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, number: str
+) -> None:
+    """Spaces and a leading zero included: one stored shape is what lets two readers agree."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="profiles_phone_is_e164"):
+        await db_session.execute(
+            A_PHONE, {"phone": number, "country": "SY", "id": await my_id(browser)}
+        )
+    await db_session.rollback()
+
+
+@pytest.mark.parametrize("country", ["sy", "SYR", "S1", "Syria"])
+async def test_a_country_that_is_not_an_iso_code_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, country: str
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="profiles_phone_country_is_iso"):
+        await db_session.execute(
+            A_PHONE, {"phone": "+963115550134", "country": country, "id": await my_id(browser)}
+        )
+    await db_session.rollback()
+
+
+@pytest.mark.parametrize(("phone", "country"), [("+963115550134", None), (None, "SY")])
+async def test_a_number_and_its_country_are_stored_together_or_not_at_all(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    phone: str | None,
+    country: str | None,
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="profiles_phone_has_a_country"):
+        await db_session.execute(
+            A_PHONE, {"phone": phone, "country": country, "id": await my_id(browser)}
+        )
+    await db_session.rollback()
+
+
 async def test_correcting_a_candidates_name_enqueues_a_re_embed(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:

@@ -125,7 +125,10 @@ concurrent saves last-write-wins: without it each transaction deletes only what 
 already committed, and both sets of inserts survive.
 
 One profile spans two tables, and the `PUT` writes both in that same transaction:
-`profiles.full_name`/`phone` (the identity) and `candidates` plus its children (the claims).
+`profiles.full_name`/`phone`/`phone_country` (the identity) and `candidates` plus its children
+(the claims). A Phone is one answer in two columns: `sync_core.phone` reads what the request
+carries by Google's libphonenumber rules and stores the E.164 it produced, or refuses the save;
+`profiles_phone_has_a_country` and `profiles_phone_is_e164` hold the same line in the schema.
 `email` is **not** settable here — only `auth.users` holds a confirmed address, and changing one
 stays an auth flow with re-confirmation.
 
@@ -335,7 +338,7 @@ copy mechanical and kills the add-a-column-forget-to-map-it bug. `application_*`
 `created_at`/`updated_at` the candidate children carry and the immutable application children
 correctly do not.
 
-Two deliberate asymmetries: `full_name` and `phone` come from `profiles`, because they are the
+Two deliberate asymmetries: `full_name`, `phone` and `phone_country` come from `profiles`, because they are the
 candidate's identity rather than a per-application claim; and `is_searchable` and
 `current_cv_id` are **never** snapshotted, because they are a setting and a pointer — freezing
 a setting would leave someone asking why changing it changed nothing.

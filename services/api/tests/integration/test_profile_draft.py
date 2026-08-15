@@ -44,7 +44,8 @@ async def test_a_candidate_with_no_profile_yet_gets_the_whole_cv(
     draft = await a_draft_of(browser, cv["id"])
 
     assert draft["full_name"] == "Amina Haddad"
-    assert draft["phone"] == "+963 11 555 0134"
+    assert draft["phone"] == "+963115550134"
+    assert draft["phone_country"] == "SY"
     assert draft["headline"] == "Backend engineer, 8 years"
     # A Location is chosen from a list, so it stays the Candidate's rather than the CV's.
     assert draft["location_key"] is None

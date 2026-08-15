@@ -40,6 +40,21 @@ OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
 OptionalParagraph = Annotated[Paragraph | None, BeforeValidator(_blank_as_unset)]
 OptionalLink = Annotated[Link | None, BeforeValidator(_blank_as_unset)]
 
+IsoCountry = Annotated[
+    str, StringConstraints(strip_whitespace=True, to_upper=True, pattern=r"^[A-Z]{2}$")
+]
+
+OptionalIsoCountry = Annotated[
+    IsoCountry | None,
+    BeforeValidator(_blank_as_unset),
+    Field(
+        description="The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it "
+        "because `+1` is twenty-odd countries: which one somebody picked is not readable off "
+        "the digits.",
+        examples=["SY"],
+    ),
+]
+
 LanguageCode = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),

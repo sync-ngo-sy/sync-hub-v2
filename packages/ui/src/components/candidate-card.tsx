@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@sync/ui/components/ui/avatar';
 import { factLabel } from '@sync/ui/lib/fact-label';
+import { readable } from '@sync/ui/lib/phone';
 import { cn } from '@sync/ui/lib/utils';
 import { Mail, Phone } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
@@ -95,7 +96,7 @@ export function CandidateCard({
                   className="inline-flex min-w-0 items-center gap-2 hover:text-foreground"
                 >
                   <Phone aria-hidden="true" className="size-4 shrink-0 opacity-70" />
-                  <span className="truncate">{phone}</span>
+                  <span className="truncate">{readable(phone)}</span>
                 </a>
               ) : null}
             </div>

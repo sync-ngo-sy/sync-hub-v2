@@ -952,6 +952,11 @@ class IngestionJob(Base):
 class Profile(Base):
     __tablename__ = "profiles"
     __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(phone, phone_country) <> 1", name="profiles_phone_has_a_country"
+        ),
+        CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="profiles_phone_is_e164"),
+        CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="profiles_phone_country_is_iso"),
         ForeignKeyConstraint(
             ["id"], ["auth.users.id"], ondelete="CASCADE", name="profiles_id_fkey"
         ),
@@ -979,6 +984,7 @@ class Profile(Base):
     )
     avatar_url: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     user: Mapped["User"] = relationship("User", viewonly=True)
@@ -1291,11 +1297,11 @@ class Job(Base):
     )
     minimum_total_experience_years: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
     expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
     published_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(True),
         comment="When this Job first went live. Null while it has never been published, and never rewritten by a later republish.",
     )
+    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
 
     location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
@@ -1626,6 +1632,15 @@ class JobViewEvent(Base):
         Index("job_view_events_job_viewed_idx", "job_id", "viewed_at"),
         Index("job_view_events_link_viewed_idx", "tracked_link_id", "viewed_at"),
         Index(
+            "job_view_events_session_job_attribution_idx",
+            "session_id",
+            "job_id",
+            "viewed_at",
+            "id",
+            postgresql_include=["tracked_link_id"],
+            postgresql_where="(tracked_link_id IS NOT NULL)",
+        ),
+        Index(
             "job_view_events_session_job_idx",
             "session_id",
             "job_id",
@@ -1862,6 +1877,11 @@ class ApplicationLanguage(Base):
 class ApplicationProfileSnapshot(Base):
     __tablename__ = "application_profile_snapshots"
     __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(phone, phone_country) <> 1", name="asnap_phone_has_a_country"
+        ),
+        CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="asnap_phone_is_e164"),
+        CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="asnap_phone_country_is_iso"),
         CheckConstraint("total_experience_years >= 0", name="asnap_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["application_id"],
@@ -1883,6 +1903,7 @@ class ApplicationProfileSnapshot(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     phone: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
@@ -2231,10 +2252,10 @@ class Communication(Base):
     provider: Mapped[str | None] = mapped_column(Text)
     provider_message_id: Mapped[str | None] = mapped_column(Text)
     template_key: Mapped[str | None] = mapped_column(Text)
-    sent_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    sent_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     application_candidate: Mapped[Optional["Application"]] = relationship(
         "Application", foreign_keys=[application_id, candidate_id], viewonly=True

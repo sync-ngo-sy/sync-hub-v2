@@ -33,6 +33,7 @@ A_WHOLE_PROFILE: dict[str, Any] = {
     "headline": "Backend engineer",
     "summary": "Builds payment systems.",
     "phone": "+963115550134",
+    "phone_country": "SY",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
     "skills": [{"name": "Python", "years_experience": 8.0}],
@@ -102,6 +103,7 @@ async def test_a_profile_is_where_a_phone_and_an_email_are_readable(
     record = (await recruiter.get(a_candidate_record(amina.id))).json()
 
     assert record["phone"] == "+963115550134"
+    assert record["phone_country"] == "SY"
     assert record["email"] == amina.signup.email
 
 

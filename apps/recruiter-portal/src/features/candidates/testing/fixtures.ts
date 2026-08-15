@@ -48,7 +48,8 @@ export const AMINA_RECORD: CandidateRecord = {
   canonical_role_name: 'Backend Engineer',
   total_experience_years: 8,
   in_talent_pool: false,
-  phone: '+963 11 555 0142',
+  phone: '+963115550142',
+  phone_country: 'SY',
   email: 'amina.haddad@example.test',
   experiences: [
     {

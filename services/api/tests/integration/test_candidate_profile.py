@@ -28,7 +28,8 @@ EXPERIENCE_TOTAL = f"{PROFILE}/experience-total"
 
 A_FULL_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
-    "phone": "+963 11 555 0100",
+    "phone": "+963115550100",
+    "phone_country": "SY",
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
@@ -146,13 +147,64 @@ async def test_the_name_and_phone_are_written_through_to_the_account(
     await a_signed_in_candidate(browser, mailbox)
 
     saved = await browser.put(
-        PROFILE, json=a_profile(full_name="Amina Haddad-Nassar", phone="+963 11 555 0199")
+        PROFILE,
+        json=a_profile(full_name="Amina Haddad-Nassar", phone="+963115550199", phone_country="SY"),
     )
 
     assert saved.status_code == 200, saved.text
     assert saved.json()["full_name"] == "Amina Haddad-Nassar"
-    assert (await browser.get("/v1/auth/me")).json()["full_name"] == "Amina Haddad-Nassar"
-    assert (await browser.get(PROFILE)).json()["phone"] == "+963 11 555 0199"
+    me = (await browser.get("/v1/auth/me")).json()
+    assert me["full_name"] == "Amina Haddad-Nassar"
+    assert (me["phone"], me["phone_country"]) == ("+963115550199", "SY")
+    reloaded = (await browser.get(PROFILE)).json()
+    assert (reloaded["phone"], reloaded["phone_country"]) == ("+963115550199", "SY")
+
+
+async def test_a_number_is_stored_the_one_way_however_the_candidate_wrote_it(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """The field sends E.164; anything else that reaches here meets the same standard."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json=a_profile(phone="011 555 0100", phone_country="SY"))
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["phone"] == "+963115550100"
+    assert (await browser.get(PROFILE)).json()["phone"] == "+963115550100"
+
+
+async def test_a_number_the_chosen_country_cannot_dial_is_refused(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """A Los Angeles number claimed as Canadian. Both are `+1`, and only one of them is true."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    refused = await browser.put(PROFILE, json=a_profile(phone="+12133734253", phone_country="CA"))
+
+    assert refused.status_code == 422, refused.text
+
+
+@pytest.mark.parametrize(("phone", "country"), [("+963115550100", None), (None, "SY")])
+async def test_half_a_phone_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, phone: str | None, country: str | None
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    refused = await browser.put(PROFILE, json=a_profile(phone=phone, phone_country=country))
+
+    assert refused.status_code == 422, refused.text
+
+
+async def test_a_profile_still_exists_with_no_phone_at_all(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json=a_profile())
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["phone"] is None
+    assert saved.json()["phone_country"] is None
 
 
 async def test_an_email_address_is_not_settable_on_the_profile(

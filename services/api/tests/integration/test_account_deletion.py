@@ -132,7 +132,7 @@ async def test_deleting_the_account_scrubs_the_live_identity(
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
     candidate_id = await my_id(browser)
-    await a_saved_profile(browser, a_filled_profile(phone="+963 11 111 1111"))
+    await a_saved_profile(browser, a_filled_profile(phone="+963111110111", phone_country="SY"))
 
     await a_deleted_account(browser)
 
@@ -140,6 +140,7 @@ async def test_deleting_the_account_scrubs_the_live_identity(
     assert profile.deleted_at is not None
     assert profile.full_name == DELETED_NAME
     assert profile.phone is None
+    assert profile.phone_country is None
     assert profile.avatar_url is None
     assert candidate.deleted_at is not None
     assert candidate.headline is None

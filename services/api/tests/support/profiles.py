@@ -137,6 +137,7 @@ def a_profile(**changes: Any) -> dict[str, Any]:
 EMPTY_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
     "phone": None,
+    "phone_country": None,
     "headline": None,
     "summary": None,
     "location_key": None,

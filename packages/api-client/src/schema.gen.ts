@@ -1935,8 +1935,17 @@ export interface components {
         ApplicationSnapshot: {
             /** Full Name */
             full_name: string;
-            /** Phone */
+            /**
+             * Phone
+             * @description In E.164, as it was that day.
+             */
             phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
             /** Headline */
             headline?: string | null;
             /** Summary */
@@ -2053,7 +2062,6 @@ export interface components {
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent — the same number Screening measured against the Job's minimum.
-             * @default 0
              */
             total_experience_years: number;
             status: components["schemas"]["ApplicationStatus"];
@@ -2212,8 +2220,6 @@ export interface components {
              * @example Amina Haddad
              */
             full_name: string;
-            /** Phone */
-            phone?: string | null;
             /**
              * Headline
              * @example Backend engineer, 8 years
@@ -2259,6 +2265,18 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
+            /**
+             * Phone
+             * @description Stored in E.164. Sent any way at all — spaces, brackets, or the national form `phone_country` writes it in — and read back the one way.
+             * @example +963115550134
+             */
+            phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
             /**
              * Experiences
              * @description Jobs, in the candidate's own order. Each one dated.
@@ -2325,8 +2343,17 @@ export interface components {
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
              */
             in_talent_pool: boolean;
-            /** Phone */
+            /**
+             * Phone
+             * @description In E.164.
+             */
             phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
             /**
              * Email
              * @description Read from the authentication store, which is the only place a confirmed address lives.
@@ -3745,8 +3772,8 @@ export interface components {
          * @description A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
          *
          *     Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
-         *     newly names has no years, and a job it never dated has no dates, until the candidate types
-         *     them.
+         *     newly names has no years, a job it never dated has no dates, and a number nobody could dial
+         *     is still what the CV said, until the candidate types them.
          */
         ProfileDraft: {
             /**
@@ -3754,8 +3781,6 @@ export interface components {
              * @example Amina Haddad
              */
             full_name: string;
-            /** Phone */
-            phone?: string | null;
             /**
              * Headline
              * @example Backend engineer, 8 years
@@ -3801,6 +3826,17 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
+            /**
+             * Phone
+             * @description In E.164 when the CV wrote a number the platform could read, and exactly as the CV wrote it when it did not — so a value is never quietly dropped.
+             */
+            phone?: string | null;
+            /**
+             * Phone Country
+             * @description Null when the CV's number named no country.
+             * @example SY
+             */
+            phone_country?: string | null;
             /**
              * Experiences
              * @description Jobs the CV describes, in its own order — those it did not date with their dates null.
@@ -3931,8 +3967,17 @@ export interface components {
             account_type: components["schemas"]["AccountType"];
             /** Avatar Url */
             avatar_url: string | null;
-            /** Phone */
-            phone: string | null;
+            /**
+             * Phone
+             * @description In E.164.
+             */
+            phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
         };
         /**
          * PublicJob
@@ -4488,7 +4533,6 @@ export interface components {
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent — the same number Screening measured against the Job's minimum.
-             * @default 0
              */
             total_experience_years: number;
             status: components["schemas"]["ApplicationStatus"];

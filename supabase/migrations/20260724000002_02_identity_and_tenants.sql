@@ -18,13 +18,22 @@ create table profiles (
 
   full_name  text not null,
   avatar_url text,
-  phone      text,
+
+  -- Two columns rather than one string: `+1` is twenty-odd countries, so the country somebody
+  -- picked is not recoverable from the number they typed, and a flag that changes on reload
+  -- reads as the platform losing their answer.
+  phone         text,
+  phone_country text,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
 
-  unique (id, account_type)
+  unique (id, account_type),
+
+  constraint profiles_phone_is_e164 check (phone ~ '^\+[1-9][0-9]{1,14}$'),
+  constraint profiles_phone_country_is_iso check (phone_country ~ '^[A-Z]{2}$'),
+  constraint profiles_phone_has_a_country check (num_nonnulls(phone, phone_country) <> 1)
 );
 
 create index profiles_active_idx on profiles (id) where deleted_at is null;

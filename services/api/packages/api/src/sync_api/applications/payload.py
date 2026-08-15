@@ -15,7 +15,7 @@ from sync_api.candidates import (
     ProfileSkill,
 )
 from sync_api.jobs import PublicTenant
-from sync_api.text import LocationName, OptionalLine, OptionalParagraph
+from sync_api.text import LocationName, OptionalIsoCountry, OptionalLine, OptionalParagraph
 from sync_core.models import (
     ApplicationQuestionType,
     ApplicationStatus,
@@ -243,7 +243,8 @@ class ApplicationSnapshot(BaseModel):
     """The candidate's profile as it was frozen when the Application was sent, and never since."""
 
     full_name: str
-    phone: OptionalLine = None
+    phone: OptionalLine = Field(default=None, description="In E.164, as it was that day.")
+    phone_country: OptionalIsoCountry = None
     headline: OptionalLine = None
     summary: OptionalParagraph = None
     location: OptionalLine = None

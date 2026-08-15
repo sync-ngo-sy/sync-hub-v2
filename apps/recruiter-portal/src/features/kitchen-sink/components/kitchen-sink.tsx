@@ -4,6 +4,7 @@ import {
   type ComboboxOptionGroup,
 } from '@sync/ui/components/combobox';
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { PhoneField, type PhoneValue } from '@sync/ui/components/phone-field';
 import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
 import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
@@ -179,6 +180,18 @@ const LOCATIONS: ComboboxOptionGroup[] = [
   },
 ];
 
+function PhoneEntry() {
+  const phoneId = useId();
+  const [phone, setPhone] = useState<PhoneValue>({ country: 'SY', number: '011 555 0100' });
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={phoneId}>Phone</Label>
+      <PhoneField id={phoneId} value={phone} onChange={setPhone} />
+    </div>
+  );
+}
+
 function Pickers() {
   const functionId = useId();
   const languagesId = useId();
@@ -301,6 +314,7 @@ export default function KitchenSink() {
             <Label htmlFor={emailId}>Email</Label>
             <Input id={emailId} type="email" placeholder="rana@aman.test" />
           </div>
+          <PhoneEntry />
           <div className="space-y-1.5">
             <Label htmlFor={noteId}>Note</Label>
             <Textarea id={noteId} placeholder="Strong MEAL background." />

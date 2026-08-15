@@ -88,6 +88,7 @@ class CandidateDeletion:
 
             identity.full_name = DELETED_NAME
             identity.phone = None
+            identity.phone_country = None
             identity.avatar_url = None
             identity.deleted_at = now
             candidate.current_cv_id = None

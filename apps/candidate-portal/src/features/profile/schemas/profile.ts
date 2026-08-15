@@ -1,4 +1,5 @@
 import type { components } from '@sync/api-client';
+import { countryName, isPhoneCountry, national, read } from '@sync/ui/lib/phone';
 import { z } from 'zod';
 
 type CandidateProfile = components['schemas']['CandidateProfile'];
@@ -172,6 +173,35 @@ const project = z
 
 const unmappedSkill = z.object({ value: line('Enter the skill.') });
 
+interface TypedPhone {
+  phone: string | null;
+  phone_country: string | null;
+}
+
+function dialled({ phone, phone_country }: TypedPhone) {
+  if (phone === null || phone_country === null || !isPhoneCountry(phone_country)) return null;
+  return read(phone, phone_country);
+}
+
+function refuseANumberNobodyCouldDial(typed: TypedPhone, ctx: z.RefinementCtx): void {
+  if (typed.phone === null) return;
+  if (typed.phone_country === null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['phone'],
+      message: 'Choose the country your number belongs to.',
+    });
+    return;
+  }
+  if (dialled(typed) === null) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['phone'],
+      message: `Enter a number ${countryName(typed.phone_country)} can dial.`,
+    });
+  }
+}
+
 const section = <Entry extends z.ZodType>(entry: Entry, plural: string) =>
   z.array(entry).max(MAX_ENTRIES, `List at most ${MAX_ENTRIES} ${plural}.`);
 
@@ -194,6 +224,7 @@ export const profileSchema = z
   .object({
     full_name: line('Enter your name.'),
     phone: optionalLine,
+    phone_country: optionalLine,
     headline: optionalLine,
     summary: optionalParagraph,
     location_key: optionalLine,
@@ -208,6 +239,7 @@ export const profileSchema = z
     unmapped_skills: section(unmappedSkill, 'skills'),
   })
   .superRefine((profile, ctx) => {
+    refuseANumberNobodyCouldDial(profile, ctx);
     refuseRepeats(
       profile.skills.map((entry) => entry.name),
       ctx,
@@ -227,12 +259,15 @@ export const profileSchema = z
       'This skill is already listed.',
     );
   })
-  .transform(
-    (profile): CandidateProfile => ({
+  .transform((profile): CandidateProfile => {
+    const stored = dialled(profile);
+    return {
       ...profile,
+      phone: stored?.number ?? null,
+      phone_country: stored?.country ?? null,
       unmapped_skills: profile.unmapped_skills.map((entry) => entry.value),
-    }),
-  );
+    };
+  });
 
 export type ProfileFormValues = z.input<typeof profileSchema>;
 
@@ -293,7 +328,8 @@ const orEmpty = (value: string | number | null | undefined) =>
 export function toFormValues(profile: CandidateProfile | ProfileDraft): ProfileFormValues {
   return {
     full_name: profile.full_name,
-    phone: orEmpty(profile.phone),
+    phone: national(orEmpty(profile.phone)),
+    phone_country: orEmpty(profile.phone_country),
     headline: orEmpty(profile.headline),
     summary: orEmpty(profile.summary),
     location_key: orEmpty(profile.location_key),
