@@ -12,7 +12,6 @@ PHRASES: Final[dict[Requirement, str]] = {
     Requirement.LOCATION: "where you are",
     Requirement.CANONICAL_ROLE: "what kind of work you do",
     Requirement.SUMMARY: "a summary",
-    Requirement.EXPERIENCE: "at least one job",
     Requirement.EDUCATION: "at least one qualification",
     Requirement.SKILL: "at least one skill",
     Requirement.LANGUAGE: "at least one language",

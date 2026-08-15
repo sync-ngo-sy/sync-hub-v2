@@ -52,7 +52,6 @@ def test_a_profile_missing_nothing_is_complete() -> None:
         location_key="sy-damascus",
         canonical_role_key="backend-engineer",
         summary="Builds boring systems that stay up.",
-        experiences=1,
         educations=1,
         skills=1,
         languages=1,

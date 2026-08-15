@@ -6,7 +6,6 @@ export const REQUIREMENTS = [
   'location',
   'canonical_role',
   'summary',
-  'experience',
   'education',
   'skill',
   'language',
@@ -23,7 +22,6 @@ export interface ProfileFacts {
   summary?: string | null;
   location_key?: string | null;
   canonical_role_key?: string | null;
-  experiences?: number;
   educations?: number;
   skills?: number;
   languages?: number;
@@ -37,7 +35,6 @@ export const REQUIREMENT_ACTIONS: Record<Requirement, string> = {
   location: 'Choose where you are',
   canonical_role: 'Choose what you do',
   summary: 'Write a summary',
-  experience: 'Add at least one job',
   education: 'Add at least one qualification',
   skill: 'Add at least one skill',
   language: 'Add at least one language',
@@ -55,7 +52,6 @@ export function missingRequirements(facts: ProfileFacts): Requirement[] {
     location: said(facts.location_key),
     canonical_role: said(facts.canonical_role_key),
     summary: said(facts.summary),
-    experience: (facts.experiences ?? 0) > 0,
     education: (facts.educations ?? 0) > 0,
     skill: (facts.skills ?? 0) > 0,
     language: (facts.languages ?? 0) > 0,

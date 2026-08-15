@@ -606,7 +606,7 @@ describe('profile progress', () => {
   it('says how far along the profile is, and what is still missing', async () => {
     await openProfile();
 
-    expect(await screen.findByText('Your profile is 91% complete')).toBeVisible();
+    expect(await screen.findByText('Your profile is 90% complete')).toBeVisible();
     expect(screen.getByText('Upload a CV and wait for it to be read')).toBeVisible();
   });
 
@@ -623,7 +623,7 @@ describe('profile progress', () => {
 
     await renderApp('/profile');
 
-    expect(await screen.findByText('Your profile is 64% complete')).toBeVisible();
+    expect(await screen.findByText('Your profile is 60% complete')).toBeVisible();
     for (const action of [
       'Upload a CV and wait for it to be read',
       'Choose what you do',

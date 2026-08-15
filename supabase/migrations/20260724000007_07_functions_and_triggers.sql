@@ -180,8 +180,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  if not exists (select 1 from public.candidate_experiences where candidate_id = claims.id)
-    or not exists (select 1 from public.candidate_educations where candidate_id = claims.id)
+  if not exists (select 1 from public.candidate_educations where candidate_id = claims.id)
     or not exists (select 1 from public.candidate_skills     where candidate_id = claims.id)
     or not exists (select 1 from public.candidate_languages  where candidate_id = claims.id)
   then

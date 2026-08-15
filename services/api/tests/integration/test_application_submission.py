@@ -350,28 +350,25 @@ async def test_applying_with_no_skills_is_refused_and_says_so(
     assert "at least one skill" in problem["detail"]
 
 
-async def test_applying_with_neither_a_job_nor_a_qualification_is_refused_and_says_so(
+async def test_somebody_who_has_never_held_a_job_can_still_apply(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """A first job is still a job. A work history is not what the platform holds anybody to."""
     job = await a_published_job(recruiter)
     await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    await a_saved_profile(other_browser, a_filled_profile(experiences=[], educations=[]))
+    await a_saved_profile(other_browser, a_filled_profile(experiences=[]))
 
-    refused = await apply_to(other_browser, job["id"])
+    accepted = await apply_to(other_browser, job["id"])
 
-    assert refused.status_code == 422, refused.text
-    detail = refused.json()["detail"]
-    assert "at least one job" in detail
-    assert "at least one qualification" in detail
+    assert accepted.status_code == 201, accepted.text
 
 
 @pytest.mark.parametrize(
     ("without", "named"),
     [
-        ({"experiences": []}, "at least one job"),
         ({"educations": []}, "at least one qualification"),
         ({"languages": []}, "at least one language"),
         ({"summary": None}, "a summary"),

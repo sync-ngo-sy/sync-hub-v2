@@ -46,6 +46,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
       <ProfileSection
         title="Skills"
         description="Chosen from the platform's list — these are what Screening reads."
+        needed="One skill needed to apply"
       >
         <EntryList
           ids={skills.fields.map((field) => field.id)}

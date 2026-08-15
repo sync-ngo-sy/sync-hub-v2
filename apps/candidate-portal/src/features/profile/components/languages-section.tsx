@@ -22,7 +22,11 @@ export function LanguagesSection({ control }: { control: Control<ProfileFormValu
   const listed = useWatch({ control, name: 'languages' });
 
   return (
-    <ProfileSection title="Languages" description="The ones you speak, and how well.">
+    <ProfileSection
+      title="Languages"
+      description="The ones you speak, and how well."
+      needed="One language needed to apply"
+    >
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Language ${index + 1}`}

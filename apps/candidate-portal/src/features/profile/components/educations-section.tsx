@@ -11,7 +11,11 @@ export function EducationsSection({ control }: { control: Control<ProfileFormVal
   const { fields, append, remove } = useFieldArray({ control, name: 'educations' });
 
   return (
-    <ProfileSection title="Education" description="Degrees, diplomas and courses.">
+    <ProfileSection
+      title="Education"
+      description="Degrees, diplomas and courses."
+      needed="One qualification needed to apply"
+    >
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Qualification ${index + 1}`}

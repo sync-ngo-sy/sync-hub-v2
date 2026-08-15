@@ -63,6 +63,7 @@ export function ProfileEditor() {
       }
       for (const { name, message } of rejection.fields) setError(name, { message });
       if (rejection.root) setError('root', { message: rejection.root });
+      toast.error(rejection.root ?? rejection.fields[0]?.message ?? "Your profile wasn't saved.");
     }
   });
 
@@ -73,6 +74,7 @@ export function ProfileEditor() {
         description={`Upload one and the fields below fill in from what it says. The current CV goes
           out with every application you send, and is the one recruiters searching the platform find
           you by. Keep up to ${MAX_CVS}.`}
+        needed="One read CV needed to apply"
       >
         <CvsSection onFill={fill.from} filling={fill.pending} />
       </ProfileSection>

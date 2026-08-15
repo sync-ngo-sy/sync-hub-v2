@@ -10,7 +10,6 @@ from sqlalchemy import ColumnElement, func, select
 from sync_core.models import (
     Candidate,
     CandidateEducation,
-    CandidateExperience,
     CandidateLanguage,
     CandidateSkill,
     Cv,
@@ -32,7 +31,6 @@ class Requirement(StrEnum):
     LOCATION = "location"
     CANONICAL_ROLE = "canonical_role"
     SUMMARY = "summary"
-    EXPERIENCE = "experience"
     EDUCATION = "education"
     SKILL = "skill"
     LANGUAGE = "language"
@@ -48,7 +46,6 @@ class ProfileFacts:
     summary: str | None = None
     location_key: str | None = None
     canonical_role_key: str | None = None
-    experiences: int = 0
     educations: int = 0
     skills: int = 0
     languages: int = 0
@@ -67,7 +64,6 @@ def missing_requirements(facts: ProfileFacts) -> tuple[Requirement, ...]:
         Requirement.LOCATION: _said(facts.location_key),
         Requirement.CANONICAL_ROLE: _said(facts.canonical_role_key),
         Requirement.SUMMARY: _said(facts.summary),
-        Requirement.EXPERIENCE: facts.experiences > 0,
         Requirement.EDUCATION: facts.educations > 0,
         Requirement.SKILL: facts.skills > 0,
         Requirement.LANGUAGE: facts.languages > 0,
@@ -81,12 +77,7 @@ def completion_percent(missing: tuple[Requirement, ...]) -> int:
     return (met * 100 + total // 2) // total
 
 
-type _Section = (
-    type[CandidateExperience]
-    | type[CandidateEducation]
-    | type[CandidateSkill]
-    | type[CandidateLanguage]
-)
+type _Section = type[CandidateEducation] | type[CandidateSkill] | type[CandidateLanguage]
 
 
 def _counted(section: _Section, candidate_id: UUID) -> ColumnElement[int]:
@@ -118,7 +109,6 @@ async def profile_facts(session: AsyncSession, candidate_id: UUID) -> ProfileFac
                 )
                 .exists()
                 .label("has_a_read_cv"),
-                _counted(CandidateExperience, candidate_id).label("experiences"),
                 _counted(CandidateEducation, candidate_id).label("educations"),
                 _counted(CandidateSkill, candidate_id).label("skills"),
                 _counted(CandidateLanguage, candidate_id).label("languages"),
@@ -137,7 +127,6 @@ async def profile_facts(session: AsyncSession, candidate_id: UUID) -> ProfileFac
         summary=row.summary,
         location_key=row.location_key,
         canonical_role_key=row.canonical_role_key,
-        experiences=row.experiences,
         educations=row.educations,
         skills=row.skills,
         languages=row.languages,

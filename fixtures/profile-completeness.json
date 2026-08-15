@@ -7,7 +7,6 @@
     "location",
     "canonical_role",
     "summary",
-    "experience",
     "education",
     "skill",
     "language"
@@ -24,7 +23,6 @@
         "location",
         "canonical_role",
         "summary",
-        "experience",
         "education",
         "skill",
         "language"
@@ -42,7 +40,6 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "Builds boring systems that stay up.",
-        "experiences": 1,
         "educations": 1,
         "skills": 2,
         "languages": 2
@@ -60,13 +57,12 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "Builds boring systems that stay up.",
-        "experiences": 1,
         "educations": 1,
         "skills": 2,
         "languages": 2
       },
       "missing": ["phone"],
-      "percent": 91
+      "percent": 90
     },
     {
       "name": "a country with no number is not a phone either",
@@ -78,13 +74,12 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "Builds boring systems that stay up.",
-        "experiences": 1,
         "educations": 1,
         "skills": 2,
         "languages": 2
       },
       "missing": ["phone"],
-      "percent": 91
+      "percent": 90
     },
     {
       "name": "a CV that has not been read does not count",
@@ -96,13 +91,12 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "Builds boring systems that stay up.",
-        "experiences": 1,
         "educations": 1,
         "skills": 2,
         "languages": 2
       },
       "missing": ["cv"],
-      "percent": 91
+      "percent": 90
     },
     {
       "name": "whitespace is not an answer",
@@ -115,13 +109,12 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "\t\n",
-        "experiences": 1,
         "educations": 1,
         "skills": 2,
         "languages": 2
       },
       "missing": ["full_name", "headline", "summary"],
-      "percent": 73
+      "percent": 70
     },
     {
       "name": "one empty section is one missing requirement",
@@ -134,16 +127,15 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "Builds boring systems that stay up.",
-        "experiences": 1,
         "educations": 1,
         "skills": 2,
         "languages": 0
       },
       "missing": ["language"],
-      "percent": 91
+      "percent": 90
     },
     {
-      "name": "a work history and a qualification are both asked for",
+      "name": "a qualification is asked for even though a work history is not",
       "facts": {
         "has_a_read_cv": true,
         "full_name": "Amina Haddad",
@@ -153,16 +145,15 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer",
         "summary": "Builds boring systems that stay up.",
-        "experiences": 0,
         "educations": 0,
         "skills": 2,
         "languages": 2
       },
-      "missing": ["experience", "education"],
-      "percent": 82
+      "missing": ["education"],
+      "percent": 90
     },
     {
-      "name": "a name on its own is one requirement of eleven",
+      "name": "a name on its own is one requirement of ten",
       "facts": {
         "full_name": "Amina Haddad"
       },
@@ -173,12 +164,11 @@
         "location",
         "canonical_role",
         "summary",
-        "experience",
         "education",
         "skill",
         "language"
       ],
-      "percent": 9
+      "percent": 10
     },
     {
       "name": "a profile part way through is reported part way through",
@@ -191,8 +181,8 @@
         "location_key": "sy-damascus",
         "canonical_role_key": "backend-engineer"
       },
-      "missing": ["summary", "experience", "education", "skill", "language"],
-      "percent": 55
+      "missing": ["summary", "education", "skill", "language"],
+      "percent": 60
     }
   ]
 }
