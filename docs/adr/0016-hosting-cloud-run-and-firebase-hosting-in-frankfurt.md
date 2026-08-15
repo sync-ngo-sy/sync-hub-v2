@@ -156,6 +156,59 @@ suggestions: migrations are expand-then-contract, because traffic shifts gradual
 previous revision keeps serving against the new schema during a rollout; and any migration that
 destroys or rewrites data takes a manual backup immediately beforehand (#91).
 
+## Alerting is on the signal that stops arriving
+
+A service that scales to zero has no error rate to watch when it breaks. The worker's normal state
+is *not running*, so "the worker is throwing exceptions" is a condition it can reach only by first
+being alive — and the failure that actually strands a CV is the schedule that quietly stopped
+calling it. Nothing throws. Nothing 500s. The queue simply stops draining.
+
+So the first alert is an absence, not a threshold: **no scheduled drain for 900 seconds**, on a
+job that runs every three minutes. Five missed ticks and it fires. That one alert covers the
+scheduler being deleted, the worker refusing every caller, the service failing to start, and the
+drain hanging — none of which any error-rate alert would see.
+
+The rest are thresholds on things that only happen when something is wrong: a job attempt failed,
+jobs were swept back into the queue (a worker died holding one), a drain request was refused, and
+the API returned a 5xx.
+
+Uptime checks probe the hostnames from Google's edge rather than from inside the project, because
+a service that is healthy and unreachable is still down. `admin` accepts **302**: it is behind
+IAP, so a redirect to Google's sign-in is the healthy answer and a 200 would mean the gate had
+stopped working.
+
+The dashboard is a single mosaic showing the drain rate against that same 900-second line, so the
+alert and the picture cannot disagree about what "healthy" means.
+
+Two things this deliberately does not have. There is no paging: alerts reach a group address, and
+nothing wakes anybody, which is honest for a platform with no on-call rota. And there is no
+synthetic transaction — nothing signs in and applies for a job on a schedule — so a break that
+only shows up mid-flow reaches a user before it reaches us.
+
+## What runs out first
+
+The design scales by autoscaling, and the ceilings are not where they look.
+
+Firebase Hosting absorbs the portals: fingerprinted assets are immutable for a year, so repeat
+visits never reach an origin. That is not the constraint at any traffic this platform will see.
+
+The API caps at six instances with Cloud Run's default concurrency of eighty, so roughly **480
+concurrent requests**. Registered users are not concurrent users; for a jobs platform, peak
+concurrency runs at a low single-digit percentage of the base. Ten thousand accounts is
+comfortable.
+
+The real ceiling is the database, and it is compute rather than connections. Six instances at ten
+pooled connections each is sixty against a transaction pooler sized for far more. But the instance
+behind it is **Micro — two shared vCPU and 1GB** — serving a workload with vector search in it.
+That is the first thing to raise, and it is a slider in a dashboard rather than a change here.
+
+Beyond the platform, the parser and the embedder are bounded by the AI provider's rate limits, not
+by anything in this design. A burst of uploads queues at OpenAI long before Cloud Run notices. The
+schedule guarantees the queue drains eventually; it does not make it fast.
+
+The instance caps are deliberately conservative. Raising them is one line, and doing it before the
+database can carry the connections would trade a slow platform for an unavailable one.
+
 ## Known unknowns
 
 - **Syrian reachability of Google's edge is measured, not guaranteed.** The probe was one
