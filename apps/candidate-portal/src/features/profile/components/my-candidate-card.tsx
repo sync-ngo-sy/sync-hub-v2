@@ -1,9 +1,8 @@
-import { CandidateCard, type CandidateFact } from '@sync/ui/components/candidate-card';
-import { linksFact } from '@sync/ui/components/profile-links';
 import { useCurrentProfile } from '@/features/auth/current-profile';
 import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { useMyProfile } from '../hooks/use-my-profile';
+import { CandidateCard, type CandidateFact } from './candidate-card';
 import { PhotoPicker } from './photo-picker';
 
 function years(count: number): string {
@@ -27,11 +26,6 @@ export function MyCandidateCard() {
       value: profile.total_experience_years == null ? null : years(profile.total_experience_years),
     },
     { label: 'Languages', value: spoken.length > 0 ? spoken.join(', ') : null },
-    linksFact({
-      linkedinUrl: profile.linkedin_url,
-      githubUrl: profile.github_url,
-      portfolioUrl: profile.portfolio_url,
-    }),
   ];
 
   return (
@@ -41,6 +35,11 @@ export function MyCandidateCard() {
         avatarUrl={account.avatar_url}
         email={account.email}
         phone={profile.phone}
+        links={{
+          linkedinUrl: profile.linkedin_url,
+          githubUrl: profile.github_url,
+          portfolioUrl: profile.portfolio_url,
+        }}
         canonicalRole={role?.name}
         headline={profile.headline}
         facts={facts}

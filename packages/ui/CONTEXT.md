@@ -39,27 +39,6 @@ vocabulary stays exactly as long as the enum. They take `--muted-foreground`,
 same amber as `--status-review` without depending on it.
 _Avoid_: Chip, status pill, badge.
 
-**Candidate Card**:
-The one block that says who a candidate is — avatar, name, canonical role, headline, and the
-two ways to reach them. It leads the Recruiter's Application review and Candidate view, and
-sits inside the Candidate Portal's profile editor; those three are the same component, and a
-change to how a candidate reads is made once here. It owns the name heading: level one when it
-is the page heading, level two when the surrounding page already has one. Email and phone are
-the contact line, not labelled facts: an address beside a mail icon already says what it is,
-and both are live links. Everything else the page considers a fact it supplies itself, because
-what is worth saying differs by page — the Application review names the Job and the dates it
-moved, the profile editor names experience and languages. The Links are one such fact, rendered
-by a helper here so both portals list them the same way and neither renders a label with nothing
-under it: a candidate who claimed none has no Links fact at all. Facts sit under a hairline rule
-with no fill or border of their own, so the card never reads as a box inside a box. The avatar is
-the largest thing in the block, larger than the name, and falls back to initials until an
-uploaded photo exists; a single tinted ring is the card's only accent. It is a block among the
-other cards on its page, never a band across the top: a page header names the person and carries
-the actions, and the card reads them. That is why it holds no actions and no page furniture of
-its own — anything a reader can do to a candidate belongs to the page, not to the block that
-describes them.
-_Avoid_: Profile header, summary card, identity band.
-
 **Share**:
 The width intent a Data Table column declares. A column with a `share` is free text — a name, a
 Job title, an address — and the shares split every pixel the other columns do not ask for, in
@@ -93,4 +72,9 @@ _Avoid_: Bare, borderless, naked.
 **Promotion**:
 The move of a component from one portal's feature into the Design System, permitted only
 when a second consumer appears. Until then the component stays where it was born.
+A Promotion is reversible, and the Candidate Card is the one that was reversed: two consumers
+were not two readers. The Recruiter reads a candidate to judge them and the Candidate reads
+themselves to correct themselves, so each portal now owns its own card and neither waits on the
+other to change one. What stayed here is what both still render from — the Avatar, the tokens,
+the type steps.
 _Avoid_: Extraction, hoisting.

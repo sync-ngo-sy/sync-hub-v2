@@ -1953,6 +1953,15 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
              */
             unmapped_skills?: string[];
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The Links as they were the day the Application was sent. Screening never read them either; a Recruiter reviewing the Application does.
+             */
+            portfolio_url?: string | null;
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent. The number Screening measured against the Job's minimum, and the one its verdict cites.

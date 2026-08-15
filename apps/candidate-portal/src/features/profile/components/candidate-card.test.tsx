@@ -138,3 +138,52 @@ describe('CandidateCard', () => {
     expect(screen.getByText('A')).toBeInTheDocument();
   });
 });
+
+describe('the Links on a Candidate Card', () => {
+  const LINKED = {
+    name: 'Lina Khoury',
+    links: {
+      linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
+      githubUrl: 'https://github.com/lina-khoury',
+      portfolioUrl: 'https://lina-khoury.dev',
+    },
+  };
+
+  it('names each destination and goes there', () => {
+    render(<CandidateCard {...LINKED} />);
+
+    expect(screen.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/lina-khoury',
+    );
+    expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/lina-khoury',
+    );
+    expect(screen.getByRole('link', { name: 'lina-khoury.dev' })).toHaveAttribute(
+      'href',
+      'https://lina-khoury.dev',
+    );
+  });
+
+  it('opens somewhere else without handing the platform over with it', () => {
+    render(<CandidateCard {...LINKED} />);
+
+    const linkedin = screen.getByRole('link', { name: 'LinkedIn' });
+    expect(linkedin).toHaveAttribute('target', '_blank');
+    expect(linkedin).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('shows only the Links the candidate claimed', () => {
+    render(<CandidateCard name="Lina Khoury" links={{ githubUrl: 'https://github.com/lina' }} />);
+
+    expect(screen.getByRole('link', { name: 'GitHub' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'LinkedIn' })).not.toBeInTheDocument();
+  });
+
+  it('says nothing at all where the candidate claimed none', () => {
+    render(<CandidateCard name="Lina Khoury" />);
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+});

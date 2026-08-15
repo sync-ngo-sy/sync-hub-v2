@@ -285,9 +285,12 @@ export type Database = {
           canonical_role: string | null;
           captured_at: string;
           full_name: string;
+          github_url: string | null;
           headline: string | null;
+          linkedin_url: string | null;
           location: string | null;
           phone: string | null;
+          portfolio_url: string | null;
           summary: string | null;
           total_experience_years: number;
           unmapped_skills: string[];
@@ -297,9 +300,12 @@ export type Database = {
           canonical_role?: string | null;
           captured_at?: string;
           full_name: string;
+          github_url?: string | null;
           headline?: string | null;
+          linkedin_url?: string | null;
           location?: string | null;
           phone?: string | null;
+          portfolio_url?: string | null;
           summary?: string | null;
           total_experience_years: number;
           unmapped_skills?: string[];
@@ -309,9 +315,12 @@ export type Database = {
           canonical_role?: string | null;
           captured_at?: string;
           full_name?: string;
+          github_url?: string | null;
           headline?: string | null;
+          linkedin_url?: string | null;
           location?: string | null;
           phone?: string | null;
+          portfolio_url?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];

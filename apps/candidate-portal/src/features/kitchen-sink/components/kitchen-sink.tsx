@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CandidateCard } from '@sync/ui/components/candidate-card';
 import {
   Combobox,
   type ComboboxOption,
@@ -8,7 +7,6 @@ import {
 import { EmptyState } from '@sync/ui/components/empty-state';
 import { FormField } from '@sync/ui/components/form-field';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { linksFact } from '@sync/ui/components/profile-links';
 import { ListSkeleton, SkeletonText } from '@sync/ui/components/skeletons';
 import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
@@ -22,6 +20,7 @@ import { Info, Search, Trash2 } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { CandidateCard } from '@/features/profile/components/candidate-card';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -220,13 +219,13 @@ export default function KitchenSink() {
           canonicalRole="Project Manager"
           headline="Runs delivery for two field programmes"
           headingLevel={2}
+          links={{
+            linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
+            portfolioUrl: 'https://lina-khoury.dev',
+          }}
           facts={[
             { label: 'Total experience', value: '6 years' },
             { label: 'Languages', value: 'Arabic, English' },
-            linksFact({
-              linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
-              portfolioUrl: 'https://lina-khoury.dev',
-            }),
           ]}
         />
       </section>

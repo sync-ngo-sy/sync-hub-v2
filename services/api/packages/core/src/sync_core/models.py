@@ -1886,6 +1886,18 @@ class ApplicationLanguage(Base):
 class ApplicationProfileSnapshot(Base):
     __tablename__ = "application_profile_snapshots"
     __table_args__ = (
+        CheckConstraint(
+            "github_url IS NULL OR github_url ~~ 'https://github.com/%%'::text AND length(github_url) <= 2000",
+            name="asnap_github_url_shape",
+        ),
+        CheckConstraint(
+            "linkedin_url IS NULL OR linkedin_url ~~ 'https://www.linkedin.com/in/%%'::text AND length(linkedin_url) <= 2000",
+            name="asnap_linkedin_url_shape",
+        ),
+        CheckConstraint(
+            "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
+            name="asnap_portfolio_url_shape",
+        ),
         CheckConstraint("total_experience_years >= 0", name="asnap_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["application_id"],
@@ -1911,6 +1923,9 @@ class ApplicationProfileSnapshot(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
     canonical_role: Mapped[str | None] = mapped_column(Text)
+    linkedin_url: Mapped[str | None] = mapped_column(Text)
+    github_url: Mapped[str | None] = mapped_column(Text)
+    portfolio_url: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 

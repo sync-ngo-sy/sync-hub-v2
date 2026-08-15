@@ -63,6 +63,14 @@ Optional Projects and Links never prevent 100%; the database's Complete-profile 
 actually gates applying.
 _Avoid_: Completion score, profile strength, onboarding progress.
 
+**Candidate Card**:
+The block above the editor that says who the Candidate is, the way a Recruiter will read them —
+avatar, name, Canonical role, headline, the two ways to reach them, and the Links. This portal
+owns it, and the Recruiter Portal owns its own: the two answer different questions, and neither
+waits on the other to change one. It renders the Links itself rather than taking them as a fact
+the page passes in, so no page can show this person without them.
+_Avoid_: Profile header, summary card, identity band.
+
 **Links**:
 The Candidate's LinkedIn, GitHub and portfolio addresses — three fields rather than a list.
 A handle typed on its own becomes the whole address; Recruiters read these fields and Screening

@@ -83,6 +83,21 @@ describe('the Application review page', () => {
     expect(facts.getByText(absoluteDateTime(REVIEW.updated_at))).toBeVisible();
   });
 
+  it('hands over the Links the Application was sent with', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    const card = applicantCard();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
+    expect(card.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/amal-haddad',
+    );
+    expect(card.getByRole('link', { name: 'amal-haddad.dev' })).toBeVisible();
+    expect(card.queryByRole('link', { name: 'GitHub' })).toBeNull();
+  });
+
   it('reads the Screening verdict with the criteria that decided it', async () => {
     const reason = 'React is required and the application does not list it';
     server.use(

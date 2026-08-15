@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@sync/ui/components/ui/avatar';
 import { factLabel } from '@sync/ui/lib/fact-label';
 import { cn } from '@sync/ui/lib/utils';
-import { Mail, Phone } from 'lucide-react';
+import { Link as LinkIcon, Mail, Phone } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 
 function initials(name: string): string {
@@ -11,6 +11,24 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
+}
+
+export interface ProfileLinks {
+  linkedinUrl?: string | null;
+  githubUrl?: string | null;
+  portfolioUrl?: string | null;
+}
+
+const SCHEME_AND_WWW = /^https?:\/\/(www\.)?/;
+
+/** A portfolio is named by where it goes, because "Portfolio" says nothing LinkedIn does not. */
+function destinations(links: ProfileLinks): { name: string; url: string }[] {
+  const site = links.portfolioUrl ?? '';
+  return [
+    { name: 'LinkedIn', url: links.linkedinUrl ?? '' },
+    { name: 'GitHub', url: links.githubUrl ?? '' },
+    { name: site.replace(SCHEME_AND_WWW, '').replace(/\/$/, ''), url: site },
+  ].filter((destination) => destination.url !== '');
 }
 
 export interface CandidateFact {
@@ -25,6 +43,7 @@ interface CandidateCardProps {
   phone?: string | null;
   canonicalRole?: string | null;
   headline?: string | null;
+  links?: ProfileLinks;
   facts?: CandidateFact[];
   factsLabel?: string;
   headingLevel?: 1 | 2;
@@ -38,6 +57,7 @@ export function CandidateCard({
   phone,
   canonicalRole,
   headline,
+  links = {},
   facts = [],
   factsLabel = 'Candidate facts',
   headingLevel = 1,
@@ -46,6 +66,7 @@ export function CandidateCard({
   const nameId = useId();
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const shown = facts.filter((fact) => fact.value !== null && fact.value !== undefined);
+  const shownLinks = destinations(links);
 
   return (
     <article
@@ -98,6 +119,23 @@ export function CandidateCard({
                   <span className="truncate">{phone}</span>
                 </a>
               ) : null}
+            </div>
+          ) : null}
+
+          {shownLinks.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-meta">
+              {shownLinks.map((destination) => (
+                <a
+                  key={destination.name}
+                  href={destination.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-w-0 items-center gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <LinkIcon aria-hidden="true" className="size-4 shrink-0 opacity-70" />
+                  <span className="truncate">{destination.name}</span>
+                </a>
+              ))}
             </div>
           ) : null}
         </div>

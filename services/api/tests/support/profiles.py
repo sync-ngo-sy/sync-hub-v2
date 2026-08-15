@@ -191,6 +191,7 @@ FILLED_PROFILE: dict[str, Any] = {
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
+    "linkedin_url": "https://www.linkedin.com/in/amina-haddad",
     "experiences": [AN_EXPERIENCE],
     "educations": [AN_EDUCATION],
     "skills": [
