@@ -18,7 +18,14 @@ create table profiles (
 
   full_name  text not null,
   avatar_url text,
-  phone      text,
+
+  -- Two columns rather than one string, because `+1` is twenty-odd countries: which one somebody
+  -- picked is not recoverable from the digits they typed.
+  phone         text,
+  phone_country text,
+  constraint profiles_phone_is_e164 check (phone ~ '^\+[1-9][0-9]{1,14}$'),
+  constraint profiles_phone_has_a_country check (num_nonnulls(phone, phone_country) <> 1),
+  constraint profiles_phone_country_is_iso check (phone_country ~ '^[A-Z]{2}$'),
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -50,6 +57,13 @@ create table candidates (
 
   unmapped_skills text[] not null default '{}',
 
+  -- Three columns rather than a list, because each answers a different question a Recruiter asks
+  -- and a list would have to carry what every entry is. Stored in the single form the API
+  -- normalises them to, which is what the CHECKs hold.
+  linkedin_url  text,
+  github_url    text,
+  portfolio_url text,
+
   is_searchable boolean not null default false,
 
   created_at timestamptz not null default now(),
@@ -60,7 +74,21 @@ create table candidates (
   constraint candidates_searchable_needs_cv check (not is_searchable or current_cv_id is not null),
 
   constraint candidates_headline_length check (length(headline) <= 200),
-  constraint candidates_summary_length  check (length(summary)  <= 5000)
+  constraint candidates_summary_length  check (length(summary)  <= 5000),
+
+  constraint candidates_linkedin_url_shape check (
+    linkedin_url is null
+    or (linkedin_url like 'https://www.linkedin.com/in/%' and length(linkedin_url) <= 2000)
+  ),
+  constraint candidates_github_url_shape check (
+    github_url is null
+    or (github_url like 'https://github.com/%' and length(github_url) <= 2000)
+  ),
+  constraint candidates_portfolio_url_shape check (
+    portfolio_url is null
+    or ((portfolio_url like 'http://%' or portfolio_url like 'https://%')
+        and length(portfolio_url) <= 2000)
+  )
 );
 
 create index candidates_current_cv_id_idx on candidates (current_cv_id);
