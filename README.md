@@ -110,8 +110,7 @@ That sweeps, drains every queue, prints what it did, and exits. Run it again aft
 queues work — a CV upload, a profile edit, a queued email.
 
 With no argument, `sync-worker` serves the drain endpoints on port 8080 instead, which is what the
-container runs; it needs `SYNC_WORKER_SHARED_SECRET` or it answers 503. See
-[ADR-0003](docs/adr/0003-postgres-table-queues-skip-locked.md).
+container runs; it needs `SYNC_WORKER_SHARED_SECRET` or it answers 503.
 
 ### The keys it needs
 
@@ -160,7 +159,7 @@ pnpm gen:api-client                                                   # terminal
 supabase start
 pnpm gen:db-types
 
-# SQLAlchemy models: same idea, for the Python side (ADR-0004)
+# SQLAlchemy models: same idea, for the Python side
 supabase db reset
 pnpm --filter @sync/api gen:models
 ```
