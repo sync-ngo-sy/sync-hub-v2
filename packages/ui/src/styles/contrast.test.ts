@@ -50,9 +50,6 @@ function token(theme: keyof typeof THEMES, name: string): Colour {
   return parse(value);
 }
 
-/** What the eye ends up with when a translucent colour — a `/10` tint, an `rgba()` token — is
- * painted over the surface below it. Contrast is a question about that result, never about the
- * colour the stylesheet names. */
 function over(top: Colour, bottom: Colour, opacity = 1): Colour {
   const alpha = top.alpha * opacity;
   return {
@@ -81,25 +78,42 @@ function contrast(one: Colour, other: Colour): number {
 
 const THEME_NAMES = Object.keys(THEMES) as (keyof typeof THEMES)[];
 
+const SURFACES = ['background', 'card', 'popover'] as const;
+
+const FILLED_BUTTON_TINT = { light: 0.1, dark: 0.2 };
+const OUTLINED_BUTTON_TINT = { light: 0.05, dark: 0.1 };
+
+const ACTIVE_TREATMENTS = [
+  { below: 'sidebar', fill: 'sidebar-accent', label: 'sidebar-accent' },
+  { below: 'background', fill: 'accent', label: 'accent' },
+] as const;
+
+const ACTIVE_TAB = { light: 'card', dark: 'input' };
+
 describe('the destructive colour', () => {
   it.each(THEME_NAMES)('reads on the plain surfaces of the %s theme', (theme) => {
     const destructive = token(theme, 'destructive');
 
-    for (const surface of ['background', 'card', 'popover'] as const) {
+    for (const surface of SURFACES) {
       expect(contrast(destructive, token(theme, surface))).toBeGreaterThanOrEqual(AA_TEXT);
     }
   });
 
-  /** The destructive Button and Badge paint the destructive colour on a tint of itself, which
-   * lifts the surface towards the text and takes the pair closer to failing than the plain
-   * surfaces do. The tint is heavier in the dark theme, so each theme is measured with its own. */
-  it.each(THEME_NAMES)('reads on its own tint in the %s theme', (theme) => {
+  it.each(THEME_NAMES)('reads on the tint the filled control paints in the %s theme', (theme) => {
     const destructive = token(theme, 'destructive');
-    const tint = theme === 'light' ? 0.1 : 0.2;
 
-    for (const surface of ['background', 'card', 'popover'] as const) {
-      const tinted = over(destructive, token(theme, surface), tint);
+    for (const surface of SURFACES) {
+      const tinted = over(destructive, token(theme, surface), FILLED_BUTTON_TINT[theme]);
       expect(contrast(destructive, tinted)).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+
+  it.each(THEME_NAMES)('reads on the fill the outlined control paints in the %s theme', (theme) => {
+    const destructive = token(theme, 'destructive');
+
+    for (const surface of SURFACES) {
+      const filled = over(destructive, token(theme, surface), OUTLINED_BUTTON_TINT[theme]);
+      expect(contrast(destructive, filled)).toBeGreaterThanOrEqual(AA_TEXT);
     }
   });
 
@@ -111,21 +125,22 @@ describe('the destructive colour', () => {
 });
 
 describe('an active item', () => {
-  it.each(THEME_NAMES)('sits on a surface of its own in the %s sidebar', (theme) => {
-    const sidebar = token(theme, 'sidebar');
-    const active = over(token(theme, 'sidebar-accent'), sidebar);
+  it.each(
+    THEME_NAMES.flatMap((theme) => ACTIVE_TREATMENTS.map((treatment) => ({ ...treatment, theme }))),
+  )('sits on a surface of its own: $label, $theme theme', ({ theme, below, fill }) => {
+    const beneath = token(theme, below);
+    const active = over(token(theme, fill), beneath);
 
-    expect(contrast(active, sidebar)).toBeGreaterThanOrEqual(READS_AS_ANOTHER_SURFACE);
-    expect(contrast(token(theme, 'sidebar-accent-foreground'), active)).toBeGreaterThanOrEqual(
-      AA_TEXT,
-    );
+    expect(contrast(active, beneath)).toBeGreaterThanOrEqual(READS_AS_ANOTHER_SURFACE);
+    expect(contrast(token(theme, `${fill}-foreground`), active)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
-  it.each(THEME_NAMES)('sits on a surface of its own in the %s theme', (theme) => {
-    const background = token(theme, 'background');
-    const active = over(token(theme, 'accent'), background);
+  it.each(THEME_NAMES)('sits on a surface of its own in the %s tab list', (theme) => {
+    const list = token(theme, 'secondary');
+    const active = token(theme, ACTIVE_TAB[theme]);
 
-    expect(contrast(active, background)).toBeGreaterThanOrEqual(READS_AS_ANOTHER_SURFACE);
-    expect(contrast(token(theme, 'accent-foreground'), active)).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(contrast(active, list)).toBeGreaterThanOrEqual(READS_AS_ANOTHER_SURFACE);
+    expect(contrast(token(theme, 'foreground'), active)).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(contrast(token(theme, 'muted-foreground'), list)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 });
