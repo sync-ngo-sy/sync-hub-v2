@@ -165,7 +165,12 @@ function NoteEntry({ note, onEdit, onDelete }: NoteEntryProps) {
           <Button variant="ghost" size="sm" aria-label={`Edit ${whose}`} onClick={onEdit}>
             Edit
           </Button>
-          <Button variant="ghost" size="sm" aria-label={`Delete ${whose}`} onClick={onDelete}>
+          <Button
+            variant="destructive-outline"
+            size="sm"
+            aria-label={`Delete ${whose}`}
+            onClick={onDelete}
+          >
             Delete
           </Button>
         </span>

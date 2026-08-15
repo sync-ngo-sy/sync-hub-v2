@@ -129,7 +129,7 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
 
         <Button
           type="button"
-          variant="ghost"
+          variant="destructive-outline"
           size="sm"
           disabled={cv.is_current}
           aria-describedby={cv.is_current ? undeletableId : undefined}

@@ -30,8 +30,8 @@ Not yet modelled (no `CONTEXT.md` until their terms are resolved):
 - **Database → packages/db-types**: `db-types` is generated from the live schema; the
   database is the source of truth.
 - **services/api → packages/api-client**: the client is generated from the API's
-  OpenAPI schema; the API is the source of truth (see ADR-0008).
+  OpenAPI schema; the API is the source of truth.
 - **Portals → services/api**: all three portals speak to the backend only through
-  `packages/api-client` — never raw HTTP (ADR-0008).
+  `packages/api-client` — never raw HTTP.
 - **Design System → Portals**: all three portals render from the shared design system;
-  the design system itself never fetches data (ADR-0009).
+  the design system itself never fetches data.

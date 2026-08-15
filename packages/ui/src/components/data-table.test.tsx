@@ -158,6 +158,26 @@ describe('DataTable', () => {
     expect(onRowOpen).not.toHaveBeenCalled();
   });
 
+  it('marks a destructive row action so it reads as one', async () => {
+    const { user } = renderTable({
+      rowActions: () => [
+        { label: 'Rename Tag', onSelect: vi.fn() },
+        { label: 'Delete Tag', onSelect: vi.fn(), destructive: true },
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Actions for Lina Khoury' }));
+
+    expect(await screen.findByRole('menuitem', { name: 'Delete Tag' })).toHaveAttribute(
+      'data-variant',
+      'destructive',
+    );
+    expect(screen.getByRole('menuitem', { name: 'Rename Tag' })).toHaveAttribute(
+      'data-variant',
+      'default',
+    );
+  });
+
   it('stands a skeleton in the table while the first page loads', () => {
     const { container } = renderTable({ data: [], isLoading: true });
 

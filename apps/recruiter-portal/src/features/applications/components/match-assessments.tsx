@@ -59,7 +59,7 @@ function Assessment({ assessment, isLeaving, isBusy, refusal, onForget, onGone }
             {stamp}
           </time>
           <Button
-            variant="ghost"
+            variant="destructive-outline"
             size="sm"
             aria-label={`Delete the reading from ${stamp}`}
             disabled={isBusy}

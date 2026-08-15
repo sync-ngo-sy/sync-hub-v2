@@ -55,7 +55,7 @@ export function CriteriaEntryList({
             <h3 className="text-dense font-medium text-foreground">{label(index)}</h3>
             <Button
               type="button"
-              variant="ghost"
+              variant="destructive-outline"
               size="sm"
               aria-label={`Remove ${label(index)}`}
               disabled={disabled}
