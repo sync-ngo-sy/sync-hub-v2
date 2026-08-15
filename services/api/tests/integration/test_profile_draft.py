@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+import pytest
+
 from sync_parsers import ParsedExperience, ParsedSkill
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import a_read_cv, an_uploaded_cv
@@ -44,7 +46,8 @@ async def test_a_candidate_with_no_profile_yet_gets_the_whole_cv(
     draft = await a_draft_of(browser, cv["id"])
 
     assert draft["full_name"] == "Amina Haddad"
-    assert draft["phone"] == "+963 11 555 0134"
+    assert draft["phone"] == "+963115550134"
+    assert draft["phone_country"] == "SY"
     assert draft["headline"] == "Backend engineer, 8 years"
     # A Location is chosen from a list, so it stays the Candidate's rather than the CV's.
     assert draft["location_key"] is None
@@ -201,6 +204,33 @@ async def test_a_cv_proposes_a_canonical_role_into_the_draft(
     draft = await a_draft_of(browser, cv["id"])
 
     assert draft["canonical_role_key"] == "backend-engineer"
+
+
+@pytest.mark.parametrize("wrote", ["555 0134", "ring the office", "+80012345678"])
+async def test_a_number_the_platform_cannot_read_reaches_the_draft_as_the_cv_wrote_it(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage, wrote: str
+) -> None:
+    """A number with no country, one that is not a number, and one belonging to no country at
+    all. A value dropped quietly is one nobody learns was on their CV."""
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await a_read_cv(browser, database, storage, extractor=FakeExtractor(a_parse(phone=wrote)))
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["phone"] == wrote
+    assert draft["phone_country"] is None
+
+
+async def test_a_cv_that_wrote_no_number_leaves_the_field_empty(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await a_read_cv(browser, database, storage, extractor=FakeExtractor(a_parse(phone=None)))
+
+    draft = await a_draft_of(browser, cv["id"])
+
+    assert draft["phone"] is None
+    assert draft["phone_country"] is None
 
 
 async def test_a_cv_that_supports_no_role_proposes_none(

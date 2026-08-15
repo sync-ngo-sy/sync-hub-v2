@@ -290,6 +290,7 @@ export type Database = {
           linkedin_url: string | null;
           location: string | null;
           phone: string | null;
+          phone_country: string | null;
           portfolio_url: string | null;
           summary: string | null;
           total_experience_years: number;
@@ -305,6 +306,7 @@ export type Database = {
           linkedin_url?: string | null;
           location?: string | null;
           phone?: string | null;
+          phone_country?: string | null;
           portfolio_url?: string | null;
           summary?: string | null;
           total_experience_years: number;
@@ -320,6 +322,7 @@ export type Database = {
           linkedin_url?: string | null;
           location?: string | null;
           phone?: string | null;
+          phone_country?: string | null;
           portfolio_url?: string | null;
           summary?: string | null;
           total_experience_years?: number;
@@ -1978,6 +1981,7 @@ export type Database = {
           full_name: string;
           id: string;
           phone: string | null;
+          phone_country: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1988,6 +1992,7 @@ export type Database = {
           full_name: string;
           id: string;
           phone?: string | null;
+          phone_country?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1998,6 +2003,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           phone?: string | null;
+          phone_country?: string | null;
           updated_at?: string;
         };
         Relationships: [];

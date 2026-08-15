@@ -273,6 +273,53 @@ describe('the profile editor', () => {
     expect(sent.body?.location_key).toBe('sy-rif-dimashq');
   });
 
+  it('loads the phone as the country it belongs to beside the part that is typed', async () => {
+    await openProfile();
+
+    expect(screen.getByRole('combobox', { name: 'Country' })).toHaveValue('Syria (+963)');
+    expect(screen.getByLabelText('Phone')).toHaveValue('011 555 0100');
+  });
+
+  it('saves the number and the country as one answer in two fields', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.clear(screen.getByLabelText('Phone'));
+    await user.type(screen.getByLabelText('Phone'), '011 555 0199');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.phone).toBe('+963115550199');
+    expect(sent.body?.phone_country).toBe('SY');
+  });
+
+  it('takes the country off a pasted international number and saves the rest of it', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.clear(screen.getByLabelText('Phone'));
+    await user.click(screen.getByLabelText('Phone'));
+    await user.paste('+961 1 555 042');
+
+    expect(screen.getByRole('combobox', { name: 'Country' })).toHaveValue('Lebanon (+961)');
+    expect(screen.getByLabelText('Phone')).toHaveValue('1555042');
+
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.phone).toBe('+9611555042');
+    expect(sent.body?.phone_country).toBe('LB');
+  });
+
+  it('says a number is not one that country can dial, without asking the API', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.clear(screen.getByLabelText('Phone'));
+    await user.type(screen.getByLabelText('Phone'), '11');
+    await save(user);
+
+    expect(await screen.findByText('Enter a number Syria can dial.')).toBeVisible();
+    expect(sent.body).toBeUndefined();
+  });
+
   it('saves the kind of work chosen by its name as its key', async () => {
     const { user, sent } = await openProfileThatSaves();
 

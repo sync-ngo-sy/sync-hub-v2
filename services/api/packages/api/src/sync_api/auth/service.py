@@ -101,6 +101,7 @@ class ActingProfile:
     account_type: AccountType
     avatar_url: str | None
     phone: str | None
+    phone_country: str | None
     has_account_row: bool = False
     membership: ActingMembership | None = None
 
@@ -144,6 +145,7 @@ class AuthService:
             account_type=AccountType.CANDIDATE,
             avatar_url=None,
             phone=None,
+            phone_country=None,
             has_account_row=True,
         )
 
@@ -280,6 +282,7 @@ class AuthService:
             account_type=profile.account_type,
             avatar_url=profile.avatar_url,
             phone=profile.phone,
+            phone_country=profile.phone_country,
             has_account_row=_has_account_row(profile.account_type, row),
             membership=_membership_of(row),
         )

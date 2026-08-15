@@ -295,7 +295,8 @@ export const CV_NOT_READY_FOR_CURRENT: components['schemas']['ProblemDetail'] = 
 
 export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   full_name: CANDIDATE.full_name,
-  phone: '+963 11 555 0100',
+  phone: '+963115550100',
+  phone_country: 'SY',
   headline: 'Field coordinator, 6 years',
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',

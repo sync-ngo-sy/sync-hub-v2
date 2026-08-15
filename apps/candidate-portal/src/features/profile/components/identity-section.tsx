@@ -1,8 +1,9 @@
 import { FormField } from '@sync/ui/components/form-field';
+import { PhoneField } from '@sync/ui/components/phone-field';
 import { Input } from '@sync/ui/components/ui/input';
 import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import type { Control } from 'react-hook-form';
+import { type Control, useController } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLocations } from '@/features/reference/hooks/use-locations';
@@ -15,6 +16,7 @@ const NO_ROLE = { value: '', label: 'Not saying' };
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {
   const places = useLocations();
   const roles = useCanonicalRoles();
+  const country = useController({ control, name: 'phone_country' });
 
   return (
     <ProfileSection title="About you" description="The first thing a recruiter reads.">
@@ -23,7 +25,22 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
       </FormField>
 
       <FormField control={control} name="phone" label="Phone">
-        {(field) => <Input {...field} type="tel" autoComplete="tel" />}
+        {({ value, onChange, onBlur, id, ...aria }) => (
+          <PhoneField
+            id={id}
+            value={{ country: country.field.value, national: value }}
+            onChange={(next) => {
+              country.field.onChange(next.country);
+              onChange(next.national);
+            }}
+            onBlur={() => {
+              country.field.onBlur();
+              onBlur();
+            }}
+            aria-describedby={aria['aria-describedby']}
+            aria-invalid={aria['aria-invalid']}
+          />
+        )}
       </FormField>
 
       <FormField
