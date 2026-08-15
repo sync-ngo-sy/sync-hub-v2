@@ -7,12 +7,19 @@ import { BLANK_PROJECT, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
 import { ProfileSection } from './profile-section';
+import { useUnanswered } from './section-error';
 
 export function ProjectsSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'projects' });
+  const unanswered = useUnanswered(control, 'projects');
 
   return (
-    <ProfileSection title="Projects" description="Things you built or ran, paid or not.">
+    <ProfileSection
+      id="projects"
+      title="Projects"
+      description="Things you built or ran, paid or not."
+      unanswered={unanswered}
+    >
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Project ${index + 1}`}

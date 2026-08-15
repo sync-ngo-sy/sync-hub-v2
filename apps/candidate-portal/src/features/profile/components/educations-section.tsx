@@ -6,16 +6,19 @@ import { type Control, useFieldArray } from 'react-hook-form';
 import { BLANK_EDUCATION, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-import { SectionError } from './section-error';
+import { SectionError, useUnanswered } from './section-error';
 
 export function EducationsSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'educations' });
+  const unanswered = useUnanswered(control, 'educations');
 
   return (
     <ProfileSection
+      id="education"
       title="Education"
       description="Degrees, diplomas and courses."
       needed="One qualification needed to apply"
+      unanswered={unanswered}
     >
       <SectionError control={control} name="educations" />
       <EntryList

@@ -12,6 +12,7 @@ import { BLANK_EXPERIENCE, type ProfileFormValues, toProfileExperiences } from '
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
 import { ProfileSection } from './profile-section';
+import { useUnanswered } from './section-error';
 import { TotalExperience } from './total-experience';
 
 const sameExperiences = (
@@ -59,9 +60,15 @@ export function ExperiencesSection({
   const currentKey = JSON.stringify(experiences);
   const displayedYears =
     experiencesDirty && preview?.key === currentKey ? preview.years : totalExperienceYears;
+  const unanswered = useUnanswered(control, 'experiences');
 
   return (
-    <ProfileSection title="Experience" description="Newest first, or whatever order suits you.">
+    <ProfileSection
+      id="experience"
+      title="Experience"
+      description="Newest first, or whatever order suits you."
+      unanswered={unanswered}
+    >
       <TotalExperience years={displayedYears} />
 
       <EntryList

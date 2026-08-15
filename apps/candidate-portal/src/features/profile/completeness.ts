@@ -27,17 +27,22 @@ export interface ProfileFacts {
   languages?: number;
 }
 
-export const REQUIREMENT_ACTIONS: Record<Requirement, string> = {
-  cv: 'Upload a CV and wait for it to be read',
-  full_name: 'Enter your full name',
-  phone: 'Enter your phone number and the country it belongs to',
-  headline: 'Write a headline',
-  location: 'Choose where you are',
-  canonical_role: 'Choose what you do',
-  summary: 'Write a summary',
-  education: 'Add at least one qualification',
-  skill: 'Add at least one skill',
-  language: 'Add at least one language',
+export interface RequirementStep {
+  label: string;
+  section: string;
+}
+
+export const REQUIREMENT_STEPS: Record<Requirement, RequirementStep> = {
+  cv: { label: 'CV read', section: 'cvs' },
+  full_name: { label: 'Your name', section: 'about-you' },
+  phone: { label: 'Phone', section: 'about-you' },
+  headline: { label: 'Headline', section: 'about-you' },
+  location: { label: 'Location', section: 'about-you' },
+  canonical_role: { label: 'What you do', section: 'about-you' },
+  summary: { label: 'Summary', section: 'about-you' },
+  education: { label: 'Education', section: 'education' },
+  skill: { label: 'Skills', section: 'skills' },
+  language: { label: 'Languages', section: 'languages' },
 };
 
 const said = (value: string | null | undefined) =>

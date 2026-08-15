@@ -3,7 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/aler
 import { Button } from '@sync/ui/components/ui/button';
 import { useBlocker } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
-import { type FieldErrors, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CvsSection } from '@/features/cvs/components/cvs-section';
 import { MAX_CVS } from '@/features/cvs/cv';
@@ -13,7 +13,8 @@ import { useMyProfile } from '../hooks/use-my-profile';
 import { useSaveProfile } from '../hooks/use-save-profile';
 import { profileRejection } from '../rejection';
 import { type ProfileFormValues, profileSchema, toFormValues, toProfile } from '../schemas/profile';
-import { CompletionNotice } from './completion-notice';
+import { whatIsUnanswered } from '../unanswered';
+import { CompletionPanel } from './completion-panel';
 import { EducationsSection } from './educations-section';
 import { ExperiencesSection } from './experiences-section';
 import { FilledNotice } from './filled-notice';
@@ -25,26 +26,6 @@ import { ProfileSection } from './profile-section';
 import { ProjectsSection } from './projects-section';
 import { SkillsSection } from './skills-section';
 import { UnsavedChangesDialog } from './unsaved-changes-dialog';
-
-const ANSWERED_IN_ORDER = [
-  'full_name',
-  'phone',
-  'headline',
-  'location_key',
-  'canonical_role_key',
-  'summary',
-  'educations',
-  'skills',
-  'languages',
-] as const satisfies readonly (keyof ProfileFormValues)[];
-
-function whatIsStillMissing(errors: FieldErrors<ProfileFormValues>): string {
-  for (const name of ANSWERED_IN_ORDER) {
-    const message = (errors[name] as { message?: string } | undefined)?.message;
-    if (message) return message;
-  }
-  return 'Some answers are still missing. Look for the fields marked in red.';
-}
 
 export function ProfileEditor() {
   const { data: profile } = useMyProfile();
@@ -87,69 +68,75 @@ export function ProfileEditor() {
         toast.error(rejection.root ?? rejection.fields[0]?.message ?? "Your profile wasn't saved.");
       }
     },
-    (errors) => toast.error(whatIsStillMissing(errors)),
+    (errors) => toast.error(whatIsUnanswered(errors)),
   );
 
   return (
-    <div className="space-y-6">
-      <ProfileSection
-        title="CVs"
-        description={`Upload one and the fields below fill in from what it says. The current CV goes
-          out with every application you send, and is the one recruiters searching the platform find
-          you by. Keep up to ${MAX_CVS}.`}
-        needed="One read CV needed to apply"
-      >
-        <CvsSection onFill={fill.from} filling={fill.pending} />
-      </ProfileSection>
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-(--space-grid)">
+      <CompletionPanel control={control} />
 
-      {fill.refusal ? (
-        <Alert className="bg-muted">
-          <CircleAlert aria-hidden="true" />
-          <AlertTitle>That CV did not fill the form</AlertTitle>
-          <AlertDescription>{fill.refusal}</AlertDescription>
-        </Alert>
-      ) : null}
+      <div className="mt-6 min-w-0 space-y-6 lg:col-start-1 lg:row-start-1 lg:mt-0">
+        <ProfileSection
+          id="cvs"
+          title="CVs"
+          description={`Upload one and the fields below fill in from what it says. The current CV goes
+            out with every application you send, and is the one recruiters searching the platform
+            find you by. Keep up to ${MAX_CVS}.`}
+          needed="One read CV needed to apply"
+        >
+          <CvsSection onFill={fill.from} filling={fill.pending} />
+        </ProfileSection>
 
-      {fill.filledBy ? (
-        <FilledNotice cvName={fill.filledBy} onUndo={fill.undo} onDismiss={fill.dismiss} />
-      ) : null}
-
-      <MyCandidateCard />
-
-      <CompletionNotice />
-
-      <form onSubmit={submit} noValidate className="space-y-6">
-        <IdentitySection control={control} />
-        <ExperiencesSection control={control} experiencesDirty={Boolean(dirtyFields.experiences)} />
-        <EducationsSection control={control} />
-        <SkillsSection control={control} />
-        <LanguagesSection control={control} />
-        <ProjectsSection control={control} />
-        <LinksSection control={control} />
-
-        {errors.root?.message ? (
-          <Alert variant="destructive">
-            <CircleAlert />
-            <AlertTitle>Your profile was not saved</AlertTitle>
-            <AlertDescription>{errors.root.message}</AlertDescription>
+        {fill.refusal ? (
+          <Alert className="bg-muted">
+            <CircleAlert aria-hidden="true" />
+            <AlertTitle>That CV did not fill the form</AlertTitle>
+            <AlertDescription>{fill.refusal}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3 md:bottom-4">
-          <p className="text-dense text-muted-foreground" aria-live="polite">
-            {isDirty ? 'Unsaved changes.' : 'Everything is saved.'}
-          </p>
-          <Button type="submit" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save profile'}
-          </Button>
-        </div>
+        {fill.filledBy ? (
+          <FilledNotice cvName={fill.filledBy} onUndo={fill.undo} onDismiss={fill.dismiss} />
+        ) : null}
 
-        <UnsavedChangesDialog
-          open={blocker.status === 'blocked'}
-          onDiscard={() => blocker.proceed?.()}
-          onKeepEditing={() => blocker.reset?.()}
-        />
-      </form>
+        <MyCandidateCard />
+
+        <form onSubmit={submit} noValidate className="space-y-6">
+          <IdentitySection control={control} />
+          <ExperiencesSection
+            control={control}
+            experiencesDirty={Boolean(dirtyFields.experiences)}
+          />
+          <EducationsSection control={control} />
+          <SkillsSection control={control} />
+          <LanguagesSection control={control} />
+          <ProjectsSection control={control} />
+          <LinksSection control={control} />
+
+          {errors.root?.message ? (
+            <Alert variant="destructive">
+              <CircleAlert />
+              <AlertTitle>Your profile was not saved</AlertTitle>
+              <AlertDescription>{errors.root.message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3 md:bottom-4">
+            <p className="text-dense text-muted-foreground" aria-live="polite">
+              {isDirty ? 'Unsaved changes.' : 'Everything is saved.'}
+            </p>
+            <Button type="submit" size="lg" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving…' : 'Save profile'}
+            </Button>
+          </div>
+
+          <UnsavedChangesDialog
+            open={blocker.status === 'blocked'}
+            onDiscard={() => blocker.proceed?.()}
+            onKeepEditing={() => blocker.reset?.()}
+          />
+        </form>
+      </div>
     </div>
   );
 }

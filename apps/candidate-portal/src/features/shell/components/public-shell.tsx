@@ -14,7 +14,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           Create account
         </Link>
       </PublicHeader>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:max-w-5xl md:px-6 md:py-10">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:max-w-5xl md:px-6 md:py-10 lg:max-w-7xl">
         {children}
       </main>
     </div>

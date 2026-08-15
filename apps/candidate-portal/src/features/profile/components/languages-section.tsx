@@ -15,18 +15,21 @@ import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../s
 import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-import { SectionError } from './section-error';
+import { SectionError, useUnanswered } from './section-error';
 
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
   const known = useLanguages();
   const listed = useWatch({ control, name: 'languages' });
+  const unanswered = useUnanswered(control, 'languages');
 
   return (
     <ProfileSection
+      id="languages"
       title="Languages"
       description="The ones you speak, and how well."
       needed="One language needed to apply"
+      unanswered={unanswered}
     >
       <SectionError control={control} name="languages" />
       <EntryList
