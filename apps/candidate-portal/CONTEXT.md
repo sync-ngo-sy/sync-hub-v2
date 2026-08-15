@@ -46,8 +46,28 @@ attribution.
 _Avoid_: Campaign page, referral page.
 
 **My Applications**:
-The signed-in Candidate's home: their Applications, newest first.
-_Avoid_: Dashboard (reserved for the Recruiter Portal's home).
+The signed-in Candidate's Applications, newest first, at `/applications`. Each says its Stage —
+never the Tenant's eight-value status — and opens the Job it was sent to.
+_Avoid_: My jobs, submissions, dashboard.
+
+**Stage**:
+What this portal tells a Candidate about one of their Applications — Received, In review, then the
+outcome. It is the whole vocabulary a Candidate ever sees of a Tenant's pipeline, and a move that
+does not change it is a move they are never told about; whether an Application may still be
+withdrawn is the API's answer, not one read off a Stage.
+_Avoid_: Status, pipeline stage, step.
+
+**Profile progress**:
+How much of a Complete profile the Candidate has and which requirements are still unfinished.
+Optional Projects and Links never prevent 100%; the database's Complete-profile marker is what
+actually gates applying.
+_Avoid_: Completion score, profile strength, onboarding progress.
+
+**Links**:
+The Candidate's LinkedIn, GitHub and portfolio addresses — three fields rather than a list.
+A handle typed on its own becomes the whole address; Recruiters read these fields and Screening
+never does.
+_Avoid_: Social links, profiles, URLs.
 
 **Account area**:
 Everything behind the sign-in guard — My Applications, the profile editor, Notifications,
@@ -76,9 +96,13 @@ _Avoid_: Profile picture as a separate domain concept.
 Taking what the platform read off a CV into the editor's fields, where the Candidate reads every
 value in context and saves — or does not. It writes nothing: a raw parse is never the
 authoritative profile, so the draft the API computes lands in the form and the Candidate's Save
-is still the only thing that replaces anything. A parse finishing fills on its own, and a CV
-already read fills on demand. Skills merge, keeping the years already typed against them; every
-other section is replaced, which is safe only because of the Undo beside it.
+is still the only thing that replaces anything. A parse finishing while the Candidate is here fills
+on its own; one that finished while they were away is what the notification about it opens, and a
+CV already read fills on demand. It reaches Links and the Phone as well as the sections — a number
+it could not make sense of lands in the field exactly as the CV wrote it, and the field says so,
+because a value quietly dropped is one nobody learns was on their CV. Skills merge, keeping the
+years already typed against them; every other section is replaced, which is safe only because of
+the Undo beside it.
 _Avoid_: Import, apply the draft, review (the dialog that reviewed it is gone), auto-fill.
 
 **Fill notice**:
