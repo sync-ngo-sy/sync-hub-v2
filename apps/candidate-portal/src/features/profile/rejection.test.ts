@@ -1,6 +1,6 @@
 import type { components } from '@sync/api-client';
 import { describe, expect, it } from 'vitest';
-import { SEARCHABLE_NEEDS_CV } from '@/testing/fixtures';
+import { SEARCHABLE_NEEDS_A_COMPLETE_PROFILE } from '@/testing/fixtures';
 import { profileRejection } from './rejection';
 
 type ValidationProblem = components['schemas']['ValidationProblemDetail'];
@@ -105,11 +105,11 @@ describe('a rejected profile', () => {
     expect(rejection?.root).toBe("Your profile couldn't be saved.");
   });
 
-  it('blames the searchable switch when Global search needs a CV first', () => {
-    const rejection = profileRejection(SEARCHABLE_NEEDS_CV);
+  it('blames the searchable switch when Global search needs a complete profile', () => {
+    const rejection = profileRejection(SEARCHABLE_NEEDS_A_COMPLETE_PROFILE);
 
     expect(rejection?.fields).toEqual([
-      { name: 'is_searchable', message: SEARCHABLE_NEEDS_CV.detail },
+      { name: 'is_searchable', message: SEARCHABLE_NEEDS_A_COMPLETE_PROFILE.detail },
     ]);
     expect(rejection?.root).toBeNull();
   });

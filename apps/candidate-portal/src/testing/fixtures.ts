@@ -486,11 +486,14 @@ export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {
   ],
 };
 
-export const SEARCHABLE_NEEDS_CV: components['schemas']['ProblemDetail'] = {
-  type: 'urn:sync:problem:searchable-needs-cv',
+export const SEARCHABLE_NEEDS_A_COMPLETE_PROFILE: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:searchable-needs-a-complete-profile',
   title: 'Conflict',
   status: 409,
-  detail: 'Upload a CV and wait for it to be processed before making your profile searchable.',
+  detail:
+    'Recruiters are only shown complete profiles, and only ones with a CV the platform has ' +
+    'read. Yours still needs a CV that has been read and a summary. Everything else you typed ' +
+    'can be saved with this switch off.',
 };
 
 export const NO_SESSION: components['schemas']['ProblemDetail'] = {

@@ -27,6 +27,22 @@ MALFORMED_SKILL_FILTER: Final = "urn:sync:problem:malformed-skill-filter"
 MALFORMED_LANGUAGE_FILTER: Final = "urn:sync:problem:malformed-language-filter"
 INVALID_CURSOR: Final = "urn:sync:problem:invalid-cursor"
 
+COMPLETING: Final[dict[str, Any]] = {
+    "phone": "+963115550100",
+    "phone_country": "SY",
+    "headline": "Open to work",
+    "summary": "Open to work.",
+    "location_key": "sy-damascus",
+    "canonical_role_key": "backend-engineer",
+    "educations": [{"institution": "Aleppo University", "degree": "Diploma"}],
+    "skills": [{"name": "Python", "years_experience": 1.0}],
+    "languages": [{"code": "ar", "proficiency": "native"}],
+}
+
+
+def a_complete_profile(searchable: bool, profile: dict[str, Any]) -> dict[str, Any]:
+    return a_profile(is_searchable=searchable, **{**COMPLETING, **profile})
+
 
 def a_candidate_record(candidate_id: UUID | str) -> str:
     return f"{DIRECTORY}/{candidate_id}"
@@ -51,7 +67,7 @@ async def a_candidate_with(
         signup = await a_signed_in_candidate(browser, mailbox, label)
         candidate_id = await my_id(browser)
         await give_a_current_cv(session, candidate_id)
-        saved = await browser.put(PROFILE, json=a_profile(is_searchable=searchable, **profile))
+        saved = await browser.put(PROFILE, json=a_complete_profile(searchable, profile))
         assert saved.status_code == 200, saved.text
         return Candidate(id=candidate_id, signup=signup)
 
@@ -60,5 +76,5 @@ async def rewrite_profile(app: FastAPI, candidate: Candidate, **profile: Any) ->
     async with asgi_client(app, headers=SPA_HEADERS) as browser:
         signed_in = await sign_in(browser, candidate.signup)
         assert signed_in.status_code == 200, signed_in.text
-        saved = await browser.put(PROFILE, json=a_profile(is_searchable=True, **profile))
+        saved = await browser.put(PROFILE, json=a_complete_profile(True, profile))
         assert saved.status_code == 200, saved.text

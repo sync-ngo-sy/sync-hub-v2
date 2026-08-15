@@ -1,0 +1,188 @@
+{
+  "requirements": [
+    "cv",
+    "full_name",
+    "phone",
+    "headline",
+    "location",
+    "canonical_role",
+    "summary",
+    "education",
+    "skill",
+    "language"
+  ],
+  "cases": [
+    {
+      "name": "a profile with nothing on it has met nothing",
+      "facts": {},
+      "missing": [
+        "cv",
+        "full_name",
+        "phone",
+        "headline",
+        "location",
+        "canonical_role",
+        "summary",
+        "education",
+        "skill",
+        "language"
+      ],
+      "percent": 0
+    },
+    {
+      "name": "a whole profile with no projects, other skills or links is still complete",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "Amina Haddad",
+        "phone": "+963115550134",
+        "phone_country": "SY",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "Builds boring systems that stay up.",
+        "educations": 1,
+        "skills": 2,
+        "languages": 2
+      },
+      "missing": [],
+      "percent": 100
+    },
+    {
+      "name": "a number with no country is not a phone",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "Amina Haddad",
+        "phone": "+963115550134",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "Builds boring systems that stay up.",
+        "educations": 1,
+        "skills": 2,
+        "languages": 2
+      },
+      "missing": ["phone"],
+      "percent": 90
+    },
+    {
+      "name": "a country with no number is not a phone either",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "Amina Haddad",
+        "phone_country": "SY",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "Builds boring systems that stay up.",
+        "educations": 1,
+        "skills": 2,
+        "languages": 2
+      },
+      "missing": ["phone"],
+      "percent": 90
+    },
+    {
+      "name": "a CV that has not been read does not count",
+      "facts": {
+        "full_name": "Amina Haddad",
+        "phone": "+963115550134",
+        "phone_country": "SY",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "Builds boring systems that stay up.",
+        "educations": 1,
+        "skills": 2,
+        "languages": 2
+      },
+      "missing": ["cv"],
+      "percent": 90
+    },
+    {
+      "name": "whitespace is not an answer",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "   ",
+        "phone": "+963115550134",
+        "phone_country": "SY",
+        "headline": " ",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "\t\n",
+        "educations": 1,
+        "skills": 2,
+        "languages": 2
+      },
+      "missing": ["full_name", "headline", "summary"],
+      "percent": 70
+    },
+    {
+      "name": "one empty section is one missing requirement",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "Amina Haddad",
+        "phone": "+963115550134",
+        "phone_country": "SY",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "Builds boring systems that stay up.",
+        "educations": 1,
+        "skills": 2,
+        "languages": 0
+      },
+      "missing": ["language"],
+      "percent": 90
+    },
+    {
+      "name": "a qualification is asked for even though a work history is not",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "Amina Haddad",
+        "phone": "+963115550134",
+        "phone_country": "SY",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer",
+        "summary": "Builds boring systems that stay up.",
+        "educations": 0,
+        "skills": 2,
+        "languages": 2
+      },
+      "missing": ["education"],
+      "percent": 90
+    },
+    {
+      "name": "a name on its own is one requirement of ten",
+      "facts": {
+        "full_name": "Amina Haddad"
+      },
+      "missing": [
+        "cv",
+        "phone",
+        "headline",
+        "location",
+        "canonical_role",
+        "summary",
+        "education",
+        "skill",
+        "language"
+      ],
+      "percent": 10
+    },
+    {
+      "name": "a profile part way through is reported part way through",
+      "facts": {
+        "has_a_read_cv": true,
+        "full_name": "Amina Haddad",
+        "phone": "+963115550134",
+        "phone_country": "SY",
+        "headline": "Backend engineer, 8 years",
+        "location_key": "sy-damascus",
+        "canonical_role_key": "backend-engineer"
+      },
+      "missing": ["summary", "education", "skill", "language"],
+      "percent": 60
+    }
+  ]
+}

@@ -100,6 +100,7 @@ class CandidateDeletion:
             candidate.portfolio_url = None
             candidate.unmapped_skills = []
             candidate.is_searchable = False
+            candidate.profile_completed_at = None
             candidate.deleted_at = now
             await self._db.flush()
 

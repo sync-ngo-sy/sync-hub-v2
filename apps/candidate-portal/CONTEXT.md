@@ -59,9 +59,35 @@ _Avoid_: Status, pipeline stage, step.
 
 **Profile progress**:
 How much of a Complete profile the Candidate has and which requirements are still unfinished.
-Optional Projects and Links never prevent 100%; the database's Complete-profile marker is what
-actually gates applying.
-_Avoid_: Completion score, profile strength, onboarding progress.
+A panel beside the editor carries it — a ring for the percentage, and every requirement listed
+under it with a tick against the ones that are met. Each one moves the page to the section that
+answers it, and moves the page rather than the address: the editor stops a real navigation while
+there are unsaved changes, and a Candidate reaching for a requirement is not leaving. It reads the
+fields as they are typed rather than the saved profile, so the ring moves before a save — with the
+CV the one exception, because no amount of typing reads a CV. Every field and section the rule asks
+for also says so where it sits — in the description rather than the label, because a label is the
+field's accessible name. Optional Projects and Links never prevent 100%; the database's
+Complete-profile marker is what actually gates applying, and the browser restates the rule only so
+the editor can answer before a save rather than after it. The Searchable switch lives at the foot
+of this panel rather than among the fields, because the ticks above it are its precondition: it is
+disabled until every one of them is met, so the one setting the database can refuse cannot be asked
+for in a state the database would refuse.
+_Avoid_: Completion score, profile strength, onboarding progress, step (a Stage is what a step
+reads as here).
+
+**Still to do**:
+What a Save that could not do everything says. An unfinished profile is never a refused Save —
+a Candidate's work is kept whatever state it is in. Asking to be Searchable while unfinished is the
+one thing a Save cannot carry, so it goes without the switch and the toast says which requirements
+are outstanding: "Saved. Recruiters cannot find you yet — still to do: Summary." Only a real
+mistake refuses a Save — a year that is not a year, an address of the wrong kind, an entry begun
+and left blank — and then every place at fault is named in one sentence, "Still to do: Education,
+Skills and Languages", with each named section ringed in red where it sits, so nothing sends a
+Candidate hunting down a long page. One place at fault says that place's own words instead, because
+a single sentence beats a list of one. There is no Save to press until something is edited: a
+button that does nothing still asks to be pressed, and pressing it teaches a Candidate that Save is
+how they check their work rather than how they keep it.
+_Avoid_: Validation summary, error list, form errors.
 
 **Candidate Card**:
 The block above the editor that says who the Candidate is, the way a Recruiter will read them —

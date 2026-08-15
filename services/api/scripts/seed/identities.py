@@ -157,7 +157,7 @@ async def purge(
         await session.execute(
             update(Candidate)
             .where(Candidate.id.in_(people))
-            .values(current_cv_id=None, is_searchable=False)
+            .values(current_cv_id=None, is_searchable=False, profile_completed_at=None)
         )
 
         # Anything filed about a person or by a tenant. Both scopes, because a seeded Tenant may

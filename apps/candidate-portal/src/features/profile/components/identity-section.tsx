@@ -1,13 +1,14 @@
 import { FormField } from '@sync/ui/components/form-field';
 import { PhoneField } from '@sync/ui/components/phone-field';
 import { Input } from '@sync/ui/components/ui/input';
-import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { type Control, useController } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups, roleOptions } from '@/features/reference/options';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
 
@@ -17,14 +18,26 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
   const places = useLocations();
   const roles = useCanonicalRoles();
   const country = useController({ control, name: 'phone_country' });
+  const unanswered = useUnanswered(control, FIELDS_IN['about-you']);
 
   return (
-    <ProfileSection title="About you" description="The first thing a recruiter reads.">
+    <ProfileSection
+      id="about-you"
+      title="About you"
+      description="The first thing a recruiter reads."
+      needed="Needed to apply"
+      unanswered={unanswered}
+    >
       <FormField control={control} name="full_name" label="Full name">
         {(field) => <Input {...field} autoComplete="name" />}
       </FormField>
 
-      <FormField control={control} name="phone" label="Phone">
+      <FormField
+        control={control}
+        name="phone"
+        label="Phone"
+        description="Needed to apply. Recruiters read it only on your full profile."
+      >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <PhoneField
             id={id}
@@ -47,7 +60,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="headline"
         label="Headline"
-        description="One line, the way you would introduce yourself."
+        description="One line, the way you would introduce yourself. Needed to apply."
       >
         {(field) => <Input {...field} placeholder="Field coordinator, 6 years" />}
       </FormField>
@@ -56,7 +69,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="location_key"
         label="Location"
-        description="Where you are. Recruiters filter on it."
+        description="Where you are. Recruiters filter on it. Needed to apply."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <ReferencePicker
@@ -78,7 +91,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="canonical_role_key"
         label="What you do"
-        description="The kind of work you are looking for. Recruiters filter on it."
+        description="The kind of work you are looking for. Recruiters filter on it. Needed to apply."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <ReferencePicker
@@ -96,20 +109,13 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         )}
       </FormField>
 
-      <FormField control={control} name="summary" label="Summary">
-        {(field) => <Textarea {...field} rows={5} />}
-      </FormField>
-
       <FormField
         control={control}
-        name="is_searchable"
-        label="Let recruiters find me"
-        description="Adds you to Global search. Needs a current CV that has been read."
-        orientation="horizontal"
+        name="summary"
+        label="Summary"
+        description="A paragraph about your work. Needed to apply."
       >
-        {({ value, onChange, ...field }) => (
-          <Switch {...field} checked={value === true} onCheckedChange={onChange} />
-        )}
+        {(field) => <Textarea {...field} rows={5} />}
       </FormField>
     </ProfileSection>
   );

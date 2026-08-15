@@ -609,14 +609,24 @@ describe('a CV filling the form', () => {
     ).toBeVisible();
   });
 
-  it('never moves the candidate or changes their settings', async () => {
-    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)], {
-      profile: { ...CANDIDATE_PROFILE, is_searchable: true },
-    });
+  it('never moves the candidate, and saves the Location it left alone', async () => {
+    const sent: { body?: CandidateProfile } = {};
+    const { user } = await openProfile([
+      ...listsCvs([READY_CV]),
+      ...drafts(CV_DRAFT),
+      ...echoesProfile((body) => {
+        sent.body = body;
+      }),
+    ]);
     await fillFrom(user, READY_CV);
 
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
-    expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).toBeChecked();
+
+    await user.type(entry('Skill 2').getByLabelText('Years'), '2');
+    await save(user);
+
+    await waitFor(() => expect(sent.body).toBeDefined());
+    expect(sent.body?.location_key).toBe(CANDIDATE_PROFILE.location_key);
   });
 
   it('saves what the CV filled, and what the candidate changed after it, on Save', async () => {

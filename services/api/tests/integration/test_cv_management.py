@@ -36,7 +36,15 @@ from tests.support.extractors import FakeExtractor
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
-from tests.support.profiles import embedding_jobs, give_a_current_cv, my_id
+from tests.support.profiles import (
+    a_filled_profile,
+    a_saved_profile,
+    completed_at,
+    embedding_jobs,
+    give_a_current_cv,
+    make_no_cv_current,
+    my_id,
+)
 from tests.support.tenants import an_admin
 from tests.support.worker import an_ingestion_worker
 
@@ -113,6 +121,27 @@ async def test_making_a_read_cv_current_moves_the_candidate_over(
     candidate = await db_session.get(Candidate, candidate_id)
     assert candidate is not None
     assert str(candidate.current_cv_id) == second["id"]
+
+
+async def test_making_a_cv_current_finishes_a_profile_that_was_only_waiting_for_one(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    """Switching CVs is a completeness answer, not only a preference."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    cv = await a_read_cv(browser, database, storage)
+    await a_saved_profile(browser, a_filled_profile())
+    await make_no_cv_current(db_session, candidate_id)
+    assert await completed_at(db_session, candidate_id) is None
+
+    switched = await make_current(browser, cv["id"])
+
+    assert switched.status_code == 200, switched.text
+    assert await completed_at(db_session, candidate_id) is not None
 
 
 async def test_making_the_current_cv_current_again_changes_nothing(

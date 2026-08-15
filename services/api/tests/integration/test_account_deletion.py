@@ -62,7 +62,7 @@ CANDIDATE_ONLY: Final = "urn:sync:problem:candidate-only"
 A_BACKEND_ENGINEER: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
     "summary": "Builds payment systems in Python and PostgreSQL.",
-    "location": "Damascus, Syria",
+    "location_key": "sy-damascus",
     "skills": [{"name": "Python", "years_experience": 8.0}],
 }
 

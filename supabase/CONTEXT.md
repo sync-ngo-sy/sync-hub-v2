@@ -47,12 +47,17 @@ _Avoid_: Social links, Profiles, URLs.
 
 **Complete profile**:
 A Candidate profile carrying everything the platform needs to place somebody: a CV that was
-read, their name, Phone, Canonical role, Location, headline and summary, and at least one job,
-one qualification, one skill and one language. `candidates.profile_completed_at` records when it
-became one and cannot be set on a profile that is not — a CHECK holds the single-row fields and a
-trigger holds the counts, so completeness is a fact the database keeps rather than a claim the
-backend makes. Saving an unfinished profile is always allowed; applying to a Job and opting into
-Searchable are what it gates.
+read, their name, Phone, Canonical role, Location, headline and summary, and at least one
+qualification, one skill and one language. `candidates.profile_completed_at` records when it
+became one and cannot be set on a profile that is not — a CHECK holds the single-row fields, and a
+deferred trigger re-reads the sections and the CV each time the candidate row is written, so the
+database refuses an unearned marker rather than believing the backend about one. Taking a marker
+back is the backend's job, and it does it everywhere completeness can change: saving the profile,
+and every path that changes which CV is current — a parse finishing, or a Candidate switching CVs.
+Saving an unfinished profile is always allowed; applying to a Job and opting into Searchable are
+what it gates. A work history is deliberately not among the ten: somebody who has
+never held a job has a first one to find, and a platform that refuses to let them look for it is
+the wrong platform. Experience still feeds Total experience, and Recruiters still filter on it.
 _Avoid_: Complete, 100%, Profile score, Verified profile.
 
 **Recruiter**:

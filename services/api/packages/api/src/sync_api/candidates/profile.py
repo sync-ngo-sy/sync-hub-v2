@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ColumnElement, delete, exists, select
+from sqlalchemy import delete, select
 
+from sync_api.candidates.completeness import named
 from sync_api.candidates.payload import (
     CandidateProfile,
     ProfileEducation,
@@ -13,7 +14,6 @@ from sync_api.candidates.payload import (
     ProfileSkill,
 )
 from sync_api.candidates.sections import (
-    LiveSection,
     a_language,
     a_project,
     an_education,
@@ -21,7 +21,7 @@ from sync_api.candidates.sections import (
 )
 from sync_api.problems import (
     INCOMPLETE_PROFILE_PROBLEM_TYPE,
-    SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
+    SEARCHABLE_NEEDS_A_COMPLETE_PROFILE_PROBLEM_TYPE,
     Problem,
 )
 from sync_api.vocabulary import (
@@ -31,6 +31,7 @@ from sync_api.vocabulary import (
     refuse_unknown_location,
 )
 from sync_core import get_logger, transaction
+from sync_core.completeness import refresh_completeness
 from sync_core.experience import WorkPeriod, business_today, total_experience_years
 from sync_core.models import (
     Base,
@@ -40,8 +41,6 @@ from sync_core.models import (
     CandidateLanguage,
     CandidateProject,
     CandidateSkill,
-    Cv,
-    CvParsingStatus,
     Profile,
     SkillTaxonomy,
 )
@@ -98,13 +97,6 @@ class CandidateProfileService:
 
         async with transaction(self._db):
             candidate, identity = await self._candidate(candidate_id, lock=True)
-            if profile.is_searchable and not await self._has_a_ready_cv(candidate):
-                raise Problem(
-                    status=409,
-                    type=SEARCHABLE_NEEDS_CV_PROBLEM_TYPE,
-                    detail="Upload a CV and wait for it to be processed before making your "
-                    "profile searchable.",
-                )
 
             identity.full_name = profile.full_name
             identity.phone = profile.phone
@@ -113,7 +105,7 @@ class CandidateProfileService:
             candidate.summary = profile.summary
             candidate.location_key = profile.location_key
             candidate.canonical_role_key = profile.canonical_role_key
-            candidate.is_searchable = profile.is_searchable
+            candidate.is_searchable = False
             candidate.linkedin_url = profile.linkedin_url
             candidate.github_url = profile.github_url
             candidate.portfolio_url = profile.portfolio_url
@@ -132,21 +124,28 @@ class CandidateProfileService:
                 await self._db.execute(section)
             self._db.add_all(_rows_for(candidate_id, profile, skills))
 
-        logger.info("candidates.profile_replaced", candidate_id=str(candidate_id))
+            missing = await refresh_completeness(self._db, candidate_id)
+            if profile.is_searchable and missing:
+                raise Problem(
+                    status=409,
+                    type=SEARCHABLE_NEEDS_A_COMPLETE_PROFILE_PROBLEM_TYPE,
+                    detail="Recruiters are only shown complete profiles, and only ones with a "
+                    f"CV the platform has read. Yours still needs {named(missing)}. Everything "
+                    "else you typed can be saved with this switch off.",
+                )
+            candidate.is_searchable = profile.is_searchable
+
+        logger.info(
+            "candidates.profile_replaced",
+            candidate_id=str(candidate_id),
+            complete=not missing,
+        )
         return profile.model_copy(update={"total_experience_years": derived})
 
     async def _candidate(
         self, candidate_id: UUID, *, lock: bool = False
     ) -> tuple[Candidate, Profile]:
         return await whole_candidate(self._db, candidate_id, lock=lock)
-
-    async def _has_a_ready_cv(self, candidate: Candidate) -> bool:
-        if candidate.current_cv_id is None:
-            return False
-        cv = await self._db.get(Cv, candidate.current_cv_id)
-        return (
-            cv is not None and cv.parsing_status is CvParsingStatus.READY and cv.deleted_at is None
-        )
 
     async def _experiences(self, candidate_id: UUID) -> list[ProfileExperience]:
         rows = await self._db.scalars(
@@ -208,34 +207,19 @@ async def whole_candidate(
 
 
 async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
-    """A profile too thin to judge an Application by. Named, because "422" alone sends nobody
-    anywhere."""
-    row = (
-        await session.execute(
-            select(
-                _has_a_section(CandidateSkill, candidate_id).label("skills"),
-                _has_a_section(CandidateExperience, candidate_id).label("experiences"),
-                _has_a_section(CandidateEducation, candidate_id).label("educations"),
-            )
-        )
-    ).one()
+    """The marker is what applying is gated on; it is recomputed only when it is not there."""
+    candidate = await session.get(Candidate, candidate_id)
+    if candidate is not None and candidate.profile_completed_at is not None:
+        return
 
-    missing = []
-    if not row.skills:
-        missing.append("at least one skill")
-    if not row.experiences and not row.educations:
-        missing.append("either a job or a qualification")
+    missing = await refresh_completeness(session, candidate_id)
     if missing:
         raise Problem(
             status=422,
             type=INCOMPLETE_PROFILE_PROBLEM_TYPE,
-            detail=f"Your profile needs {' and '.join(missing)} before you can apply. "
-            "Fill it in in your profile settings.",
+            detail=f"Your profile needs {named(missing)} before you can apply. "
+            "Finish it on your profile page, then apply again.",
         )
-
-
-def _has_a_section(section: LiveSection, candidate_id: UUID) -> ColumnElement[bool]:
-    return exists().where(section.candidate_id == candidate_id)
 
 
 async def stated_skills(session: AsyncSession, candidate_id: UUID) -> list[ProfileSkill]:
