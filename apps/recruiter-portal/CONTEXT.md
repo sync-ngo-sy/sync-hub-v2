@@ -449,9 +449,10 @@ tab).
 One person as this Tenant knows them: their whole profile with their email, phone and Links, the
 fragment that matched if a search led here, the Tenant's notes and Tags on them, and whether they
 are in the Talent pool. The Links are a fact this page hands the card and the Application review
-does not: they are read off the live profile, and an Application freezes none of them. The profile is read by id from the directory, so how you arrived changes nothing about
-who you see — a pasted link shows the same person a click from the Talent pool does, and the Origin
-changes only the Trail that leads back. Opened from an Application, the Trail names this page the
+does not: they are read off the live profile, and an Application freezes none of them. The
+profile is read by id from the directory, so how you arrived changes nothing about who you see
+— a pasted link shows the same person a click from the Talent pool does, and the Origin changes
+only the Trail that leads back. Opened from an Application, the Trail names this page the
 live profile instead of repeating the Candidate's name, which is the same live/frozen distinction
 the `Snapshot` badge makes on the other page. Search is
 read only to recover the matched fragment named in the URL; it never reconstructs or replaces the

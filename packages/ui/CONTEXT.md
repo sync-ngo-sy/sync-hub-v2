@@ -50,8 +50,8 @@ and both are live links. Everything else the page considers a fact it supplies i
 what is worth saying differs by page — the Application review names the Job and the dates it
 moved, the profile editor names experience and languages. The Links are one such fact, rendered
 by a helper here so both portals list them the same way and neither renders a label with nothing
-under it: a candidate who claimed none has no Links fact at all. Facts sit under a hairline rule with
-no fill or border of their own, so the card never reads as a box inside a box. The avatar is
+under it: a candidate who claimed none has no Links fact at all. Facts sit under a hairline rule
+with no fill or border of their own, so the card never reads as a box inside a box. The avatar is
 the largest thing in the block, larger than the name, and falls back to initials until an
 uploaded photo exists; a single tinted ring is the card's only accent. It is a block among the
 other cards on its page, never a band across the top: a page header names the person and carries

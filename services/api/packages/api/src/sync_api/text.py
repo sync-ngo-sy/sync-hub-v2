@@ -44,8 +44,6 @@ OptionalLink = Annotated[Link | None, BeforeValidator(_blank_as_unset)]
 
 
 def _normalized(normalize: Callable[[str], str]) -> Callable[[str | None], str | None]:
-    """One Link normalizer as a validator: the same rule the ingestion holds a parse to."""
-
     def validate(value: str | None) -> str | None:
         return None if value is None else normalize(value)
 

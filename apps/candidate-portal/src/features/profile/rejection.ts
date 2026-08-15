@@ -10,7 +10,7 @@ export interface ProfileRejection {
   root: string | null;
 }
 
-const IDENTITY_FIELDS = [
+const WHOLE_PROFILE_FIELDS = [
   'full_name',
   'phone',
   'headline',
@@ -63,7 +63,7 @@ function fieldFor(location: string): ProfileField | null {
   if (section === undefined) return null;
 
   if (index === undefined) {
-    return IDENTITY_FIELDS.some((name) => name === section) ? (section as ProfileField) : null;
+    return WHOLE_PROFILE_FIELDS.some((name) => name === section) ? (section as ProfileField) : null;
   }
   if (!/^\d+$/.test(index)) return null;
 

@@ -67,8 +67,8 @@ _Avoid_: Completion score, profile strength, onboarding progress.
 The Candidate's LinkedIn, GitHub and portfolio addresses — three fields rather than a list.
 A handle typed on its own becomes the whole address; Recruiters read these fields and Screening
 never does. The editor answers an address of the wrong kind where it was typed rather than
-waiting for the API to refuse it, and the Candidate Card above reads the saved ones back as one
-fact, so the Candidate sees what a Recruiter will.
+waiting for the API to refuse it, and the Candidate Card above reads the saved ones back as
+one fact, so the Candidate sees what a Recruiter will.
 _Avoid_: Social links, profiles, URLs.
 
 **Account area**:
@@ -81,11 +81,10 @@ _Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
 **Profile editor**:
 The one page the whole professional profile is edited on, and saved from, in a single action:
 the CVs, identity, Experience, Education, Skills, Other skills, Languages, Projects and Links
-together.
-A save replaces the profile whole, so a section left empty is an emptied section — which is why
-leaving with unsaved changes asks first rather than losing them quietly. The CVs come first,
-because an upload is what fills everything under it; `/cvs`, where they used to live on their
-own, redirects here.
+together. A save replaces the profile whole, so a section left empty is an emptied section —
+which is why leaving with unsaved changes asks first rather than losing them quietly. The CVs
+come first, because an upload is what fills everything under it; `/cvs`, where they used to
+live on their own, redirects here.
 _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
 
 **Avatar**:

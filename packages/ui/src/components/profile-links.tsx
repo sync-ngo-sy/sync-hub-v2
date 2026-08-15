@@ -39,7 +39,9 @@ export function linksFact(links: ProfileLinks): CandidateFact {
 
 function LinkList({ destinations }: { destinations: Destination[] }) {
   return (
-    <>
+    // Wrapping rather than sharing the one truncated line every other fact takes: a clipped
+    // sentence is still read, and a clipped link is one nobody can open.
+    <span className="inline-block max-w-full whitespace-normal">
       {destinations.map((destination, index) => (
         <Fragment key={destination.name}>
           {index > 0 ? <span aria-hidden="true"> · </span> : null}
@@ -53,6 +55,6 @@ function LinkList({ destinations }: { destinations: Destination[] }) {
           </a>
         </Fragment>
       ))}
-    </>
+    </span>
   );
 }

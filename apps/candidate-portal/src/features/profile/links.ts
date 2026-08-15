@@ -1,3 +1,10 @@
+/**
+ * The rules the API holds a Link to, restated: a handle becomes the whole address, and anything
+ * that is not that kind of address at all is not saved as one. Each of the three returns `null`
+ * for text the platform cannot make an address of, which is what the field says out loud — the
+ * API would refuse it, and the answer is better given before the save than after it.
+ */
+
 const HANDLE = /^[A-Za-z0-9][A-Za-z0-9-]{1,98}[A-Za-z0-9]$/;
 const HOST = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const LINKEDIN_HOST = /^([a-z0-9-]+\.)?linkedin\.com$/;
@@ -6,12 +13,6 @@ const SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
 
 export const MAX_LINK = 2000;
 
-/**
- * The same rules the API holds a Link to, restated: a handle becomes the whole address, and
- * anything that is not that kind of address at all is not saved as one. Each returns `null`
- * for text the platform cannot make an address of, which is what the field says out loud —
- * the API would refuse it, and the answer is better given before the save than after it.
- */
 export function linkedinAddress(typed: string): string | null {
   const written = typed.trim();
   const handle =
@@ -29,7 +30,7 @@ export function portfolioAddress(typed: string): string | null {
   const address = asAddress(typed);
   const host = address?.host.toLowerCase();
   if (address === null || host === undefined || !HOST.test(host)) return null;
-  const path = address.pathname.replace(/\/$/, '');
+  const path = address.pathname.replace(/\/+$/, '');
   return withinLength(`${address.protocol}//${host}${path}${address.search}${address.hash}`);
 }
 
@@ -51,8 +52,6 @@ function segments(typed: string, host: RegExp): string[] | null {
   return path.length > 0 ? path : null;
 }
 
-/** The text as a `http`/`https` address. A scheme nobody typed is `https`; one a browser would
- * not open is the end of it. */
 function asAddress(typed: string): URL | null {
   const trimmed = typed.trim();
   if (trimmed === '' || /\s/.test(trimmed)) return null;

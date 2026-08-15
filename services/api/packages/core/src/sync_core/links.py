@@ -77,7 +77,6 @@ def portfolio_address(value: str) -> str:
 
 
 def _handle(value: str) -> str | None:
-    """The name on its own — `amina`, `@amina` — or nothing where this is an address."""
     trimmed = value.strip().lstrip("@")
     return trimmed if _HANDLE.match(trimmed) else None
 

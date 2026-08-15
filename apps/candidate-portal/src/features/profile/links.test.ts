@@ -65,9 +65,17 @@ describe('a portfolio address', () => {
     ['HTTPS://Amina-Haddad.DEV/Work', 'https://amina-haddad.dev/Work'],
     ['http://amina-haddad.dev', 'http://amina-haddad.dev'],
     ['https://amina-haddad.dev/work?year=2026', 'https://amina-haddad.dev/work?year=2026'],
+    ['https://amina-haddad.dev//', 'https://amina-haddad.dev'],
   ])('is stored as a browser would open it: %s', (typed, stored) => {
     expect(portfolioAddress(typed)).toBe(stored);
   });
+
+  it.each(['https://amina@amina-haddad.dev', 'https://amina:secret@amina-haddad.dev'])(
+    'is not an address carrying somebody’s credentials: %s',
+    (typed) => {
+      expect(portfolioAddress(typed)).toBeNull();
+    },
+  );
 
   it.each([
     'javascript:alert(1)',

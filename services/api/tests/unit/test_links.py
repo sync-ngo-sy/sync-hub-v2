@@ -86,10 +86,19 @@ def test_what_is_not_a_github_account_is_refused(typed: str) -> None:
         ("HTTPS://Amina-Haddad.DEV/Work", "https://amina-haddad.dev/Work"),
         ("http://amina-haddad.dev", "http://amina-haddad.dev"),
         ("https://amina-haddad.dev/work?year=2026", "https://amina-haddad.dev/work?year=2026"),
+        ("https://amina-haddad.dev//", "https://amina-haddad.dev"),
     ],
 )
 def test_a_portfolio_is_stored_as_a_browser_would_open_it(typed: str, stored: str) -> None:
     assert portfolio_address(typed) == stored
+
+
+@pytest.mark.parametrize(
+    "typed", ["https://amina@amina-haddad.dev", "https://amina:secret@amina-haddad.dev"]
+)
+def test_an_address_carrying_somebody_elses_credentials_is_not_a_portfolio(typed: str) -> None:
+    with pytest.raises(ValueError, match="web address"):
+        portfolio_address(typed)
 
 
 @pytest.mark.parametrize(
