@@ -30,6 +30,11 @@ function entry(label: string) {
   return within(screen.getByRole('group', { name: label }));
 }
 
+/** The editor's own fields. The card above carries links named the same, by design. */
+function links() {
+  return within(screen.getByRole('region', { name: 'Links' }));
+}
+
 async function editHeadline(user: UserEvent, headline: string) {
   await user.clear(screen.getByLabelText('Headline'));
   await user.type(screen.getByLabelText('Headline'), headline);
@@ -91,11 +96,11 @@ describe('the profile editor', () => {
 
     expect(entry('Project 1').getByLabelText('Project name')).toHaveValue('Distribution tracker');
 
-    expect(screen.getByLabelText('LinkedIn')).toHaveValue(
+    expect(links().getByLabelText('LinkedIn')).toHaveValue(
       'https://www.linkedin.com/in/lina-khoury',
     );
-    expect(screen.getByLabelText('GitHub')).toHaveValue('');
-    expect(screen.getByLabelText('Portfolio or website')).toHaveValue('https://lina-khoury.dev');
+    expect(links().getByLabelText('GitHub')).toHaveValue('');
+    expect(links().getByLabelText('Portfolio or website')).toHaveValue('https://lina-khoury.dev');
   });
 
   it('says the profile is saved until something is changed', async () => {
@@ -361,8 +366,8 @@ describe('the profile editor', () => {
   it('sends a handle typed on its own as the whole address', async () => {
     const { user, sent } = await openProfileThatSaves();
 
-    await user.clear(screen.getByLabelText('GitHub'));
-    await user.type(screen.getByLabelText('GitHub'), '@lina-khoury');
+    await user.clear(links().getByLabelText('GitHub'));
+    await user.type(links().getByLabelText('GitHub'), '@lina-khoury');
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
@@ -375,8 +380,8 @@ describe('the profile editor', () => {
     server.use(...savesProfile(CANDIDATE_PROFILE, unexpected));
 
     const { user } = await renderApp('/profile');
-    await user.clear(screen.getByLabelText('LinkedIn'));
-    await user.type(screen.getByLabelText('LinkedIn'), 'https://github.com/lina-khoury');
+    await user.clear(links().getByLabelText('LinkedIn'));
+    await user.type(links().getByLabelText('LinkedIn'), 'https://github.com/lina-khoury');
     await save(user);
 
     expect(
@@ -390,8 +395,8 @@ describe('the profile editor', () => {
   it('takes the links off again when they are emptied', async () => {
     const { user, sent } = await openProfileThatSaves();
 
-    await user.clear(screen.getByLabelText('LinkedIn'));
-    await user.clear(screen.getByLabelText('Portfolio or website'));
+    await user.clear(links().getByLabelText('LinkedIn'));
+    await user.clear(links().getByLabelText('Portfolio or website'));
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
