@@ -8,6 +8,7 @@ import {
 import { EmptyState } from '@sync/ui/components/empty-state';
 import { FormField } from '@sync/ui/components/form-field';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { linksFact } from '@sync/ui/components/profile-links';
 import { ListSkeleton, SkeletonText } from '@sync/ui/components/skeletons';
 import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
@@ -222,6 +223,10 @@ export default function KitchenSink() {
           facts={[
             { label: 'Total experience', value: '6 years' },
             { label: 'Languages', value: 'Arabic, English' },
+            linksFact({
+              linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
+              portfolioUrl: 'https://lina-khoury.dev',
+            }),
           ]}
         />
       </section>

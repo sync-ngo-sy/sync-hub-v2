@@ -1,3 +1,4 @@
+import { linksFact } from '@sync/ui/components/profile-links';
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { CandidatePageHeader } from '@/features/profile/components/candidate-page-header';
@@ -70,6 +71,11 @@ export function CandidateViewPage({ record, evidence, filters, origin }: Candida
               facts={[
                 { label: 'Location', value: profile.location ?? 'Not provided' },
                 { label: 'Experience', value: experience ?? 'Not provided' },
+                linksFact({
+                  linkedinUrl: record.linkedin_url,
+                  githubUrl: record.github_url,
+                  portfolioUrl: record.portfolio_url,
+                }),
               ]}
             />
 

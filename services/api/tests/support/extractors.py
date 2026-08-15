@@ -29,6 +29,9 @@ AMINA = ParsedCv(
     headline="Backend engineer, 8 years",
     summary="Builds boring payment systems that stay up.",
     location="Damascus, Syria",
+    linkedin_url="linkedin.com/in/amina-haddad",
+    github_url="github.com/amina-haddad",
+    portfolio_url="amina-haddad.dev",
     experiences=[
         ParsedExperience(
             job_title="Senior Backend Engineer",

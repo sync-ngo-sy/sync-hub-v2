@@ -33,6 +33,17 @@ A Profile in the job-seeker role: owns a professional profile and applies to Job
 the three kinds a Profile can be, and never a second one as well.
 _Avoid_: Job-seeker, User. (Reserve "Applicant" for the act of applying, not the person.)
 
+**Links**:
+The three professional addresses a Candidate may claim — `candidates.linkedin_url`,
+`github_url` and `portfolio_url`. Three columns rather than a list, because each answers a
+different question and a list would have to say what every entry is. Each is stored in one
+normalised form, which a CHECK holds: a LinkedIn is `https://www.linkedin.com/in/…`, a GitHub
+is the account rather than one of its repositories, and a portfolio is an address a browser
+would open. A handle typed on its own becomes the whole address before it is stored, and a CV
+parse fills the same three fields. Recruiters read them off the live profile; Screening never
+does, and an Application freezes none of them.
+_Avoid_: Social links, Profiles, URLs.
+
 **Complete profile**:
 A Candidate profile carrying everything the platform needs to place somebody: a CV that was
 read, their name, Phone, Canonical role, Location, headline and summary, and at least one job,

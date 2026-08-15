@@ -17,6 +17,9 @@ const IDENTITY_FIELDS = [
   'summary',
   'location_key',
   'is_searchable',
+  'linkedin_url',
+  'github_url',
+  'portfolio_url',
 ] as const satisfies readonly (keyof ProfileFormValues)[];
 
 type Section = Exclude<
