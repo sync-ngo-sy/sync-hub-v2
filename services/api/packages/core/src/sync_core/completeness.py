@@ -141,10 +141,17 @@ async def refresh_completeness(
         raise LookupError(f"no candidate row for {candidate_id}")
 
     earned = candidate.profile_completed_at
-    candidate.profile_completed_at = None
+    searchable = candidate.is_searchable
+    if earned is not None:
+        # Both come off before the pending writes land, and go back on only if the profile still
+        # earns them. The row's own CHECKs judge every statement, so a marker left standing over
+        # a half-written profile — or a switch left on over a cleared marker — refuses the flush.
+        candidate.is_searchable = False
+        candidate.profile_completed_at = None
     await session.flush()
 
     missing = missing_requirements(await profile_facts(session, candidate_id))
     if not missing:
         candidate.profile_completed_at = earned or datetime.now(UTC)
+        candidate.is_searchable = searchable
     return missing

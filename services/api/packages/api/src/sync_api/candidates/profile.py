@@ -207,6 +207,11 @@ async def whole_candidate(
 
 
 async def refuse_incomplete_profile(session: AsyncSession, candidate_id: UUID) -> None:
+    """The marker is what applying is gated on; it is recomputed only when it is not there."""
+    candidate = await session.get(Candidate, candidate_id)
+    if candidate is not None and candidate.profile_completed_at is not None:
+        return
+
     missing = await refresh_completeness(session, candidate_id)
     if missing:
         raise Problem(

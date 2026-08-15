@@ -48,6 +48,7 @@ from tests.support.profiles import (
     AN_EXPERIENCE,
     a_filled_profile,
     a_saved_profile,
+    completed_at,
     give_a_current_cv,
     make_no_cv_current,
     my_id,
@@ -860,3 +861,25 @@ async def test_work_the_snapshot_counts_clears_the_bar(
 
     stored = await stored_application(db_session, application["id"])
     assert stored.qualification_status is QualificationStatus.QUALIFIED
+
+
+async def test_a_candidate_recruiters_can_find_still_applies(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Searchable means Complete, so this is the applicant most entitled to be let through.
+
+    Recomputing completeness took the marker off before it put it back, and the switch outlives
+    a marker only for as long as one statement — which answered 500 to the whole submission.
+    """
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, is_searchable=True, label="findable"
+    )
+    candidate_id = await my_id(other_browser)
+    assert (await my_profile(other_browser))["is_searchable"] is True
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    assert application["status"] == "new"
+    assert (await my_profile(other_browser))["is_searchable"] is True
+    assert await completed_at(db_session, candidate_id) is not None
