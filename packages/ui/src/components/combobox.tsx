@@ -198,7 +198,7 @@ export function Combobox(props: ComboboxProps) {
                       items={group.items}
                       className="pb-1 last:pb-0"
                     >
-                      <ComboboxPrimitive.GroupLabel className="px-1.5 py-1.5 text-dense font-section text-muted-foreground">
+                      <ComboboxPrimitive.GroupLabel className="px-1.5 py-1.5 text-dense font-section text-primary">
                         {group.value}
                       </ComboboxPrimitive.GroupLabel>
                       <ComboboxPrimitive.Collection>{renderOption}</ComboboxPrimitive.Collection>
