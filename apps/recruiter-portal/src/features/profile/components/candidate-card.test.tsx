@@ -11,6 +11,7 @@ class PhotoThatLoads {
 
 const WHOLE = {
   name: 'Lina Khoury',
+  links: {},
   avatarUrl: 'https://cdn.example.test/lina.webp',
   email: 'lina@example.test',
   phone: '+963 11 555 0100',
@@ -33,14 +34,8 @@ describe('CandidateCard', () => {
     expect(screen.getByRole('article', { name: 'Lina Khoury' })).toBeVisible();
   });
 
-  it('carries the page’s own heading, because the page is about this person', () => {
+  it('names the person under the page heading, never as a second h1', () => {
     render(<CandidateCard {...WHOLE} />);
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Lina Khoury' })).toBeVisible();
-  });
-
-  it('can sit under a page heading without creating a second h1', () => {
-    render(<CandidateCard {...WHOLE} headingLevel={2} />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Lina Khoury' })).toBeVisible();
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
@@ -72,7 +67,7 @@ describe('CandidateCard', () => {
   });
 
   it('needs nothing but a name', () => {
-    render(<CandidateCard name="Lina Khoury" />);
+    render(<CandidateCard name="Lina Khoury" links={{}} />);
 
     expect(screen.getByText('Lina Khoury')).toBeVisible();
     expect(screen.queryByRole('link')).toBeNull();
@@ -124,17 +119,66 @@ describe('CandidateCard', () => {
 
   it('falls back to the initials when there is no photo at all', async () => {
     vi.stubGlobal('Image', PhotoThatLoads);
-    render(<CandidateCard name="Lina Khoury" />);
+    render(<CandidateCard name="Lina Khoury" links={{}} />);
 
     expect(screen.getByText('LK')).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector('img')).toBeNull());
   });
 
   it('takes the first two initials of a longer name, and copes with one', () => {
-    const { rerender } = render(<CandidateCard name="Amina  Nour  Haddad" />);
+    const { rerender } = render(<CandidateCard name="Amina  Nour  Haddad" links={{}} />);
     expect(screen.getByText('AN')).toBeInTheDocument();
 
-    rerender(<CandidateCard name="Amina" />);
+    rerender(<CandidateCard name="Amina" links={{}} />);
     expect(screen.getByText('A')).toBeInTheDocument();
+  });
+});
+
+describe('the Links on a Candidate Card', () => {
+  const LINKED = {
+    name: 'Lina Khoury',
+    links: {
+      linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
+      githubUrl: 'https://github.com/lina-khoury',
+      portfolioUrl: 'https://lina-khoury.dev',
+    },
+  };
+
+  it('names each destination and goes there', () => {
+    render(<CandidateCard {...LINKED} />);
+
+    expect(screen.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/lina-khoury',
+    );
+    expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/lina-khoury',
+    );
+    expect(screen.getByRole('link', { name: 'lina-khoury.dev' })).toHaveAttribute(
+      'href',
+      'https://lina-khoury.dev',
+    );
+  });
+
+  it('opens somewhere else without handing the platform over with it', () => {
+    render(<CandidateCard {...LINKED} />);
+
+    const linkedin = screen.getByRole('link', { name: 'LinkedIn' });
+    expect(linkedin).toHaveAttribute('target', '_blank');
+    expect(linkedin).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('shows only the Links the candidate claimed', () => {
+    render(<CandidateCard name="Lina Khoury" links={{ githubUrl: 'https://github.com/lina' }} />);
+
+    expect(screen.getByRole('link', { name: 'GitHub' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'LinkedIn' })).not.toBeInTheDocument();
+  });
+
+  it('says nothing at all where the candidate claimed none', () => {
+    render(<CandidateCard name="Lina Khoury" links={{}} />);
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

@@ -171,7 +171,8 @@ def cv_lines(profile: CandidateProfile, *, email: str, location: str | None = No
 
 
 def _contact(profile: CandidateProfile, email: str, location: str | None) -> list[str]:
-    return [part for part in (email, profile.phone, location) if part]
+    links = (profile.linkedin_url, profile.github_url, profile.portfolio_url)
+    return [part for part in (email, profile.phone, location, *links) if part]
 
 
 def _period(entry: object) -> str:

@@ -18,6 +18,7 @@ import { ExperiencesSection } from './experiences-section';
 import { FilledNotice } from './filled-notice';
 import { IdentitySection } from './identity-section';
 import { LanguagesSection } from './languages-section';
+import { LinksSection } from './links-section';
 import { MyCandidateCard } from './my-candidate-card';
 import { ProfileSection } from './profile-section';
 import { ProjectsSection } from './projects-section';
@@ -96,6 +97,7 @@ export function ProfileEditor() {
         <SkillsSection control={control} />
         <LanguagesSection control={control} />
         <ProjectsSection control={control} />
+        <LinksSection control={control} />
 
         {errors.root?.message ? (
           <Alert variant="destructive">

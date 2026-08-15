@@ -469,6 +469,18 @@ describe('a CV filling the form', () => {
     expect(entry('Job 1').getByLabelText('Employer')).toHaveValue('Levant Digital');
   });
 
+  it('reaches the Links, the same way it reaches the sections', async () => {
+    const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
+    await fillFrom(user, READY_CV);
+
+    const links = within(screen.getByRole('region', { name: 'Links' }));
+    expect(links.getByLabelText('LinkedIn')).toHaveValue(
+      'https://www.linkedin.com/in/lina-from-the-cv',
+    );
+    expect(links.getByLabelText('GitHub')).toHaveValue('https://github.com/lina-from-the-cv');
+    expect(links.getByLabelText('Portfolio or website')).toHaveValue('');
+  });
+
   it('names the CV that filled the form, and says nothing has been saved', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);
@@ -710,6 +722,9 @@ describe('undoing a fill', () => {
       within(screen.getByRole('region', { name: 'Other skills' })).getByText('Kobo Toolbox'),
     ).toBeVisible();
     expect(entry('Project 1').getByLabelText('Project name')).toHaveValue('Distribution tracker');
+    expect(
+      within(screen.getByRole('region', { name: 'Links' })).getByLabelText('LinkedIn'),
+    ).toHaveValue('https://www.linkedin.com/in/lina-khoury');
     expect(screen.queryByText(/The fields below now say/)).toBeNull();
   });
 
