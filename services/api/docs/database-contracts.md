@@ -4,9 +4,7 @@ How `services/api` must drive the database. The schema (see `supabase/migrations
 its *structural* invariants itself; the backend owns the *multi-step / cross-row* logic that
 constraints can't express. This document is that division of labour.
 
-Related decisions: root ADR-0001 (backend owns transactions), root ADR-0002 (backend-only
-access / RLS deny-by-default), root ADR-0003 (Postgres-table queues), supabase ADR-0001
-(identity), supabase ADR-0002 (RAG freshness).
+Related decisions: supabase ADR-0001 (identity), supabase ADR-0002 (RAG freshness).
 
 ## Connection & roles
 

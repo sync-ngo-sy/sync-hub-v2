@@ -66,7 +66,7 @@ export function TagVocabulary() {
         rowLabel={(tag) => tag.name}
         rowActions={(tag) => [
           { label: 'Rename Tag', onSelect: () => setRenaming(tag) },
-          { label: 'Delete Tag', onSelect: () => setDeleting(tag) },
+          { label: 'Delete Tag', onSelect: () => setDeleting(tag), destructive: true },
         ]}
         isLoading={vocabulary.isPending}
         error={

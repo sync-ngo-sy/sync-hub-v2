@@ -29,7 +29,7 @@ export function ApplicationCard({ application }: { application: Application }) {
           <StatusMark tone={state.tone} label={state.label} />
           {canWithdraw(application.status) ? (
             <Button
-              variant="ghost"
+              variant="destructive-outline"
               size="sm"
               aria-label={`Withdraw from “${application.job.title}”`}
               onClick={() => setConfirming(true)}

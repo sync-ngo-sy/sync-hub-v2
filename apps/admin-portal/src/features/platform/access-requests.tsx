@@ -53,7 +53,7 @@ export function AccessRequests() {
         rowLabel={(request) => request.company}
         rowActions={(request) => [
           { label: 'Convert to tenant', onSelect: () => setConverting(request) },
-          { label: 'Dismiss request', onSelect: () => setDismissing(request) },
+          { label: 'Dismiss request', onSelect: () => setDismissing(request), destructive: true },
         ]}
         isLoading={requests.isPending}
         error={

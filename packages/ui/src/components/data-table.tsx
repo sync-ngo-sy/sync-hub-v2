@@ -65,6 +65,7 @@ export type DataTableColumn<TRow> = ColumnDef<TRow>;
 export interface DataTableRowAction {
   label: string;
   onSelect: () => void;
+  destructive?: boolean;
 }
 
 export interface DataTableError {
@@ -531,7 +532,11 @@ function RowActions({ label, actions }: { label: string; actions: DataTableRowAc
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         {actions.map((action) => (
-          <DropdownMenuItem key={action.label} onClick={action.onSelect}>
+          <DropdownMenuItem
+            key={action.label}
+            variant={action.destructive ? 'destructive' : 'default'}
+            onClick={action.onSelect}
+          >
             {action.label}
           </DropdownMenuItem>
         ))}
