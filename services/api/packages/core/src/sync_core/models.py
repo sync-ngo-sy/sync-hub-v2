@@ -322,6 +322,10 @@ class Candidate(Base):
             "NOT is_searchable OR current_cv_id IS NOT NULL", name="candidates_searchable_needs_cv"
         ),
         CheckConstraint(
+            "NOT is_searchable OR profile_completed_at IS NOT NULL",
+            name="candidates_searchable_needs_a_complete_profile",
+        ),
+        CheckConstraint(
             "account_type = 'candidate'::account_type", name="candidates_account_type_check"
         ),
         CheckConstraint(
@@ -337,6 +341,10 @@ class Candidate(Base):
         CheckConstraint(
             "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
             name="candidates_portfolio_url_shape",
+        ),
+        CheckConstraint(
+            "profile_completed_at IS NULL OR current_cv_id IS NOT NULL AND headline IS NOT NULL AND btrim(headline) <> ''::text AND summary IS NOT NULL AND btrim(summary) <> ''::text AND location_key IS NOT NULL AND canonical_role_key IS NOT NULL",
+            name="candidates_completed_profile_is_filled_in",
         ),
         CheckConstraint("total_experience_years >= 0", name="candidates_total_experience_nonneg"),
         ForeignKeyConstraint(
@@ -412,6 +420,7 @@ class Candidate(Base):
     linkedin_url: Mapped[str | None] = mapped_column(Text)
     github_url: Mapped[str | None] = mapped_column(Text)
     portfolio_url: Mapped[str | None] = mapped_column(Text)
+    profile_completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)

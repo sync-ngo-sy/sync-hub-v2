@@ -4,5 +4,5 @@ import { useTheme } from '@/lib/theme';
 export function Toaster() {
   const { theme } = useTheme();
 
-  return <SonnerToaster theme={theme} position="bottom-center" closeButton />;
+  return <SonnerToaster theme={theme} position="bottom-right" closeButton />;
 }

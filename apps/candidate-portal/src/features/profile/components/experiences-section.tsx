@@ -8,6 +8,8 @@ import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { useDebounce } from 'use-debounce';
 import { client } from '@/lib/api';
 import { reportError } from '@/lib/report-error';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import { BLANK_EXPERIENCE, type ProfileFormValues, toProfileExperiences } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
@@ -59,9 +61,15 @@ export function ExperiencesSection({
   const currentKey = JSON.stringify(experiences);
   const displayedYears =
     experiencesDirty && preview?.key === currentKey ? preview.years : totalExperienceYears;
+  const unanswered = useUnanswered(control, FIELDS_IN.experience);
 
   return (
-    <ProfileSection title="Experience" description="Newest first, or whatever order suits you.">
+    <ProfileSection
+      id="experience"
+      title="Experience"
+      description="Newest first, or whatever order suits you."
+      unanswered={unanswered}
+    >
       <TotalExperience years={displayedYears} />
 
       <EntryList

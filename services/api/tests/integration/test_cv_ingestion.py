@@ -20,7 +20,13 @@ from tests.support.embedders import FakeEmbedder
 from tests.support.extractors import FakeExtractor, a_parse
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
-from tests.support.profiles import my_id, my_profile_draft
+from tests.support.profiles import (
+    a_filled_profile,
+    a_saved_profile,
+    completed_at,
+    my_id,
+    my_profile_draft,
+)
 from tests.support.senders import CapturingSender
 from tests.support.worker import an_ingestion_worker
 
@@ -228,6 +234,30 @@ async def test_the_first_ready_cv_becomes_current_and_later_ones_do_not(
     assert candidate.current_cv_id is not None
     assert str(candidate.current_cv_id) == first["id"]
     assert str(candidate.current_cv_id) != second["id"]
+
+
+async def test_a_profile_finished_while_the_cv_was_read_is_complete_when_the_parse_lands(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    """A read CV is the one requirement a Candidate does not finish by typing.
+
+    Everything else was saved while the parse was still running, so the save that judged the
+    profile judged it CV-less. Nothing asked again, and the marker is what applying reads: the
+    Candidate saw a finished profile and was refused every job until they pressed Save once more.
+    """
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await an_uploaded_cv(browser)
+    await a_saved_profile(browser, a_filled_profile())
+    assert await completed_at(db_session, candidate_id) is None
+
+    await an_ingestion_worker(database, storage, FakeExtractor()).run_once()
+
+    assert await completed_at(db_session, candidate_id) is not None
 
 
 async def test_a_failed_cv_never_becomes_current(

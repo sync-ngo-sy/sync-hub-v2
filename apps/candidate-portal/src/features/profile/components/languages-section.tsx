@@ -11,18 +11,29 @@ import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { languageOptions } from '@/features/reference/options';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import { BLANK_LANGUAGE, PROFICIENCY_LABELS, type ProfileFormValues } from '../schemas/profile';
 import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
+import { SectionError } from './section-error';
 
 export function LanguagesSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'languages' });
   const known = useLanguages();
   const listed = useWatch({ control, name: 'languages' });
+  const unanswered = useUnanswered(control, FIELDS_IN.languages);
 
   return (
-    <ProfileSection title="Languages" description="The ones you speak, and how well.">
+    <ProfileSection
+      id="languages"
+      title="Languages"
+      description="The ones you speak, and how well."
+      needed="One language needed to apply"
+      unanswered={unanswered}
+    >
+      <SectionError control={control} name="languages" />
       <EntryList
         ids={fields.map((field) => field.id)}
         label={(index) => `Language ${index + 1}`}

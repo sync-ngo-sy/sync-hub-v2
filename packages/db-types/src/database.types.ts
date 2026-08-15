@@ -1162,6 +1162,7 @@ export type Database = {
           linkedin_url: string | null;
           location_key: string | null;
           portfolio_url: string | null;
+          profile_completed_at: string | null;
           summary: string | null;
           total_experience_years: number;
           unmapped_skills: string[];
@@ -1180,6 +1181,7 @@ export type Database = {
           linkedin_url?: string | null;
           location_key?: string | null;
           portfolio_url?: string | null;
+          profile_completed_at?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1198,6 +1200,7 @@ export type Database = {
           linkedin_url?: string | null;
           location_key?: string | null;
           portfolio_url?: string | null;
+          profile_completed_at?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
