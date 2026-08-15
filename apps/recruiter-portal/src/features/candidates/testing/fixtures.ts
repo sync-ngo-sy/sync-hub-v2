@@ -51,6 +51,9 @@ export const AMINA_RECORD: CandidateRecord = {
   phone: '+963115550142',
   phone_country: 'SY',
   email: 'amina.haddad@example.test',
+  linkedin_url: 'https://www.linkedin.com/in/amina-haddad',
+  github_url: 'https://github.com/amina-haddad',
+  portfolio_url: 'https://amina-haddad.dev',
   experiences: [
     {
       job_title: 'Payments Lead',

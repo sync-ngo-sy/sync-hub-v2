@@ -63,10 +63,20 @@ Optional Projects and Links never prevent 100%; the database's Complete-profile 
 actually gates applying.
 _Avoid_: Completion score, profile strength, onboarding progress.
 
+**Candidate Card**:
+The block above the editor that says who the Candidate is, the way a Recruiter will read them —
+avatar, name, Canonical role, headline, the two ways to reach them, and the Links. This portal
+owns it, and the Recruiter Portal owns its own: the two answer different questions, and neither
+waits on the other to change one. It renders the Links itself rather than taking them as a fact
+the page passes in, so no page can show this person without them.
+_Avoid_: Profile header, summary card, identity band.
+
 **Links**:
 The Candidate's LinkedIn, GitHub and portfolio addresses — three fields rather than a list.
 A handle typed on its own becomes the whole address; Recruiters read these fields and Screening
-never does.
+never does. The editor answers an address of the wrong kind where it was typed rather than
+waiting for the API to refuse it, and the Candidate Card above reads the saved ones back as
+one fact, so the Candidate sees what a Recruiter will.
 _Avoid_: Social links, profiles, URLs.
 
 **Account area**:
@@ -78,11 +88,11 @@ _Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
 
 **Profile editor**:
 The one page the whole professional profile is edited on, and saved from, in a single action:
-the CVs, identity, Experience, Education, Skills, Other skills, Languages and Projects together.
-A save replaces the profile whole, so a section left empty is an emptied section — which is why
-leaving with unsaved changes asks first rather than losing them quietly. The CVs come first,
-because an upload is what fills everything under it; `/cvs`, where they used to live on their
-own, redirects here.
+the CVs, identity, Experience, Education, Skills, Other skills, Languages, Projects and Links
+together. A save replaces the profile whole, so a section left empty is an emptied section —
+which is why leaving with unsaved changes asks first rather than losing them quietly. The CVs
+come first, because an upload is what fills everything under it; `/cvs`, where they used to
+live on their own, redirects here.
 _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
 
 **Avatar**:

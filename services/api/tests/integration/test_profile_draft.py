@@ -59,6 +59,9 @@ async def test_a_candidate_with_no_profile_yet_gets_the_whole_cv(
     assert [entry["code"] for entry in draft["languages"]] == ["ar", "en"]
     assert [entry["name"] for entry in draft["projects"]] == ["Sync"]
     assert draft["unmapped_skills"] == ["Vibe-Driven Development"]
+    assert draft["linkedin_url"] == "https://www.linkedin.com/in/amina-haddad"
+    assert draft["github_url"] == "https://github.com/amina-haddad"
+    assert draft["portfolio_url"] == "https://amina-haddad.dev"
 
 
 async def test_every_skill_the_cv_newly_names_arrives_with_no_years(
@@ -135,6 +138,7 @@ async def test_the_draft_persists_nothing_until_it_is_put_back(
     assert saved["headline"] == "Backend engineer, 8 years"
     assert [skill["name"] for skill in saved["skills"]] == ["Python", "PostgreSQL"]
     assert saved["unmapped_skills"] == ["Vibe-Driven Development"]
+    assert saved["linkedin_url"] == "https://www.linkedin.com/in/amina-haddad"
 
 
 async def test_a_cv_that_has_not_been_read_has_no_draft(

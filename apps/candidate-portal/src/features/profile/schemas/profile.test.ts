@@ -20,6 +20,9 @@ const FILLED: ProfileFormValues = {
   location_key: 'sy-aleppo',
   canonical_role_key: 'project-manager',
   is_searchable: false,
+  linkedin_url: 'https://www.linkedin.com/in/lina-khoury',
+  github_url: '',
+  portfolio_url: '',
   total_experience_years: 6,
   experiences: [
     {
@@ -95,6 +98,15 @@ describe('the profile schema', () => {
         unmapped_skills: [],
       }).success,
     ).toBe(true);
+  });
+
+  it('saves a handle as the whole address, and refuses an address of the wrong kind', () => {
+    expect(parsed({ ...FILLED, github_url: 'lina-khoury' }).github_url).toBe(
+      'https://github.com/lina-khoury',
+    );
+    expect(errorAt('linkedin_url', { ...FILLED, linkedin_url: 'lina-khoury.dev' })).toBe(
+      'Enter a LinkedIn address, like linkedin.com/in/amina-haddad, or your handle on its own.',
+    );
   });
 
   it('asks for a name', () => {
@@ -307,6 +319,9 @@ describe('the profile schema', () => {
       location_key: 'sy-aleppo',
       canonical_role_key: 'project-manager',
       is_searchable: false,
+      linkedin_url: 'https://www.linkedin.com/in/lina-khoury',
+      github_url: null,
+      portfolio_url: null,
       total_experience_years: 6,
       experiences: [
         {
@@ -358,6 +373,9 @@ describe('the profile the API answers with', () => {
     location_key: null,
     canonical_role_key: null,
     is_searchable: true,
+    linkedin_url: null,
+    github_url: null,
+    portfolio_url: null,
     total_experience_years: 4,
     experiences: [
       {
@@ -396,6 +414,9 @@ describe('the profile the API answers with', () => {
       summary: '',
       location_key: '',
       is_searchable: true,
+      linkedin_url: '',
+      github_url: '',
+      portfolio_url: '',
       experiences: [
         {
           job_title: 'Field Coordinator',

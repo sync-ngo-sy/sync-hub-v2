@@ -1962,6 +1962,15 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
              */
             unmapped_skills?: string[];
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The Links as they were the day the Application was sent. Screening never read them either; a Recruiter reviewing the Application does.
+             */
+            portfolio_url?: string | null;
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent. The number Screening measured against the Job's minimum, and the one its verdict cites.
@@ -2246,6 +2255,24 @@ export interface components {
              */
             is_searchable: boolean;
             /**
+             * Linkedin Url
+             * @description The candidate's LinkedIn. A handle on its own is stored as the whole address; anything that is not a LinkedIn profile is refused.
+             * @example https://www.linkedin.com/in/amina-haddad
+             */
+            linkedin_url?: string | null;
+            /**
+             * Github Url
+             * @description The candidate's GitHub. A username on its own is stored as the whole address, and a repository as the account that owns it.
+             * @example https://github.com/amina-haddad
+             */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The candidate's own site. Stored as a browser would open it; only `http` and `https` addresses are accepted.
+             * @example https://amina-haddad.dev
+             */
+            portfolio_url?: string | null;
+            /**
              * Educations
              * @description Qualifications, in the candidate's own order.
              */
@@ -2293,7 +2320,7 @@ export interface components {
         };
         /**
          * CandidateRecord
-         * @description One Candidate, whole. The only place a phone or an email is readable.
+         * @description One Candidate, whole. The only place a phone, an email or a Link is readable.
          */
         CandidateRecord: {
             /**
@@ -2348,6 +2375,12 @@ export interface components {
              * @description In E.164.
              */
             phone?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
             /**
              * Phone Country
              * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
@@ -3806,6 +3839,24 @@ export interface components {
              * @default false
              */
             is_searchable: boolean;
+            /**
+             * Linkedin Url
+             * @description The candidate's LinkedIn. A handle on its own is stored as the whole address; anything that is not a LinkedIn profile is refused.
+             * @example https://www.linkedin.com/in/amina-haddad
+             */
+            linkedin_url?: string | null;
+            /**
+             * Github Url
+             * @description The candidate's GitHub. A username on its own is stored as the whole address, and a repository as the account that owns it.
+             * @example https://github.com/amina-haddad
+             */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The candidate's own site. Stored as a browser would open it; only `http` and `https` addresses are accepted.
+             * @example https://amina-haddad.dev
+             */
+            portfolio_url?: string | null;
             /**
              * Educations
              * @description Qualifications, in the candidate's own order.

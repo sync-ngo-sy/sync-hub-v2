@@ -288,6 +288,9 @@ ABDULQADER: Final = SeededCandidate(
         ),
         location_key="sy-damascus",
         canonical_role_key="backend-engineer",
+        linkedin_url="linkedin.com/in/abdulqader-qassab",
+        github_url="aqassab",
+        portfolio_url="qassab.dev",
         is_searchable=True,
         experiences=[
             Held(
@@ -379,6 +382,8 @@ MOWAFAK: Final = SeededCandidate(
         ),
         location_key="sy-aleppo",
         canonical_role_key="frontend-engineer",
+        linkedin_url="https://www.linkedin.com/in/mowafak-almahaini",
+        portfolio_url="https://almahaini.design",
         is_searchable=True,
         experiences=[
             Held(
@@ -462,6 +467,7 @@ KARIM: Final = SeededCandidate(
         ),
         location_key="sy-latakia",
         canonical_role_key="devops-engineer",
+        github_url="https://github.com/karim-sabbagh",
         is_searchable=True,
         experiences=[
             Held(

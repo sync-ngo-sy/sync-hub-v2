@@ -7,13 +7,16 @@ from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from sync_api.text import (
     CanonicalRoleKey,
+    GitHubUrl,
     LanguageCode,
     Line,
+    LinkedInUrl,
     LocationKey,
     OptionalIsoCountry,
     OptionalLine,
     OptionalLink,
     OptionalParagraph,
+    PortfolioUrl,
 )
 from sync_core.models import LanguageProficiency
 from sync_core.phone import read
@@ -244,6 +247,10 @@ class ProfileClaims(BaseModel):
         default=False,
         description="Opt in to cross-tenant Global search. Requires a current, ready CV.",
     )
+
+    linkedin_url: LinkedInUrl = None
+    github_url: GitHubUrl = None
+    portfolio_url: PortfolioUrl = None
 
     educations: list[ProfileEducation] = _section("Qualifications, in the candidate's own order.")
     languages: OneEntryPerLanguage = _section("Languages spoken, in the candidate's own order.")

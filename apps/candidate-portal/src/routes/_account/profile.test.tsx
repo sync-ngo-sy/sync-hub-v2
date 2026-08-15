@@ -30,6 +30,10 @@ function entry(label: string) {
   return within(screen.getByRole('group', { name: label }));
 }
 
+function links() {
+  return within(screen.getByRole('region', { name: 'Links' }));
+}
+
 async function editHeadline(user: UserEvent, headline: string) {
   await user.clear(screen.getByLabelText('Headline'));
   await user.type(screen.getByLabelText('Headline'), headline);
@@ -90,6 +94,12 @@ describe('the profile editor', () => {
     expect(language.getByLabelText('Proficiency')).toHaveTextContent('Native');
 
     expect(entry('Project 1').getByLabelText('Project name')).toHaveValue('Distribution tracker');
+
+    expect(links().getByLabelText('LinkedIn')).toHaveValue(
+      'https://www.linkedin.com/in/lina-khoury',
+    );
+    expect(links().getByLabelText('GitHub')).toHaveValue('');
+    expect(links().getByLabelText('Portfolio or website')).toHaveValue('https://lina-khoury.dev');
   });
 
   it('says the profile is saved until something is changed', async () => {
@@ -399,6 +409,47 @@ describe('the profile editor', () => {
     expect(sent.body?.unmapped_skills).toEqual([]);
   });
 
+  it('sends a handle typed on its own as the whole address', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.clear(links().getByLabelText('GitHub'));
+    await user.type(links().getByLabelText('GitHub'), '@lina-khoury');
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.github_url).toBe('https://github.com/lina-khoury');
+  });
+
+  it('answers a link that is not that kind of address without asking the API', async () => {
+    const unexpected = vi.fn();
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    server.use(...savesProfile(CANDIDATE_PROFILE, unexpected));
+
+    const { user } = await renderApp('/profile');
+    await user.clear(links().getByLabelText('LinkedIn'));
+    await user.type(links().getByLabelText('LinkedIn'), 'https://github.com/lina-khoury');
+    await save(user);
+
+    expect(
+      await screen.findByText(
+        'Enter a LinkedIn address, like linkedin.com/in/amina-haddad, or your handle on its own.',
+      ),
+    ).toBeVisible();
+    expect(unexpected).not.toHaveBeenCalled();
+  });
+
+  it('takes the links off again when they are emptied', async () => {
+    const { user, sent } = await openProfileThatSaves();
+
+    await user.clear(links().getByLabelText('LinkedIn'));
+    await user.clear(links().getByLabelText('Portfolio or website'));
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(sent.body?.linkedin_url).toBeNull();
+    expect(sent.body?.portfolio_url).toBeNull();
+  });
+
   it('blames the searchable switch when Global search needs a CV first', async () => {
     server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
     server.use(...refusesSearchable(SEARCHABLE_NEEDS_CV));
@@ -460,6 +511,12 @@ describe('the Candidate Card on the profile', () => {
     expect(card.getByText('+963 11 555 0100')).toBeVisible();
     expect(card.getByText('6 years')).toBeVisible();
     expect(card.getByText('Arabic')).toBeVisible();
+    expect(card.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/lina-khoury',
+    );
+    expect(card.getByRole('link', { name: 'lina-khoury.dev' })).toBeVisible();
+    expect(card.queryByRole('link', { name: 'GitHub' })).toBeNull();
   });
 
   it('leaves out what the profile does not say, rather than labelling it empty', async () => {
@@ -470,6 +527,8 @@ describe('the Candidate Card on the profile', () => {
         phone: null,
         canonical_role_key: null,
         languages: [],
+        linkedin_url: null,
+        portfolio_url: null,
       }),
     );
     await renderApp('/profile');
@@ -479,6 +538,7 @@ describe('the Candidate Card on the profile', () => {
     expect(card.queryByText('Phone')).toBeNull();
     expect(card.queryByText('Languages')).toBeNull();
     expect(card.queryByText('Project Manager')).toBeNull();
+    expect(card.queryByText('Links')).toBeNull();
   });
 });
 

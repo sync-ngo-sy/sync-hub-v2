@@ -177,11 +177,13 @@ _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechan
 **Application review**:
 The page one Application is read on, reached from the Triage list, a Job, the Dashboard or from its
 own address — headed by an ordinary page header that names the applicant and holds the actions,
-nothing more. Who they are is read below it, in the shared Candidate Card leading the reading
+nothing more. Who they are is read below it, in this portal's Candidate Card leading the reading
 column where the Pipeline used to start: the card integrates the Candidate's live avatar with the
-Snapshot name, headline, Canonical role and contact details, and the page hands it the Job applied
-for, Location, experience and dates as its facts. Facts live with the person they are true of, in
-one place, rather than being split between a header and a card.
+Snapshot name, headline, Canonical role, contact details and Links, and the page hands it the Job
+applied for, Location, experience and dates as its facts. The Links are the Snapshot's, frozen
+with everything else it holds: an address changed after applying does not rewrite what was read.
+Facts live with the person they are true of, in one place, rather than being split between a
+header and a card.
 The Job is a fact rather than a Trail crumb because it is true of the Application however
 the reader arrived, while a crumb is only true of the way they came. The header marks the
 live/frozen distinction with a quiet `Snapshot` badge, beside the name it qualifies. The confirmed
@@ -446,11 +448,13 @@ _Avoid_: Semantic search, smart search, vector search (that is the backend's mec
 tab).
 
 **Candidate view**:
-One person as this Tenant knows them: their whole profile with their email and phone, the fragment
-that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
-Talent pool. The profile is read by id from the directory, so how you arrived changes nothing about
-who you see — a pasted link shows the same person a click from the Talent pool does, and the Origin
-changes only the Trail that leads back. Opened from an Application, the Trail names this page the
+One person as this Tenant knows them: their whole profile with their email, phone and Links, the
+fragment that matched if a search led here, the Tenant's notes and Tags on them, and whether they
+are in the Talent pool. The Links here are the live ones; the Application review shows the ones
+frozen with that Application. The
+profile is read by id from the directory, so how you arrived changes nothing about who you see
+— a pasted link shows the same person a click from the Talent pool does, and the Origin changes
+only the Trail that leads back. Opened from an Application, the Trail names this page the
 live profile instead of repeating the Candidate's name, which is the same live/frozen distinction
 the `Snapshot` badge makes on the other page. Search is
 read only to recover the matched fragment named in the URL; it never reconstructs or replaces the
@@ -458,14 +462,31 @@ by-id record. This also lets a cold shared link show its evidence. When the dire
 answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
 inventing a profile. The full profile is the shared component that renders the professional
 sections. `CandidatePageHeader` is the shell above it on both this page and the Application review:
-a Trail, the name, and whatever actions the page offers. The Design System's Candidate Card then
-leads the reading column on both, each page handing it its own facts; the card decides how a
-candidate reads, which is why the Candidate Portal shows the same person the same way. Only the
+a Trail, the name, and whatever actions the page offers. This portal's own Candidate Card then
+leads the reading column on both, each page handing it its own facts. The card is this portal's
+and not the Design System's: a Recruiter reads a candidate to judge them, a Candidate reads
+themselves to correct themselves, and one component serving both meant neither could move. The
+card renders the Links itself, so no page here can show a person without them. Only the
 Application review carries the `Snapshot` badge.
 The notes and the Tags are the Application review's own interactions, naming a Candidate instead of
 an Application; a Tag offered here is candidate-scoped, which is the other half of the same
 vocabulary.
 _Avoid_: Candidate detail (a Profile is the Candidate's own; this is the Tenant's reading of it).
+
+**Candidate Card**:
+The one block that says who a Candidate is — avatar, name, Canonical role, headline, the two ways
+to reach them, and the Links. It leads the reading column on the Application review and on the
+Candidate view, and this portal owns it: the Candidate Portal owns its own, because a Recruiter
+reads a candidate to judge them and a Candidate reads themselves to correct themselves. It owns
+the name heading, at level two, because a page header already names the person above it. Email,
+phone and the Links are the card's own, rendered from the profile it is given rather than passed
+in as facts, so no page here can show a person and leave one out. Everything else is a fact the
+page supplies, because what is worth saying differs by page — the Application review names the
+Job and the dates it moved, the Candidate view names the Location and the experience. Facts sit
+under a hairline rule with no fill of their own, so the card never reads as a box inside a box.
+It holds no actions: anything a reader can do to a Candidate belongs to the page header, not to
+the block that describes them.
+_Avoid_: Profile header, summary card, identity band.
 
 **Full profile**:
 The portal value that puts a live Candidate record and a frozen Application Snapshot into the

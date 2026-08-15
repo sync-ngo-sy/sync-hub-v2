@@ -147,6 +147,23 @@ describe('the Candidate view', () => {
     ).toBeNull();
   });
 
+  it('hands over the Links the Candidate claimed, each opening where it says', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(AT);
+
+    const card = candidateCard();
+    expect(card.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/amina-haddad',
+    );
+    expect(card.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/amina-haddad',
+    );
+    expect(card.getByRole('link', { name: 'amina-haddad.dev' })).toBeVisible();
+  });
+
   it('names the Candidate in the page header and reads them in the Candidate Card below it', async () => {
     server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
 

@@ -10,13 +10,16 @@ export interface ProfileRejection {
   root: string | null;
 }
 
-const IDENTITY_FIELDS = [
+const WHOLE_PROFILE_FIELDS = [
   'full_name',
   'phone',
   'headline',
   'summary',
   'location_key',
   'is_searchable',
+  'linkedin_url',
+  'github_url',
+  'portfolio_url',
 ] as const satisfies readonly (keyof ProfileFormValues)[];
 
 type Section = Exclude<
@@ -60,7 +63,7 @@ function fieldFor(location: string): ProfileField | null {
   if (section === undefined) return null;
 
   if (index === undefined) {
-    return IDENTITY_FIELDS.some((name) => name === section) ? (section as ProfileField) : null;
+    return WHOLE_PROFILE_FIELDS.some((name) => name === section) ? (section as ProfileField) : null;
   }
   if (!/^\d+$/.test(index)) return null;
 

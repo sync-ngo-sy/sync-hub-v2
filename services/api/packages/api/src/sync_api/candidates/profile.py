@@ -71,6 +71,9 @@ class CandidateProfileService:
             location_key=candidate.location_key,
             canonical_role_key=candidate.canonical_role_key,
             is_searchable=candidate.is_searchable,
+            linkedin_url=candidate.linkedin_url,
+            github_url=candidate.github_url,
+            portfolio_url=candidate.portfolio_url,
             total_experience_years=candidate.total_experience_years,
             unmapped_skills=candidate.unmapped_skills,
             experiences=await self._experiences(candidate_id),
@@ -111,6 +114,9 @@ class CandidateProfileService:
             candidate.location_key = profile.location_key
             candidate.canonical_role_key = profile.canonical_role_key
             candidate.is_searchable = profile.is_searchable
+            candidate.linkedin_url = profile.linkedin_url
+            candidate.github_url = profile.github_url
+            candidate.portfolio_url = profile.portfolio_url
             # Derived here and never read off the request: whatever a caller sends is ignored,
             # so the number and the jobs it came from cannot disagree.
             derived = derived_experience(profile.experiences)

@@ -187,6 +187,37 @@ async def test_the_snapshot_carries_the_unmapped_skills_and_screening_never_saw_
     assert stored.qualification_status is QualificationStatus.QUALIFIED
 
 
+async def test_the_snapshot_freezes_the_links_the_candidate_applied_with(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The Links travel with the Application, and stop travelling with the Candidate: an address
+    changed afterwards does not rewrite what a Recruiter already read."""
+    job = await a_job_screening_on(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser,
+        mailbox,
+        db_session,
+        linkedin_url="amina-haddad",
+        github_url="github.com/amina-haddad",
+        portfolio_url="amina-haddad.dev",
+    )
+    application = await an_accepted_application(other_browser, job["id"])
+
+    moved_on = await save_profile(
+        other_browser, a_filled_profile(linkedin_url="somebody-else-entirely")
+    )
+
+    assert moved_on.status_code == 200, moved_on.text
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert snapshot.profile.linkedin_url == "https://www.linkedin.com/in/amina-haddad"
+    assert snapshot.profile.github_url == "https://github.com/amina-haddad"
+    assert snapshot.profile.portfolio_url == "https://amina-haddad.dev"
+
+
 async def test_the_confirmation_is_queued_in_the_same_transaction(
     recruiter: AsyncClient,
     other_browser: AsyncClient,

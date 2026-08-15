@@ -143,6 +143,9 @@ EMPTY_PROFILE: dict[str, Any] = {
     "location_key": None,
     "canonical_role_key": None,
     "is_searchable": False,
+    "linkedin_url": None,
+    "github_url": None,
+    "portfolio_url": None,
     "total_experience_years": 0,
     "experiences": [],
     "educations": [],
@@ -189,6 +192,7 @@ FILLED_PROFILE: dict[str, Any] = {
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
+    "linkedin_url": "https://www.linkedin.com/in/amina-haddad",
     "experiences": [AN_EXPERIENCE],
     "educations": [AN_EDUCATION],
     "skills": [

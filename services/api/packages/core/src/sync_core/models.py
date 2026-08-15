@@ -324,8 +324,20 @@ class Candidate(Base):
         CheckConstraint(
             "account_type = 'candidate'::account_type", name="candidates_account_type_check"
         ),
+        CheckConstraint(
+            "github_url IS NULL OR github_url ~~ 'https://github.com/%%'::text AND length(github_url) <= 2000",
+            name="candidates_github_url_shape",
+        ),
         CheckConstraint("length(headline) <= 200", name="candidates_headline_length"),
         CheckConstraint("length(summary) <= 5000", name="candidates_summary_length"),
+        CheckConstraint(
+            "linkedin_url IS NULL OR linkedin_url ~~ 'https://www.linkedin.com/in/%%'::text AND length(linkedin_url) <= 2000",
+            name="candidates_linkedin_url_shape",
+        ),
+        CheckConstraint(
+            "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
+            name="candidates_portfolio_url_shape",
+        ),
         CheckConstraint("total_experience_years >= 0", name="candidates_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["canonical_role_key"],
@@ -397,6 +409,9 @@ class Candidate(Base):
     location_key: Mapped[str | None] = mapped_column(Text)
     canonical_role_key: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    linkedin_url: Mapped[str | None] = mapped_column(Text)
+    github_url: Mapped[str | None] = mapped_column(Text)
+    portfolio_url: Mapped[str | None] = mapped_column(Text)
 
     canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
     profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
@@ -1878,10 +1893,22 @@ class ApplicationProfileSnapshot(Base):
     __tablename__ = "application_profile_snapshots"
     __table_args__ = (
         CheckConstraint(
+            "github_url IS NULL OR github_url ~~ 'https://github.com/%%'::text AND length(github_url) <= 2000",
+            name="asnap_github_url_shape",
+        ),
+        CheckConstraint(
+            "linkedin_url IS NULL OR linkedin_url ~~ 'https://www.linkedin.com/in/%%'::text AND length(linkedin_url) <= 2000",
+            name="asnap_linkedin_url_shape",
+        ),
+        CheckConstraint(
             "num_nonnulls(phone, phone_country) <> 1", name="asnap_phone_has_a_country"
         ),
         CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="asnap_phone_is_e164"),
         CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="asnap_phone_country_is_iso"),
+        CheckConstraint(
+            "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
+            name="asnap_portfolio_url_shape",
+        ),
         CheckConstraint("total_experience_years >= 0", name="asnap_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["application_id"],
@@ -1908,6 +1935,9 @@ class ApplicationProfileSnapshot(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
     canonical_role: Mapped[str | None] = mapped_column(Text)
+    linkedin_url: Mapped[str | None] = mapped_column(Text)
+    github_url: Mapped[str | None] = mapped_column(Text)
+    portfolio_url: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 

@@ -35,6 +35,9 @@ A_FULL_PROFILE: dict[str, Any] = {
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
     "is_searchable": False,
+    "linkedin_url": "https://www.linkedin.com/in/amina-haddad",
+    "github_url": "https://github.com/amina-haddad",
+    "portfolio_url": "https://amina-haddad.dev",
     "experiences": [
         {
             "job_title": "Senior Engineer",
@@ -567,6 +570,57 @@ async def test_a_candidate_chooses_a_canonical_role_and_clears_it_again(
     assert chosen.status_code == 200, chosen.text
     assert chosen.json()["canonical_role_key"] == "frontend-engineer"
     assert cleared.json()["canonical_role_key"] is None
+
+
+async def test_a_handle_typed_on_its_own_is_saved_as_the_whole_address(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE,
+        json=a_profile(
+            linkedin_url="in/amina-haddad", github_url="@amina-haddad", portfolio_url="amina.dev"
+        ),
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["linkedin_url"] == "https://www.linkedin.com/in/amina-haddad"
+    assert saved.json()["github_url"] == "https://github.com/amina-haddad"
+    assert saved.json()["portfolio_url"] == "https://amina.dev"
+
+
+async def test_the_links_go_on_and_come_off_again(browser: AsyncClient, mailbox: Mailbox) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    await browser.put(PROFILE, json=a_profile(github_url="amina-haddad"))
+    cleared = await browser.put(PROFILE, json=a_profile(github_url=""))
+
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["github_url"] is None
+    assert (await my_profile(browser))["github_url"] is None
+
+
+@pytest.mark.parametrize(
+    ("field", "typed"),
+    [
+        ("linkedin_url", "https://www.linkedin.com/company/aman-relief"),
+        ("linkedin_url", "https://github.com/amina-haddad"),
+        ("github_url", "https://gitlab.com/amina-haddad"),
+        ("portfolio_url", "javascript:alert(1)"),
+    ],
+)
+async def test_an_address_that_is_not_that_kind_of_link_is_refused_where_it_was_typed(
+    browser: AsyncClient, mailbox: Mailbox, field: str, typed: str
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await browser.put(PROFILE, json=a_profile(**{field: typed}))
+
+    assert response.status_code == 422, response.text
+    problem = response.json()
+    assert problem["type"] == "urn:sync:problem:validation-error"
+    assert [error["location"] for error in problem["errors"]] == [f"body.{field}"]
 
 
 async def test_a_canonical_role_the_platform_does_not_know_is_refused_where_it_was_typed(

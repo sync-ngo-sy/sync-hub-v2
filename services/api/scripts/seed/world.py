@@ -425,6 +425,9 @@ class World:
             ),
             summary=profile.summary,
             location=location,
+            linkedin_url=profile.linkedin_url,
+            github_url=profile.github_url,
+            portfolio_url=profile.portfolio_url,
             experiences=[
                 ParsedExperience(
                     job_title=held.job_title,

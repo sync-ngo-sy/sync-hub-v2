@@ -154,6 +154,8 @@ export const AMAL_REVIEW: ApplicationReview = {
     summary: 'Nine years moving relief cargo across northern Syria.',
     location: 'Aleppo',
     canonical_role: 'Logistics Manager',
+    linkedin_url: 'https://www.linkedin.com/in/amal-haddad',
+    portfolio_url: 'https://amal-haddad.dev',
     unmapped_skills: ['Convoy planning', 'Customs clearance'],
     experiences: [
       {

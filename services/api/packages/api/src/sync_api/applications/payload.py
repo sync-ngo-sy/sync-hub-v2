@@ -15,7 +15,13 @@ from sync_api.candidates import (
     ProfileSkill,
 )
 from sync_api.jobs import PublicTenant
-from sync_api.text import LocationName, OptionalIsoCountry, OptionalLine, OptionalParagraph
+from sync_api.text import (
+    LocationName,
+    OptionalIsoCountry,
+    OptionalLine,
+    OptionalLink,
+    OptionalParagraph,
+)
 from sync_core.models import (
     ApplicationQuestionType,
     ApplicationStatus,
@@ -257,6 +263,13 @@ class ApplicationSnapshot(BaseModel):
         default_factory=list,
         description="Skills the candidate claims that the platform has no Canonical name for. "
         "Screening never read them; a human reading the Application should.",
+    )
+    linkedin_url: OptionalLink = None
+    github_url: OptionalLink = None
+    portfolio_url: OptionalLink = Field(
+        default=None,
+        description="The Links as they were the day the Application was sent. Screening never "
+        "read them either; a Recruiter reviewing the Application does.",
     )
     total_experience_years: int = Field(
         default=0,

@@ -73,10 +73,13 @@ class CandidateDirectoryPage(BaseModel):
 
 
 class CandidateRecord(SearchableCandidate):
-    """One Candidate, whole. The only place a phone or an email is readable."""
+    """One Candidate, whole. The only place a phone, an email or a Link is readable."""
 
     phone: str | None = Field(default=None, description="In E.164.")
     phone_country: OptionalIsoCountry = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    portfolio_url: str | None = None
     email: str | None = Field(
         default=None,
         description="Read from the authentication store, which is the only place a confirmed "
