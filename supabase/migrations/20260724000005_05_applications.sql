@@ -43,12 +43,7 @@ create table application_profile_snapshots (
   application_id uuid primary key references applications (id) on delete cascade,
 
   full_name text not null,
-
-  -- The Phone as it was the day the Application arrived, country and all: an Application is
-  -- read long after the Candidate has moved countries, and half a frozen answer is not one.
-  phone         text,
-  phone_country text,
-
+  phone     text,
   headline  text,
   summary   text,
 
@@ -68,11 +63,7 @@ create table application_profile_snapshots (
   total_experience_years int not null
     constraint asnap_total_experience_nonneg check (total_experience_years >= 0),
 
-  captured_at timestamptz not null default now(),
-
-  constraint asnap_phone_is_e164 check (phone ~ '^\+[1-9][0-9]{1,14}$'),
-  constraint asnap_phone_country_is_iso check (phone_country ~ '^[A-Z]{2}$'),
-  constraint asnap_phone_has_a_country check (num_nonnulls(phone, phone_country) <> 1)
+  captured_at timestamptz not null default now()
 );
 
 create table application_experiences (

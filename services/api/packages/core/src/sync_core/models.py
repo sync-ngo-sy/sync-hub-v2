@@ -999,8 +999,8 @@ class Profile(Base):
     )
     avatar_url: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
-    phone_country: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    phone_country: Mapped[str | None] = mapped_column(Text)
 
     user: Mapped["User"] = relationship("User", viewonly=True)
 
@@ -1930,7 +1930,6 @@ class ApplicationProfileSnapshot(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     phone: Mapped[str | None] = mapped_column(Text)
-    phone_country: Mapped[str | None] = mapped_column(Text)
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
@@ -1938,6 +1937,7 @@ class ApplicationProfileSnapshot(Base):
     linkedin_url: Mapped[str | None] = mapped_column(Text)
     github_url: Mapped[str | None] = mapped_column(Text)
     portfolio_url: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 
