@@ -8,11 +8,12 @@ import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { useDebounce } from 'use-debounce';
 import { client } from '@/lib/api';
 import { reportError } from '@/lib/report-error';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import { BLANK_EXPERIENCE, type ProfileFormValues, toProfileExperiences } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
 import { ProfileSection } from './profile-section';
-import { useUnanswered } from './section-error';
 import { TotalExperience } from './total-experience';
 
 const sameExperiences = (
@@ -60,7 +61,7 @@ export function ExperiencesSection({
   const currentKey = JSON.stringify(experiences);
   const displayedYears =
     experiencesDirty && preview?.key === currentKey ? preview.years : totalExperienceYears;
-  const unanswered = useUnanswered(control, 'experiences');
+  const unanswered = useUnanswered(control, FIELDS_IN.experience);
 
   return (
     <ProfileSection

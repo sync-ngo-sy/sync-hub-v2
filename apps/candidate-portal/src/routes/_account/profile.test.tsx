@@ -4,6 +4,8 @@ import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { listsCvs } from '@/features/cvs/testing/handlers';
+import { REQUIREMENTS } from '@/features/profile/completeness';
+import { REQUIREMENT_PLACES } from '@/features/profile/places';
 import {
   calculatesExperience,
   failsToLoadProfile,
@@ -111,6 +113,23 @@ describe('the profile editor', () => {
     await editHeadline(user, 'Coordinator and trainer');
 
     expect(screen.getByText('Unsaved changes.')).toBeVisible();
+  });
+
+  it('offers no Save until something is edited, and takes it away again once saved', async () => {
+    const headline = 'Coordinator and trainer';
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    server.use(...savesProfile({ ...CANDIDATE_PROFILE, headline }));
+
+    const { user } = await renderApp('/profile');
+    expect(screen.queryByRole('button', { name: 'Save profile' })).toBeNull();
+
+    await editHeadline(user, headline);
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeVisible();
+
+    await save(user);
+
+    expect(await screen.findByText('Profile saved.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Save profile' })).toBeNull();
   });
 
   it('answers a field as soon as it is left, without waiting for Save', async () => {
@@ -235,6 +254,7 @@ describe('the profile editor', () => {
 
     await user.type(entry('Skill 1').getByLabelText('Skill'), 'nn');
     await user.tab();
+    await editHeadline(user, 'Coordinator and trainer');
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
@@ -458,11 +478,15 @@ describe('the profile editor', () => {
   });
 
   it('blames the searchable switch when Global search needs a complete profile', async () => {
-    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...hasProfile(CANDIDATE_PROFILE),
+      ...listsCvs([CURRENT_CV]),
+    );
     server.use(...refusesSearchable(SEARCHABLE_NEEDS_A_COMPLETE_PROFILE));
 
     const { user } = await renderApp('/profile');
-    await user.click(screen.getByRole('switch', { name: 'Let recruiters find me' }));
+    await user.click(await screen.findByRole('switch', { name: 'Let recruiters find me' }));
     await save(user);
 
     expect(
@@ -616,7 +640,7 @@ describe('profile progress', () => {
     return within(screen.getByRole('complementary', { name: 'Profile progress' }));
   }
 
-  function step(name: string) {
+  function requirement(name: string) {
     return progress().getByRole('button', { name: new RegExp(`^${name} — `) });
   }
 
@@ -624,12 +648,12 @@ describe('profile progress', () => {
     await openProfile();
 
     expect(await screen.findByRole('img', { name: 'Your profile is 90% complete' })).toBeVisible();
-    expect(progress().getByText('9 of 10 steps done')).toBeVisible();
-    expect(step('CV read')).toHaveAccessibleName(/still to do$/);
-    expect(step('Skills')).toHaveAccessibleName(/done$/);
+    expect(progress().getByText('9 of 10 done')).toBeVisible();
+    expect(requirement('CV read')).toHaveAccessibleName(/still to do$/);
+    expect(requirement('Skills')).toHaveAccessibleName(/done$/);
   });
 
-  it('names every unfinished step at once', async () => {
+  it('names every unfinished requirement at once', async () => {
     server.use(...signedInAs(CANDIDATE));
     server.use(
       ...hasProfile({
@@ -644,20 +668,28 @@ describe('profile progress', () => {
 
     expect(await screen.findByRole('img', { name: 'Your profile is 60% complete' })).toBeVisible();
     for (const name of ['CV read', 'What you do', 'Summary', 'Languages']) {
-      expect(step(name)).toHaveAccessibleName(/still to do$/);
+      expect(requirement(name)).toHaveAccessibleName(/still to do$/);
     }
   });
 
-  it('takes the candidate to a step’s section without leaving the page', async () => {
+  it('takes the candidate to a requirement’s section without leaving the page', async () => {
     const { router, user } = await openProfile();
     await editHeadline(user, 'Coordinator and trainer');
 
-    await user.click(step('Languages'));
+    await user.click(requirement('Languages'));
 
     expect(router.state.location.pathname).toBe('/profile');
     expect(router.state.location.hash).toBe('');
     expect(screen.queryByText('Leave without saving?')).toBeNull();
     expect(screen.getByRole('region', { name: 'Languages' })).toHaveFocus();
+  });
+
+  it('points every requirement at a section the page really has', async () => {
+    await openProfile();
+
+    for (const key of REQUIREMENTS) {
+      expect(document.getElementById(REQUIREMENT_PLACES[key].section)).not.toBeNull();
+    }
   });
 
   it('moves the ring as the candidate fills a field in, before any save', async () => {
@@ -673,52 +705,41 @@ describe('profile progress', () => {
     expect(await screen.findByRole('img', { name: 'Your profile is 90% complete' })).toBeVisible();
   });
 
-  it('marks the fields Global search needs, on the fields themselves', async () => {
-    const unexpected = vi.fn();
-    server.use(...signedInAs(CANDIDATE));
-    server.use(...hasProfile({ ...CANDIDATE_PROFILE, headline: null, summary: null }));
-    server.use(...savesProfile(CANDIDATE_PROFILE, unexpected));
+  it('offers no switch at all until every requirement is met', async () => {
+    server.use(...signedInAs(CANDIDATE), ...hasProfile(CANDIDATE_PROFILE));
 
-    const { user } = await renderApp('/profile');
-    await user.click(screen.getByRole('switch', { name: 'Let recruiters find me' }));
-    await save(user);
+    await renderApp('/profile');
 
+    const switched = await screen.findByRole('switch', { name: 'Let recruiters find me' });
+    expect(progress().getByRole('switch', { name: 'Let recruiters find me' })).toBe(switched);
+    expect(switched).toBeDisabled();
     expect(
-      await screen.findByText(
-        'Recruiters need a headline to find you. Write one, or turn the switch off.',
-      ),
+      progress().getByText('Adds you to Global search, once everything above is ticked.'),
     ).toBeVisible();
-    expect(
-      screen.getByText('Recruiters need a summary to find you. Write one, or turn the switch off.'),
-    ).toBeVisible();
-    expect(screen.getByLabelText('Headline')).toHaveAttribute('aria-invalid');
-    expect(unexpected).not.toHaveBeenCalled();
   });
 
-  it('names every empty section in the toast, and marks each one', async () => {
-    const unexpected = vi.fn();
-    server.use(...signedInAs(CANDIDATE));
-    server.use(...hasProfile({ ...CANDIDATE_PROFILE, educations: [], skills: [], languages: [] }));
-    server.use(...savesProfile(CANDIDATE_PROFILE, unexpected));
+  it('turns the switch off rather than losing the save, and says what is left', async () => {
+    const sent: { body?: CandidateProfile } = {};
+    const unfinished = { ...CANDIDATE_PROFILE, summary: null, is_searchable: true };
+    server.use(...signedInAs(CANDIDATE), ...listsCvs([CURRENT_CV]));
+    server.use(...hasProfile({ ...CANDIDATE_PROFILE, is_searchable: true }));
+    server.use(
+      ...savesProfile({ ...unfinished, is_searchable: false }, (body) => {
+        sent.body = body;
+      }),
+    );
 
     const { user } = await renderApp('/profile');
-    await user.click(screen.getByRole('switch', { name: 'Let recruiters find me' }));
+    expect(await screen.findByRole('switch', { name: 'Let recruiters find me' })).toBeChecked();
+
+    await user.clear(screen.getByLabelText('Summary'));
     await save(user);
 
     expect(
-      await screen.findByText(
-        'Your profile was not saved. Still to do: Education, Skills and Languages.',
-      ),
+      await screen.findByText('Saved. Recruiters cannot find you yet — still to do: Summary.'),
     ).toBeVisible();
-
-    const skills = within(screen.getByRole('region', { name: 'Skills' }));
-    expect(skills.getByRole('alert')).toHaveTextContent('Add a skill, or turn the switch off.');
-    expect(skills.getByText('One skill needed to apply')).toBeVisible();
-    const languages = within(screen.getByRole('region', { name: 'Languages' }));
-    expect(languages.getByRole('alert')).toHaveTextContent(
-      'Add a language, or turn the switch off.',
-    );
-    expect(unexpected).not.toHaveBeenCalled();
+    expect(sent.body?.is_searchable).toBe(false);
+    expect(sent.body?.summary).toBeNull();
   });
 
   it('saves an unfinished profile when recruiters are not asked to find it', async () => {
@@ -732,6 +753,7 @@ describe('profile progress', () => {
     );
 
     const { user } = await renderApp('/profile');
+    await editHeadline(user, 'Coordinator and trainer');
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
@@ -754,6 +776,6 @@ describe('profile progress', () => {
     await renderApp('/profile');
 
     expect(await screen.findByRole('img', { name: 'Your profile is complete' })).toBeVisible();
-    expect(progress().getByText('Every step is done.')).toBeVisible();
+    expect(progress().getByText('All 10 done.')).toBeVisible();
   });
 });

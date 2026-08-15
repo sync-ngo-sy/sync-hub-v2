@@ -8,6 +8,8 @@ import { type Control, useFieldArray, useWatch } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-skills';
 import { skillGroups } from '@/features/reference/options';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import {
   BLANK_SKILL,
   BLANK_UNMAPPED_SKILL,
@@ -17,7 +19,7 @@ import {
 import { takenElsewhere } from '../taken-elsewhere';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-import { SectionError, useUnanswered } from './section-error';
+import { SectionError } from './section-error';
 
 export function SkillsSection({ control }: { control: Control<ProfileFormValues> }) {
   const skills = useFieldArray({ control, name: 'skills' });
@@ -26,8 +28,8 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
   const listed = useWatch({ control, name: 'skills' });
   const otherValues = useWatch({ control, name: 'unmapped_skills' });
   const [editingOther, setEditingOther] = useState<number | null>(null);
-  const unanswered = useUnanswered(control, 'skills');
-  const othersUnanswered = useUnanswered(control, 'unmapped_skills');
+  const unanswered = useUnanswered(control, FIELDS_IN.skills);
+  const othersUnanswered = useUnanswered(control, FIELDS_IN['other-skills']);
 
   const addOther = () => {
     const index = others.fields.length;

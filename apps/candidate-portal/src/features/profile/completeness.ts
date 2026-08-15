@@ -27,24 +27,6 @@ export interface ProfileFacts {
   languages?: number;
 }
 
-export interface RequirementStep {
-  label: string;
-  section: string;
-}
-
-export const REQUIREMENT_STEPS: Record<Requirement, RequirementStep> = {
-  cv: { label: 'CV read', section: 'cvs' },
-  full_name: { label: 'Your name', section: 'about-you' },
-  phone: { label: 'Phone', section: 'about-you' },
-  headline: { label: 'Headline', section: 'about-you' },
-  location: { label: 'Location', section: 'about-you' },
-  canonical_role: { label: 'What you do', section: 'about-you' },
-  summary: { label: 'Summary', section: 'about-you' },
-  education: { label: 'Education', section: 'education' },
-  skill: { label: 'Skills', section: 'skills' },
-  language: { label: 'Languages', section: 'languages' },
-};
-
 const said = (value: string | null | undefined) =>
   value !== null && value !== undefined && value.trim() !== '';
 

@@ -207,49 +207,6 @@ function refuseANumberNobodyCouldDial(typed: TypedPhone, ctx: z.RefinementCtx): 
   }
 }
 
-interface Searchable {
-  phone: string | null;
-  phone_country: string | null;
-  headline: string | null;
-  summary: string | null;
-  location_key: string | null;
-  canonical_role_key: string | null;
-  educations: unknown[];
-  skills: unknown[];
-  languages: unknown[];
-}
-
-const NEEDED_TO_BE_FOUND: [keyof Searchable, string][] = [
-  ['headline', 'Recruiters need a headline to find you. Write one, or turn the switch off.'],
-  [
-    'location_key',
-    'Recruiters need your location to find you. Choose one, or turn the switch off.',
-  ],
-  [
-    'canonical_role_key',
-    'Recruiters need to know what you do to find you. Choose it, or turn the switch off.',
-  ],
-  ['summary', 'Recruiters need a summary to find you. Write one, or turn the switch off.'],
-  ['educations', 'Add a qualification, or turn the switch off.'],
-  ['skills', 'Add a skill, or turn the switch off.'],
-  ['languages', 'Add a language, or turn the switch off.'],
-];
-
-function refuseAnUnfinishedProfile(profile: Searchable, ctx: z.RefinementCtx): void {
-  for (const [name, message] of NEEDED_TO_BE_FOUND) {
-    const value = profile[name];
-    const empty = Array.isArray(value) ? value.length === 0 : value === null;
-    if (empty) ctx.addIssue({ code: 'custom', path: [name], message });
-  }
-  if (profile.phone === null || profile.phone_country === null) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['phone'],
-      message: 'Recruiters need a phone number to reach you. Enter one, or turn the switch off.',
-    });
-  }
-}
-
 const section = <Entry extends z.ZodType>(entry: Entry, plural: string) =>
   z.array(entry).max(MAX_ENTRIES, `List at most ${MAX_ENTRIES} ${plural}.`);
 
@@ -297,7 +254,6 @@ export const profileSchema = z
   })
   .superRefine((profile, ctx) => {
     refuseANumberNobodyCouldDial(profile, ctx);
-    if (profile.is_searchable) refuseAnUnfinishedProfile(profile, ctx);
     refuseRepeats(
       profile.skills.map((entry) => entry.name),
       ctx,

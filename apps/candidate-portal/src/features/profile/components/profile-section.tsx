@@ -1,6 +1,7 @@
 import { Badge } from '@sync/ui/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader } from '@sync/ui/components/ui/card';
 import { type ReactNode, useId } from 'react';
+import type { SectionId } from '../places';
 
 export function ProfileSection({
   id,
@@ -10,7 +11,7 @@ export function ProfileSection({
   unanswered = false,
   children,
 }: {
-  id: string;
+  id: SectionId;
   title: string;
   description?: string;
   needed?: string;

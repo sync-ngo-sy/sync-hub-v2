@@ -3,15 +3,16 @@ import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { FolderGit2 } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import { BLANK_PROJECT, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { PeriodFields } from './period-fields';
 import { ProfileSection } from './profile-section';
-import { useUnanswered } from './section-error';
 
 export function ProjectsSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'projects' });
-  const unanswered = useUnanswered(control, 'projects');
+  const unanswered = useUnanswered(control, FIELDS_IN.projects);
 
   return (
     <ProfileSection

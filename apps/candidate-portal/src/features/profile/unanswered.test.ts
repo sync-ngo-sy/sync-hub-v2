@@ -9,8 +9,8 @@ const said = (message: string) => ({ type: 'custom', message });
 
 describe('what is unanswered', () => {
   it('repeats the one message when a single place is at fault', () => {
-    expect(whatIsUnanswered(errors({ skills: said('Add a skill, or turn the switch off.') }))).toBe(
-      'Your profile was not saved. Add a skill, or turn the switch off.',
+    expect(whatIsUnanswered(errors({ skills: said('List at most 50 skills.') }))).toBe(
+      'Your profile was not saved. List at most 50 skills.',
     );
   });
 

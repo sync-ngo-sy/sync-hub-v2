@@ -1,36 +1,20 @@
+import { FormField } from '@sync/ui/components/form-field';
 import { Card, CardContent } from '@sync/ui/components/ui/card';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
+import { Switch } from '@sync/ui/components/ui/switch';
 import { cn } from '@sync/ui/lib/utils';
 import { Check } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { type Control, useWatch } from 'react-hook-form';
-import { isReady } from '@/features/cvs/cv';
-import { useMyCvs } from '@/features/cvs/hooks/use-my-cvs';
-import {
-  completionPercent,
-  missingRequirements,
-  REQUIREMENT_STEPS,
-  REQUIREMENTS,
-} from '../completeness';
+import { type ReactNode, useId } from 'react';
+import type { Control } from 'react-hook-form';
+import { REQUIREMENTS } from '../completeness';
+import { useProfileProgress } from '../hooks/use-profile-progress';
+import { REQUIREMENT_PLACES, type SectionId } from '../places';
 import type { ProfileFormValues } from '../schemas/profile';
-
-const ANSWERS = [
-  'full_name',
-  'phone',
-  'phone_country',
-  'headline',
-  'summary',
-  'location_key',
-  'canonical_role_key',
-  'educations',
-  'skills',
-  'languages',
-] as const satisfies readonly (keyof ProfileFormValues)[];
 
 const RADIUS = 26;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function showSection(id: string): void {
+function showSection(id: SectionId): void {
   const section = document.getElementById(id);
   if (!section) return;
   section.scrollIntoView({ block: 'start' });
@@ -73,92 +57,85 @@ function CompletionRing({ percent }: { percent: number }) {
   );
 }
 
-function Panel({ children }: { children: ReactNode }) {
+function Panel({ heading, children }: { heading: ReactNode; children: ReactNode }) {
+  const headingId = useId();
+
   return (
     <aside
-      aria-labelledby="profile-progress"
+      id="progress"
+      aria-labelledby={headingId}
       className="lg:sticky lg:top-20 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
     >
       <Card>
-        <CardContent className="space-y-4">{children}</CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <h2 id={headingId} className="sr-only">
+              Profile progress
+            </h2>
+            {heading}
+          </div>
+          {children}
+        </CardContent>
       </Card>
     </aside>
   );
 }
 
-export function CompletionPanel({ control }: { control: Control<ProfileFormValues> }) {
-  const cvs = useMyCvs();
-  const [
-    fullName,
-    phone,
-    phoneCountry,
-    headline,
-    summary,
-    locationKey,
-    roleKey,
-    educations,
-    skills,
-    languages,
-  ] = useWatch({ control, name: ANSWERS });
+function Headline({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <p className="font-heading text-title text-card-foreground">Profile progress</p>
+      {children}
+    </div>
+  );
+}
 
-  if (cvs.data === undefined) {
+export function CompletionPanel({ control }: { control: Control<ProfileFormValues> }) {
+  const { missing, percent } = useProfileProgress(control);
+
+  if (missing === undefined) {
     return (
-      <Panel>
-        <div className="flex items-center gap-4">
-          <Skeleton className="size-16 shrink-0 rounded-full" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <h2 id="profile-progress" className="font-heading text-title text-card-foreground">
-              Profile progress
-            </h2>
-            <Skeleton className="h-4 w-28" />
-          </div>
-        </div>
+      <Panel
+        heading={
+          <>
+            <Skeleton className="size-16 shrink-0 rounded-full" />
+            <Headline>
+              <Skeleton className="h-4 w-28" />
+            </Headline>
+          </>
+        }
+      >
         <Skeleton className="h-48 w-full lg:h-96" />
       </Panel>
     );
   }
 
-  const missing = missingRequirements({
-    has_a_read_cv: cvs.data.some((cv) => cv.is_current && isReady(cv)),
-    full_name: fullName,
-    phone,
-    phone_country: phoneCountry,
-    headline,
-    summary,
-    location_key: locationKey,
-    canonical_role_key: roleKey,
-    educations: educations.length,
-    skills: skills.length,
-    languages: languages.length,
-  });
-  const percent = completionPercent(missing);
   const done = REQUIREMENTS.length - missing.length;
 
   return (
-    <Panel>
-      <div className="flex items-center gap-4">
-        <CompletionRing percent={percent} />
-        <div className="min-w-0 space-y-0.5">
-          <h2 id="profile-progress" className="font-heading text-title text-card-foreground">
-            Profile progress
-          </h2>
-          <p className="text-meta text-muted-foreground">
-            {missing.length === 0
-              ? 'Every step is done.'
-              : `${done} of ${REQUIREMENTS.length} steps done`}
-          </p>
-        </div>
-      </div>
-
+    <Panel
+      heading={
+        <>
+          <CompletionRing percent={percent} />
+          <Headline>
+            <p className="text-meta text-muted-foreground">
+              {missing.length === 0
+                ? `All ${REQUIREMENTS.length} done.`
+                : `${done} of ${REQUIREMENTS.length} done`}
+            </p>
+          </Headline>
+        </>
+      }
+    >
       <ol className="grid grid-cols-2 gap-x-2 gap-y-0.5 lg:grid-cols-1">
         {REQUIREMENTS.map((requirement) => {
-          const step = REQUIREMENT_STEPS[requirement];
+          const place = REQUIREMENT_PLACES[requirement];
           const met = !missing.includes(requirement);
           return (
             <li key={requirement}>
               <button
                 type="button"
-                onClick={() => showSection(step.section)}
+                onClick={() => showSection(place.section)}
                 className={cn(
                   'flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-start text-dense hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
                   met ? 'text-muted-foreground' : 'font-medium text-foreground',
@@ -176,7 +153,7 @@ export function CompletionPanel({ control }: { control: Control<ProfileFormValue
                   {met ? <Check className="size-3" strokeWidth={3} /> : null}
                 </span>
                 <span className="min-w-0">
-                  {step.label}
+                  {place.label}
                   <span className="sr-only">{met ? ' — done' : ' — still to do'}</span>
                 </span>
               </button>
@@ -188,8 +165,31 @@ export function CompletionPanel({ control }: { control: Control<ProfileFormValue
       <p className="text-meta text-muted-foreground">
         {missing.length === 0
           ? 'You can apply to jobs, and you can let recruiters find you.'
-          : 'Finish every step to apply to jobs and to be found by recruiters. Saving now keeps your work.'}
+          : 'Finish all of them to apply to jobs. Saving now keeps your work.'}
       </p>
+
+      <div className="border-border border-t pt-4">
+        <FormField
+          control={control}
+          name="is_searchable"
+          label="Let recruiters find me"
+          description={
+            missing.length === 0
+              ? 'Adds you to Global search.'
+              : 'Adds you to Global search, once everything above is ticked.'
+          }
+          orientation="horizontal"
+        >
+          {({ value, onChange, ...field }) => (
+            <Switch
+              {...field}
+              checked={value === true && missing.length === 0}
+              onCheckedChange={onChange}
+              disabled={missing.length > 0}
+            />
+          )}
+        </FormField>
+      </div>
     </Panel>
   );
 }

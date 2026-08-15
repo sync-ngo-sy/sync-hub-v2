@@ -3,14 +3,16 @@ import { Input } from '@sync/ui/components/ui/input';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { GraduationCap } from 'lucide-react';
 import { type Control, useFieldArray } from 'react-hook-form';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import { BLANK_EDUCATION, type ProfileFormValues } from '../schemas/profile';
 import { EntryList } from './entry-list';
 import { ProfileSection } from './profile-section';
-import { SectionError, useUnanswered } from './section-error';
+import { SectionError } from './section-error';
 
 export function EducationsSection({ control }: { control: Control<ProfileFormValues> }) {
   const { fields, append, remove } = useFieldArray({ control, name: 'educations' });
-  const unanswered = useUnanswered(control, 'educations');
+  const unanswered = useUnanswered(control, FIELDS_IN.education);
 
   return (
     <ProfileSection

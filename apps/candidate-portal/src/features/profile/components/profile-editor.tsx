@@ -10,10 +10,11 @@ import { MAX_CVS } from '@/features/cvs/cv';
 import { problemMessage } from '@/lib/api-problem';
 import { useCvFill } from '../hooks/use-cv-fill';
 import { useMyProfile } from '../hooks/use-my-profile';
+import { useProfileProgress } from '../hooks/use-profile-progress';
 import { useSaveProfile } from '../hooks/use-save-profile';
 import { profileRejection } from '../rejection';
 import { type ProfileFormValues, profileSchema, toFormValues, toProfile } from '../schemas/profile';
-import { whatIsUnanswered } from '../unanswered';
+import { whatIsUnanswered, whyRecruitersCannotFindYou } from '../unanswered';
 import { CompletionPanel } from './completion-panel';
 import { EducationsSection } from './educations-section';
 import { ExperiencesSection } from './experiences-section';
@@ -43,6 +44,7 @@ export function ProfileEditor() {
     defaultValues: toFormValues(profile),
   });
   const fill = useCvFill({ getValues, reset });
+  const progress = useProfileProgress(control);
 
   const blocker = useBlocker({
     shouldBlockFn: () => isDirty,
@@ -52,11 +54,18 @@ export function ProfileEditor() {
 
   const submit = handleSubmit(
     async (values) => {
+      // The database refuses Searchable on an unfinished profile, so asking for it would lose
+      // everything else typed. The switch waits; the rest of the work is kept.
+      const missing = progress.missing ?? [];
+      const heldBack = values.is_searchable && missing.length > 0;
+      const body = heldBack ? { ...values, is_searchable: false } : values;
       try {
-        const saved = await saveProfile.mutateAsync({ body: toProfile(values) });
+        const saved = await saveProfile.mutateAsync({ body: toProfile(body) });
         reset(toFormValues(saved));
         fill.dismiss();
-        toast.success('Profile saved.');
+        toast[heldBack ? 'info' : 'success'](
+          heldBack ? whyRecruitersCannotFindYou(missing) : 'Profile saved.',
+        );
       } catch (error) {
         const rejection = profileRejection(error);
         if (!rejection) {
@@ -121,13 +130,15 @@ export function ProfileEditor() {
             </Alert>
           ) : null}
 
-          <div className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3 md:bottom-4">
+          <div className="sticky bottom-20 z-10 flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3 md:bottom-4">
             <p className="text-dense text-muted-foreground" aria-live="polite">
               {isDirty ? 'Unsaved changes.' : 'Everything is saved.'}
             </p>
-            <Button type="submit" size="lg" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving…' : 'Save profile'}
-            </Button>
+            {isDirty || isSubmitting ? (
+              <Button type="submit" size="lg" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving…' : 'Save profile'}
+              </Button>
+            ) : null}
           </div>
 
           <UnsavedChangesDialog

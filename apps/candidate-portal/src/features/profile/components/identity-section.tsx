@@ -1,35 +1,24 @@
 import { FormField } from '@sync/ui/components/form-field';
 import { PhoneField } from '@sync/ui/components/phone-field';
 import { Input } from '@sync/ui/components/ui/input';
-import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
 import { type Control, useController } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups, roleOptions } from '@/features/reference/options';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
-import { useUnanswered } from './section-error';
 
 const NO_ROLE = { value: '', label: 'Not saying' };
-
-const ABOUT_YOU = [
-  'full_name',
-  'phone',
-  'phone_country',
-  'headline',
-  'location_key',
-  'canonical_role_key',
-  'summary',
-  'is_searchable',
-] as const satisfies readonly (keyof ProfileFormValues)[];
 
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {
   const places = useLocations();
   const roles = useCanonicalRoles();
   const country = useController({ control, name: 'phone_country' });
-  const unanswered = useUnanswered(control, ABOUT_YOU);
+  const unanswered = useUnanswered(control, FIELDS_IN['about-you']);
 
   return (
     <ProfileSection
@@ -127,19 +116,6 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         description="A paragraph about your work. Needed to apply."
       >
         {(field) => <Textarea {...field} rows={5} />}
-      </FormField>
-
-      <FormField
-        control={control}
-        name="is_searchable"
-        label="Let recruiters find me"
-        description={`Adds you to Global search. Needs a complete profile, and a current CV the
-          platform has read.`}
-        orientation="horizontal"
-      >
-        {({ value, onChange, ...field }) => (
-          <Switch {...field} checked={value === true} onCheckedChange={onChange} />
-        )}
       </FormField>
     </ProfileSection>
   );

@@ -1,18 +1,13 @@
 import { FormField } from '@sync/ui/components/form-field';
 import { Input } from '@sync/ui/components/ui/input';
 import type { Control } from 'react-hook-form';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
-import { useUnanswered } from './section-error';
-
-const ADDRESSES = [
-  'linkedin_url',
-  'github_url',
-  'portfolio_url',
-] as const satisfies readonly (keyof ProfileFormValues)[];
 
 export function LinksSection({ control }: { control: Control<ProfileFormValues> }) {
-  const unanswered = useUnanswered(control, ADDRESSES);
+  const unanswered = useUnanswered(control, FIELDS_IN.links);
 
   return (
     <ProfileSection
