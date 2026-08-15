@@ -12,7 +12,7 @@ export const NOTIFICATIONS_PAGE_SIZE = 20;
 export const RECENT_NOTIFICATIONS = 5;
 
 export const NOTHING_YET =
-  "Nothing yet. When one of your applications moves, or a CV has been read, you'll hear about it here.";
+  "Nothing yet. When one of your applications moves, or a CV has been read, or could not be, you'll hear about it here.";
 
 export function isUnread(notification: Notification): boolean {
   return notification.read_at == null;

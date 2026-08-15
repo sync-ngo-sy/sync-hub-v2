@@ -109,10 +109,10 @@ Taking what the platform read off a CV into the editor's fields, where the Candi
 value in context and saves — or does not. It writes nothing: a raw parse is never the
 authoritative profile, so the draft the API computes lands in the form and the Candidate's Save
 is still the only thing that replaces anything. A parse finishing while the Candidate is here fills
-on its own; one that finished while they were away is what the notification about it opens — the CV
-it speaks for rides in the address, so the page fills from that one and no other, and the link
-fills again wherever it is opened. A CV already read fills on demand. It reaches Links and the
-Phone as well as the sections — a number
+on its own, whether or not the upload happened in this visit; one that finished while they were
+away is what the notification about it opens — the CV it speaks for rides in the address, so the
+page fills from that one and no other, and the link fills again wherever it is opened. A CV
+already read fills on demand. It reaches Links and the Phone as well as the sections — a number
 it could not make sense of lands in the field exactly as the CV wrote it, and the field says so,
 because a value quietly dropped is one nobody learns was on their CV. Skills merge, keeping the
 years already typed against them; every other section is replaced, which is safe only because of

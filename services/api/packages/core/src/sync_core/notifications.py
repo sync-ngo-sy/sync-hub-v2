@@ -50,14 +50,14 @@ class ApplicationStatusChanged(BaseModel):
     previous_status: ApplicationStatus = Field(description="Where it stood until this move.")
 
 
-_Payload = CvParseFailed | CvParseSucceeded | ApplicationStatusChanged
+NotificationPayload = Annotated[
+    CvParseFailed | CvParseSucceeded | ApplicationStatusChanged, Field(discriminator="type")
+]
 
-NotificationPayload = Annotated[_Payload, Field(discriminator="type")]
-
-_STORED_PAYLOAD: Final[TypeAdapter[_Payload]] = TypeAdapter(NotificationPayload)
+_STORED_PAYLOAD: Final[TypeAdapter[NotificationPayload]] = TypeAdapter(NotificationPayload)
 
 
-def payload_of(stored: dict[str, Any]) -> _Payload:
+def payload_of(stored: dict[str, Any]) -> NotificationPayload:
     return _STORED_PAYLOAD.validate_python(stored)
 
 

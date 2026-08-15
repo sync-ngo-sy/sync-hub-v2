@@ -6,13 +6,13 @@ import { useMyCvs } from '@/features/cvs/hooks/use-my-cvs';
 export function useFillOnArrival(from: (cv: Cv) => Promise<void>): void {
   const { fill } = useSearch({ from: '/_account/profile' });
   const cvs = useMyCvs();
-  const filled = useRef<string | null>(null);
+  const answered = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!fill || filled.current === fill) return;
+    if (!fill || answered.current === fill) return;
     const cv = cvs.data?.find((entry) => entry.id === fill);
     if (!cv) return;
-    filled.current = fill;
+    answered.current = fill;
     if (isReady(cv)) void from(cv);
   }, [cvs.data, fill, from]);
 }
