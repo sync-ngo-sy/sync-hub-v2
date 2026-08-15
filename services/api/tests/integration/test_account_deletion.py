@@ -132,7 +132,9 @@ async def test_deleting_the_account_scrubs_the_live_identity(
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
     candidate_id = await my_id(browser)
-    await a_saved_profile(browser, a_filled_profile(phone="+963 11 111 1111"))
+    await a_saved_profile(
+        browser, a_filled_profile(phone="+963 11 111 1111", linkedin_url="amina-haddad")
+    )
 
     await a_deleted_account(browser)
 
@@ -146,6 +148,7 @@ async def test_deleting_the_account_scrubs_the_live_identity(
     assert candidate.summary is None
     assert candidate.location is None
     assert candidate.unmapped_skills == []
+    assert candidate.linkedin_url is None
     assert candidate.is_searchable is False
 
 

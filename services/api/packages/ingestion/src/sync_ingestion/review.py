@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sync_core import get_logger
+from sync_core.links import github_address, linkedin_address, portfolio_address
 from sync_core.profile import (
     EARLIEST_YEAR,
     LATEST_YEAR,
@@ -24,7 +25,7 @@ from sync_parsers import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
 logger = get_logger(__name__)
 
@@ -53,6 +54,9 @@ def reviewable(parsed: ParsedCv, known: Vocabularies) -> ParsedCv:
         headline=_line(parsed.headline),
         summary=_paragraph(parsed.summary),
         location=_line(parsed.location),
+        linkedin_url=_address(linkedin_address, parsed.linkedin_url, field="linkedin_url"),
+        github_url=_address(github_address, parsed.github_url, field="github_url"),
+        portfolio_url=_address(portfolio_address, parsed.portfolio_url, field="portfolio_url"),
         experiences=_experiences(parsed.experiences),
         educations=_educations(parsed.educations),
         skills=skills,
@@ -197,6 +201,23 @@ def _unmapped(names: Iterable[str]) -> list[str]:
         if trimmed is not None:
             seen.setdefault(trimmed.lower(), trimmed)
     return list(seen.values())[:MAX_ENTRIES]
+
+
+def _address(normalize: Callable[[str], str], value: str | None, *, field: str) -> str | None:
+    """One profile Link, in the single form the profile stores it in.
+
+    Dropped rather than kept where the text is not that kind of address at all: a CV's footer
+    puts every link on one line, and a GitHub read into the LinkedIn field would be shown to the
+    candidate as their own answer to a question they never answered.
+    """
+    text = _link(value)
+    if text is None:
+        return None
+    try:
+        return normalize(text)
+    except ValueError:
+        logger.info("cv_review.link_discarded", field=field)
+        return None
 
 
 def _line(value: str | None) -> str | None:

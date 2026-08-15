@@ -50,6 +50,9 @@ export const AMINA_RECORD: CandidateRecord = {
   in_talent_pool: false,
   phone: '+963 11 555 0142',
   email: 'amina.haddad@example.test',
+  linkedin_url: 'https://www.linkedin.com/in/amina-haddad',
+  github_url: 'https://github.com/amina-haddad',
+  portfolio_url: 'https://amina-haddad.dev',
   experiences: [
     {
       job_title: 'Payments Lead',

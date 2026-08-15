@@ -312,6 +312,7 @@ async def test_the_review_holds_the_snapshot_the_answers_and_the_verdict(
     snapshot = review["snapshot"]
     assert snapshot["full_name"] == "Amina Haddad"
     assert snapshot["headline"] == "Backend engineer, 8 years"
+    assert snapshot["linkedin_url"] == "https://www.linkedin.com/in/amina-haddad"
     assert [entry["job_title"] for entry in snapshot["experiences"]] == ["Senior Engineer"]
     assert [entry["institution"] for entry in snapshot["educations"]] == ["Damascus University"]
     assert [entry["name"] for entry in snapshot["skills"]] == ["Python", "PostgreSQL"]

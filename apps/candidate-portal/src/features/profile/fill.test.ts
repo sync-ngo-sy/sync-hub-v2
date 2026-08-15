@@ -126,6 +126,20 @@ describe('filling the form from a CV', () => {
     expect(filled.unmapped_skills).toEqual([{ value: 'Kobo Toolbox' }]);
   });
 
+  it('brings the links a CV carries, and empties the ones it is silent about', () => {
+    const current = aForm({
+      linkedin_url: 'https://www.linkedin.com/in/lina-khoury',
+      portfolio_url: 'https://lina-khoury.dev',
+    });
+    const filled = filledFromCv(
+      current,
+      aDraft({ linkedin_url: 'https://www.linkedin.com/in/lina-from-the-cv' }),
+    );
+
+    expect(filled.linkedin_url).toBe('https://www.linkedin.com/in/lina-from-the-cv');
+    expect(filled.portfolio_url).toBe('');
+  });
+
   it('leaves the settings a CV cannot speak for exactly as the form holds them', () => {
     const current = aForm({ location_key: 'sy-rif-dimashq', is_searchable: true });
     const filled = filledFromCv(

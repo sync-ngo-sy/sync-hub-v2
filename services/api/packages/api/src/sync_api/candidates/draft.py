@@ -53,6 +53,9 @@ def draft_of(
         location_key=candidate.location_key,
         canonical_role_key=parsed.canonical_role or candidate.canonical_role_key,
         is_searchable=candidate.is_searchable,
+        linkedin_url=parsed.linkedin_url,
+        github_url=parsed.github_url,
+        portfolio_url=parsed.portfolio_url,
         unmapped_skills=list(parsed.unmapped_skills),
         experiences=[
             DraftExperience(

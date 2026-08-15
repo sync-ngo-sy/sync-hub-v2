@@ -7,9 +7,10 @@ if TYPE_CHECKING:
 
     from sync_parsers.extractor import Vocabulary
 
-#: Stamped on every stored parse. 2 is the schema that proposes a `canonical_role`; a parse
-#: stored as 1 has no opinion about one rather than an empty one.
-PARSED_CV_SCHEMA_VERSION: Final = 2
+#: Stamped on every stored parse. 2 is the schema that proposes a `canonical_role`; 3 the one
+#: that reads the Links off a CV. A parse stored as an earlier version has no opinion about
+#: what its schema had no field for, rather than an empty one.
+PARSED_CV_SCHEMA_VERSION: Final = 3
 
 INSTRUCTIONS: Final = """\
 You are reading one candidate's CV for a recruitment platform. Extract what the document \
@@ -32,6 +33,11 @@ and the work described, not from a job title alone. Where the CV shows no clear 
 work — too little to go on, or an even split between two — answer null; the candidate is \
 shown this and can choose for themselves. Never answer a key that is not in the list.
 - `languages[].code` may only be a code from the language codes list below.
+- `linkedin_url`, `github_url` and `portfolio_url` are three separate fields: a LinkedIn \
+address belongs in the first and nowhere else, a GitHub address in the second, and any other \
+site of the candidate's own in the third. Copy what the CV prints, address or handle, without \
+completing it into an address it does not give. A link to somebody else's site, or to an \
+employer, is not a portfolio.
 - Keep descriptions in the CV's own wording rather than rewriting them, and translate \
 nothing: `detected_language` records what language the CV is written in.
 

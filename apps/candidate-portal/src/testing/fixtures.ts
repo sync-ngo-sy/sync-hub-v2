@@ -301,6 +301,9 @@ export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   location_key: 'sy-aleppo',
   canonical_role_key: 'project-manager',
   is_searchable: false,
+  linkedin_url: 'https://www.linkedin.com/in/lina-khoury',
+  github_url: null,
+  portfolio_url: 'https://lina-khoury.dev',
   total_experience_years: 6,
   experiences: [
     {
@@ -351,6 +354,8 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   is_searchable: false,
   headline: 'Backend engineer, 8 years',
   location_key: null,
+  linkedin_url: 'https://www.linkedin.com/in/lina-from-the-cv',
+  github_url: 'https://github.com/lina-from-the-cv',
   experiences: [
     {
       job_title: 'Backend engineer',
