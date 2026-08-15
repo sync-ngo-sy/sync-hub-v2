@@ -967,6 +967,11 @@ class IngestionJob(Base):
 class Profile(Base):
     __tablename__ = "profiles"
     __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(phone, phone_country) <> 1", name="profiles_phone_has_a_country"
+        ),
+        CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="profiles_phone_is_e164"),
+        CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="profiles_phone_country_is_iso"),
         ForeignKeyConstraint(
             ["id"], ["auth.users.id"], ondelete="CASCADE", name="profiles_id_fkey"
         ),
@@ -995,6 +1000,7 @@ class Profile(Base):
     avatar_url: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    phone_country: Mapped[str | None] = mapped_column(Text)
 
     user: Mapped["User"] = relationship("User", viewonly=True)
 
@@ -1895,6 +1901,11 @@ class ApplicationProfileSnapshot(Base):
             name="asnap_linkedin_url_shape",
         ),
         CheckConstraint(
+            "num_nonnulls(phone, phone_country) <> 1", name="asnap_phone_has_a_country"
+        ),
+        CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="asnap_phone_is_e164"),
+        CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="asnap_phone_country_is_iso"),
+        CheckConstraint(
             "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
             name="asnap_portfolio_url_shape",
         ),
@@ -1926,6 +1937,7 @@ class ApplicationProfileSnapshot(Base):
     linkedin_url: Mapped[str | None] = mapped_column(Text)
     github_url: Mapped[str | None] = mapped_column(Text)
     portfolio_url: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 

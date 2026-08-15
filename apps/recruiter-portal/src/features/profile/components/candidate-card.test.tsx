@@ -14,7 +14,7 @@ const WHOLE = {
   links: {},
   avatarUrl: 'https://cdn.example.test/lina.webp',
   email: 'lina@example.test',
-  phone: '+963 11 555 0100',
+  phone: '+963115550100',
   canonicalRole: 'Project Manager',
   headline: 'Runs delivery for two field programmes',
   facts: [
@@ -62,7 +62,7 @@ describe('CandidateCard', () => {
     );
     expect(screen.getByRole('link', { name: '+963 11 555 0100' })).toHaveAttribute(
       'href',
-      'tel:+963 11 555 0100',
+      'tel:+963115550100',
     );
   });
 

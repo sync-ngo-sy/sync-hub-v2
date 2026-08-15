@@ -13,7 +13,8 @@ import {
 
 const FILLED: ProfileFormValues = {
   full_name: 'Lina Khoury',
-  phone: '+963 11 000 0000',
+  phone: '011 555 0100',
+  phone_country: 'SY',
   headline: 'Field coordinator, 6 years',
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
@@ -135,8 +136,35 @@ describe('the profile schema', () => {
   it('sends a blank optional line as "not set" rather than as nothing', () => {
     const body = parsed({ ...FILLED, phone: '   ', headline: '', location_key: '' });
     expect(body.phone).toBeNull();
+    expect(body.phone_country).toBeNull();
     expect(body.headline).toBeNull();
     expect(body.location_key).toBeNull();
+  });
+
+  it('sends the number the one way the platform stores one, beside its country', () => {
+    const body = parsed({ ...FILLED, phone: '(011) 555-0100' });
+
+    expect(body.phone).toBe('+963115550100');
+    expect(body.phone_country).toBe('SY');
+  });
+
+  it('refuses a number the chosen country cannot dial', () => {
+    expect(errorAt('phone', { ...FILLED, phone: '+1 213 373 4253', phone_country: 'CA' })).toBe(
+      'Enter a number Canada can dial.',
+    );
+  });
+
+  it('asks which country a number typed without one belongs to', () => {
+    expect(errorAt('phone', { ...FILLED, phone_country: '' })).toBe(
+      'Choose the country your number belongs to.',
+    );
+  });
+
+  it('drops a country nobody gave a number for', () => {
+    const body = parsed({ ...FILLED, phone: '' });
+
+    expect(body.phone).toBeNull();
+    expect(body.phone_country).toBeNull();
   });
 
   it('drops the spaces around everything it keeps', () => {
@@ -284,7 +312,8 @@ describe('the profile schema', () => {
 
     expect(body).toEqual({
       full_name: 'Lina Khoury',
-      phone: '+963 11 000 0000',
+      phone: '+963115550100',
+      phone_country: 'SY',
       headline: 'Field coordinator, 6 years',
       summary: 'Six years of coordination work across Idlib and Aleppo.',
       location_key: 'sy-aleppo',
@@ -338,6 +367,7 @@ describe('the profile the API answers with', () => {
   const PROFILE: components['schemas']['CandidateProfile'] = {
     full_name: 'Lina Khoury',
     phone: null,
+    phone_country: null,
     headline: null,
     summary: null,
     location_key: null,
@@ -366,12 +396,20 @@ describe('the profile the API answers with', () => {
     unmapped_skills: ['Kobo Toolbox'],
   };
 
+  it('splits a stored number into the country and the part the candidate types', () => {
+    const form = toFormValues({ ...PROFILE, phone: '+963115550100', phone_country: 'SY' });
+
+    expect(form.phone).toBe('011 555 0100');
+    expect(form.phone_country).toBe('SY');
+  });
+
   it('becomes a form where every absent value is an empty field', () => {
     expect(toFormValues(PROFILE)).toEqual({
       full_name: 'Lina Khoury',
       canonical_role_key: '',
       total_experience_years: 4,
       phone: '',
+      phone_country: '',
       headline: '',
       summary: '',
       location_key: '',

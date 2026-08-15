@@ -350,6 +350,7 @@ class World:
                     account_type=AccountType.CANDIDATE,
                     avatar_url=None,
                     phone=person.profile.phone,
+                    phone_country=person.profile.phone_country,
                     has_account_row=True,
                 )
             )
@@ -770,6 +771,7 @@ class World:
                     account_type=AccountType.RECRUITER,
                     avatar_url=None,
                     phone=None,
+                    phone_country=None,
                     has_account_row=True,
                 ),
                 tenant=TenantSummary(

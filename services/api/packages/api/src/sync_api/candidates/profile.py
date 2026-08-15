@@ -65,6 +65,7 @@ class CandidateProfileService:
         return CandidateProfile(
             full_name=identity.full_name,
             phone=identity.phone,
+            phone_country=identity.phone_country,
             headline=candidate.headline,
             summary=candidate.summary,
             location_key=candidate.location_key,
@@ -107,6 +108,7 @@ class CandidateProfileService:
 
             identity.full_name = profile.full_name
             identity.phone = profile.phone
+            identity.phone_country = profile.phone_country
             candidate.headline = profile.headline
             candidate.summary = profile.summary
             candidate.location_key = profile.location_key

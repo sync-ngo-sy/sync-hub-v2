@@ -1,11 +1,12 @@
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import { cn } from '@sync/ui/lib/utils';
 import { CheckIcon, ChevronDownIcon, XIcon } from 'lucide-react';
-import type { FocusEventHandler } from 'react';
+import type { FocusEventHandler, ReactNode } from 'react';
 
 export interface ComboboxOption {
   value: string;
   label: string;
+  icon?: ReactNode;
 }
 
 export interface ComboboxOptionGroup {
@@ -103,8 +104,9 @@ export function Combobox(props: ComboboxProps) {
     <ComboboxPrimitive.Item
       key={option.value}
       value={option}
-      className="relative flex cursor-default items-center rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+      className="relative flex cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
     >
+      {option.icon}
       {option.label}
       <ComboboxPrimitive.ItemIndicator
         render={
@@ -171,7 +173,12 @@ export function Combobox(props: ComboboxProps) {
             </ComboboxPrimitive.Value>
           </ComboboxPrimitive.Chips>
         ) : (
-          input
+          <>
+            <ComboboxPrimitive.Value>
+              {(selected: ComboboxOption | null) => selected?.icon ?? null}
+            </ComboboxPrimitive.Value>
+            {input}
+          </>
         )}
         <ComboboxPrimitive.Trigger
           disabled={disabled}

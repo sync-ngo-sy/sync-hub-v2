@@ -122,6 +122,26 @@ async def test_the_snapshot_is_copied_from_the_live_profile(
     assert [float(row.years_experience) for row in snapshot.skills] == [8.0, 6.0]
 
 
+async def test_the_snapshot_freezes_the_number_and_the_country_it_belongs_to(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Half a frozen answer is not one: an Application is read long after somebody moved."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, phone="+963115550134", phone_country="SY"
+    )
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    await a_saved_profile(other_browser, a_filled_profile(phone="+9611555042", phone_country="LB"))
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert (snapshot.profile.phone, snapshot.profile.phone_country) == ("+963115550134", "SY")
+
+
 async def test_a_profile_in_the_request_is_not_what_gets_snapshotted(
     recruiter: AsyncClient,
     other_browser: AsyncClient,

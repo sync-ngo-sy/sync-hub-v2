@@ -118,6 +118,7 @@ class Reading[EntryT: BaseModel]:
 SCALARS: Final = (
     "full_name",
     "phone",
+    "phone_country",
     "headline",
     "summary",
     "location",
@@ -215,6 +216,7 @@ def snapshot_rows(application_id: UUID, candidate_id: UUID) -> list[Executable]:
             literal(application_id),
             Profile.full_name,
             Profile.phone,
+            Profile.phone_country,
             Candidate.headline,
             Candidate.summary,
             Location.name,
@@ -299,6 +301,7 @@ async def snapshot_of(session: AsyncSession, application_id: UUID) -> Applicatio
     return ApplicationSnapshot(
         full_name=captured.full_name,
         phone=captured.phone,
+        phone_country=captured.phone_country,
         headline=captured.headline,
         summary=captured.summary,
         location=captured.location,

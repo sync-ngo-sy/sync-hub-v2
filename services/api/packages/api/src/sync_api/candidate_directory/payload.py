@@ -12,7 +12,7 @@ from sync_api.candidates.payload import (
     ProfileProject,
     ProfileSkill,
 )
-from sync_api.text import LocationName
+from sync_api.text import LocationName, OptionalIsoCountry
 
 
 class SearchableCandidate(BaseModel):
@@ -75,7 +75,8 @@ class CandidateDirectoryPage(BaseModel):
 class CandidateRecord(SearchableCandidate):
     """One Candidate, whole. The only place a phone, an email or a Link is readable."""
 
-    phone: str | None = None
+    phone: str | None = Field(default=None, description="In E.164.")
+    phone_country: OptionalIsoCountry = None
     linkedin_url: str | None = None
     github_url: str | None = None
     portfolio_url: str | None = None

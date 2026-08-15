@@ -14,6 +14,7 @@ from sync_api.auth.password_policy import (
 from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
 from sync_api.errors import openapi_problem
 from sync_api.rate_limit import enforce_auth_rate_limit
+from sync_api.text import OptionalIsoCountry
 from sync_core.models import AccountType
 
 ROUTER_PREFIX: Final = "/auth"
@@ -59,7 +60,8 @@ class ProfileView(BaseModel):
     full_name: str
     account_type: AccountType
     avatar_url: str | None
-    phone: str | None
+    phone: str | None = Field(default=None, description="In E.164.")
+    phone_country: OptionalIsoCountry = None
 
     @classmethod
     def of(cls, profile: ActingProfile) -> ProfileView:
@@ -70,6 +72,7 @@ class ProfileView(BaseModel):
             account_type=profile.account_type,
             avatar_url=profile.avatar_url,
             phone=profile.phone,
+            phone_country=profile.phone_country,
         )
 
 
