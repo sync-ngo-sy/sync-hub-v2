@@ -387,6 +387,15 @@ export const CV_FAILURE_NOTIFICATION = aNotification({
   },
 });
 
+export const CV_READ_NOTIFICATION = aNotification({
+  id: '00000000-0000-4000-8000-000000000305',
+  payload: {
+    type: 'cv_parse_succeeded',
+    cv_id: READY_CV.id,
+    display_name: READY_CV.display_name,
+  },
+});
+
 export const MOVED_NOTIFICATION = aNotification({
   id: '00000000-0000-4000-8000-000000000302',
   created_at: '2026-07-30T09:00:00Z',

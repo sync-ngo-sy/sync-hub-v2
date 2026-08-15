@@ -216,10 +216,11 @@ _Avoid_: Email (the channel), Notification.
 
 **Notification**:
 An in-app message to one Profile, carrying a typed payload and a read/unread state — how
-Candidates learn about Stage changes and CV parse failures. Never delivered externally;
-distinct from a Communication. One about a Stage change names the Application it is about,
-which is what every reader of the table joins on; one about a CV parse names none, because it
-is about a CV.
+Candidates learn about Stage changes and about a CV read, or given up on. Never delivered
+externally; distinct from a Communication. One about a Stage change names the Application it is
+about, which is what every reader of the table joins on; one about a CV parse names none, because
+it is about a CV. Both parse outcomes are written in the transaction that settles the parse, so a
+CV nobody was left to tell — deleted while it was being read — is told to nobody.
 _Avoid_: Alert, Push, Message.
 
 **Message template**:

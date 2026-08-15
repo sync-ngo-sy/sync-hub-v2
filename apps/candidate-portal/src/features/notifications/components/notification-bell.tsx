@@ -66,16 +66,19 @@ function Recent() {
         <p className="px-1.5 py-2 text-dense text-muted-foreground">{NOTHING_YET}</p>
       ) : null}
 
-      {recent.map((notification) => (
-        <DropdownMenuItem
-          key={notification.id}
-          render={<Link to={notificationCopy(notification).to} />}
-          onClick={() => open(notification)}
-          className={cn(NOTIFICATION_ROW, 'py-2')}
-        >
-          <NotificationItem notification={notification} />
-        </DropdownMenuItem>
-      ))}
+      {recent.map((notification) => {
+        const { to, search } = notificationCopy(notification);
+        return (
+          <DropdownMenuItem
+            key={notification.id}
+            render={<Link to={to} search={search} />}
+            onClick={() => open(notification)}
+            className={cn(NOTIFICATION_ROW, 'py-2')}
+          >
+            <NotificationItem notification={notification} />
+          </DropdownMenuItem>
+        );
+      })}
 
       <DropdownMenuSeparator />
       <DropdownMenuItem render={<Link to="/notifications" />}>

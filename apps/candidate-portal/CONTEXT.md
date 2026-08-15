@@ -92,7 +92,9 @@ the CVs, identity, Experience, Education, Skills, Other skills, Languages, Proje
 together. A save replaces the profile whole, so a section left empty is an emptied section —
 which is why leaving with unsaved changes asks first rather than losing them quietly. The CVs
 come first, because an upload is what fills everything under it; `/cvs`, where they used to
-live on their own, redirects here.
+live on their own, redirects here. A CV still being read spins beside the Status Mark that names
+its state: the mark says which state it is in, and the spin says the row will change on its own,
+which is what stops a Candidate waiting on a page they think has stopped.
 _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
 
 **Avatar**:
@@ -107,8 +109,10 @@ Taking what the platform read off a CV into the editor's fields, where the Candi
 value in context and saves — or does not. It writes nothing: a raw parse is never the
 authoritative profile, so the draft the API computes lands in the form and the Candidate's Save
 is still the only thing that replaces anything. A parse finishing while the Candidate is here fills
-on its own; one that finished while they were away is what the notification about it opens, and a
-CV already read fills on demand. It reaches Links and the Phone as well as the sections — a number
+on its own; one that finished while they were away is what the notification about it opens — the CV
+it speaks for rides in the address, so the page fills from that one and no other, and the link
+fills again wherever it is opened. A CV already read fills on demand. It reaches Links and the
+Phone as well as the sections — a number
 it could not make sense of lands in the field exactly as the CV wrote it, and the field says so,
 because a value quietly dropped is one nobody learns was on their CV. Skills merge, keeping the
 years already typed against them; every other section is replaced, which is safe only because of
@@ -151,10 +155,12 @@ _Avoid_: Lookups, master data, enums (an enum reaches the portals through the ge
 these are rows).
 
 **Notifications**:
-Everything the platform has told the signed-in Candidate, newest first: a CV it could not read, an
-Application that moved. Two surfaces over one list — the Bell's dropdown for the newest few, and the
-page at `/notifications` for all of them, a cursor at a time. Candidate-only in v1, because both
-payload types are candidate-facing and a recruiter bell would be permanently empty.
+Everything the platform has told the signed-in Candidate, newest first: a CV it read, a CV it could
+not read, an Application that moved. Two surfaces over one list — the Bell's dropdown for the newest
+few, and the page at `/notifications` for all of them, a cursor at a time. Candidate-only in v1,
+because every payload type is candidate-facing and a recruiter bell would be permanently empty.
+Opening one is the way to what it is about, and the CV that was read is the one that arrives with
+the work already done — it opens a Fill from a CV rather than a page to start one on.
 _Avoid_: Alerts, activity feed, inbox, messages (a Message is a Tenant writing to an applicant).
 
 **Bell**:

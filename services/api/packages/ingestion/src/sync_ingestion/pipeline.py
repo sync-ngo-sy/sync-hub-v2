@@ -15,7 +15,7 @@ from sync_core.models import (
     Language,
     SkillTaxonomy,
 )
-from sync_core.notifications import CvParseFailed, notify
+from sync_core.notifications import CvParseFailed, CvParseSucceeded, notify
 from sync_core.storage import cv_media_type_of
 from sync_ingestion.review import Vocabularies, reviewable
 from sync_parsers import (
@@ -95,6 +95,20 @@ class CvIngestion:
             )
         )
         await self._adopt_as_current(session, cv_id)
+
+        cv = (
+            await session.execute(
+                select(Cv.candidate_id, Cv.display_name, Cv.deleted_at).where(Cv.id == cv_id)
+            )
+        ).one_or_none()
+        if cv is None or cv.deleted_at is not None:
+            logger.info("cv_ingestion.read_nobody_is_waiting_for", cv_id=str(cv_id))
+            return
+        await notify(
+            session,
+            cv.candidate_id,
+            CvParseSucceeded(cv_id=cv_id, display_name=cv.display_name),
+        )
 
     async def fail(self, session: AsyncSession, cv_id: UUID, reason: str) -> None:
         cv = (

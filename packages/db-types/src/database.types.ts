@@ -2365,7 +2365,7 @@ export type Database = {
       job_status: 'draft' | 'published' | 'closed' | 'archived';
       language_proficiency: 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'native';
       location_kind: 'country' | 'governorate';
-      notification_type: 'cv_parse_failed' | 'application_status_changed';
+      notification_type: 'cv_parse_failed' | 'cv_parse_succeeded' | 'application_status_changed';
       qualification_status: 'pending' | 'qualified' | 'disqualified' | 'review_required';
       recruiter_role: 'admin' | 'recruiter';
       skill_importance: 'required' | 'preferred' | 'optional';
@@ -2534,7 +2534,7 @@ export const Constants = {
       job_status: ['draft', 'published', 'closed', 'archived'],
       language_proficiency: ['beginner', 'intermediate', 'advanced', 'fluent', 'native'],
       location_kind: ['country', 'governorate'],
-      notification_type: ['cv_parse_failed', 'application_status_changed'],
+      notification_type: ['cv_parse_failed', 'cv_parse_succeeded', 'application_status_changed'],
       qualification_status: ['pending', 'qualified', 'disqualified', 'review_required'],
       recruiter_role: ['admin', 'recruiter'],
       skill_importance: ['required', 'preferred', 'optional'],
