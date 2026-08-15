@@ -140,7 +140,8 @@ async def test_a_cv_cannot_be_failed_while_it_holds_a_complete_parse(
     assert row.parsing_status is CvParsingStatus.READY
     assert row.parsing_error is None
     assert row.parsed_cv_data is not None
-    assert await my_notifications(browser) == [], "nobody is told a CV that parsed has failed"
+    told = [item["payload"]["type"] for item in await my_notifications(browser)]
+    assert told == ["cv_parse_succeeded"], "a CV that parsed was announced as a failure"
     db_session.expire_all()
     candidate = await db_session.get(Candidate, candidate_id)
     assert candidate is not None

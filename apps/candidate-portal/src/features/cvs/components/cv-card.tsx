@@ -1,12 +1,12 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { CircleX, Download, Star, Trash2, Wand2 } from 'lucide-react';
+import { CircleX, Download, LoaderCircle, Star, Trash2, Wand2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
-import { type Cv, hasFailed, isReady, languageName, PARSE_STATES } from '../cv';
+import { type Cv, hasFailed, isParsing, isReady, languageName, PARSE_STATES } from '../cv';
 import { useCvDownloadLink, useDeleteCv, useMakeCvCurrent } from '../hooks/use-cv-actions';
 import { ConfirmDialog } from './confirm-dialog';
 
@@ -65,6 +65,13 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-heading text-base font-medium text-foreground">{cv.display_name}</h3>
           {cv.is_current ? <StatusMark tone="active" label="Current" /> : null}
+          {isParsing(cv) ? (
+            <LoaderCircle
+              role="progressbar"
+              aria-label={`Reading “${cv.display_name}”`}
+              className="size-3.5 shrink-0 animate-spin text-muted-foreground"
+            />
+          ) : null}
           <StatusMark tone={state.tone} label={state.label} />
         </div>
 

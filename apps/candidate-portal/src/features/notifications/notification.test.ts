@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CV_FAILURE_NOTIFICATION, MOVED_NOTIFICATION, READ_NOTIFICATION } from '@/testing/fixtures';
+import {
+  CV_FAILURE_NOTIFICATION,
+  CV_READ_NOTIFICATION,
+  MOVED_NOTIFICATION,
+  READ_NOTIFICATION,
+  READY_CV,
+} from '@/testing/fixtures';
 import { isUnread, notificationCopy } from './notification';
 
 describe('what a notification says', () => {
@@ -9,6 +15,17 @@ describe('what a notification says', () => {
     expect(copy.headline).toBe("Couldn't read “scan.pdf”");
     expect(copy.detail).toBe('Open your profile to see why, and upload another file.');
     expect(copy.to).toBe('/profile');
+  });
+
+  it('names the CV that was read, and leads to the profile it fills', () => {
+    const copy = notificationCopy(CV_READ_NOTIFICATION);
+
+    expect(copy.headline).toBe('“lina-khoury-2024.docx” has been read');
+    expect(copy.detail).toBe(
+      'Open your profile to fill the fields from it, and keep what is right.',
+    );
+    expect(copy.to).toBe('/profile');
+    expect(copy.search).toEqual({ fill: READY_CV.id });
   });
 
   it('names the Job, the employer and the move, and leads to the Application', () => {

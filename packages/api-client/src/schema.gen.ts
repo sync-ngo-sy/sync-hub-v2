@@ -2375,18 +2375,18 @@ export interface components {
              * @description In E.164.
              */
             phone?: string | null;
-            /** Linkedin Url */
-            linkedin_url?: string | null;
-            /** Github Url */
-            github_url?: string | null;
-            /** Portfolio Url */
-            portfolio_url?: string | null;
             /**
              * Phone Country
              * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
              * @example SY
              */
             phone_country?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
             /**
              * Email
              * @description Read from the authentication store, which is the only place a confirmed address lives.
@@ -2641,6 +2641,28 @@ export interface components {
              * Cv Id
              * Format: uuid
              * @description The CV that could not be read. Fetch it for the details.
+             */
+            cv_id: string;
+            /**
+             * Display Name
+             * @description The name of the file the candidate uploaded, so the message can name it.
+             */
+            display_name: string;
+        };
+        /**
+         * CvParseSucceeded
+         * @description The platform read a CV. What it found is on the CV, as `parsed_cv_data`.
+         */
+        CvParseSucceeded: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "cv_parse_succeeded";
+            /**
+             * Cv Id
+             * Format: uuid
+             * @description The CV that was read, and the one a draft is built from.
              */
             cv_id: string;
             /**
@@ -3617,7 +3639,7 @@ export interface components {
              * Payload
              * @description What happened. `type` says which shape the rest of this object takes.
              */
-            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["ApplicationStatusChanged"];
+            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["CvParseSucceeded"] | components["schemas"]["ApplicationStatusChanged"];
             /**
              * Read At
              * @description When the caller read this. Null while it is still unread.

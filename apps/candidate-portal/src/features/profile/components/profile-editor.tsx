@@ -9,6 +9,7 @@ import { CvsSection } from '@/features/cvs/components/cvs-section';
 import { MAX_CVS } from '@/features/cvs/cv';
 import { problemMessage } from '@/lib/api-problem';
 import { useCvFill } from '../hooks/use-cv-fill';
+import { useFillOnArrival } from '../hooks/use-fill-on-arrival';
 import { useMyProfile } from '../hooks/use-my-profile';
 import { useProfileProgress } from '../hooks/use-profile-progress';
 import { useSaveProfile } from '../hooks/use-save-profile';
@@ -44,6 +45,7 @@ export function ProfileEditor() {
     defaultValues: toFormValues(profile),
   });
   const fill = useCvFill({ getValues, reset });
+  useFillOnArrival(fill.from);
   const progress = useProfileProgress(control);
 
   const blocker = useBlocker({

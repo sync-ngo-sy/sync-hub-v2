@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_core import Database, Storage, transaction
 from sync_core.models import Cv, CvParsingStatus, IngestionJob, IngestionStatus
-from sync_core.notifications import CvParseFailed, payload_of
+from sync_core.notifications import CvParseFailed, CvParseSucceeded, payload_of
 from sync_parsers import CvFile, ParsedCv, UnreadableCvError, Vocabulary
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv, cv_row
@@ -70,6 +70,42 @@ async def test_a_cv_the_platform_gave_up_on_reaches_the_bell(
     assert items[0]["read_at"] is None
 
 
+async def test_a_cv_the_platform_read_reaches_the_bell(
+    browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+
+    await an_ingestion_worker(database, storage, FakeExtractor()).run_once()
+
+    items = await my_notifications(browser)
+    assert len(items) == 1, items
+    assert items[0]["payload"] == {
+        "type": "cv_parse_succeeded",
+        "cv_id": cv["id"],
+        "display_name": "cv.pdf",
+    }
+    assert items[0]["read_at"] is None
+
+
+async def test_a_cv_deleted_before_the_read_landed_tells_nobody_it_worked(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    cv = await an_uploaded_cv(browser)
+    vanishing = SoftDeletingExtractor(database, UUID(cv["id"]))
+
+    assert await an_ingestion_worker(database, storage, vanishing).run_once() is True
+
+    assert (await cv_row(db_session, cv["id"])).parsing_status is CvParsingStatus.READY
+    assert await my_notifications(browser) == []
+    assert await my_unread_count(browser) == 0
+
+
 async def test_a_parse_still_being_retried_says_nothing(
     browser: AsyncClient,
     mailbox: Mailbox,
@@ -110,19 +146,22 @@ async def test_running_out_of_attempts_notifies_exactly_once(
     assert items[0]["read_at"] is None
 
 
-async def test_a_retry_that_works_says_nothing_at_all(
+async def test_a_retry_that_works_announces_the_read_and_never_the_blip(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
-    await an_uploaded_cv(browser)
+    cv = await an_uploaded_cv(browser)
     worker = an_ingestion_worker(
         database, storage, FakeExtractor(UnavailableError("a blip"), a_parse())
     )
 
     await worker.run_once()
+    assert await my_notifications(browser) == [], "a retry left is nothing to announce"
     await worker.run_once()
 
-    assert await my_notifications(browser) == []
+    items = await my_notifications(browser)
+    assert [item["payload"]["type"] for item in items] == ["cv_parse_succeeded"]
+    assert items[0]["payload"]["cv_id"] == cv["id"]
 
 
 async def test_a_job_buried_by_the_sweep_notifies_too(
@@ -314,8 +353,12 @@ def test_a_stored_payload_is_read_back_as_the_shape_its_type_names() -> None:
     failed = payload_of(
         {"type": "cv_parse_failed", "cv_id": str(A_CV), "display_name": "resume.pdf"}
     )
+    succeeded = payload_of(
+        {"type": "cv_parse_succeeded", "cv_id": str(A_CV), "display_name": "resume.pdf"}
+    )
 
     assert failed == CvParseFailed(cv_id=A_CV, display_name="resume.pdf")
+    assert succeeded == CvParseSucceeded(cv_id=A_CV, display_name="resume.pdf")
 
 
 def test_the_type_is_mandatory_and_has_to_be_one_the_platform_knows() -> None:
@@ -358,3 +401,16 @@ class DeletingExtractor:
         async with self._database.session() as session, transaction(session):
             await session.execute(delete(Cv).where(Cv.id == self._cv_id))
         raise UnreadableCvError(UNREADABLE)
+
+
+class SoftDeletingExtractor:
+    def __init__(self, database: Database, cv_id: UUID) -> None:
+        self._database = database
+        self._cv_id = cv_id
+
+    async def extract(self, file: CvFile, vocabulary: Vocabulary) -> ParsedCv:
+        async with self._database.session() as session, transaction(session):
+            await session.execute(
+                update(Cv).where(Cv.id == self._cv_id).values(deleted_at=datetime.now(UTC))
+            )
+        return a_parse()

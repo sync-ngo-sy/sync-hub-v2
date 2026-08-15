@@ -42,10 +42,11 @@ async def test_notification_payloads_are_documented_as_a_discriminated_union(
     payload = schemas["Notification"]["properties"]["payload"]
     members = {member["$ref"].rsplit("/", 1)[-1] for member in payload["oneOf"]}
 
-    assert members == {"CvParseFailed", "ApplicationStatusChanged"}
+    assert members == {"CvParseFailed", "CvParseSucceeded", "ApplicationStatusChanged"}
     assert payload["discriminator"]["propertyName"] == "type"
     assert set(payload["discriminator"]["mapping"]) == {
         "cv_parse_failed",
+        "cv_parse_succeeded",
         "application_status_changed",
     }
     for member in members:
