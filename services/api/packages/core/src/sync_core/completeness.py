@@ -136,14 +136,15 @@ async def profile_facts(session: AsyncSession, candidate_id: UUID) -> ProfileFac
 async def refresh_completeness(
     session: AsyncSession, candidate_id: UUID
 ) -> tuple[Requirement, ...]:
-    await session.flush()
-    missing = missing_requirements(await profile_facts(session, candidate_id))
     candidate = await session.get(Candidate, candidate_id)
     if candidate is None:  # pragma: no cover
         raise LookupError(f"no candidate row for {candidate_id}")
 
-    if missing and candidate.profile_completed_at is not None:
-        candidate.profile_completed_at = None
-    elif not missing and candidate.profile_completed_at is None:
-        candidate.profile_completed_at = datetime.now(UTC)
+    earned = candidate.profile_completed_at
+    candidate.profile_completed_at = None
+    await session.flush()
+
+    missing = missing_requirements(await profile_facts(session, candidate_id))
+    if not missing:
+        candidate.profile_completed_at = earned or datetime.now(UTC)
     return missing

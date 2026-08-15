@@ -476,8 +476,12 @@ describe('the profile editor', () => {
     await editHeadline(user, 'Coordinator and trainer');
     await save(user);
 
-    expect(await screen.findByText('Your profile was not saved')).toBeVisible();
-    expect(screen.getByText('The request did not match the expected shape.')).toBeVisible();
+    const alert = within(
+      (await screen.findByText('Your profile was not saved')).closest(
+        '[role="alert"]',
+      ) as HTMLElement,
+    );
+    expect(alert.getByText('The request did not match the expected shape.')).toBeVisible();
     expect(screen.getByLabelText('Full name')).not.toHaveAttribute('aria-invalid');
   });
 
@@ -632,6 +636,28 @@ describe('profile progress', () => {
     ]) {
       expect(screen.getByText(action)).toBeVisible();
     }
+  });
+
+  it('marks the fields Global search needs, on the fields themselves', async () => {
+    const unexpected = vi.fn();
+    server.use(...signedInAs(CANDIDATE));
+    server.use(...hasProfile({ ...CANDIDATE_PROFILE, headline: null, summary: null }));
+    server.use(...savesProfile(CANDIDATE_PROFILE, unexpected));
+
+    const { user } = await renderApp('/profile');
+    await user.click(screen.getByRole('switch', { name: 'Let recruiters find me' }));
+    await save(user);
+
+    expect(
+      await screen.findByText(
+        'Recruiters need a headline to find you. Write one, or turn the switch off.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Recruiters need a summary to find you. Write one, or turn the switch off.'),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Headline')).toHaveAttribute('aria-invalid');
+    expect(unexpected).not.toHaveBeenCalled();
   });
 
   it('leaves the optional sections out of the count', async () => {

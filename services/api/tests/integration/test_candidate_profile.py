@@ -468,6 +468,25 @@ async def test_a_profile_taken_back_apart_is_not_complete_any_more(
     assert (await browser.get(PROFILE)).json()["is_searchable"] is False
 
 
+async def test_emptying_a_field_of_a_complete_profile_saves_rather_than_faults(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The marker is cleared before the emptied field reaches Postgres, not after: a CHECK
+    refuses a complete marker beside a profile with no headline, and a Candidate who deleted
+    one line is owed a saved profile rather than a 500."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+    await browser.put(PROFILE, json=a_filled_profile())
+    assert await completed_at(db_session, candidate_id) is not None
+
+    emptied = await browser.put(PROFILE, json=a_filled_profile(headline=None))
+
+    assert emptied.status_code == 200, emptied.text
+    assert emptied.json()["headline"] is None
+    assert await completed_at(db_session, candidate_id) is None
+
+
 async def test_the_optional_sections_never_stand_between_a_profile_and_complete(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:

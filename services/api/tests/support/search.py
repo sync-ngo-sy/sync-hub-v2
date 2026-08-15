@@ -31,15 +31,6 @@ COMPLETING: Final[dict[str, Any]] = {
     "phone": "+963115550100",
     "phone_country": "SY",
     "educations": [{"institution": "Aleppo University", "degree": "Diploma"}],
-    "experiences": [
-        {
-            "job_title": "Volunteer",
-            "company_name": "A community centre",
-            "start_year": 2020,
-            "end_year": 2021,
-            "is_current": False,
-        }
-    ],
     "languages": [{"code": "ar", "proficiency": "native"}],
 }
 
