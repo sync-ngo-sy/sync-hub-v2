@@ -70,7 +70,7 @@ describe('the profile editor', () => {
     expect(screen.getByLabelText('Full name')).toHaveValue(CANDIDATE_PROFILE.full_name);
     expect(screen.getByLabelText('Headline')).toHaveValue('Field coordinator, 6 years');
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
-    expect(screen.getByRole('switch', { name: 'Let recruiters find me' })).not.toBeChecked();
+    expect(await screen.findByRole('switch', { name: 'Let recruiters find me' })).not.toBeChecked();
 
     const job = entry('Job 1');
     expect(job.getByLabelText('Job title')).toHaveValue('Field Coordinator');
@@ -712,7 +712,7 @@ describe('profile progress', () => {
 
     const switched = await screen.findByRole('switch', { name: 'Let recruiters find me' });
     expect(progress().getByRole('switch', { name: 'Let recruiters find me' })).toBe(switched);
-    expect(switched).toBeDisabled();
+    expect(switched).toHaveAttribute('aria-disabled', 'true');
     expect(
       progress().getByText('Adds you to Global search, once everything above is ticked.'),
     ).toBeVisible();

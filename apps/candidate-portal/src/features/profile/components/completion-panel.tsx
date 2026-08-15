@@ -4,7 +4,7 @@ import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Switch } from '@sync/ui/components/ui/switch';
 import { cn } from '@sync/ui/lib/utils';
 import { Check } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import type { ReactNode } from 'react';
 import type { Control } from 'react-hook-form';
 import { REQUIREMENTS } from '../completeness';
 import { useProfileProgress } from '../hooks/use-profile-progress';
@@ -58,22 +58,15 @@ function CompletionRing({ percent }: { percent: number }) {
 }
 
 function Panel({ heading, children }: { heading: ReactNode; children: ReactNode }) {
-  const headingId = useId();
-
   return (
     <aside
       id="progress"
-      aria-labelledby={headingId}
+      aria-label="Profile progress"
       className="lg:sticky lg:top-20 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
     >
       <Card>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <h2 id={headingId} className="sr-only">
-              Profile progress
-            </h2>
-            {heading}
-          </div>
+          <div className="flex items-center gap-4">{heading}</div>
           {children}
         </CardContent>
       </Card>
@@ -135,6 +128,7 @@ export function CompletionPanel({ control }: { control: Control<ProfileFormValue
             <li key={requirement}>
               <button
                 type="button"
+                aria-label={`${place.label} — ${met ? 'done' : 'still to do'}`}
                 onClick={() => showSection(place.section)}
                 className={cn(
                   'flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-start text-dense hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
@@ -152,9 +146,8 @@ export function CompletionPanel({ control }: { control: Control<ProfileFormValue
                 >
                   {met ? <Check className="size-3" strokeWidth={3} /> : null}
                 </span>
-                <span className="min-w-0">
+                <span aria-hidden="true" className="min-w-0">
                   {place.label}
-                  <span className="sr-only">{met ? ' — done' : ' — still to do'}</span>
                 </span>
               </button>
             </li>

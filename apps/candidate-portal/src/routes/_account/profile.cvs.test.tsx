@@ -569,6 +569,7 @@ describe('a CV filling the form', () => {
 
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
 
+    await user.type(entry('Skill 2').getByLabelText('Years'), '2');
     await save(user);
 
     await waitFor(() => expect(sent.body).toBeDefined());
