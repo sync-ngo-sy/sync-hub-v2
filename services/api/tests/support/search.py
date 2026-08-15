@@ -30,7 +30,12 @@ INVALID_CURSOR: Final = "urn:sync:problem:invalid-cursor"
 COMPLETING: Final[dict[str, Any]] = {
     "phone": "+963115550100",
     "phone_country": "SY",
+    "headline": "Open to work",
+    "summary": "Open to work.",
+    "location_key": "sy-damascus",
+    "canonical_role_key": "backend-engineer",
     "educations": [{"institution": "Aleppo University", "degree": "Diploma"}],
+    "skills": [{"name": "Python", "years_experience": 1.0}],
     "languages": [{"code": "ar", "proficiency": "native"}],
 }
 

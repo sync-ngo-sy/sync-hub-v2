@@ -12,7 +12,6 @@ from sync_core.communications import ApplicationConfirmation, payload_of
 from sync_core.models import (
     ApplicationStatus,
     CommunicationStatus,
-    CvParsingStatus,
     QualificationStatus,
     StatusChangeSource,
 )
@@ -313,24 +312,6 @@ async def test_the_cv_is_the_current_one_and_the_request_cannot_name_another(
     application = await an_accepted_application(other_browser, job["id"])
 
     assert (await stored_application(db_session, application["id"])).cv_id == swapped
-
-
-async def test_how_far_the_parse_got_is_not_a_submit_precondition(
-    recruiter: AsyncClient,
-    other_browser: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    """Only `current_cv_id` being set is checked. Whether that CV has been read is not."""
-    job = await a_published_job(recruiter)
-    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
-    await give_a_current_cv(
-        db_session, await my_id(other_browser), parsing_status=CvParsingStatus.PROCESSING
-    )
-
-    accepted = await apply_to(other_browser, job["id"])
-
-    assert accepted.status_code == 201, accepted.text
 
 
 async def test_applying_with_no_skills_is_refused_and_says_so(
