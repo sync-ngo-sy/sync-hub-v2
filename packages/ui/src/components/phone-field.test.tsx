@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { PhoneField, type PhoneValue } from './phone-field';
 
 function Editor({ start }: { start?: PhoneValue }) {
-  const [value, setValue] = useState<PhoneValue>(start ?? { country: '', number: '' });
+  const [value, setValue] = useState<PhoneValue>(start ?? { country: '', national: '' });
   return (
     <>
       <label htmlFor="phone">Phone</label>
@@ -43,7 +43,7 @@ describe('PhoneField', () => {
   });
 
   it('shows the country a saved profile was written with', () => {
-    render(<Editor start={{ country: 'SY', number: '011 555 0134' }} />);
+    render(<Editor start={{ country: 'SY', national: '011 555 0134' }} />);
 
     expect(picker()).toHaveValue('Syria (+963)');
     expect(number()).toHaveValue('011 555 0134');
@@ -51,7 +51,7 @@ describe('PhoneField', () => {
 
   it('reads the country off a pasted international number and leaves the rest behind', async () => {
     const user = userEvent.setup();
-    render(<Editor start={{ country: 'LB', number: '' }} />);
+    render(<Editor start={{ country: 'LB', national: '' }} />);
 
     await user.click(number());
     await user.paste('+963 11 555 0134');
@@ -72,7 +72,7 @@ describe('PhoneField', () => {
 
   it('leaves a national number exactly as it was typed', async () => {
     const user = userEvent.setup();
-    render(<Editor start={{ country: 'SY', number: '' }} />);
+    render(<Editor start={{ country: 'SY', national: '' }} />);
 
     await user.type(number(), '011 555 0134');
 

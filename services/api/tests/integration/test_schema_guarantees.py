@@ -303,6 +303,32 @@ async def test_a_number_and_its_country_are_stored_together_or_not_at_all(
     await db_session.rollback()
 
 
+A_FROZEN_PHONE = text(
+    "insert into application_profile_snapshots "
+    "(application_id, full_name, phone, phone_country, total_experience_years) "
+    "values (gen_random_uuid(), 'Amina Haddad', :phone, :country, 0)"
+)
+
+
+@pytest.mark.parametrize(
+    ("phone", "country", "refused"),
+    [
+        ("+963 11 555 0134", "SY", "asnap_phone_is_e164"),
+        ("+963115550134", "sy", "asnap_phone_country_is_iso"),
+        ("+963115550134", None, "asnap_phone_has_a_country"),
+        (None, "SY", "asnap_phone_has_a_country"),
+    ],
+)
+async def test_a_snapshot_freezes_a_phone_the_live_table_would_have_held(
+    db_session: AsyncSession, phone: str | None, country: str | None, refused: str
+) -> None:
+    """An Application is read for years after it arrived. A frozen Phone the live table would
+    refuse is one nobody could read back."""
+    with pytest.raises(IntegrityError, match=refused):
+        await db_session.execute(A_FROZEN_PHONE, {"phone": phone, "country": country})
+    await db_session.rollback()
+
+
 async def test_correcting_a_candidates_name_enqueues_a_re_embed(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:

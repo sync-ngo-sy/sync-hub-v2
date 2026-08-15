@@ -59,17 +59,17 @@ describes them.
 _Avoid_: Profile header, summary card, identity band.
 
 **Phone field**:
-The one control a number is typed into, in every portal: a country picker built from the combobox —
-an SVG flag, the country's name and its dial code — beside the national part of the number. Two
-controls rather than one box, because the country is the answer somebody gave and not a guess off
-their digits: `+1` is twenty-odd countries. Pasting or typing an international number moves the
-picker to match and leaves only the national part in the field, so a number copied from anywhere
-lands the way the platform stores it. Like everything else here it renders from props and decides
-nothing; the rules it reads a number by live in one module of their own, which the API's validator
-mirrors, so a number the field accepted is never one the API then refuses. Anywhere a number is
-read rather than typed, the same module writes it with the calling code apart from the rest.
-_Avoid_: Phone input, tel widget, country selector (that is half of it), dial code (that is the
-`+963`, not the field).
+The one control a number is typed into: a country picker built from the combobox — an SVG flag,
+the country's name and its calling code — beside the national part of the number. Two controls
+rather than one box, because the country is the answer somebody gave and not a guess off their
+digits: `+1` is twenty-odd countries. Pasting or typing an international number moves the picker
+to match and leaves only the national part in the field, so a number copied from anywhere lands
+the way the platform stores it. Like everything else here it renders from props and judges
+nothing: the rules a number is read by live in a module of their own, which the form around the
+field calls and the API's own validator mirrors, so a number the form accepted is never one the
+API then refuses. Anywhere a number is read rather than typed, that module writes it with the
+calling code apart from the rest.
+_Avoid_: Phone input, tel widget, country selector (that is half of it).
 
 **Share**:
 The width intent a Data Table column declares. A column with a `share` is free text — a name, a

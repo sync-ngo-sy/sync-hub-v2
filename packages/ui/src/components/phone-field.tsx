@@ -6,7 +6,7 @@ import { cn } from '@sync/ui/lib/utils';
 
 export interface PhoneValue {
   country: string;
-  number: string;
+  national: string;
 }
 
 interface PhoneFieldProps {
@@ -15,7 +15,6 @@ interface PhoneFieldProps {
   onChange: (value: PhoneValue) => void;
   onBlur?: () => void;
   disabled?: boolean;
-  countryLabel?: string;
   className?: string;
   'aria-describedby'?: string;
   'aria-invalid'?: boolean;
@@ -33,22 +32,20 @@ export function PhoneField({
   onChange,
   onBlur,
   disabled,
-  countryLabel = 'Country',
   className,
   ...aria
 }: PhoneFieldProps) {
   function wrote(raw: string) {
     const dialled = detect(raw);
-    onChange(
-      dialled ? { country: dialled.country, number: dialled.national } : { ...value, number: raw },
-    );
+    onChange(dialled ?? { ...value, national: raw });
   }
 
   return (
     <div className={cn('flex flex-wrap items-start gap-2', className)}>
       <Combobox
         className="w-full sm:w-56"
-        aria-label={countryLabel}
+        aria-label="Country"
+        aria-describedby={aria['aria-describedby']}
         aria-invalid={aria['aria-invalid']}
         options={COUNTRIES}
         value={isPhoneCountry(value.country) ? value.country : null}
@@ -63,7 +60,7 @@ export function PhoneField({
         type="tel"
         autoComplete="tel-national"
         className="min-w-0 flex-1"
-        value={value.number}
+        value={value.national}
         onChange={(event) => wrote(event.target.value)}
         onBlur={onBlur}
         disabled={disabled}

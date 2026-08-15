@@ -182,7 +182,7 @@ const LOCATIONS: ComboboxOptionGroup[] = [
 
 function PhoneEntry() {
   const phoneId = useId();
-  const [phone, setPhone] = useState<PhoneValue>({ country: 'SY', number: '011 555 0100' });
+  const [phone, setPhone] = useState<PhoneValue>({ country: 'SY', national: '011 555 0100' });
 
   return (
     <div className="space-y-1.5">

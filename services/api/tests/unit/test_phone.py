@@ -41,3 +41,10 @@ def test_something_nobody_could_dial_is_refused(typed: str) -> None:
 
 def test_a_country_the_platform_has_no_numbering_for_is_refused() -> None:
     assert read("0115550134", "ZZ") is None
+
+
+@pytest.mark.parametrize("typed", ["+80012345678", "+870773111632"])
+def test_a_number_that_belongs_to_no_country_is_refused(typed: str) -> None:
+    """Freephone and satellite ranges are dialable and belong nowhere, so a Profile — which
+    holds a country beside the number — has nothing to write down."""
+    assert read(typed) is None

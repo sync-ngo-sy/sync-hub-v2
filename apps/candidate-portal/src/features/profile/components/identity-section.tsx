@@ -28,10 +28,10 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         {({ value, onChange, onBlur, id, ...aria }) => (
           <PhoneField
             id={id}
-            value={{ country: country.field.value, number: value }}
+            value={{ country: country.field.value, national: value }}
             onChange={(next) => {
               country.field.onChange(next.country);
-              onChange(next.number);
+              onChange(next.national);
             }}
             onBlur={() => {
               country.field.onBlur();
