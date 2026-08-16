@@ -14,6 +14,7 @@ from sync_core.models import Candidate, CvParsingStatus, IngestionJob, Ingestion
 from sync_parsers import ParsedSkill, UnreadableCvError
 from sync_worker import RetryPolicy
 from sync_worker.worker import Worker
+from tests.support.assessors import FakeAssessor
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import CVS, an_uploaded_cv, cv_row, ingestion_job, some_bytes
 from tests.support.embedders import FakeEmbedder
@@ -539,7 +540,7 @@ async def test_the_worker_drains_the_queue_and_returns(
     """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender(), FakeAssessor())
 
     try:
         report = await worker.drain()
@@ -557,7 +558,7 @@ async def test_the_scheduled_call_recovers_a_row_no_notification_arrived_for(
     """The dropped-webhook case: nothing tells the worker, and the schedule finishes it."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender(), FakeAssessor())
 
     try:
         report = await worker.scheduled()
@@ -582,7 +583,9 @@ async def test_a_row_a_crashed_invocation_abandoned_is_recovered_by_the_schedule
     cv = await an_uploaded_cv(browser)
     await _abandon_the_claim(db_session, cv["id"], claimed_ago=timedelta(minutes=15))
     prompt_retry = settings.model_copy(update={"worker_retry_backoff_seconds": 0.01})
-    worker = Worker(prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    worker = Worker(
+        prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender(), FakeAssessor()
+    )
 
     try:
         first = await worker.scheduled()
