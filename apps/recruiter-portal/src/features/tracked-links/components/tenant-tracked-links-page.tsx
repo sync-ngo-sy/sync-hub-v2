@@ -15,6 +15,7 @@ import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useTenantTrackedLinks } from '../hooks/use-tenant-tracked-links';
 import {
+  conversionLabel,
   hiddenByDate,
   LINK_FILTER_ORDER,
   LINK_FILTERS,
@@ -26,7 +27,8 @@ import {
 import { CopyAddressButton } from './copy-address-button';
 
 const DESCRIPTION =
-  'Every link your Tenant has minted, across every Job, and the Job views each one brought.';
+  'Every link your Tenant has minted, across every Job, with the Job views each one brought and ' +
+  'the Applications they became.';
 
 const STATE_TABS = LINK_FILTER_ORDER.map((state) => ({
   value: state,
@@ -77,6 +79,24 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
     header: 'Views',
     cell: ({ row }) => (
       <span className="font-mono tabular-nums">{row.original.view_count.toLocaleString()}</span>
+    ),
+  },
+  {
+    id: 'applications',
+    header: 'Applications',
+    cell: ({ row }) => (
+      <span className="font-mono tabular-nums">
+        {row.original.application_count.toLocaleString()}
+      </span>
+    ),
+  },
+  {
+    id: 'conversion',
+    header: 'Conversion',
+    cell: ({ row }) => (
+      <span className="font-mono tabular-nums">
+        {conversionLabel(row.original.conversion_rate)}
+      </span>
     ),
   },
   {

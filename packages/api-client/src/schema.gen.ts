@@ -3340,7 +3340,7 @@ export interface components {
             id: string;
             /**
              * Match Percentage
-             * @description How much of what the Job asks for this Application evidences, 0 to 100. Not a probability, and not a verdict.
+             * @description How strong this applicant is for this Job, 0 to 100 — about half how well they answer what the Job asks for, and half how strong the Application reads in itself. Not a probability, and not a verdict.
              */
             match_percentage: number;
             /**
@@ -3392,7 +3392,7 @@ export interface components {
         MatchScore: {
             /**
              * Percentage
-             * @description How much of what the Job asks for this Application evidences, 0 to 100. Advice: it neither is nor changes the Screening verdict.
+             * @description How strong this applicant is for this Job, 0 to 100 — about half how well they answer what the Job asks for, and half how strong the Application reads in itself. Advice: it neither is nor changes the Screening verdict.
              */
             percentage: number;
             /**
@@ -4544,6 +4544,16 @@ export interface components {
             name: string;
             /** Views */
             views: number;
+            /**
+             * Applications
+             * @description Applications from a visitor this channel brought, over the same Jobs.
+             */
+            applications: number;
+            /**
+             * Conversion Rate
+             * @description The percentage of this channel's views that became Applications, 0-100. Null when the channel has brought no views: a rate over nothing says nothing.
+             */
+            conversion_rate: number | null;
         };
         /**
          * StatusChangeSource
@@ -4820,6 +4830,16 @@ export interface components {
              * @description Job views that arrived through this link.
              */
             view_count: number;
+            /**
+             * Application Count
+             * @description Applications from a visitor this link brought. A link turned off keeps the ones it already brought.
+             */
+            application_count: number;
+            /**
+             * Conversion Rate
+             * @description The percentage of this link's views that became Applications, 0-100. Null until the link has brought a view: a rate over nothing says nothing.
+             */
+            conversion_rate: number | null;
             job: components["schemas"]["LinkedJob"];
         };
         /**
@@ -4875,6 +4895,16 @@ export interface components {
              * @description Job views that arrived through this link.
              */
             view_count: number;
+            /**
+             * Application Count
+             * @description Applications from a visitor this link brought. A link turned off keeps the ones it already brought.
+             */
+            application_count: number;
+            /**
+             * Conversion Rate
+             * @description The percentage of this link's views that became Applications, 0-100. Null until the link has brought a view: a rate over nothing says nothing.
+             */
+            conversion_rate: number | null;
         };
         /**
          * TrackedLinkChanges

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TrackedLink, TrackedLinkReport } from './tracked-link';
 import {
+  conversionLabel,
   DIRECT,
   trackedLinkAddress,
   trackedLinkState,
@@ -28,6 +29,8 @@ function link(overrides: Partial<TrackedLink> & { id: string }): TrackedLink {
     expires_at: null,
     created_at: '2026-07-20T09:00:00Z',
     view_count: 0,
+    application_count: 0,
+    conversion_rate: null,
     ...overrides,
   };
 }
@@ -72,6 +75,22 @@ describe('what a tracked link is doing', () => {
       label: 'Expired',
       tone: 'ended',
     });
+  });
+});
+
+describe('the rate between views and applications', () => {
+  it('is read as a whole percentage', () => {
+    expect(conversionLabel(12)).toBe('12%');
+    expect(conversionLabel(100)).toBe('100%');
+  });
+
+  it('is nought for a channel that was read and applied to by nobody', () => {
+    expect(conversionLabel(0)).toBe('0%');
+  });
+
+  it('is a dash while nobody has followed the link, never a percentage of nothing', () => {
+    expect(conversionLabel(null)).toBe('—');
+    expect(conversionLabel(undefined)).toBe('—');
   });
 });
 

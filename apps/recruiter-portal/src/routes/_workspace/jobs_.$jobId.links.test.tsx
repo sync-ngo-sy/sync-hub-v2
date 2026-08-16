@@ -232,6 +232,23 @@ describe("a Job's Tracked links tab", () => {
     ).toBeInTheDocument();
   });
 
+  it('says how many applications each link brought and the rate between the two', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsTrackedLinks([LINKEDIN_POST, WHATSAPP_GROUPS, UNIVERSITY_BOARD]),
+    );
+
+    await renderApp(LINKS);
+    expect(await rowArrives('LinkedIn post')).toBeVisible();
+
+    expect(rowOf('LinkedIn post').getByText('41')).toBeVisible();
+    expect(rowOf('LinkedIn post').getByText('12%')).toBeVisible();
+    expect(rowOf('WhatsApp groups').getByText('14')).toBeVisible();
+    expect(rowOf('WhatsApp groups').getByText('5%')).toBeVisible();
+    expect(rowOf('University board').getByText('0%')).toBeVisible();
+  });
+
   it('shows each link as a share of everything the Job has drawn', async () => {
     server.use(
       ...signedInAs(RECRUITER),
@@ -252,7 +269,9 @@ describe("a Job's Tracked links tab", () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...getsJob(unread),
-      ...listsTrackedLinks([{ ...LINKEDIN_POST, view_count: 0 }]),
+      ...listsTrackedLinks([
+        { ...LINKEDIN_POST, view_count: 0, application_count: 0, conversion_rate: null },
+      ]),
     );
 
     await renderApp(LINKS);
@@ -261,7 +280,7 @@ describe("a Job's Tracked links tab", () => {
       await screen.findByText('No views yet — the counts fill in as candidates open this Job.'),
     ).toBeVisible();
     expect(screen.queryByRole('img', { name: /Views per source/ })).toBeNull();
-    expect(rowOf('LinkedIn post').getByText('—')).toBeVisible();
+    expect(rowOf('LinkedIn post').getAllByText('—')).toHaveLength(2);
   });
 
   it('explains what a tracked link is for when the Job has none', async () => {

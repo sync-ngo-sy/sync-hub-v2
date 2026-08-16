@@ -21,9 +21,10 @@ from sync_api.problems import (
     TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
+from sync_api.rates import percentage
 from sync_api.text import LIKE_ESCAPE, containing
 from sync_core import get_logger, transaction
-from sync_core.models import Job, JobViewEvent, TrackedJobLink
+from sync_core.models import Application, Job, JobViewEvent, TrackedJobLink
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -63,7 +64,7 @@ class TrackedLinkService:
             _refuse_duplicate_name(clash, new.name)
 
         logger.info("jobs.link_created", job_id=str(job_id), link_id=str(link.id))
-        return _as_payload(link, views=0)
+        return _as_payload(link, views=0, applications=0)
 
     async def links(self, recruiter: ActingRecruiter, job_id: UUID) -> TrackedLinkReport:
         await own_job(self._db, recruiter.tenant.id, job_id)
@@ -79,17 +80,10 @@ class TrackedLinkService:
             .where(JobViewEvent.job_id == job_id)
             .scalar_subquery()
         )
-        link_count = (
-            select(func.count())
-            .select_from(JobViewEvent)
-            .where(JobViewEvent.tracked_link_id == TrackedJobLink.id)
-            .correlate(TrackedJobLink)
-            .scalar_subquery()
-        )
         rows = list(
             (
                 await self._db.execute(
-                    select(TrackedJobLink, link_count, direct_count, total_count)
+                    select(TrackedJobLink, VIEW_COUNT, APPLICATION_COUNT, direct_count, total_count)
                     .select_from(Job)
                     .outerjoin(TrackedJobLink, TrackedJobLink.job_id == Job.id)
                     .where(Job.id == job_id)
@@ -100,12 +94,12 @@ class TrackedLinkService:
         first = rows[0]
         return TrackedLinkReport(
             items=[
-                _as_payload(link, views=link_views)
-                for link, link_views, _direct, _total in rows
+                _as_payload(link, views=link_views, applications=link_applications)
+                for link, link_views, link_applications, _direct, _total in rows
                 if link is not None
             ],
-            direct_view_count=first[2],
-            view_count=first[3],
+            direct_view_count=first[3],
+            view_count=first[4],
         )
 
     async def change(
@@ -124,7 +118,8 @@ class TrackedLinkService:
             _refuse_duplicate_name(clash, changes.name or link.name)
 
         logger.info("jobs.link_changed", job_id=str(job_id), link_id=str(link_id))
-        return _as_payload(link, views=await self._views_of(link_id))
+        views, applications = await self._counts_of(link_id)
+        return _as_payload(link, views=views, applications=applications)
 
     async def _own_link(self, tenant_id: UUID, job_id: UUID, link_id: UUID) -> TrackedJobLink:
         link = await self._db.scalar(
@@ -157,7 +152,7 @@ class TrackedLinkService:
         deciding "live" from "expired" costs the reader nothing and costs this query a clock.
         """
         query = (
-            select(TrackedJobLink, Job, VIEW_COUNT)
+            select(TrackedJobLink, Job, VIEW_COUNT, APPLICATION_COUNT)
             .join(Job, Job.id == TrackedJobLink.job_id)
             .where(TrackedJobLink.tenant_id == recruiter.tenant.id)
         )
@@ -183,21 +178,21 @@ class TrackedLinkService:
         return TenantTrackedLinkPage(
             items=[
                 TenantTrackedLink(
-                    **_as_payload(link, views=views).model_dump(),
+                    **_as_payload(link, views=views, applications=applications).model_dump(),
                     job=LinkedJob(id=job.id, title=job.title),
                 )
-                for link, job, views in rows
+                for link, job, views, applications in rows
             ],
             next_cursor=next_cursor,
         )
 
-    async def _views_of(self, link_id: UUID) -> int:
-        views = await self._db.scalar(
-            select(func.count())
-            .select_from(JobViewEvent)
-            .where(JobViewEvent.tracked_link_id == link_id)
-        )
-        return int(views or 0)
+    async def _counts_of(self, link_id: UUID) -> tuple[int, int]:
+        views, applications = (
+            await self._db.execute(
+                select(VIEW_COUNT, APPLICATION_COUNT).where(TrackedJobLink.id == link_id)
+            )
+        ).one()
+        return int(views), int(applications)
 
 
 #: Correlated so one page of links carries its counts, rather than a request per row.
@@ -209,9 +204,22 @@ VIEW_COUNT: Final = (
     .scalar_subquery()
 )
 
+#: Matched on the Job as well as the link, which is what the composite index is ordered by. A
+#: link belongs to one Job, so the Job adds nothing to the answer and everything to the plan.
+APPLICATION_COUNT: Final = (
+    select(func.count())
+    .select_from(Application)
+    .where(
+        Application.job_id == TrackedJobLink.job_id,
+        Application.tracked_link_id == TrackedJobLink.id,
+    )
+    .correlate(TrackedJobLink)
+    .scalar_subquery()
+)
 
-def _cursor(row: tuple[TrackedJobLink, Job, int]) -> Cursor:
-    link, _job, _views = row
+
+def _cursor(row: tuple[TrackedJobLink, Job, int, int]) -> Cursor:
+    link, _job, _views, _applications = row
     return Cursor(created_at=link.created_at, id=link.id)
 
 
@@ -225,7 +233,7 @@ def _refuse_duplicate_name(clash: IntegrityError, name: str) -> NoReturn:
     )
 
 
-def _as_payload(link: TrackedJobLink, *, views: int) -> TrackedLink:
+def _as_payload(link: TrackedJobLink, *, views: int, applications: int) -> TrackedLink:
     return TrackedLink(
         id=link.id,
         name=link.name,
@@ -234,4 +242,6 @@ def _as_payload(link: TrackedJobLink, *, views: int) -> TrackedLink:
         expires_at=link.expires_at,
         created_at=link.created_at,
         view_count=views,
+        application_count=applications,
+        conversion_rate=percentage(applications, of=views),
     )

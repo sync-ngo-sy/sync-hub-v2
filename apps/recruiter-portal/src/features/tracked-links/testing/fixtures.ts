@@ -8,6 +8,8 @@ export const LINKEDIN_POST: TrackedLink = {
   expires_at: null,
   created_at: '2026-07-20T09:00:00Z',
   view_count: 342,
+  application_count: 41,
+  conversion_rate: 12,
 };
 
 export const WHATSAPP_GROUPS: TrackedLink = {
@@ -18,6 +20,8 @@ export const WHATSAPP_GROUPS: TrackedLink = {
   expires_at: null,
   created_at: '2026-07-22T09:00:00Z',
   view_count: 281,
+  application_count: 14,
+  conversion_rate: 5,
 };
 
 export const UNIVERSITY_BOARD: TrackedLink = {
@@ -28,6 +32,8 @@ export const UNIVERSITY_BOARD: TrackedLink = {
   expires_at: null,
   created_at: '2026-07-24T09:00:00Z',
   view_count: 41,
+  application_count: 0,
+  conversion_rate: 0,
 };
 
 export const NAME_TAKEN = {
@@ -47,6 +53,8 @@ export const TENANT_LINKEDIN_MEAL: TenantTrackedLink = {
   id: '00000000-0000-4000-8000-000000000211',
   token: 'Rr4Tt8Yy2Uu6',
   view_count: 96,
+  application_count: 24,
+  conversion_rate: 25,
   job: MEAL_JOB,
 };
 
@@ -62,6 +70,8 @@ export const TENANT_SPRING_CAMPAIGN: TenantTrackedLink = {
   expires_at: '2026-05-01T09:00:00Z',
   created_at: '2026-03-01T09:00:00Z',
   view_count: 12,
+  application_count: 0,
+  conversion_rate: 0,
   job: FIELD_JOB,
 };
 

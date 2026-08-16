@@ -11,6 +11,7 @@ import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useChangeTrackedLink } from '../hooks/use-tracked-link-actions';
 import { useTrackedLinks } from '../hooks/use-tracked-links';
 import {
+  conversionLabel,
   type TrackedLink,
   trackedLinkAddress,
   trackedLinkState,
@@ -56,6 +57,22 @@ function columnsFor(shares: Map<string, number | null>): DataTableColumn<Tracked
       cell: ({ row }) => (
         <span className="font-mono tabular-nums text-muted-foreground">
           {shares.get(row.original.id) === null ? '—' : `${shares.get(row.original.id) ?? 0}%`}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'application_count',
+      header: 'Applications',
+      cell: ({ row }) => (
+        <span className="font-mono tabular-nums">{row.original.application_count}</span>
+      ),
+    },
+    {
+      id: 'conversion',
+      header: 'Conversion',
+      cell: ({ row }) => (
+        <span className="font-mono tabular-nums">
+          {conversionLabel(row.original.conversion_rate)}
         </span>
       ),
     },

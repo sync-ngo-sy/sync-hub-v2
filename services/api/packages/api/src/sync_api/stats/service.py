@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any, Final
 
 from sqlalchemy import Select, func, literal, select, true, union_all
 
+from sync_api.jobs.links import APPLICATION_COUNT, VIEW_COUNT
+from sync_api.rates import percentage
 from sync_api.stats.payload import (
     ApplicationCounts,
     JobCounts,
@@ -87,16 +89,23 @@ class StatsService:
         """
         rows = (await self._db.execute(_ranked_sources(tenant_id))).tuples().all()
         return (
-            [Source(name=name, views=int(views)) for name, views, _channels in rows],
-            rows[0][2] if rows else 0,
+            [
+                Source(
+                    name=name,
+                    views=int(views),
+                    applications=int(applications),
+                    conversion_rate=percentage(int(applications), of=int(views)),
+                )
+                for name, views, applications, _channels in rows
+            ],
+            rows[0][3] if rows else 0,
         )
 
 
 def _pass_rate(*, qualified: int, disqualified: int) -> int | None:
     """Over the verdicts Screening actually reached. An Application still pending is not a
     failure, and counting it as the denominator would report a rate that only ever falls."""
-    decided = qualified + disqualified
-    return None if decided == 0 else round(qualified * 100 / decided)
+    return percentage(qualified, of=qualified + disqualified)
 
 
 def _job(status: JobStatus) -> str:
@@ -173,29 +182,34 @@ def _counts(tenant_id: UUID) -> Select[Any]:
 
 
 def _ranked_sources(tenant_id: UUID) -> Select[Any]:
-    """Every channel the tenant's Job views arrived through, busiest first.
+    """Every channel the tenant's Job views arrived through, and what each turned into, busiest
+    first.
 
     Grouped by name rather than by link: a link name is unique per Job, so "LinkedIn post" on
-    nine Jobs is nine rows here and one channel to a reader.
+    nine Jobs is nine rows here and one channel to a reader. Each link's two counts are the same
+    subqueries the Tracked link surfaces read, so a channel adds up to what its links report
+    rather than to a second nearly equal answer.
 
     A link with no views keeps its row — a Recruiter made it, and a channel that delivered
     nothing is worth knowing. `Direct` is not a row anybody made, so it appears only when traffic
     actually arrived that way.
     """
-    named = (
-        select(
-            TrackedJobLink.name.label("name"),
-            func.count(JobViewEvent.id).label("views"),
-        )
-        .select_from(TrackedJobLink)
-        .outerjoin(JobViewEvent, JobViewEvent.tracked_link_id == TrackedJobLink.id)
-        .where(TrackedJobLink.tenant_id == tenant_id)
-        .group_by(TrackedJobLink.name)
+    named = select(
+        TrackedJobLink.name.label("name"),
+        VIEW_COUNT.label("views"),
+        APPLICATION_COUNT.label("applications"),
+    ).where(TrackedJobLink.tenant_id == tenant_id)
+    direct_applications = (
+        select(func.count())
+        .select_from(Application)
+        .where(Application.tenant_id == tenant_id, Application.tracked_link_id.is_(None))
+        .scalar_subquery()
     )
     direct = (
         select(
             literal(DIRECT).label("name"),
             func.count(JobViewEvent.id).label("views"),
+            direct_applications.label("applications"),
         )
         .select_from(JobViewEvent)
         .join(Job, Job.id == JobViewEvent.job_id)
@@ -207,15 +221,28 @@ def _ranked_sources(tenant_id: UUID) -> Select[Any]:
     # otherwise put two rows with one label on the card.
     channels = union_all(named, direct).subquery()
     ranked = (
-        select(channels.c.name, func.sum(channels.c.views).label("views"))
+        select(
+            channels.c.name,
+            func.sum(channels.c.views).label("views"),
+            func.sum(channels.c.applications).label("applications"),
+        )
         .group_by(channels.c.name)
         .subquery()
     )
+    # Ranked on views alone, never on the rate: two views and one Application is a channel
+    # nobody has read yet, and a rate made of that would lead the card over a channel that
+    # brought hundreds.
+    #
     # The count is a window over the grouped rows, which Postgres computes before the limit
     # clips them — so the six that fit and the number there were to choose from arrive
     # together, and a tenant with two hundred channels still sends six rows.
     return (
-        select(ranked.c.name, ranked.c.views, func.count().over().label("channels"))
+        select(
+            ranked.c.name,
+            ranked.c.views,
+            ranked.c.applications,
+            func.count().over().label("channels"),
+        )
         .order_by(ranked.c.views.desc(), ranked.c.name)
         .limit(SOURCES_ON_THE_CARD)
     )

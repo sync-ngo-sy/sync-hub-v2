@@ -77,11 +77,23 @@ function withShares(
   return exact.map(({ index: _index, remainder: _remainder, ...row }) => row);
 }
 
+export function viewsLabel(count: number): string {
+  return `${count} ${count === 1 ? 'view' : 'views'}`;
+}
+
+const NO_RATE = '—';
+
+/** A rate over nothing is unanswered rather than nought: a link nobody has followed has not
+ * failed to convert anybody. One reading of that for every surface that reports a channel. */
+export function conversionLabel(rate: number | null | undefined): string {
+  return rate === null || rate === undefined ? NO_RATE : `${rate}%`;
+}
+
 export function viewsSummary(bars: LinkViews[]): string {
   const spoken = bars.slice(0, SPOKEN_AT_MOST);
   const rows = spoken.map((bar) => {
     const share = bar.share === undefined ? '' : `, ${bar.share ?? 0}%`;
-    return `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}${share}`;
+    return `${bar.name}: ${viewsLabel(bar.views)}${share}`;
   });
   const rest = bars.length - spoken.length;
   const tail =
