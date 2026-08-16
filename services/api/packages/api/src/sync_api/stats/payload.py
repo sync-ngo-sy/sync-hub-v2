@@ -75,6 +75,16 @@ class Source(BaseModel):
         description="The tracked link's name, or `Direct` for visitors who arrived without one."
     )
     views: int
+    applications: int = Field(
+        description="Applications from a visitor this Source brought, over the same Jobs."
+    )
+    conversion_rate: int | None = Field(
+        description="The percentage of this Source's views that became Applications. Null when "
+        "the Source has brought no views: a rate over nothing says nothing. A tracked link is "
+        "0-100, since an Application is attributed by a view it already counted. `Direct` counts "
+        "its two numbers over different populations — an Application that arrived with no view "
+        "recorded is still nobody's link — so `Direct` alone can pass 100."
+    )
 
 
 class TenantStats(BaseModel):

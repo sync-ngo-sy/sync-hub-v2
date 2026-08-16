@@ -4,21 +4,26 @@ import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { ChartSpline } from 'lucide-react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
-import { type LinkViews, viewsRanked } from '@/features/tracked-links/tracked-link';
+import { percentageLabel } from '@/features/tracked-links/tracked-link';
 import { problemMessage } from '@/lib/api-problem';
-import { sourcesSubtitle, type TenantStats } from '../dashboard';
+import { applicants, type Source, sourcesSubtitle, type TenantStats } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
 import { DashboardPanel } from './dashboard-panel';
 
-function SourcesList({ sources }: { sources: LinkViews[] }) {
+function SourcesList({ sources }: { sources: Source[] }) {
   return (
-    <ul aria-label="Views by source" className="divide-y divide-border">
+    <ul aria-label="Views and applications by source" className="divide-y divide-border">
       {sources.map((source) => (
         <li
-          key={source.id}
-          className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+          key={source.name}
+          className="flex items-baseline justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
         >
-          <span className="truncate text-meta text-secondary-foreground">{source.name}</span>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-meta text-secondary-foreground">{source.name}</span>
+            <span className="truncate text-meta font-mono tabular-nums text-muted-foreground">
+              {`${applicants(source.applications)} · ${percentageLabel(source.conversion_rate)}`}
+            </span>
+          </span>
           <span className="shrink-0 text-meta font-mono tabular-nums text-foreground">
             {source.views}
           </span>
@@ -66,17 +71,7 @@ export function SourcesCard({ stats }: { stats: PanelRead<TenantStats> }) {
         />
       ) : null}
 
-      {sources.length > 0 ? (
-        <SourcesList
-          sources={viewsRanked(
-            sources.map((source) => ({
-              id: source.name,
-              name: source.name,
-              views: source.views,
-            })),
-          )}
-        />
-      ) : null}
+      {sources.length > 0 ? <SourcesList sources={sources} /> : null}
     </DashboardPanel>
   );
 }

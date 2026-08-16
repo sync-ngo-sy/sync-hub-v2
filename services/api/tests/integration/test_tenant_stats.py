@@ -4,6 +4,12 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_core.models import ApplicationStatus, QualificationStatus
+from tests.support.applications import (
+    a_candidate_who_can_apply,
+    an_accepted_application,
+    an_application_from_nowhere,
+    an_application_through,
+)
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import (
     a_created_job,
@@ -234,7 +240,9 @@ async def test_a_channel_is_one_row_however_many_jobs_it_was_used_on(
 
     stats = await stats_of(recruiter)
 
-    assert stats["sources"] == [{"name": "LinkedIn post", "views": 2}]
+    assert stats["sources"] == [
+        {"name": "LinkedIn post", "views": 2, "applications": 0, "conversion_rate": 0}
+    ]
     assert stats["sources_total"] == 1
 
 
@@ -252,8 +260,8 @@ async def test_channels_are_ranked_by_the_traffic_they_brought(
     stats = await stats_of(recruiter)
 
     assert stats["sources"] == [
-        {"name": "WhatsApp groups", "views": 3},
-        {"name": "Print flyer", "views": 1},
+        {"name": "WhatsApp groups", "views": 3, "applications": 0, "conversion_rate": 0},
+        {"name": "Print flyer", "views": 1, "applications": 0, "conversion_rate": 0},
     ]
 
 
@@ -271,10 +279,76 @@ async def test_visitors_who_arrived_without_a_link_are_their_own_row(
     stats = await stats_of(recruiter)
 
     assert stats["sources"] == [
-        {"name": "Direct", "views": 2},
-        {"name": "LinkedIn post", "views": 1},
+        {"name": "Direct", "views": 2, "applications": 0, "conversion_rate": 0},
+        {"name": "LinkedIn post", "views": 1, "applications": 0, "conversion_rate": 0},
     ]
     assert stats["sources_total"] == 2
+
+
+async def test_a_channel_counts_the_applications_it_brought_across_every_job(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """One campaign on two Jobs is one channel here, so what it brought is added up the same way
+    its views are."""
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    for title in ("Field Coordinator", "MEAL Officer"):
+        job = await a_published_job(recruiter, title=title)
+        link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
+        assert (await follow_link(other_browser, link["token"])).status_code == 200
+        await an_accepted_application(other_browser, job["id"])
+
+    stats = await stats_of(recruiter)
+
+    assert stats["sources"] == [
+        {"name": "LinkedIn post", "views": 2, "applications": 2, "conversion_rate": 100}
+    ]
+
+
+async def test_the_applications_no_link_brought_belong_to_direct(
+    recruiter: AsyncClient,
+    visitor: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
+    await follow_link(visitor, link["token"])
+    await an_application_from_nowhere(other_browser, mailbox, db_session, job["id"])
+
+    stats = await stats_of(recruiter)
+
+    assert stats["sources"] == [
+        {"name": "Direct", "views": 1, "applications": 1, "conversion_rate": 100},
+        {"name": "LinkedIn post", "views": 1, "applications": 0, "conversion_rate": 0},
+    ]
+
+
+async def test_the_channels_are_ranked_by_traffic_and_never_by_the_rate(
+    recruiter: AsyncClient,
+    visitor: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """One view and one Application converts at a hundred percent and says nothing. Ranking on
+    that would hand the card to whichever channel nobody has read yet."""
+    job = await a_published_job(recruiter)
+    loud = await a_tracked_link(recruiter, job["id"], name="WhatsApp groups")
+    narrow = await a_tracked_link(recruiter, job["id"], name="Alumni list")
+    for _ in range(3):
+        await follow_link(visitor, loud["token"])
+        await counted_again(db_session, job["id"])
+    await an_application_through(other_browser, mailbox, db_session, job["id"], narrow["token"])
+
+    stats = await stats_of(recruiter)
+
+    assert [
+        (source["name"], source["views"], source["conversion_rate"]) for source in stats["sources"]
+    ] == [("WhatsApp groups", 3, 0), ("Alumni list", 1, 100)]
 
 
 async def test_a_tenant_nobody_has_visited_has_no_direct_row(
@@ -286,7 +360,9 @@ async def test_a_tenant_nobody_has_visited_has_no_direct_row(
 
     stats = await stats_of(recruiter)
 
-    assert stats["sources"] == [{"name": "Print flyer", "views": 0}]
+    assert stats["sources"] == [
+        {"name": "Print flyer", "views": 0, "applications": 0, "conversion_rate": None}
+    ]
     assert stats["sources_total"] == 1
 
 
@@ -301,7 +377,9 @@ async def test_a_retired_link_keeps_the_traffic_it_brought(
 
     stats = await stats_of(recruiter)
 
-    assert stats["sources"] == [{"name": "Spring campaign", "views": 1}]
+    assert stats["sources"] == [
+        {"name": "Spring campaign", "views": 1, "applications": 0, "conversion_rate": 0}
+    ]
 
 
 async def test_the_card_gets_six_channels_and_is_told_how_many_there_are(

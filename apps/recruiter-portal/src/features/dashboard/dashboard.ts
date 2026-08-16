@@ -4,6 +4,8 @@ export type { TenantApplication } from '@/features/applications/application';
 
 export type TenantStats = components['schemas']['TenantStats'];
 
+export type Source = components['schemas']['Source'];
+
 export const RECENT_APPLICATIONS = 6;
 
 export const OVERVIEW_JOBS = 5;
@@ -59,7 +61,8 @@ export function applicants(count: number): string {
   return count === 1 ? '1 application' : `${count} applications`;
 }
 
-const EVERY_CHANNEL = 'Job views each channel brought, added up across your Jobs.';
+const EVERY_CHANNEL =
+  'Job views each channel brought and the Applications they became, added up across your Jobs.';
 
 export function sourcesSubtitle(stats: TenantStats | undefined): string {
   if (!stats || stats.sources_total <= stats.sources.length) return EVERY_CHANNEL;

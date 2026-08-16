@@ -6,6 +6,10 @@ from datetime import UTC, datetime, timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.support.applications import (
+    an_application_from_nowhere,
+    an_application_through,
+)
 from tests.support.jobs import (
     TENANT_JOBS,
     a_created_job,
@@ -53,6 +57,75 @@ async def test_a_link_counts_the_traffic_it_brought(
     counted = {link["name"]: link["view_count"] for link in await links_of(recruiter, job["id"])}
     assert counted == {"LinkedIn post": 2, "Print flyer": 0}
     assert quiet["view_count"] == 0
+
+
+async def test_a_link_counts_the_applications_it_brought_and_the_rate_between_them(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The number the whole report is for: a channel that delivers a crowd and no applicants
+    reads exactly like one that delivers a handful and hires from them, until this is beside it."""
+    job = await a_published_job(recruiter)
+    linked_in = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
+    flyer = await a_tracked_link(recruiter, job["id"], name="Print flyer")
+    await an_application_through(other_browser, mailbox, db_session, job["id"], linked_in["token"])
+    await follow_link(third_browser, flyer["token"])
+
+    counted = {
+        link["name"]: (link["view_count"], link["application_count"], link["conversion_rate"])
+        for link in await links_of(recruiter, job["id"])
+    }
+
+    assert counted == {"LinkedIn post": (1, 1, 100), "Print flyer": (1, 0, 0)}
+
+
+async def test_a_link_nobody_has_followed_has_no_rate_to_report(recruiter: AsyncClient) -> None:
+    """A rate over nothing is not nought percent. Nobody has read the Job through this link, so
+    nothing about it is known yet."""
+    job = await a_published_job(recruiter)
+    minted = await a_tracked_link(recruiter, job["id"], name="Print flyer")
+
+    [item] = await links_of(recruiter, job["id"])
+
+    assert (item["view_count"], item["application_count"], item["conversion_rate"]) == (0, 0, None)
+    assert (minted["application_count"], minted["conversion_rate"]) == (0, None)
+
+
+async def test_an_applicant_who_found_the_job_themselves_is_no_links_application(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
+    await an_application_from_nowhere(other_browser, mailbox, db_session, job["id"])
+
+    [item] = await links_of(recruiter, job["id"])
+
+    assert item["application_count"] == 0
+    assert link["name"] == "LinkedIn post"
+
+
+async def test_a_link_turned_off_keeps_the_applications_it_brought(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Turning a link off ends the traffic, not the history — the rate it earned is the same."""
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"], name="Spring campaign")
+    await an_application_through(other_browser, mailbox, db_session, job["id"], link["token"])
+
+    turned_off = await change_link(recruiter, job["id"], link["id"], is_active=False)
+
+    assert turned_off.status_code == 200, turned_off.text
+    assert turned_off.json()["application_count"] == 1
+    assert turned_off.json()["conversion_rate"] == 100
 
 
 async def test_landing_on_the_same_link_twice_over_is_one_view(

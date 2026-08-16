@@ -28,7 +28,14 @@ from sync_core.models import (
 from tests.support.candidates import Signup, a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv
 from tests.support.extractors import a_parse
-from tests.support.jobs import TENANT_JOBS, a_published_job, read_job, set_criteria
+from tests.support.jobs import (
+    TENANT_JOBS,
+    a_published_job,
+    follow_link,
+    read_job,
+    read_public_job,
+    set_criteria,
+)
 from tests.support.profiles import a_filled_profile, a_saved_profile, give_a_current_cv, my_id
 
 if TYPE_CHECKING:
@@ -160,6 +167,35 @@ async def a_whole_application(
     job = await a_published_job(recruiter)
     await a_candidate_who_can_apply(browser, mailbox, session)
     return await an_accepted_application(browser, job["id"])
+
+
+async def an_application_through(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    session: AsyncSession,
+    job_id: str | UUID,
+    token: str,
+    label: str = "applicant",
+) -> dict[str, Any]:
+    """Somebody who arrived on a Tracked link and applied — how a channel earns an Application."""
+    await a_candidate_who_can_apply(browser, mailbox, session, label)
+    landed = await follow_link(browser, token)
+    assert landed.status_code == 200, landed.text
+    return await an_accepted_application(browser, job_id)
+
+
+async def an_application_from_nowhere(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    session: AsyncSession,
+    job_id: str | UUID,
+    label: str = "applicant",
+) -> dict[str, Any]:
+    """Somebody who found the Job themselves and applied, which no link may claim."""
+    await a_candidate_who_can_apply(browser, mailbox, session, label)
+    landed = await read_public_job(browser, str(job_id))
+    assert landed.status_code == 200, landed.text
+    return await an_accepted_application(browser, job_id)
 
 
 def a_submission(job_id: str | UUID, **changes: Any) -> dict[str, Any]:
