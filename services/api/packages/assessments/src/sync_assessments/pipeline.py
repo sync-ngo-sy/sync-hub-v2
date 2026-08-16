@@ -162,7 +162,9 @@ async def _job_of(session: AsyncSession, application_id: UUID) -> tuple[Job, str
     ).first()
     if found is None:
         raise ApplicationGoneError(f"application {application_id} no longer exists")
-    return found.tuple()
+    job: Job = found[0]
+    place: str | None = found[1]
+    return job, place
 
 
 async def _required_skills(session: AsyncSession, job_id: UUID) -> tuple[RequiredSkill, ...]:

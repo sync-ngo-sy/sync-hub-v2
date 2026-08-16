@@ -80,8 +80,9 @@ create trigger communications_notify_worker
   execute function public.notify_worker_of_enqueue();
 
 -- A Recruiter opening a Job seconds after an Application arrives should find a Match score there,
--- not a blank waiting for the next schedule. The Application's own confirmation email is enqueued
--- in the same transaction, so this frequently coalesces into that drain rather than adding one.
+-- not a blank waiting for the next schedule. One Application is one row here, so unlike the two
+-- above this is a POST per arrival rather than per burst -- which is the shape of the traffic
+-- anyway: Applications arrive one at a time, typed by one person each.
 create trigger match_assessment_jobs_notify_worker
   after insert on public.match_assessment_jobs
   for each statement

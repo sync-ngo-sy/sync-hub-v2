@@ -6,14 +6,12 @@ import { useState } from 'react';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
-import { assessmentProvenance, type MatchAssessment, matchLabel } from '../assessment';
+import { assessmentProvenance, type MatchAssessment, matchLabel, NO_REASONS } from '../assessment';
 import { useAssessMatch } from '../hooks/use-application-actions';
-import { useMatchAssessment } from '../hooks/use-match-assessments';
+import { useMatchAssessment } from '../hooks/use-match-assessment';
 
 const NOT_READ_YET =
   'No AI has read this Application against the Job yet. One is usually read within a minute of it arriving.';
-
-const NO_REASONS = 'The model gave no reasons for this reading.';
 
 function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
   return (
@@ -58,7 +56,7 @@ function Reading({ assessment }: { assessment: MatchAssessment }) {
   );
 }
 
-export function MatchAssessments({ applicationId }: { applicationId: string }) {
+export function MatchAssessmentCard({ applicationId }: { applicationId: string }) {
   const assessment = useMatchAssessment(applicationId);
   const asking = useAssessMatch(applicationId);
   const [refused, setRefused] = useState<string | null>(null);

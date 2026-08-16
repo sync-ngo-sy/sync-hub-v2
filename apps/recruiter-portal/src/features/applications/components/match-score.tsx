@@ -1,10 +1,8 @@
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@sync/ui/components/ui/hover-card';
 import { absoluteDateTime } from '@/lib/dates';
-import { type MatchScore, matchLabel } from '../assessment';
+import { type MatchScore, matchLabel, NO_REASONS } from '../assessment';
 
 const NOT_READ = 'Not read yet';
-
-const NO_REASONS = 'The model gave no reasons for this reading.';
 
 export function MatchScoreCell({ match }: { match: MatchScore | null | undefined }) {
   if (!match) {

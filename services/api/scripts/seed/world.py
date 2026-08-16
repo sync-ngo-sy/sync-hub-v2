@@ -199,6 +199,10 @@ _DEEP_YEARS: Final = 8
 #: A work history long enough to show a direction rather than a single post.
 _ENOUGH_ROLES: Final = 3
 
+#: What a half with nothing in it scores. A Job that states no criteria at all has not said the
+#: applicant answers none of them, so neither 0 nor 100 would be honest.
+_NOTHING_TO_WEIGH: Final = 0.5
+
 #: `language_proficiency` is an unordered enum in Postgres; this is the order it means. Spelled
 #: again here rather than reached for inside Screening, which keeps its own copy private — the
 #: stand-in is not entitled to Screening's internals just because it grades the same criteria.
@@ -235,6 +239,7 @@ class SeedAssessor:
         evidenced = [skill.name for skill in required if skill.name in held]
         missing = [skill.name for skill in required if skill.name not in held]
 
+        evidence = _evidence_score(applied)
         criteria = _weighed(
             (0.50, _skills_score(required, held)),
             (0.30, _experience_score(job.minimum_total_experience_years, applied)),
@@ -243,7 +248,7 @@ class SeedAssessor:
         craft = _weighed(
             (0.30, _depth_score(applied)),
             (0.20, _progression_score(applied)),
-            (0.30, _evidence_score(applied)),
+            (0.30, evidence),
             (0.20, _substantiation_score(applied)),
         )
         share = round(100.0 * (_CRITERIA_SHARE * criteria + (1 - _CRITERIA_SHARE) * craft), 1)
@@ -265,7 +270,7 @@ class SeedAssessor:
             gaps=[f"{name} is not listed" for name in missing]
             + (
                 []
-                if _evidence_score(applied) > 0.5
+                if evidence > 0.5
                 else ["The work history says the roles but not what was done in them"]
             ),
         )
@@ -278,7 +283,7 @@ def _weighed(*parts: tuple[float, float | None]) -> float:
     counted = [(weight, score) for weight, score in parts if score is not None]
     total = sum(weight for weight, _ in counted)
     if not total:
-        return 0.5
+        return _NOTHING_TO_WEIGH
     return sum(weight * score for weight, score in counted) / total
 
 

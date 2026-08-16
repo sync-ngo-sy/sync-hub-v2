@@ -12,8 +12,8 @@ The public page at the portal's root that explains the platform to companies and
 contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync Hub is
 sold, not self-served, so every call to action points at the Access-request page. One of the two
 surfaces where animation is decorative — motion for its own sake — the other being the Candidate
-Portal's landing page. Inside the Workspace motion is only ever a thing arriving or leaving and
-says which way it went: a deleted note goes out to the right.
+Portal's landing page. Inside the Workspace motion is only ever a thing arriving or
+leaving and says which way it went.
 _Avoid_: Home page, marketing site.
 
 **Access-request page**:

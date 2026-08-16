@@ -17,19 +17,22 @@ class AssessedMatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     match_percentage: float = Field(
-        description="How much of what the job asks for the application evidences, from 0 to "
-        "100. Not a probability, and not a recommendation."
+        description="How strong this applicant is for this job, from 0 to 100. About half of "
+        "it is how well they answer what the job asks for and the rest is how strong the "
+        "application is in itself. A judgement of degree: not a probability, not a "
+        "recommendation, and not a second ruling on whether they meet the criteria."
     )
     explanation: str = Field(
         description="Two or three sentences a recruiter can act on, naming the evidence they "
         "rest on."
     )
     strengths: list[str] = Field(
-        description="Short phrases, one requirement each, that the application answers well."
+        description="Short phrases, one point each, for what makes this a strong application "
+        "— what it answers well, and what it evidences beyond that."
     )
     gaps: list[str] = Field(
-        description="Short phrases, one requirement each, that it does not answer, or does "
-        "not say enough about."
+        description="Short phrases, one point each, for what weakens it — what it does not "
+        "answer, and what it does not say enough about."
     )
 
     @field_validator("match_percentage")

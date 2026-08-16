@@ -251,7 +251,7 @@ describe('the Application review page', () => {
 
     expect(await trail().findByRole('link', { name: 'Field Coordinator' })).toHaveAttribute(
       'href',
-      `/jobs/${REVIEW.job.id}?screening=${inUrl(['qualified'])}&tab=applications`,
+      `/jobs/${REVIEW.job.id}?screening=${inUrl(['qualified'])}&sort=oldest&tab=applications`,
     );
   });
 

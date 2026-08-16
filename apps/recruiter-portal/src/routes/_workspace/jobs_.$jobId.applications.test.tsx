@@ -279,6 +279,7 @@ describe("a Job's Applications tab", () => {
       expect(asked.at(-1)).toEqual({
         status: ['shortlisted'],
         qualification_status: ['review_required'],
+        sort: 'newest',
       }),
     );
 
@@ -521,7 +522,7 @@ describe('the Match score on a Job triage list', () => {
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await user.tab();
-    while (document.activeElement?.getAttribute('aria-label') !== '82% of what the Job asks for') {
+    while (document.activeElement?.getAttribute('aria-label') !== '82% strength for this Job') {
       await user.tab();
     }
 
@@ -535,7 +536,7 @@ describe('the Match score on a Job triage list', () => {
     const { user } = await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    await user.hover(screen.getByRole('button', { name: '82% of what the Job asks for' }));
+    await user.hover(screen.getByRole('button', { name: '82% strength for this Job' }));
 
     expect(await screen.findByText(AMAL_MATCH.explanation as string)).toBeVisible();
   });
@@ -546,7 +547,7 @@ describe('the Match score on a Job triage list', () => {
     const { user } = await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Bassel Nasser')).toBeVisible();
 
-    await user.hover(screen.getByRole('button', { name: '41% of what the Job asks for' }));
+    await user.hover(screen.getByRole('button', { name: '41% strength for this Job' }));
 
     expect(await screen.findByText('The model gave no reasons for this reading.')).toBeVisible();
   });

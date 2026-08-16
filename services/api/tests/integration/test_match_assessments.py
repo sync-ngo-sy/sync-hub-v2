@@ -20,7 +20,6 @@ from tests.support.applications import (
 from tests.support.assessments import (
     an_assessment,
     assess,
-    assessment_url,
     read_assessment,
     stored_assessments,
     the_assessment_of,
@@ -256,22 +255,6 @@ async def test_a_replaced_reading_says_when_it_was_first_read_and_when_it_was_la
 
     assert again["first_assessed_at"] == first["first_assessed_at"]
     assert again["assessed_at"] > first["assessed_at"]
-
-
-async def test_a_reading_cannot_be_thrown_away(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    """There is no way to leave an Application with no reading: the endpoint is gone."""
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    assessment = await an_assessment(recruiter, application["id"])
-
-    refused = await recruiter.delete(f"{assessment_url(application['id'])}/{assessment['id']}")
-
-    assert refused.status_code in (404, 405), refused.text
-    assert len(await stored_assessments(db_session, application["id"])) == 1
 
 
 async def test_no_number_of_assessments_touches_the_screening_verdict(

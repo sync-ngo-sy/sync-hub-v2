@@ -51,7 +51,7 @@ from sync_core.models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any
     from uuid import UUID
 
@@ -60,6 +60,7 @@ if TYPE_CHECKING:
 
     from sync_api.applications.access import Applied
     from sync_api.applications.payload import ApplicationStatusChange
+    from sync_api.pagination import Ordering, SortCursor
     from sync_api.tenants import ActingRecruiter
     from sync_core import Settings, Storage
 
@@ -122,9 +123,7 @@ class ApplicationReviewService:
         )
         counted = dict((await self._db.execute(counting)).tuples().all())
         counted_verdicts = dict((await self._db.execute(verdict_counting)).tuples().all())
-        rows, next_cursor = page_of(
-            found, limit=limit, cursor_for=lambda row: cursor_for(sorting, row[0], id_=row[0].id)
-        )
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=_left_off_at(sorting))
         return ApplicationSummaryPage(
             items=[
                 _summary(application, snapshot, assessment)
@@ -205,9 +204,7 @@ class ApplicationReviewService:
         )
         counted = dict((await self._db.execute(counting)).tuples().all())
         counted_verdicts = dict((await self._db.execute(verdict_counting)).tuples().all())
-        rows, next_cursor = page_of(
-            found, limit=limit, cursor_for=lambda row: cursor_for(sorting, row[0], id_=row[0].id)
-        )
+        rows, next_cursor = page_of(found, limit=limit, cursor_for=_left_off_at(sorting))
         return TenantApplicationPage(
             items=[
                 TenantApplicationSummary(
@@ -353,6 +350,12 @@ class ApplicationReviewService:
             download_url=link.url,
             expires_in_seconds=link.expires_in_seconds,
         )
+
+
+def _left_off_at(ordering: Ordering) -> Callable[[Any], SortCursor]:
+    """Where a row leaves the page off. Every list here selects the Application first, whatever
+    else it selects beside it, so one reader serves them all."""
+    return lambda row: cursor_for(ordering, row[0], id_=row[0].id)
 
 
 def _with_what_a_summary_shows[Selected: tuple[Any, ...]](

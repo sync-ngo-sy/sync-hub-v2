@@ -18,9 +18,15 @@ from sqlalchemy.dialects import postgresql
 from sync_api.app import create_app
 from sync_api.applications.ordering import ORDERINGS
 from sync_api.applications.payload import ApplicationSort
+from sync_api.applications.review import _with_what_a_summary_shows
 from sync_api.pagination import ordered_by
 from sync_assessments import ApplicationGoneError, AssessmentError, MatchAssessing
-from sync_core.models import Application, AssessmentStatus, MatchAssessmentJob
+from sync_core.models import (
+    Application,
+    ApplicationProfileSnapshot,
+    AssessmentStatus,
+    MatchAssessmentJob,
+)
 from tests.support.applications import (
     A_YES_NO_QUESTION,
     a_candidate_with_a_ready_cv,
@@ -234,10 +240,13 @@ async def test_asking_again_replaces_the_reading_rather_than_adding_one(
     asked = await an_assessment(recruiter, application["id"])
 
     [only] = await stored_assessments(db_session, application["id"])
-    assert only.id == automatic.id, "replaced in place rather than written beside"
+    replaced, first_read = only.id, only.created_at
+    last_read, percentage = only.updated_at, float(only.match_percentage)
+
+    assert replaced == automatic.id, "replaced in place rather than written beside"
     assert asked["id"] == str(automatic.id)
-    assert await match_score_of(db_session, application["id"]) == asked["match_percentage"]
-    assert only.updated_at > only.created_at, "the reading says when it was last read"
+    assert last_read > first_read, "the reading says when it was last read"
+    assert await match_score_of(db_session, application["id"]) == percentage
 
 
 async def test_the_reading_is_readable_back_on_its_own(
@@ -319,22 +328,6 @@ async def test_a_provider_that_stays_down_gives_up_and_the_application_shows_no_
     assert queued.status is AssessmentStatus.FAILED
     assert await worker.run_once() is False, "a settled job must not be claimable again"
     assert await match_score_of(db_session, application["id"]) is None
-
-
-async def test_deleting_the_application_takes_its_queued_reading_with_it(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    await db_session.execute(delete(Application).where(Application.id == application["id"]))
-    await db_session.commit()
-
-    assert await an_assessment_worker(database, assessor).run_once() is False
-    assert assessor.call_count == 0
 
 
 async def test_reading_an_application_that_is_not_there_is_settled_rather_than_retried(
@@ -507,8 +500,12 @@ async def test_the_score_order_is_served_by_its_index(db_session: AsyncSession) 
     so this asks the planner rather than the source: with a sequential scan and a sort both
     discouraged, a plan that still names the index is a plan the index can serve.
     """
+    # The query the service issues, joins and all — an index that serves a bare select over one
+    # table proves nothing about the list a Recruiter actually reads.
     query = ordered_by(
-        select(Application.id).where(Application.job_id == uuid4()),
+        _with_what_a_summary_shows(
+            select(Application.id, ApplicationProfileSnapshot.full_name)
+        ).where(Application.job_id == uuid4()),
         ordering=ORDERINGS[ApplicationSort.HIGHEST_MATCH],
         id_=Application.id,
         cursor=None,

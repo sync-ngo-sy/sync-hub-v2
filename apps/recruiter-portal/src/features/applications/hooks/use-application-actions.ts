@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { applicationQuery } from './use-application';
 import { jobApplicationsQueryPrefix } from './use-job-applications';
-import { matchAssessmentQueryKey } from './use-match-assessments';
+import { matchAssessmentQueryKey } from './use-match-assessment';
 
 export function useMoveApplication(applicationId: string) {
   const queryClient = useQueryClient();

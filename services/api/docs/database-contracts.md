@@ -497,7 +497,7 @@ are what make an assessment auditable after either changes.
 The model is called with no transaction open — the reads above are rolled back first, so a
 provider taking its time holds no Postgres connection — and the insert is its own transaction
 afterwards. A provider failure therefore leaves nothing behind (502), and a deployment with no
-`SYNC_OPENAI_API_KEY` answers 503 while still serving the history. In the worker the same failure
+`SYNC_OPENAI_API_KEY` answers 503 while still serving the reading already there. In the worker the same failure
 is a retry rather than an answer: the queue row keeps its place and comes back under the backoff,
 and an Application whose every attempt failed simply has no Match score — which is what a list
 showing none is truthfully saying. An Application that no longer exists is the one permanent

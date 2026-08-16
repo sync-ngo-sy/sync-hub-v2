@@ -110,8 +110,12 @@ language plpgsql
 set search_path = ''
 as $$
 begin
+  -- `updated_at` is held where it was on purpose. `applications` carries moddatetime, and a
+  -- Recruiter reading "Updated 2 minutes ago" should be told a person moved this Application,
+  -- not that a model finished reading it. The reading's own `updated_at` is where that lives.
   update public.applications
-     set current_match_score = new.match_percentage
+     set current_match_score = new.match_percentage,
+         updated_at          = updated_at
    where id = new.application_id;
   return null;  -- AFTER trigger
 end;
@@ -120,26 +124,6 @@ $$;
 create trigger carry_the_match_score
   after insert or update of match_percentage on application_ai_match_assessments
   for each row execute function carry_the_match_score();
-
--- A reading is never deleted on its own -- there is no way to ask for that, and asking again
--- replaces it in place. This is for the one deletion that does happen: the Application itself
--- going, which takes its reading with it. Cheap, and it keeps the column honest for anything
--- that ever reads it mid-cascade.
-create function drop_the_match_score() returns trigger
-language plpgsql
-set search_path = ''
-as $$
-begin
-  update public.applications
-     set current_match_score = null
-   where id = old.application_id;
-  return old;
-end;
-$$;
-
-create trigger drop_the_match_score
-  before delete on application_ai_match_assessments
-  for each row execute function drop_the_match_score();
 
 -- A candidate's current CV is the one they apply and are found with, so a deleted CV is never
 -- it. Both directions are refused: deleting the CV that is current, and making a CV that is

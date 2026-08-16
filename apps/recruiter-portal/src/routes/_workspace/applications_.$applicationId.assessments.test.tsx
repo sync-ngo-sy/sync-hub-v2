@@ -43,7 +43,7 @@ describe('the reading an Application carries', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('82% strength for this Job')).toBeVisible();
     expect(widget().getByText(LATEST_ASSESSMENT.explanation as string)).toBeVisible();
     expect(widget().getByText('Nine years of field logistics')).toBeVisible();
     expect(widget().getByText('No formal procurement training')).toBeVisible();
@@ -85,7 +85,7 @@ describe('the reading an Application carries', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    expect(await widget().findByText('40% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('40% strength for this Job')).toBeVisible();
     expect(widget().getByText('The model gave no reasons for this reading.')).toBeVisible();
     expect(widget().queryByText('Strengths')).toBeNull();
     expect(widget().queryByText('Gaps')).toBeNull();
@@ -111,7 +111,7 @@ describe('the reading an Application carries', () => {
 
     await renderApp(`/applications/${REVIEW.id}`);
 
-    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('82% strength for this Job')).toBeVisible();
     expect(widget().queryByRole('button', { name: /Delete/ })).toBeNull();
     expect(widget().getAllByRole('button')).toHaveLength(1);
   });
@@ -126,12 +126,12 @@ describe('asking for a new reading', () => {
     );
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
-    expect(await widget().findByText('54% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('54% strength for this Job')).toBeVisible();
 
     await user.click(widget().getByRole('button', { name: ASK }));
 
-    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
-    expect(widget().queryByText('54% of what the Job asks for')).toBeNull();
+    expect(await widget().findByText('82% strength for this Job')).toBeVisible();
+    expect(widget().queryByText('54% strength for this Job')).toBeNull();
   });
 
   it('says the model is working while it waits, and asks for nothing twice', async () => {
@@ -149,7 +149,7 @@ describe('asking for a new reading', () => {
 
     held.arrive();
 
-    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('82% strength for this Job')).toBeVisible();
     expect(widget().getByRole('button', { name: ASK })).toBeEnabled();
   });
 
@@ -165,7 +165,7 @@ describe('asking for a new reading', () => {
     expect(widget().queryByText(/No AI has read this Application/)).toBeNull();
 
     held.arrive();
-    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('82% strength for this Job')).toBeVisible();
   });
 
   it.each([
@@ -187,7 +187,7 @@ describe('asking for a new reading', () => {
 
       expect(await widget().findByRole('alert')).toHaveTextContent(problem.detail as string);
       expect(screen.getByRole('heading', { level: 1, name: 'Amal Haddad' })).toBeVisible();
-      expect(widget().getByText('54% of what the Job asks for')).toBeVisible();
+      expect(widget().getByText('54% strength for this Job')).toBeVisible();
     },
   );
 
@@ -224,7 +224,7 @@ describe('asking for a new reading', () => {
     server.use(...assessesMatch(null, LATEST_ASSESSMENT));
     await user.click(widget().getByRole('button', { name: ASK_FIRST }));
 
-    expect(await widget().findByText('82% of what the Job asks for')).toBeVisible();
+    expect(await widget().findByText('82% strength for this Job')).toBeVisible();
     expect(widget().queryByRole('alert')).toBeNull();
   });
 

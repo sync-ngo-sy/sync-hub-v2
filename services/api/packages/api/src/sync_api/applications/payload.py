@@ -161,8 +161,9 @@ class MatchScore(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     percentage: float = Field(
-        description="How much of what the Job asks for this Application evidences, 0 to 100. "
-        "Advice: it neither is nor changes the Screening verdict."
+        description="How strong this applicant is for this Job, 0 to 100 — about half how well "
+        "they answer what the Job asks for, and half how strong the Application reads in "
+        "itself. Advice: it neither is nor changes the Screening verdict."
     )
     explanation: str | None = Field(default=None, description="Why, in the model's own words.")
     model_name: str = Field(description="The model that wrote it.")
@@ -458,8 +459,9 @@ class MatchAssessment(BaseModel):
 
     id: UUID
     match_percentage: float = Field(
-        description="How much of what the Job asks for this Application evidences, 0 to 100. "
-        "Not a probability, and not a verdict."
+        description="How strong this applicant is for this Job, 0 to 100 — about half how well "
+        "they answer what the Job asks for, and half how strong the Application reads in "
+        "itself. Not a probability, and not a verdict."
     )
     explanation: str | None = Field(default=None, description="Why, in the model's own words.")
     strengths: list[str] = Field(
