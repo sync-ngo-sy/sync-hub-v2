@@ -232,24 +232,77 @@ describe('the Dashboard', () => {
     expect(jobs.getByText(/^Updated/)).toBeVisible();
   });
 
-  it('lists where applicants come from, ranked by views without chart decoration', async () => {
+  it('lists where applicants come from with what each channel became, without chart decoration', async () => {
     server.use(...aWorkingDashboard());
 
     await renderApp('/dashboard');
     const sources = panel('Where applicants find you');
 
-    const rows = within(await sources.findByRole('list', { name: 'Views by source' }))
+    const rows = within(
+      await sources.findByRole('list', { name: 'Views and applications by source' }),
+    )
       .getAllByRole('listitem')
       .map((row) => row.textContent);
 
     expect(rows).toEqual([
-      'LinkedIn post342',
-      'WhatsApp groups281',
-      'Direct190',
-      'Facebook page97',
+      'LinkedIn post41 applications · 12%342',
+      'WhatsApp groups14 applications · 5%281',
+      'Direct1 application · 1%190',
+      'Facebook page0 applications · 0%97',
     ]);
-    expect(sources.queryByText(/%/)).not.toBeInTheDocument();
     expect(sources.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('ranks the channels by the traffic they brought and never by the rate', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...servesStats(
+        statsWith({
+          sources: [
+            { name: 'WhatsApp groups', views: 281, applications: 14, conversion_rate: 5 },
+            { name: 'Alumni list', views: 2, applications: 2, conversion_rate: 100 },
+          ],
+          sources_total: 2,
+        }),
+      ),
+      ...listsTenantApplications(RECENT),
+      ...listsJobs(TENANT_JOBS),
+    );
+
+    await renderApp('/dashboard');
+    const sources = panel('Where applicants find you');
+
+    const rows = within(
+      await sources.findByRole('list', { name: 'Views and applications by source' }),
+    )
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+
+    expect(rows).toEqual([
+      'WhatsApp groups14 applications · 5%281',
+      'Alumni list2 applications · 100%2',
+    ]);
+  });
+
+  it('says nothing rather than nought about a channel nobody has followed', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...servesStats(
+        statsWith({
+          sources: [{ name: 'Print flyer', views: 0, applications: 0, conversion_rate: null }],
+          sources_total: 1,
+        }),
+      ),
+      ...listsTenantApplications(RECENT),
+      ...listsJobs(TENANT_JOBS),
+    );
+
+    await renderApp('/dashboard');
+    const sources = panel('Where applicants find you');
+
+    expect(await sources.findByText('Print flyer')).toBeVisible();
+    expect(sources.getByText('0 applications · —')).toBeVisible();
+    expect(sources.queryByText(/0%/)).not.toBeInTheDocument();
   });
 
   it('says how many channels it is showing you out of how many there are', async () => {

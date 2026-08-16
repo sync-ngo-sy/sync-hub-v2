@@ -87,6 +87,8 @@ export function managesTrackedLinks(initial: TrackedLink[]) {
           expires_at: null,
           created_at: '2026-08-03T09:00:00Z',
           view_count: 0,
+          application_count: 0,
+          conversion_rate: null,
         };
         links = [...links, link];
         return response(201).json(link);

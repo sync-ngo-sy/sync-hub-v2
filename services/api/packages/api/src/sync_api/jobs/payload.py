@@ -306,6 +306,14 @@ class TrackedLink(BaseModel):
     expires_at: datetime | None = None
     created_at: datetime
     view_count: int = Field(description="Job views that arrived through this link.")
+    application_count: int = Field(
+        description="Applications from a visitor this link brought. A link turned off keeps the "
+        "ones it already brought."
+    )
+    conversion_rate: int | None = Field(
+        description="The percentage of this link's views that became Applications, 0-100. Null "
+        "until the link has brought a view: a rate over nothing says nothing."
+    )
 
 
 class TrackedLinkReport(BaseModel):

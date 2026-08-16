@@ -58,10 +58,10 @@ export const A_BUSY_WEEK: TenantStats = {
     pass_rate: 78,
   },
   sources: [
-    { name: 'LinkedIn post', views: 342 },
-    { name: 'WhatsApp groups', views: 281 },
-    { name: 'Direct', views: 190 },
-    { name: 'Facebook page', views: 97 },
+    { name: 'LinkedIn post', views: 342, applications: 41, conversion_rate: 12 },
+    { name: 'WhatsApp groups', views: 281, applications: 14, conversion_rate: 5 },
+    { name: 'Direct', views: 190, applications: 1, conversion_rate: 1 },
+    { name: 'Facebook page', views: 97, applications: 0, conversion_rate: 0 },
   ],
   sources_total: 4,
 };

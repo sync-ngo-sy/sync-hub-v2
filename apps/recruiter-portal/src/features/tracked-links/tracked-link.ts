@@ -77,6 +77,15 @@ function withShares(
   return exact.map(({ index: _index, remainder: _remainder, ...row }) => row);
 }
 
+const UNANSWERED = '—';
+
+/** A percentage of nothing is unanswered rather than nought: a link nobody has followed has
+ * neither a share of the traffic nor a rate at which it failed to convert anybody. Every
+ * percentage a Tracked link is reported by reads that the same way. */
+export function percentageLabel(percentage: number | null | undefined): string {
+  return percentage === null || percentage === undefined ? UNANSWERED : `${percentage}%`;
+}
+
 export function viewsSummary(bars: LinkViews[]): string {
   const spoken = bars.slice(0, SPOKEN_AT_MOST);
   const rows = spoken.map((bar) => {
