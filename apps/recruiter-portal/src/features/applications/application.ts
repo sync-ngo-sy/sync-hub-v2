@@ -122,7 +122,12 @@ export function receivedWithin(range: ReceivedRange): ReceivedWithin | undefined
   return range === EVERY_TIME ? undefined : range;
 }
 
-export const APPLICATION_SORTS = ['newest', 'oldest'] as const satisfies readonly ApplicationSort[];
+export const APPLICATION_SORTS = [
+  'newest',
+  'oldest',
+  'highest_match',
+  'lowest_match',
+] as const satisfies readonly ApplicationSort[];
 
 export const DEFAULT_APPLICATION_SORT: ApplicationSort = 'newest';
 

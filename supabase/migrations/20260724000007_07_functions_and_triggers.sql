@@ -78,6 +78,78 @@ $$;
 create trigger ingest_on_upload after insert on cvs
   for each row execute function enqueue_cv_ingestion();
 
+-- Every Application is read against its Job as it arrives, and nobody has to press anything for
+-- it. Enqueued here rather than by the backend for the same reason a CV is: the queue row then
+-- exists for every Application however it was written, and it is committed by the very
+-- transaction that made the Application -- so an Application can never be visible with no
+-- reading on the way.
+create function enqueue_match_assessment() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  insert into public.match_assessment_jobs (application_id, status, available_at)
+    values (new.id, 'pending', now());
+  return null;  -- AFTER trigger
+end;
+$$;
+
+create trigger assess_on_arrival after insert on applications
+  for each row execute function enqueue_match_assessment();
+
+-- The Current assessment follows the readings rather than being aimed by whoever wrote one: the
+-- worker's automatic reading and a Recruiter asking for another both land as an ordinary insert,
+-- and both repoint the Application here. History stays append-only either way -- this moves a
+-- pointer, and never a word of what an earlier model said.
+create function point_at_the_current_assessment() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  update public.applications
+     set current_match_assessment_id = new.id,
+         current_match_score         = new.match_percentage
+   where id = new.application_id;
+  return null;  -- AFTER trigger
+end;
+$$;
+
+create trigger point_at_the_current_assessment
+  after insert on application_ai_match_assessments
+  for each row execute function point_at_the_current_assessment();
+
+-- Throwing the Current assessment away falls back to the newest reading left, and to no reading
+-- at all when it was the last one. Without this the composite FK would simply refuse the
+-- deletion, and a Recruiter would be unable to discard the one reading they most want gone.
+create function repoint_the_current_assessment() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  remaining public.application_ai_match_assessments%rowtype;
+begin
+  select * into remaining
+    from public.application_ai_match_assessments
+   where application_id = old.application_id and id <> old.id
+   order by created_at desc, id desc
+   limit 1;
+
+  -- No row found leaves every field of `remaining` null, which is exactly the answer when the
+  -- reading being deleted was the only one. The `current_match_assessment_id` test is what keeps
+  -- this to the deletion that actually moves the pointer.
+  update public.applications
+     set current_match_assessment_id = remaining.id,
+         current_match_score         = remaining.match_percentage
+   where id = old.application_id
+     and current_match_assessment_id = old.id;
+  return old;
+end;
+$$;
+
+create trigger repoint_the_current_assessment
+  before delete on application_ai_match_assessments
+  for each row execute function repoint_the_current_assessment();
+
 -- A candidate's current CV is the one they apply and are found with, so a deleted CV is never
 -- it. Both directions are refused: deleting the CV that is current, and making a CV that is
 -- already deleted current.

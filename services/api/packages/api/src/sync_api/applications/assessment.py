@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, select
 
 from sync_api.applications.access import own_application
-from sync_api.applications.criteria import screening_criteria_of
 from sync_api.applications.payload import MatchAssessment, MatchAssessmentPage
-from sync_api.applications.snapshot import answers_of, snapshot_of
-from sync_api.jobs.access import location_name
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import (
     ASSESSMENT_FAILED_PROBLEM_TYPE,
@@ -17,34 +13,17 @@ from sync_api.problems import (
     ASSESSMENT_UNAVAILABLE_PROBLEM_TYPE,
     Problem,
 )
-from sync_assessments import (
-    PROMPT_VERSION,
-    AskedQuestion,
-    AssessedApplication,
-    AssessedJob,
-    AssessmentError,
-    BuiltProject,
-    HeldEducation,
-    HeldExperience,
-    HeldSkill,
-    MatchRequest,
-    RequiredLanguage,
-    RequiredSkill,
-    SpokenLanguage,
-)
+from sync_assessments import PROMPT_VERSION, AssessmentError, assessment_row, match_request
 from sync_core import get_logger, transaction
-from sync_core.models import ApplicationAiMatchAssessment, Language
-from sync_core.profile import as_decimal
+from sync_core.models import ApplicationAiMatchAssessment
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.applications.access import Applied
-    from sync_api.applications.payload import AnsweredQuestion, ApplicationSnapshot
     from sync_api.tenants import ActingRecruiter
-    from sync_assessments import AssessedMatch, MatchAssessor
+    from sync_assessments import AssessedMatch, MatchAssessor, MatchRequest
 
 logger = get_logger(__name__)
 
@@ -71,9 +50,9 @@ class MatchAssessmentService:
 
     async def assess(self, recruiter: ActingRecruiter, application_id: UUID) -> MatchAssessment:
         tenant_id = recruiter.tenant.id
-        applied = await own_application(self._db, tenant_id, application_id)
+        await own_application(self._db, tenant_id, application_id)
         assessor = self._configured()
-        request = await self._request(applied)
+        request: MatchRequest = await match_request(self._db, application_id)
 
         # A model answers in its own time and nothing has been written yet, so the read's
         # transaction is let go of rather than held — with it, its Postgres connection —
@@ -81,14 +60,7 @@ class MatchAssessmentService:
         await self._db.rollback()
         assessed = await _answered(assessor, request)
 
-        row = ApplicationAiMatchAssessment(
-            application_id=application_id,
-            match_percentage=Decimal(str(assessed.match_percentage)),
-            explanation=assessed.explanation,
-            assessment_details={"strengths": assessed.strengths, "gaps": assessed.gaps},
-            model_name=assessor.model,
-            prompt_version=PROMPT_VERSION,
-        )
+        row = assessment_row(application_id, assessed, model_name=assessor.model)
         async with transaction(self._db):
             self._db.add(row)
             await self._db.flush()
@@ -162,94 +134,6 @@ class MatchAssessmentService:
             )
         return self._assessor
 
-    async def _request(self, applied: Applied) -> MatchRequest:
-        job = applied.job
-        criteria = await screening_criteria_of(self._db, job)
-        return MatchRequest(
-            job=AssessedJob(
-                title=job.title,
-                description=job.description,
-                location=location_name(job),
-                employment_type=job.employment_type,
-                minimum_total_experience_years=criteria.minimum_total_experience_years,
-                skills=tuple(
-                    RequiredSkill(
-                        name=skill.name,
-                        importance=skill.importance,
-                        minimum_years=skill.minimum_years,
-                    )
-                    for skill in criteria.skills
-                ),
-                languages=tuple(
-                    RequiredLanguage(
-                        name=language.name, minimum_proficiency=language.minimum_proficiency
-                    )
-                    for language in criteria.languages
-                ),
-            ),
-            application=await self._applied(applied.application.id),
-        )
-
-    async def _applied(self, application_id: UUID) -> AssessedApplication:
-        snapshot = await snapshot_of(self._db, application_id)
-        answers = await answers_of(self._db, application_id)
-        spoken = await self._language_names(snapshot)
-        return AssessedApplication(
-            headline=snapshot.headline,
-            summary=snapshot.summary,
-            location=snapshot.location,
-            experiences=tuple(
-                HeldExperience(
-                    job_title=entry.job_title,
-                    company_name=entry.company_name,
-                    start_year=entry.start_year,
-                    start_month=entry.start_month,
-                    end_year=entry.end_year,
-                    end_month=entry.end_month,
-                    is_current=entry.is_current,
-                    description=entry.description,
-                )
-                for entry in snapshot.experiences
-            ),
-            educations=tuple(
-                HeldEducation(
-                    institution=entry.institution,
-                    degree=entry.degree,
-                    field_of_study=entry.field_of_study,
-                    graduation_year=entry.graduation_year,
-                )
-                for entry in snapshot.educations
-            ),
-            skills=tuple(
-                HeldSkill(name=entry.name, years_experience=as_decimal(entry.years_experience))
-                for entry in snapshot.skills
-            ),
-            languages=tuple(
-                SpokenLanguage(
-                    name=spoken.get(entry.code, entry.code), proficiency=entry.proficiency
-                )
-                for entry in snapshot.languages
-            ),
-            projects=tuple(
-                BuiltProject(name=entry.name, description=entry.description)
-                for entry in snapshot.projects
-            ),
-            answers=tuple(
-                AskedQuestion(question=answer.question_text, answer=_spoken_answer(answer))
-                for answer in answers
-            ),
-        )
-
-    async def _language_names(self, snapshot: ApplicationSnapshot) -> dict[str, str]:
-        """The model reads "Arabic" rather than "ar" — the words a recruiter would use."""
-        codes = [entry.code for entry in snapshot.languages]
-        if not codes:
-            return {}
-        rows = await self._db.execute(
-            select(Language.code, Language.name).where(Language.code.in_(codes))
-        )
-        return dict(rows.tuples().all())
-
 
 async def _answered(assessor: MatchAssessor, request: MatchRequest) -> AssessedMatch:
     try:
@@ -289,12 +173,6 @@ def _phrases(written: object) -> list[str]:
     """`assessment_details` is jsonb, and a row an older prompt version wrote is still read
     by this one — whatever shape it left behind."""
     return [str(entry) for entry in written] if isinstance(written, list) else []
-
-
-def _spoken_answer(answer: AnsweredQuestion) -> str:
-    if answer.answer_boolean is not None:
-        return "yes" if answer.answer_boolean else "no"
-    return answer.answer_text or ""
 
 
 def _cursor(row: ApplicationAiMatchAssessment) -> Cursor:

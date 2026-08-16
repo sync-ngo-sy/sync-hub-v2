@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sync_assessments import MatchAssessing
 from sync_comms import CommunicationDelivery
 from sync_ingestion import CvIngestion
 from sync_rag import ProfileEmbedding
 from sync_worker import (
     CommunicationsConsumer,
     CvIngestionConsumer,
+    MatchAssessmentConsumer,
     QueueEngine,
     ReembedEngine,
     ReembedPolicy,
@@ -15,6 +17,7 @@ from sync_worker import (
 )
 
 if TYPE_CHECKING:
+    from sync_assessments import AssessedMatch, MatchAssessor
     from sync_comms import Delivered, EmailSender
     from sync_core import Database, Storage
     from sync_parsers import CvExtractor, ParsedCv
@@ -34,6 +37,24 @@ def an_ingestion_worker(
     return QueueEngine(
         database,
         CvIngestionConsumer(CvIngestion(database, storage, extractor)),
+        RetryPolicy(
+            max_attempts=max_attempts,
+            backoff_seconds=NO_WAITING,
+            stuck_after_seconds=stuck_after_seconds,
+        ),
+    )
+
+
+def an_assessment_worker(
+    database: Database,
+    assessor: MatchAssessor,
+    *,
+    max_attempts: int = 3,
+    stuck_after_seconds: float = 600.0,
+) -> QueueEngine[AssessedMatch]:
+    return QueueEngine(
+        database,
+        MatchAssessmentConsumer(MatchAssessing(database, assessor)),
         RetryPolicy(
             max_attempts=max_attempts,
             backoff_seconds=NO_WAITING,

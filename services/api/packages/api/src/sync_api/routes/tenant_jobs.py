@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from sync_api.applications import ApplicationSummaryPage
+from sync_api.applications import ApplicationSort, ApplicationSummaryPage
 from sync_api.dependencies import (
     ActingRecruiterDep,
     ApplicationReviewServiceDep,
@@ -153,12 +153,12 @@ async def replace_job_criteria(
 @router.get(
     "/{job_id}/applications",
     operation_id="listJobApplications",
-    summary="The Job's Applications, newest first",
+    summary="The Job's Applications, newest first unless another order is asked for",
     tags=["applications"],
     responses={
         **TENANT_ACCESS_REFUSED,
         **JOB_NOT_FOUND,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_job_applications(
@@ -181,15 +181,24 @@ async def list_job_applications(
             "Repeat it to name several; omit it for every verdict.",
         ),
     ] = None,
+    sort: Annotated[
+        ApplicationSort,
+        Query(description="Whether the list runs on `applied_at` or on the Match score."),
+    ] = ApplicationSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> ApplicationSummaryPage:
-    """The triage list: who applied, where each one stands, and how Screening judged it.
+    """The triage list: who applied, where each one stands, how Screening judged it, and what
+    an AI made of it. Page with `next_cursor`, keeping `sort`.
+
+    Each row carries its Match score with the words behind it, so the number is never the only
+    thing a Recruiter is given. It is advice: `qualification_status` is the verdict, and no
+    assessment moves it.
 
     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
     caller can say how many Applications each one is keeping off the list.
@@ -199,6 +208,7 @@ async def list_job_applications(
         job_id,
         statuses=application_statuses,
         qualification_statuses=qualification_statuses,
+        sort=sort,
         cursor=cursor,
         limit=limit,
     )

@@ -64,6 +64,13 @@ class ApplicationStatus(enum.StrEnum):
     WITHDRAWN = "withdrawn"
 
 
+class AssessmentStatus(enum.StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class CommunicationChannel(enum.StrEnum):
     EMAIL = "email"
     SMS = "sms"
@@ -1584,8 +1591,24 @@ class Application(Base):
     __tablename__ = "applications"
     __table_args__ = (
         CheckConstraint(
+            "current_match_score >= 0::numeric AND current_match_score <= 100::numeric",
+            name="applications_current_match_score_range",
+        ),
+        CheckConstraint(
+            "num_nonnulls(current_match_assessment_id, current_match_score) <> 1",
+            name="applications_current_match_is_whole",
+        ),
+        CheckConstraint(
             "qualification_status <> 'disqualified'::qualification_status OR qualification_reason IS NOT NULL",
             name="applications_disqualification_has_a_reason",
+        ),
+        ForeignKeyConstraint(
+            ["id", "current_match_assessment_id"],
+            [
+                "public.application_ai_match_assessments.application_id",
+                "public.application_ai_match_assessments.id",
+            ],
+            name="applications_current_match_assessment_fk",
         ),
         ForeignKeyConstraint(
             ["candidate_id", "cv_id"],
@@ -1612,9 +1635,21 @@ class Application(Base):
         UniqueConstraint("tenant_id", "id", name="applications_tenant_id_id_key"),
         Index("applications_cv_id_idx", "cv_id"),
         Index("applications_job_applied_at_idx", "job_id", "applied_at", "id"),
+        Index(
+            "applications_job_match_score_idx",
+            "job_id",
+            text("COALESCE(current_match_score, (-1)) DESC"),
+            text("id DESC"),
+        ),
         Index("applications_job_status_idx", "job_id", "status"),
         Index("applications_job_tracked_link_idx", "job_id", "tracked_link_id"),
         Index("applications_tenant_applied_at_idx", "tenant_id", "applied_at", "id"),
+        Index(
+            "applications_tenant_match_score_idx",
+            "tenant_id",
+            text("COALESCE(current_match_score, (-1)) DESC"),
+            text("id DESC"),
+        ),
         Index("applications_tenant_status_idx", "tenant_id", "status"),
         {"schema": "public"},
     )
@@ -1652,6 +1687,8 @@ class Application(Base):
     )
     tracked_link_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     qualification_reason: Mapped[str | None] = mapped_column(Text)
+    current_match_assessment_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    current_match_score: Mapped[decimal.Decimal | None] = mapped_column(Numeric(5, 2))
 
     cv: Mapped["Cv"] = relationship("Cv", viewonly=True)
     candidate: Mapped["Candidate"] = relationship("Candidate", viewonly=True)
@@ -1737,6 +1774,9 @@ class ApplicationAiMatchAssessment(Base):
             name="application_ai_match_assessments_application_id_fkey",
         ),
         PrimaryKeyConstraint("id", name="application_ai_match_assessments_pkey"),
+        UniqueConstraint(
+            "application_id", "id", name="application_ai_match_assessments_application_id_id_key"
+        ),
         Index("application_ai_match_assessments_app_created_idx", "application_id", "created_at"),
         {"schema": "public"},
     )
@@ -1754,7 +1794,9 @@ class ApplicationAiMatchAssessment(Base):
     explanation: Mapped[str | None] = mapped_column(Text)
     assessment_details: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
-    application: Mapped["Application"] = relationship("Application", viewonly=True)
+    application: Mapped["Application"] = relationship(
+        "Application", viewonly=True, foreign_keys=[application_id]
+    )
 
 
 class ApplicationAnswer(Base):
@@ -2497,3 +2539,49 @@ class HireClaim(Base):
     )
     application: Mapped["Application"] = relationship("Application", viewonly=True)
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
+
+
+class MatchAssessmentJob(Base):
+    __tablename__ = "match_assessment_jobs"
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="maj_attempts_nonneg"),
+        ForeignKeyConstraint(
+            ["application_id"],
+            ["public.applications.id"],
+            ondelete="CASCADE",
+            name="match_assessment_jobs_application_id_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="match_assessment_jobs_pkey"),
+        UniqueConstraint("application_id", name="match_assessment_jobs_application_id_key"),
+        Index(
+            "match_assessment_jobs_claim_idx",
+            "available_at",
+            postgresql_where="(status = ANY (ARRAY['pending'::assessment_status, 'processing'::assessment_status]))",
+        ),
+        Index("match_assessment_jobs_status_created_idx", "status", "created_at"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    status: Mapped[AssessmentStatus] = mapped_column(
+        Enum(
+            AssessmentStatus,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="assessment_status",
+        ),
+        nullable=False,
+        server_default=text("'pending'::assessment_status"),
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    error_message: Mapped[str | None] = mapped_column(Text)
+    available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    application: Mapped["Application"] = relationship("Application", viewonly=True)

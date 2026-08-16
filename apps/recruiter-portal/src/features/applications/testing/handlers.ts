@@ -42,6 +42,21 @@ const NO_SUCH_APPLICATION: Problem = {
 export interface AskedFor {
   status: string[];
   qualification_status: string[];
+  sort: string | null;
+}
+
+/** An Application nobody has read yet has no score, and sorts below every one that has — the
+ * `coalesce(…, -1)` the API orders on, in the one place a test can see it. */
+function scoreOf(item: ApplicationSummary): number {
+  return item.match?.percentage ?? -1;
+}
+
+function byMatch(sort: string | null) {
+  const bestFirst = sort !== 'lowest_match';
+  return (one: ApplicationSummary, other: ApplicationSummary) => {
+    const gap = scoreOf(one) - scoreOf(other);
+    return bestFirst ? -gap : gap;
+  };
 }
 
 function chosen(named: string[], value: string): boolean {
@@ -67,11 +82,13 @@ export function listsJobApplications(items: ApplicationSummary[], asked?: AskedF
     http.get(PATH, ({ query, response }) => {
       const statuses = query.getAll('status');
       const verdicts = query.getAll('qualification_status');
-      asked?.push({ status: statuses, qualification_status: verdicts });
+      const sort = query.get('sort');
+      asked?.push({ status: statuses, qualification_status: verdicts, sort });
       const ofThisVerdict = items.filter((item) => chosen(verdicts, item.qualification_status));
       const ofThisStatus = items.filter((item) => chosen(statuses, item.status));
+      const listed = ofThisVerdict.filter((item) => chosen(statuses, item.status));
       return response(200).json({
-        items: ofThisVerdict.filter((item) => chosen(statuses, item.status)),
+        items: sort?.endsWith('_match') ? [...listed].sort(byMatch(sort)) : listed,
         next_cursor: null,
         status_counts: countedByStatus(ofThisVerdict),
         verdict_counts: countedByVerdict(ofThisStatus),

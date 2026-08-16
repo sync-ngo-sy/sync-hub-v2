@@ -288,7 +288,15 @@ _Avoid_: AI score, rating, fit verdict (a verdict is Screening's).
 **Match score**:
 The Current assessment's percentage, used to sort Applications while keeping its explanation
 available to the Recruiter. It never changes or reorders a Screening verdict, which remains the
-only result that refuses anybody.
+only result that refuses anybody. On a list it is plain text rather than a Status Mark, for the
+same reason the reading on the review page carries no colour: the row already shows a verdict,
+and a second marked state beside it would read as a second one. Pointing at the number or tabbing
+to it opens what the model said — both, because a Recruiter working the list by keyboard is not a
+worse-served Recruiter — and the whole reading stays on the Application review, which is where a
+touch screen reads it. An Application nobody has read yet says so in words rather than showing a
+zero, and sorts below every one that has been read: last when the best come first, first when the
+weakest do, since an absence belongs beside the weakest readings rather than hidden past them.
+Asking for the column sorts it best-first, which is the only direction a fresh score column reads.
 _Avoid_: Rank, fit, rating, AI verdict.
 
 **Placement**:

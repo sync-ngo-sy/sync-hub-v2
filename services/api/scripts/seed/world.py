@@ -76,6 +76,7 @@ from sync_core import transaction
 from sync_core.models import (
     AccountType,
     ApplicationStatus,
+    AssessmentStatus,
     Candidate,
     CanonicalRole,
     IngestionJob,
@@ -84,6 +85,7 @@ from sync_core.models import (
     JobViewEvent,
     Language,
     Location,
+    MatchAssessmentJob,
     Profile,
     SkillImportance,
     SkillTaxonomy,
@@ -628,6 +630,30 @@ class World:
             for _ in range(applied.assessments):
                 await assessments.assess(recruiter, application_id)
                 self._seeded.counted("AI match assessments")
+            await self._settle_assessment(application_id)
+
+    async def _settle_assessment(self, application_id: UUID) -> None:
+        """Close the queue row the `assess_on_arrival` trigger opened.
+
+        The seed writes its own readings, deterministically and for nothing, so the row is
+        already answered. Left `pending` it would hand a running worker every Application in the
+        seeded world to read against a real provider, at a real cost, for a number that would
+        only change on every reseed.
+        """
+        settled = self._seeded.clock.now
+        async with transaction(self._db):
+            await self._db.execute(
+                update(MatchAssessmentJob)
+                .where(MatchAssessmentJob.application_id == application_id)
+                .values(
+                    status=AssessmentStatus.COMPLETED,
+                    attempts=1,
+                    error_message=None,
+                    started_at=settled,
+                    completed_at=settled,
+                    available_at=None,
+                )
+            )
 
     def _started_on(
         self, applied: cast.SeededApplication, status: ApplicationStatus

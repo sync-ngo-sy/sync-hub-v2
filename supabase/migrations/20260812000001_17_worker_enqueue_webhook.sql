@@ -79,4 +79,12 @@ create trigger communications_notify_worker
   for each statement
   execute function public.notify_worker_of_enqueue();
 
+-- A Recruiter opening a Job seconds after an Application arrives should find a Match score there,
+-- not a blank waiting for the next schedule. The Application's own confirmation email is enqueued
+-- in the same transaction, so this frequently coalesces into that drain rather than adding one.
+create trigger match_assessment_jobs_notify_worker
+  after insert on public.match_assessment_jobs
+  for each statement
+  execute function public.notify_worker_of_enqueue();
+
 revoke all on function public.notify_worker_of_enqueue() from public, anon, authenticated;

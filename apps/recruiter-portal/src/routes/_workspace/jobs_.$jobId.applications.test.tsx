@@ -2,7 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { SCREENING_VERDICTS } from '@/features/applications/application';
-import { AMAL, AMAL_REVIEW, BASSEL, CARLA } from '@/features/applications/testing/fixtures';
+import {
+  AMAL,
+  AMAL_MATCH,
+  AMAL_REVIEW,
+  BASSEL,
+  CARLA,
+} from '@/features/applications/testing/fixtures';
 import {
   type AskedFor,
   failsToListJobApplications,
@@ -489,5 +495,118 @@ describe("a Job's Applications tab", () => {
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
     expect(screen.getByRole('radio', { name: 'New 1' })).toBeChecked();
     expect(screeningTrigger()).toHaveAccessibleName('Screening: Qualified');
+  });
+});
+
+describe('the Match score on a Job triage list', () => {
+  it('shows the score, and says so plainly when nobody has read the Application', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    await renderApp(`/jobs/${JOB.id}`);
+
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    expect(rowOf('Amal Haddad').getByText('82%')).toBeVisible();
+    expect(rowOf('Bassel Nasser').getByText('41%')).toBeVisible();
+    expect(rowOf('Carla Rizk').getByText('Not read yet')).toBeVisible();
+  });
+
+  it('opens the reasoning on focus alone, so the number is never acted on by itself', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL]));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.tab();
+    while (document.activeElement?.getAttribute('aria-label') !== '82% of what the Job asks for') {
+      await user.tab();
+    }
+
+    expect(await screen.findByText(AMAL_MATCH.explanation as string)).toBeVisible();
+    expect(screen.getByText(/gpt-4o-mini/)).toBeVisible();
+  });
+
+  it('opens the reasoning on hover', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL]));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.hover(screen.getByRole('button', { name: '82% of what the Job asks for' }));
+
+    expect(await screen.findByText(AMAL_MATCH.explanation as string)).toBeVisible();
+  });
+
+  it('says the model gave no reasons rather than showing an empty card', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([BASSEL]));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Bassel Nasser')).toBeVisible();
+
+    await user.hover(screen.getByRole('button', { name: '41% of what the Job asks for' }));
+
+    expect(await screen.findByText('The model gave no reasons for this reading.')).toBeVisible();
+  });
+
+  it('asks for the best answered first, which is the only way a fresh score column reads', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Match' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'highest_match' }));
+    await waitFor(() => expect(asked.at(-1)?.sort).toBe('highest_match'));
+    expect(listedInOrder()).toEqual([
+      "Open Amal Haddad's Application",
+      "Open Bassel Nasser's Application",
+      "Open Carla Rizk's Application",
+    ]);
+  });
+
+  it('turns the score order around when the column is asked again', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?sort=highest_match`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Match' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'lowest_match' }));
+    await waitFor(() => expect(asked.at(-1)?.sort).toBe('lowest_match'));
+    expect(listedInOrder()).toEqual([
+      "Open Carla Rizk's Application",
+      "Open Bassel Nasser's Application",
+      "Open Amal Haddad's Application",
+    ]);
+  });
+
+  it('leaves the default order out of the address bar', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router } = await renderApp(`/jobs/${JOB.id}`);
+
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    expect(router.state.location.search).toEqual({});
+    expect(asked.every((one) => one.sort === 'newest')).toBe(true);
   });
 });

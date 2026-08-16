@@ -1327,8 +1327,10 @@ class SeededApplication:
     hire_confirmed: bool | None = None
     #: The Candidate's own move, which ends the process for everybody.
     withdrawn: bool = False
-    #: How many advisory AI match assessments have been asked for. Append-only.
-    assessments: int = 0
+    #: How many advisory AI match assessments this Application carries. Append-only, and never
+    #: none: the first is the automatic reading every Application gets as it arrives, and any
+    #: beyond it are Recruiters who wanted a second opinion.
+    assessments: int = 1
     #: `(recruiter key, text)`, oldest first.
     notes: Sequence[tuple[str, str]] = ()
     #: Names of the Tenant's application-scoped Tags.

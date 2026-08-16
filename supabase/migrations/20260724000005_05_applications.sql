@@ -14,6 +14,19 @@ create table applications (
   qualification_status qualification_status not null default 'pending',
   qualification_reason text,
 
+  -- The Current assessment: which of the Application's readings a list sorts and shows, and the
+  -- percentage that reading gave, kept beside the pointer rather than only behind it. The
+  -- percentage is what a Job's list orders hundreds of rows by, and an order can only be indexed
+  -- on a column of the table it orders. Neither is written by hand: the triggers in migration 07
+  -- move both together whenever a reading lands or is thrown away, so no writer can point one at
+  -- a reading and the other at a different one. Both null until the first reading arrives.
+  --
+  -- The FK is composite, so the Current assessment is always one of *this* Application's
+  -- readings. Its `references` clause is added below, once the assessments table exists.
+  current_match_assessment_id uuid,
+  current_match_score         numeric(5,2)
+    constraint applications_current_match_score_range check (current_match_score between 0 and 100),
+
   applied_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
@@ -27,6 +40,13 @@ create table applications (
 
   constraint applications_disqualification_has_a_reason check (
     qualification_status <> 'disqualified' or qualification_reason is not null
+  ),
+
+  -- Both halves of the Current assessment or neither: a percentage with nothing to explain it
+  -- is a number a Recruiter cannot check, and a pointer with no percentage is a list that
+  -- cannot sort.
+  constraint applications_current_match_is_whole check (
+    num_nonnulls(current_match_assessment_id, current_match_score) <> 1
   )
 );
 create index applications_job_status_idx       on applications (job_id, status);
@@ -264,7 +284,54 @@ create table application_ai_match_assessments (
 
   model_name     text not null,
   prompt_version text not null,
-  created_at     timestamptz not null default now()
+  created_at     timestamptz not null default now(),
+
+  -- What `applications.current_match_assessment_id` points at, so a Current assessment can only
+  -- ever be a reading of the Application pointing at it.
+  unique (application_id, id)
 );
 create index application_ai_match_assessments_app_created_idx
   on application_ai_match_assessments (application_id, created_at);
+
+alter table applications
+  add constraint applications_current_match_assessment_fk
+  foreign key (id, current_match_assessment_id)
+  references application_ai_match_assessments (application_id, id);
+
+-- What a Job's triage list sorts hundreds of rows by. `coalesce` rather than `nulls last`
+-- because the same expression has to serve both directions from one index, and an Application
+-- nobody has read yet has no score to place among the ones that do: -1 puts it below every
+-- real percentage, which reads as "not assessed" at the bottom of the best-first list and at
+-- the top of the worst-first one. The id breaks ties, of which a percentage has many.
+create index applications_job_match_score_idx
+  on applications (job_id, (coalesce(current_match_score, -1)) desc, id desc);
+-- The tenant-wide twin, for the same reason `applications_tenant_applied_at_idx` exists: no
+-- index leading with `tenant_id` can serve an order the per-Job one covers.
+create index applications_tenant_match_score_idx
+  on applications (tenant_id, (coalesce(current_match_score, -1)) desc, id desc);
+
+-- Every Application is read as it arrives, and the reading happens in the worker rather than in
+-- the request that created it: a model takes seconds a Candidate should not spend watching a
+-- spinner, and a provider that is down must not be able to refuse an Application.
+--
+-- Shaped exactly like `ingestion_jobs`, because the same queue engine drains it. One row per
+-- Application -- the automatic reading. A Recruiter asking for another does it through the API,
+-- which answers with the reading it just made.
+create table match_assessment_jobs (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid not null unique references applications (id) on delete cascade,
+
+  status   assessment_status not null default 'pending',
+  attempts int not null default 0 constraint maj_attempts_nonneg check (attempts >= 0),
+
+  error_message text,
+
+  available_at timestamptz,
+  started_at   timestamptz,
+  completed_at timestamptz,
+  created_at   timestamptz not null default now()
+);
+create index match_assessment_jobs_claim_idx on match_assessment_jobs (available_at)
+  where status in ('pending', 'processing');
+create index match_assessment_jobs_status_created_idx
+  on match_assessment_jobs (status, created_at);

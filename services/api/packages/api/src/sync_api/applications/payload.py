@@ -150,6 +150,27 @@ class ApplicationPage(BaseModel):
     )
 
 
+class MatchScore(BaseModel):
+    """The Current assessment, as a list row carries it: the number, and enough of the reading
+    behind it that the number is never shown on its own.
+
+    The whole reading — its strengths, its gaps, every earlier one — is on the Application
+    review. This is what a row can hold under a pointer or a focus ring.
+    """
+
+    # Pydantic reserves the `model_` prefix for its own members; `model_name` is what the audit
+    # trail calls the model, and renaming it here would only hide that.
+    model_config = ConfigDict(protected_namespaces=())
+
+    percentage: float = Field(
+        description="How much of what the Job asks for this Application evidences, 0 to 100. "
+        "Advice: it neither is nor changes the Screening verdict."
+    )
+    explanation: str | None = Field(default=None, description="Why, in the model's own words.")
+    model_name: str = Field(description="The model that wrote it.")
+    assessed_at: datetime
+
+
 class ApplicationSummary(BaseModel):
     """One Application, as the Job's triage list shows it."""
 
@@ -168,6 +189,12 @@ class ApplicationSummary(BaseModel):
     )
     status: ApplicationStatus
     qualification_status: QualificationStatus = Field(description="The Screening verdict.")
+    match: MatchScore | None = Field(
+        default=None,
+        description="The Current assessment. Null while no model has read this Application — "
+        "the reading is enqueued as it arrives, so this fills in shortly after, and stays null "
+        "if every attempt failed.",
+    )
     applied_at: datetime
     updated_at: datetime
 
@@ -248,14 +275,21 @@ RECEIVED_WITHIN_DAYS: Final[dict[ReceivedWithin, int]] = {
 
 
 class ApplicationSort(StrEnum):
-    """The orders the tenant's Application list can be read in.
+    """The orders an Application list can be read in.
 
-    Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
-    spanning Jobs has no number of its own to be busiest by.
+    Two run on `applied_at`, which is the one date a row here shows. The other two run on the
+    Match score, so a Job with hundreds of Applications can be read best-answered first rather
+    than only newest first. Each names the answer it gives rather than a column and a direction.
+
+    An Application nobody has read yet has no score, and sorts below every one that has: last
+    under `highest_match`, and first under `lowest_match`, where "nothing to show" belongs
+    beside the weakest readings rather than hidden past them.
     """
 
     NEWEST = "newest"
     OLDEST = "oldest"
+    HIGHEST_MATCH = "highest_match"
+    LOWEST_MATCH = "lowest_match"
 
 
 class TenantApplicationPage(BaseModel):

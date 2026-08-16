@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from sync_core.models import ApplicationAiMatchAssessment
+from sync_core.models import Application, ApplicationAiMatchAssessment, MatchAssessmentJob
 from tests.support.applications import TENANT_APPLICATIONS
 
 if TYPE_CHECKING:
@@ -59,3 +59,30 @@ async def stored_assessments(
         .order_by(ApplicationAiMatchAssessment.created_at)
     )
     return list(rows)
+
+
+async def assessment_job(session: AsyncSession, application_id: str | UUID) -> MatchAssessmentJob:
+    """The queue row the Application's arrival opened."""
+    session.expire_all()
+    job = await session.scalar(
+        select(MatchAssessmentJob).where(
+            MatchAssessmentJob.application_id == UUID(str(application_id))
+        )
+    )
+    assert job is not None, "the arrival trigger opened no assessment job"
+    return job
+
+
+async def current_assessment_of(
+    session: AsyncSession, application_id: str | UUID
+) -> tuple[UUID | None, float | None]:
+    """What the Application points at, and the Match score beside the pointer."""
+    session.expire_all()
+    row = (
+        await session.execute(
+            select(Application.current_match_assessment_id, Application.current_match_score).where(
+                Application.id == UUID(str(application_id))
+            )
+        )
+    ).one()
+    return row[0], None if row[1] is None else float(row[1])

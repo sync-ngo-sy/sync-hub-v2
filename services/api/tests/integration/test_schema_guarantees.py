@@ -436,3 +436,100 @@ async def test_the_seeds_sql_projection_agrees_with_the_one_the_platform_uses(
     assert dict(projected.tuples().all()) == {
         status.value: stage_of(status).value for status in ApplicationStatus
     }
+
+
+A_READING = text(
+    "insert into application_ai_match_assessments "
+    "(application_id, match_percentage, explanation, model_name, prompt_version) "
+    "values (:id, :percentage, :explanation, 'a-model', 'v-test') returning id"
+)
+
+
+async def test_a_reading_repoints_the_application_whoever_wrote_it(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The pointer is the database's job, not the backend's — the worker and a Recruiter's own
+    request both land as an ordinary insert, and neither has to remember to aim it."""
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+
+    reading = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
+    )
+    later = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A second read."}
+    )
+
+    pointed = (
+        await db_session.execute(
+            text(
+                "select current_match_assessment_id, current_match_score "
+                "from applications where id = :id"
+            ),
+            {"id": application["id"]},
+        )
+    ).one()
+    assert pointed == (later, 72.00)
+    assert reading != later, "asking again appends rather than replacing"
+    await db_session.rollback()
+
+
+async def test_throwing_the_current_reading_away_falls_back_to_the_one_before_it(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+    first = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
+    )
+    second = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A second read."}
+    )
+
+    await db_session.execute(
+        text("delete from application_ai_match_assessments where id = :id"), {"id": second}
+    )
+
+    pointed = (
+        await db_session.execute(
+            text(
+                "select current_match_assessment_id, current_match_score "
+                "from applications where id = :id"
+            ),
+            {"id": application["id"]},
+        )
+    ).one()
+    assert pointed == (first, 61.50)
+    await db_session.rollback()
+
+
+async def test_an_application_cannot_point_at_another_applications_reading(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The Current assessment is composite-keyed, so "current" can only mean one of its own."""
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+    somebody_elses = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "Not yours."}
+    )
+    other = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+
+    with pytest.raises(IntegrityError, match="applications_current_match_assessment_fk"):
+        await db_session.execute(
+            text(
+                "update applications set current_match_assessment_id = :reading, "
+                "current_match_score = 61.5 where id = :id"
+            ),
+            {"reading": somebody_elses, "id": other["id"]},
+        )
+    await db_session.rollback()
+
+
+async def test_a_match_score_cannot_stand_without_the_reading_that_explains_it(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+
+    with pytest.raises(IntegrityError, match="applications_current_match_is_whole"):
+        await db_session.execute(
+            text("update applications set current_match_score = 90 where id = :id"),
+            {"id": application["id"]},
+        )
+    await db_session.rollback()

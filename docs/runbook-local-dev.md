@@ -118,7 +118,7 @@ local default.
 
 | Key                    | Without it                                        |
 | ---------------------- | ------------------------------------------------- |
-| `SYNC_OPENAI_API_KEY`  | the worker refuses to start (CV parsing, embedding) |
+| `SYNC_OPENAI_API_KEY`  | the worker refuses to start (CV parsing, embedding, match assessment) |
 | `SYNC_RESEND_API_KEY`  | the worker refuses to start (sending Communications) |
 
 If you only need the API, run `docker compose up api`.

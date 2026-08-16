@@ -88,7 +88,7 @@ async def list_tenant_applications(
     ] = None,
     sort: Annotated[
         ApplicationSort,
-        Query(description="Which end of `applied_at` the list starts at."),
+        Query(description="Whether the list runs on `applied_at` or on the Match score."),
     ] = ApplicationSort.NEWEST,
     cursor: Annotated[
         str | None,

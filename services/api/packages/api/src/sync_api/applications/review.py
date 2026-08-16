@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 
 from sync_api.applications.access import own_application
 from sync_api.applications.hires import claim_the_hire, claimed_hire
+from sync_api.applications.ordering import ORDERINGS
 from sync_api.applications.payload import (
     RECEIVED_WITHIN_DAYS,
     ApplicationCv,
@@ -16,6 +17,7 @@ from sync_api.applications.payload import (
     ApplicationSummary,
     ApplicationSummaryPage,
     ApplicationVerdictCount,
+    MatchScore,
     MovedApplication,
     ReceivedWithin,
     ReviewedCandidate,
@@ -29,12 +31,13 @@ from sync_api.applications.pipeline import move_application
 from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.cvs import signed_download
 from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
-from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, oldest_first, page_of
+from sync_api.pagination import DEFAULT_PAGE_SIZE, cursor_for, ordered_by, page_of
 from sync_api.windows import rolling_since
 from sync_core import get_logger, transaction
 from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
 from sync_core.models import (
     Application,
+    ApplicationAiMatchAssessment,
     ApplicationProfileSnapshot,
     ApplicationStatus,
     ApplicationStatusHistory,
@@ -49,8 +52,10 @@ from sync_core.models import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
     from uuid import UUID
 
+    from sqlalchemy import Select
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.applications.access import Applied
@@ -80,20 +85,16 @@ class ApplicationReviewService:
         *,
         statuses: Sequence[ApplicationStatus] | None = None,
         qualification_statuses: Sequence[QualificationStatus] | None = None,
+        sort: ApplicationSort = ApplicationSort.NEWEST,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> ApplicationSummaryPage:
         await own_job(self._db, recruiter.tenant.id, job_id)
 
         mine = (Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
-        query = (
-            select(Application, ApplicationProfileSnapshot)
-            .join(
-                ApplicationProfileSnapshot,
-                ApplicationProfileSnapshot.application_id == Application.id,
-            )
-            .where(*mine)
-        )
+        query = _with_the_current_assessment(
+            select(Application, ApplicationProfileSnapshot, ApplicationAiMatchAssessment)
+        ).where(*mine)
         counting = (
             select(Application.status, func.count()).where(*mine).group_by(Application.status)
         )
@@ -109,24 +110,26 @@ class ApplicationReviewService:
             query = query.where(Application.qualification_status.in_(qualification_statuses))
             counting = counting.where(Application.qualification_status.in_(qualification_statuses))
 
+        sorting = ORDERINGS[sort]
         found = list(
             (
                 await self._db.execute(
-                    newest_first(
-                        query,
-                        created_at=Application.applied_at,
-                        id_=Application.id,
-                        cursor=cursor,
-                        limit=limit,
+                    ordered_by(
+                        query, ordering=sorting, id_=Application.id, cursor=cursor, limit=limit
                     )
                 )
             ).tuples()
         )
         counted = dict((await self._db.execute(counting)).tuples().all())
         counted_verdicts = dict((await self._db.execute(verdict_counting)).tuples().all())
-        rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
+        rows, next_cursor = page_of(
+            found, limit=limit, cursor_for=lambda row: cursor_for(sorting, row[0], id_=row[0].id)
+        )
         return ApplicationSummaryPage(
-            items=[_summary(application, snapshot) for application, snapshot in rows],
+            items=[
+                _summary(application, snapshot, assessment)
+                for application, snapshot, assessment in rows
+            ],
             next_cursor=next_cursor,
             status_counts=[
                 ApplicationStatusCount(status=one, count=counted.get(one, 0))
@@ -168,12 +171,10 @@ class ApplicationReviewService:
             )
 
         query = (
-            select(Application, ApplicationProfileSnapshot, Job)
-            .options(*WITH_LOCATION)
-            .join(
-                ApplicationProfileSnapshot,
-                ApplicationProfileSnapshot.application_id == Application.id,
+            _with_the_current_assessment(
+                select(Application, ApplicationProfileSnapshot, ApplicationAiMatchAssessment, Job)
             )
+            .options(*WITH_LOCATION)
             .join(Job, Job.id == Application.job_id)
             .where(*mine)
         )
@@ -192,17 +193,12 @@ class ApplicationReviewService:
             query = query.where(Application.qualification_status.in_(qualification_statuses))
             counting = counting.where(Application.qualification_status.in_(qualification_statuses))
 
-        ordering = oldest_first if sort is ApplicationSort.OLDEST else newest_first
+        sorting = ORDERINGS[sort]
         found = list(
             (
                 await self._db.execute(
-                    ordering(
-                        query,
-                        created_at=Application.applied_at,
-                        id_=Application.id,
-                        cursor=cursor,
-                        limit=limit,
-                        cursor_order=sort.value,
+                    ordered_by(
+                        query, ordering=sorting, id_=Application.id, cursor=cursor, limit=limit
                     )
                 )
             ).tuples()
@@ -210,17 +206,17 @@ class ApplicationReviewService:
         counted = dict((await self._db.execute(counting)).tuples().all())
         counted_verdicts = dict((await self._db.execute(verdict_counting)).tuples().all())
         rows, next_cursor = page_of(
-            found, limit=limit, cursor_for=lambda row: _tenant_cursor(row, sort)
+            found, limit=limit, cursor_for=lambda row: cursor_for(sorting, row[0], id_=row[0].id)
         )
         return TenantApplicationPage(
             items=[
                 TenantApplicationSummary(
-                    **_summary(application, snapshot).model_dump(),
+                    **_summary(application, snapshot, assessment).model_dump(),
                     job=ApplicationJob(
                         id=job.id, title=job.title, location_name=location_name(job)
                     ),
                 )
-                for application, snapshot, job in rows
+                for application, snapshot, assessment, job in rows
             ],
             next_cursor=next_cursor,
             status_counts=[
@@ -359,7 +355,30 @@ class ApplicationReviewService:
         )
 
 
-def _summary(application: Application, snapshot: ApplicationProfileSnapshot) -> ApplicationSummary:
+def _with_the_current_assessment[Selected: tuple[Any, ...]](
+    query: Select[Selected],
+) -> Select[Selected]:
+    """The Snapshot every row is named from, and the one reading the row shows.
+
+    The assessment is joined through the Application's own pointer rather than by looking for
+    the newest — the pointer is what "current" means, and following it is a primary-key lookup
+    rather than a per-row search through the history. Outer, because an Application the worker
+    has not reached yet is a row like any other, with nothing under its score.
+    """
+    return query.join(
+        ApplicationProfileSnapshot,
+        ApplicationProfileSnapshot.application_id == Application.id,
+    ).outerjoin(
+        ApplicationAiMatchAssessment,
+        ApplicationAiMatchAssessment.id == Application.current_match_assessment_id,
+    )
+
+
+def _summary(
+    application: Application,
+    snapshot: ApplicationProfileSnapshot,
+    assessment: ApplicationAiMatchAssessment | None,
+) -> ApplicationSummary:
     return ApplicationSummary(
         id=application.id,
         candidate_name=snapshot.full_name,
@@ -369,18 +388,18 @@ def _summary(application: Application, snapshot: ApplicationProfileSnapshot) -> 
         total_experience_years=snapshot.total_experience_years,
         status=application.status,
         qualification_status=application.qualification_status,
+        match=_match_score(assessment),
         applied_at=application.applied_at,
         updated_at=application.updated_at,
     )
 
 
-def _cursor(row: tuple[Application, ApplicationProfileSnapshot]) -> Cursor:
-    application, _snapshot = row
-    return Cursor(created_at=application.applied_at, id=application.id)
-
-
-def _tenant_cursor(
-    row: tuple[Application, ApplicationProfileSnapshot, Job], sort: ApplicationSort
-) -> Cursor:
-    application, _snapshot, _job = row
-    return Cursor(created_at=application.applied_at, id=application.id, order=sort.value)
+def _match_score(assessment: ApplicationAiMatchAssessment | None) -> MatchScore | None:
+    if assessment is None:
+        return None
+    return MatchScore(
+        percentage=float(assessment.match_percentage),
+        explanation=assessment.explanation,
+        model_name=assessment.model_name,
+        assessed_at=assessment.created_at,
+    )

@@ -307,12 +307,31 @@ async def _derived(session: AsyncSession) -> None:
             "where m.application_id = a.id"
         )
     )
-    # Advice a Recruiter asked for while the Application was live.
+    # The first reading is the automatic one, which lands while the Application is still
+    # arriving. Any after it are Recruiters who wanted a second opinion, spread through the time
+    # the Application has been open.
     await session.execute(
         text(
+            "with ranked as ("
+            "  select m.id, m.application_id, "
+            "         row_number() over (partition by m.application_id "
+            "                            order by m.created_at, m.id) as nth "
+            "    from application_ai_match_assessments m) "
             "update application_ai_match_assessments m "
-            "   set created_at = a.applied_at + (now() - a.applied_at) * 0.35 "
-            "  from applications a where a.id = m.application_id"
+            "   set created_at = case when r.nth = 1 then a.applied_at + interval '90 seconds' "
+            "                    else a.applied_at + (now() - a.applied_at) * 0.35 * (r.nth - 1) "
+            "                    end "
+            "  from ranked r join applications a on a.id = r.application_id "
+            " where m.id = r.id"
+        )
+    )
+    # The queue row the arrival trigger opened, settled when the automatic reading landed.
+    await session.execute(
+        text(
+            "update match_assessment_jobs j set created_at = a.applied_at, "
+            "started_at = a.applied_at + interval '20 seconds', "
+            "completed_at = a.applied_at + interval '90 seconds' "
+            "from applications a where a.id = j.application_id"
         )
     )
     # A Notification was written by the move it announces, so it takes that move's moment. Only

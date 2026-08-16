@@ -327,6 +327,7 @@ insert application_status_history(application_id, change_source='candidate', new
 -- then read the rows just written and run screening (below) synchronously, inside this same
 -- transaction — an application is never observable without its verdict
 insert communications(...)                      -- the confirmation, status='queued'
+insert match_assessment_jobs(...)               -- assess_on_arrival, status='pending'
 ```
 The Snapshot is six **column-listed `INSERT … SELECT`s**: one `profiles ⋈ candidates` join for
 the scalar row, and one per child table. The invariant that makes that possible is **identical
@@ -441,11 +442,27 @@ does not care what state the row is in, so re-applying meets the same 409 carryi
 
 ## AI match assessments (advisory, append-only)
 
-A Recruiter asks for one; it runs synchronously and writes exactly one row:
+Every Application is read as it arrives, and a Recruiter may ask for another reading at any time.
+Both write exactly one row, from the same document:
 ```
 insert application_ai_match_assessments(application_id, match_percentage, explanation,
        assessment_details, model_name, prompt_version);
 ```
+The automatic one is enqueued by the arrival itself — `assess_on_arrival` opens a
+`match_assessment_jobs` row in the transaction that created the Application — and the worker
+drains it like any other queue below. The Recruiter's own request still runs synchronously, so
+the reading it returns is the one it just made. `sync_assessments.match_request` builds the
+document for both, which is what keeps the two readings the same reading.
+
+`applications.current_match_assessment_id` points at the Current assessment, with its percentage
+beside it in `current_match_score` — denormalized because a Job's list sorts hundreds of rows by
+it and an order can only be indexed on a column of the table it orders
+(`applications_job_match_score_idx` on `(job_id, coalesce(current_match_score, -1) desc, id
+desc)`, read forwards for the best first and backwards for the worst). Neither column is written
+by hand: `point_at_the_current_assessment` moves both when a reading lands, and
+`repoint_the_current_assessment` falls back to the newest reading left when the current one is
+deleted — which is also what lets that delete happen at all, since the pointer is a composite FK
+into `(application_id, id)`. A CHECK holds them to both-or-neither.
 Its input on the Candidate's side is the immutable `application_*` snapshot — what they froze
 when they applied, never their live `candidate_*` rows. On the Job's side it is the criteria
 Screening measured (`job_skills`, `job_languages`, `jobs.minimum_total_experience_years`) plus
@@ -469,7 +486,11 @@ are what make an assessment auditable after either changes.
 The model is called with no transaction open — the reads above are rolled back first, so a
 provider taking its time holds no Postgres connection — and the insert is its own transaction
 afterwards. A provider failure therefore leaves nothing behind (502), and a deployment with no
-`SYNC_OPENAI_API_KEY` answers 503 while still serving the history.
+`SYNC_OPENAI_API_KEY` answers 503 while still serving the history. In the worker the same failure
+is a retry rather than an answer: the queue row keeps its place and comes back under the backoff,
+and an Application whose every attempt failed simply has no Match score — which is what a list
+showing none is truthfully saying. An Application that no longer exists is the one permanent
+failure, because no number of attempts will make one appear.
 
 ## Workers (Postgres-table queues, SKIP LOCKED)
 
@@ -549,6 +570,21 @@ Chunking is per section, from the live tables: one `identity` chunk, one per `ex
 per `project`, and one each for `education`, `skills` and `languages`. `chunk_type` records
 which, and `chunk_text` is what a recruiter is shown as the evidence for a hit. An empty
 section produces no chunk, so a profile with nothing in it produces nothing to find.
+
+### Match assessment (`match_assessment_jobs` → `sync_assessments`/`sync_worker`)
+- One row per Application, opened by `assess_on_arrival` in the transaction that created it, so
+  every Application has a reading on the way before it is visible to anybody. `UNIQUE
+  (application_id)` is what keeps that to one automatic reading; a Recruiter asking for another
+  goes through the API instead and never touches this table.
+- The generic engine drives it: the same four states, the same claim, the same backoff and sweep.
+  A provider that is down is an ordinary retry. `ApplicationGoneError` — the Application or its
+  Snapshot is no longer there — is the one `PermanentFailureError`, since retrying an absence
+  only spends attempts.
+- Giving up writes no reading, which leaves `applications.current_match_score` null. That is not
+  a zero and is not shown as one: a Job's list says the Application has not been read.
+- The seed settles its own rows (`_settle_assessment`) for the same reason it settles
+  `ingestion_jobs`: a seeded world left `pending` hands a running worker every Application in it
+  to read against a real provider, at a real cost, for numbers that change on every reseed.
 
 ### Communications (`communications` → `sync_comms`/`sync_worker`)
 - The queue row *is* the delivery-audit record, so it carries both: `communication_status`

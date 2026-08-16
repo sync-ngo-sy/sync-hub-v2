@@ -13,12 +13,19 @@ from sync_assessments.assessor import (
     RequiredSkill,
     SpokenLanguage,
 )
+from sync_assessments.pipeline import (
+    ApplicationGoneError,
+    MatchAssessing,
+    assessment_row,
+    match_request,
+)
 from sync_assessments.prompt import INSTRUCTIONS, PROMPT_VERSION, as_document
 from sync_assessments.schema import AssessedMatch
 
 __all__ = [
     "INSTRUCTIONS",
     "PROMPT_VERSION",
+    "ApplicationGoneError",
     "AskedQuestion",
     "AssessedApplication",
     "AssessedJob",
@@ -28,10 +35,13 @@ __all__ = [
     "HeldEducation",
     "HeldExperience",
     "HeldSkill",
+    "MatchAssessing",
     "MatchAssessor",
     "MatchRequest",
     "RequiredLanguage",
     "RequiredSkill",
     "SpokenLanguage",
     "as_document",
+    "assessment_row",
+    "match_request",
 ]
