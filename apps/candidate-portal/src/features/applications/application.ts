@@ -3,7 +3,8 @@ import type { ApplicationStatusTone } from '@sync/ui/components/status-mark';
 import { employmentTypeLabel, workModeLabel } from '@/features/jobs/job';
 
 export type Application = components['schemas']['Application'];
-export type ApplicationStatus = components['schemas']['ApplicationStatus'];
+export type ApplicationStage = components['schemas']['ApplicationStage'];
+export type HireClaim = components['schemas']['HireClaim'];
 export type NewApplication = components['schemas']['NewApplication'];
 export type PublicJobQuestion = components['schemas']['PublicJobQuestion'];
 
@@ -12,19 +13,16 @@ interface ApplicationState {
   tone: ApplicationStatusTone;
 }
 
-const APPLICATION_STATE: Record<ApplicationStatus, ApplicationState> = {
-  new: { label: 'Submitted', tone: 'new' },
-  reviewing: { label: 'Reviewing', tone: 'reviewing' },
-  shortlisted: { label: 'Shortlisted', tone: 'shortlisted' },
-  interview: { label: 'Interview', tone: 'interview' },
-  offer: { label: 'Offer', tone: 'offer' },
+const APPLICATION_STATE: Record<ApplicationStage, ApplicationState> = {
+  received: { label: 'Received', tone: 'new' },
+  in_review: { label: 'In review', tone: 'reviewing' },
   hired: { label: 'Hired', tone: 'hired' },
-  rejected: { label: 'Not selected', tone: 'rejected' },
+  not_selected: { label: 'Not selected', tone: 'rejected' },
   withdrawn: { label: 'Withdrawn', tone: 'withdrawn' },
 };
 
-export function applicationState(status: ApplicationStatus): ApplicationState {
-  return APPLICATION_STATE[status];
+export function applicationState(stage: ApplicationStage): ApplicationState {
+  return APPLICATION_STATE[stage];
 }
 
 export function applicationMeta(application: Application): string {
@@ -38,6 +36,8 @@ export function applicationMeta(application: Application): string {
     .join(' · ');
 }
 
-export function canWithdraw(status: ApplicationStatus): boolean {
-  return ['new', 'reviewing', 'shortlisted', 'interview', 'offer'].includes(status);
+export function hireAnswerLine(hire: HireClaim): string | null {
+  if (hire.confirmation === 'confirmed') return 'You confirmed you started this job.';
+  if (hire.confirmation === 'denied') return "You said you didn't start this job.";
+  return null;
 }

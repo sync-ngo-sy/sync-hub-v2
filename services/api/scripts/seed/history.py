@@ -28,6 +28,7 @@ from sync_core import transaction
 from sync_core.models import (
     AccessRequest,
     Application,
+    ApplicationStatus,
     Candidate,
     Cv,
     Job,
@@ -39,11 +40,18 @@ from sync_core.models import (
     TenantTag,
     TrackedJobLink,
 )
+from sync_core.stages import stage_of
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from seed.world import Seeded
+
+#: The Stage projection as a SQL VALUES list, built from the one place it is defined, so this
+#: pass cannot drift from what the platform actually told the Candidate.
+STAGE_VALUES: Final = ", ".join(
+    f"('{status.value}', '{stage_of(status).value}')" for status in ApplicationStatus
+)
 
 #: A message the sender took more than this long ago has been delivered; anything newer is still
 #: in the queue, which is the state a Recruiter who has just pressed send actually sees.
@@ -307,24 +315,34 @@ async def _derived(session: AsyncSession) -> None:
             "  from applications a where a.id = m.application_id"
         )
     )
-    # A Notification was written by the move it announces, so it takes that move's moment.
+    # A Notification was written by the move it announces, so it takes that move's moment. Only
+    # the moves that changed the Stage wrote one, so only those are counted here — the
+    # projection comes from `sync_core.stages` rather than being spelled again in SQL.
     await session.execute(
-        text("""
-            with told as (
-              select n.id,
-                     h.created_at as moved_at,
-                     row_number() over (partition by n.application_id, n.type
-                                        order by n.created_at, n.id) as told_index,
+        text(f"""
+            with stages (status, stage) as (values {STAGE_VALUES}),
+            heard as (
+              select h.application_id, h.created_at,
                      row_number() over (partition by h.application_id
                                         order by h.created_at, h.id) as hop_index
+              from application_status_history h
+              join stages reached on reached.status = h.new_status::text
+              join stages left_behind on left_behind.status = h.previous_status::text
+              where reached.stage <> left_behind.stage
+            ),
+            told as (
+              select n.id, n.application_id,
+                     row_number() over (partition by n.application_id
+                                        order by n.created_at, n.id) as told_index
               from notifications n
-              join application_status_history h on h.application_id = n.application_id
-              where n.type = 'application_status_changed'
+              where n.type = 'application_stage_changed'
             )
             update notifications n
-               set created_at = t.moved_at
-              from told t
-             where t.id = n.id and t.told_index = t.hop_index
+               set created_at = heard.created_at
+              from told
+              join heard on heard.application_id = told.application_id
+                        and heard.hop_index = told.told_index
+             where n.id = told.id
         """)
     )
     # A CV notification is told when the read finished, one way or the other.

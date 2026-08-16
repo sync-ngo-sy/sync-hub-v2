@@ -5,7 +5,7 @@
 create type notification_type as enum (
   'cv_parse_failed',
   'cv_parse_succeeded',
-  'application_status_changed'
+  'application_stage_changed'
 );
 
 create table notifications (
@@ -26,8 +26,8 @@ create table notifications (
 
   constraint notifications_payload_type_matches check (payload ->> 'type' = type::text),
 
-  constraint notifications_status_change_has_an_application check (
-    type::text <> 'application_status_changed' or application_id is not null
+  constraint notifications_stage_change_has_an_application check (
+    type::text <> 'application_stage_changed' or application_id is not null
   )
 );
 

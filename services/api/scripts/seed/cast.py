@@ -1319,6 +1319,12 @@ class SeededApplication:
     via: str | None = None
     #: Where a Recruiter took it after `new`, in order. Every hop writes its own history row.
     moves: Sequence[ApplicationStatus] = ()
+    #: The day the Tenant says the work started, relative to the seed's instant. A `hired` move
+    #: needs one; nothing else may carry one.
+    starts_in_days: int | None = None
+    #: What the Candidate said about the claimed hire. `None` is a claim they have not answered,
+    #: which is a claim rather than a Placement.
+    hire_confirmed: bool | None = None
     #: The Candidate's own move, which ends the process for everybody.
     withdrawn: bool = False
     #: How many advisory AI match assessments have been asked for. Append-only.
@@ -1348,6 +1354,7 @@ APPLICATIONS: Final = (
         via="backend-linkedin",
         answers={A_RIGHT_TO_WORK: True, AN_ON_CALL_ROTA: True, A_START_DATE: "Two weeks' notice."},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER, HIRED],
+        starts_in_days=14,
         assessments=2,
         notes=[
             (
@@ -1553,6 +1560,8 @@ APPLICATIONS: Final = (
         applied_days_ago=52,
         via="coordinator-facebook",
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER, HIRED],
+        starts_in_days=-30,
+        hire_confirmed=True,
         notes=[
             ("lina", "Hired. Started in June and the office has never run better."),
         ],

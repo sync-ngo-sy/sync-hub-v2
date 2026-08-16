@@ -200,7 +200,7 @@ uv run python scripts/seed_demo.py --purge-only
 uv run python scripts/seed_demo.py --no-embed # skip the OpenAI calls Global search needs
 ```
 
-Three Tenants, nine Candidates, ten Jobs, nineteen Applications across every pipeline stage and
+Three Tenants, nine Candidates, ten Jobs, nineteen Applications across every pipeline status and
 every Screening verdict, a month of campaign traffic, and the Tenant records that hang off it all
 — notes, Tags, the Talent pool, Message templates, sent messages, Notifications. It creates the
 Platform admin too, so it replaces section 4 for local work.

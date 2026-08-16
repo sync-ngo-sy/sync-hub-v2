@@ -1,11 +1,10 @@
 import type { components } from '@sync/api-client';
 import { CircleAlert, type LucideIcon, Send, Wand2 } from 'lucide-react';
+import { applicationState } from '@/features/applications/application';
 import type { ProfileSearch } from '@/features/profile/search';
 import type { FileRouteTypes } from '@/routeTree.gen';
 
 export type Notification = components['schemas']['Notification'];
-
-type ApplicationStatus = components['schemas']['ApplicationStatus'];
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 
@@ -17,17 +16,6 @@ export const NOTHING_YET =
 export function isUnread(notification: Notification): boolean {
   return notification.read_at == null;
 }
-
-const STATUS_WORDS: Record<ApplicationStatus, string> = {
-  new: 'New',
-  reviewing: 'Under review',
-  shortlisted: 'Shortlisted',
-  interview: 'Interview',
-  offer: 'Offer',
-  hired: 'Hired',
-  rejected: 'Not selected',
-  withdrawn: 'Withdrawn',
-};
 
 export interface NotificationCopy {
   headline: string;
@@ -54,10 +42,10 @@ export function notificationCopy({ payload }: Notification): NotificationCopy {
         to: '/profile',
         search: { fill: payload.cv_id },
       };
-    case 'application_status_changed':
+    case 'application_stage_changed':
       return {
         headline: `${payload.job_title} at ${payload.tenant_name}`,
-        detail: `Moved from ${STATUS_WORDS[payload.previous_status]} to ${STATUS_WORDS[payload.status]}.`,
+        detail: `Moved from ${applicationState(payload.previous_stage).label} to ${applicationState(payload.stage).label}.`,
         icon: Send,
         to: '/applications',
       };

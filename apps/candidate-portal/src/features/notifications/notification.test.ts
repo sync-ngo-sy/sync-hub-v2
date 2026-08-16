@@ -28,18 +28,18 @@ describe('what a notification says', () => {
     expect(copy.search).toEqual({ fill: READY_CV.id });
   });
 
-  it('names the Job, the employer and the move, and leads to the Application', () => {
+  it('names the Job, the employer and the Stage it reached, and leads to the Application', () => {
     const copy = notificationCopy(MOVED_NOTIFICATION);
 
     expect(copy.headline).toBe('Frontend Developer (Remote) at Levant Digital');
-    expect(copy.detail).toBe('Moved from Under review to Shortlisted.');
+    expect(copy.detail).toBe('Moved from Received to In review.');
     expect(copy.to).toBe('/applications');
   });
 
-  it("tells a status in the reader's words rather than the wire's", () => {
+  it("tells a Stage in the reader's words rather than the wire's", () => {
     const copy = notificationCopy(READ_NOTIFICATION);
 
-    expect(copy.detail).toBe('Moved from Interview to Not selected.');
+    expect(copy.detail).toBe('Moved from In review to Not selected.');
   });
 });
 

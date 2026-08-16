@@ -54,8 +54,17 @@ _Avoid_: My jobs, submissions, dashboard.
 What this portal tells a Candidate about one of their Applications — Received, In review, then the
 outcome. It is the whole vocabulary a Candidate ever sees of a Tenant's pipeline, and a move that
 does not change it is a move they are never told about; whether an Application may still be
-withdrawn is the API's answer, not one read off a Stage.
+withdrawn is the API's answer, not one read off a Stage. It draws through the same Status mark
+every other state on the platform draws through, so five values need no fifth colour.
 _Avoid_: Status, pipeline stage, step.
+
+**Hire claim**:
+A Tenant saying, on one Application, that the Candidate started work on a named day. It sits
+under that Application's row and asks the one question it is there to ask: yes, I started, or
+no, I didn't. The answer is given once, so the row afterwards states what was said rather than
+offering the choice again, and only a yes makes the hire a Placement. Refusing it changes
+nothing about where the Application stands — the Tenant's record of hiring them is the Tenant's.
+_Avoid_: Offer, job offer, placement (that is what a yes makes it).
 
 **Profile progress**:
 How much of a Complete profile the Candidate has and which requirements are still unfinished.

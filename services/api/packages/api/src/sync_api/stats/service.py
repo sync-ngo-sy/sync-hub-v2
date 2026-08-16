@@ -7,9 +7,9 @@ from sqlalchemy import Select, func, literal, select, true, union_all
 from sync_api.stats.payload import (
     ApplicationCounts,
     JobCounts,
+    PipelineStatusCounts,
     QualificationCounts,
     Source,
-    StageCounts,
     TenantStats,
 )
 from sync_api.windows import rolling_since
@@ -64,8 +64,8 @@ class StatsService:
                 last_24h=counted["applications_last_24h"],
                 last_7d=counted["applications_last_7d"],
                 previous_7d=counted["applications_previous_7d"],
-                by_stage=StageCounts(
-                    **{stage.value: counted[_stage(stage)] for stage in ApplicationStatus}
+                by_status=PipelineStatusCounts(
+                    **{status.value: counted[_status(status)] for status in ApplicationStatus}
                 ),
                 by_qualification=QualificationCounts(
                     **{verdict.value: counted[_verdict(verdict)] for verdict in QualificationStatus}
@@ -103,8 +103,8 @@ def _job(status: JobStatus) -> str:
     return f"jobs_{status.value}"
 
 
-def _stage(status: ApplicationStatus) -> str:
-    return f"stage_{status.value}"
+def _status(status: ApplicationStatus) -> str:
+    return f"status_{status.value}"
 
 
 def _verdict(status: QualificationStatus) -> str:
@@ -152,8 +152,8 @@ def _counts(tenant_id: UUID) -> Select[Any]:
             )
             .label("applications_previous_7d"),
             *(
-                func.count().filter(Application.status == stage).label(_stage(stage))
-                for stage in ApplicationStatus
+                func.count().filter(Application.status == status).label(_status(status))
+                for status in ApplicationStatus
             ),
             *(
                 func.count()
