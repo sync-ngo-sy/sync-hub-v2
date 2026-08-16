@@ -3,7 +3,6 @@ import { assessmentProvenance, matchLabel } from './assessment';
 
 const ASSESSMENT = {
   id: '00000000-0000-4000-8000-000000000601',
-  is_current: true,
   match_percentage: 82,
   explanation: 'Answers both languages and most of the required skills.',
   strengths: ['Nine years of logistics'],
@@ -11,6 +10,7 @@ const ASSESSMENT = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v3',
   assessed_at: '2026-08-03T09:00:00Z',
+  first_assessed_at: '2026-08-03T09:00:00Z',
 };
 
 describe('how one match assessment reads', () => {

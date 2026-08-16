@@ -16,8 +16,8 @@ from sync_assessments.assessor import (
 from sync_assessments.pipeline import (
     ApplicationGoneError,
     MatchAssessing,
-    assessment_row,
     match_request,
+    record_the_reading,
 )
 from sync_assessments.prompt import INSTRUCTIONS, PROMPT_VERSION, as_document
 from sync_assessments.schema import AssessedMatch
@@ -42,6 +42,6 @@ __all__ = [
     "RequiredSkill",
     "SpokenLanguage",
     "as_document",
-    "assessment_row",
     "match_request",
+    "record_the_reading",
 ]

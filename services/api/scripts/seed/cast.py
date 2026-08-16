@@ -281,6 +281,7 @@ ABDULQADER: Final = SeededCandidate(
         phone="+963115550134",
         phone_country="SY",
         headline="Backend engineer, 8 years",
+        total_experience_years=8,
         summary=(
             "Builds boring payment systems that stay up. Comfortable owning a service end to "
             "end, from the schema to the on-call rota, and happier deleting code than adding "
@@ -376,6 +377,7 @@ MOWAFAK: Final = SeededCandidate(
         phone="+963215550199",
         phone_country="SY",
         headline="Frontend engineer, 7 years",
+        total_experience_years=7,
         summary=(
             "Rebuilds interfaces that people have given up on. Owns a design system in React "
             "and TypeScript, and cares more about the empty state than the happy path."
@@ -461,6 +463,7 @@ KARIM: Final = SeededCandidate(
         phone="+96341555012",
         phone_country="SY",
         headline="Platform engineer, 8 years",
+        total_experience_years=8,
         summary=(
             "Runs the boring infrastructure other people's services sit on. Terraform for "
             "everything, alerts that mean something, and a pager that mostly stays quiet."
@@ -535,6 +538,7 @@ LAYLA: Final = SeededCandidate(
         phone="+963315550177",
         phone_country="SY",
         headline="Data scientist, 4 years",
+        total_experience_years=4,
         summary=(
             "Turns messy operational data into numbers somebody will act on. Prefers a clear "
             "chart and a written caveat to a model nobody can explain."
@@ -600,6 +604,7 @@ NADIA: Final = SeededCandidate(
         phone="+9611555042",
         phone_country="LB",
         headline="Product designer, 7 years",
+        total_experience_years=7,
         summary=(
             "Designs the parts of a product nobody screenshots: settings, errors, the second "
             "visit. Writes the copy too, because the copy is the design."
@@ -685,6 +690,7 @@ FADI: Final = SeededCandidate(
         phone="+963115550188",
         phone_country="SY",
         headline="Junior full-stack developer",
+        total_experience_years=2,
         summary="A year and a half in, and reading everything. Wants a team that reviews code.",
         location_key="sy-damascus",
         canonical_role_key="fullstack-engineer",
@@ -756,6 +762,7 @@ HIBA: Final = SeededCandidate(
         phone="+963115550163",
         phone_country="SY",
         headline="QA engineer, test automation",
+        total_experience_years=5,
         summary=(
             "Writes the tests that stop a release, and the ones that stop a rollback. Python "
             "and Playwright, mostly."
@@ -820,6 +827,7 @@ ZIAD: Final = SeededCandidate(
         phone="+96343555015",
         phone_country="SY",
         headline="Mobile engineer, 4 years",
+        total_experience_years=4,
         summary="iOS and Android, and the API in between when nobody else will write it.",
         location_key="sy-tartus",
         canonical_role_key="mobile-engineer",
@@ -1327,10 +1335,6 @@ class SeededApplication:
     hire_confirmed: bool | None = None
     #: The Candidate's own move, which ends the process for everybody.
     withdrawn: bool = False
-    #: How many advisory AI match assessments this Application carries. Append-only, and never
-    #: none: the first is the automatic reading every Application gets as it arrives, and any
-    #: beyond it are Recruiters who wanted a second opinion.
-    assessments: int = 1
     #: `(recruiter key, text)`, oldest first.
     notes: Sequence[tuple[str, str]] = ()
     #: Names of the Tenant's application-scoped Tags.
@@ -1357,7 +1361,6 @@ APPLICATIONS: Final = (
         answers={A_RIGHT_TO_WORK: True, AN_ON_CALL_ROTA: True, A_START_DATE: "Two weeks' notice."},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER, HIRED],
         starts_in_days=14,
-        assessments=2,
         notes=[
             (
                 "lama",
@@ -1381,7 +1384,6 @@ APPLICATIONS: Final = (
         via="backend-linkedin",
         answers={A_RIGHT_TO_WORK: True, AN_ON_CALL_ROTA: True, A_START_DATE: "A month."},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW],
-        assessments=1,
         notes=[
             (
                 "kamal",
@@ -1442,7 +1444,6 @@ APPLICATIONS: Final = (
         via="frontend-linkedin",
         answers={A_DESIGN_SYSTEM: True, A_PORTFOLIO: "https://github.com/SuperMo0"},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER],
-        assessments=1,
         notes=[
             ("kamal", "Design system work is real - saw the Storybook. Strong on accessibility."),
             ("lina", "Panel liked him. Offer out, waiting to hear."),
@@ -1498,7 +1499,6 @@ APPLICATIONS: Final = (
         via="devops-so",
         answers={AN_ON_CALL_ROTA: True},
         moves=[REVIEWING, SHORTLISTED],
-        assessments=1,
         notes=[
             ("lama", "Same person as the backend shortlist. Decide which role we want him in."),
         ],
@@ -1590,7 +1590,6 @@ APPLICATIONS: Final = (
         moves=[
             REVIEWING,
         ],
-        assessments=1,
         notes=[
             (
                 "syriatel_admin",

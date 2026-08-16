@@ -151,11 +151,11 @@ class ApplicationPage(BaseModel):
 
 
 class MatchScore(BaseModel):
-    """The Current assessment, as a list row carries it: the number, and enough of the reading
+    """The Application's reading, as a list row carries it: the number, and enough of the words
     behind it that the number is never shown on its own.
 
-    The whole reading — its strengths, its gaps, every earlier one — is on the Application
-    review. This is what a row can hold under a pointer or a focus ring.
+    The whole reading — its strengths and its gaps — is on the Application review. This is what
+    a row can hold under a pointer or a focus ring.
     """
 
     model_config = ConfigDict(protected_namespaces=())
@@ -189,9 +189,9 @@ class ApplicationSummary(BaseModel):
     qualification_status: QualificationStatus = Field(description="The Screening verdict.")
     match: MatchScore | None = Field(
         default=None,
-        description="The Current assessment. Null while no model has read this Application — "
-        "the reading is enqueued as it arrives, so this fills in shortly after, and stays null "
-        "if every attempt failed.",
+        description="The AI's reading of this Application. Null while no model has managed one "
+        "— the reading is enqueued as the Application arrives, so this fills in shortly after, "
+        "and stays null only if every attempt failed.",
     )
     applied_at: datetime
     updated_at: datetime
@@ -445,10 +445,11 @@ class ApplicationReview(BaseModel):
 
 
 class MatchAssessment(BaseModel):
-    """One AI reading of how well an Application answers its Job.
+    """The AI's reading of how well an Application answers its Job.
 
     Advice a Recruiter weighs, and nothing more: it is drawn from the Snapshot and the Job's
-    criteria, it never touches the Screening verdict, and running it again appends another.
+    criteria, and it never touches the Screening verdict. One per Application — asking again
+    replaces it, and nothing removes it.
     """
 
     # Pydantic reserves the `model_` prefix for its own members; `model_name` is what the
@@ -456,12 +457,6 @@ class MatchAssessment(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     id: UUID
-    is_current: bool = Field(
-        default=False,
-        description="Whether this is the Current assessment — the reading the Application's "
-        "Match score comes from, and the one a Job's list sorts by. Exactly one reading is, "
-        "until the last is thrown away.",
-    )
     match_percentage: float = Field(
         description="How much of what the Job asks for this Application evidences, 0 to 100. "
         "Not a probability, and not a verdict."
@@ -475,15 +470,10 @@ class MatchAssessment(BaseModel):
     )
     model_name: str = Field(description="The model that wrote it.")
     prompt_version: str = Field(description="The prompt it was written under.")
-    assessed_at: datetime
-
-
-class MatchAssessmentPage(BaseModel):
-    """One page of an Application's assessments, newest first."""
-
-    items: list[MatchAssessment]
-    next_cursor: str | None = Field(
-        default=None, description="Send back as `cursor` for the following page."
+    assessed_at: datetime = Field(description="When it was last read.")
+    first_assessed_at: datetime = Field(
+        description="When the Application was first read. The same as `assessed_at` until a "
+        "Recruiter asks for a better reading."
     )
 
 

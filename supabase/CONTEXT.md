@@ -353,17 +353,19 @@ _Avoid_: Scoring, Ranking, Matching.
 
 **AI match assessment**:
 A model's reading of one Application: a percentage and an explanation, from the same Snapshot and
-Job criteria Screening measured. Written for every Application as it arrives, and again whenever a
-Recruiter asks for another. The automatic one is enqueued by the Application's own arrival, in the
-transaction that created it, and run by the worker rather than inline: a Candidate does not wait on
-a model, and a provider that is down cannot refuse an Application. Advisory, and append-only — each
-run adds one more, stamped with the model and prompt version that wrote it, and none of them
-touches the Screening verdict. The **Current assessment**
-(`applications.current_match_assessment_id`) is the one of them a pipeline sorts and filters by;
-every reading behind it stays exactly as its own model wrote it. Its percentage is kept beside the
-pointer in `applications.current_match_score`, because an order can only be indexed on a column of
-the table it orders and a Job's list sorts hundreds of rows by it; triggers move the two together,
-so no writer can point one at one reading and the other at another. Both are null until the first
-reading lands, and a Recruiter throwing the Current assessment away falls back to the newest
-reading left — or to no reading at all, which is what an Application nobody has read looks like.
-_Avoid_: AI screening, Ranking, Verdict (that word is Screening's).
+Job criteria Screening measured. Written for every Application as it arrives, and written again
+whenever a Recruiter doubts it. The automatic one is enqueued by the Application's own arrival, in
+the transaction that created it, and run by the worker rather than inline: a Candidate does not
+wait on a model, and a provider that is down cannot refuse an Application. Advisory — none of it
+touches the Screening verdict.
+An Application carries **one** reading, which a unique constraint holds it to: asking again
+replaces it where it stands rather than writing a second beside it, and nothing removes one. A
+Recruiter who distrusts a number gets a better number, never an empty column. The reading keeps
+the model and the prompt version that wrote *it* — overwritten with the rest, because they
+describe what is there now rather than what used to be. Its percentage is carried onto
+`applications.current_match_score`, because an order can only be indexed on a column of the table
+it orders and a Job's list sorts hundreds of rows by it; a trigger moves it, so no writer can
+leave the two disagreeing. Null until the Application has been read at all, which is either a few
+seconds after it arrived or a provider that stayed down.
+_Avoid_: AI screening, Ranking, Verdict (that word is Screening's), History (there is one reading,
+not a list).

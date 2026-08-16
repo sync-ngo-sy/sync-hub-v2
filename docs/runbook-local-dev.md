@@ -200,6 +200,13 @@ uv run python scripts/seed_demo.py --purge-only
 uv run python scripts/seed_demo.py --no-embed # skip the OpenAI calls Global search needs
 ```
 
+It spends money. Every Application is read by the real assessment model, once each — nineteen
+calls on `SYNC_OPENAI_ASSESSMENT_MODEL`, plus the embedding calls `--no-embed` turns off. The
+Match scores are what makes a seeded Job worth sorting, and a stand-in's arithmetic would not
+behave the way the deployed reading does. With no `SYNC_OPENAI_API_KEY` set the seed still runs
+and says so: the scores then come from a deterministic stand-in and the rows read
+`seed-assessor` rather than a model's name.
+
 Three Tenants, nine Candidates, ten Jobs, nineteen Applications across every pipeline status and
 every Screening verdict, a month of campaign traffic, and the Tenant records that hang off it all
 — notes, Tags, the Talent pool, Message templates, sent messages, Notifications. It creates the

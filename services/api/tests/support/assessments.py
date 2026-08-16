@@ -13,40 +13,32 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-def assessments_url(application_id: str | UUID) -> str:
-    return f"{TENANT_APPLICATIONS}/{application_id}/assessments"
+def assessment_url(application_id: str | UUID) -> str:
+    return f"{TENANT_APPLICATIONS}/{application_id}/assessment"
 
 
 async def assess(recruiter: AsyncClient, application_id: str | UUID) -> Response:
-    return await recruiter.post(assessments_url(application_id))
+    return await recruiter.post(assessment_url(application_id))
 
 
 async def an_assessment(recruiter: AsyncClient, application_id: str | UUID) -> dict[str, Any]:
     response = await assess(recruiter, application_id)
-    assert response.status_code == 201, response.text
+    assert response.status_code == 200, response.text
     assessment: dict[str, Any] = response.json()
     return assessment
 
 
-async def list_assessments(
-    recruiter: AsyncClient, application_id: str | UUID, **params: Any
-) -> Response:
-    return await recruiter.get(assessments_url(application_id), params=params)
+async def read_assessment(recruiter: AsyncClient, application_id: str | UUID) -> Response:
+    return await recruiter.get(assessment_url(application_id))
 
 
-async def assessments_of(
-    recruiter: AsyncClient, application_id: str | UUID, **params: Any
-) -> list[dict[str, Any]]:
-    response = await list_assessments(recruiter, application_id, **params)
+async def the_assessment_of(
+    recruiter: AsyncClient, application_id: str | UUID
+) -> dict[str, Any] | None:
+    response = await read_assessment(recruiter, application_id)
     assert response.status_code == 200, response.text
-    items: list[dict[str, Any]] = response.json()["items"]
-    return items
-
-
-async def forget_assessment(
-    recruiter: AsyncClient, application_id: str | UUID, assessment_id: str | UUID
-) -> Response:
-    return await recruiter.delete(f"{assessments_url(application_id)}/{assessment_id}")
+    read: dict[str, Any] | None = response.json()
+    return read
 
 
 async def stored_assessments(
@@ -73,16 +65,10 @@ async def assessment_job(session: AsyncSession, application_id: str | UUID) -> M
     return job
 
 
-async def current_assessment_of(
-    session: AsyncSession, application_id: str | UUID
-) -> tuple[UUID | None, float | None]:
-    """What the Application points at, and the Match score beside the pointer."""
+async def match_score_of(session: AsyncSession, application_id: str | UUID) -> float | None:
+    """The number a Job's list sorts this Application by."""
     session.expire_all()
-    row = (
-        await session.execute(
-            select(Application.current_match_assessment_id, Application.current_match_score).where(
-                Application.id == UUID(str(application_id))
-            )
-        )
-    ).one()
-    return row[0], None if row[1] is None else float(row[1])
+    score = await session.scalar(
+        select(Application.current_match_score).where(Application.id == UUID(str(application_id)))
+    )
+    return None if score is None else float(score)

@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 
 from sync_assessments.assessor import (
     AskedQuestion,
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.sql.dml import ReturningInsert
 
     from sync_assessments.assessor import MatchAssessor
     from sync_assessments.schema import AssessedMatch
@@ -86,10 +88,11 @@ class MatchAssessing:
     async def store(
         self, session: AsyncSession, application_id: UUID, assessed: AssessedMatch
     ) -> None:
-        """One more reading. The Application's pointer to its Current assessment follows in the
+        """The Application's reading, replacing whatever it had. The Match score follows in the
         database, so nothing here has to remember to move it."""
-        session.add(assessment_row(application_id, assessed, model_name=self._assessor.model))
-        await session.flush()
+        await session.execute(
+            record_the_reading(application_id, assessed, model_name=self._assessor.model)
+        )
         logger.info(
             "assessments.recorded",
             application_id=str(application_id),
@@ -99,18 +102,34 @@ class MatchAssessing:
         )
 
 
-def assessment_row(
+def record_the_reading(
     application_id: UUID, assessed: AssessedMatch, *, model_name: str
-) -> ApplicationAiMatchAssessment:
-    """A reading as it is kept: stamped with the model and the prompt version that wrote it, so
-    it still reads as its own the day both have moved on."""
-    return ApplicationAiMatchAssessment(
-        application_id=application_id,
-        match_percentage=_stored_percentage(assessed.match_percentage),
-        explanation=assessed.explanation,
-        assessment_details={"strengths": assessed.strengths, "gaps": assessed.gaps},
-        model_name=model_name,
-        prompt_version=PROMPT_VERSION,
+) -> ReturningInsert[tuple[ApplicationAiMatchAssessment]]:
+    """The Application's one reading, written or replaced in a single statement.
+
+    An Application carries one reading, and asking again is asking for a better one rather than
+    for a second: the row is overwritten where it stands. Which makes the upsert the whole
+    concurrency story too — the worker's automatic reading and a Recruiter's own request can
+    race, and the loser updates the winner's row instead of failing on the unique constraint.
+
+    The model and the prompt version are overwritten with it, because they describe the reading
+    that is there now. A number written under today's instructions must never be left wearing
+    the stamp of the ones it replaced.
+    """
+    written = {
+        "match_percentage": _stored_percentage(assessed.match_percentage),
+        "explanation": assessed.explanation,
+        "assessment_details": {"strengths": assessed.strengths, "gaps": assessed.gaps},
+        "model_name": model_name,
+        "prompt_version": PROMPT_VERSION,
+    }
+    return (
+        insert(ApplicationAiMatchAssessment)
+        .values(application_id=application_id, **written)
+        .on_conflict_do_update(
+            index_elements=[ApplicationAiMatchAssessment.application_id], set_=written
+        )
+        .returning(ApplicationAiMatchAssessment)
     )
 
 
@@ -179,6 +198,7 @@ async def _applied(session: AsyncSession, application_id: UUID) -> AssessedAppli
         headline=snapshot.headline,
         summary=snapshot.summary,
         location=snapshot.location,
+        total_experience_years=snapshot.total_experience_years,
         experiences=await _experiences(session, application_id),
         educations=await _educations(session, application_id),
         skills=await _skills(session, application_id),

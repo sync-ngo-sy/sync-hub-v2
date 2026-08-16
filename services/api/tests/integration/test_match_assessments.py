@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 import pytest
 from asgi_lifespan import LifespanManager
@@ -21,10 +20,10 @@ from tests.support.applications import (
 from tests.support.assessments import (
     an_assessment,
     assess,
-    assessments_of,
-    forget_assessment,
-    list_assessments,
+    assessment_url,
+    read_assessment,
     stored_assessments,
+    the_assessment_of,
 )
 from tests.support.assessors import MODEL, FakeAssessor
 from tests.support.harness import SPA_HEADERS, asgi_client
@@ -224,119 +223,54 @@ async def test_it_reads_the_frozen_snapshot_and_never_the_live_profile(
     assert assessment["match_percentage"] == HALF_THE_REQUIRED_SKILLS
 
 
-async def test_running_it_again_appends_and_the_history_is_newest_first(
+async def test_running_it_again_replaces_the_reading_rather_than_adding_one(
     recruiter: AsyncClient,
     applicant: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """An Application carries one reading, and asking again is asking for a better one."""
     application = await an_application_to(recruiter, applicant, mailbox, db_session)
 
     first = await an_assessment(recruiter, application["id"])
-    second = await an_assessment(recruiter, application["id"])
+    again = await an_assessment(recruiter, application["id"])
 
-    listed = await assessments_of(recruiter, application["id"])
-    assert [item["id"] for item in listed] == [second["id"], first["id"]]
-    assert first["id"] != second["id"]
-    assert len(await stored_assessments(db_session, application["id"])) == 2
-
-
-async def test_the_history_pages_newest_first(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    first = await an_assessment(recruiter, application["id"])
-    second = await an_assessment(recruiter, application["id"])
-
-    page = await list_assessments(recruiter, application["id"], limit=1)
-    assert page.status_code == 200, page.text
-    newest = page.json()
-    following = await assessments_of(
-        recruiter, application["id"], limit=1, cursor=newest["next_cursor"]
-    )
-
-    assert [item["id"] for item in newest["items"]] == [second["id"]]
-    assert [item["id"] for item in following] == [first["id"]]
-
-
-async def test_throwing_one_reading_away_leaves_the_others_as_their_models_wrote_them(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    kept = await an_assessment(recruiter, application["id"])
-    thrown_away = await an_assessment(recruiter, application["id"])
-
-    forgotten = await forget_assessment(recruiter, application["id"], thrown_away["id"])
-
-    assert forgotten.status_code == 204, forgotten.text
-    [survivor] = await assessments_of(recruiter, application["id"])
-    assert survivor["id"] == kept["id"]
-    assert (survivor["model_name"], survivor["prompt_version"]) == (MODEL, PROMPT_VERSION)
-    [stored] = await stored_assessments(db_session, application["id"])
-    assert str(stored.id) == kept["id"]
-
-
-async def test_a_reading_already_gone_is_the_same_404_as_one_never_written(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    assessment = await an_assessment(recruiter, application["id"])
-
-    first = await forget_assessment(recruiter, application["id"], assessment["id"])
-    again = await forget_assessment(recruiter, application["id"], assessment["id"])
-    invented = await forget_assessment(recruiter, application["id"], uuid4())
-
-    assert first.status_code == 204, first.text
-    assert again.status_code == 404, again.text
-    assert again.json()["type"] == "urn:sync:problem:assessment-not-found"
-    assert invented.status_code == 404, invented.text
-    assert await stored_assessments(db_session, application["id"]) == []
-
-
-async def test_a_reading_cannot_be_thrown_away_through_another_application(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    another = await an_application_to(recruiter, applicant, mailbox, db_session)
-    assessment = await an_assessment(recruiter, application["id"])
-
-    refused = await forget_assessment(recruiter, another["id"], assessment["id"])
-
-    assert refused.status_code == 404, refused.text
-    assert refused.json()["type"] == "urn:sync:problem:assessment-not-found"
+    assert again["id"] == first["id"], "replaced in place rather than written beside"
+    assert (again["model_name"], again["prompt_version"]) == (MODEL, PROMPT_VERSION)
     assert len(await stored_assessments(db_session, application["id"])) == 1
+    read = await the_assessment_of(recruiter, application["id"])
+    assert read is not None
+    assert read["id"] == first["id"]
 
 
-async def test_neither_another_tenant_nor_the_candidate_can_throw_a_reading_away(
+async def test_a_replaced_reading_says_when_it_was_first_read_and_when_it_was_last(
     recruiter: AsyncClient,
     applicant: AsyncClient,
-    assessing: FastAPI,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
     application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    first = await an_assessment(recruiter, application["id"])
+
+    again = await an_assessment(recruiter, application["id"])
+
+    assert again["first_assessed_at"] == first["first_assessed_at"]
+    assert again["assessed_at"] > first["assessed_at"]
+
+
+async def test_a_reading_cannot_be_thrown_away(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """There is no way to leave an Application with no reading: the endpoint is gone."""
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
     assessment = await an_assessment(recruiter, application["id"])
 
-    async with asgi_client(assessing, headers=SPA_HEADERS) as rival:
-        await an_admin(rival, mailbox, "rival")
-        by_a_rival = await forget_assessment(rival, application["id"], assessment["id"])
-    by_the_candidate = await forget_assessment(applicant, application["id"], assessment["id"])
+    refused = await recruiter.delete(f"{assessment_url(application['id'])}/{assessment['id']}")
 
-    assert by_a_rival.status_code == 404, by_a_rival.text
-    assert by_a_rival.json()["type"] == "urn:sync:problem:application-not-found"
-    assert by_the_candidate.status_code == 403, by_the_candidate.text
+    assert refused.status_code in (404, 405), refused.text
     assert len(await stored_assessments(db_session, application["id"])) == 1
 
 
@@ -358,7 +292,7 @@ async def test_no_number_of_assessments_touches_the_screening_verdict(
     assert len(await qualification_history_of(db_session, application["id"])) == 1
 
 
-async def test_another_tenants_recruiter_can_neither_assess_it_nor_read_its_history(
+async def test_another_tenants_recruiter_can_neither_assess_it_nor_read_it(
     recruiter: AsyncClient,
     applicant: AsyncClient,
     assessing: FastAPI,
@@ -370,7 +304,7 @@ async def test_another_tenants_recruiter_can_neither_assess_it_nor_read_its_hist
     async with asgi_client(assessing, headers=SPA_HEADERS) as rival:
         await an_admin(rival, mailbox, "rival")
         refused = await assess(rival, application["id"])
-        unreadable = await list_assessments(rival, application["id"])
+        unreadable = await read_assessment(rival, application["id"])
 
     assert refused.status_code == 404, refused.text
     assert refused.json()["type"] == "urn:sync:problem:application-not-found"
@@ -408,15 +342,15 @@ async def test_a_model_that_fails_leaves_no_assessment_behind(
         application = await an_application_to(recruiter, applicant, mailbox, db_session)
 
         refused = await assess(recruiter, application["id"])
-        history = await assessments_of(recruiter, application["id"])
+        read = await the_assessment_of(recruiter, application["id"])
 
     assert refused.status_code == 502, refused.text
     assert refused.json()["type"] == "urn:sync:problem:assessment-failed"
-    assert history == []
+    assert read is None
     assert await stored_assessments(db_session, application["id"]) == []
 
 
-async def test_a_deployment_without_a_model_refuses_to_assess_but_still_reads_the_history(
+async def test_a_deployment_without_a_model_refuses_to_assess_but_still_reads_what_is_there(
     settings: Settings,
     recruiter: AsyncClient,
     applicant: AsyncClient,
@@ -434,11 +368,11 @@ async def test_a_deployment_without_a_model_refuses_to_assess_but_still_reads_th
         await an_admin(reader, mailbox, "unconfigured")
         theirs = await an_application_to(reader, applicant, mailbox, db_session)
         refused = await assess(reader, theirs["id"])
-        history = await assessments_of(reader, theirs["id"])
+        read = await the_assessment_of(reader, theirs["id"])
 
     assert refused.status_code == 503, refused.text
     assert refused.json()["type"] == "urn:sync:problem:assessment-unavailable"
-    assert history == []
+    assert read is None
 
 
 async def test_assessing_is_rate_limited(
@@ -460,11 +394,11 @@ async def test_assessing_is_rate_limited(
 
         first = await assess(recruiter, application["id"])
         second = await assess(recruiter, application["id"])
-        history = await list_assessments(recruiter, application["id"])
+        readable = await read_assessment(recruiter, application["id"])
 
-    assert first.status_code == 201, first.text
+    assert first.status_code == 200, first.text
     assert second.status_code == 429, second.text
     assert second.json()["type"] == "urn:sync:problem:rate-limited"
     assert int(second.headers["Retry-After"]) >= 1
-    assert history.status_code == 200, history.text
+    assert readable.status_code == 200, readable.text
     assert assessor.call_count == 1

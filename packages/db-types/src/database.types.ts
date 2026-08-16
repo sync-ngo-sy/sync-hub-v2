@@ -79,6 +79,7 @@ export type Database = {
           match_percentage: number;
           model_name: string;
           prompt_version: string;
+          updated_at: string;
         };
         Insert: {
           application_id: string;
@@ -89,6 +90,7 @@ export type Database = {
           match_percentage: number;
           model_name: string;
           prompt_version: string;
+          updated_at?: string;
         };
         Update: {
           application_id?: string;
@@ -99,12 +101,13 @@ export type Database = {
           match_percentage?: number;
           model_name?: string;
           prompt_version?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'application_ai_match_assessments_application_id_fkey';
             columns: ['application_id'];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: 'applications';
             referencedColumns: ['id'];
           },
@@ -567,7 +570,6 @@ export type Database = {
         Row: {
           applied_at: string;
           candidate_id: string;
-          current_match_assessment_id: string | null;
           current_match_score: number | null;
           cv_id: string;
           id: string;
@@ -582,7 +584,6 @@ export type Database = {
         Insert: {
           applied_at?: string;
           candidate_id: string;
-          current_match_assessment_id?: string | null;
           current_match_score?: number | null;
           cv_id: string;
           id?: string;
@@ -597,7 +598,6 @@ export type Database = {
         Update: {
           applied_at?: string;
           candidate_id?: string;
-          current_match_assessment_id?: string | null;
           current_match_score?: number | null;
           cv_id?: string;
           id?: string;
@@ -637,13 +637,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'candidates';
             referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'applications_current_match_assessment_fk';
-            columns: ['id', 'current_match_assessment_id'];
-            isOneToOne: false;
-            referencedRelation: 'application_ai_match_assessments';
-            referencedColumns: ['application_id', 'id'];
           },
           {
             foreignKeyName: 'applications_tenant_id_job_id_fkey';

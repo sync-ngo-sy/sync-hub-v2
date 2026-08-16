@@ -14,17 +14,12 @@ create table applications (
   qualification_status qualification_status not null default 'pending',
   qualification_reason text,
 
-  -- The Current assessment: which of the Application's readings a list sorts and shows, and the
-  -- percentage that reading gave, kept beside the pointer rather than only behind it. The
-  -- percentage is what a Job's list orders hundreds of rows by, and an order can only be indexed
-  -- on a column of the table it orders. Neither is written by hand: the triggers in migration 07
-  -- move both together whenever a reading lands or is thrown away, so no writer can point one at
-  -- a reading and the other at a different one. Both null until the first reading arrives.
-  --
-  -- The FK is composite, so the Current assessment is always one of *this* Application's
-  -- readings. Its `references` clause is added below, once the assessments table exists.
-  current_match_assessment_id uuid,
-  current_match_score         numeric(5,2)
+  -- The Match score: the percentage the Application's reading gave, kept here as well as on the
+  -- reading itself. A Job's list orders hundreds of rows by it, and an order can only be indexed
+  -- on a column of the table it orders. Never written by hand -- the trigger in migration 07
+  -- moves it whenever the reading lands or changes -- and null until the Application has been
+  -- read at all.
+  current_match_score numeric(5,2)
     constraint applications_current_match_score_range check (current_match_score between 0 and 100),
 
   applied_at timestamptz not null default now(),
@@ -40,13 +35,6 @@ create table applications (
 
   constraint applications_disqualification_has_a_reason check (
     qualification_status <> 'disqualified' or qualification_reason is not null
-  ),
-
-  -- Both halves of the Current assessment or neither: a percentage with nothing to explain it
-  -- is a number a Recruiter cannot check, and a pointer with no percentage is a list that
-  -- cannot sort.
-  constraint applications_current_match_is_whole check (
-    num_nonnulls(current_match_assessment_id, current_match_score) <> 1
   )
 );
 create index applications_job_status_idx       on applications (job_id, status);
@@ -273,10 +261,17 @@ create table application_qualification_history (
 create index application_qualification_history_app_created_idx
   on application_qualification_history (application_id, created_at);
 
+-- One reading per Application, and the schema holds it to that rather than the backend: asking
+-- for another replaces the one there. A Recruiter who distrusts a reading asks again; nobody
+-- deletes one, so an Application that has been read never stops carrying a Match score.
+--
+-- `model_name` and `prompt_version` stay on the row. The reading being the only one does not
+-- make its provenance less interesting: it is what says whether the number in front of a
+-- Recruiter was written by today's model under today's instructions.
 create table application_ai_match_assessments (
   id uuid primary key default gen_random_uuid(),
 
-  application_id  uuid not null references applications (id) on delete cascade,
+  application_id  uuid not null unique references applications (id) on delete cascade,
   match_percentage numeric(5,2) not null
     constraint aima_percentage_range check (match_percentage between 0 and 100),
   explanation        text,
@@ -285,18 +280,8 @@ create table application_ai_match_assessments (
   model_name     text not null,
   prompt_version text not null,
   created_at     timestamptz not null default now(),
-
-  -- What `applications.current_match_assessment_id` points at, so a Current assessment can only
-  -- ever be a reading of the Application pointing at it.
-  unique (application_id, id)
+  updated_at     timestamptz not null default now()
 );
-create index application_ai_match_assessments_app_created_idx
-  on application_ai_match_assessments (application_id, created_at);
-
-alter table applications
-  add constraint applications_current_match_assessment_fk
-  foreign key (id, current_match_assessment_id)
-  references application_ai_match_assessments (application_id, id);
 
 -- What a Job's triage list sorts hundreds of rows by. `coalesce` rather than `nulls last`
 -- because the same expression has to serve both directions from one index, and an Application

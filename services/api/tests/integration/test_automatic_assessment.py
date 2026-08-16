@@ -35,10 +35,10 @@ from tests.support.applications import (
 from tests.support.assessments import (
     an_assessment,
     assessment_job,
-    assessments_of,
-    current_assessment_of,
-    forget_assessment,
+    assessment_url,
+    match_score_of,
     stored_assessments,
+    the_assessment_of,
 )
 from tests.support.assessors import MODEL, FakeAssessor
 from tests.support.harness import SPA_HEADERS, asgi_client
@@ -153,7 +153,7 @@ async def test_applying_enqueues_the_reading_without_running_it(
     assert await stored_assessments(db_session, application["id"]) == []
 
 
-async def test_the_worker_reads_it_and_the_application_points_at_the_reading(
+async def test_the_worker_reads_it_and_the_application_carries_the_score(
     recruiter: AsyncClient,
     applicant: AsyncClient,
     mailbox: Mailbox,
@@ -171,10 +171,7 @@ async def test_the_worker_reads_it_and_the_application_points_at_the_reading(
     assert (await assessment_job(db_session, application["id"])).status is (
         AssessmentStatus.COMPLETED
     )
-    assert await current_assessment_of(db_session, application["id"]) == (
-        written.id,
-        HALF_THE_REQUIRED_SKILLS,
-    )
+    assert await match_score_of(db_session, application["id"]) == HALF_THE_REQUIRED_SKILLS
 
 
 async def test_the_reading_is_taken_from_the_snapshot_and_the_jobs_criteria(
@@ -220,7 +217,7 @@ async def test_a_reading_leaves_the_screening_verdict_exactly_as_it_found_it(
     assert len(await qualification_history_of(db_session, application["id"])) == decided
 
 
-async def test_asking_again_appends_and_moves_the_pointer_to_the_new_reading(
+async def test_asking_again_replaces_the_reading_rather_than_adding_one(
     recruiter: AsyncClient,
     applicant: AsyncClient,
     mailbox: Mailbox,
@@ -228,78 +225,60 @@ async def test_asking_again_appends_and_moves_the_pointer_to_the_new_reading(
     database: Database,
     assessor: FakeAssessor,
 ) -> None:
+    """An Application carries one reading. A Recruiter who distrusts it gets a better one, not
+    a longer list to read through."""
     application = await an_application_to(recruiter, applicant, mailbox, db_session)
     await an_assessment_worker(database, assessor).run_once()
     [automatic] = await stored_assessments(db_session, application["id"])
 
     asked = await an_assessment(recruiter, application["id"])
 
-    kept = await stored_assessments(db_session, application["id"])
-    assert [row.id for row in kept] == [automatic.id, asked["id"]]
-    assert await current_assessment_of(db_session, application["id"]) == (
-        asked["id"],
-        asked["match_percentage"],
-    )
-
-
-async def test_the_history_says_which_reading_the_score_comes_from(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
-) -> None:
-    """A Recruiter reading three readings can tell which one the Job's list sorted by."""
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    await an_assessment_worker(database, assessor).run_once()
-    asked = await an_assessment(recruiter, application["id"])
-
-    listed = await assessments_of(recruiter, application["id"])
-
-    assert [row["is_current"] for row in listed] == [True, False], "newest first"
-    assert listed[0]["id"] == asked["id"]
-    assert asked["is_current"] is True
-
-
-async def test_throwing_the_current_reading_away_falls_back_to_the_one_before_it(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    await an_assessment_worker(database, assessor).run_once()
-    [automatic] = await stored_assessments(db_session, application["id"])
-    asked = await an_assessment(recruiter, application["id"])
-
-    gone = await forget_assessment(recruiter, application["id"], asked["id"])
-
-    assert gone.status_code == 204, gone.text
-    assert await current_assessment_of(db_session, application["id"]) == (
-        automatic.id,
-        float(automatic.match_percentage),
-    )
-
-
-async def test_throwing_the_only_reading_away_leaves_the_application_unassessed(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
-) -> None:
-    application = await an_application_to(recruiter, applicant, mailbox, db_session)
-    await an_assessment_worker(database, assessor).run_once()
     [only] = await stored_assessments(db_session, application["id"])
+    assert only.id == automatic.id, "replaced in place rather than written beside"
+    assert asked["id"] == str(automatic.id)
+    assert await match_score_of(db_session, application["id"]) == asked["match_percentage"]
+    assert only.updated_at > only.created_at, "the reading says when it was last read"
 
-    gone = await forget_assessment(recruiter, application["id"], only.id)
 
-    assert gone.status_code == 204, gone.text
-    assert await current_assessment_of(db_session, application["id"]) == (None, None)
+async def test_the_reading_is_readable_back_on_its_own(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    assessor: FakeAssessor,
+) -> None:
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    assert await the_assessment_of(recruiter, application["id"]) is None
+
+    await an_assessment_worker(database, assessor).run_once()
+
+    read = await the_assessment_of(recruiter, application["id"])
+    assert read is not None
+    assert read["match_percentage"] == HALF_THE_REQUIRED_SKILLS
+    assert read["model_name"] == MODEL
+    assert read["assessed_at"] == read["first_assessed_at"], "read once, so far"
+
+
+async def test_nothing_takes_a_reading_away_once_an_application_has_one(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    assessor: FakeAssessor,
+) -> None:
+    """A Recruiter who distrusts a number asks for a better one. There is no way to be left
+    with an empty column, which is what keeps a Job's list sortable all the way down."""
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    await an_assessment_worker(database, assessor).run_once()
+    [written] = await stored_assessments(db_session, application["id"])
+
+    refused = await recruiter.delete(f"{assessment_url(application['id'])}/{written.id}")
+
+    assert refused.status_code in (404, 405), refused.text
+    assert len(await stored_assessments(db_session, application["id"])) == 1
+    assert await match_score_of(db_session, application["id"]) is not None
 
 
 async def test_a_provider_that_is_down_keeps_the_row_and_writes_no_reading(
@@ -318,7 +297,7 @@ async def test_a_provider_that_is_down_keeps_the_row_and_writes_no_reading(
     assert queued.status is AssessmentStatus.PENDING
     assert queued.attempts == 1
     assert await stored_assessments(db_session, application["id"]) == []
-    assert await current_assessment_of(db_session, application["id"]) == (None, None)
+    assert await match_score_of(db_session, application["id"]) is None
 
 
 async def test_a_provider_that_stays_down_gives_up_and_the_application_shows_no_score(
@@ -339,7 +318,7 @@ async def test_a_provider_that_stays_down_gives_up_and_the_application_shows_no_
     queued = await assessment_job(db_session, application["id"])
     assert queued.status is AssessmentStatus.FAILED
     assert await worker.run_once() is False, "a settled job must not be claimable again"
-    assert await current_assessment_of(db_session, application["id"]) == (None, None)
+    assert await match_score_of(db_session, application["id"]) is None
 
 
 async def test_deleting_the_application_takes_its_queued_reading_with_it(

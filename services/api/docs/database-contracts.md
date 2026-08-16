@@ -440,29 +440,33 @@ Withdrawal permanence is the schema's rather than the backend's: `UNIQUE(candida
 does not care what state the row is in, so re-applying meets the same 409 carrying the existing
 `application_id` that any duplicate does.
 
-## AI match assessments (advisory, append-only)
+## AI match assessments (advisory, one per Application)
 
-Every Application is read as it arrives, and a Recruiter may ask for another reading at any time.
-Both write exactly one row, from the same document:
+Every Application is read as it arrives, and a Recruiter may ask for a better reading at any
+time. Both write the Application's **one** row, from the same document:
 ```
 insert application_ai_match_assessments(application_id, match_percentage, explanation,
-       assessment_details, model_name, prompt_version);
+       assessment_details, model_name, prompt_version)
+on conflict (application_id) do update set ...;
 ```
+`UNIQUE (application_id)` is what makes one reading the schema's rule rather than the backend's,
+and the upsert is the whole concurrency story with it: the worker's automatic reading and a
+Recruiter's own request can race, and the loser updates the winner's row instead of failing. The
+model and the prompt version are overwritten with the number, because they describe the reading
+that is there now. There is no DELETE — an Application that has been read never stops carrying a
+Match score.
+
 The automatic one is enqueued by the arrival itself — `assess_on_arrival` opens a
 `match_assessment_jobs` row in the transaction that created the Application — and the worker
 drains it like any other queue below. The Recruiter's own request still runs synchronously, so
 the reading it returns is the one it just made. `sync_assessments.match_request` builds the
-document for both, which is what keeps the two readings the same reading.
+document for both, which is what keeps the two readings comparable.
 
-`applications.current_match_assessment_id` points at the Current assessment, with its percentage
-beside it in `current_match_score` — denormalized because a Job's list sorts hundreds of rows by
-it and an order can only be indexed on a column of the table it orders
-(`applications_job_match_score_idx` on `(job_id, coalesce(current_match_score, -1) desc, id
-desc)`, read forwards for the best first and backwards for the worst). Neither column is written
-by hand: `point_at_the_current_assessment` moves both when a reading lands, and
-`repoint_the_current_assessment` falls back to the newest reading left when the current one is
-deleted — which is also what lets that delete happen at all, since the pointer is a composite FK
-into `(application_id, id)`. A CHECK holds them to both-or-neither.
+The percentage is carried onto `applications.current_match_score` — denormalized because a Job's
+list sorts hundreds of rows by it and an order can only be indexed on a column of the table it
+orders (`applications_job_match_score_idx` on `(job_id, coalesce(current_match_score, -1) desc,
+id desc)`, read forwards for the best first and backwards for the worst). Never written by hand:
+`carry_the_match_score` moves it whenever the reading lands or changes.
 Its input on the Candidate's side is the immutable `application_*` snapshot — what they froze
 when they applied, never their live `candidate_*` rows. On the Job's side it is the criteria
 Screening measured (`job_skills`, `job_languages`, `jobs.minimum_total_experience_years`) plus
@@ -473,8 +477,15 @@ stand: the criteria lock freezes the bar once an Application arrives, and delibe
 prose.
 Nothing else is written: `applications.qualification_status`, `qualification_reason` and
 `application_qualification_history` are Screening's, and no number of assessments is a word in
-them. Running it again appends; the history reads newest first (`created_at desc, id desc`,
-keyset-paged) and nothing ever overwrites an earlier row.
+them. Asking again overwrites the reading and nothing else: `created_at` says when the
+Application was first read and `updated_at` when it was last read, and neither the verdict nor
+its history moves.
+
+About half of what the model is asked to weigh is the Job's criteria; the rest is how strong the
+application reads in itself. That split is deliberate — Screening has already ruled on the
+criteria, so a reading that only restated them would tell a Recruiter nothing they do not have.
+The Snapshot's `total_experience_years` is sent to the model rather than left to be counted off
+the entries, for the same reason Screening does no arithmetic over dates.
 
 `match_percentage` is `numeric(5,2)` under a 0–100 CHECK, and the model's number is clamped
 into that range at the port's edge — the strict-schema subset a provider accepts carries no
@@ -574,8 +585,8 @@ section produces no chunk, so a profile with nothing in it produces nothing to f
 ### Match assessment (`match_assessment_jobs` → `sync_assessments`/`sync_worker`)
 - One row per Application, opened by `assess_on_arrival` in the transaction that created it, so
   every Application has a reading on the way before it is visible to anybody. `UNIQUE
-  (application_id)` is what keeps that to one automatic reading; a Recruiter asking for another
-  goes through the API instead and never touches this table.
+  (application_id)` is what keeps that to one automatic reading; a Recruiter asking for a better
+  one goes through the API instead and never touches this table.
 - The generic engine drives it: the same four states, the same claim, the same backoff and sweep.
   A provider that is down is an ordinary retry. `ApplicationGoneError` — the Application or its
   Snapshot is no longer there — is the one `PermanentFailureError`, since retrying an absence

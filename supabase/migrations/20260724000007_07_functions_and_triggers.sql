@@ -21,6 +21,10 @@ create trigger set_updated_at before update on applications
   for each row execute function extensions.moddatetime(updated_at);
 create trigger set_updated_at before update on notes
   for each row execute function extensions.moddatetime(updated_at);
+-- `created_at` is when the Application was first read, `updated_at` when it was last read
+-- again. A Recruiter looking at a number wants the second one.
+create trigger set_updated_at before update on application_ai_match_assessments
+  for each row execute function extensions.moddatetime(updated_at);
 
 create function enqueue_candidate_reembed() returns trigger
 language plpgsql
@@ -97,60 +101,45 @@ $$;
 create trigger assess_on_arrival after insert on applications
   for each row execute function enqueue_match_assessment();
 
--- The Current assessment follows the readings rather than being aimed by whoever wrote one: the
--- worker's automatic reading and a Recruiter asking for another both land as an ordinary insert,
--- and both repoint the Application here. History stays append-only either way -- this moves a
--- pointer, and never a word of what an earlier model said.
-create function point_at_the_current_assessment() returns trigger
+-- The Match score follows the reading rather than being written beside it: the worker's
+-- automatic reading and a Recruiter asking for another both land as one upsert, and both move
+-- the number a Job's list sorts by. Nothing has to remember to keep the two in step, because
+-- nothing is trusted to.
+create function carry_the_match_score() returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
   update public.applications
-     set current_match_assessment_id = new.id,
-         current_match_score         = new.match_percentage
+     set current_match_score = new.match_percentage
    where id = new.application_id;
   return null;  -- AFTER trigger
 end;
 $$;
 
-create trigger point_at_the_current_assessment
-  after insert on application_ai_match_assessments
-  for each row execute function point_at_the_current_assessment();
+create trigger carry_the_match_score
+  after insert or update of match_percentage on application_ai_match_assessments
+  for each row execute function carry_the_match_score();
 
--- Append-only means no reading is ever rewritten: each keeps the model and the prompt version
--- that wrote it for as long as it is kept. Discarding one whole is a separate power a Recruiter
--- has always had, and the pointer above is what would have taken it away — the composite FK
--- refuses to let go of the reading it names. So the pointer steps back to the newest reading
--- left, and to no reading at all when that was the last one.
-create function repoint_the_current_assessment() returns trigger
+-- A reading is never deleted on its own -- there is no way to ask for that, and asking again
+-- replaces it in place. This is for the one deletion that does happen: the Application itself
+-- going, which takes its reading with it. Cheap, and it keeps the column honest for anything
+-- that ever reads it mid-cascade.
+create function drop_the_match_score() returns trigger
 language plpgsql
 set search_path = ''
 as $$
-declare
-  remaining public.application_ai_match_assessments%rowtype;
 begin
-  select * into remaining
-    from public.application_ai_match_assessments
-   where application_id = old.application_id and id <> old.id
-   order by created_at desc, id desc
-   limit 1;
-
-  -- No row found leaves every field of `remaining` null, which is exactly the answer when the
-  -- reading being deleted was the only one. The `current_match_assessment_id` test is what keeps
-  -- this to the deletion that actually moves the pointer.
   update public.applications
-     set current_match_assessment_id = remaining.id,
-         current_match_score         = remaining.match_percentage
-   where id = old.application_id
-     and current_match_assessment_id = old.id;
+     set current_match_score = null
+   where id = old.application_id;
   return old;
 end;
 $$;
 
-create trigger repoint_the_current_assessment
+create trigger drop_the_match_score
   before delete on application_ai_match_assessments
-  for each row execute function repoint_the_current_assessment();
+  for each row execute function drop_the_match_score();
 
 -- A candidate's current CV is the one they apply and are found with, so a deleted CV is never
 -- it. Both directions are refused: deleting the CV that is current, and making a CV that is

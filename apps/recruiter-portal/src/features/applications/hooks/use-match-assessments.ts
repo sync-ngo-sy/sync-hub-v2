@@ -1,27 +1,17 @@
 import { api } from '@/lib/api';
 
-export const ASSESSMENTS_PAGE_SIZE = 5;
-
-const PATH = '/v1/tenants/me/applications/{application_id}/assessments';
+const PATH = '/v1/tenants/me/applications/{application_id}/assessment';
 
 function init(applicationId: string) {
-  return {
-    params: {
-      path: { application_id: applicationId },
-      query: { limit: ASSESSMENTS_PAGE_SIZE },
-    },
-  };
+  return { params: { path: { application_id: applicationId } } };
 }
 
-export function matchAssessmentsQueryKey(applicationId: string) {
+export function matchAssessmentQueryKey(applicationId: string) {
   return api.queryOptions('get', PATH, init(applicationId)).queryKey;
 }
 
-export function useMatchAssessments(applicationId: string) {
-  return api.useInfiniteQuery('get', PATH, init(applicationId), {
-    initialPageParam: null,
-    getNextPageParam: (page) => page.next_cursor,
-    select: (data) => data.pages.flatMap((page) => page.items),
+export function useMatchAssessment(applicationId: string) {
+  return api.useQuery('get', PATH, init(applicationId), {
     throwOnError: (_error, query) => query.state.data === undefined,
   });
 }

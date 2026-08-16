@@ -267,7 +267,6 @@ export const AMAL_REVIEW: ApplicationReview = {
 
 export const LATEST_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000601',
-  is_current: true,
   match_percentage: 82,
   explanation: 'Answers both languages and most of the required skills.',
   strengths: ['Nine years of field logistics', 'Native Arabic and advanced English'],
@@ -275,11 +274,11 @@ export const LATEST_ASSESSMENT: MatchAssessment = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v3',
   assessed_at: '2026-08-03T09:00:00Z',
+  first_assessed_at: '2026-08-03T09:00:00Z',
 };
 
 export const EARLIER_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000602',
-  is_current: false,
   match_percentage: 54,
   explanation: 'Reads as a warehouse profile rather than a coordination one.',
   strengths: ['Warehouse operations'],
@@ -287,11 +286,11 @@ export const EARLIER_ASSESSMENT: MatchAssessment = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v2',
   assessed_at: '2026-07-28T09:00:00Z',
+  first_assessed_at: '2026-07-20T09:00:00Z',
 };
 
 export const BARE_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000603',
-  is_current: false,
   match_percentage: 40,
   explanation: null,
   strengths: [],
@@ -299,6 +298,7 @@ export const BARE_ASSESSMENT: MatchAssessment = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v3',
   assessed_at: '2026-07-20T09:00:00Z',
+  first_assessed_at: '2026-07-20T09:00:00Z',
 };
 
 export const TOO_MANY_ASSESSMENTS: components['schemas']['ProblemDetail'] = {

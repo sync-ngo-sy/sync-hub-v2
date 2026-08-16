@@ -1595,20 +1595,8 @@ class Application(Base):
             name="applications_current_match_score_range",
         ),
         CheckConstraint(
-            "num_nonnulls(current_match_assessment_id, current_match_score) <> 1",
-            name="applications_current_match_is_whole",
-        ),
-        CheckConstraint(
             "qualification_status <> 'disqualified'::qualification_status OR qualification_reason IS NOT NULL",
             name="applications_disqualification_has_a_reason",
-        ),
-        ForeignKeyConstraint(
-            ["id", "current_match_assessment_id"],
-            [
-                "public.application_ai_match_assessments.application_id",
-                "public.application_ai_match_assessments.id",
-            ],
-            name="applications_current_match_assessment_fk",
         ),
         ForeignKeyConstraint(
             ["candidate_id", "cv_id"],
@@ -1687,7 +1675,6 @@ class Application(Base):
     )
     tracked_link_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     qualification_reason: Mapped[str | None] = mapped_column(Text)
-    current_match_assessment_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     current_match_score: Mapped[decimal.Decimal | None] = mapped_column(Numeric(5, 2))
 
     cv: Mapped["Cv"] = relationship("Cv", viewonly=True)
@@ -1775,9 +1762,8 @@ class ApplicationAiMatchAssessment(Base):
         ),
         PrimaryKeyConstraint("id", name="application_ai_match_assessments_pkey"),
         UniqueConstraint(
-            "application_id", "id", name="application_ai_match_assessments_application_id_id_key"
+            "application_id", name="application_ai_match_assessments_application_id_key"
         ),
-        Index("application_ai_match_assessments_app_created_idx", "application_id", "created_at"),
         {"schema": "public"},
     )
 
@@ -1791,12 +1777,13 @@ class ApplicationAiMatchAssessment(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
     explanation: Mapped[str | None] = mapped_column(Text)
     assessment_details: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
-    application: Mapped["Application"] = relationship(
-        "Application", viewonly=True, foreign_keys=[application_id]
-    )
+    application: Mapped["Application"] = relationship("Application", viewonly=True)
 
 
 class ApplicationAnswer(Base):

@@ -1,22 +1,19 @@
 import { SkeletonText } from '@sync/ui/components/skeletons';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { cn } from '@sync/ui/lib/utils';
-import { CircleAlert, Sparkles, Trash2 } from 'lucide-react';
+import { CircleAlert, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { ReviewCard } from '@/features/shell/components/review-card';
 import { problemDetail } from '@/lib/api-problem';
 import { absoluteDateTime } from '@/lib/dates';
 import { assessmentProvenance, type MatchAssessment, matchLabel } from '../assessment';
-import { useAssessMatch, useForgetAssessment } from '../hooks/use-application-actions';
-import { useMatchAssessments } from '../hooks/use-match-assessments';
+import { useAssessMatch } from '../hooks/use-application-actions';
+import { useMatchAssessment } from '../hooks/use-match-assessments';
 
-const LEAVING =
-  'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-8 motion-safe:duration-300 motion-safe:fill-mode-forwards';
+const NOT_READ_YET =
+  'No AI has read this Application against the Job yet. One is usually read within a minute of it arriving.';
 
-/** Which of the readings the Job's list is sorting this Application by. Said in words rather
- * than marked, because the page already carries a Screening verdict. */
-const THE_SORTED_ONE = 'Used for the Match score';
+const NO_REASONS = 'The model gave no reasons for this reading.';
 
 function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
   return (
@@ -31,91 +28,44 @@ function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
   );
 }
 
-interface AssessmentProps {
-  assessment: MatchAssessment;
-  isLeaving: boolean;
-  isBusy: boolean;
-  refusal: string | null;
-  onForget: () => void;
-  onGone: () => void;
-}
-
-function Assessment({ assessment, isLeaving, isBusy, refusal, onForget, onGone }: AssessmentProps) {
+function Reading({ assessment }: { assessment: MatchAssessment }) {
   const label = matchLabel(assessment.match_percentage);
-  const stamp = absoluteDateTime(assessment.assessed_at);
   const strengths = assessment.strengths ?? [];
   const gaps = assessment.gaps ?? [];
   const wordless = !assessment.explanation && strengths.length === 0 && gaps.length === 0;
+  const reread = assessment.assessed_at !== assessment.first_assessed_at;
 
   return (
-    <li
-      aria-label={label}
-      onAnimationEnd={isLeaving ? onGone : undefined}
-      className={cn(
-        'space-y-2 border-border border-t pt-4 first:border-t-0 first:pt-0',
-        isLeaving && LEAVING,
-      )}
-    >
+    <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <h3 className="font-medium text-dense text-foreground">{label}</h3>
-        <span className="flex items-baseline gap-2">
-          {assessment.is_current ? (
-            <span className="text-meta text-muted-foreground">{THE_SORTED_ONE}</span>
-          ) : null}
-          <time dateTime={assessment.assessed_at} className="text-meta text-muted-foreground">
-            {stamp}
-          </time>
-          <Button
-            variant="destructive-outline"
-            size="sm"
-            aria-label={`Delete the reading from ${stamp}`}
-            disabled={isBusy}
-            onClick={onForget}
-          >
-            <Trash2 aria-hidden="true" />
-          </Button>
-        </span>
+        <time dateTime={assessment.assessed_at} className="text-meta text-muted-foreground">
+          {reread ? 'Read again ' : ''}
+          {absoluteDateTime(assessment.assessed_at)}
+        </time>
       </div>
 
       {assessment.explanation ? (
         <p className="text-dense text-muted-foreground">{assessment.explanation}</p>
       ) : null}
-      {wordless ? (
-        <p className="text-dense text-muted-foreground">
-          The model gave no reasons for this reading.
-        </p>
-      ) : null}
+      {wordless ? <p className="text-dense text-muted-foreground">{NO_REASONS}</p> : null}
 
       {strengths.length > 0 ? <Reasons title="Strengths" phrases={strengths} /> : null}
       {gaps.length > 0 ? <Reasons title="Gaps" phrases={gaps} /> : null}
 
       <p className="text-meta text-muted-foreground">{assessmentProvenance(assessment)}</p>
-
-      {refusal ? (
-        <Alert>
-          <CircleAlert aria-hidden="true" />
-          <AlertTitle>This reading is still here</AlertTitle>
-          <AlertDescription>{refusal}</AlertDescription>
-        </Alert>
-      ) : null}
-    </li>
+    </div>
   );
 }
 
 export function MatchAssessments({ applicationId }: { applicationId: string }) {
-  const assessments = useMatchAssessments(applicationId);
+  const assessment = useMatchAssessment(applicationId);
   const asking = useAssessMatch(applicationId);
-  const forgetting = useForgetAssessment(applicationId);
   const [refused, setRefused] = useState<string | null>(null);
-  const [leaving, setLeaving] = useState<string | null>(null);
-  const [refusedDeletion, setRefusedDeletion] = useState<{ id: string; detail: string } | null>(
-    null,
-  );
-  const [gone, setGone] = useState<string[]>([]);
 
-  const items = (assessments.data ?? []).filter((assessment) => !gone.includes(assessment.id));
-  const failure = assessments.isError
-    ? problemDetail(assessments.error, "The older assessments couldn't be read.")
+  const reading = assessment.data ?? null;
+  const failure = assessment.isError
+    ? problemDetail(assessment.error, "The reading couldn't be read.")
     : refused;
 
   async function ask() {
@@ -124,27 +74,8 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
       await asking.mutateAsync({ params: { path: { application_id: applicationId } } });
     } catch (error) {
       setRefused(
-        problemDetail(error, "This Application couldn't be assessed. Nothing was recorded."),
+        problemDetail(error, "This Application couldn't be read again. Nothing was changed."),
       );
-    }
-  }
-
-  async function forget(assessmentId: string) {
-    if (leaving) return;
-    setLeaving(assessmentId);
-    setRefusedDeletion(null);
-    try {
-      await forgetting.mutateAsync({
-        params: { path: { application_id: applicationId, assessment_id: assessmentId } },
-      });
-    } catch (error) {
-      setGone((ids) => ids.filter((id) => id !== assessmentId));
-      setRefusedDeletion({
-        id: assessmentId,
-        detail: problemDetail(error, "That reading couldn't be deleted. It is still on record."),
-      });
-    } finally {
-      setLeaving(null);
     }
   }
 
@@ -158,12 +89,17 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
           onClick={() => void ask()}
         >
           <Sparkles aria-hidden="true" />
-          {asking.isPending ? 'Reading the Application…' : 'Ask for an assessment'}
+          {asking.isPending
+            ? 'Reading the Application…'
+            : reading
+              ? 'Ask for a new reading'
+              : 'Ask for a reading'}
         </Button>
 
         {asking.isPending ? (
           <p role="status" className="text-meta text-muted-foreground">
-            The model is reading the Snapshot against the Job. This takes a moment.
+            The model is reading the Snapshot against the Job. This takes a moment, and replaces the
+            reading below when it lands.
           </p>
         ) : null}
 
@@ -171,46 +107,19 @@ export function MatchAssessments({ applicationId }: { applicationId: string }) {
           <Alert>
             <CircleAlert aria-hidden="true" />
             <AlertTitle>
-              {assessments.isError ? 'Not everything loaded' : 'No assessment was made'}
+              {assessment.isError ? 'Not everything loaded' : 'The reading is unchanged'}
             </AlertTitle>
             <AlertDescription>{failure}</AlertDescription>
           </Alert>
         ) : null}
 
-        {assessments.isPending ? <SkeletonText lines={3} /> : null}
+        {assessment.isPending ? <SkeletonText lines={3} /> : null}
 
-        {assessments.isSuccess && items.length === 0 && !asking.isPending ? (
-          <p className="text-dense text-muted-foreground">
-            No AI has read this Application against the Job yet.
-          </p>
+        {assessment.isSuccess && !reading && !asking.isPending ? (
+          <p className="text-dense text-muted-foreground">{NOT_READ_YET}</p>
         ) : null}
 
-        {items.length > 0 ? (
-          <ol aria-label="Match assessments" className="space-y-4">
-            {items.map((assessment) => (
-              <Assessment
-                key={assessment.id}
-                assessment={assessment}
-                isLeaving={leaving === assessment.id}
-                isBusy={leaving !== null}
-                refusal={refusedDeletion?.id === assessment.id ? refusedDeletion.detail : null}
-                onForget={() => void forget(assessment.id)}
-                onGone={() => setGone((ids) => [...ids, assessment.id])}
-              />
-            ))}
-          </ol>
-        ) : null}
-
-        {assessments.hasNextPage ? (
-          <Button
-            variant="link"
-            size="sm"
-            disabled={assessments.isFetchingNextPage}
-            onClick={() => void assessments.fetchNextPage()}
-          >
-            Show older assessments
-          </Button>
-        ) : null}
+        {reading ? <Reading assessment={reading} /> : null}
       </div>
     </ReviewCard>
   );

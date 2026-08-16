@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sync_core.models import ApplicationStatus, CvParsingStatus
 from sync_core.stages import stage_of
 from tests.support.applications import a_whole_application
-from tests.support.assessments import current_assessment_of
+from tests.support.assessments import match_score_of
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_created_job
 from tests.support.profiles import give_a_current_cv, my_id
@@ -442,77 +442,66 @@ async def test_the_seeds_sql_projection_agrees_with_the_one_the_platform_uses(
 A_READING = text(
     "insert into application_ai_match_assessments "
     "(application_id, match_percentage, explanation, model_name, prompt_version) "
-    "values (:id, :percentage, :explanation, 'a-model', 'v-test') returning id"
+    "values (:id, :percentage, :explanation, 'a-model', 'v-test') "
+    "on conflict (application_id) do update set "
+    "match_percentage = excluded.match_percentage, explanation = excluded.explanation "
+    "returning id"
 )
 
 
-async def test_a_reading_repoints_the_application_whoever_wrote_it(
+async def test_a_reading_carries_its_score_onto_the_application_whoever_wrote_it(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The pointer is the database's job, not the backend's — the worker and a Recruiter's own
-    request both land as an ordinary insert, and neither has to remember to aim it."""
+    """The Match score a Job's list sorts by is the database's job, not the backend's — the
+    worker and a Recruiter's own request both land as one upsert, and neither has to remember."""
     application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
-    reading = await db_session.scalar(
+    await db_session.execute(
         A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
     )
-    later = await db_session.scalar(
-        A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A second read."}
-    )
 
-    assert await current_assessment_of(db_session, application["id"]) == (later, 72.00)
-    assert reading != later, "asking again appends rather than replacing"
+    assert await match_score_of(db_session, application["id"]) == 61.50
     await db_session.rollback()
 
 
-async def test_throwing_the_current_reading_away_falls_back_to_the_one_before_it(
+async def test_reading_an_application_again_replaces_the_reading_it_had(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
+    """One reading per Application, held by the schema rather than by the backend."""
     application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
     first = await db_session.scalar(
         A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
     )
-    second = await db_session.scalar(
-        A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A second read."}
+
+    again = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A better read."}
     )
 
-    await db_session.execute(
-        text("delete from application_ai_match_assessments where id = :id"), {"id": second}
+    assert again == first, "replaced in place rather than written beside"
+    assert await match_score_of(db_session, application["id"]) == 72.00
+    kept = await db_session.execute(
+        text("select count(*) from application_ai_match_assessments where application_id = :id"),
+        {"id": application["id"]},
     )
-
-    assert await current_assessment_of(db_session, application["id"]) == (first, 61.50)
+    assert kept.scalar_one() == 1
     await db_session.rollback()
 
 
-async def test_an_application_cannot_point_at_another_applications_reading(
+async def test_a_second_reading_cannot_be_written_beside_the_first(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
-    """The Current assessment is composite-keyed, so "current" can only mean one of its own."""
     application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
-    somebody_elses = await db_session.scalar(
-        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "Not yours."}
+    await db_session.execute(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
     )
-    other = await a_whole_application(recruiter, other_browser, mailbox, db_session)
 
-    with pytest.raises(IntegrityError, match="applications_current_match_assessment_fk"):
+    with pytest.raises(IntegrityError, match="application_ai_match_assessments_application_id"):
         await db_session.execute(
             text(
-                "update applications set current_match_assessment_id = :reading, "
-                "current_match_score = 61.5 where id = :id"
+                "insert into application_ai_match_assessments "
+                "(application_id, match_percentage, model_name, prompt_version) "
+                "values (:id, 40, 'a-model', 'v-test')"
             ),
-            {"reading": somebody_elses, "id": other["id"]},
-        )
-    await db_session.rollback()
-
-
-async def test_a_match_score_cannot_stand_without_the_reading_that_explains_it(
-    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
-) -> None:
-    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
-
-    with pytest.raises(IntegrityError, match="applications_current_match_is_whole"):
-        await db_session.execute(
-            text("update applications set current_match_score = 90 where id = :id"),
             {"id": application["id"]},
         )
     await db_session.rollback()

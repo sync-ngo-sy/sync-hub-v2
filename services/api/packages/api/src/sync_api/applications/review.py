@@ -360,17 +360,15 @@ def _with_what_a_summary_shows[Selected: tuple[Any, ...]](
 ) -> Select[Selected]:
     """The Snapshot a row is named from, and the reading its score comes from.
 
-    The assessment is joined through the Application's own pointer rather than by looking for
-    the newest — the pointer is what "current" means, and following it is a primary-key lookup
-    rather than a per-row search through the history. Outer, because an Application the worker
-    has not reached yet is a row like any other, with nothing under its score.
+    Outer, because an Application the worker has not reached yet is a row like any other, with
+    nothing under its score.
     """
     return query.join(
         ApplicationProfileSnapshot,
         ApplicationProfileSnapshot.application_id == Application.id,
     ).outerjoin(
         ApplicationAiMatchAssessment,
-        ApplicationAiMatchAssessment.id == Application.current_match_assessment_id,
+        ApplicationAiMatchAssessment.application_id == Application.id,
     )
 
 
@@ -401,5 +399,5 @@ def _match_score(assessment: ApplicationAiMatchAssessment | None) -> MatchScore 
         percentage=float(assessment.match_percentage),
         explanation=assessment.explanation,
         model_name=assessment.model_name,
-        assessed_at=assessment.created_at,
+        assessed_at=assessment.updated_at,
     )
