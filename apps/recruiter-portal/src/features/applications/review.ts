@@ -4,7 +4,7 @@ import { PIPELINE_LADDER, type PipelineStatus, pipelineState } from './applicati
 export type ApplicationReview = components['schemas']['ApplicationReview'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
 export type StatusHistoryEntry = components['schemas']['StatusHistoryEntry'];
-export type ClaimedHire = components['schemas']['ClaimedHire'];
+export type HireClaim = components['schemas']['HireClaim'];
 type StatusChangeSource = components['schemas']['StatusChangeSource'];
 
 export type MoveDirection = 'onward' | 'back' | 'rejection';
@@ -12,75 +12,75 @@ export type MoveDirection = 'onward' | 'back' | 'rejection';
 export interface PipelineMove {
   target: PipelineStatus;
   label: string;
-  success: string;
+  happened: string;
   direction: MoveDirection;
 }
 
 const TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move to Reviewing',
-  success: 'Moved to Reviewing',
+  happened: 'Moved to Reviewing',
   direction: 'onward',
 };
 const TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move to Shortlisted',
-  success: 'Shortlisted',
+  happened: 'Shortlisted',
   direction: 'onward',
 };
 const TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move to Interview',
-  success: 'Moved to Interview',
+  happened: 'Moved to Interview',
   direction: 'onward',
 };
 const TO_OFFER: PipelineMove = {
   target: 'offer',
   label: 'Move to Offer',
-  success: 'Moved to Offer',
+  happened: 'Moved to Offer',
   direction: 'onward',
 };
 const TO_HIRED: PipelineMove = {
   target: 'hired',
   label: 'Mark as hired',
-  success: 'Marked as hired',
+  happened: 'Marked as hired',
   direction: 'onward',
 };
 const TO_REJECTED: PipelineMove = {
   target: 'rejected',
   label: 'Reject',
-  success: 'Rejected',
+  happened: 'Rejected',
   direction: 'rejection',
 };
 
 const BACK_TO_NEW: PipelineMove = {
   target: 'new',
   label: 'Move back to New',
-  success: 'Moved back to New',
+  happened: 'Moved back to New',
   direction: 'back',
 };
 const BACK_TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move back to Reviewing',
-  success: 'Moved back to Reviewing',
+  happened: 'Moved back to Reviewing',
   direction: 'back',
 };
 const BACK_TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move back to Shortlisted',
-  success: 'Moved back to Shortlisted',
+  happened: 'Moved back to Shortlisted',
   direction: 'back',
 };
 const BACK_TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move back to Interview',
-  success: 'Moved back to Interview',
+  happened: 'Moved back to Interview',
   direction: 'back',
 };
 const REOPEN: PipelineMove = {
   target: 'reviewing',
   label: 'Reopen for review',
-  success: 'Reopened for review',
+  happened: 'Reopened for review',
   direction: 'back',
 };
 
@@ -143,20 +143,17 @@ const UNCHANGED = 'the candidate sees no change.';
 const EMAILED = 'the candidate has been emailed.';
 
 export function moveOutcome(move: PipelineMove, candidateNotified: boolean): string {
-  // A Candidate reads a Stage rather than these statuses, so a move inside the undecided
-  // middle changes nothing they can see. Saying so is the difference between a quiet platform
-  // and one that looks broken.
-  if (move.direction === 'rejection') return `${move.success} — ${EMAILED}`;
-  return `${move.success} — ${candidateNotified ? TOLD : UNCHANGED}`;
+  if (move.direction === 'rejection') return `${move.happened} — ${EMAILED}`;
+  return `${move.happened} — ${candidateNotified ? TOLD : UNCHANGED}`;
 }
 
-const HIRE_STATE: Record<ClaimedHire['confirmation'], string> = {
+const HIRE_STATE: Record<HireClaim['confirmation'], string> = {
   unanswered: 'Waiting for the candidate to confirm. Until they do, this is a claim.',
   confirmed: 'The candidate confirmed this. It is a placement.',
   denied: 'The candidate says they did not start. This is not a placement.',
 };
 
-export function hireState(hire: ClaimedHire): string {
+export function hireState(hire: HireClaim): string {
   return HIRE_STATE[hire.confirmation];
 }
 

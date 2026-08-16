@@ -91,7 +91,7 @@ class AppliedJob(BaseModel):
     work_mode: WorkMode | None = None
 
 
-class ClaimedHire(BaseModel):
+class HireClaim(BaseModel):
     """A Tenant's claim to have hired somebody, and what the Candidate said about it.
 
     Only a `confirmed` one is a Placement. A claim they have not answered is still only a
@@ -132,7 +132,7 @@ class Application(BaseModel):
         description="Whether leaving is still possible. False once the Application has an "
         "outcome, and once it has been withdrawn."
     )
-    hire: ClaimedHire | None = Field(
+    hire: HireClaim | None = Field(
         default=None,
         description="The hire this Tenant claims, when it claims one. An `unanswered` claim is "
         "the Candidate's to confirm or deny.",
@@ -402,7 +402,7 @@ class ApplicationReview(BaseModel):
     snapshot: ApplicationSnapshot
     answers: list[AnsweredQuestion]
     history: list[StatusHistoryEntry] = Field(description="Every move it has made, oldest first.")
-    hire: ClaimedHire | None = Field(
+    hire: HireClaim | None = Field(
         default=None,
         description="The hire this Tenant claimed, and whether the Candidate has confirmed it. "
         "A claim they have not answered is not a Placement.",

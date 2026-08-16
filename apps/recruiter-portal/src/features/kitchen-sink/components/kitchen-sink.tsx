@@ -39,7 +39,7 @@ interface DemoApplication {
   candidate: string;
   job: string;
   screening: { tone: StatusTone; label: string };
-  stage: { tone: StatusTone; label: string };
+  status: { tone: StatusTone; label: string };
 }
 
 const APPLICATIONS: DemoApplication[] = [
@@ -48,28 +48,28 @@ const APPLICATIONS: DemoApplication[] = [
     candidate: 'Lina Khoury',
     job: 'Field Coordinator, Aleppo',
     screening: { tone: 'active', label: 'Qualified' },
-    stage: { tone: 'interview', label: 'Interview' },
+    status: { tone: 'interview', label: 'Interview' },
   },
   {
     id: 'a2',
     candidate: 'Yara Salloum',
     job: 'Logistics Assistant',
     screening: { tone: 'ended', label: 'Disqualified' },
-    stage: { tone: 'rejected', label: 'Rejected' },
+    status: { tone: 'rejected', label: 'Rejected' },
   },
   {
     id: 'a3',
     candidate: 'Omar Haddad',
     job: 'MEAL Officer, Idlib',
     screening: { tone: 'attention', label: 'Review required' },
-    stage: { tone: 'new', label: 'New' },
+    status: { tone: 'new', label: 'New' },
   },
   {
     id: 'a4',
     candidate: 'Rana Deeb',
     job: 'Programme Manager',
     screening: { tone: 'active', label: 'Qualified' },
-    stage: { tone: 'hired', label: 'Hired' },
+    status: { tone: 'hired', label: 'Hired' },
   },
 ];
 
@@ -106,9 +106,9 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
     cell: ({ row }) => <StatusMark {...row.original.screening} />,
   },
   {
-    id: 'stage',
+    id: 'status',
     header: 'Status',
-    cell: ({ row }) => <StatusMark {...row.original.stage} />,
+    cell: ({ row }) => <StatusMark {...row.original.status} />,
   },
 ];
 

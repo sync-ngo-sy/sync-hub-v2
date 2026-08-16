@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 #: The Stage projection as a SQL VALUES list, built from the one place it is defined, so this
 #: pass cannot drift from what the platform actually told the Candidate.
-_STAGE_VALUES: Final = ", ".join(
+STAGE_VALUES: Final = ", ".join(
     f"('{status.value}', '{stage_of(status).value}')" for status in ApplicationStatus
 )
 
@@ -320,7 +320,7 @@ async def _derived(session: AsyncSession) -> None:
     # projection comes from `sync_core.stages` rather than being spelled again in SQL.
     await session.execute(
         text(f"""
-            with stages (status, stage) as (values {_STAGE_VALUES}),
+            with stages (status, stage) as (values {STAGE_VALUES}),
             heard as (
               select h.application_id, h.created_at,
                      row_number() over (partition by h.application_id

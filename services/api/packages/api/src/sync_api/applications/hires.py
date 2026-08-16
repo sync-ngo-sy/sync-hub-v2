@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from sync_api.applications.payload import ClaimedHire
+from sync_api.applications.payload import HireClaim
 from sync_api.problems import (
     HIRE_CLAIM_ALREADY_ANSWERED_PROBLEM_TYPE,
     HIRE_CLAIM_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
-from sync_core.models import HireClaim, HireConfirmation
+from sync_core.models import HireClaim as HireClaimRow
+from sync_core.models import HireConfirmation
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -29,10 +30,10 @@ async def claim_the_hire(
     recruiter_id: UUID,
     status_history_id: UUID,
     start_date: date,
-) -> HireClaim:
+) -> HireClaimRow:
     """Record what the Tenant says happened. Nothing here makes it a Placement — the Candidate
     does that, or does not."""
-    claim = HireClaim(
+    claim = HireClaimRow(
         application_id=application_id,
         tenant_id=tenant_id,
         claimed_by_recruiter_id=recruiter_id,
@@ -46,14 +47,14 @@ async def claim_the_hire(
 
 async def answer_the_claim(
     session: AsyncSession, application_id: UUID, *, confirmed: bool
-) -> ClaimedHire:
+) -> HireClaim:
     """The Candidate's yes or no, which they give once.
 
     The row is taken for update first: two answers decided at once would otherwise both read an
     unanswered claim, and the second would rewrite the first's.
     """
     claim = await session.scalar(
-        select(HireClaim).where(HireClaim.application_id == application_id).with_for_update()
+        select(HireClaimRow).where(HireClaimRow.application_id == application_id).with_for_update()
     )
     if claim is None:
         raise Problem(
@@ -74,25 +75,25 @@ async def answer_the_claim(
     return as_payload(claim)
 
 
-async def claimed_hire(session: AsyncSession, application_id: UUID) -> ClaimedHire | None:
-    claim = await session.get(HireClaim, application_id)
+async def claimed_hire(session: AsyncSession, application_id: UUID) -> HireClaim | None:
+    claim = await session.get(HireClaimRow, application_id)
     return None if claim is None else as_payload(claim)
 
 
 async def claimed_hires(
     session: AsyncSession, application_ids: Sequence[UUID]
-) -> Mapping[UUID, ClaimedHire]:
+) -> Mapping[UUID, HireClaim]:
     """Every claim on a page of Applications, in one read rather than one per row."""
     if not application_ids:
         return {}
     claims = await session.scalars(
-        select(HireClaim).where(HireClaim.application_id.in_(application_ids))
+        select(HireClaimRow).where(HireClaimRow.application_id.in_(application_ids))
     )
     return {claim.application_id: as_payload(claim) for claim in claims}
 
 
-def as_payload(claim: HireClaim) -> ClaimedHire:
-    return ClaimedHire(
+def as_payload(claim: HireClaimRow) -> HireClaim:
+    return HireClaim(
         start_date=claim.start_date,
         confirmation=claim.confirmation,
         claimed_at=claim.claimed_at,

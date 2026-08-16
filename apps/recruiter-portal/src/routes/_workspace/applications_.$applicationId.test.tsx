@@ -63,7 +63,6 @@ async function chooseMove(user: UserEvent, label: string) {
     await user.click(screen.getByRole('button', { name: 'More moves' }));
     await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }));
   }
-  // A hire asks for the day it started before it is made.
   if (label === 'Mark as hired') await claimTheHire(user);
 }
 
@@ -570,7 +569,7 @@ describe('the Pipeline on the Application review page', () => {
     expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
   });
 
-  it('keeps stage numbers out of the adjacent moves, and ends the row on the onward move', async () => {
+  it('keeps ladder numbers out of the adjacent moves, and ends the row on the onward move', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);

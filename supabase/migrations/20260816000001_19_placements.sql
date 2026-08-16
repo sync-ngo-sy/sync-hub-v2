@@ -24,11 +24,13 @@ create table hire_claims (
   foreign key (tenant_id, application_id) references applications (tenant_id, id) on delete cascade,
   foreign key (tenant_id, claimed_by_recruiter_id) references recruiters (tenant_id, id),
 
+  -- Spelled as two whole cases rather than as an equality between them: reflection strips a
+  -- constraint's outermost parentheses, and `(a) = (b)` does not survive that as valid SQL.
   constraint hire_claim_answer_has_its_moment check (
-    (confirmation = 'unanswered') = (answered_at is null)
+    (confirmation = 'unanswered' and answered_at is null)
+    or (confirmation <> 'unanswered' and answered_at is not null)
   )
 );
-create index hire_claims_tenant_confirmation_idx on hire_claims (tenant_id, confirmation);
 
 alter table hire_claims enable row level security;
 

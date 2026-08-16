@@ -12,7 +12,7 @@ const targets = (status: Parameters<typeof pipelineMoves>[0]) =>
   pipelineMoves(status).map((move) => move.target);
 
 describe('the Pipeline moves offered from a status', () => {
-  it('offers every other undecided stage and both decisions while it is undecided', () => {
+  it('offers every other undecided status and both decisions while it is undecided', () => {
     expect(targets('new')).toEqual([
       'reviewing',
       'shortlisted',
@@ -77,7 +77,7 @@ describe('the Pipeline moves offered from a status', () => {
     }
   });
 
-  it('names a forward move by its stage and a decision by the decision', () => {
+  it('names a forward move by its status and a decision by the decision', () => {
     const labels = pipelineMoves('reviewing').map((move) => move.label);
     expect(labels).toEqual([
       'Move to Shortlisted',
@@ -90,11 +90,11 @@ describe('the Pipeline moves offered from a status', () => {
   });
 
   it('states what a move did, and leaves who heard about it to the answer', () => {
-    const success = (target: string) =>
-      pipelineMoves('reviewing').find((move) => move.target === target)?.success;
+    const happened = (target: string) =>
+      pipelineMoves('reviewing').find((move) => move.target === target)?.happened;
 
-    expect(success('rejected')).toBe('Rejected');
-    expect(success('shortlisted')).toBe('Shortlisted');
+    expect(happened('rejected')).toBe('Rejected');
+    expect(happened('shortlisted')).toBe('Shortlisted');
   });
 });
 

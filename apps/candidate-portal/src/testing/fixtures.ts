@@ -173,7 +173,7 @@ export const CLAIMED_HIRE_APPLICATION: components['schemas']['Application'] = {
   updated_at: '2026-08-01T12:00:00Z',
 };
 
-export const CONFIRMED_HIRE: components['schemas']['ClaimedHire'] = {
+export const CONFIRMED_HIRE: components['schemas']['HireClaim'] = {
   start_date: '2026-09-01',
   confirmation: 'confirmed',
   claimed_at: '2026-08-01T12:00:00Z',

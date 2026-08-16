@@ -8,7 +8,7 @@ type SubmissionRefused = components['schemas']['SubmissionRefusedProblemDetail']
 type NewApplication = components['schemas']['NewApplication'];
 type Problem = components['schemas']['ProblemDetail'];
 type WithdrawnApplication = components['schemas']['WithdrawnApplication'];
-type ClaimedHire = components['schemas']['ClaimedHire'];
+type HireClaim = components['schemas']['HireClaim'];
 
 export function listsApplications(items: Application[]) {
   return [
@@ -113,7 +113,7 @@ export function refusesWithdrawal(problem: Problem) {
   ];
 }
 
-export function answersHireClaim(hire: ClaimedHire, onAnswer?: (confirmed: boolean) => void) {
+export function answersHireClaim(hire: HireClaim, onAnswer?: (confirmed: boolean) => void) {
   return [
     http.post('/v1/applications/{application_id}/hire', async ({ request, response }) => {
       const body = (await request.json()) as { confirmed: boolean };

@@ -58,7 +58,7 @@ withdrawn is the API's answer, not one read off a Stage. It draws through the sa
 every other state on the platform draws through, so five values need no fifth colour.
 _Avoid_: Status, pipeline stage, step.
 
-**Claimed hire**:
+**Hire claim**:
 A Tenant saying, on one Application, that the Candidate started work on a named day. It sits
 under that Application's row and asks the one question it is there to ask: yes, I started, or
 no, I didn't. The answer is given once, so the row afterwards states what was said rather than

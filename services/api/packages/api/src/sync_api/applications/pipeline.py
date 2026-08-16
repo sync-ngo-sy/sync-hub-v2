@@ -96,7 +96,8 @@ async def move_application(
     )
     session.add(history)
     await session.flush()
-    if stage is not previous_stage:
+    told = stage is not previous_stage
+    if told:
         await notify(
             session,
             application.candidate_id,
@@ -114,7 +115,7 @@ async def move_application(
         previous_status=previous,
         stage=stage,
         previous_stage=previous_stage,
-        candidate_notified=stage is not previous_stage,
+        candidate_notified=told,
         changed_at=history.created_at,
     )
 

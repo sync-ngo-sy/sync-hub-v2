@@ -270,9 +270,7 @@ class ApplicationReviewService:
             )
             if change.status is ApplicationStatus.REJECTED:
                 await self._queue_the_rejection(recruiter, applied, moved.status_history_id)
-            # A start date arrives with a `hired` move and with no other: the request model
-            # insists on one for that status and refuses one for every other.
-            if change.start_date is not None:
+            if change.status is ApplicationStatus.HIRED and change.start_date is not None:
                 await claim_the_hire(
                     self._db,
                     application_id=application_id,

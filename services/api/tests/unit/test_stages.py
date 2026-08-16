@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sync_core.models import ApplicationStatus
-from sync_core.stages import ApplicationStage, is_decided, stage_of
+from sync_core.stages import ApplicationStage, stage_of
 
 
 def test_an_arrival_reads_as_received() -> None:
@@ -29,11 +29,3 @@ def test_each_outcome_keeps_its_own_stage() -> None:
 
 def test_every_status_the_pipeline_has_projects_to_a_stage() -> None:
     assert {stage_of(status) for status in ApplicationStatus} == set(ApplicationStage)
-
-
-def test_only_an_outcome_is_decided() -> None:
-    assert not is_decided(ApplicationStage.RECEIVED)
-    assert not is_decided(ApplicationStage.IN_REVIEW)
-    assert is_decided(ApplicationStage.HIRED)
-    assert is_decided(ApplicationStage.NOT_SELECTED)
-    assert is_decided(ApplicationStage.WITHDRAWN)

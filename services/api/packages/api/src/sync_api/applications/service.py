@@ -14,7 +14,7 @@ from sync_api.applications.payload import (
     Application,
     ApplicationPage,
     AppliedJob,
-    ClaimedHire,
+    HireClaim,
     WithdrawnApplication,
 )
 from sync_api.applications.pipeline import UNDECIDED, move_application
@@ -179,7 +179,7 @@ class ApplicationService:
 
     async def answer_hire(
         self, candidate: ActingCandidate, application_id: UUID, answer: HireAnswer
-    ) -> ClaimedHire:
+    ) -> HireClaim:
         """Confirm or deny what the Tenant claims. Only a yes makes it a Placement."""
         async with transaction(self._db):
             applied = await my_application(self._db, candidate.id, application_id)
@@ -283,7 +283,7 @@ class ApplicationService:
 
 
 def _as_payload(
-    application: ApplicationRow, job: Job, tenant: Tenant, hire: ClaimedHire | None = None
+    application: ApplicationRow, job: Job, tenant: Tenant, hire: HireClaim | None = None
 ) -> Application:
     return Application(
         id=application.id,

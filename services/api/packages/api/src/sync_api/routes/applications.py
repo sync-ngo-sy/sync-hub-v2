@@ -8,8 +8,8 @@ from fastapi import APIRouter, Query, status
 from sync_api.applications import (
     Application,
     ApplicationPage,
-    ClaimedHire,
     HireAnswer,
+    HireClaim,
     NewApplication,
     WithdrawnApplication,
 )
@@ -104,7 +104,7 @@ async def answer_hire_claim(
     body: HireAnswer,
     candidate: ActingCandidateDep,
     applications: ApplicationServiceDep,
-) -> ClaimedHire:
+) -> HireClaim:
     """A Tenant says it hired the caller and names the day. This is the caller's answer.
 
     Only a yes makes it a Placement; a no leaves the Tenant's claim on record as a claim, and

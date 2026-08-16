@@ -2449,7 +2449,7 @@ class HireClaim(Base):
     __tablename__ = "hire_claims"
     __table_args__ = (
         CheckConstraint(
-            "confirmation = 'unanswered'::hire_confirmation) = (answered_at IS NULL",
+            "confirmation = 'unanswered'::hire_confirmation AND answered_at IS NULL OR confirmation <> 'unanswered'::hire_confirmation AND answered_at IS NOT NULL",
             name="hire_claim_answer_has_its_moment",
         ),
         ForeignKeyConstraint(
@@ -2470,7 +2470,6 @@ class HireClaim(Base):
             name="hire_claims_tenant_id_claimed_by_recruiter_id_fkey",
         ),
         PrimaryKeyConstraint("application_id", name="hire_claims_pkey"),
-        Index("hire_claims_tenant_confirmation_idx", "tenant_id", "confirmation"),
         {"schema": "public"},
     )
 

@@ -1782,7 +1782,7 @@ export interface components {
              */
             can_withdraw: boolean;
             /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
-            hire?: components["schemas"]["ClaimedHire"] | null;
+            hire?: components["schemas"]["HireClaim"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -1955,7 +1955,7 @@ export interface components {
              */
             history: components["schemas"]["StatusHistoryEntry"][];
             /** @description The hire this Tenant claimed, and whether the Candidate has confirmed it. A claim they have not answered is not a Placement. */
-            hire?: components["schemas"]["ClaimedHire"] | null;
+            hire?: components["schemas"]["HireClaim"] | null;
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Applied At
@@ -2514,34 +2514,6 @@ export interface components {
          */
         ChunkType: "identity" | "experience" | "education" | "skills" | "languages" | "project";
         /**
-         * ClaimedHire
-         * @description A Tenant's claim to have hired somebody, and what the Candidate said about it.
-         *
-         *     Only a `confirmed` one is a Placement. A claim they have not answered is still only a
-         *     claim, and nothing counts it.
-         */
-        ClaimedHire: {
-            /**
-             * Start Date
-             * Format: date
-             * @description The day the Tenant says the work started.
-             */
-            start_date: string;
-            /** @description The Candidate's answer. `unanswered` until they give one. */
-            confirmation: components["schemas"]["HireConfirmation"];
-            /**
-             * Claimed At
-             * Format: date-time
-             * @description When the Tenant said so.
-             */
-            claimed_at: string;
-            /**
-             * Answered At
-             * @description When the Candidate answered. Null while they have not.
-             */
-            answered_at?: string | null;
-        };
-        /**
          * CommunicationStatus
          * @enum {string}
          */
@@ -2892,6 +2864,34 @@ export interface components {
              * @description True if they did start the job the Tenant named.
              */
             confirmed: boolean;
+        };
+        /**
+         * HireClaim
+         * @description A Tenant's claim to have hired somebody, and what the Candidate said about it.
+         *
+         *     Only a `confirmed` one is a Placement. A claim they have not answered is still only a
+         *     claim, and nothing counts it.
+         */
+        HireClaim: {
+            /**
+             * Start Date
+             * Format: date
+             * @description The day the Tenant says the work started.
+             */
+            start_date: string;
+            /** @description The Candidate's answer. `unanswered` until they give one. */
+            confirmation: components["schemas"]["HireConfirmation"];
+            /**
+             * Claimed At
+             * Format: date-time
+             * @description When the Tenant said so.
+             */
+            claimed_at: string;
+            /**
+             * Answered At
+             * @description When the Candidate answered. Null while they have not.
+             */
+            answered_at?: string | null;
         };
         /**
          * HireConfirmation
@@ -11360,7 +11360,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClaimedHire"];
+                    "application/json": components["schemas"]["HireClaim"];
                 };
             };
             /** @description There is no valid session. */

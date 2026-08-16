@@ -196,9 +196,10 @@ can lead back to the reading it was opened from.
 The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
 and the six-step progress line in one card. There is no static warning beneath it: move outcomes
 already say the Candidate was notified, while a refused move still explains itself inside the
-Pipeline. A claimed hire reads there too — the day it names, and whether the Candidate has
-confirmed it — so an unconfirmed claim is visible rather than silently uncounted. The current segment keeps strong contrast in either theme and a small static dot beside
-`now` carries the accent colour. Screening and Tags lead the two-column review below; the Snapshot,
+Pipeline. A Hire claim reads there too — the day it names, and whether the Candidate has
+confirmed it — so an unconfirmed claim is visible rather than silently uncounted. The current
+segment keeps strong contrast in either theme and a small static dot beside `now` carries the
+accent colour. Screening and Tags lead the two-column review below; the Snapshot,
 answers, Match
 assessments and notes follow on the wider reading side, while the Applicant message and history
 follow Tags on the action side.

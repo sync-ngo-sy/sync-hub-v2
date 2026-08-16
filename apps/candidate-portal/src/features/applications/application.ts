@@ -4,7 +4,7 @@ import { employmentTypeLabel, workModeLabel } from '@/features/jobs/job';
 
 export type Application = components['schemas']['Application'];
 export type ApplicationStage = components['schemas']['ApplicationStage'];
-export type ClaimedHire = components['schemas']['ClaimedHire'];
+export type HireClaim = components['schemas']['HireClaim'];
 export type NewApplication = components['schemas']['NewApplication'];
 export type PublicJobQuestion = components['schemas']['PublicJobQuestion'];
 
@@ -36,12 +36,7 @@ export function applicationMeta(application: Application): string {
     .join(' · ');
 }
 
-export function unansweredHire(application: Application): ClaimedHire | null {
-  const hire = application.hire;
-  return hire && hire.confirmation === 'unanswered' ? hire : null;
-}
-
-export function hireAnswerLine(hire: ClaimedHire): string | null {
+export function hireAnswerLine(hire: HireClaim): string | null {
   if (hire.confirmation === 'confirmed') return 'You confirmed you started this job.';
   if (hire.confirmation === 'denied') return "You said you didn't start this job.";
   return null;

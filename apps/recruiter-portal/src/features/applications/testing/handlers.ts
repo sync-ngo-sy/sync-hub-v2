@@ -187,8 +187,8 @@ export function failsToGetApplication(problem: Problem) {
   return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
 }
 
-//: The API's Stage projection, restated for the fake server so a move it answers says whether
-//: the candidate heard about it. The portal itself never projects: it reads the answer.
+// The API's Stage projection, restated for the fake server so a move it answers says whether the
+// candidate heard about it. The portal itself never projects: it reads the answer.
 const STAGE_OF: Record<PipelineStatus, string> = {
   new: 'received',
   reviewing: 'in_review',

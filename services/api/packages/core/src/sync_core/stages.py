@@ -43,11 +43,6 @@ def stage_of(status: ApplicationStatus) -> ApplicationStage:
     return _PROJECTION[status]
 
 
-def is_decided(stage: ApplicationStage) -> bool:
-    """Whether the Application has an outcome — which is what closes withdrawal."""
-    return stage not in {ApplicationStage.RECEIVED, ApplicationStage.IN_REVIEW}
-
-
 _UNPROJECTED = set(ApplicationStatus) - set(_PROJECTION)
 if _UNPROJECTED:  # pragma: no cover — the module refuses to import instead
     raise RuntimeError(f"no Stage for {sorted(status.value for status in _UNPROJECTED)}")

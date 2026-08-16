@@ -13,15 +13,11 @@ export function HireClaim({ application }: { application: Application }) {
 
   const answered = hireAnswerLine(hire);
 
-  async function answer(confirmed: boolean) {
-    try {
-      await answering.mutateAsync({
-        params: { path: { application_id: application.id } },
-        body: { confirmed },
-      });
-    } catch {
-      return;
-    }
+  function answer(confirmed: boolean) {
+    answering.mutate({
+      params: { path: { application_id: application.id } },
+      body: { confirmed },
+    });
   }
 
   return (
@@ -36,14 +32,14 @@ export function HireClaim({ application }: { application: Application }) {
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={answering.isPending} onClick={() => void answer(true)}>
+            <Button size="sm" disabled={answering.isPending} onClick={() => answer(true)}>
               Yes, I started
             </Button>
             <Button
               size="sm"
               variant="outline"
               disabled={answering.isPending}
-              onClick={() => void answer(false)}
+              onClick={() => answer(false)}
             >
               No, I didn't
             </Button>

@@ -17,7 +17,7 @@ import { calendarDay } from '@/lib/dates';
 import { PIPELINE_LADDER, type PipelineStatus, pipelineState, pipelineStep } from '../application';
 import { useMoveApplication } from '../hooks/use-application-actions';
 import {
-  type ClaimedHire,
+  type HireClaim,
   hireState,
   moveOutcome,
   type PipelineMove,
@@ -29,7 +29,7 @@ import { MarkAsHiredDialog } from './mark-as-hired-dialog';
 interface ApplicationPipelineProps {
   applicationId: string;
   status: PipelineStatus;
-  hire: ClaimedHire | null;
+  hire: HireClaim | null;
 }
 
 export function ApplicationPipeline({ applicationId, status, hire }: ApplicationPipelineProps) {
@@ -139,9 +139,9 @@ export function ApplicationPipeline({ applicationId, status, hire }: Application
         <CardContent className="space-y-4">
           <ol aria-label="Pipeline progress" className="grid grid-cols-6 gap-1.5">
             {PIPELINE_LADDER.map((pipelineStatus, index) => {
-              const stageStep = index + 1;
-              const isCurrent = step === stageStep;
-              const isReached = step !== null && stageStep <= step;
+              const place = index + 1;
+              const isCurrent = step === place;
+              const isReached = step !== null && place <= step;
 
               return (
                 <li
