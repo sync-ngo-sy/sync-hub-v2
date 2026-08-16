@@ -167,18 +167,18 @@ interface DemoApplication {
   job: string;
   tenant: string;
   tone: StatusTone;
-  status: string;
+  stage: string;
 }
 
 const APPLICATIONS: DemoApplication[] = [
   {
     job: 'Field Coordinator, Aleppo',
     tenant: 'Aman Relief',
-    tone: 'interview',
-    status: 'Interview',
+    tone: 'reviewing',
+    stage: 'In review',
   },
-  { job: 'Logistics Assistant', tenant: 'Hand in Hand', tone: 'new', status: 'Submitted' },
-  { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'rejected', status: 'Not selected' },
+  { job: 'Logistics Assistant', tenant: 'Hand in Hand', tone: 'new', stage: 'Received' },
+  { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'rejected', stage: 'Not selected' },
 ];
 
 const SURFACES: [label: string, swatch: string][] = [
@@ -285,13 +285,13 @@ export default function KitchenSink() {
 
       <Section title="Lists">
         <div className="w-full divide-y divide-border border-t border-border">
-          {APPLICATIONS.map(({ job, tenant, tone, status }) => (
+          {APPLICATIONS.map(({ job, tenant, tone, stage }) => (
             <div key={job} className="flex items-center justify-between gap-4 py-4">
               <div className="min-w-0">
                 <p className="truncate font-medium text-foreground">{job}</p>
                 <p className="truncate text-dense text-muted-foreground">{tenant}</p>
               </div>
-              <StatusMark tone={tone} label={status} />
+              <StatusMark tone={tone} label={stage} />
             </div>
           ))}
         </div>

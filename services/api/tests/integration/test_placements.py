@@ -13,6 +13,7 @@ from sync_core.models import ApplicationStatus, HireConfirmation
 from tests.support.applications import (
     A_START_DATE,
     a_candidate_who_can_apply,
+    a_candidate_with_a_stored_cv,
     a_moved_application,
     a_reviewed_application,
     an_accepted_application,
@@ -35,9 +36,12 @@ async def a_claimed_hire(
     *,
     start_date: date = A_START_DATE,
 ) -> str:
-    """An Application a Tenant says it hired, waiting on the Candidate's answer."""
+    """An Application a Tenant says it hired, waiting on the Candidate's answer.
+
+    The CV is really in Storage, because reading the Application back signs a link to the file.
+    """
     job = await a_published_job(recruiter)
-    await a_candidate_who_can_apply(browser, mailbox, session)
+    await a_candidate_with_a_stored_cv(browser, mailbox, session)
     application = await an_accepted_application(browser, job["id"])
     await a_moved_application(
         recruiter, application["id"], ApplicationStatus.HIRED, start_date=start_date
@@ -217,7 +221,7 @@ async def test_an_application_nobody_claimed_carries_no_hire(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
     job = await a_published_job(recruiter)
-    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
     application = await an_accepted_application(other_browser, job["id"])
 
     review = await a_reviewed_application(recruiter, application["id"])

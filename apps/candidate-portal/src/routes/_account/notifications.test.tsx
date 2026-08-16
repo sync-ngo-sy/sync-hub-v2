@@ -47,7 +47,7 @@ describe('the notifications page', () => {
       screen.getByText('Open your profile to see why, and upload another file.'),
     ).toBeVisible();
     expect(screen.getByText('Frontend Developer (Remote) at Levant Digital')).toBeVisible();
-    expect(screen.getByText('Moved from Under review to Shortlisted.')).toBeVisible();
+    expect(screen.getByText('Moved from Received to In review.')).toBeVisible();
   });
 
   it('tells the unread from the ones already opened', async () => {

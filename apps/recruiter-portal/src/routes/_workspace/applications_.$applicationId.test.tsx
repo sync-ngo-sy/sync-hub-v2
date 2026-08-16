@@ -614,7 +614,7 @@ describe('the Pipeline on the Application review page', () => {
     );
   });
 
-  it('moves the Application, says the candidate was told, and re-reads where it stands', async () => {
+  it('moves the Application, says the candidate sees no change, and re-reads where it stands', async () => {
     const asked: PipelineStatus[] = [];
     server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW, asked));
 
@@ -623,7 +623,7 @@ describe('the Pipeline on the Application review page', () => {
     await chooseMove(user, 'Move to Interview');
 
     expect(
-      await screen.findByText('Moved to Interview — the candidate has been told.'),
+      await screen.findByText('Moved to Interview — the candidate sees no change.'),
     ).toBeVisible();
     expect(asked).toEqual(['interview']);
 
@@ -705,16 +705,6 @@ describe('the Pipeline on the Application review page', () => {
     expect(alert).not.toHaveTextContent('Conflict');
   });
 
-  it('says a move inside one Stage changed nothing the candidate can see', async () => {
-    server.use(...signedInAs(RECRUITER), ...reviewsApplication({ ...REVIEW, status: 'reviewing' }));
-
-    const { user } = await renderApp(`/applications/${REVIEW.id}`);
-
-    await chooseMove(user, 'Move to Shortlisted');
-
-    expect(await screen.findByText('Shortlisted — the candidate sees no change.')).toBeVisible();
-  });
-
   it('asks for the day a hire started, and shows the claim as unconfirmed', async () => {
     const asked: PipelineStatus[] = [];
     server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW, asked));
@@ -771,7 +761,7 @@ describe('the Pipeline on the Application review page', () => {
     await user.click(screen.getByRole('button', { name: 'Move to Interview' }));
 
     expect(
-      await screen.findByText('Moved to Interview — the candidate has been told.'),
+      await screen.findByText('Moved to Interview — the candidate sees no change.'),
     ).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
   });

@@ -716,8 +716,10 @@ async def test_the_applications_list_says_where_each_one_stands_and_no_more(
 
     [listed] = await my_applications(other_browser)
 
-    assert listed["status"] == "new"
+    assert listed["stage"] == "received"
+    assert listed["can_withdraw"] is True
     assert listed["job"]["tenant"]["name"]
+    assert "status" not in listed, "a Candidate reads a Stage, never the Tenant's own status"
     assert "qualification_status" not in listed
     assert "qualification_reason" not in listed
 
