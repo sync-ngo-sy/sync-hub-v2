@@ -118,9 +118,11 @@ create trigger point_at_the_current_assessment
   after insert on application_ai_match_assessments
   for each row execute function point_at_the_current_assessment();
 
--- Throwing the Current assessment away falls back to the newest reading left, and to no reading
--- at all when it was the last one. Without this the composite FK would simply refuse the
--- deletion, and a Recruiter would be unable to discard the one reading they most want gone.
+-- Append-only means no reading is ever rewritten: each keeps the model and the prompt version
+-- that wrote it for as long as it is kept. Discarding one whole is a separate power a Recruiter
+-- has always had, and the pointer above is what would have taken it away — the composite FK
+-- refuses to let go of the reading it names. So the pointer steps back to the newest reading
+-- left, and to no reading at all when that was the last one.
 create function repoint_the_current_assessment() returns trigger
 language plpgsql
 set search_path = ''

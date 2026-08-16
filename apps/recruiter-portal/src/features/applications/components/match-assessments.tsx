@@ -14,6 +14,10 @@ import { useMatchAssessments } from '../hooks/use-match-assessments';
 const LEAVING =
   'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-8 motion-safe:duration-300 motion-safe:fill-mode-forwards';
 
+/** Which of the readings the Job's list is sorting this Application by. Said in words rather
+ * than marked, because the page already carries a Screening verdict. */
+const THE_SORTED_ONE = 'Used for the Match score';
+
 function Reasons({ title, phrases }: { title: string; phrases: string[] }) {
   return (
     <div className="space-y-1">
@@ -55,6 +59,9 @@ function Assessment({ assessment, isLeaving, isBusy, refusal, onForget, onGone }
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <h3 className="font-medium text-dense text-foreground">{label}</h3>
         <span className="flex items-baseline gap-2">
+          {assessment.is_current ? (
+            <span className="text-meta text-muted-foreground">{THE_SORTED_ONE}</span>
+          ) : null}
           <time dateTime={assessment.assessed_at} className="text-meta text-muted-foreground">
             {stamp}
           </time>

@@ -34,7 +34,7 @@ def _match(application: Any) -> str:
     return str(UNREAD if score is None else score)
 
 
-def _percentage(written: str) -> Decimal:
+def _percentage_read_back(written: str) -> Decimal:
     """A cursor's score, read back. `Decimal` raises out of `ArithmeticError` rather than
     `ValueError` on nonsense, which the caller reads as a bug rather than a bad cursor."""
     try:
@@ -50,6 +50,10 @@ ORDERINGS: Final[dict[ApplicationSort, Ordering]] = {
     ApplicationSort.OLDEST: Ordering(
         "oldest", Application.applied_at, False, datetime.fromisoformat, _applied
     ),
-    ApplicationSort.HIGHEST_MATCH: Ordering("highest_match", _MATCH, True, _percentage, _match),
-    ApplicationSort.LOWEST_MATCH: Ordering("lowest_match", _MATCH, False, _percentage, _match),
+    ApplicationSort.HIGHEST_MATCH: Ordering(
+        "highest_match", _MATCH, True, _percentage_read_back, _match
+    ),
+    ApplicationSort.LOWEST_MATCH: Ordering(
+        "lowest_match", _MATCH, False, _percentage_read_back, _match
+    ),
 }

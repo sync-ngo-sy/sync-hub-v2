@@ -3,6 +3,7 @@ import { assessmentProvenance, matchLabel } from './assessment';
 
 const ASSESSMENT = {
   id: '00000000-0000-4000-8000-000000000601',
+  is_current: true,
   match_percentage: 82,
   explanation: 'Answers both languages and most of the required skills.',
   strengths: ['Nine years of logistics'],

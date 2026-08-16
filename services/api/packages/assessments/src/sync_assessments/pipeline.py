@@ -78,10 +78,6 @@ class MatchAssessing:
         self._database = database
         self._assessor = assessor
 
-    @property
-    def model(self) -> str:
-        return self._assessor.model
-
     async def assess(self, application_id: UUID) -> AssessedMatch:
         async with self._database.session() as session:
             request = await match_request(session, application_id)
@@ -110,7 +106,7 @@ def assessment_row(
     it still reads as its own the day both have moved on."""
     return ApplicationAiMatchAssessment(
         application_id=application_id,
-        match_percentage=_percentage(assessed.match_percentage),
+        match_percentage=_stored_percentage(assessed.match_percentage),
         explanation=assessed.explanation,
         assessment_details={"strengths": assessed.strengths, "gaps": assessed.gaps},
         model_name=model_name,
@@ -290,7 +286,7 @@ def _spoken(answer_boolean: bool | None, answer_text: str | None) -> str:
     return answer_text or ""
 
 
-def _percentage(match_percentage: float) -> Decimal:
+def _stored_percentage(match_percentage: float) -> Decimal:
     """Through `str`, so the column is given the number the model said rather than the binary
     float nearest to it."""
     return Decimal(str(match_percentage))

@@ -57,6 +57,21 @@ describe('the match assessments already on an Application', () => {
     ]);
   });
 
+  it('says which reading the Job list is sorting this Application by', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsApplication(REVIEW),
+      ...listsMatchAssessments([LATEST_ASSESSMENT, EARLIER_ASSESSMENT]),
+    );
+
+    await renderApp(`/applications/${REVIEW.id}`);
+
+    expect(await screen.findByRole('region', { name: WIDGET })).toBeVisible();
+    const [current, earlier] = widget().getAllByRole('listitem');
+    expect(within(current as HTMLElement).getByText('Used for the Match score')).toBeVisible();
+    expect(within(earlier as HTMLElement).queryByText('Used for the Match score')).toBeNull();
+  });
+
   it('gives each reading its explanation, its strengths and its gaps', async () => {
     server.use(
       ...signedInAs(RECRUITER),

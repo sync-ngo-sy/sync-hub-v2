@@ -6,14 +6,19 @@ Candidate does not wait on a model, and a provider that is down cannot refuse an
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import pytest
 from asgi_lifespan import LifespanManager
-from sqlalchemy import delete
+from sqlalchemy import delete, select, text
+from sqlalchemy.dialects import postgresql
 
 from sync_api.app import create_app
+from sync_api.applications.ordering import ORDERINGS
+from sync_api.applications.payload import ApplicationSort
+from sync_api.pagination import ordered_by
 from sync_assessments import ApplicationGoneError, AssessmentError, MatchAssessing
 from sync_core.models import Application, AssessmentStatus, MatchAssessmentJob
 from tests.support.applications import (
@@ -30,6 +35,7 @@ from tests.support.applications import (
 from tests.support.assessments import (
     an_assessment,
     assessment_job,
+    assessments_of,
     current_assessment_of,
     forget_assessment,
     stored_assessments,
@@ -236,6 +242,26 @@ async def test_asking_again_appends_and_moves_the_pointer_to_the_new_reading(
     )
 
 
+async def test_the_history_says_which_reading_the_score_comes_from(
+    recruiter: AsyncClient,
+    applicant: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    assessor: FakeAssessor,
+) -> None:
+    """A Recruiter reading three readings can tell which one the Job's list sorted by."""
+    application = await an_application_to(recruiter, applicant, mailbox, db_session)
+    await an_assessment_worker(database, assessor).run_once()
+    asked = await an_assessment(recruiter, application["id"])
+
+    listed = await assessments_of(recruiter, application["id"])
+
+    assert [row["is_current"] for row in listed] == [True, False], "newest first"
+    assert listed[0]["id"] == asked["id"]
+    assert asked["is_current"] is True
+
+
 async def test_throwing_the_current_reading_away_falls_back_to_the_one_before_it(
     recruiter: AsyncClient,
     applicant: AsyncClient,
@@ -381,28 +407,38 @@ BOTH_SKILLS: list[dict[str, Any]] = [
 ]
 
 
-async def a_job_read_three_ways(
+@dataclass(frozen=True, slots=True)
+class ThreeWays:
+    """One Job read three ways: a full answer, a half one, and one nobody has read."""
+
+    job: dict[str, Any]
+    whole: str
+    half: str
+    unread: str
+
+
+@pytest.fixture
+async def three_ways(
     recruiter: AsyncClient,
     applicant: AsyncClient,
     other_applicant: AsyncClient,
     third_applicant: AsyncClient,
     mailbox: Mailbox,
-    session: AsyncSession,
+    db_session: AsyncSession,
     database: Database,
     assessor: FakeAssessor,
-) -> tuple[dict[str, Any], str, str, str]:
-    """One Job, three Applications: a full answer, a half one, and one nobody has read."""
+) -> ThreeWays:
     job = await a_job_screening_on(recruiter, **A_JOBS_CRITERIA)
-    half = await applied_to(job, applicant, mailbox, session, "half", PYTHON_ONLY)
-    whole = await applied_to(job, other_applicant, mailbox, session, "whole", BOTH_SKILLS)
-    unread = await applied_to(job, third_applicant, mailbox, session, "unread", PYTHON_ONLY)
+    half = await applied_to(job, applicant, mailbox, db_session, "half", PYTHON_ONLY)
+    whole = await applied_to(job, other_applicant, mailbox, db_session, "whole", BOTH_SKILLS)
+    unread = await applied_to(job, third_applicant, mailbox, db_session, "unread", PYTHON_ONLY)
 
     worker = an_assessment_worker(database, assessor)
     await worker.run_once()
     await worker.run_once()
-    await _abandon_the_reading(session, unread["id"])
+    await _abandon_the_reading(db_session, unread["id"])
 
-    return job, whole["id"], half["id"], unread["id"]
+    return ThreeWays(job=job, whole=whole["id"], half=half["id"], unread=unread["id"])
 
 
 async def _abandon_the_reading(session: AsyncSession, application_id: str) -> None:
@@ -416,148 +452,95 @@ async def _abandon_the_reading(session: AsyncSession, application_id: str) -> No
 
 
 async def test_the_best_answered_application_is_read_first(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    other_applicant: AsyncClient,
-    third_applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
+    recruiter: AsyncClient, three_ways: ThreeWays
 ) -> None:
     """And an Application nobody has read sorts below every one that has, rather than as a zero."""
-    job, whole, half, unread = await a_job_read_three_ways(
-        recruiter,
-        applicant,
-        other_applicant,
-        third_applicant,
-        mailbox,
-        db_session,
-        database,
-        assessor,
-    )
+    listed = await job_applications_of(recruiter, three_ways.job["id"], sort="highest_match")
 
-    listed = await job_applications_of(recruiter, job["id"], sort="highest_match")
-
-    assert [row["id"] for row in listed] == [whole, half, unread]
+    assert [row["id"] for row in listed] == [
+        three_ways.whole,
+        three_ways.half,
+        three_ways.unread,
+    ]
 
 
 async def test_the_weakest_reading_is_read_first_from_the_other_end(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    other_applicant: AsyncClient,
-    third_applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
+    recruiter: AsyncClient, three_ways: ThreeWays
 ) -> None:
-    job, whole, half, unread = await a_job_read_three_ways(
-        recruiter,
-        applicant,
-        other_applicant,
-        third_applicant,
-        mailbox,
-        db_session,
-        database,
-        assessor,
-    )
+    listed = await job_applications_of(recruiter, three_ways.job["id"], sort="lowest_match")
 
-    listed = await job_applications_of(recruiter, job["id"], sort="lowest_match")
-
-    assert [row["id"] for row in listed] == [unread, half, whole]
+    assert [row["id"] for row in listed] == [
+        three_ways.unread,
+        three_ways.half,
+        three_ways.whole,
+    ]
 
 
 async def test_a_row_carries_the_words_behind_its_score(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    other_applicant: AsyncClient,
-    third_applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
+    recruiter: AsyncClient, three_ways: ThreeWays
 ) -> None:
     """A number a Recruiter cannot check is a number they should not be acting on."""
-    job, whole, _half, unread = await a_job_read_three_ways(
-        recruiter,
-        applicant,
-        other_applicant,
-        third_applicant,
-        mailbox,
-        db_session,
-        database,
-        assessor,
-    )
+    listed = {row["id"]: row for row in await job_applications_of(recruiter, three_ways.job["id"])}
 
-    listed = {row["id"]: row for row in await job_applications_of(recruiter, job["id"])}
-
-    read = listed[whole]["match"]
+    read = listed[three_ways.whole]["match"]
     assert read["percentage"] == 100.0
     assert read["explanation"]
     assert read["model_name"] == MODEL
     assert read["assessed_at"]
-    assert listed[unread]["match"] is None
+    assert listed[three_ways.unread]["match"] is None
 
 
 async def test_the_score_order_pages_from_its_own_cursor(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    other_applicant: AsyncClient,
-    third_applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
+    recruiter: AsyncClient, three_ways: ThreeWays
 ) -> None:
-    job, whole, half, unread = await a_job_read_three_ways(
-        recruiter,
-        applicant,
-        other_applicant,
-        third_applicant,
-        mailbox,
-        db_session,
-        database,
-        assessor,
-    )
-
-    first = await list_job_applications(recruiter, job["id"], sort="highest_match", limit=1)
+    job_id = three_ways.job["id"]
+    first = await list_job_applications(recruiter, job_id, sort="highest_match", limit=1)
     cursor = first.json()["next_cursor"]
-    assert [row["id"] for row in first.json()["items"]] == [whole]
+    assert [row["id"] for row in first.json()["items"]] == [three_ways.whole]
     assert cursor is not None
 
     rest = await job_applications_of(
-        recruiter, job["id"], sort="highest_match", limit=2, cursor=cursor
+        recruiter, job_id, sort="highest_match", limit=2, cursor=cursor
     )
 
-    assert [row["id"] for row in rest] == [half, unread]
+    assert [row["id"] for row in rest] == [three_ways.half, three_ways.unread]
 
 
 async def test_a_cursor_from_the_date_order_does_not_resume_the_score_order(
-    recruiter: AsyncClient,
-    applicant: AsyncClient,
-    other_applicant: AsyncClient,
-    third_applicant: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-    database: Database,
-    assessor: FakeAssessor,
+    recruiter: AsyncClient, three_ways: ThreeWays
 ) -> None:
     """Following it would serve a page of the wrong list rather than the next one."""
-    job, *_ = await a_job_read_three_ways(
-        recruiter,
-        applicant,
-        other_applicant,
-        third_applicant,
-        mailbox,
-        db_session,
-        database,
-        assessor,
-    )
-    newest = await list_job_applications(recruiter, job["id"], limit=1)
+    job_id = three_ways.job["id"]
+    newest = await list_job_applications(recruiter, job_id, limit=1)
 
     wrong = await list_job_applications(
-        recruiter, job["id"], sort="highest_match", limit=1, cursor=newest.json()["next_cursor"]
+        recruiter, job_id, sort="highest_match", limit=1, cursor=newest.json()["next_cursor"]
     )
 
     assert wrong.status_code == 422
+
+
+async def test_the_score_order_is_served_by_its_index(db_session: AsyncSession) -> None:
+    """A Job with hundreds of Applications sorts on an index, not in memory.
+
+    The order runs on an expression, and an expression index only matches an expression spelled
+    the same way. A bound parameter reads identically in Python and matches nothing in Postgres,
+    so this asks the planner rather than the source: with a sequential scan and a sort both
+    discouraged, a plan that still names the index is a plan the index can serve.
+    """
+    query = ordered_by(
+        select(Application.id).where(Application.job_id == uuid4()),
+        ordering=ORDERINGS[ApplicationSort.HIGHEST_MATCH],
+        id_=Application.id,
+        cursor=None,
+        limit=20,
+    )
+    sql = str(query.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+
+    await db_session.execute(text("set local enable_seqscan = off"))
+    await db_session.execute(text("set local enable_sort = off"))
+    plan = "\n".join((await db_session.execute(text(f"explain {sql}"))).scalars().all())
+
+    assert "applications_job_match_score_idx" in plan, plan
+    assert "Sort" not in plan, plan
+    await db_session.rollback()

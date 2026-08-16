@@ -29,13 +29,12 @@ logger = get_logger(__name__)
 
 
 class MatchAssessmentService:
-    """The Recruiter's second opinion on an Application: on demand, advisory, never rewritten.
+    """The Recruiter's second opinion on an Application: advisory, and never rewritten.
 
-    The Candidate's side of what it reads is the immutable Snapshot, never the live profile:
-    an assessment says how the Application was sent, not how its author reads today. The
-    Job's side is the criteria Screening measured plus the Job's own words, which is what
-    lets a model say anything Screening could not — and which it reads as they stand, since
-    only the criteria are locked once Applications arrive.
+    The first opinion arrives on its own — the worker reads every Application as it lands. This
+    is the Recruiter who doubts that reading and wants another, so it runs while they wait and
+    answers with the reading it just made. Both build their document the same way, which is what
+    makes the second opinion comparable with the first rather than merely later than it.
 
     What it writes is one more row: asking again appends, so a reading keeps the model and
     the prompt version that wrote it for as long as it is kept. A reading can be thrown away
@@ -73,7 +72,9 @@ class MatchAssessmentService:
             prompt_version=PROMPT_VERSION,
             match_percentage=float(row.match_percentage),
         )
-        return _view(row)
+        # The reading that just landed is the one the pipeline now sorts by: the trigger moved
+        # the Application's pointer to it as it was written.
+        return _view(row, current=row.id)
 
     async def page(
         self,
@@ -83,7 +84,8 @@ class MatchAssessmentService:
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> MatchAssessmentPage:
-        await own_application(self._db, recruiter.tenant.id, application_id)
+        applied = await own_application(self._db, recruiter.tenant.id, application_id)
+        current = applied.application.current_match_assessment_id
         found = list(
             await self._db.scalars(
                 newest_first(
@@ -98,7 +100,9 @@ class MatchAssessmentService:
             )
         )
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
-        return MatchAssessmentPage(items=[_view(row) for row in rows], next_cursor=next_cursor)
+        return MatchAssessmentPage(
+            items=[_view(row, current=current) for row in rows], next_cursor=next_cursor
+        )
 
     async def remove(
         self, recruiter: ActingRecruiter, application_id: UUID, assessment_id: UUID
@@ -155,10 +159,11 @@ def _no_such_assessment() -> Problem:
     )
 
 
-def _view(row: ApplicationAiMatchAssessment) -> MatchAssessment:
+def _view(row: ApplicationAiMatchAssessment, *, current: UUID | None) -> MatchAssessment:
     details = row.assessment_details or {}
     return MatchAssessment(
         id=row.id,
+        is_current=row.id == current,
         match_percentage=float(row.match_percentage),
         explanation=row.explanation,
         strengths=_phrases(details.get("strengths")),

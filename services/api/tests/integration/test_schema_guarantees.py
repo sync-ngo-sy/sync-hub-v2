@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sync_core.models import ApplicationStatus, CvParsingStatus
 from sync_core.stages import stage_of
 from tests.support.applications import a_whole_application
+from tests.support.assessments import current_assessment_of
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_created_job
 from tests.support.profiles import give_a_current_cv, my_id
@@ -459,16 +460,7 @@ async def test_a_reading_repoints_the_application_whoever_wrote_it(
         A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A second read."}
     )
 
-    pointed = (
-        await db_session.execute(
-            text(
-                "select current_match_assessment_id, current_match_score "
-                "from applications where id = :id"
-            ),
-            {"id": application["id"]},
-        )
-    ).one()
-    assert pointed == (later, 72.00)
+    assert await current_assessment_of(db_session, application["id"]) == (later, 72.00)
     assert reading != later, "asking again appends rather than replacing"
     await db_session.rollback()
 
@@ -488,16 +480,7 @@ async def test_throwing_the_current_reading_away_falls_back_to_the_one_before_it
         text("delete from application_ai_match_assessments where id = :id"), {"id": second}
     )
 
-    pointed = (
-        await db_session.execute(
-            text(
-                "select current_match_assessment_id, current_match_score "
-                "from applications where id = :id"
-            ),
-            {"id": application["id"]},
-        )
-    ).one()
-    assert pointed == (first, 61.50)
+    assert await current_assessment_of(db_session, application["id"]) == (first, 61.50)
     await db_session.rollback()
 
 

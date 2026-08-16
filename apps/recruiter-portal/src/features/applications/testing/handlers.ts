@@ -45,8 +45,7 @@ export interface AskedFor {
   sort: string | null;
 }
 
-/** An Application nobody has read yet has no score, and sorts below every one that has — the
- * `coalesce(…, -1)` the API orders on, in the one place a test can see it. */
+/** The `coalesce(…, -1)` the API orders on: unread sorts below every score. */
 function scoreOf(item: ApplicationSummary): number {
   return item.match?.percentage ?? -1;
 }

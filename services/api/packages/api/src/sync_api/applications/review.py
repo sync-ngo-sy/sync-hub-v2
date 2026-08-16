@@ -92,7 +92,7 @@ class ApplicationReviewService:
         await own_job(self._db, recruiter.tenant.id, job_id)
 
         mine = (Application.job_id == job_id, Application.tenant_id == recruiter.tenant.id)
-        query = _with_the_current_assessment(
+        query = _with_what_a_summary_shows(
             select(Application, ApplicationProfileSnapshot, ApplicationAiMatchAssessment)
         ).where(*mine)
         counting = (
@@ -171,7 +171,7 @@ class ApplicationReviewService:
             )
 
         query = (
-            _with_the_current_assessment(
+            _with_what_a_summary_shows(
                 select(Application, ApplicationProfileSnapshot, ApplicationAiMatchAssessment, Job)
             )
             .options(*WITH_LOCATION)
@@ -355,10 +355,10 @@ class ApplicationReviewService:
         )
 
 
-def _with_the_current_assessment[Selected: tuple[Any, ...]](
+def _with_what_a_summary_shows[Selected: tuple[Any, ...]](
     query: Select[Selected],
 ) -> Select[Selected]:
-    """The Snapshot every row is named from, and the one reading the row shows.
+    """The Snapshot a row is named from, and the reading its score comes from.
 
     The assessment is joined through the Application's own pointer rather than by looking for
     the newest — the pointer is what "current" means, and following it is a primary-key lookup

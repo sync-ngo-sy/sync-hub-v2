@@ -267,6 +267,7 @@ export const AMAL_REVIEW: ApplicationReview = {
 
 export const LATEST_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000601',
+  is_current: true,
   match_percentage: 82,
   explanation: 'Answers both languages and most of the required skills.',
   strengths: ['Nine years of field logistics', 'Native Arabic and advanced English'],
@@ -278,6 +279,7 @@ export const LATEST_ASSESSMENT: MatchAssessment = {
 
 export const EARLIER_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000602',
+  is_current: false,
   match_percentage: 54,
   explanation: 'Reads as a warehouse profile rather than a coordination one.',
   strengths: ['Warehouse operations'],
@@ -289,6 +291,7 @@ export const EARLIER_ASSESSMENT: MatchAssessment = {
 
 export const BARE_ASSESSMENT: MatchAssessment = {
   id: '00000000-0000-4000-8000-000000000603',
+  is_current: false,
   match_percentage: 40,
   explanation: null,
   strengths: [],

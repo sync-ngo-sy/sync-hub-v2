@@ -3355,6 +3355,12 @@ export interface components {
              */
             id: string;
             /**
+             * Is Current
+             * @description Whether this is the Current assessment — the reading the Application's Match score comes from, and the one a Job's list sorts by. Exactly one reading is, until the last is thrown away.
+             * @default false
+             */
+            is_current: boolean;
+            /**
              * Match Percentage
              * @description How much of what the Job asks for this Application evidences, 0 to 100. Not a probability, and not a verdict.
              */
