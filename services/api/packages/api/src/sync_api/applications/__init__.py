@@ -15,6 +15,8 @@ from sync_api.applications.payload import (
     ApplicationSummaryPage,
     ApplicationVerdictCount,
     AppliedJob,
+    HireAnswer,
+    HireClaim,
     MatchAssessment,
     MatchAssessmentPage,
     MovedApplication,
@@ -27,6 +29,7 @@ from sync_api.applications.payload import (
     SubmittedAnswer,
     TenantApplicationPage,
     TenantApplicationSummary,
+    WithdrawnApplication,
 )
 from sync_api.applications.review import ApplicationReviewService
 from sync_api.applications.service import ApplicationService
@@ -49,6 +52,8 @@ __all__ = [
     "ApplicationSummaryPage",
     "ApplicationVerdictCount",
     "AppliedJob",
+    "HireAnswer",
+    "HireClaim",
     "MatchAssessment",
     "MatchAssessmentPage",
     "MatchAssessmentService",
@@ -62,4 +67,5 @@ __all__ = [
     "SubmittedAnswer",
     "TenantApplicationPage",
     "TenantApplicationSummary",
+    "WithdrawnApplication",
 ]

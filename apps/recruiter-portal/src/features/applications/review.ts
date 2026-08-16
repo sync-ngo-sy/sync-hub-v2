@@ -4,6 +4,7 @@ import { PIPELINE_LADDER, type PipelineStatus, pipelineState } from './applicati
 export type ApplicationReview = components['schemas']['ApplicationReview'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
 export type StatusHistoryEntry = components['schemas']['StatusHistoryEntry'];
+export type HireClaim = components['schemas']['HireClaim'];
 type StatusChangeSource = components['schemas']['StatusChangeSource'];
 
 export type MoveDirection = 'onward' | 'back' | 'rejection';
@@ -11,77 +12,75 @@ export type MoveDirection = 'onward' | 'back' | 'rejection';
 export interface PipelineMove {
   target: PipelineStatus;
   label: string;
-  success: string;
+  happened: string;
   direction: MoveDirection;
 }
-
-const TOLD = 'the candidate has been told.';
 
 const TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move to Reviewing',
-  success: `Moved to Reviewing — ${TOLD}`,
+  happened: 'Moved to Reviewing',
   direction: 'onward',
 };
 const TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move to Shortlisted',
-  success: `Shortlisted — ${TOLD}`,
+  happened: 'Shortlisted',
   direction: 'onward',
 };
 const TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move to Interview',
-  success: `Moved to Interview — ${TOLD}`,
+  happened: 'Moved to Interview',
   direction: 'onward',
 };
 const TO_OFFER: PipelineMove = {
   target: 'offer',
   label: 'Move to Offer',
-  success: `Moved to Offer — ${TOLD}`,
+  happened: 'Moved to Offer',
   direction: 'onward',
 };
 const TO_HIRED: PipelineMove = {
   target: 'hired',
   label: 'Mark as hired',
-  success: `Marked as hired — ${TOLD}`,
+  happened: 'Marked as hired',
   direction: 'onward',
 };
 const TO_REJECTED: PipelineMove = {
   target: 'rejected',
   label: 'Reject',
-  success: 'Rejected — the candidate has been emailed.',
+  happened: 'Rejected',
   direction: 'rejection',
 };
 
 const BACK_TO_NEW: PipelineMove = {
   target: 'new',
   label: 'Move back to New',
-  success: `Moved back to New — ${TOLD}`,
+  happened: 'Moved back to New',
   direction: 'back',
 };
 const BACK_TO_REVIEWING: PipelineMove = {
   target: 'reviewing',
   label: 'Move back to Reviewing',
-  success: `Moved back to Reviewing — ${TOLD}`,
+  happened: 'Moved back to Reviewing',
   direction: 'back',
 };
 const BACK_TO_SHORTLISTED: PipelineMove = {
   target: 'shortlisted',
   label: 'Move back to Shortlisted',
-  success: `Moved back to Shortlisted — ${TOLD}`,
+  happened: 'Moved back to Shortlisted',
   direction: 'back',
 };
 const BACK_TO_INTERVIEW: PipelineMove = {
   target: 'interview',
   label: 'Move back to Interview',
-  success: `Moved back to Interview — ${TOLD}`,
+  happened: 'Moved back to Interview',
   direction: 'back',
 };
 const REOPEN: PipelineMove = {
   target: 'reviewing',
   label: 'Reopen for review',
-  success: `Reopened for review — ${TOLD}`,
+  happened: 'Reopened for review',
   direction: 'back',
 };
 
@@ -137,6 +136,25 @@ export function pipelineMoveChoices(status: PipelineStatus): PipelineMoveChoices
 
 export function pipelineOutcome(status: PipelineStatus): string | null {
   return OUTCOME[status] ?? null;
+}
+
+const TOLD = 'the candidate has been told.';
+const UNCHANGED = 'the candidate sees no change.';
+const EMAILED = 'the candidate has been emailed.';
+
+export function moveOutcome(move: PipelineMove, candidateNotified: boolean): string {
+  if (move.direction === 'rejection') return `${move.happened} — ${EMAILED}`;
+  return `${move.happened} — ${candidateNotified ? TOLD : UNCHANGED}`;
+}
+
+const HIRE_STATE: Record<HireClaim['confirmation'], string> = {
+  unanswered: 'Waiting for the candidate to confirm. Until they do, this is a claim.',
+  confirmed: 'The candidate confirmed this. It is a placement.',
+  denied: 'The candidate says they did not start. This is not a placement.',
+};
+
+export function hireState(hire: HireClaim): string {
+  return HIRE_STATE[hire.confirmation];
 }
 
 const CHANGED_BY: Record<StatusChangeSource, string> = {

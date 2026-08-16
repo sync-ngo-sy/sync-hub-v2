@@ -155,6 +155,9 @@ async def get_application(
             "final, a `rejected` one can only be taken back to `reviewing`, and only the "
             "candidate withdraws."
         ),
+        422: openapi_problem(
+            "A `hired` move carries no `start_date`, or another status carries one."
+        ),
     },
 )
 async def change_application_status(
@@ -163,10 +166,16 @@ async def change_application_status(
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
 ) -> MovedApplication:
-    """Move it anywhere the pipeline allows, backwards included, and tell the candidate.
+    """Move it anywhere the pipeline allows, backwards included.
 
-    Every move notifies them in-app; a rejection also queues the one email a human decision
-    earns. The Screening verdict is untouched, whatever the Application's status becomes.
+    The candidate reads a Stage rather than these statuses, so only a move that changes that
+    Stage reaches them — `candidate_notified` says whether this one did. Moving between
+    `reviewing`, `shortlisted`, `interview` and `offer` is silent by design.
+
+    A rejection also queues the one email a human decision earns. A `hired` move records what
+    the tenant says happened and the day it started, and asks the candidate to confirm it: until
+    they do, it is a claim rather than a Placement. The Screening verdict is untouched, whatever
+    the Application's status becomes.
     """
     return await applications.move(recruiter, application_id, body)
 

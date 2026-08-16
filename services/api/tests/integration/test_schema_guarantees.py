@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from seed.history import STAGE_VALUES
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from sync_core.models import CvParsingStatus
+from sync_core.models import ApplicationStatus, CvParsingStatus
+from sync_core.stages import stage_of
 from tests.support.applications import a_whole_application
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_created_job
@@ -156,18 +158,18 @@ async def test_the_history_of_a_refusal_cannot_forget_the_reason_either(
     await db_session.rollback()
 
 
-async def test_a_status_change_notification_cannot_name_no_application(
+async def test_a_stage_change_notification_cannot_name_no_application(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
     await a_whole_application(recruiter, other_browser, mailbox, db_session)
     candidate_id = await my_id(other_browser)
 
-    with pytest.raises(IntegrityError, match="notifications_status_change_has_an_application"):
+    with pytest.raises(IntegrityError, match="notifications_stage_change_has_an_application"):
         await db_session.execute(
             text(
                 "insert into notifications (recipient_profile_id, type, payload) values "
-                "(:id, 'application_status_changed', "
-                '\'{"type": "application_status_changed"}\'::jsonb)'
+                "(:id, 'application_stage_changed', "
+                '\'{"type": "application_stage_changed"}\'::jsonb)'
             ),
             {"id": candidate_id},
         )
@@ -417,3 +419,20 @@ async def test_global_search_cannot_be_switched_on_without_the_marker(
             text("update candidates set is_searchable = true where id = :id"), {"id": candidate_id}
         )
     await db_session.rollback()
+
+
+async def test_the_seeds_sql_projection_agrees_with_the_one_the_platform_uses(
+    db_session: AsyncSession,
+) -> None:
+    """`seed/history.py` restates the Stage projection in SQL to back-date Notifications.
+
+    Read in Postgres rather than in Python, because a VALUES list that Python builds correctly
+    and Postgres reads differently is exactly the drift this guards.
+    """
+    projected = await db_session.execute(
+        text(f"select status, stage from (values {STAGE_VALUES}) as stages (status, stage)")
+    )
+
+    assert dict(projected.tuples().all()) == {
+        status.value: stage_of(status).value for status in ApplicationStatus
+    }

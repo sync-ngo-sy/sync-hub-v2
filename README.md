@@ -85,7 +85,7 @@ Fill an empty local stack with usable data:
 uv run --directory services/api python scripts/seed_demo.py
 ```
 
-Three Tenants, nine Candidates, ten Jobs and nineteen Applications across every pipeline stage,
+Three Tenants, nine Candidates, ten Jobs and nineteen Applications across every pipeline status,
 plus the Platform admin — so you don't need `scripts/create_platform_admin.py` locally. It asks
 before writing and only runs against a local stack. `--purge` replaces an existing seed.
 

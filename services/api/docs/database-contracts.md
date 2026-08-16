@@ -419,9 +419,14 @@ Every accepted move, in one transaction:
 update applications set status = :to            -- `updated_at` is the trigger's to write
 insert application_status_history(application_id, change_source, changed_by_profile_id,
        previous_status, new_status)
-insert notifications(...)          -- `application_status_changed`, to the applicant
+insert notifications(...)          -- `application_stage_changed`, and only when the Stage
+                                   -- the applicant reads actually changed
+insert hire_claims(...)            -- only a `hired` move, carrying the day work started
 insert communications(...)         -- only a Recruiter's `rejected`, status='queued'
 ```
+The Notification is the one line here that does not always run. A Candidate reads a Stage
+projected from `status` — Received, In review, then the outcome — so a move among the undecided
+statuses writes its history row and tells nobody.
 The verdict is not part of it: `qualification_status`, `qualification_reason` and
 `application_qualification_history` belong to Screening, and moving an Application through the
 pipeline is not a re-screening. The rejection's `idempotency_key` is
@@ -611,9 +616,9 @@ Communication: never delivered externally, never queued, and never sent by a wor
 
 - **Who writes one**: whatever transaction the notification announces, through
   `sync_core.notifications.notify(session, recipient_profile_id, payload)`, which flushes and
-  leaves the commit to its caller. There are two producers: a permanent CV parse failure, and
-  every Application status change. There is no endpoint that creates one — the only client
-  write on this surface is the recipient marking one read.
+  leaves the commit to its caller. The producers are a settled CV parse, either way, and a move
+  that changes the Stage an Application reads as. There is no endpoint that creates one — the
+  only client write on this surface is the recipient marking one read.
 - **Payloads** are a Pydantic discriminated union on the mandatory `type`, spelled once in
   `sync_core.notifications` and exposed through OpenAPI so the SPA narrows on that one field.
   They carry ids and names, never prose: English belongs to the frontend, which keeps a future
@@ -641,6 +646,30 @@ Communication: never delivered externally, never queued, and never sent by a wor
   which is the signup-rollback path, not account deletion. Account deletion *bans* the GoTrue
   user and soft-deletes the Profile, so the cascade never fires and that flow has to delete
   notifications itself.
+
+## Hire claims and Placements
+
+Moving an Application to `hired` is a Tenant saying what it believes happened. `hire_claims`
+records it — one row per Application, the day the work started, and the `application_status_history`
+row the claim was made by — and the Candidate is asked.
+
+- **Written by the move**, in the move's own transaction: the request model insists on a
+  `start_date` for `hired` and refuses one for every other status, so a claim with no day and a
+  day with no hire are both 422s before any row is written.
+- **Answered once**, by the applicant and nobody else: `POST /applications/{id}/hire` takes the
+  row `FOR UPDATE`, so two answers decided at once cannot both read an unanswered claim. A second
+  answer is a 409. The trigger `answered_once` refuses one at the table as well, because RLS does
+  not apply to the backend's role and an answer that can be taken back is a claim about today
+  rather than a record of what was said.
+- **DB-enforced on write** (rely on these): the composite FKs
+  `(tenant_id, application_id) → applications` and `(tenant_id, claimed_by_recruiter_id) →
+  recruiters`, so a Recruiter of another Tenant cannot claim this Application; and
+  `hire_claim_answer_has_its_moment`, so an answer always records when it was given.
+- **A Placement is the `placements` view** over the claims whose `confirmation` is `confirmed`.
+  The view is the definition rather than a report of one: there is no column a backend could set
+  to make a hire count without the Candidate having said so.
+- **A denied claim moves nothing.** The Application stays `hired`: what happened is the
+  Recruiter's to record, and whether it is true is the Candidate's to say.
 
 ## Tenant CRM (notes, tags, talent pool)
 
@@ -749,5 +778,5 @@ from anything the candidate typed.
 
 | Invariant | Enforced by |
 | --- | --- |
-| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |
+| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's; a hire claim belongs to one Tenant's Recruiter and Application; an answered hire claim records when it was answered and is never answered twice | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying only when the Stage a Candidate reads changes, and doing it in the announcing transaction, a `hired` move naming the day work started, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |

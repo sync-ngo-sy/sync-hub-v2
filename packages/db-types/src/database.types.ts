@@ -1469,6 +1469,61 @@ export type Database = {
         };
         Relationships: [];
       };
+      hire_claims: {
+        Row: {
+          answered_at: string | null;
+          application_id: string;
+          claimed_at: string;
+          claimed_by_recruiter_id: string;
+          confirmation: Database['public']['Enums']['hire_confirmation'];
+          start_date: string;
+          status_history_id: string;
+          tenant_id: string;
+        };
+        Insert: {
+          answered_at?: string | null;
+          application_id: string;
+          claimed_at?: string;
+          claimed_by_recruiter_id: string;
+          confirmation?: Database['public']['Enums']['hire_confirmation'];
+          start_date: string;
+          status_history_id: string;
+          tenant_id: string;
+        };
+        Update: {
+          answered_at?: string | null;
+          application_id?: string;
+          claimed_at?: string;
+          claimed_by_recruiter_id?: string;
+          confirmation?: Database['public']['Enums']['hire_confirmation'];
+          start_date?: string;
+          status_history_id?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'hire_claims_status_history_id_fkey';
+            columns: ['status_history_id'];
+            isOneToOne: false;
+            referencedRelation: 'application_status_history';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'hire_claims_tenant_id_application_id_fkey';
+            columns: ['tenant_id', 'application_id'];
+            isOneToOne: false;
+            referencedRelation: 'applications';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'hire_claims_tenant_id_claimed_by_recruiter_id_fkey';
+            columns: ['tenant_id', 'claimed_by_recruiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'recruiters';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
       ingestion_jobs: {
         Row: {
           attempts: number;
@@ -2333,6 +2388,48 @@ export type Database = {
           },
         ];
       };
+      placements: {
+        Row: {
+          application_id: string | null;
+          claimed_at: string | null;
+          claimed_by_recruiter_id: string | null;
+          confirmed_at: string | null;
+          start_date: string | null;
+          tenant_id: string | null;
+        };
+        Insert: {
+          application_id?: string | null;
+          claimed_at?: string | null;
+          claimed_by_recruiter_id?: string | null;
+          confirmed_at?: string | null;
+          start_date?: string | null;
+          tenant_id?: string | null;
+        };
+        Update: {
+          application_id?: string | null;
+          claimed_at?: string | null;
+          claimed_by_recruiter_id?: string | null;
+          confirmed_at?: string | null;
+          start_date?: string | null;
+          tenant_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'hire_claims_tenant_id_application_id_fkey';
+            columns: ['tenant_id', 'application_id'];
+            isOneToOne: false;
+            referencedRelation: 'applications';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'hire_claims_tenant_id_claimed_by_recruiter_id_fkey';
+            columns: ['tenant_id', 'claimed_by_recruiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'recruiters';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
     };
     Functions: {
       [_ in never]: never;
@@ -2364,11 +2461,12 @@ export type Database = {
         | 'temporary'
         | 'internship'
         | 'volunteer';
+      hire_confirmation: 'unanswered' | 'confirmed' | 'denied';
       ingestion_status: 'pending' | 'processing' | 'completed' | 'failed';
       job_status: 'draft' | 'published' | 'closed' | 'archived';
       language_proficiency: 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'native';
       location_kind: 'country' | 'governorate';
-      notification_type: 'cv_parse_failed' | 'cv_parse_succeeded' | 'application_status_changed';
+      notification_type: 'cv_parse_failed' | 'cv_parse_succeeded' | 'application_stage_changed';
       qualification_status: 'pending' | 'qualified' | 'disqualified' | 'review_required';
       recruiter_role: 'admin' | 'recruiter';
       skill_importance: 'required' | 'preferred' | 'optional';
@@ -2533,11 +2631,12 @@ export const Constants = {
         'internship',
         'volunteer',
       ],
+      hire_confirmation: ['unanswered', 'confirmed', 'denied'],
       ingestion_status: ['pending', 'processing', 'completed', 'failed'],
       job_status: ['draft', 'published', 'closed', 'archived'],
       language_proficiency: ['beginner', 'intermediate', 'advanced', 'fluent', 'native'],
       location_kind: ['country', 'governorate'],
-      notification_type: ['cv_parse_failed', 'cv_parse_succeeded', 'application_status_changed'],
+      notification_type: ['cv_parse_failed', 'cv_parse_succeeded', 'application_stage_changed'],
       qualification_status: ['pending', 'qualified', 'disqualified', 'review_required'],
       recruiter_role: ['admin', 'recruiter'],
       skill_importance: ['required', 'preferred', 'optional'],

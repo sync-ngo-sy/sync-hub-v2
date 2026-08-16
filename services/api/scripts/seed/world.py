@@ -19,7 +19,7 @@ The exceptions are named where they appear, and each is something no client can 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
 from secrets import token_hex, token_urlsafe
 from typing import TYPE_CHECKING, Final
@@ -35,6 +35,7 @@ from sync_api.applications import (
     ApplicationReviewService,
     ApplicationService,
     ApplicationStatusChange,
+    HireAnswer,
     MatchAssessmentService,
     NewApplication,
     SubmittedAnswer,
@@ -74,6 +75,7 @@ from sync_assessments import AssessedMatch
 from sync_core import transaction
 from sync_core.models import (
     AccountType,
+    ApplicationStatus,
     Candidate,
     CanonicalRole,
     IngestionJob,
@@ -601,8 +603,21 @@ class World:
             recruiter = self._recruiter(_first_recruiter_of(job.tenant))
             review = ApplicationReviewService(self._db, self._storage, self._settings)
             for status in applied.moves:
-                await review.move(recruiter, application_id, ApplicationStatusChange(status=status))
+                await review.move(
+                    recruiter,
+                    application_id,
+                    ApplicationStatusChange(
+                        status=status, start_date=self._started_on(applied, status)
+                    ),
+                )
                 self._seeded.counted("pipeline moves")
+            if applied.hire_confirmed is not None:
+                await ApplicationService(self._db).answer_hire(
+                    self._candidate_acting[applied.candidate],
+                    application_id,
+                    HireAnswer(confirmed=applied.hire_confirmed),
+                )
+                self._seeded.counted("answered hire claims")
             if applied.withdrawn:
                 await ApplicationService(self._db).withdraw(
                     self._candidate_acting[applied.candidate], application_id
@@ -613,6 +628,18 @@ class World:
             for _ in range(applied.assessments):
                 await assessments.assess(recruiter, application_id)
                 self._seeded.counted("AI match assessments")
+
+    def _started_on(
+        self, applied: cast.SeededApplication, status: ApplicationStatus
+    ) -> date | None:
+        """The day a claimed hire says the work began. Only a `hired` move carries one."""
+        if status is not ApplicationStatus.HIRED:
+            return None
+        if applied.starts_in_days is None:
+            raise ValueError(
+                f"{applied.candidate} is hired for {applied.job} but names no start day"
+            )
+        return self._seeded.clock.ago(-applied.starts_in_days).date()
 
     async def _closures(self) -> None:
         """Take the Jobs that are done off the board, now that they have their pipelines."""

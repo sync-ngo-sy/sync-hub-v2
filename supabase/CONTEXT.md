@@ -118,13 +118,27 @@ What a Candidate is told about their own Application, projected from its status 
 to it — Received, In review, then the outcome. Everything a Tenant does between arrival and a
 decision is one Stage, so a Recruiter shortlisting and un-shortlisting somebody is invisible and
 silent. A Candidate is notified when the Stage changes and at no other time, which is what lets
-the pipeline stay as non-linear as hiring really is.
+the pipeline stay as non-linear as hiring really is. It is no column of this schema and never
+will be: it is computed from `applications.status` wherever it is read, so there is no second
+copy of the truth to keep in step, and a status added to the pipeline has to answer what it
+reads as before the code will start.
 _Avoid_: Status (the Tenant's word, and it has eight values), step, progress.
 
+**Hire claim**:
+What a Tenant says happened when it moves an Application to `hired`: the day the work started,
+and the move it was claimed by (`hire_claims`, one row per Application). Its Recruiter and its
+Application are held to one Tenant by a composite key, like every other row a Tenant owns. The
+Candidate answers it once — yes, no, or not yet — and a trigger refuses a second answer for the
+service role like anybody else, because an answer that can be taken back is a claim about today
+rather than a record of what was said. A denied claim moves nothing: what happened is the
+Recruiter's to record, and whether it is true is the Candidate's to say.
+_Avoid_: Hire, Offer (that is a status), Start date (that is one of its columns).
+
 **Placement**:
-A hire the Candidate confirmed. Moving an Application to `hired` records what the Tenant says
-happened and the day it started; the Candidate is asked, and only their yes makes it a Placement.
-A claim nobody confirmed stays a claim, and nothing counts it.
+A hire the Candidate confirmed — the `placements` view over the Hire claims they said yes to.
+The view *is* the definition rather than a report of one: there is no column a backend could set
+to make a hire count without the Candidate having said so. A claim nobody confirmed stays a
+claim, and nothing counts it.
 _Avoid_: Hire, Hired (that is a status), Success, Conversion.
 
 ### Search

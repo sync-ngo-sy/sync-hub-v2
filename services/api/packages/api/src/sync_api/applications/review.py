@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 
 from sync_api.applications.access import own_application
+from sync_api.applications.hires import claim_the_hire, claimed_hire
 from sync_api.applications.payload import (
     RECEIVED_WITHIN_DAYS,
     ApplicationCv,
@@ -247,6 +248,7 @@ class ApplicationReviewService:
             snapshot=await snapshot_of(self._db, application.id),
             answers=await answers_of(self._db, application.id),
             history=await self._history(application.id),
+            hire=await claimed_hire(self._db, application.id),
             cv=await self._cv(application.cv_id),
             applied_at=application.applied_at,
             updated_at=application.updated_at,
@@ -268,6 +270,15 @@ class ApplicationReviewService:
             )
             if change.status is ApplicationStatus.REJECTED:
                 await self._queue_the_rejection(recruiter, applied, moved.status_history_id)
+            if change.status is ApplicationStatus.HIRED and change.start_date is not None:
+                await claim_the_hire(
+                    self._db,
+                    application_id=application_id,
+                    tenant_id=recruiter.tenant.id,
+                    recruiter_id=recruiter.profile.id,
+                    status_history_id=moved.status_history_id,
+                    start_date=change.start_date,
+                )
 
         logger.info(
             "applications.moved",
@@ -275,11 +286,13 @@ class ApplicationReviewService:
             tenant_id=str(recruiter.tenant.id),
             previous_status=moved.previous_status.value,
             status=moved.status.value,
+            candidate_notified=moved.candidate_notified,
         )
         return MovedApplication(
             id=application_id,
             status=moved.status,
             previous_status=moved.previous_status,
+            candidate_notified=moved.candidate_notified,
             changed_at=moved.changed_at,
         )
 

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { PipelineStatus } from '@/features/applications/application';
@@ -59,10 +59,17 @@ async function chooseMove(user: UserEvent, label: string) {
   const direct = screen.queryByRole('button', { name: label });
   if (direct) {
     await user.click(direct);
-    return;
+  } else {
+    await user.click(screen.getByRole('button', { name: 'More moves' }));
+    await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }));
   }
-  await user.click(screen.getByRole('button', { name: 'More moves' }));
-  await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }));
+  if (label === 'Mark as hired') await claimTheHire(user);
+}
+
+async function claimTheHire(user: UserEvent, startDate = '2026-09-01') {
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.change(within(dialog).getByLabelText('Start date'), { target: { value: startDate } });
+  await user.click(within(dialog).getByRole('button', { name: 'Mark as hired' }));
 }
 
 describe('the Application review page', () => {
@@ -562,7 +569,7 @@ describe('the Pipeline on the Application review page', () => {
     expect(pipeline.queryByText(/^Step \d+ of \d+$/)).toBeNull();
   });
 
-  it('keeps stage numbers out of the adjacent moves, and ends the row on the onward move', async () => {
+  it('keeps ladder numbers out of the adjacent moves, and ends the row on the onward move', async () => {
     server.use(...signedInAs(RECRUITER), ...getsApplication(REVIEW));
 
     await renderApp(`/applications/${REVIEW.id}`);
@@ -607,7 +614,7 @@ describe('the Pipeline on the Application review page', () => {
     );
   });
 
-  it('moves the Application, says the candidate was told, and re-reads where it stands', async () => {
+  it('moves the Application, says the candidate sees no change, and re-reads where it stands', async () => {
     const asked: PipelineStatus[] = [];
     server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW, asked));
 
@@ -616,7 +623,7 @@ describe('the Pipeline on the Application review page', () => {
     await chooseMove(user, 'Move to Interview');
 
     expect(
-      await screen.findByText('Moved to Interview — the candidate has been told.'),
+      await screen.findByText('Moved to Interview — the candidate sees no change.'),
     ).toBeVisible();
     expect(asked).toEqual(['interview']);
 
@@ -691,11 +698,55 @@ describe('the Pipeline on the Application review page', () => {
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
-    await chooseMove(user, 'Mark as hired');
+    await chooseMove(user, 'Move to Offer');
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("This Application couldn't move to Hired.");
+    expect(alert).toHaveTextContent("This Application couldn't move to Offer.");
     expect(alert).not.toHaveTextContent('Conflict');
+  });
+
+  it('asks for the day a hire started, and shows the claim as unconfirmed', async () => {
+    const asked: PipelineStatus[] = [];
+    server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW, asked));
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+    await chooseMove(user, 'Mark as hired');
+
+    expect(await screen.findByText('Marked as hired — the candidate has been told.')).toBeVisible();
+    await waitFor(() => expect(asked).toEqual(['hired']));
+
+    const pipeline = within(screen.getByRole('region', { name: 'Pipeline' }));
+    expect(await pipeline.findByText('September 1, 2026', { exact: false })).toBeVisible();
+    expect(
+      pipeline.getByText('Waiting for the candidate to confirm. Until they do, this is a claim.'),
+    ).toBeVisible();
+  });
+
+  it('keeps a refused hire inside the dialog that asked for the day', async () => {
+    server.use(...signedInAs(RECRUITER), ...refusesApplicationMove(REVIEW, MOVE_REFUSED));
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+    await chooseMove(user, 'Mark as hired');
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'A shortlisted application cannot become new.',
+    );
+    expect(within(dialog).getByRole('button', { name: 'Mark as hired' })).toBeVisible();
+  });
+
+  it('refuses to claim a hire with no day at all', async () => {
+    const asked: PipelineStatus[] = [];
+    server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW, asked));
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+    await user.click(screen.getByRole('button', { name: 'More moves' }));
+    await user.click(await screen.findByRole('menuitem', { name: /Mark as hired/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Mark as hired' }));
+
+    expect(await within(dialog).findByText('Name the day the work starts.')).toBeVisible();
+    expect(asked).toEqual([]);
   });
 
   it('drops the refusal once a move the platform allows goes through', async () => {
@@ -710,7 +761,7 @@ describe('the Pipeline on the Application review page', () => {
     await user.click(screen.getByRole('button', { name: 'Move to Interview' }));
 
     expect(
-      await screen.findByText('Moved to Interview — the candidate has been told.'),
+      await screen.findByText('Moved to Interview — the candidate sees no change.'),
     ).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
   });
