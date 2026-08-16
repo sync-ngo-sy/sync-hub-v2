@@ -44,6 +44,9 @@ export type ColumnPriority = 'primary' | 'secondary' | 'hidden';
 export interface ColumnSort {
   ascending: string;
   descending: string;
+  /** Which way the column arrives the first time it is asked for. Ascending unless the
+   * column's own numbers only really read one way — a score is asked for best first. */
+  first?: 'ascending' | 'descending';
 }
 
 declare module '@tanstack/react-table' {
@@ -477,7 +480,8 @@ interface Sorting {
 }
 
 /** Clicking the column that is already sorted turns it around; clicking any other starts it
- * ascending, which is the direction a reader expects a fresh column to arrive in. */
+ * ascending, which is the direction a reader expects a fresh column to arrive in — unless the
+ * column says otherwise, which is for the ones whose whole point is the top of the list. */
 function sortingOf(
   column: ColumnSort | undefined,
   sort: DataTableSort | undefined,
@@ -489,9 +493,17 @@ function sortingOf(
       : sort.by === column.descending
         ? 'descending'
         : null;
+  const unsorted = column.first === 'descending' ? column.descending : column.ascending;
   return {
     direction,
-    onSort: () => sort.onChange(direction === 'ascending' ? column.descending : column.ascending),
+    onSort: () =>
+      sort.onChange(
+        direction === null
+          ? unsorted
+          : direction === 'ascending'
+            ? column.descending
+            : column.ascending,
+      ),
   };
 }
 

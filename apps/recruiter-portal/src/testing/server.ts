@@ -2,7 +2,7 @@ import { setupServer } from 'msw/node';
 import {
   listsApplicationNotes,
   listsApplicationTags,
-  listsMatchAssessments,
+  readsMatchAssessment,
 } from '@/features/applications/testing/handlers';
 import { signedOut } from '@/features/auth/testing/handlers';
 import {
@@ -27,7 +27,7 @@ export const server = setupServer(
   ...listsMessageTemplates([]),
   ...listsApplicationNotes([]),
   ...listsApplicationTags([]),
-  ...listsMatchAssessments([]),
+  ...readsMatchAssessment(null),
   ...listsCandidateNotes([]),
   ...listsCandidateTags([]),
   ...listsDirectoryCandidates([]),

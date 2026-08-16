@@ -3,12 +3,14 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Inbox } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
 import {
+  type ApplicationSort,
   type ApplicationSummary,
   hiddenBehind,
   PIPELINE_STATUSES,
   SCREENING_VERDICTS,
   screeningSelection,
   screeningState,
+  sortSelection,
 } from '../application';
 import { useJobApplications } from '../hooks/use-job-applications';
 import type { ApplicationFilters } from '../reading';
@@ -38,7 +40,8 @@ export function JobApplications({
   const pipelineFilter = filters.pipeline?.length === 1 ? filters.pipeline : undefined;
   const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
   const screening = screeningSelection(filters.screening);
-  const applications = useJobApplications(jobId, { pipeline: pipelineFilter, screening });
+  const sort = sortSelection(filters.sort);
+  const applications = useJobApplications(jobId, { pipeline: pipelineFilter, screening, sort });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const active = [
@@ -77,6 +80,10 @@ export function JobApplications({
         onRowOpen={onApplicationOpen}
         rowHref={applicationHref}
         isLoading={applications.isPending}
+        sort={{
+          by: sort,
+          onChange: (by) => onFiltersChange({ ...filters, sort: by as ApplicationSort }),
+        }}
         error={
           applications.isError
             ? {

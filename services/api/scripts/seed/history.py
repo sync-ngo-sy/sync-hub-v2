@@ -307,12 +307,23 @@ async def _derived(session: AsyncSession) -> None:
             "where m.application_id = a.id"
         )
     )
-    # Advice a Recruiter asked for while the Application was live.
+    # The reading lands while the Application is still arriving. There is only ever one, so
+    # there is nothing to rank.
     await session.execute(
         text(
             "update application_ai_match_assessments m "
-            "   set created_at = a.applied_at + (now() - a.applied_at) * 0.35 "
+            "   set created_at = a.applied_at + interval '90 seconds', "
+            "       updated_at = a.applied_at + interval '90 seconds' "
             "  from applications a where a.id = m.application_id"
+        )
+    )
+    # The queue row the arrival trigger opened, settled when the automatic reading landed.
+    await session.execute(
+        text(
+            "update match_assessment_jobs j set created_at = a.applied_at, "
+            "started_at = a.applied_at + interval '20 seconds', "
+            "completed_at = a.applied_at + interval '90 seconds' "
+            "from applications a where a.id = j.application_id"
         )
     )
     # A Notification was written by the move it announces, so it takes that move's moment. Only

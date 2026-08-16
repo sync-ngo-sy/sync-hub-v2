@@ -153,6 +153,9 @@ class Settings(BaseSettings):
     worker_ingestion_concurrency: int = Field(default=4, ge=1)
     worker_embedding_concurrency: int = Field(default=2, ge=1)
     worker_communications_concurrency: int = Field(default=2, ge=1)
+    #: Modest on purpose: a burst of Applications is a burst of model calls, and the Recruiter
+    #: waiting on them is not watching a spinner — they will open the Job in a minute either way.
+    worker_assessment_concurrency: int = Field(default=2, ge=1)
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON

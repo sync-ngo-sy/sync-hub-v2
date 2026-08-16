@@ -72,10 +72,12 @@ from sync_api.messaging import (
 from sync_api.platform import PlatformService, create_platform_admin
 from sync_api.tenants import ActingRecruiter, TenantService, TenantSummary
 from sync_assessments import AssessedMatch
+from sync_assessments.openai_assessor import OpenAiMatchAssessor
 from sync_core import transaction
 from sync_core.models import (
     AccountType,
     ApplicationStatus,
+    AssessmentStatus,
     Candidate,
     CanonicalRole,
     IngestionJob,
@@ -83,7 +85,9 @@ from sync_core.models import (
     JobStatus,
     JobViewEvent,
     Language,
+    LanguageProficiency,
     Location,
+    MatchAssessmentJob,
     Profile,
     SkillImportance,
     SkillTaxonomy,
@@ -103,13 +107,21 @@ from sync_parsers import (
 )
 
 if TYPE_CHECKING:
+    from decimal import Decimal
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from seed.identities import Identities
     from sync_api.auth import GoTrue
-    from sync_assessments import MatchRequest
+    from sync_assessments import (
+        AssessedApplication,
+        HeldSkill,
+        MatchAssessor,
+        MatchRequest,
+        RequiredLanguage,
+        RequiredSkill,
+    )
     from sync_core import Database, Settings, Storage
 
 #: Named so a reader of `application_ai_match_assessments.model_name` can tell at a glance that
@@ -175,36 +187,205 @@ class Seeded:
         self.counts[what] = self.counts.get(what, 0) + many
 
 
-class SeedAssessor:
-    """Deterministic advice, in the shape a model's would take.
+#: How much of the score the Job's own criteria carry. The rest is how strong the application
+#: reads in itself — the same split the instructions give a real model, because a stand-in that
+#: graded a different thing would make the seeded world a poor rehearsal for the deployed one.
+_CRITERIA_SHARE: Final = 0.5
 
-    The seed wants `application_ai_match_assessments` populated without spending anybody's
-    OpenAI budget, and — more to the point — without a number that changes every run. The
-    share of the Job's required skills the Snapshot evidences is a defensible one.
+#: Where "deep" starts. Beyond it, more years stop adding to the score: the difference between
+#: eight years and twenty is not what a Recruiter is sorting on.
+_DEEP_YEARS: Final = 8
+
+#: A work history long enough to show a direction rather than a single post.
+_ENOUGH_ROLES: Final = 3
+
+#: What a half with nothing in it scores. A Job that states no criteria at all has not said the
+#: applicant answers none of them, so neither 0 nor 100 would be honest.
+_NOTHING_TO_WEIGH: Final = 0.5
+
+#: `language_proficiency` is an unordered enum in Postgres; this is the order it means. Spelled
+#: again here rather than reached for inside Screening, which keeps its own copy private — the
+#: stand-in is not entitled to Screening's internals just because it grades the same criteria.
+_PROFICIENCIES: Final = (
+    LanguageProficiency.BEGINNER,
+    LanguageProficiency.INTERMEDIATE,
+    LanguageProficiency.ADVANCED,
+    LanguageProficiency.FLUENT,
+    LanguageProficiency.NATIVE,
+)
+
+
+class SeedAssessor:
+    """Deterministic advice, in the shape a model's would take — and grading what a model is
+    told to grade.
+
+    The stand-in for a reseed with no OpenAI key. It weighs the Job's criteria for about half
+    the score, exactly as the instructions do, and the strength of the application itself for
+    the rest: how deep the work goes, whether the roles show a progression, whether the
+    candidate said what they actually did, and how much of the profile they filled in.
+
+    It grades every part rather than ticking it. A checklist over the required skills is what
+    this used to be, and on a Job asking for one or two skills it could only answer 0 or 100 —
+    a number that told a Recruiter nothing Screening had not already told them, in a column
+    meant for sorting.
     """
 
     model = SEED_ASSESSOR
 
     async def assess(self, request: MatchRequest) -> AssessedMatch:
-        required = [
-            skill.name
-            for skill in request.job.skills
-            if skill.importance is SkillImportance.REQUIRED
-        ]
-        held = {skill.name for skill in request.application.skills}
-        matched = [name for name in required if name in held]
-        missing = [name for name in required if name not in held]
-        share = 100.0 if not required else round(100.0 * len(matched) / len(required), 1)
+        job, applied = request.job, request.application
+        required = [skill for skill in job.skills if skill.importance is SkillImportance.REQUIRED]
+        held = {skill.name: skill for skill in applied.skills}
+        evidenced = [skill.name for skill in required if skill.name in held]
+        missing = [skill.name for skill in required if skill.name not in held]
+
+        evidence = _evidence_score(applied)
+        criteria = _weighed(
+            (0.50, _skills_score(required, held)),
+            (0.30, _experience_score(job.minimum_total_experience_years, applied)),
+            (0.20, _languages_score(job.languages, applied)),
+        )
+        craft = _weighed(
+            (0.30, _depth_score(applied)),
+            (0.20, _progression_score(applied)),
+            (0.30, evidence),
+            (0.20, _substantiation_score(applied)),
+        )
+        share = round(100.0 * (_CRITERIA_SHARE * criteria + (1 - _CRITERIA_SHARE) * craft), 1)
+
         return AssessedMatch(
             match_percentage=share,
             explanation=(
-                f"{request.application.headline or 'The application'} against "
-                f"{request.job.title}: {len(matched)} of {len(required) or 'no'} required "
-                "skills evidenced by the snapshot. Seeded advice, not a model's."
+                f"{applied.headline or 'The application'} against {job.title}: "
+                f"{len(evidenced)} of {len(required) or 'no'} required skills evidenced, "
+                f"{applied.total_experience_years or 0} years of work across "
+                f"{len(applied.experiences)} roles. Seeded advice, not a model's."
             ),
-            strengths=[f"{name} is evidenced" for name in matched],
-            gaps=[f"{name} is not listed" for name in missing],
+            strengths=[f"{name} is evidenced" for name in evidenced]
+            + [
+                entry.job_title
+                for entry in applied.experiences
+                if entry.description and entry.is_current
+            ],
+            gaps=[f"{name} is not listed" for name in missing]
+            + (
+                []
+                if evidence > 0.5
+                else ["The work history says the roles but not what was done in them"]
+            ),
         )
+
+
+def _weighed(*parts: tuple[float, float | None]) -> float:
+    """The parts that apply, averaged by their weight. A Job asking for no languages is not a
+    Job the applicant scored zero on — that part simply is not one of the things being weighed,
+    so the weights left redistribute over themselves."""
+    counted = [(weight, score) for weight, score in parts if score is not None]
+    total = sum(weight for weight, _ in counted)
+    if not total:
+        return _NOTHING_TO_WEIGH
+    return sum(weight * score for weight, score in counted) / total
+
+
+def _skills_score(required: list[RequiredSkill], held: dict[str, HeldSkill]) -> float | None:
+    """Part marks per skill: holding it is most of the answer, and holding it for as long as
+    the Job asked is the rest."""
+    if not required:
+        return None
+    earned = 0.0
+    for skill in required:
+        carried = held.get(skill.name)
+        if carried is None:
+            continue
+        earned += 0.7
+        wanted = skill.minimum_years
+        years = carried.years_experience
+        if wanted is None or years is None:
+            earned += 0.15
+        else:
+            earned += 0.3 * min(1.0, float(years) / wanted)
+    return min(1.0, earned / len(required))
+
+
+def _experience_score(minimum: Decimal | None, applied: AssessedApplication) -> float | None:
+    years = applied.total_experience_years
+    if years is None:
+        return None
+    if minimum is None or minimum <= 0:
+        return min(1.0, years / _DEEP_YEARS)
+    return min(1.0, years / float(minimum))
+
+
+def _languages_score(
+    wanted: tuple[RequiredLanguage, ...], applied: AssessedApplication
+) -> float | None:
+    if not wanted:
+        return None
+    spoken = {language.name: language.proficiency for language in applied.languages}
+    earned = 0.0
+    for language in wanted:
+        held = spoken.get(language.name)
+        if held is None:
+            continue
+        earned += (
+            1.0
+            if _PROFICIENCIES.index(held) >= _PROFICIENCIES.index(language.minimum_proficiency)
+            else 0.5
+        )
+    return earned / len(wanted)
+
+
+def _depth_score(applied: AssessedApplication) -> float | None:
+    years = applied.total_experience_years
+    return None if years is None else min(1.0, years / _DEEP_YEARS)
+
+
+def _progression_score(applied: AssessedApplication) -> float:
+    return min(1.0, len(applied.experiences) / _ENOUGH_ROLES)
+
+
+def _evidence_score(applied: AssessedApplication) -> float:
+    """Whether the roles say what was done in them, rather than only that they were held."""
+    if not applied.experiences:
+        return 0.0
+    said = [entry for entry in applied.experiences if entry.description]
+    return len(said) / len(applied.experiences)
+
+
+def _substantiation_score(applied: AssessedApplication) -> float:
+    """How much of the profile the Candidate actually filled in."""
+    filled = [
+        bool(applied.summary),
+        bool(applied.educations),
+        bool(applied.projects),
+        bool(applied.headline),
+    ]
+    return sum(filled) / len(filled)
+
+
+def _the_assessor(settings: Settings) -> MatchAssessor:
+    """The real model where there is a key for one, and the stand-in where there is not.
+
+    The seeded world is what the platform is judged by before anybody's real Applications
+    arrive, and a Match score is only worth looking at if it behaves the way the deployed one
+    will. So the seed pays for the calls — a couple of dozen of them, once per reseed — rather
+    than showing a number no model produced.
+
+    Falling back rather than failing keeps a reseed possible with no key at all, which is what
+    a contributor who only wants the fixtures has. The rows then say `seed-assessor`, so nobody
+    mistakes the stand-in's arithmetic for a reading.
+    """
+    if settings.openai_api_key is None:
+        print(
+            "  No SYNC_OPENAI_API_KEY: Match scores will be the stand-in's arithmetic, "
+            f"recorded as {SEED_ASSESSOR!r} rather than as a model."
+        )
+        return SeedAssessor()
+    return OpenAiMatchAssessor.build(
+        api_key=settings.openai_api_key.get_secret_value(),
+        model=settings.openai_assessment_model,
+        timeout_seconds=settings.openai_timeout_seconds,
+    )
 
 
 class World:
@@ -233,6 +414,9 @@ class World:
         # `store` and `fail` are the two halves of the pipeline that need no model: one
         # writes a parse that already exists, the other records that there will not be one.
         self._ingestion = CvIngestion(database, storage, _NeverParses())
+        # Built once: every Application in the world is read through the same one, so the
+        # scores in a seeded pipeline can be compared with each other.
+        self._assessor = _the_assessor(settings)
 
     async def build(self) -> Seeded:
         await self._operator()
@@ -624,10 +808,34 @@ class World:
                 )
                 self._seeded.counted("withdrawals")
 
-            assessments = MatchAssessmentService(self._db, SeedAssessor())
-            for _ in range(applied.assessments):
-                await assessments.assess(recruiter, application_id)
-                self._seeded.counted("AI match assessments")
+            # One reading per Application, which is all an Application can carry: this stands
+            # in for the worker, which the seed does not run.
+            await MatchAssessmentService(self._db, self._assessor).assess(recruiter, application_id)
+            self._seeded.counted("AI match assessments")
+            await self._settle_assessment(application_id)
+
+    async def _settle_assessment(self, application_id: UUID) -> None:
+        """Close the queue row the `assess_on_arrival` trigger opened.
+
+        The seed writes its own readings, deterministically and for nothing, so the row is
+        already answered. Left `pending` it would hand a running worker every Application in the
+        seeded world to read against a real provider, at a real cost, for a number that would
+        only change on every reseed.
+        """
+        settled = self._seeded.clock.now
+        async with transaction(self._db):
+            await self._db.execute(
+                update(MatchAssessmentJob)
+                .where(MatchAssessmentJob.application_id == application_id)
+                .values(
+                    status=AssessmentStatus.COMPLETED,
+                    attempts=1,
+                    error_message=None,
+                    started_at=settled,
+                    completed_at=settled,
+                    available_at=None,
+                )
+            )
 
     def _started_on(
         self, applied: cast.SeededApplication, status: ApplicationStatus
