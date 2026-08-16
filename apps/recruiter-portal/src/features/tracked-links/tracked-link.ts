@@ -77,23 +77,20 @@ function withShares(
   return exact.map(({ index: _index, remainder: _remainder, ...row }) => row);
 }
 
-export function viewsLabel(count: number): string {
-  return `${count} ${count === 1 ? 'view' : 'views'}`;
-}
+const UNANSWERED = '—';
 
-const NO_RATE = '—';
-
-/** A rate over nothing is unanswered rather than nought: a link nobody has followed has not
- * failed to convert anybody. One reading of that for every surface that reports a channel. */
-export function conversionLabel(rate: number | null | undefined): string {
-  return rate === null || rate === undefined ? NO_RATE : `${rate}%`;
+/** A percentage of nothing is unanswered rather than nought: a link nobody has followed has
+ * neither a share of the traffic nor a rate at which it failed to convert anybody. Every
+ * percentage a Tracked link is reported by reads that the same way. */
+export function percentageLabel(percentage: number | null | undefined): string {
+  return percentage === null || percentage === undefined ? UNANSWERED : `${percentage}%`;
 }
 
 export function viewsSummary(bars: LinkViews[]): string {
   const spoken = bars.slice(0, SPOKEN_AT_MOST);
   const rows = spoken.map((bar) => {
     const share = bar.share === undefined ? '' : `, ${bar.share ?? 0}%`;
-    return `${bar.name}: ${viewsLabel(bar.views)}${share}`;
+    return `${bar.name}: ${bar.views} ${bar.views === 1 ? 'view' : 'views'}${share}`;
   });
   const rest = bars.length - spoken.length;
   const tail =

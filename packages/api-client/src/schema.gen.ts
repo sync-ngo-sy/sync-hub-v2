@@ -4546,12 +4546,12 @@ export interface components {
             views: number;
             /**
              * Applications
-             * @description Applications from a visitor this channel brought, over the same Jobs.
+             * @description Applications from a visitor this Source brought, over the same Jobs.
              */
             applications: number;
             /**
              * Conversion Rate
-             * @description The percentage of this channel's views that became Applications, 0-100. Null when the channel has brought no views: a rate over nothing says nothing.
+             * @description The percentage of this Source's views that became Applications. Null when the Source has brought no views: a rate over nothing says nothing. A tracked link is 0-100, since an Application is attributed by a view it already counted. `Direct` counts its two numbers over different populations — an Application that arrived with no view recorded is still nobody's link — so `Direct` alone can pass 100.
              */
             conversion_rate: number | null;
         };

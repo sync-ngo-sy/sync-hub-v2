@@ -245,10 +245,10 @@ describe('the Dashboard', () => {
       .map((row) => row.textContent);
 
     expect(rows).toEqual([
-      'LinkedIn post342 views · 41 applications12%',
-      'WhatsApp groups281 views · 14 applications5%',
-      'Direct190 views · 1 application1%',
-      'Facebook page97 views · 0 applications0%',
+      'LinkedIn post41 applications · 12%342',
+      'WhatsApp groups14 applications · 5%281',
+      'Direct1 application · 1%190',
+      'Facebook page0 applications · 0%97',
     ]);
     expect(sources.queryByRole('img')).not.toBeInTheDocument();
   });
@@ -279,8 +279,8 @@ describe('the Dashboard', () => {
       .map((row) => row.textContent);
 
     expect(rows).toEqual([
-      'WhatsApp groups281 views · 14 applications5%',
-      'Alumni list2 views · 2 applications100%',
+      'WhatsApp groups14 applications · 5%281',
+      'Alumni list2 applications · 100%2',
     ]);
   });
 
@@ -301,8 +301,8 @@ describe('the Dashboard', () => {
     const sources = panel('Where applicants find you');
 
     expect(await sources.findByText('Print flyer')).toBeVisible();
-    expect(sources.getByText('—')).toBeVisible();
-    expect(sources.queryByText('0%')).not.toBeInTheDocument();
+    expect(sources.getByText('0 applications · —')).toBeVisible();
+    expect(sources.queryByText(/0%/)).not.toBeInTheDocument();
   });
 
   it('says how many channels it is showing you out of how many there are', async () => {

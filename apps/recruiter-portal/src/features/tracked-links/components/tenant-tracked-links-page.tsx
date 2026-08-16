@@ -15,12 +15,12 @@ import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useTenantTrackedLinks } from '../hooks/use-tenant-tracked-links';
 import {
-  conversionLabel,
   hiddenByDate,
   LINK_FILTER_ORDER,
   LINK_FILTERS,
   type LinkFilter,
   linksMatching,
+  percentageLabel,
   type TenantTrackedLink,
   trackedLinkState,
 } from '../tracked-link';
@@ -95,7 +95,7 @@ const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
     header: 'Conversion',
     cell: ({ row }) => (
       <span className="font-mono tabular-nums">
-        {conversionLabel(row.original.conversion_rate)}
+        {percentageLabel(row.original.conversion_rate)}
       </span>
     ),
   },

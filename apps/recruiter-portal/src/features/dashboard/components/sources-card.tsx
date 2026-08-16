@@ -4,7 +4,7 @@ import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { ChartSpline } from 'lucide-react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
-import { conversionLabel, viewsLabel } from '@/features/tracked-links/tracked-link';
+import { percentageLabel } from '@/features/tracked-links/tracked-link';
 import { problemMessage } from '@/lib/api-problem';
 import { applicants, type Source, sourcesSubtitle, type TenantStats } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
@@ -21,11 +21,11 @@ function SourcesList({ sources }: { sources: Source[] }) {
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-meta text-secondary-foreground">{source.name}</span>
             <span className="truncate text-meta font-mono tabular-nums text-muted-foreground">
-              {`${viewsLabel(source.views)} · ${applicants(source.applications)}`}
+              {`${applicants(source.applications)} · ${percentageLabel(source.conversion_rate)}`}
             </span>
           </span>
           <span className="shrink-0 text-meta font-mono tabular-nums text-foreground">
-            {conversionLabel(source.conversion_rate)}
+            {source.views}
           </span>
         </li>
       ))}

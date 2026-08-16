@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any, Final
 
 from sqlalchemy import Select, func, literal, select, true, union_all
 
-from sync_api.jobs.links import APPLICATION_COUNT, VIEW_COUNT
 from sync_api.rates import percentage
 from sync_api.stats.payload import (
     ApplicationCounts,
@@ -14,6 +13,7 @@ from sync_api.stats.payload import (
     Source,
     TenantStats,
 )
+from sync_api.traffic import APPLICATION_COUNT, VIEW_COUNT
 from sync_api.windows import rolling_since
 from sync_core.models import (
     Application,
@@ -103,8 +103,8 @@ class StatsService:
 
 
 def _pass_rate(*, qualified: int, disqualified: int) -> int | None:
-    """Over the verdicts Screening actually reached. An Application still pending is not a
-    failure, and counting it as the denominator would report a rate that only ever falls."""
+    """Over the verdicts Screening actually reached: an Application still pending is not a
+    failure, and counting it would report a rate that only ever falls."""
     return percentage(qualified, of=qualified + disqualified)
 
 

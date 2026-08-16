@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { TrackedLink, TrackedLinkReport } from './tracked-link';
 import {
-  conversionLabel,
   DIRECT,
+  percentageLabel,
   trackedLinkAddress,
   trackedLinkState,
   viewsPerSource,
@@ -78,19 +78,19 @@ describe('what a tracked link is doing', () => {
   });
 });
 
-describe('the rate between views and applications', () => {
-  it('is read as a whole percentage', () => {
-    expect(conversionLabel(12)).toBe('12%');
-    expect(conversionLabel(100)).toBe('100%');
+describe('a percentage a link is reported by', () => {
+  it('is read as a whole percentage, share or conversion alike', () => {
+    expect(percentageLabel(12)).toBe('12%');
+    expect(percentageLabel(100)).toBe('100%');
   });
 
-  it('is nought for a channel that was read and applied to by nobody', () => {
-    expect(conversionLabel(0)).toBe('0%');
+  it('is nought for a link that was read and applied to by nobody', () => {
+    expect(percentageLabel(0)).toBe('0%');
   });
 
   it('is a dash while nobody has followed the link, never a percentage of nothing', () => {
-    expect(conversionLabel(null)).toBe('—');
-    expect(conversionLabel(undefined)).toBe('—');
+    expect(percentageLabel(null)).toBe('—');
+    expect(percentageLabel(undefined)).toBe('—');
   });
 });
 

@@ -23,8 +23,9 @@ from sync_api.problems import (
 )
 from sync_api.rates import percentage
 from sync_api.text import LIKE_ESCAPE, containing
+from sync_api.traffic import APPLICATION_COUNT, VIEW_COUNT
 from sync_core import get_logger, transaction
-from sync_core.models import Application, Job, JobViewEvent, TrackedJobLink
+from sync_core.models import Job, JobViewEvent, TrackedJobLink
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -91,15 +92,17 @@ class TrackedLinkService:
                 )
             ).tuples()
         )
-        first = rows[0]
+        # The Job's two totals are the same uncorrelated subqueries on every row, so any row
+        # answers for the Job. There is always one, since the outer join starts from the Job.
+        _link, _views, _applications, direct_views, job_views = rows[0]
         return TrackedLinkReport(
             items=[
                 _as_payload(link, views=link_views, applications=link_applications)
                 for link, link_views, link_applications, _direct, _total in rows
                 if link is not None
             ],
-            direct_view_count=first[3],
-            view_count=first[4],
+            direct_view_count=direct_views,
+            view_count=job_views,
         )
 
     async def change(
@@ -193,29 +196,6 @@ class TrackedLinkService:
             )
         ).one()
         return int(views), int(applications)
-
-
-#: Correlated so one page of links carries its counts, rather than a request per row.
-VIEW_COUNT: Final = (
-    select(func.count())
-    .select_from(JobViewEvent)
-    .where(JobViewEvent.tracked_link_id == TrackedJobLink.id)
-    .correlate(TrackedJobLink)
-    .scalar_subquery()
-)
-
-#: Matched on the Job as well as the link, which is what the composite index is ordered by. A
-#: link belongs to one Job, so the Job adds nothing to the answer and everything to the plan.
-APPLICATION_COUNT: Final = (
-    select(func.count())
-    .select_from(Application)
-    .where(
-        Application.job_id == TrackedJobLink.job_id,
-        Application.tracked_link_id == TrackedJobLink.id,
-    )
-    .correlate(TrackedJobLink)
-    .scalar_subquery()
-)
 
 
 def _cursor(row: tuple[TrackedJobLink, Job, int, int]) -> Cursor:

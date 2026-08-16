@@ -11,7 +11,7 @@ import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { useChangeTrackedLink } from '../hooks/use-tracked-link-actions';
 import { useTrackedLinks } from '../hooks/use-tracked-links';
 import {
-  conversionLabel,
+  percentageLabel,
   type TrackedLink,
   trackedLinkAddress,
   trackedLinkState,
@@ -56,7 +56,7 @@ function columnsFor(shares: Map<string, number | null>): DataTableColumn<Tracked
       header: 'Share',
       cell: ({ row }) => (
         <span className="font-mono tabular-nums text-muted-foreground">
-          {shares.get(row.original.id) === null ? '—' : `${shares.get(row.original.id) ?? 0}%`}
+          {percentageLabel(shares.get(row.original.id))}
         </span>
       ),
     },
@@ -72,7 +72,7 @@ function columnsFor(shares: Map<string, number | null>): DataTableColumn<Tracked
       header: 'Conversion',
       cell: ({ row }) => (
         <span className="font-mono tabular-nums">
-          {conversionLabel(row.original.conversion_rate)}
+          {percentageLabel(row.original.conversion_rate)}
         </span>
       ),
     },
