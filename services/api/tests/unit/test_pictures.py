@@ -13,7 +13,7 @@ from sync_api.problems import (
     TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE,
     Problem,
 )
-from sync_api.tenants.logo import TENANT_LOGO
+from sync_api.tenants import TENANT_LOGO
 
 RED: Final = (220, 30, 30)
 BLUE: Final = (30, 60, 220)

@@ -13,7 +13,7 @@ from sync_api.problems import (
 )
 from sync_core import StorageError, get_logger, transaction
 from sync_core.models import Profile
-from sync_core.storage import avatar_folder
+from sync_core.storage import picture_folder
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 AVATAR = PictureKind(
-    name="avatars",
+    events="avatars",
     subject="A profile photo",
     unreadable_type=AVATAR_MEDIA_TYPE_PROBLEM_TYPE,
     too_large_type=AVATAR_TOO_LARGE_PROBLEM_TYPE,
@@ -36,7 +36,7 @@ AVATAR = PictureKind(
 
 async def remove_avatar_folder(storage: Storage, candidate_id: UUID) -> None:
     try:
-        for path in await storage.paths_under(avatar_folder(candidate_id)):
+        for path in await storage.paths_under(picture_folder(candidate_id)):
             try:
                 await storage.remove(path)
             except StorageError as error:
@@ -61,7 +61,7 @@ class AvatarService:
             self._storage,
             upload,
             kind=AVATAR,
-            folder=avatar_folder(candidate_id),
+            folder=picture_folder(candidate_id),
             max_bytes=self._settings.avatar_max_upload_bytes,
             remember=lambda address: self._remember(candidate_id, address),
             logged_as={"candidate_id": str(candidate_id)},

@@ -13,7 +13,7 @@ from sync_api.problems import (
 )
 from sync_core import transaction
 from sync_core.models import Tenant
-from sync_core.storage import tenant_logo_folder
+from sync_core.storage import picture_folder
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from sync_core import Settings, Storage
 
 TENANT_LOGO = PictureKind(
-    name="tenant_logos",
+    events="tenant_logos",
     subject="A logo",
     unreadable_type=TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE,
     too_large_type=TENANT_LOGO_TOO_LARGE_PROBLEM_TYPE,
@@ -49,7 +49,7 @@ class TenantLogoService:
             self._storage,
             upload,
             kind=TENANT_LOGO,
-            folder=tenant_logo_folder(tenant_id),
+            folder=picture_folder(tenant_id),
             max_bytes=self._settings.tenant_logo_max_upload_bytes,
             remember=lambda address: self._remember(tenant_id, address),
             logged_as={"tenant_id": str(tenant_id)},

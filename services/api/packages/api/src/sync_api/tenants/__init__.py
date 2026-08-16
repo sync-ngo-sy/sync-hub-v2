@@ -6,10 +6,11 @@ from sync_api.tenants.access import (
     acting_recruiter,
     require_admin,
 )
-from sync_api.tenants.logo import TenantLogo, TenantLogoService
+from sync_api.tenants.logo import TENANT_LOGO, TenantLogo, TenantLogoService
 from sync_api.tenants.service import Member, TenantService
 
 __all__ = [
+    "TENANT_LOGO",
     "ActingRecruiter",
     "Member",
     "TenantLogo",

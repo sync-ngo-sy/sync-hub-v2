@@ -17,7 +17,7 @@ import { TenantLogoPicker } from './tenant-logo-picker';
 export function WorkspaceIdentity({ profileId }: { profileId: string }) {
   const { data: tenant, isPending } = useMyTenant();
   const members = useMembers();
-  const mayAdminister = isTenantAdmin(members.data ?? [], profileId);
+  const mayAdminister = members.data ? isTenantAdmin(members.data, profileId) : members.isError;
 
   return (
     <Card className="mt-4 max-w-xl">

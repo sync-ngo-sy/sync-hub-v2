@@ -64,7 +64,6 @@ from sync_api.jobs import (
     Visitor,
 )
 from sync_api.messaging import (
-    MessageTemplateChanges,
     MessageTemplateService,
     NewMessageTemplate,
     OutgoingMessage,
@@ -910,15 +909,12 @@ class World:
         await self._candidate_records()
 
     async def _tags(self) -> None:
-        """A Tenant opens with a vocabulary of its own, so a name the cast asks for may be one
-        of those already. Reuse it rather than asking for a second Tag of the same name."""
+        """A converted Tenant opens with a vocabulary of its own, so a name the cast asks for may
+        already be there. Keep that row rather than ask for a second of the same name."""
         for tag in cast.TAGS:
             recruiter = self._recruiter(_first_recruiter_of(tag.tenant))
             service = TagService(self._db)
-            already = {
-                (existing.name, existing.scope): existing.id
-                for existing in await service.tags(recruiter)
-            }
+            already = {(one.name, one.scope): one.id for one in await service.tags(recruiter)}
             found = already.get((tag.name, tag.scope))
             if found is None:
                 found = (await service.create(recruiter, NewTag(name=tag.name, scope=tag.scope))).id
@@ -926,23 +922,22 @@ class World:
             self._seeded.tags[tag.tenant, tag.name] = found
 
     async def _templates(self) -> None:
+        """The same, for the Message templates a converted Tenant opens with."""
         for template in cast.TEMPLATES:
             recruiter = self._recruiter(template.author)
             service = MessageTemplateService(self._db)
-            written = NewMessageTemplate(
-                name=template.name, subject=template.subject, body=template.body
-            )
-            already = {
-                existing.name: existing.id for existing in await service.templates(recruiter)
-            }
+            already = {one.name: one.id for one in await service.templates(recruiter)}
             found = already.get(template.name)
             if found is None:
-                found = (await service.create(recruiter, written)).id
+                found = (
+                    await service.create(
+                        recruiter,
+                        NewMessageTemplate(
+                            name=template.name, subject=template.subject, body=template.body
+                        ),
+                    )
+                ).id
                 self._seeded.counted("message templates")
-            else:
-                await service.revise(
-                    recruiter, found, MessageTemplateChanges(**written.model_dump())
-                )
             self._seeded.templates[template.tenant, template.name] = found
 
     async def _application_records(self) -> None:

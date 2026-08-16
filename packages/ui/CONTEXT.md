@@ -41,9 +41,10 @@ _Avoid_: Chip, status pill, badge.
 
 **Tenant logo**:
 The rendering of a Tenant wherever one of its Jobs appears: its picture in a rounded square,
-or the first letters of its name until it has uploaded one. Square rather than round, which is
-what parts it at a glance from a Candidate's photo. It carries an empty `alt`, because the
-Tenant's name is beside it every time it is shown.
+or the first letters of its name until it has uploaded one — the same fallback a Candidate's
+photo has, in the same accent, so the two read as one family. Square rather than round, which
+is the one thing that parts an organisation from a person at a glance. It carries an empty
+`alt`, because the Tenant's name is beside it every time it is shown.
 _Avoid_: Avatar, Brand mark, Company icon.
 
 **Phone field**:

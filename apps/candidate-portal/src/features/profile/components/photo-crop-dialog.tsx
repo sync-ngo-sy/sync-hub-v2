@@ -33,8 +33,6 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
     return () => reader.removeEventListener('load', read);
   }, [file]);
 
-  /** The photo's own pixels, not the ones it is laid out at: the two are in the same proportion,
-   * and a circle drawn before the browser has measured the element would come out an oval. */
   function centreTheCircleOn(event: SyntheticEvent<HTMLImageElement>) {
     setCrop(framing(event.currentTarget));
   }
@@ -106,6 +104,8 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
   );
 }
 
+/** Measured on the photo's own pixels, not the ones it is laid out at: the two are in the same
+ * proportion, and a circle drawn before the browser has measured the element comes out an oval. */
 function framing(photo: HTMLImageElement): Crop {
   return centeredSquare(photo.naturalWidth, photo.naturalHeight);
 }

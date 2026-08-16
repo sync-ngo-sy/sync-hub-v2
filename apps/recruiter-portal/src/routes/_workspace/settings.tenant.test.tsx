@@ -3,9 +3,9 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { OMAR, RANA } from '@/features/team/testing/fixtures';
-import { listsMembers } from '@/features/team/testing/handlers';
+import { failsToListMembers, listsMembers } from '@/features/team/testing/handlers';
 import { belongsToTenant, refusesLogo, savesLogo } from '@/features/tenant/testing/handlers';
-import { AMAN, RECRUITER } from '@/testing/fixtures';
+import { AMAN, RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
@@ -98,5 +98,18 @@ describe('the Tenant logo', () => {
     expect(
       screen.getByText('Ask one of your admins to upload it, and it appears here.'),
     ).toBeVisible();
+  });
+
+  it('offers the picker when the roster cannot be read, and lets the API be the gate', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...belongsToTenant(AMAN),
+      ...failsToListMembers(SERVER_FAULT),
+    );
+
+    await renderApp('/settings?tab=tenant');
+    await screen.findByText('Aman Relief');
+
+    expect(await screen.findByRole('button', { name: 'Add a logo' })).toBeVisible();
   });
 });

@@ -41,11 +41,12 @@ type Remember = Callable[[str], Awaitable[str | None]]
 class PictureKind:
     """One kind of square picture the platform keeps, and everything that differs between them.
 
-    A profile photo and a Tenant logo are the same picture as far as storing one goes; they
-    differ only in what a refusal has to call the file the person picked.
+    A profile photo and a Tenant logo are the same picture as far as storing one goes. They
+    differ in what a refusal has to call the file somebody picked, and in the namespace every
+    log line about one is written under.
     """
 
-    name: str
+    events: str
     subject: str
     unreadable_type: str
     too_large_type: str
@@ -93,20 +94,20 @@ async def replace_picture(
         square_webp, await _read(upload, kind=kind, max_bytes=max_bytes), kind
     )
 
-    orphaned = f"{kind.name}.orphaned_object"
+    orphaned = f"{kind.events}.orphaned_object"
     path = f"{folder}/{uuid4()}.webp"
     await storage.upload(path, picture, media_type=SQUARE_MEDIA_TYPE)
     async with discard_on_failure(storage, path, event=orphaned, **logged_as):
         url = await storage.public_url(path)
         previous = await remember(url)
     if previous is not None:
-        await remove_uploaded(storage, object_at(folder, previous), event=orphaned, **logged_as)
+        await remove_uploaded(storage, _object_at(folder, previous), event=orphaned, **logged_as)
 
-    logger.info(f"{kind.name}.uploaded", bytes=len(picture), **logged_as)
+    logger.info(f"{kind.events}.uploaded", bytes=len(picture), **logged_as)
     return url
 
 
-def object_at(folder: str, url: str) -> str:
+def _object_at(folder: str, url: str) -> str:
     """The stored object a remembered address names, which is the last segment of it."""
     return f"{folder}/{url.rsplit('/', 1)[-1]}"
 
