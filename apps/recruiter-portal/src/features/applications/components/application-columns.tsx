@@ -8,6 +8,7 @@ import {
   pipelineState,
   screeningState,
 } from '../application';
+import { MatchScoreCell } from './match-score';
 
 export function applicationColumns<TRow extends ApplicationSummary>(
   job?: DataTableColumn<TRow>,
@@ -37,6 +38,15 @@ export function applicationColumns<TRow extends ApplicationSummary>(
     },
   };
 
+  const match: DataTableColumn<TRow> = {
+    accessorKey: 'match',
+    header: 'Match',
+    meta: {
+      sort: { ascending: 'lowest_match', descending: 'highest_match', first: 'descending' },
+    },
+    cell: ({ row }) => <MatchScoreCell match={row.original.match} />,
+  };
+
   const received: DataTableColumn<TRow> = {
     accessorKey: 'applied_at',
     header: 'Received',
@@ -48,5 +58,5 @@ export function applicationColumns<TRow extends ApplicationSummary>(
     ),
   };
 
-  return [candidate, ...(job ? [job] : []), screening, pipeline, received];
+  return [candidate, ...(job ? [job] : []), screening, pipeline, match, received];
 }

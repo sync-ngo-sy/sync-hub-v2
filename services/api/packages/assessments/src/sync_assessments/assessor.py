@@ -98,6 +98,11 @@ class AssessedApplication:
     headline: str | None = None
     summary: str | None = None
     location: str | None = None
+    #: The Total experience the Snapshot froze. Sent rather than left to be counted off the
+    #: entries below: the Job states a minimum, so a model asked to weigh it would otherwise do
+    #: date arithmetic the platform has already done — and get it wrong on the Applications
+    #: with the messiest histories, which are exactly the ones worth reading carefully.
+    total_experience_years: int | None = None
     experiences: tuple[HeldExperience, ...] = ()
     educations: tuple[HeldEducation, ...] = ()
     skills: tuple[HeldSkill, ...] = ()

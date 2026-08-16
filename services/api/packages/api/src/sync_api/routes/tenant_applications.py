@@ -10,7 +10,6 @@ from sync_api.applications import (
     ApplicationSort,
     ApplicationStatusChange,
     MatchAssessment,
-    MatchAssessmentPage,
     MovedApplication,
     ReceivedWithin,
     TenantApplicationPage,
@@ -39,10 +38,6 @@ APPLICATION_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
 
 NOTE_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
     404: openapi_problem("This tenant has no application, or no note on it, with that id."),
-}
-
-ASSESSMENT_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
-    404: openapi_problem("This tenant has no application, or no assessment of it, with that id."),
 }
 
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["applications"])
@@ -88,7 +83,7 @@ async def list_tenant_applications(
     ] = None,
     sort: Annotated[
         ApplicationSort,
-        Query(description="Which end of `applied_at` the list starts at."),
+        Query(description="Whether the list runs on `applied_at` or on the Match score."),
     ] = ApplicationSort.NEWEST,
     cursor: Annotated[
         str | None,
@@ -181,10 +176,9 @@ async def change_application_status(
 
 
 @router.post(
-    "/{application_id}/assessments",
+    "/{application_id}/assessment",
     operation_id="assessApplicationMatch",
-    summary="Ask an AI how well the Application answers the Job",
-    status_code=status.HTTP_201_CREATED,
+    summary="Ask an AI to read the Application against the Job again",
     dependencies=[Depends(enforce_assessment_rate_limit)],
     responses={
         **TENANT_ACCESS_REFUSED,
@@ -192,7 +186,7 @@ async def change_application_status(
         429: openapi_problem(
             "The tenant has asked for too many assessments. `Retry-After` says how long to wait."
         ),
-        502: openapi_problem("The model could not assess it. Nothing was recorded."),
+        502: openapi_problem("The model could not read it. The reading it had is untouched."),
         503: openapi_problem("This deployment has no assessment model configured."),
     },
 )
@@ -203,59 +197,33 @@ async def assess_application_match(
 ) -> MatchAssessment:
     """A percentage and an explanation, drawn from the Snapshot and the Job's criteria.
 
+    Every Application is read once as it arrives; this is how a Recruiter who distrusts that
+    reading gets a better one. It replaces the reading in place and answers with what it just
+    read, so the Match score a Job's list sorts by moves with it.
+
     Advice, and only that: it never touches the Screening verdict, and it reads what the
-    candidate froze when they applied rather than their profile as it stands today. Each
-    call appends another assessment; none of them replaces the last.
+    candidate froze when they applied rather than their profile as it stands today.
     """
     return await assessments.assess(recruiter, application_id)
 
 
 @router.get(
-    "/{application_id}/assessments",
-    operation_id="listApplicationMatchAssessments",
-    summary="Every AI match assessment of the Application, newest first",
-    responses={
-        **TENANT_ACCESS_REFUSED,
-        **APPLICATION_NOT_FOUND,
-        422: openapi_problem("`cursor` is not one this API issued."),
-    },
+    "/{application_id}/assessment",
+    operation_id="readApplicationMatchAssessment",
+    summary="The AI's reading of the Application",
+    responses={**TENANT_ACCESS_REFUSED, **APPLICATION_NOT_FOUND},
 )
-async def list_application_match_assessments(
+async def read_application_match_assessment(
     application_id: UUID,
     recruiter: ActingRecruiterDep,
     assessments: MatchAssessmentServiceDep,
-    cursor: Annotated[
-        str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
-    ] = None,
-    limit: Annotated[
-        int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
-    ] = DEFAULT_PAGE_SIZE,
-) -> MatchAssessmentPage:
-    """The whole history, each entry with the model and prompt version that wrote it."""
-    return await assessments.page(recruiter, application_id, cursor=cursor, limit=limit)
+) -> MatchAssessment | None:
+    """The one reading the Application carries, with the model and prompt version that wrote it.
 
-
-@router.delete(
-    "/{application_id}/assessments/{assessment_id}",
-    operation_id="deleteApplicationMatchAssessment",
-    summary="Throw away one AI match assessment",
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses={**TENANT_ACCESS_REFUSED, **ASSESSMENT_NOT_FOUND},
-)
-async def delete_application_match_assessment(
-    application_id: UUID,
-    assessment_id: UUID,
-    recruiter: ActingRecruiterDep,
-    assessments: MatchAssessmentServiceDep,
-) -> Response:
-    """One reading and no other: the rest of the history keeps the model that wrote each of them.
-
-    Any recruiter of the Tenant may throw one away, and asking again writes a new one rather than
-    bringing this one back.
+    Null where no model has managed one yet — the reading is enqueued as the Application
+    arrives, so this is either a few seconds early or a provider that stayed down.
     """
-    await assessments.remove(recruiter, application_id, assessment_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return await assessments.current(recruiter, application_id)
 
 
 @router.post(

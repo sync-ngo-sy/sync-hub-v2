@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { applicationQuery } from './use-application';
 import { jobApplicationsQueryPrefix } from './use-job-applications';
-import { matchAssessmentsQueryKey } from './use-match-assessments';
+import { matchAssessmentQueryKey } from './use-match-assessment';
 
 export function useMoveApplication(applicationId: string) {
   const queryClient = useQueryClient();
@@ -18,23 +18,10 @@ export function useMoveApplication(applicationId: string) {
 export function useAssessMatch(applicationId: string) {
   const queryClient = useQueryClient();
 
-  return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/assessments', {
+  return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/assessment', {
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: matchAssessmentsQueryKey(applicationId) }),
+      queryClient.invalidateQueries({ queryKey: matchAssessmentQueryKey(applicationId) }),
   });
-}
-
-export function useForgetAssessment(applicationId: string) {
-  const queryClient = useQueryClient();
-
-  return api.useMutation(
-    'delete',
-    '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}',
-    {
-      onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: matchAssessmentsQueryKey(applicationId) }),
-    },
-  );
 }
 
 export function useMessageApplicant() {

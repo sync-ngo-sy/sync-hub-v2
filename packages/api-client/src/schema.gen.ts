@@ -1210,8 +1210,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The Job's Applications, newest first
-         * @description The triage list: who applied, where each one stands, and how Screening judged it.
+         * The Job's Applications, newest first unless another order is asked for
+         * @description The triage list: who applied, where each one stands, how Screening judged it, and what
+         *     an AI made of it. Page with `next_cursor`, keeping `sort`.
+         *
+         *     Each row carries its Match score with the words behind it, so the number is never the only
+         *     thing a Recruiter is given. It is advice: `qualification_status` is the verdict, and no
+         *     assessment moves it.
          *
          *     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
          *     caller can say how many Applications each one is keeping off the list.
@@ -1330,7 +1335,7 @@ export interface paths {
         patch: operations["changeApplicationStatus"];
         trace?: never;
     };
-    "/v1/tenants/me/applications/{application_id}/assessments": {
+    "/v1/tenants/me/applications/{application_id}/assessment": {
         parameters: {
             query?: never;
             header?: never;
@@ -1338,44 +1343,27 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Every AI match assessment of the Application, newest first
-         * @description The whole history, each entry with the model and prompt version that wrote it.
+         * The AI's reading of the Application
+         * @description The one reading the Application carries, with the model and prompt version that wrote it.
+         *
+         *     Null where no model has managed one yet — the reading is enqueued as the Application
+         *     arrives, so this is either a few seconds early or a provider that stayed down.
          */
-        get: operations["listApplicationMatchAssessments"];
+        get: operations["readApplicationMatchAssessment"];
         put?: never;
         /**
-         * Ask an AI how well the Application answers the Job
+         * Ask an AI to read the Application against the Job again
          * @description A percentage and an explanation, drawn from the Snapshot and the Job's criteria.
          *
+         *     Every Application is read once as it arrives; this is how a Recruiter who distrusts that
+         *     reading gets a better one. It replaces the reading in place and answers with what it just
+         *     read, so the Match score a Job's list sorts by moves with it.
+         *
          *     Advice, and only that: it never touches the Screening verdict, and it reads what the
-         *     candidate froze when they applied rather than their profile as it stands today. Each
-         *     call appends another assessment; none of them replaces the last.
+         *     candidate froze when they applied rather than their profile as it stands today.
          */
         post: operations["assessApplicationMatch"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Throw away one AI match assessment
-         * @description One reading and no other: the rest of the history keeps the model that wrote each of them.
-         *
-         *     Any recruiter of the Tenant may throw one away, and asking again writes a new one rather than
-         *     bringing this one back.
-         */
-        delete: operations["deleteApplicationMatchAssessment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2030,13 +2018,18 @@ export interface components {
         };
         /**
          * ApplicationSort
-         * @description The orders the tenant's Application list can be read in.
+         * @description The orders an Application list can be read in.
          *
-         *     Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
-         *     spanning Jobs has no number of its own to be busiest by.
+         *     Two run on `applied_at`, which is the one date a row here shows. The other two run on the
+         *     Match score, so a Job with hundreds of Applications can be read best-answered first rather
+         *     than only newest first. Each names the answer it gives rather than a column and a direction.
+         *
+         *     An Application nobody has read yet has no score, and sorts below every one that has: last
+         *     under `highest_match`, and first under `lowest_match`, where "nothing to show" belongs
+         *     beside the weakest readings rather than hidden past them.
          * @enum {string}
          */
-        ApplicationSort: "newest" | "oldest";
+        ApplicationSort: "newest" | "oldest" | "highest_match" | "lowest_match";
         /**
          * ApplicationStage
          * @description What a Candidate is told about their own Application.
@@ -2136,6 +2129,8 @@ export interface components {
             status: components["schemas"]["ApplicationStatus"];
             /** @description The Screening verdict. */
             qualification_status: components["schemas"]["QualificationStatus"];
+            /** @description The AI's reading of this Application. Null while no model has managed one — the reading is enqueued as the Application arrives, so this fills in shortly after, and stays null only if every attempt failed. */
+            match?: components["schemas"]["MatchScore"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -3331,10 +3326,11 @@ export interface components {
         };
         /**
          * MatchAssessment
-         * @description One AI reading of how well an Application answers its Job.
+         * @description The AI's reading of how well an Application answers its Job.
          *
          *     Advice a Recruiter weighs, and nothing more: it is drawn from the Snapshot and the Job's
-         *     criteria, it never touches the Screening verdict, and running it again appends another.
+         *     criteria, and it never touches the Screening verdict. One per Application — asking again
+         *     replaces it, and nothing removes it.
          */
         MatchAssessment: {
             /**
@@ -3375,21 +3371,45 @@ export interface components {
             /**
              * Assessed At
              * Format: date-time
+             * @description When it was last read.
              */
             assessed_at: string;
+            /**
+             * First Assessed At
+             * Format: date-time
+             * @description When the Application was first read. The same as `assessed_at` until a Recruiter asks for a better reading.
+             */
+            first_assessed_at: string;
         };
         /**
-         * MatchAssessmentPage
-         * @description One page of an Application's assessments, newest first.
+         * MatchScore
+         * @description The Application's reading, as a list row carries it: the number, and enough of the words
+         *     behind it that the number is never shown on its own.
+         *
+         *     The whole reading — its strengths and its gaps — is on the Application review. This is what
+         *     a row can hold under a pointer or a focus ring.
          */
-        MatchAssessmentPage: {
-            /** Items */
-            items: components["schemas"]["MatchAssessment"][];
+        MatchScore: {
             /**
-             * Next Cursor
-             * @description Send back as `cursor` for the following page.
+             * Percentage
+             * @description How much of what the Job asks for this Application evidences, 0 to 100. Advice: it neither is nor changes the Screening verdict.
              */
-            next_cursor?: string | null;
+            percentage: number;
+            /**
+             * Explanation
+             * @description Why, in the model's own words.
+             */
+            explanation?: string | null;
+            /**
+             * Model Name
+             * @description The model that wrote it.
+             */
+            model_name: string;
+            /**
+             * Assessed At
+             * Format: date-time
+             */
+            assessed_at: string;
         };
         /**
          * MatchedCandidate
@@ -4723,6 +4743,8 @@ export interface components {
             status: components["schemas"]["ApplicationStatus"];
             /** @description The Screening verdict. */
             qualification_status: components["schemas"]["QualificationStatus"];
+            /** @description The AI's reading of this Application. Null while no model has managed one — the reading is enqueued as the Application arrives, so this fills in shortly after, and stays null only if every attempt failed. */
+            match?: components["schemas"]["MatchScore"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -9511,7 +9533,9 @@ export interface operations {
                 status?: components["schemas"]["ApplicationStatus"][] | null;
                 /** @description Only Applications the Screening verdict decided one of these ways. Repeat it to name several; omit it for every verdict. */
                 qualification_status?: components["schemas"]["QualificationStatus"][] | null;
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description Whether the list runs on `applied_at` or on the Match score. */
+                sort?: components["schemas"]["ApplicationSort"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
@@ -9560,7 +9584,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or belongs to another `sort`. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9819,7 +9843,7 @@ export interface operations {
                 job_id?: string | null;
                 /** @description Only Applications received inside this rolling window. Omit it for every Application the tenant has ever had. */
                 received_within?: components["schemas"]["ReceivedWithin"] | null;
-                /** @description Which end of `applied_at` the list starts at. */
+                /** @description Whether the list runs on `applied_at` or on the Match score. */
                 sort?: components["schemas"]["ApplicationSort"];
                 /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
@@ -10035,14 +10059,9 @@ export interface operations {
             };
         };
     };
-    listApplicationMatchAssessments: {
+    readApplicationMatchAssessment: {
         parameters: {
-            query?: {
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
-                cursor?: string | null;
-                /** @description How many to return. */
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 application_id: string;
@@ -10057,7 +10076,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MatchAssessmentPage"];
+                    "application/json": components["schemas"]["MatchAssessment"] | null;
                 };
             };
             /** @description There is no valid session. */
@@ -10087,13 +10106,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description The request did not match the expected shape. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
@@ -10119,7 +10138,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10181,7 +10200,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The model could not assess it. Nothing was recorded. */
+            /** @description The model could not read it. The reading it had is untouched. */
             502: {
                 headers: {
                     [name: string]: unknown;
@@ -10192,72 +10211,6 @@ export interface operations {
             };
             /** @description This deployment has no assessment model configured. */
             503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-        };
-    };
-    deleteApplicationMatchAssessment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                application_id: string;
-                assessment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description There is no valid session. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description This tenant has no application, or no assessment of it, with that id. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The request did not match the expected shape. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
-                };
-            };
-            /** @description Something went wrong on the server. */
-            500: {
                 headers: {
                     [name: string]: unknown;
                 };

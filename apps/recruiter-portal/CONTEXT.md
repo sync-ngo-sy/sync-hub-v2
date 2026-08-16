@@ -12,8 +12,8 @@ The public page at the portal's root that explains the platform to companies and
 contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync Hub is
 sold, not self-served, so every call to action points at the Access-request page. One of the two
 surfaces where animation is decorative — motion for its own sake — the other being the Candidate
-Portal's landing page. Inside the Workspace motion is only ever a thing arriving or leaving and
-says which way it went: a deleted Match assessment goes out to the right.
+Portal's landing page. Inside the Workspace motion is only ever a thing arriving or
+leaving and says which way it went.
 _Avoid_: Home page, marketing site.
 
 **Access-request page**:
@@ -269,26 +269,33 @@ server's words, and changes nothing.
 _Avoid_: Sub-page, partial, fragment.
 
 **Match assessment**:
-An AI's reading of how much of what a Job asks for one Application evidences — a percentage, an
-explanation, the strengths and the gaps — written for every Application as it arrives, asked for
-again whenever a Recruiter doubts one, and read on the Application review, newest first. Advice, and the page says so: it carries no Status Mark and no colour, because the
-surface already has a Screening verdict and a second marked state would read as a second verdict.
-The percentage is spelled out as what it measures rather than shown bare. Asking again appends rather
-than replaces, so every past reading stays with the model and prompt version that wrote it, and
-the wait is shown as a wait — the model is slow, nothing is put in the list optimistically, and
-the finished reading arrives only when the API has it. A refusal (asked too often, the model
-failed, no model configured) lands beside the button in the server's own words.
-A reading is thrown away one at a time and nothing is asked first — a stale reading is not a
-decision, and the Recruiter can always ask for another. The one going leaves to the right while
-the API is told, so the list is seen shortening rather than found shorter; the readings left
-behind are untouched, each still with the model and prompt version that wrote it. A refusal lands
-beside the reading it could not delete, in the server's own words, and that reading stays.
-_Avoid_: AI score, rating, fit verdict (a verdict is Screening's).
+An AI's reading of how strong one applicant is for a Job — a percentage, an explanation, the
+strengths and the gaps — written for every Application as it arrives, and read on the Application
+review. About half of the number is how well the Application answers what the Job asks for; the
+rest is how strong it reads in itself, which is what stops it restating a Screening verdict the
+page already shows. Advice, and the page says so: it carries no Status Mark and no colour, because
+a second marked state would read as a second verdict. The percentage is spelled out as what it
+measures rather than shown bare.
+A Recruiter who doubts a reading asks for a new one, which replaces it — the wait is shown as a
+wait, nothing is put on screen optimistically, and the finished reading arrives only when the API
+has it. There is no way to throw a reading away: an Application that has been read never stops
+carrying a Match score, which is what keeps a Job's list sortable all the way down. A refusal
+(asked too often, the model failed, no model configured) lands beside the button in the server's
+own words, and the reading already there is untouched.
+_Avoid_: AI score, rating, fit verdict (a verdict is Screening's), history (there is one reading).
 
 **Match score**:
-The Current assessment's percentage, used to sort Applications while keeping its explanation
+The Match assessment's percentage, used to sort Applications while keeping its explanation
 available to the Recruiter. It never changes or reorders a Screening verdict, which remains the
-only result that refuses anybody.
+only result that refuses anybody. On a list it is plain text rather than a Status Mark, for the
+same reason the reading on the review page carries no colour: the row already shows a verdict,
+and a second marked state beside it would read as a second one. Pointing at the number or tabbing
+to it opens what the model said — both, because a Recruiter working the list by keyboard is not a
+worse-served Recruiter — and the whole reading stays on the Application review, which is where a
+touch screen reads it. An Application nobody has read yet says so in words rather than showing a
+zero, and sorts below every one that has been read: last when the best come first, first when the
+weakest do, since an absence belongs beside the weakest readings rather than hidden past them.
+Asking for the column sorts it best-first, which is the only direction a fresh score column reads.
 _Avoid_: Rank, fit, rating, AI verdict.
 
 **Placement**:

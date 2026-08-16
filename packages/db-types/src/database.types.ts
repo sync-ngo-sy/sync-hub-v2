@@ -79,6 +79,7 @@ export type Database = {
           match_percentage: number;
           model_name: string;
           prompt_version: string;
+          updated_at: string;
         };
         Insert: {
           application_id: string;
@@ -89,6 +90,7 @@ export type Database = {
           match_percentage: number;
           model_name: string;
           prompt_version: string;
+          updated_at?: string;
         };
         Update: {
           application_id?: string;
@@ -99,12 +101,13 @@ export type Database = {
           match_percentage?: number;
           model_name?: string;
           prompt_version?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'application_ai_match_assessments_application_id_fkey';
             columns: ['application_id'];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: 'applications';
             referencedColumns: ['id'];
           },
@@ -567,6 +570,7 @@ export type Database = {
         Row: {
           applied_at: string;
           candidate_id: string;
+          current_match_score: number | null;
           cv_id: string;
           id: string;
           job_id: string;
@@ -580,6 +584,7 @@ export type Database = {
         Insert: {
           applied_at?: string;
           candidate_id: string;
+          current_match_score?: number | null;
           cv_id: string;
           id?: string;
           job_id: string;
@@ -593,6 +598,7 @@ export type Database = {
         Update: {
           applied_at?: string;
           candidate_id?: string;
+          current_match_score?: number | null;
           cv_id?: string;
           id?: string;
           job_id?: string;
@@ -1835,6 +1841,50 @@ export type Database = {
         };
         Relationships: [];
       };
+      match_assessment_jobs: {
+        Row: {
+          application_id: string;
+          attempts: number;
+          available_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          error_message: string | null;
+          id: string;
+          started_at: string | null;
+          status: Database['public']['Enums']['assessment_status'];
+        };
+        Insert: {
+          application_id: string;
+          attempts?: number;
+          available_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          id?: string;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['assessment_status'];
+        };
+        Update: {
+          application_id?: string;
+          attempts?: number;
+          available_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          id?: string;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['assessment_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'match_assessment_jobs_application_id_fkey';
+            columns: ['application_id'];
+            isOneToOne: true;
+            referencedRelation: 'applications';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       message_templates: {
         Row: {
           body: string;
@@ -2447,6 +2497,7 @@ export type Database = {
         | 'hired'
         | 'rejected'
         | 'withdrawn';
+      assessment_status: 'pending' | 'processing' | 'completed' | 'failed';
       communication_channel: 'email' | 'sms';
       communication_status: 'queued' | 'processing' | 'sent' | 'failed';
       communication_type:
@@ -2615,6 +2666,7 @@ export const Constants = {
         'rejected',
         'withdrawn',
       ],
+      assessment_status: ['pending', 'processing', 'completed', 'failed'],
       communication_channel: ['email', 'sms'],
       communication_status: ['queued', 'processing', 'sent', 'failed'],
       communication_type: [
