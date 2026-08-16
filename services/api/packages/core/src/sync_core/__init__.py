@@ -9,6 +9,7 @@ from sync_core.settings import Environment, LogFormat, SameSite, Settings, get_s
 from sync_core.storage import (
     AVATAR_BUCKET,
     CV_BUCKET,
+    TENANT_LOGO_BUCKET,
     ObjectNotFoundError,
     Storage,
     StorageError,
@@ -18,6 +19,7 @@ from sync_core.transactions import transaction
 __all__ = [
     "AVATAR_BUCKET",
     "CV_BUCKET",
+    "TENANT_LOGO_BUCKET",
     "Database",
     "Environment",
     "LogFormat",

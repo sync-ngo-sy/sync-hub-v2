@@ -45,6 +45,12 @@ address stays the link's so signing in to apply comes back to it and keeps its
 attribution.
 _Avoid_: Campaign page, referral page.
 
+**Tenant logo**:
+The mark of the Tenant behind a Job, on every surface where one appears: a Browse row, Job
+detail, the Tracked-link landing and a row of My Applications. Until a Tenant uploads one, its
+first letters stand in its place, so the four surfaces have the same shape either way.
+_Avoid_: Company logo, brand, employer icon.
+
 **My Applications**:
 The signed-in Candidate's Applications, newest first, at `/applications`. Each says its Stage —
 never the Tenant's eight-value status — and opens the Job it was sent to.

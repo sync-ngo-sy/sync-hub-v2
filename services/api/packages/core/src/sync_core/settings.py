@@ -116,8 +116,9 @@ class Settings(BaseSettings):
     cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
 
     #: What a candidate may hand us, not what we keep: every photo is re-encoded to one
-    #: small WebP before it is stored.
+    #: small WebP before it is stored. A Tenant logo goes through the same encoder.
     avatar_max_upload_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
+    tenant_logo_max_upload_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
 
     openai_api_key: SecretStr | None = None
     openai_cv_model: str = "gpt-4o-mini"

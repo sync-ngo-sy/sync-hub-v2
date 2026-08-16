@@ -39,6 +39,13 @@ vocabulary stays exactly as long as the enum. They take `--muted-foreground`,
 same amber as `--status-review` without depending on it.
 _Avoid_: Chip, status pill, badge.
 
+**Tenant logo**:
+The rendering of a Tenant wherever one of its Jobs appears: its picture in a rounded square,
+or the first letters of its name until it has uploaded one. Square rather than round, which is
+what parts it at a glance from a Candidate's photo. It carries an empty `alt`, because the
+Tenant's name is beside it every time it is shown.
+_Avoid_: Avatar, Brand mark, Company icon.
+
 **Phone field**:
 The one control a number is typed into: a country picker built from the combobox — an SVG flag,
 the country's name and its calling code — beside the national part of the number. Two controls

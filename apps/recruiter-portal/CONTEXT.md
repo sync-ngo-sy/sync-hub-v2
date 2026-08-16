@@ -383,6 +383,12 @@ own role is read off the roster rather than out of their Profile, because that i
 written — which also means a demotion arrives on the next read.
 _Avoid_: Users page, members list, seats.
 
+**Tenant tab**:
+What the Tenant is, and the one thing about it a Tenant admin may change: its logo. The name and
+the address are Sync Hub's to set and are read-only here. An admin picks a picture and it is
+stored square; a Recruiter sees the same logo and is told plainly that setting it is an admin's.
+_Avoid_: Branding, organisation profile, company settings.
+
 **Teammate invitation**:
 One address, one name and one role, sent by the API as an email the invitee sets their own password
 from. The roster gains them at once, pending that password, so an admin sees the invitation rather

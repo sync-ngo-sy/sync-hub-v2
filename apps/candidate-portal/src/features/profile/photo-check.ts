@@ -1,4 +1,4 @@
-import { fileRules } from '../uploads/file-check';
+import { fileRules } from '@sync/ui/lib/file-check';
 
 const MEDIA_TYPE_BY_EXTENSION: Record<string, string> = {
   '.jpg': 'image/jpeg',

@@ -13,6 +13,23 @@ An organization (a hiring company) that owns its recruiters, jobs, and private C
 The unit of data isolation.
 _Avoid_: Company, Org, Workspace, Account.
 
+**Tenant logo**:
+The mark Candidates identify a Tenant by, on `tenants.logo_url`. One square WebP in the
+public `tenant-logos` bucket, re-encoded by the backend from whatever was uploaded, so what a
+browser reads is never what a client sent. Public-read for the reason a Candidate's photo is:
+it is rendered by an `<img>` on a page a signed-out visitor reads, and a signed URL would
+expire mid-page. Only a Tenant admin sets it. A replacement is written and remembered before
+the object it replaces is dropped, so a failed step leaves an object nobody points at rather
+than a row pointing at nothing.
+_Avoid_: Avatar (that is a Candidate's), Icon, Brand, Picture.
+
+**Tenant presets**:
+The Tags and Message templates a Tenant opens with, written in the transaction that opens it —
+the only place the founding admin the templates are attributed to is known to exist. Ordinary
+rows from that moment: no preset column, no flag, and no code that treats them as anything but
+the Tenant's own, so they are renamed and deleted exactly as the ones a Recruiter writes.
+_Avoid_: Defaults, Starter pack, System tags, Built-ins.
+
 **Profile**:
 The identity of one human, sharing its id with a Supabase Auth user. Holds the live
 contact identity — name, avatar, phone. Every Candidate, every Recruiter and every Platform

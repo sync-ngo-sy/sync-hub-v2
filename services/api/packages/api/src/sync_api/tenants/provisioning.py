@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sync_api.integrity import violated_constraint
 from sync_api.problems import TENANT_SLUG_TAKEN_PROBLEM_TYPE, Problem
 from sync_api.tenants.access import TenantSummary
+from sync_api.tenants.presets import seed_presets
 from sync_core import transaction
 from sync_core.models import AccountType, Profile, Recruiter, RecruiterRole, Tenant
 
@@ -33,7 +34,10 @@ async def provision_tenant(
     full_name: str,
     in_the_same_commit: SharedCommit | None = None,
 ) -> TenantSummary:
-    """The three rows a Tenant is, in the one order the constraints allow, in one transaction.
+    """Everything a Tenant opens as, in the one order the constraints allow, in one transaction.
+
+    The three rows a Tenant is, and then the Tags and Message templates it starts work with —
+    attributed to the founding admin written a line above, who exists nowhere else yet.
 
     The identity already exists — however it was made — and this is only the Postgres half, so
     every caller wraps it in whichever undo suits how they made that identity.
@@ -48,6 +52,8 @@ async def provision_tenant(
             )
             await session.flush()
             session.add(Recruiter(id=admin_id, tenant_id=tenant.id, role=RecruiterRole.ADMIN))
+            await session.flush()
+            await seed_presets(session, tenant.id, admin_id)
             if in_the_same_commit is not None:
                 await session.flush()
                 await in_the_same_commit(session, tenant.id)

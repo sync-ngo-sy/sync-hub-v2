@@ -38,6 +38,18 @@ function cardFor(title: string): HTMLElement {
 }
 
 describe('My Applications', () => {
+  it('marks each row with the logo of the Tenant it was sent to', async () => {
+    server.use(...signedInAs(CANDIDATE), ...listsApplications([APPLICATION]));
+
+    await renderApp('/applications');
+
+    const card = cardFor(APPLICATION.job.title);
+    expect(card.querySelector('[data-slot="tenant-logo"] img')).toHaveAttribute(
+      'src',
+      'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+    );
+  });
+
   it('lists Applications newest-first with status marks and relative times', async () => {
     const recentApplication = {
       ...APPLICATION,

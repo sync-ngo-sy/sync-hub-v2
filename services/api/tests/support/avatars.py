@@ -4,7 +4,9 @@ import io
 from typing import TYPE_CHECKING, Final
 
 from PIL import Image
-from sqlalchemy import text
+
+from sync_core import AVATAR_BUCKET
+from tests.support.buckets import empty_bucket, stored_paths
 
 if TYPE_CHECKING:
     import asyncpg
@@ -54,13 +56,8 @@ async def an_uploaded_avatar(browser: AsyncClient, content: bytes | None = None)
 
 
 async def avatar_paths(session: AsyncSession) -> list[str]:
-    stored = await session.execute(
-        text("select name from storage.objects where bucket_id = 'avatars' order by name")
-    )
-    return [row[0] for row in stored]
+    return await stored_paths(session, AVATAR_BUCKET)
 
 
 async def empty_avatar_bucket(connection: asyncpg.Connection, storage: Storage) -> None:
-    stored = await connection.fetch("select name from storage.objects where bucket_id = 'avatars'")
-    for row in stored:
-        await storage.remove(row["name"])
+    await empty_bucket(connection, storage, AVATAR_BUCKET)

@@ -43,6 +43,7 @@ from sync_api.routes import (
 from sync_assessments.openai_assessor import OpenAiMatchAssessor
 from sync_core import (
     AVATAR_BUCKET,
+    TENANT_LOGO_BUCKET,
     Database,
     Settings,
     Storage,
@@ -87,11 +88,13 @@ def create_app(
         )
         storage = Storage.build(resolved)
         avatar_storage = Storage.build(resolved, bucket=AVATAR_BUCKET)
+        tenant_logo_storage = Storage.build(resolved, bucket=TENANT_LOGO_BUCKET)
         app.state.settings = resolved
         app.state.database = database
         app.state.authentication = authentication
         app.state.storage = storage
         app.state.avatar_storage = avatar_storage
+        app.state.tenant_logo_storage = tenant_logo_storage
         app.state.embedder = embedder or _openai_embedder(resolved)
         app.state.assessor = assessor or _openai_assessor(resolved)
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
@@ -105,6 +108,7 @@ def create_app(
             await authentication.aclose()
             await storage.aclose()
             await avatar_storage.aclose()
+            await tenant_logo_storage.aclose()
             await database.dispose()
             logger.info("api.stopped")
 

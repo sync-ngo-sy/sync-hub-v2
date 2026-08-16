@@ -6,8 +6,14 @@ from typing import Final
 import pytest
 from PIL import Image
 
-from sync_api.avatars import AVATAR_PIXELS, avatar_webp
-from sync_api.problems import AVATAR_MEDIA_TYPE_PROBLEM_TYPE, Problem
+from sync_api.avatars import AVATAR
+from sync_api.pictures import SQUARE_PIXELS, square_webp
+from sync_api.problems import (
+    AVATAR_MEDIA_TYPE_PROBLEM_TYPE,
+    TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE,
+    Problem,
+)
+from sync_api.tenants.logo import TENANT_LOGO
 
 RED: Final = (220, 30, 30)
 BLUE: Final = (30, 60, 220)
@@ -45,32 +51,36 @@ def opened(data: bytes) -> Image.Image:
     return Image.open(io.BytesIO(data))
 
 
+def stored_form(data: bytes) -> bytes:
+    return square_webp(data, AVATAR)
+
+
 def test_re_encodes_to_a_square_webp() -> None:
-    stored = opened(avatar_webp(encoded(middle_band(900, 300), "JPEG")))
+    stored = opened(stored_form(encoded(middle_band(900, 300), "JPEG")))
 
     assert stored.format == "WEBP"
-    assert stored.size == (AVATAR_PIXELS, AVATAR_PIXELS)
+    assert stored.size == (SQUARE_PIXELS, SQUARE_PIXELS)
 
 
 def test_keeps_the_middle_of_a_wide_photo() -> None:
-    stored = opened(avatar_webp(encoded(middle_band(900, 300), "JPEG"))).convert("RGB")
+    stored = opened(stored_form(encoded(middle_band(900, 300), "JPEG"))).convert("RGB")
 
-    corners = [(4, 4), (AVATAR_PIXELS - 5, 4), (4, AVATAR_PIXELS - 5)]
+    corners = [(4, 4), (SQUARE_PIXELS - 5, 4), (4, SQUARE_PIXELS - 5)]
     assert all(looks_like(stored.getpixel(corner), RED) for corner in corners)  # type: ignore[arg-type]
 
 
 def test_keeps_the_middle_of_a_tall_photo() -> None:
     tall = middle_band(900, 300).transpose(Image.Transpose.ROTATE_90)
 
-    stored = opened(avatar_webp(encoded(tall, "JPEG"))).convert("RGB")
+    stored = opened(stored_form(encoded(tall, "JPEG"))).convert("RGB")
 
-    assert looks_like(stored.getpixel((AVATAR_PIXELS // 2, AVATAR_PIXELS // 2)), RED)  # type: ignore[arg-type]
+    assert looks_like(stored.getpixel((SQUARE_PIXELS // 2, SQUARE_PIXELS // 2)), RED)  # type: ignore[arg-type]
 
 
 def test_grows_a_photo_smaller_than_the_stored_size() -> None:
-    stored = opened(avatar_webp(encoded(halves(64, 64, vertical_split=True), "PNG")))
+    stored = opened(stored_form(encoded(halves(64, 64, vertical_split=True), "PNG")))
 
-    assert stored.size == (AVATAR_PIXELS, AVATAR_PIXELS)
+    assert stored.size == (SQUARE_PIXELS, SQUARE_PIXELS)
 
 
 def test_turns_the_photo_the_way_its_exif_says_it_is_held() -> None:
@@ -78,10 +88,10 @@ def test_turns_the_photo_the_way_its_exif_says_it_is_held() -> None:
     exif = landscape.getexif()
     exif[ORIENTATION_TAG] = ROTATE_90_CLOCKWISE_TO_DISPLAY
 
-    stored = opened(avatar_webp(encoded(landscape, "JPEG", exif=exif))).convert("RGB")
+    stored = opened(stored_form(encoded(landscape, "JPEG", exif=exif))).convert("RGB")
 
-    assert looks_like(stored.getpixel((AVATAR_PIXELS // 2, 40)), RED)  # type: ignore[arg-type]
-    assert looks_like(stored.getpixel((AVATAR_PIXELS // 2, AVATAR_PIXELS - 40)), BLUE)  # type: ignore[arg-type]
+    assert looks_like(stored.getpixel((SQUARE_PIXELS // 2, 40)), RED)  # type: ignore[arg-type]
+    assert looks_like(stored.getpixel((SQUARE_PIXELS // 2, SQUARE_PIXELS - 40)), BLUE)  # type: ignore[arg-type]
 
 
 def test_strips_exif() -> None:
@@ -90,7 +100,7 @@ def test_strips_exif() -> None:
     exif[ORIENTATION_TAG] = ROTATE_90_CLOCKWISE_TO_DISPLAY
     exif[0x010E] = "taken at home"
 
-    stored = opened(avatar_webp(encoded(portrait, "JPEG", exif=exif)))
+    stored = opened(stored_form(encoded(portrait, "JPEG", exif=exif)))
 
     assert dict(stored.getexif()) == {}
     assert "exif" not in stored.info
@@ -99,7 +109,7 @@ def test_strips_exif() -> None:
 def test_keeps_transparency() -> None:
     transparent = Image.new("RGBA", (200, 200), (*RED, 0))
 
-    stored = opened(avatar_webp(encoded(transparent, "PNG")))
+    stored = opened(stored_form(encoded(transparent, "PNG")))
 
     assert stored.mode == "RGBA"
     assert stored.convert("RGBA").getpixel((10, 10))[3] == 0  # type: ignore[index]
@@ -107,7 +117,7 @@ def test_keeps_transparency() -> None:
 
 def test_refuses_an_image_format_the_platform_does_not_take() -> None:
     with pytest.raises(Problem) as refusal:
-        avatar_webp(encoded(halves(200, 200, vertical_split=True), "GIF"))
+        stored_form(encoded(halves(200, 200, vertical_split=True), "GIF"))
 
     assert refusal.value.status == 415
     assert refusal.value.type == AVATAR_MEDIA_TYPE_PROBLEM_TYPE
@@ -116,7 +126,16 @@ def test_refuses_an_image_format_the_platform_does_not_take() -> None:
 
 def test_refuses_bytes_that_are_not_an_image() -> None:
     with pytest.raises(Problem) as refusal:
-        avatar_webp(b"this is not a photograph")
+        stored_form(b"this is not a photograph")
 
     assert refusal.value.status == 415
     assert refusal.value.type == AVATAR_MEDIA_TYPE_PROBLEM_TYPE
+
+
+def test_calls_a_logo_a_logo_when_it_refuses_one() -> None:
+    with pytest.raises(Problem) as refusal:
+        square_webp(b"this is not a logo", TENANT_LOGO)
+
+    assert refusal.value.status == 415
+    assert refusal.value.type == TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE
+    assert (refusal.value.detail or "").startswith("A logo")

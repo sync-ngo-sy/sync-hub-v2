@@ -1,3 +1,4 @@
+import { TenantLogo } from '@sync/ui/components/tenant-logo';
 import { Separator } from '@sync/ui/components/ui/separator';
 import { type ReactNode, useId } from 'react';
 import { absoluteDateTime } from '@/lib/dates';
@@ -26,9 +27,12 @@ export function JobDetail({ job, signedIn, returnTo }: JobDetailProps) {
   return (
     <article className="space-y-10">
       <header className="space-y-4">
-        <div className="space-y-2">
-          <h1 className="font-heading text-page-title text-foreground">{job.title}</h1>
-          <p className="text-dense text-muted-foreground">{jobMeta(job)}</p>
+        <div className="flex items-start gap-4">
+          <TenantLogo name={job.tenant.name} logoUrl={job.tenant.logo_url} size="lg" />
+          <div className="min-w-0 space-y-2">
+            <h1 className="font-heading text-page-title text-foreground">{job.title}</h1>
+            <p className="text-dense text-muted-foreground">{jobMeta(job)}</p>
+          </div>
         </div>
         <p className="text-meta text-muted-foreground">
           Posted <time dateTime={job.created_at}>{absoluteDateTime(job.created_at)}</time>

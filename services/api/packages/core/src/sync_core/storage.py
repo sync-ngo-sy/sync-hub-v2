@@ -23,6 +23,8 @@ CV_BUCKET: Final = "cvs"
 
 AVATAR_BUCKET: Final = "avatars"
 
+TENANT_LOGO_BUCKET: Final = "tenant-logos"
+
 CV_MEDIA_TYPES: Final[dict[str, str]] = {
     "application/pdf": ".pdf",
     "application/msword": ".doc",
@@ -40,16 +42,12 @@ def cv_object_path(candidate_id: UUID, cv_id: UUID, media_type: str) -> str:
     return f"{candidate_id}/{cv_id}{CV_MEDIA_TYPES[media_type]}"
 
 
-def avatar_object_path(candidate_id: UUID, avatar_id: UUID) -> str:
-    return f"{avatar_folder(candidate_id)}/{avatar_id}.webp"
-
-
 def avatar_folder(candidate_id: UUID) -> str:
     return str(candidate_id)
 
 
-def avatar_path_from_url(candidate_id: UUID, url: str) -> str:
-    return f"{avatar_folder(candidate_id)}/{url.rsplit('/', 1)[-1]}"
+def tenant_logo_folder(tenant_id: UUID) -> str:
+    return str(tenant_id)
 
 
 def cv_media_type_of(storage_path: str) -> str:
