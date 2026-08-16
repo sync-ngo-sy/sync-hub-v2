@@ -347,8 +347,7 @@ async def test_the_channels_are_ranked_by_traffic_and_never_by_the_rate(
     stats = await stats_of(recruiter)
 
     assert [
-        (source["name"], source["views"], source["conversion_rate"])
-        for source in stats["sources"]
+        (source["name"], source["views"], source["conversion_rate"]) for source in stats["sources"]
     ] == [("WhatsApp groups", 3, 0), ("Alumni list", 1, 100)]
 
 
