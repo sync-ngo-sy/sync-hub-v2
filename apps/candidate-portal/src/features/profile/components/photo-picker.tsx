@@ -1,18 +1,24 @@
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, ImageUp } from 'lucide-react';
-import { type ChangeEvent, useRef, useState } from 'react';
+import { type ChangeEvent, type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { isClientError, problemMessage } from '@/lib/api-problem';
 import { photoUpload, useUploadPhoto } from '../hooks/use-upload-photo';
 import { PHOTO_FILE_ACCEPT, PHOTO_FORMATS, rejectionFor } from '../photo-check';
 import { PhotoCropDialog } from './photo-crop-dialog';
 
-export function PhotoPicker({ hasPhoto }: { hasPhoto: boolean }) {
+interface PhotoPickerProps {
+  hasPhoto: boolean;
+  children: (open: () => void) => ReactNode;
+}
+
+export function PhotoPicker({ hasPhoto, children }: PhotoPickerProps) {
   const upload = useUploadPhoto();
   const input = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<File | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
+  const open = () => input.current?.click();
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -42,19 +48,14 @@ export function PhotoPicker({ hasPhoto }: { hasPhoto: boolean }) {
 
   return (
     <div className="space-y-3">
+      {children(open)}
+
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={upload.isPending}
-          onClick={() => input.current?.click()}
-        >
+        <Button type="button" variant="outline" disabled={upload.isPending} onClick={open}>
           <ImageUp aria-hidden="true" />
           {hasPhoto ? 'Change photo' : 'Add a photo'}
         </Button>
-        <p className="text-meta text-muted-foreground">
-          {PHOTO_FORMATS}. You choose what the circle holds.
-        </p>
+        <p className="text-meta text-muted-foreground">{PHOTO_FORMATS}</p>
       </div>
 
       {refusal ? (

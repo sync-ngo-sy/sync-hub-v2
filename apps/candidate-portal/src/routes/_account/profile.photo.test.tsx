@@ -63,9 +63,37 @@ function useThisPhoto(user: UserEvent) {
   return user.click(screen.getByRole('button', { name: 'Use this photo' }));
 }
 
+function theProfilePhoto(): HTMLElement {
+  const card = screen.getByRole('article', { name: CANDIDATE_PROFILE.full_name });
+  const photo = card.querySelector<HTMLElement>('[data-slot="avatar"]');
+  if (!photo) throw new Error('no photo on the profile card');
+  return photo;
+}
+
 describe('putting a photo on the profile', () => {
   beforeEach(() => {
     standInForTheImageDecodingAndCanvasJsdomLacks();
+  });
+
+  it('starts the same replacement from the photo itself', async () => {
+    server.use(...savesPhoto(A_PHOTO_URL));
+    const user = await openProfile();
+    const file = screen.getByLabelText('Choose a profile photo');
+    const asked = vi.spyOn(file, 'click');
+
+    await user.click(theProfilePhoto());
+
+    expect(asked).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the photo out of the keyboard path the button already holds', async () => {
+    server.use(...savesPhoto(A_PHOTO_URL));
+    await openProfile();
+
+    const opener = theProfilePhoto().closest('button');
+    expect(opener).toHaveAttribute('tabindex', '-1');
+    expect(opener).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getAllByRole('button', { name: /photo/i })).toHaveLength(1);
   });
 
   it('frames the photo the candidate picked before anything is sent', async () => {

@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@sync/ui/components/ui/avat
 import { factLabel } from '@sync/ui/lib/fact-label';
 import { readable } from '@sync/ui/lib/phone';
 import { cn } from '@sync/ui/lib/utils';
-import { Globe, Mail, Phone } from 'lucide-react';
+import { Globe, ImageUp, Mail, Phone } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 
 function initials(name: string): string {
@@ -72,7 +72,27 @@ interface CandidateCardProps {
   links: ProfileLinks;
   facts?: CandidateFact[];
   factsLabel?: string;
+  onPhotoClick?: () => void;
   className?: string;
+}
+
+/** The photo repeats what the button beside it already offers, so it stays out of the tab order
+ * and out of the accessibility tree rather than becoming a second way to say the same thing. */
+function PhotoShortcut({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-hidden="true"
+      onClick={onClick}
+      className="group/photo relative shrink-0 cursor-pointer rounded-full"
+    >
+      {children}
+      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/55 opacity-0 transition-opacity group-hover/photo:opacity-100">
+        <ImageUp className="size-5 text-background" />
+      </span>
+    </button>
+  );
 }
 
 export function CandidateCard({
@@ -85,11 +105,21 @@ export function CandidateCard({
   links,
   facts = [],
   factsLabel = 'Candidate facts',
+  onPhotoClick,
   className,
 }: CandidateCardProps) {
   const nameId = useId();
   const shown = facts.filter((fact) => fact.value !== null && fact.value !== undefined);
   const shownLinks = destinations(links);
+
+  const avatar = (
+    <Avatar className="size-14 shrink-0 ring-2 ring-primary/25 sm:size-16">
+      {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
+      <AvatarFallback className="bg-accent text-title font-semibold text-accent-foreground">
+        {initials(name)}
+      </AvatarFallback>
+    </Avatar>
+  );
 
   return (
     <article
@@ -100,12 +130,7 @@ export function CandidateCard({
       )}
     >
       <div className="flex min-w-0 items-center gap-4">
-        <Avatar className="size-14 shrink-0 ring-2 ring-primary/25 sm:size-16">
-          {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-          <AvatarFallback className="bg-accent text-title font-semibold text-accent-foreground">
-            {initials(name)}
-          </AvatarFallback>
-        </Avatar>
+        {onPhotoClick ? <PhotoShortcut onClick={onPhotoClick}>{avatar}</PhotoShortcut> : avatar}
 
         <div className="min-w-0 space-y-1">
           <h2 id={nameId} className="truncate font-heading text-title text-foreground">
