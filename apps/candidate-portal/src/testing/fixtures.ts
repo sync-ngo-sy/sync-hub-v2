@@ -32,7 +32,11 @@ export const PLATFORM_ADMIN: components['schemas']['ProfileView'] = {
 const FRONTEND_DEVELOPER: components['schemas']['PublicJobSummary'] = {
   id: '00000000-0000-4000-8000-000000000101',
   title: 'Frontend Developer (Remote)',
-  tenant: { name: 'Levant Digital', slug: 'levant-digital' },
+  tenant: {
+    name: 'Levant Digital',
+    slug: 'levant-digital',
+    logo_url: 'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+  },
   location_key: 'sy-damascus',
   location_name: 'Damascus',
   employment_type: 'full_time',

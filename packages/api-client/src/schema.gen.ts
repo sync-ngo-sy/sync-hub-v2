@@ -282,6 +282,28 @@ export interface paths {
         patch: operations["changeTenantMember"];
         trace?: never;
     };
+    "/v1/tenants/me/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the Tenant's logo
+         * @description The mark Candidates identify this Tenant by, wherever one of its Jobs appears.
+         *
+         *     Replaces whatever logo the Tenant had, at a new address — the old one stops answering.
+         */
+        put: operations["replaceTenantLogo"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/access-requests": {
         parameters: {
             query?: never;
@@ -2231,6 +2253,14 @@ export interface components {
             /**
              * File
              * @description The photo: JPEG, PNG or WebP. Square or it is cropped.
+             */
+            file: string;
+        };
+        /** Body_replaceTenantLogo */
+        Body_replaceTenantLogo: {
+            /**
+             * File
+             * @description The logo: JPEG, PNG or WebP. Square or it is cropped.
              */
             file: string;
         };
@@ -4319,6 +4349,11 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+            /**
+             * Logo Url
+             * @description Public and stable until the Tenant replaces it.
+             */
+            logo_url?: string | null;
         };
         /**
          * QualificationCounts
@@ -4768,6 +4803,17 @@ export interface components {
             job: components["schemas"]["ApplicationJob"];
         };
         /**
+         * TenantLogo
+         * @description Where the Tenant's logo now answers, for an `<img>` to read.
+         */
+        TenantLogo: {
+            /**
+             * Logo Url
+             * @description Public and stable until the logo is replaced again.
+             */
+            logo_url: string;
+        };
+        /**
          * TenantPlan
          * @enum {string}
          */
@@ -4866,6 +4912,11 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+            /**
+             * Logo Url
+             * @description The logo Candidates see, or null until an admin sets one.
+             */
+            logo_url?: string | null;
         };
         /** TrackedLink */
         TrackedLink: {
@@ -5859,6 +5910,93 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replaceTenantLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_replaceTenantLogo"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantLogo"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is larger than the platform accepts. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is not a JPEG, PNG or WebP image. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is empty. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file store could not be reached. */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

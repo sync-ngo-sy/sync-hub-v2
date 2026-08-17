@@ -13,6 +13,30 @@ An organization (a hiring company) that owns its recruiters, jobs, and private C
 The unit of data isolation.
 _Avoid_: Company, Org, Workspace, Account.
 
+**Picture**:
+The covering term for the two square images the platform stores for somebody: a Candidate's
+avatar and a Tenant logo. They are one thing as far as *storing* one goes — re-encoded to one
+512x512 WebP, kept in a public bucket under the owner's id, and replaced by writing the new
+object before the old one is dropped — and the backend holds that in one place. The covering
+term is never used for either of them on screen: a Candidate has an avatar and a Tenant has a
+logo, and those are the words a person reads.
+_Avoid_: Image, Media, Asset, Upload (that is the act).
+
+**Tenant logo**:
+The mark Candidates identify a Tenant by, on `tenants.logo_url`. One Picture in the public
+`tenant-logos` bucket, so what a browser reads is never what a client sent. Public-read for
+the reason a Candidate's avatar is: it is rendered by an `<img>` on a page a signed-out
+visitor reads, and a signed URL would expire mid-page. Only a Tenant admin sets it.
+_Avoid_: Avatar (that is a Candidate's), Icon, Brand.
+
+**Tenant presets**:
+The Tags and Message templates a Tenant opens with when a Platform admin converts the Access
+request it came from, written in the transaction that opens it — the only place the founding
+admin the templates are attributed to is known to exist. Ordinary
+rows from that moment: no preset column, no flag, and no code that treats them as anything but
+the Tenant's own, so they are renamed and deleted exactly as the ones a Recruiter writes.
+_Avoid_: Defaults, Starter pack, System tags, Built-ins.
+
 **Profile**:
 The identity of one human, sharing its id with a Supabase Auth user. Holds the live
 contact identity — name, avatar, phone. Every Candidate, every Recruiter and every Platform

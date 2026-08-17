@@ -290,7 +290,7 @@ def _as_payload(
         job=AppliedJob(
             id=job.id,
             title=job.title,
-            tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
+            tenant=PublicTenant(name=tenant.name, slug=tenant.slug, logo_url=tenant.logo_url),
             location_key=job.location_key,
             location_name=location_name(job),
             employment_type=job.employment_type,

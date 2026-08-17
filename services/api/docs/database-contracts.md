@@ -821,9 +821,18 @@ written its object before the unique index refuses it. The path is
 `{candidate_id}/{cv_id}{extension}`, built from the media type the API accepted rather than
 from anything the candidate typed.
 
+Pictures — a Candidate's photo in `avatars`, a Tenant's logo in `tenant-logos` — go through the
+API too, and both buckets are public-read: an `<img>` renders them on pages a signed-out visitor
+holds open, and a signed URL would expire mid-page. Nothing a client sends is what lands: every
+upload is re-encoded to one 512x512 WebP, EXIF and all, before it is written. Replacing one runs
+the opposite way round to a CV, because the row already exists: write the new object, remember it
+on `profiles.avatar_url` / `tenants.logo_url`, and only then drop the object it replaced. A step
+that fails there leaves an object nobody points at, never a row pointing at nothing. The path is
+`{owner_id}/{uuid}.webp`, so two uploads racing each other cannot land on one name.
+
 ## Invariant ownership summary
 
 | Invariant | Enforced by |
 | --- | --- |
 | A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's; a hire claim belongs to one Tenant's Recruiter and Application; an answered hire claim records when it was answered and is never answered twice | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying only when the Stage a Candidate reads changes, and doing it in the announcing transaction, a `hired` move naming the day work started, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying only when the Stage a Candidate reads changes, and doing it in the announcing transaction, a `hired` move naming the day work started, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent, a Tenant logo being an admin's to set and a replacement being written before the object it replaces is dropped, a Tenant's opening Tags and Message templates being written in the transaction that opens it | **Backend** |

@@ -22,6 +22,18 @@ describe('the Tracked-link landing', () => {
     expect(router.state.location.pathname).toBe(`/l/${TOKEN}`);
   });
 
+  it('carries the Tenant logo onto the landing, as the board does', async () => {
+    server.use(...signedOut(), ...resolvesTrackedLink(PUBLIC_JOB));
+
+    await renderApp(`/l/${TOKEN}`);
+
+    await screen.findByRole('heading', { level: 1, name: PUBLIC_JOB.title });
+    expect(document.querySelector('[data-slot="tenant-logo"] img')).toHaveAttribute(
+      'src',
+      'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+    );
+  });
+
   it('brings sign-in back to the link, so applying stays attributed to it', async () => {
     server.use(...signedOut(), ...resolvesTrackedLink(PUBLIC_JOB));
 

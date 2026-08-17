@@ -19,9 +19,11 @@ if TYPE_CHECKING:
 TENANT_SLUG_CONSTRAINT: Final = "tenants_slug_key"
 
 #: Work that has to land in the same commit as the Tenant's own rows — recording the Access
-#: request this Tenant came out of, for instance. Raising from it refuses the whole provisioning,
+#: request this Tenant came out of, and the vocabulary that conversion opens it with. Told the
+#: founding admin as well as the Tenant, because that admin exists nowhere else yet and anything
+#: attributed to them has to be written here. Raising from it refuses the whole provisioning,
 #: which is the point: there is no state where one of the two happened.
-type SharedCommit = Callable[[AsyncSession, UUID], Awaitable[None]]
+type SharedCommit = Callable[[AsyncSession, UUID, UUID], Awaitable[None]]
 
 
 async def provision_tenant(
@@ -50,7 +52,7 @@ async def provision_tenant(
             session.add(Recruiter(id=admin_id, tenant_id=tenant.id, role=RecruiterRole.ADMIN))
             if in_the_same_commit is not None:
                 await session.flush()
-                await in_the_same_commit(session, tenant.id)
+                await in_the_same_commit(session, tenant.id, admin_id)
     except IntegrityError as exc:
         if violated_constraint(exc) != TENANT_SLUG_CONSTRAINT:
             raise

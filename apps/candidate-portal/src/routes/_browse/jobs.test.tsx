@@ -34,6 +34,22 @@ describe('browsing jobs', () => {
     expect(within(pharmacist).getByText('Sham Care')).toBeVisible();
   });
 
+  it('marks each row with the Tenant behind it, by its logo or by its letters', async () => {
+    server.use(...signedOut(), ...listsJobs(PUBLIC_JOBS));
+
+    await renderApp('/jobs');
+
+    const list = await screen.findByRole('list', { name: 'Jobs' });
+    const developer = within(list).getByRole('link', { name: /Frontend Developer/ });
+    expect(developer.querySelector('[data-slot="tenant-logo"] img')).toHaveAttribute(
+      'src',
+      'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+    );
+    const pharmacist = within(list).getByRole('link', { name: /Pharmacist/ });
+    expect(pharmacist.querySelector('[data-slot="tenant-logo"] img')).toBeNull();
+    expect(within(pharmacist).getByText('SC')).toBeVisible();
+  });
+
   it('appends the next page on demand, and stops offering one at the end of the list', async () => {
     server.use(...signedOut(), ...pagesJobs([PUBLIC_JOBS, MORE_PUBLIC_JOBS]));
 

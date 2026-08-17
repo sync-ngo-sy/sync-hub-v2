@@ -3,18 +3,20 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from pydantic import BaseModel, EmailStr, Field
 
 from sync_api.dependencies import (
     ActingRecruiterDep,
     TenantAdminDep,
+    TenantLogoServiceDep,
     TenantServiceDep,
 )
 from sync_api.errors import openapi_problem
+from sync_api.pictures import ACCEPTED_FORMATS
 from sync_api.rate_limit import enforce_auth_rate_limit
 from sync_api.routes.auth import IDENTITY_PROVIDER_UNAVAILABLE
-from sync_api.tenants import Member, TenantSummary
+from sync_api.tenants import Member, TenantLogo, TenantSummary
 from sync_core.models import RecruiterRole
 
 ROUTER_PREFIX: Final = "/tenants"
@@ -50,10 +52,13 @@ class TenantView(BaseModel):
     id: str
     name: str
     slug: str
+    logo_url: str | None = Field(
+        default=None, description="The logo Candidates see, or null until an admin sets one."
+    )
 
     @classmethod
     def of(cls, tenant: TenantSummary) -> TenantView:
-        return cls(id=str(tenant.id), name=tenant.name, slug=tenant.slug)
+        return cls(id=str(tenant.id), name=tenant.name, slug=tenant.slug, logo_url=tenant.logo_url)
 
 
 class MemberView(BaseModel):
@@ -160,3 +165,30 @@ async def change_tenant_member(
         is_active=body.is_active,
     )
     return MemberView.of(member)
+
+
+@router.put(
+    "/me/logo",
+    operation_id="replaceTenantLogo",
+    summary="Set the Tenant's logo",
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        413: openapi_problem("The file is larger than the platform accepts."),
+        415: openapi_problem(f"The file is not a {ACCEPTED_FORMATS} image."),
+        422: openapi_problem("The file is empty."),
+        502: openapi_problem("The file store could not be reached."),
+    },
+)
+async def replace_tenant_logo(
+    admin: TenantAdminDep,
+    logos: TenantLogoServiceDep,
+    file: Annotated[
+        UploadFile,
+        File(description=f"The logo: {ACCEPTED_FORMATS}. Square or it is cropped."),
+    ],
+) -> TenantLogo:
+    """The mark Candidates identify this Tenant by, wherever one of its Jobs appears.
+
+    Replaces whatever logo the Tenant had, at a new address — the old one stops answering.
+    """
+    return await logos.replace(admin.tenant.id, file)
