@@ -79,9 +79,10 @@ under it with a tick against the ones that are met. Each one moves the page to t
 answers it, and moves the page rather than the address: the editor stops a real navigation while
 there are unsaved changes, and a Candidate reaching for a requirement is not leaving. It reads the
 fields as they are typed rather than the saved profile, so the ring moves before a save — with the
-CV the one exception, because no amount of typing reads a CV. Every field and section the rule asks
-for also says so where it sits — in the description rather than the label, because a label is the
-field's accessible name. Optional Projects and Links never prevent 100%; the database's
+CV the one exception, because no amount of typing reads a CV. A section the rule asks for says so
+once, on the badge beside its heading, and its fields do not repeat it: a Candidate filling in five
+fields under one badge is told five times what they were told once, and the panel beside them is
+already the list of what is outstanding. Optional Projects and Links never prevent 100%; the database's
 Complete-profile marker is what actually gates applying, and the browser restates the rule only so
 the editor can answer before a save rather than after it. The Searchable switch lives at the foot
 of this panel rather than among the fields, because the ticks above it are its precondition: it is

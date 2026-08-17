@@ -64,7 +64,7 @@ async function openProfileThatSaves(saved: CandidateProfile = CANDIDATE_PROFILE)
 }
 
 describe('the profile editor', () => {
-  it('gives an empty field an example, and says on the field itself what the Apply gate wants', async () => {
+  it('gives an empty field an example, and says what the Apply gate wants once per section', async () => {
     await openProfile();
 
     expect(screen.getByLabelText('Full name')).toHaveAttribute('placeholder', 'Amina Haddad');
@@ -73,8 +73,10 @@ describe('the profile editor', () => {
       expect.stringContaining('The work you do'),
     );
 
+    const aboutYou = within(screen.getByRole('region', { name: 'About you' }));
+    expect(aboutYou.getAllByText(/[Nn]eeded to apply/)).toHaveLength(1);
     for (const label of ['Phone', 'Headline', 'Location', 'What you do', 'Summary']) {
-      expect(screen.getByLabelText(label)).toHaveAccessibleDescription(/Needed to apply/);
+      expect(screen.getByLabelText(label)).not.toHaveAccessibleDescription(/Needed to apply/);
     }
   });
 
