@@ -6,7 +6,6 @@ import { CircleAlert } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CvsSection } from '@/features/cvs/components/cvs-section';
-import { MAX_CVS } from '@/features/cvs/cv';
 import { problemMessage } from '@/lib/api-problem';
 import { useCvFill } from '../hooks/use-cv-fill';
 import { useFillOnArrival } from '../hooks/use-fill-on-arrival';
@@ -90,9 +89,7 @@ export function ProfileEditor() {
         <ProfileSection
           id="cvs"
           title="CVs"
-          description={`Upload one and the fields below fill in from what it says. The current CV goes
-            out with every application you send, and is the one recruiters searching the platform
-            find you by. Keep up to ${MAX_CVS}.`}
+          description="Upload one and the fields below fill in from it. The current CV goes out with every application."
           needed="One read CV needed to apply"
         >
           <CvsSection onFill={fill.from} filling={fill.pending} />

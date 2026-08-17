@@ -102,6 +102,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
                     max="999.9"
                     step="1"
                     placeholder="3.5"
+                    className="h-8 px-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 )}
               </FormField>
@@ -113,8 +114,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
       <ProfileSection
         id="other-skills"
         title="Other skills"
-        description="Skills the platform has no name for, written however you like. Recruiters read
-          these; Screening does not."
+        description="Anything the platform has no name for. Recruiters read these; Screening does not."
         unanswered={othersUnanswered}
       >
         {others.fields.length === 0 ? (

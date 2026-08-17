@@ -20,10 +20,7 @@ export const Route = createFileRoute('/_account/profile')({
 function ProfilePage() {
   return (
     <div className="space-y-(--space-section)">
-      <PageHeader
-        title="Profile"
-        description="What recruiters see when you apply. Upload a CV and the fields fill in from it. Saved all at once."
-      />
+      <PageHeader title="Profile" description="What recruiters see when you apply." />
       <ProfileEditor />
     </div>
   );

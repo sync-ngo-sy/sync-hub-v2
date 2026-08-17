@@ -34,6 +34,14 @@ function rowFor(text: string | RegExp): HTMLElement {
   return row;
 }
 
+function filledNotice(): HTMLElement {
+  const notice = screen
+    .getByText('The fields below now say what your CV says')
+    .closest('[data-slot="alert"]');
+  if (!notice) throw new Error('no filled notice on the page');
+  return notice as HTMLElement;
+}
+
 describe('the notifications page', () => {
   it('renders each payload type in its own words, newest first', async () => {
     server.use(...signedInAs(CANDIDATE), ...listsNotifications(NOTIFICATIONS));
@@ -96,9 +104,7 @@ describe('the notifications page', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Headline')).toHaveValue(CV_DRAFT.headline as string),
     );
-    expect(
-      screen.getByText(`The fields below now say what “${READY_CV.display_name}” says`),
-    ).toBeVisible();
+    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Undo the fill' })).toBeVisible();
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_READ_NOTIFICATION.id));
   });
