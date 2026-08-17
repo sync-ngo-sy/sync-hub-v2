@@ -81,7 +81,7 @@ class JobService:
 
     async def create(self, recruiter: ActingRecruiter, new: NewJob) -> JobView:
         await refuse_unknown_location(self._db, new.location_key, at="body.location_key")
-        _refuse_a_job_that_does_not_hold_together(
+        _refuse_an_incomplete_job(
             work_mode=new.work_mode, location_key=new.location_key, status=JobStatus.DRAFT
         )
         job = Job(
@@ -156,7 +156,7 @@ class JobService:
             changed = changes.model_dump(exclude_unset=True)
             if "status" in changed:
                 _refuse_impossible_move(job.status, JobStatus(changed["status"]))
-            _refuse_a_job_that_does_not_hold_together(
+            _refuse_an_incomplete_job(
                 work_mode=changed.get("work_mode", job.work_mode),
                 location_key=changed.get("location_key", job.location_key),
                 status=JobStatus(changed.get("status", job.status)),
@@ -401,7 +401,7 @@ def _as_decimal(years: float | None) -> Decimal | None:
     return None if years is None else Decimal(str(years))
 
 
-def _refuse_a_job_that_does_not_hold_together(
+def _refuse_an_incomplete_job(
     *, work_mode: WorkMode | None, location_key: str | None, status: JobStatus
 ) -> None:
     """The two CHECKs on `jobs`, restated over the row a write would leave behind.

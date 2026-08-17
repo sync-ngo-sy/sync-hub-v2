@@ -35,15 +35,8 @@ export const jobFormSchema = z
       }),
   })
   .superRefine((values, ctx) => {
-    if (values.workMode === '') {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['workMode'],
-        message: 'Choose how much of this role happens where the team is.',
-      });
-      return;
-    }
-    if (TRAVELLED_TO.includes(values.workMode) && values.locationKey.trim() === '') {
+    const travelledTo = values.workMode !== '' && TRAVELLED_TO.includes(values.workMode);
+    if (travelledTo && values.locationKey.trim() === '') {
       ctx.addIssue({
         code: 'custom',
         path: ['locationKey'],
@@ -52,6 +45,9 @@ export const jobFormSchema = z
       });
     }
   });
+
+export const WORK_MODE_BEFORE_PUBLISHING =
+  'Say how much of this role happens where the team is before it goes live. A draft can wait.';
 
 export type JobFormValues = z.infer<typeof jobFormSchema>;
 

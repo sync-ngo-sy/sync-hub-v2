@@ -210,7 +210,10 @@ class ApplicationReviewService:
                 TenantApplicationSummary(
                     **_summary(application, snapshot, assessment).model_dump(),
                     job=ApplicationJob(
-                        id=job.id, title=job.title, location_name=location_name(job)
+                        id=job.id,
+                        title=job.title,
+                        location_name=location_name(job),
+                        work_mode=job.work_mode,
                     ),
                 )
                 for application, snapshot, assessment, job in rows

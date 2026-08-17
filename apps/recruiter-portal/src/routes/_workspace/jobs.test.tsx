@@ -105,6 +105,19 @@ describe('Jobs', () => {
     await waitFor(() => expect(screen.getByRole('tab', { name: 'All 1' })).toBeVisible());
   });
 
+  it('names every filter that emptied the list, and drops them all in one action', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR]));
+
+    const { router, user } = await renderApp('/jobs?q=nurse&mode=remote');
+
+    expect(await screen.findByText('No Jobs match “nurse” and remote.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    await waitFor(() => expect(router.state.location.searchStr).toBe(''));
+    expect(await screen.findByText('Field Coordinator')).toBeVisible();
+  });
+
   it('reads a remote Job that names no Location as Anywhere', async () => {
     const anywhere = { ...PROGRAMME_OFFICER, location_key: null, location_name: null };
     server.use(...signedInAs(RECRUITER), ...listsJobs([anywhere]));

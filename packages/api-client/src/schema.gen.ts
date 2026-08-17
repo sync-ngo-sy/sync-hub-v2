@@ -1947,6 +1947,11 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
+            /**
+             * @description How the Job is worked. With no `location_name`, `remote` is what makes the Job's place read as Anywhere rather than as nothing at all.
+             * @example remote
+             */
+            work_mode?: components["schemas"]["WorkMode"] | null;
         };
         /**
          * ApplicationPage

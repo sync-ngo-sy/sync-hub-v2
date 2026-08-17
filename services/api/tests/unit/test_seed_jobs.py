@@ -6,9 +6,8 @@ from __future__ import annotations
 import pytest
 from seed.cast import JOBS, SeededJob
 
+from sync_api.jobs.service import TRAVELLED_TO
 from sync_core.models import JobStatus, WorkMode
-
-TRAVELLED_TO = {WorkMode.ONSITE, WorkMode.HYBRID}
 
 PUBLISHED = [job for job in JOBS if job.status is JobStatus.PUBLISHED]
 

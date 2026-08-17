@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useLanguageName } from '@/features/reference/hooks/use-languages';
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { absoluteDateTime } from '@/lib/dates';
-import { ANYWHERE, employmentTypeLabel, workModeLabel } from '../job';
+import { employmentTypeLabel, jobPlace, workModeLabel } from '../job';
 import {
   type CriteriaFormValues,
   IMPORTANCE_LABELS,
@@ -25,7 +25,10 @@ export function JobWizardReview({ details, screening }: JobWizardReviewProps) {
   const languageName = useLanguageName();
   const locationName =
     places.data?.find((place) => place.key === details.locationKey)?.name ?? details.locationKey;
-  const place = locationName || (details.workMode === 'remote' ? ANYWHERE : '');
+  const place = jobPlace({
+    location_name: locationName || null,
+    work_mode: details.workMode || null,
+  });
 
   return (
     <div className="space-y-5">
@@ -35,7 +38,7 @@ export function JobWizardReview({ details, screening }: JobWizardReviewProps) {
           <ReviewRow label="Description">
             <span className="whitespace-pre-wrap">{details.description}</span>
           </ReviewRow>
-          <ReviewRow label="Location">{place || 'Not set'}</ReviewRow>
+          <ReviewRow label="Location">{place ?? 'Not set'}</ReviewRow>
           <ReviewRow label="Work mode">
             {workModeLabel(details.workMode || null) ?? 'Not set'}
           </ReviewRow>

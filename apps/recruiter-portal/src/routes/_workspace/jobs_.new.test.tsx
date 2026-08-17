@@ -32,6 +32,9 @@ function entry(label: string) {
 async function typeDetails(user: UserEvent) {
   await user.type(screen.getByLabelText('Title'), 'Programme Officer');
   await user.type(screen.getByLabelText('Description'), 'Lead programme planning.');
+}
+
+async function chooseRemote(user: UserEvent) {
   await user.click(screen.getByLabelText('Work mode'));
   await user.click(await screen.findByRole('option', { name: 'Remote' }));
 }
@@ -77,6 +80,7 @@ describe('the job creation wizard', () => {
 
     const { user, router } = await renderApp('/jobs/new');
     await typeDetails(user);
+    await chooseRemote(user);
     await user.click(screen.getByLabelText('Location'));
     expect(await screen.findByText('Syria')).toBeVisible();
     await user.click(screen.getByRole('option', { name: 'Damascus' }));
@@ -236,6 +240,7 @@ describe('the job creation wizard', () => {
 
     const { user, router } = await renderApp('/jobs/new');
     await typeDetails(user);
+    await chooseRemote(user);
     await next(user);
     await user.click(await screen.findByRole('button', { name: 'Add a question' }));
     await user.type(entry('Question 1').getByLabelText('Question'), 'Can you travel?');
@@ -274,21 +279,51 @@ describe('the job creation wizard', () => {
 
     const { user } = await renderApp('/jobs/new');
 
-    for (const [field, unset, choices] of [
+    for (const [field, choices] of [
       [
         'Employment type',
-        'Not set',
         ['Full time', 'Part time', 'Contract', 'Temporary', 'Internship', 'Volunteer'],
       ],
-      ['Work mode', 'Choose one', ['On-site', 'Hybrid', 'Remote']],
+      ['Work mode', ['On-site', 'Hybrid', 'Remote']],
     ] as const) {
       const control = screen.getByLabelText(field);
       expect(control.tagName).not.toBe('INPUT');
       await user.click(control);
       const offered = await screen.findAllByRole('option');
-      expect(offered.map((option) => option.textContent)).toEqual([unset, ...choices]);
+      expect(offered.map((option) => option.textContent)).toEqual(['Not set', ...choices]);
       await user.keyboard('{Escape}');
     }
+  });
+
+  it('asks for a work mode before publishing, and never before saving a draft', async () => {
+    const onCreate = vi.fn();
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...createsJob(DRAFT, onCreate),
+      ...changesJob(DRAFT, vi.fn()),
+      ...getsJob(DRAFT),
+      ...listsJobApplications([]),
+    );
+
+    const { user, router } = await renderApp('/jobs/new');
+    await typeDetails(user);
+    await next(user);
+    await next(user);
+
+    await user.click(await screen.findByRole('button', { name: 'Publish' }));
+
+    expect(
+      await screen.findByText(/Say how much of this role happens where the team is/),
+    ).toBeVisible();
+    await waitFor(() => expect(router.state.location.search).toEqual({ step: 'details' }));
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await next(user);
+    await next(user);
+    await user.click(await screen.findByRole('button', { name: 'Save as draft' }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({ work_mode: null });
   });
 
   it('opens the closing-date picker wherever in the field the recruiter clicks', async () => {
@@ -322,6 +357,7 @@ describe('the job creation wizard', () => {
 
     const { user, router } = await renderApp('/jobs/new');
     await typeDetails(user);
+    await chooseRemote(user);
     await next(user);
     await next(user);
     await user.click(await screen.findByRole('button', { name: 'Publish' }));
@@ -374,6 +410,7 @@ describe('the job creation wizard', () => {
 
     const { user, router } = await renderApp('/jobs/new');
     await typeDetails(user);
+    await chooseRemote(user);
     await next(user);
     await next(user);
     await user.click(await screen.findByRole('button', { name: 'Publish' }));

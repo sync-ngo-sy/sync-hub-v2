@@ -86,6 +86,12 @@ function JobsPage() {
         onWorkModeChange={(nextMode) =>
           void navigate({ search: (prev) => ({ ...prev, mode: nextMode }), replace: true })
         }
+        onClearFilters={() =>
+          void navigate({
+            search: (prev) => ({ ...prev, q: undefined, mode: undefined }),
+            replace: true,
+          })
+        }
       />
     </WidgetBoundary>
   );

@@ -35,12 +35,11 @@ describe('a Job form', () => {
     expect(result.error.flatten().fieldErrors.expiresAt).toEqual(['Enter a valid date and time.']);
   });
 
-  it('takes both fixed sets and nothing else, and a blank employment type', () => {
+  it('takes both fixed sets, and a blank for either, and nothing else', () => {
     const filled = {
       ...A_BLANK_FORM,
       title: 'Field Coordinator',
       description: 'Coordinate field teams.',
-      workMode: 'remote',
     };
 
     expect(jobFormSchema.safeParse(filled).success).toBe(true);
@@ -56,18 +55,14 @@ describe('a Job form', () => {
     expect(jobFormSchema.safeParse({ ...filled, workMode: 'field' }).success).toBe(false);
   });
 
-  it('asks for a work mode, because a listing that will not say is one nobody can judge', () => {
+  it('lets a draft go on being undecided about its work mode', () => {
     const result = jobFormSchema.safeParse({
       ...A_BLANK_FORM,
       title: 'Field Coordinator',
       description: 'Coordinate field teams.',
     });
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error.flatten().fieldErrors.workMode).toEqual([
-      'Choose how much of this role happens where the team is.',
-    ]);
+    expect(result.success).toBe(true);
   });
 
   it.each(['onsite', 'hybrid'])('asks where %s work happens', (workMode) => {

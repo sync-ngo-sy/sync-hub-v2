@@ -90,6 +90,7 @@ interface JobsPageProps {
   onStatusChange: (status?: JobStatus) => void;
   onSortChange: (sort: JobSort) => void;
   onWorkModeChange: (workMode?: WorkMode) => void;
+  onClearFilters: () => void;
   onJobOpen: (job: JobSummary) => void;
   jobHref: (job: JobSummary) => string;
   onCreateJob: () => void;
@@ -104,12 +105,16 @@ export function JobsPage({
   onStatusChange,
   onSortChange,
   onWorkModeChange,
+  onClearFilters,
   onJobOpen,
   jobHref,
   onCreateJob,
 }: JobsPageProps) {
   const tenant = useMyTenant();
   const jobs = useJobs({ status, sort, q, workMode });
+  const narrowing = [q && `“${q}”`, workMode && WORK_MODE_LABELS[workMode].toLowerCase()]
+    .filter(Boolean)
+    .join(' and ');
   const change = useChangeJob();
   const [editing, setEditing] = useState<JobSummary | null>(null);
   const [lifecycleFailure, setLifecycleFailure] = useState<string | null>(null);
@@ -219,17 +224,13 @@ export function JobsPage({
           isLoading={jobs.isPending}
           empty={{
             icon: BriefcaseBusiness,
-            message: q
-              ? `No Jobs have a title matching “${q}”.`
-              : workMode
-                ? `No ${WORK_MODE_LABELS[workMode].toLowerCase()} Jobs match this view.`
-                : status
-                  ? `No ${jobState(status).label.toLowerCase()} Jobs match this view.`
-                  : 'No Jobs yet — write the first role your Tenant is hiring for.',
-            action: q ? (
-              <Button onClick={() => onQueryChange(undefined)}>Clear search</Button>
-            ) : workMode ? (
-              <Button onClick={() => onWorkModeChange(undefined)}>Clear work mode</Button>
+            message: narrowing
+              ? `No Jobs match ${narrowing}.`
+              : status
+                ? `No ${jobState(status).label.toLowerCase()} Jobs match this view.`
+                : 'No Jobs yet — write the first role your Tenant is hiring for.',
+            action: narrowing ? (
+              <Button onClick={onClearFilters}>Clear filters</Button>
             ) : (
               <Button onClick={onCreateJob}>
                 {status ? 'Create job' : 'Create your first job'}

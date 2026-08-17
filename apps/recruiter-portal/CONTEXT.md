@@ -333,6 +333,14 @@ conversion are only worth anything read against each other. Views are all views,
 them — the Tracked links tab is where they are broken down by Source.
 _Avoid_: Postings list, vacancies page.
 
+**Anywhere**:
+What a remote Job that names no Location reads as, wherever this portal would otherwise print the
+place — a Jobs-page row, the Job's facts, the wizard's Review step, an Applications row. It is the
+absence of a Location and never a place in the taxonomy, so the portal writes it rather than
+reading it off the Job. A Job on its way to being published still reads "Not set" while it has no
+Work mode at all: Anywhere is an answer, and that is the absence of one.
+_Avoid_: Remote (that is the Work mode), Worldwide, Not set (that is the unanswered case).
+
 **Job wizard**:
 The Workspace destination where a Job is written, a page of its own rather than a dialog, walked in
 three steps: Details, Screening, Review. The step lives in the URL like every other view here, so a

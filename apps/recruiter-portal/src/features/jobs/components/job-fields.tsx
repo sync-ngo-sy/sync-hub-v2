@@ -11,7 +11,7 @@ import type { JobFormValues } from '../schemas/job';
 import { ChoiceSelect } from './choice-select';
 
 const EMPLOYMENT_TYPES = { '': 'Not set', ...EMPLOYMENT_TYPE_LABELS };
-const WORK_MODES = { '': 'Choose one', ...WORK_MODE_LABELS };
+const WORK_MODES = { '': 'Not set', ...WORK_MODE_LABELS };
 
 function openThePicker(event: MouseEvent<HTMLInputElement>) {
   try {
@@ -55,8 +55,9 @@ export function JobFields({ control }: { control: Control<JobFormValues> }) {
           name="workMode"
           label="Work mode"
           description={
-            'How much of the work happens where the team is. A remote role names where a ' +
-            'Candidate must be based, or nowhere at all — which reads as Anywhere.'
+            'How much of the work happens where the team is, which the Job needs before it ' +
+            'goes live. A remote role names where a Candidate must be based, or nowhere at ' +
+            'all — which reads as Anywhere.'
           }
         >
           {(field) => <ChoiceSelect field={field} items={WORK_MODES} />}

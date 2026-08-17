@@ -56,7 +56,7 @@ export function jobState(status: JobStatus): JobState {
   return JOB_STATE[status];
 }
 
-export function jobPlace(job: JobSummary): string | null {
+export function jobPlace(job: Pick<JobSummary, 'location_name' | 'work_mode'>): string | null {
   return job.location_name ?? (job.work_mode === 'remote' ? ANYWHERE : null);
 }
 
