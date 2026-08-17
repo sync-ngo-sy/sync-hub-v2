@@ -43,3 +43,9 @@ async def test_auth_users_are_cleared_too(db_session: AsyncSession) -> None:
     count = await db_session.scalar(text("select count(*) from auth.users"))
 
     assert count == 0
+
+
+async def test_stored_objects_are_cleared_too(db_session: AsyncSession) -> None:
+    count = await db_session.scalar(text("select count(*) from storage.objects"))
+
+    assert count == 0

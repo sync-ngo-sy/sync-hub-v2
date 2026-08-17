@@ -13,11 +13,6 @@ SUPABASE_DIR: Final = REPO_ROOT / "supabase"
 
 REFERENCE_SEED_GLOB: Final = "*_seed_reference.sql"
 
-#: Truncated without RESTART IDENTITY: these belong to GoTrue and Storage, whose sequences
-#: the `postgres` role does not own. This clears Storage's rows, not the objects behind
-#: them — `tests.support.cvs.empty_cv_bucket` deletes those through Storage's own API first.
-EXTERNAL_TABLES_TO_TRUNCATE: Final = ("auth.users", "storage.objects")
-
 
 class StackError(RuntimeError):
     pass
@@ -64,10 +59,40 @@ def reference_seed_sql() -> str:
     return matches[-1].read_text()
 
 
-def truncate_script(public_tables: list[str]) -> str:
-    external = ", ".join(EXTERNAL_TABLES_TO_TRUNCATE)
-    ours = ", ".join(f'public."{name}"' for name in public_tables)
-    return f"truncate table {external} cascade;\ntruncate table {ours} restart identity cascade;"
+def reset_script(public_tables: list[str], public_sequences: list[str]) -> str:
+    """Empty every table named, in one round trip.
+
+    DELETE rather than TRUNCATE. TRUNCATE allocates a fresh relfilenode for every relation it
+    touches — each table and every index on it — and unlinks the old files at commit, whether
+    the table held a row or not. Paid once per test, that dominated the suite: #265 measured
+    331ms a call against 2.1ms for the DELETEs below, and climbing as the catalogue bloated. Do
+    not read `TRUNCATE is faster than DELETE` off a benchmark of one large table and put it back.
+    """
+    ours = "".join(f'delete from public."{name}";\n' for name in public_tables)
+    sequences = "".join(f'alter sequence public."{name}" restart;\n' for name in public_sequences)
+    return (
+        # `replica` lifts foreign-key enforcement, so the order of the deletes does not matter,
+        # and it lifts the triggers that would otherwise refuse a delete outright — the domain's
+        # `forbid_rewriting_history` and `forbid_locked_job_criteria`, and Storage's own
+        # `protect_objects_delete` — or enqueue work off the back of one
+        # (`enqueue_candidate_reembed`). TRUNCATE fired none of them; DELETE fires all of them.
+        # The objects behind Storage's rows are already gone by here:
+        # `tests.support.cvs.empty_cv_bucket` and its siblings remove those through Storage's
+        # own API, which is what `protect_objects_delete` exists to insist on.
+        "set session_replication_role = replica;\n"
+        f"{ours}"
+        "delete from storage.objects;\n"
+        # Back to `default` for GoTrue, which needs its triggers: TRUNCATE CASCADE cleared
+        # everything referencing `auth.users` whatever its ON DELETE action said, but DELETE
+        # follows only a declared ON DELETE CASCADE, and GoTrue's own cascade is what clears the
+        # identities, sessions and refresh tokens behind each user. Its sequences are left alone
+        # either way — the `postgres` role does not own them.
+        "set session_replication_role = default;\n"
+        "delete from auth.users;\n"
+        # DELETE leaves a sequence where it stood, so the restart that RESTART IDENTITY used to
+        # do is done here instead. `test_isolation.py` holds the suite to it.
+        f"{sequences}"
+    )
 
 
 def _pooler_config() -> tuple[str, str]:
