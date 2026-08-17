@@ -373,7 +373,14 @@ The three things a Tenant administers about itself, under one address with the o
 Team, the Tag vocabulary, and the Tenant. The page itself reads nothing — each tab is an
 Independent widget that asks for what it needs when it is opened, so a Recruiter who came for the
 Tags never waits on the roster.
-_Avoid_: Admin panel, preferences, account settings (a Profile is not what is administered here).
+_Avoid_: Admin panel, preferences, Account settings (a Profile is not what is administered here —
+Account settings is the separate page a Recruiter reaches for their own credentials).
+
+**Account settings**:
+The Recruiter's own account, apart from the Tenant they work for: the identity they sign in with,
+and the password they sign in by. It sits at its own address, reached from the account menu rather
+than the workspace navigation, because nothing on it belongs to the Tenant.
+_Avoid_: Profile page (a Recruiter has no public profile), Workspace settings.
 
 **Team tab**:
 The Tenant's roster: everyone on it with their role and whether they can still sign in, colleagues

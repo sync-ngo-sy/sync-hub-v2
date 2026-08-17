@@ -116,10 +116,10 @@ export function faultsOnReset(problem: components['schemas']['ProblemDetail']) {
 
 type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 
-export function changesPassword(onChange?: (body: ChangePasswordRequest) => void) {
+export function changesPassword(onRequest?: (body: ChangePasswordRequest) => void) {
   return [
     http.post('/v1/auth/password', async ({ request, response }) => {
-      onChange?.((await request.json()) as ChangePasswordRequest);
+      onRequest?.((await request.json()) as ChangePasswordRequest);
       return response(204).empty();
     }),
   ];

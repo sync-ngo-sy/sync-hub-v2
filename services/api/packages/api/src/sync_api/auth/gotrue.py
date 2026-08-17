@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Final, Literal
@@ -206,24 +207,23 @@ class GoTrue:
                 str(user_id), {"ban_duration": BAN_FOREVER}
             )
 
-    async def verify_password(self, *, email: str, password: str) -> GoTrueSession:
+    async def verify_password(self, *, email: str, password: str) -> None:
         """Confirm the caller is who the session says, before something irreversible.
 
-        GoTrue offers no way to check a password without signing in, so this mints a session and
-        hands it back. The caller owns it: end it with `revoke_this_session`, or the check leaves
-        a working credential behind.
+        GoTrue offers no way to check a password without signing in, so the session this mints is
+        ended again here — a check must not leave a working credential behind.
         """
-        return await self.sign_in_with_password(email=email, password=password)
+        proof = await self.sign_in_with_password(email=email, password=password)
+        with suppress(SessionAlreadyEndedError):
+            await self._sign_out(proof.access_token, LOCAL_SCOPE)
 
-    async def revoke_sessions(self, access_token: str) -> None:
+    async def revoke_all_sessions(self, access_token: str) -> None:
+        """Every session this account has, the one the token names included."""
         await self._sign_out(access_token, GLOBAL_SCOPE)
 
     async def revoke_other_sessions(self, access_token: str) -> None:
         """Every session this account has except the one the token names, which goes on working."""
         await self._sign_out(access_token, OTHERS_SCOPE)
-
-    async def revoke_this_session(self, access_token: str) -> None:
-        await self._sign_out(access_token, LOCAL_SCOPE)
 
     async def _sign_out(self, access_token: str, scope: SignOutScope) -> None:
         with refusals(

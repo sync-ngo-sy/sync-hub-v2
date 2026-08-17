@@ -16,7 +16,7 @@ import { CANDIDATE } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
-async function findPasswordCard(): Promise<HTMLElement> {
+async function findPasswordForm(): Promise<HTMLElement> {
   const form = (await screen.findByLabelText('New password')).closest('form');
   if (!form) throw new Error('the new-password field is not inside a form');
   return form;
@@ -41,7 +41,7 @@ describe('Account settings', () => {
     server.use(...signedInAs(CANDIDATE), ...changesPassword(changed));
 
     const { user } = await renderApp('/settings');
-    const card = within(await findPasswordCard());
+    const card = within(await findPasswordForm());
     await user.type(card.getByLabelText('Current password'), 'Correct-Horse9');
     await user.type(card.getByLabelText('New password'), 'A-Brand-New-One1');
     await user.click(card.getByRole('button', { name: 'Change password' }));
@@ -68,7 +68,7 @@ describe('Account settings', () => {
     );
 
     const { user } = await renderApp('/settings');
-    const card = within(await findPasswordCard());
+    const card = within(await findPasswordForm());
     await user.type(card.getByLabelText('Current password'), 'wrong-password');
     await user.type(card.getByLabelText('New password'), 'A-Brand-New-One1');
     await user.click(card.getByRole('button', { name: 'Change password' }));
@@ -89,7 +89,7 @@ describe('Account settings', () => {
     );
 
     const { user } = await renderApp('/settings');
-    const card = within(await findPasswordCard());
+    const card = within(await findPasswordForm());
     await user.type(card.getByLabelText('Current password'), 'Correct-Horse9');
     await user.type(card.getByLabelText('New password'), 'Correct-Horse9');
     await user.click(card.getByRole('button', { name: 'Change password' }));
@@ -105,7 +105,7 @@ describe('Account settings', () => {
     server.use(...signedInAs(CANDIDATE), ...changesPassword(changed));
 
     const { user } = await renderApp('/settings');
-    const card = within(await findPasswordCard());
+    const card = within(await findPasswordForm());
     await user.type(card.getByLabelText('Current password'), 'Correct-Horse9');
     await user.type(card.getByLabelText('New password'), 'short');
     await user.click(card.getByRole('button', { name: 'Change password' }));
