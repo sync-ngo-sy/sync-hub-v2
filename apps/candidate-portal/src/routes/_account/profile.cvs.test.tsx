@@ -80,6 +80,14 @@ function cardFor(displayName: string): HTMLElement {
   return card;
 }
 
+function filledNotice(): HTMLElement {
+  const notice = screen
+    .getByText('The fields below now say what your CV says')
+    .closest('[data-slot="alert"]');
+  if (!notice) throw new Error('no filled notice on the page');
+  return notice as HTMLElement;
+}
+
 function entry(label: string) {
   return within(screen.getByRole('group', { name: label }));
 }
@@ -350,7 +358,7 @@ describe('a CV named at length', () => {
     await openProfile([...listsCvs([LONG_CV])]);
 
     const heading = await screen.findByRole('heading', { name: LONG_CV.display_name });
-    expect(heading.firstElementChild).toHaveClass('truncate');
+    expect(heading.firstElementChild).toHaveAttribute('data-slot', 'tooltip-trigger');
   });
 
   it('keeps the name out of the delete dialog’s question, and clips it there too', async () => {
@@ -361,7 +369,10 @@ describe('a CV named at length', () => {
 
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveAccessibleName('Delete this CV?');
-    expect(within(dialog).getByText(LONG_CV.display_name)).toHaveClass('truncate');
+    expect(within(dialog).getByText(LONG_CV.display_name)).toHaveAttribute(
+      'data-slot',
+      'tooltip-trigger',
+    );
   });
 });
 
@@ -504,9 +515,7 @@ describe('a CV filling the form', () => {
     expect(headline()).toHaveValue(OWN_HEADLINE);
 
     await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
-    expect(
-      screen.getByText(`The fields below now say what “${PARSED_CV.display_name}” says`),
-    ).toBeVisible();
+    expect(within(filledNotice()).getByText(PARSED_CV.display_name)).toBeVisible();
   });
 
   it('leaves a CV that was already read on arrival to be asked for', async () => {
@@ -565,9 +574,7 @@ describe('a CV filling the form', () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
     await fillFrom(user, READY_CV);
 
-    expect(
-      screen.getByText(`The fields below now say what “${READY_CV.display_name}” says`),
-    ).toBeVisible();
+    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
     expect(screen.getByText(/Nothing has been saved/)).toBeVisible();
     expect(screen.getByText('Unsaved changes.')).toBeVisible();
   });
@@ -797,9 +804,7 @@ describe('arriving from the notification about a parse', () => {
     });
 
     await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
-    expect(
-      screen.getByText(`The fields below now say what “${READY_CV.display_name}” says`),
-    ).toBeVisible();
+    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
     expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
   });
 

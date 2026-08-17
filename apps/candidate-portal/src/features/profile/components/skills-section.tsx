@@ -102,7 +102,7 @@ export function SkillsSection({ control }: { control: Control<ProfileFormValues>
                     max="999.9"
                     step="1"
                     placeholder="3.5"
-                    className="h-8 px-2 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="h-8 px-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 )}
               </FormField>

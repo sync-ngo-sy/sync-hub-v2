@@ -15,7 +15,7 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  subject?: string;
+  subject: string;
   description: ReactNode;
   confirmLabel: string;
   pendingLabel: string;
@@ -41,10 +41,10 @@ export function ConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          {subject ? (
-            <TruncatedText className="font-medium text-foreground">{subject}</TruncatedText>
-          ) : null}
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogDescription>
+            <TruncatedText className="mb-1 font-medium text-foreground">{subject}</TruncatedText>
+            {description}
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>

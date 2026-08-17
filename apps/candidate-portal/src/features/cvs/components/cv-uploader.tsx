@@ -1,4 +1,5 @@
 import { EmptyState } from '@sync/ui/components/empty-state';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, FileText, Upload } from 'lucide-react';
@@ -122,7 +123,8 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
 function UploadProgress({ name }: { name: string }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-meta text-muted-foreground">Uploading “{name}”…</p>
+      <p className="text-meta text-muted-foreground">Uploading…</p>
+      <TruncatedText className="text-meta text-muted-foreground">{name}</TruncatedText>
       <div
         role="progressbar"
         aria-label={`Uploading “${name}”`}
