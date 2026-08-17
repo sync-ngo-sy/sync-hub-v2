@@ -29,23 +29,25 @@ export function MyCandidateCard() {
   ];
 
   return (
-    <div className="space-y-3">
-      <CandidateCard
-        name={profile.full_name}
-        avatarUrl={account.avatar_url}
-        email={account.email}
-        phone={profile.phone}
-        links={{
-          linkedinUrl: profile.linkedin_url,
-          githubUrl: profile.github_url,
-          portfolioUrl: profile.portfolio_url,
-        }}
-        canonicalRole={role?.name}
-        headline={profile.headline}
-        facts={facts}
-        factsLabel="Your facts"
-      />
-      <PhotoPicker hasPhoto={Boolean(account.avatar_url)} />
-    </div>
+    <PhotoPicker hasPhoto={Boolean(account.avatar_url)}>
+      {(replacePhoto) => (
+        <CandidateCard
+          name={profile.full_name}
+          avatarUrl={account.avatar_url}
+          email={account.email}
+          phone={profile.phone}
+          links={{
+            linkedinUrl: profile.linkedin_url,
+            githubUrl: profile.github_url,
+            portfolioUrl: profile.portfolio_url,
+          }}
+          canonicalRole={role?.name}
+          headline={profile.headline}
+          facts={facts}
+          factsLabel="Your facts"
+          onPhotoClick={replacePhoto}
+        />
+      )}
+    </PhotoPicker>
   );
 }

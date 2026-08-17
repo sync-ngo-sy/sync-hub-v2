@@ -37,7 +37,52 @@ function cardFor(title: string): HTMLElement {
   return card;
 }
 
+function openerFor(title: string): HTMLElement {
+  return within(cardFor(title)).getByRole('link', { name: (name) => name.startsWith(title) });
+}
+
 describe('My Applications', () => {
+  it('opens the Job a row was sent to, without asking for it on hover', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsApplications([APPLICATION]),
+      ...showsJob(PUBLIC_JOB),
+    );
+
+    const { user } = await renderApp('/applications');
+
+    const opener = openerFor(APPLICATION.job.title);
+    expect(opener).toHaveAttribute('href', `/jobs/${APPLICATION.job.id}`);
+
+    await user.hover(opener);
+    expect(screen.queryByRole('heading', { name: PUBLIC_JOB.title, level: 1 })).toBeNull();
+
+    await user.click(opener);
+
+    expect(await screen.findByRole('heading', { name: PUBLIC_JOB.title, level: 1 })).toBeVisible();
+  });
+
+  it('keeps Withdraw and the Hire claim out of the row opener', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsApplications([APPLICATION, CLAIMED_HIRE_APPLICATION]),
+    );
+
+    await renderApp('/applications');
+
+    expect(openerFor(APPLICATION.job.title)).not.toContainElement(
+      within(cardFor(APPLICATION.job.title)).getByRole('button', {
+        name: `Withdraw from “${APPLICATION.job.title}”`,
+      }),
+    );
+
+    const claimed = cardFor(CLAIMED_HIRE_APPLICATION.job.title);
+    const opener = openerFor(CLAIMED_HIRE_APPLICATION.job.title);
+    for (const name of ['Yes, I started', "No, I didn't"]) {
+      expect(opener).not.toContainElement(within(claimed).getByRole('button', { name }));
+    }
+  });
+
   it('marks each row with the logo of the Tenant it was sent to', async () => {
     server.use(...signedInAs(CANDIDATE), ...listsApplications([APPLICATION]));
 

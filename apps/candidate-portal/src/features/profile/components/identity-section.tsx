@@ -29,14 +29,14 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
       unanswered={unanswered}
     >
       <FormField control={control} name="full_name" label="Full name">
-        {(field) => <Input {...field} autoComplete="name" />}
+        {(field) => <Input {...field} autoComplete="name" placeholder="Amina Haddad" />}
       </FormField>
 
       <FormField
         control={control}
         name="phone"
         label="Phone"
-        description="Needed to apply. Recruiters read it only on your full profile."
+        description="Recruiters read it only on your full profile."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <PhoneField
@@ -60,7 +60,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="headline"
         label="Headline"
-        description="One line, the way you would introduce yourself. Needed to apply."
+        description="One line, the way you would introduce yourself."
       >
         {(field) => <Input {...field} placeholder="Field coordinator, 6 years" />}
       </FormField>
@@ -69,7 +69,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="location_key"
         label="Location"
-        description="Where you are. Recruiters filter on it. Needed to apply."
+        description="Where you are. Recruiters filter on it."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <ReferencePicker
@@ -91,7 +91,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="canonical_role_key"
         label="What you do"
-        description="The kind of work you are looking for. Recruiters filter on it. Needed to apply."
+        description="The kind of work you are looking for. Recruiters filter on it."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <ReferencePicker
@@ -109,13 +109,14 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         )}
       </FormField>
 
-      <FormField
-        control={control}
-        name="summary"
-        label="Summary"
-        description="A paragraph about your work. Needed to apply."
-      >
-        {(field) => <Textarea {...field} rows={5} />}
+      <FormField control={control} name="summary" label="Summary">
+        {(field) => (
+          <Textarea
+            {...field}
+            rows={5}
+            placeholder="A paragraph about the work you do, where you have done it, and what you are looking for next."
+          />
+        )}
       </FormField>
     </ProfileSection>
   );
