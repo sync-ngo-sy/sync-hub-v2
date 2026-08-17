@@ -43,8 +43,10 @@ create table jobs (
   title       text not null,
   description text not null,
 
-  -- Where the team is, what the contract is, and how much of the work happens in that place:
-  -- three separate answers. A remote Job keeps its Location, because remote is not a place.
+  -- Where the work is, what the contract is, and how much of the work happens in that place:
+  -- three separate answers, and never "Remote" typed into the place taxonomy. An onsite or
+  -- hybrid Job names the place people travel to; a remote Job names where a Candidate must be
+  -- based, and names nowhere when it does not care — which reads as Anywhere.
   location_key    text references locations (key),
   employment_type employment_type,
   work_mode       work_mode,
@@ -63,8 +65,16 @@ create table jobs (
   unique (tenant_id, id),
 
   constraint jobs_title_length       check (length(title)       <= 200),
-  constraint jobs_description_length check (length(description) <= 5000)
+  constraint jobs_description_length check (length(description) <= 5000),
+
+  constraint jobs_travelled_to_names_a_place
+    check (work_mode is null or work_mode = 'remote' or location_key is not null),
+  constraint jobs_published_names_a_work_mode
+    check (status <> 'published' or work_mode is not null)
 );
+comment on column jobs.location_key is
+  'Where an onsite or hybrid Job is worked, and where a remote Job needs its Candidate to be '
+  'based. Null on a remote Job means Anywhere.';
 comment on column jobs.published_at is
   'When this Job first went live. Null while it has never been published, and never rewritten '
   'by a later republish.';

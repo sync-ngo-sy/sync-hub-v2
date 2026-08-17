@@ -3118,7 +3118,7 @@ export interface components {
             next_cursor?: string | null;
             /**
              * Status Counts
-             * @description Every Job lifecycle status, each with the Tenant's total in it. These totals are independent of `q`, `status`, sorting and pagination.
+             * @description Every Job lifecycle status, each with the Tenant's total in it. The narrowing filters — `q` and `work_mode` — narrow these too; `status`, sorting and pagination leave them alone, so every tab reads its own total under the same filters.
              */
             status_counts: components["schemas"]["JobStatusCount"][];
         };
@@ -9453,6 +9453,8 @@ export interface operations {
                 q?: string | null;
                 /** @description Only Jobs in this state. */
                 status?: components["schemas"]["JobStatus"] | null;
+                /** @description Only Jobs worked this way. Narrows `status_counts` as `q` does, so the tabs count the same Jobs the list is showing. */
+                work_mode?: components["schemas"]["WorkMode"] | null;
                 /** @description `newest` and `oldest` order by when the Job was written; `applications` puts the busiest first, newest first among ties. */
                 sort?: components["schemas"]["JobSort"];
                 /** @description A `next_cursor` from a previous page. Omit for the first page. */
@@ -9553,7 +9555,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The request did not match the expected shape. */
+            /** @description A Location the platform does not list, or an onsite or hybrid Job naming no Location at all. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9691,7 +9693,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The Job cannot move to that status from the one it is in. */
+            /** @description The Job cannot move to that status from the one it is in, or it would be published without a Work mode. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9700,7 +9702,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The request did not match the expected shape. */
+            /** @description A Location the platform does not list, or an edit leaving an onsite or hybrid Job with no Location. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -11182,10 +11184,12 @@ export interface operations {
             query?: {
                 /** @description Words that must appear in the Job. Supports `"quoted phrases"`, `or` and `-excluded`. */
                 q?: string | null;
-                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
+                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it — plus every remote Job that names no Location, because those can be done from here as well as from anywhere else. */
                 location_key?: string | null;
                 /** @description One of the platform's employment types. Anything else is refused rather than answered with an empty page. */
                 employment_type?: components["schemas"]["EmploymentType"] | null;
+                /** @description One of the platform's work modes, refused like `employment_type` when it is not. Every published Job answers this, so the filter never hides a Job that simply would not say. */
+                work_mode?: components["schemas"]["WorkMode"] | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */
                 cursor?: string | null;
                 /** @description How many to return. */
@@ -11206,7 +11210,7 @@ export interface operations {
                     "application/json": components["schemas"]["PublicJobPage"];
                 };
             };
-            /** @description `cursor` is not one this API issued, or `employment_type` is not one of the set. */
+            /** @description `cursor` is not one this API issued, or `employment_type` or `work_mode` is not one of its set. */
             422: {
                 headers: {
                     [name: string]: unknown;

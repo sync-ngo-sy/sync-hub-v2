@@ -1,42 +1,60 @@
 import type { components } from '@sync/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { DEFAULT_JOB_SORT, type JobSort, type JobStatus, jobStatusCounts } from '../job';
+import {
+  DEFAULT_JOB_SORT,
+  type JobSort,
+  type JobStatus,
+  jobStatusCounts,
+  type WorkMode,
+} from '../job';
 
 export const JOBS_PAGE_SIZE = 20;
 type JobPage = components['schemas']['JobPage'];
 
-function jobParams(
-  status?: JobStatus,
-  sort: JobSort = DEFAULT_JOB_SORT,
-  q?: string,
-  cursor?: string | null,
-) {
-  return { params: { query: { limit: JOBS_PAGE_SIZE, status, sort, q, cursor } } };
+export interface JobListFilters {
+  status?: JobStatus;
+  sort?: JobSort;
+  q?: string;
+  workMode?: WorkMode;
 }
 
-export function jobsQuery(status?: JobStatus, sort?: JobSort, q?: string) {
-  return api.queryOptions('get', '/v1/tenants/me/jobs', jobParams(status, sort, q));
+function pageQuery(filters: JobListFilters) {
+  return {
+    limit: JOBS_PAGE_SIZE,
+    status: filters.status,
+    sort: filters.sort ?? DEFAULT_JOB_SORT,
+    q: filters.q,
+    work_mode: filters.workMode,
+  };
 }
 
-export function jobsFirstPageQuery(status?: JobStatus, sort?: JobSort, q?: string) {
-  return api.queryOptions('get', '/v1/tenants/me/jobs', jobParams(status, sort, q, null));
+function jobParams(filters: JobListFilters, cursor?: string | null) {
+  return { params: { query: { ...pageQuery(filters), cursor } } };
+}
+
+export function jobsQuery(filters: JobListFilters = {}) {
+  return api.queryOptions('get', '/v1/tenants/me/jobs', jobParams(filters));
+}
+
+export function jobsFirstPageQuery(filters: JobListFilters = {}) {
+  return api.queryOptions('get', '/v1/tenants/me/jobs', jobParams(filters, null));
 }
 
 export function jobsQueryPrefix() {
   return jobsQuery().queryKey.slice(0, 2);
 }
 
-export function useJobs(status?: JobStatus, sort: JobSort = DEFAULT_JOB_SORT, q?: string) {
+export function useJobs(filters: JobListFilters) {
   const queryClient = useQueryClient();
-  const firstPageQuery = jobsFirstPageQuery(status, sort, q);
+  const firstPageQuery = jobsFirstPageQuery(filters);
   const firstPage = queryClient.getQueryData<JobPage>(firstPageQuery.queryKey);
   const firstPageUpdatedAt = queryClient.getQueryState(firstPageQuery.queryKey)?.dataUpdatedAt;
 
   const jobs = api.useInfiniteQuery(
     'get',
     '/v1/tenants/me/jobs',
-    { params: { query: { limit: JOBS_PAGE_SIZE, status, sort, q } } },
+    { params: { query: pageQuery(filters) } },
     {
       initialPageParam: null,
       getNextPageParam: (page) => page.next_cursor,

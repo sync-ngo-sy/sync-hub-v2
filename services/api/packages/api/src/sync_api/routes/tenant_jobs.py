@@ -29,7 +29,7 @@ from sync_api.jobs import (
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
-from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus
+from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus, WorkMode
 from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/tenants/me/jobs"
@@ -46,7 +46,14 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["jobs"])
     operation_id="createJob",
     summary="Write a new Job",
     status_code=status.HTTP_201_CREATED,
-    responses=TENANT_ACCESS_REFUSED,
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        422: openapi_problem(
+            "A Location the platform does not list, or an onsite or hybrid Job naming no "
+            "Location at all.",
+            ValidationProblemDetail,
+        ),
+    },
 )
 async def create_job(body: NewJob, recruiter: ActingRecruiterDep, jobs: JobServiceDep) -> JobView:
     """Create the Job as a draft. Nobody outside the tenant sees it until it is published."""
@@ -78,6 +85,14 @@ async def list_jobs(
         JobStatus | None,
         Query(alias="status", description="Only Jobs in this state."),
     ] = None,
+    work_mode: Annotated[
+        WorkMode | None,
+        Query(
+            description="Only Jobs worked this way. Narrows `status_counts` as `q` does, so the "
+            "tabs count the same Jobs the list is showing.",
+            examples=[WorkMode.REMOTE],
+        ),
+    ] = None,
     sort: Annotated[
         JobSort,
         Query(
@@ -94,7 +109,15 @@ async def list_jobs(
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
     """Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`."""
-    return await jobs.page(recruiter, q=q, status=job_status, sort=sort, cursor=cursor, limit=limit)
+    return await jobs.page(
+        recruiter,
+        q=q,
+        status=job_status,
+        work_mode=work_mode,
+        sort=sort,
+        cursor=cursor,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -115,7 +138,15 @@ async def get_job(job_id: UUID, recruiter: ActingRecruiterDep, jobs: JobServiceD
     responses={
         **TENANT_ACCESS_REFUSED,
         **JOB_NOT_FOUND,
-        409: openapi_problem("The Job cannot move to that status from the one it is in."),
+        409: openapi_problem(
+            "The Job cannot move to that status from the one it is in, or it would be published "
+            "without a Work mode."
+        ),
+        422: openapi_problem(
+            "A Location the platform does not list, or an edit leaving an onsite or hybrid Job "
+            "with no Location.",
+            ValidationProblemDetail,
+        ),
     },
 )
 async def change_job(

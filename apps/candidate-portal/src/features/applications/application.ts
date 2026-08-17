@@ -1,6 +1,6 @@
 import type { components } from '@sync/api-client';
 import type { ApplicationStatusTone } from '@sync/ui/components/status-mark';
-import { employmentTypeLabel, workModeLabel } from '@/features/jobs/job';
+import { employmentTypeLabel, jobPlace, workModeLabel } from '@/features/jobs/job';
 
 export type Application = components['schemas']['Application'];
 export type ApplicationStage = components['schemas']['ApplicationStage'];
@@ -28,7 +28,7 @@ export function applicationState(stage: ApplicationStage): ApplicationState {
 export function applicationMeta(application: Application): string {
   return [
     application.job.tenant.name,
-    application.job.location_name,
+    jobPlace(application.job),
     workModeLabel(application.job.work_mode),
     employmentTypeLabel(application.job.employment_type),
   ]

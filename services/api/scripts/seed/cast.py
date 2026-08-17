@@ -1056,9 +1056,11 @@ JOBS: Final = (
                 "engineer can understand on their first day.\n\n"
                 "Kubernetes is already there and nobody trusts it. You will make it "
                 "trustworthy: describe it in Terraform, put the alerts on the things that "
-                "matter, and write down what you did. Fully remote, team in Damascus."
+                "matter, and write down what you did. Fully remote, and we do not mind "
+                "where you are: the team is in Damascus, the work is not."
             ),
-            location_key="sy-damascus",
+            # The seed's one Anywhere Job, so browsing by any Location still meets it.
+            location_key=None,
             employment_type=EmploymentType.CONTRACT,
             work_mode=WorkMode.REMOTE,
         ),

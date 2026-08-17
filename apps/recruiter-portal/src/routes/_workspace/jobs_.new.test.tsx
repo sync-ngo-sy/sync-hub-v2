@@ -32,6 +32,8 @@ function entry(label: string) {
 async function typeDetails(user: UserEvent) {
   await user.type(screen.getByLabelText('Title'), 'Programme Officer');
   await user.type(screen.getByLabelText('Description'), 'Lead programme planning.');
+  await user.click(screen.getByLabelText('Work mode'));
+  await user.click(await screen.findByRole('option', { name: 'Remote' }));
 }
 
 async function next(user: UserEvent) {
@@ -96,7 +98,7 @@ describe('the job creation wizard', () => {
         description: 'Lead programme planning.',
         location_key: 'sy-damascus',
         employment_type: null,
-        work_mode: null,
+        work_mode: 'remote',
         expires_at: null,
       }),
     );
@@ -272,20 +274,34 @@ describe('the job creation wizard', () => {
 
     const { user } = await renderApp('/jobs/new');
 
-    for (const [field, choices] of [
+    for (const [field, unset, choices] of [
       [
         'Employment type',
+        'Not set',
         ['Full time', 'Part time', 'Contract', 'Temporary', 'Internship', 'Volunteer'],
       ],
-      ['Work mode', ['On-site', 'Hybrid', 'Remote']],
+      ['Work mode', 'Choose one', ['On-site', 'Hybrid', 'Remote']],
     ] as const) {
       const control = screen.getByLabelText(field);
       expect(control.tagName).not.toBe('INPUT');
       await user.click(control);
       const offered = await screen.findAllByRole('option');
-      expect(offered.map((option) => option.textContent)).toEqual(['Not set', ...choices]);
+      expect(offered.map((option) => option.textContent)).toEqual([unset, ...choices]);
       await user.keyboard('{Escape}');
     }
+  });
+
+  it('opens the closing-date picker wherever in the field the recruiter clicks', async () => {
+    server.use(...signedInAs(RECRUITER));
+
+    const { user } = await renderApp('/jobs/new');
+    const field = screen.getByLabelText('Closing date');
+    const showPicker = vi.fn();
+    Object.defineProperty(field, 'showPicker', { value: showPicker, configurable: true });
+
+    await user.click(field);
+
+    expect(showPicker).toHaveBeenCalledOnce();
   });
 
   it('puts a server rejection beneath the Details field it names', async () => {

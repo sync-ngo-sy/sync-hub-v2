@@ -64,7 +64,7 @@ const PHARMACIST: components['schemas']['PublicJobSummary'] = {
   location_key: null,
   location_name: null,
   employment_type: null,
-  work_mode: null,
+  work_mode: 'remote',
   expires_at: null,
   created_at: '2026-07-27T09:00:00Z',
 };

@@ -21,7 +21,10 @@ from sync_api.pagination import (
 )
 from sync_api.problems import (
     JOB_CRITERIA_LOCKED_PROBLEM_TYPE,
+    JOB_PLACE_REQUIRED_PROBLEM_TYPE,
     JOB_TRANSITION_PROBLEM_TYPE,
+    JOB_WORK_MODE_REQUIRED_PROBLEM_TYPE,
+    InvalidField,
     Problem,
 )
 from sync_api.text import LIKE_ESCAPE, containing
@@ -40,6 +43,7 @@ from sync_core.models import (
     JobSkill,
     JobStatus,
     JobViewEvent,
+    WorkMode,
 )
 
 if TYPE_CHECKING:
@@ -56,6 +60,9 @@ if TYPE_CHECKING:
     from sync_api.tenants import ActingRecruiter
 
 logger = get_logger(__name__)
+
+#: Work modes that put people in a place, which is why such a Job has to name one.
+TRAVELLED_TO: Final[frozenset[WorkMode]] = frozenset({WorkMode.ONSITE, WorkMode.HYBRID})
 
 #: A Job is drafted, published, closed while it is decided, republished — and archived for good.
 LIFECYCLE: Final[dict[JobStatus, frozenset[JobStatus]]] = {
@@ -74,6 +81,9 @@ class JobService:
 
     async def create(self, recruiter: ActingRecruiter, new: NewJob) -> JobView:
         await refuse_unknown_location(self._db, new.location_key, at="body.location_key")
+        _refuse_a_job_that_does_not_hold_together(
+            work_mode=new.work_mode, location_key=new.location_key, status=JobStatus.DRAFT
+        )
         job = Job(
             tenant_id=recruiter.tenant.id,
             created_by_recruiter_id=recruiter.profile.id,
@@ -96,6 +106,7 @@ class JobService:
         *,
         q: str | None = None,
         status: JobStatus | None = None,
+        work_mode: WorkMode | None = None,
         sort: JobSort = JobSort.NEWEST,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
@@ -115,6 +126,9 @@ class JobService:
             searched = Job.title.ilike(containing(written), escape=LIKE_ESCAPE)
             query = query.where(searched)
             counting = counting.where(searched)
+        if work_mode is not None:
+            query = query.where(Job.work_mode == work_mode)
+            counting = counting.where(Job.work_mode == work_mode)
         if status is not None:
             query = query.where(Job.status == status)
 
@@ -142,6 +156,11 @@ class JobService:
             changed = changes.model_dump(exclude_unset=True)
             if "status" in changed:
                 _refuse_impossible_move(job.status, JobStatus(changed["status"]))
+            _refuse_a_job_that_does_not_hold_together(
+                work_mode=changed.get("work_mode", job.work_mode),
+                location_key=changed.get("location_key", job.location_key),
+                status=JobStatus(changed.get("status", job.status)),
+            )
             was = job.status
             for field, value in changed.items():
                 setattr(job, field, value)
@@ -380,6 +399,38 @@ def _criteria_rows(job_id: UUID, criteria: JobCriteria, skills: dict[str, UUID])
 def _as_decimal(years: float | None) -> Decimal | None:
     """Through `str`, so `numeric(4,1)` stores the number that was typed, not its float."""
     return None if years is None else Decimal(str(years))
+
+
+def _refuse_a_job_that_does_not_hold_together(
+    *, work_mode: WorkMode | None, location_key: str | None, status: JobStatus
+) -> None:
+    """The two CHECKs on `jobs`, restated over the row a write would leave behind.
+
+    Restated rather than caught, because the constraint message a caller would otherwise read
+    names an index. Both are read from the whole Job, never from the fields one request named:
+    an edit that only says `onsite` is an edit that takes the Location away.
+    """
+    if work_mode in TRAVELLED_TO and location_key is None:
+        raise Problem(
+            status=422,
+            type=JOB_PLACE_REQUIRED_PROBLEM_TYPE,
+            detail="An onsite or hybrid Job names the place people go to.",
+            errors=[
+                InvalidField(
+                    location="body.location_key",
+                    message="Onsite and hybrid work happens somewhere. Name the Location, or "
+                    "make the Job remote.",
+                    type="place_required_for_work_mode",
+                ).model_dump()
+            ],
+        )
+    if status is JobStatus.PUBLISHED and work_mode is None:
+        raise Problem(
+            status=409,
+            type=JOB_WORK_MODE_REQUIRED_PROBLEM_TYPE,
+            detail="A published Job says how much of its work happens where the team is. "
+            "Choose onsite, hybrid or remote first.",
+        )
 
 
 def _refuse_impossible_move(current: JobStatus, wanted: JobStatus) -> None:

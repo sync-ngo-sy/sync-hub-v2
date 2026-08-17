@@ -622,10 +622,10 @@ class Tenant(Base):
         server_default=text("'free'::tenant_plan"),
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
-    logo_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
+    logo_url: Mapped[str | None] = mapped_column(Text)
 
 
 class AccessRequest(Base):
@@ -1286,6 +1286,14 @@ class Job(Base):
             "minimum_total_experience_years IS NULL OR minimum_total_experience_years >= 0::numeric",
             name="jobs_min_experience_nonneg",
         ),
+        CheckConstraint(
+            "status <> 'published'::job_status OR work_mode IS NOT NULL",
+            name="jobs_published_names_a_work_mode",
+        ),
+        CheckConstraint(
+            "work_mode IS NULL OR work_mode = 'remote'::work_mode OR location_key IS NOT NULL",
+            name="jobs_travelled_to_names_a_place",
+        ),
         ForeignKeyConstraint(
             ["location_key"], ["public.locations.key"], name="jobs_location_key_fkey"
         ),
@@ -1335,7 +1343,10 @@ class Job(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
-    location_key: Mapped[str | None] = mapped_column(Text)
+    location_key: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Where an onsite or hybrid Job is worked, and where a remote Job needs its Candidate to be based. Null on a remote Job means Anywhere.",
+    )
     employment_type: Mapped[EmploymentType | None] = mapped_column(
         Enum(
             EmploymentType,
@@ -1624,21 +1635,11 @@ class Application(Base):
         UniqueConstraint("tenant_id", "id", name="applications_tenant_id_id_key"),
         Index("applications_cv_id_idx", "cv_id"),
         Index("applications_job_applied_at_idx", "job_id", "applied_at", "id"),
-        Index(
-            "applications_job_match_score_idx",
-            "job_id",
-            text("COALESCE(current_match_score, (-1)) DESC"),
-            text("id DESC"),
-        ),
+        Index("applications_job_match_score_idx", "job_id", "id"),
         Index("applications_job_status_idx", "job_id", "status"),
         Index("applications_job_tracked_link_idx", "job_id", "tracked_link_id"),
         Index("applications_tenant_applied_at_idx", "tenant_id", "applied_at", "id"),
-        Index(
-            "applications_tenant_match_score_idx",
-            "tenant_id",
-            text("COALESCE(current_match_score, (-1)) DESC"),
-            text("id DESC"),
-        ),
+        Index("applications_tenant_match_score_idx", "tenant_id", "id"),
         Index("applications_tenant_status_idx", "tenant_id", "status"),
         {"schema": "public"},
     )
@@ -2358,6 +2359,52 @@ class Communication(Base):
     tenant: Mapped[Optional["Tenant"]] = relationship("Tenant", viewonly=True)
 
 
+class MatchAssessmentJob(Base):
+    __tablename__ = "match_assessment_jobs"
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="maj_attempts_nonneg"),
+        ForeignKeyConstraint(
+            ["application_id"],
+            ["public.applications.id"],
+            ondelete="CASCADE",
+            name="match_assessment_jobs_application_id_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="match_assessment_jobs_pkey"),
+        UniqueConstraint("application_id", name="match_assessment_jobs_application_id_key"),
+        Index(
+            "match_assessment_jobs_claim_idx",
+            "available_at",
+            postgresql_where="(status = ANY (ARRAY['pending'::assessment_status, 'processing'::assessment_status]))",
+        ),
+        Index("match_assessment_jobs_status_created_idx", "status", "created_at"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    status: Mapped[AssessmentStatus] = mapped_column(
+        Enum(
+            AssessmentStatus,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="assessment_status",
+        ),
+        nullable=False,
+        server_default=text("'pending'::assessment_status"),
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    error_message: Mapped[str | None] = mapped_column(Text)
+    available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    application: Mapped["Application"] = relationship("Application", viewonly=True)
+
+
 class Note(Base):
     __tablename__ = "notes"
     __table_args__ = (
@@ -2527,49 +2574,3 @@ class HireClaim(Base):
     )
     application: Mapped["Application"] = relationship("Application", viewonly=True)
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
-
-
-class MatchAssessmentJob(Base):
-    __tablename__ = "match_assessment_jobs"
-    __table_args__ = (
-        CheckConstraint("attempts >= 0", name="maj_attempts_nonneg"),
-        ForeignKeyConstraint(
-            ["application_id"],
-            ["public.applications.id"],
-            ondelete="CASCADE",
-            name="match_assessment_jobs_application_id_fkey",
-        ),
-        PrimaryKeyConstraint("id", name="match_assessment_jobs_pkey"),
-        UniqueConstraint("application_id", name="match_assessment_jobs_application_id_key"),
-        Index(
-            "match_assessment_jobs_claim_idx",
-            "available_at",
-            postgresql_where="(status = ANY (ARRAY['pending'::assessment_status, 'processing'::assessment_status]))",
-        ),
-        Index("match_assessment_jobs_status_created_idx", "status", "created_at"),
-        {"schema": "public"},
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
-    )
-    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    status: Mapped[AssessmentStatus] = mapped_column(
-        Enum(
-            AssessmentStatus,
-            values_callable=lambda cls: [member.value for member in cls],
-            name="assessment_status",
-        ),
-        nullable=False,
-        server_default=text("'pending'::assessment_status"),
-    )
-    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()")
-    )
-    error_message: Mapped[str | None] = mapped_column(Text)
-    available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-
-    application: Mapped["Application"] = relationship("Application", viewonly=True)

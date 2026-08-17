@@ -219,7 +219,10 @@ separate `PATCH`, which is why a typo can still be fixed after the applications 
 
 `jobs.location_key` references `locations`, and the public board filters it with `=` — never a
 substring, which used to answer a search for Damascus with Jobs in Rif Dimashq. A key the
-taxonomy does not have is refused at `body.location_key` before anything is written.
+taxonomy does not have is refused at `body.location_key` before anything is written. The one
+thing that filter adds to the equality is **Anywhere**: a `remote` Job with no `location_key` at
+all comes back for every place, because filtering by a Location asks what a Candidate can do from
+where they are, and work open to anywhere can be done from there too.
 
 `jobs.published_at` is write-once, and the backend is the only thing keeping it so: nothing in
 the schema stops an `UPDATE` from rewriting it. It is stamped on the move that first takes a
@@ -235,8 +238,21 @@ approximately never, which reach both portals through the generated client rathe
 listed by hand in either. `employment_type` was `text`, so "Full time" and "Full-time" were two
 kinds of job and the board's filter had to `lower()` both sides and still miss; it is an equality
 on the enum now, and a value outside the set is a 422 rather than an empty page. `work_mode`
-answers a different question from `location_key` and never replaces it — a `remote` Job still
-carries the Location its team sits in, which is what keeps "Remote" out of the place taxonomy.
+answers a different question from `location_key` and never replaces it, which is what keeps
+"Remote" out of the place taxonomy. The two are tied together by two CHECKs rather than by
+convention:
+
+- `jobs_travelled_to_names_a_place` — an `onsite` or `hybrid` Job has a `location_key`, because a
+  place people travel to is the whole point of one.
+- `jobs_published_names_a_work_mode` — a `published` Job has a `work_mode`, because a listing that
+  will not say how it is worked is one nobody can judge. A draft may still be undecided.
+
+A `remote` Job's `location_key` is where a Candidate has to be *based*, not where the team sits,
+and leaving it null says the Job does not mind — **Anywhere**. Both rules are restated in
+`JobService` over the row a write would leave behind, so a Recruiter reads "an onsite or hybrid
+Job names the place people go to" (422, at `body.location_key`) or "a published Job says how much
+of its work happens where the team is" (409) instead of a constraint name. The CHECKs stay
+because the backend is not the only thing that can write these rows.
 
 The lock itself is the database's: `forbid_locked_job_criteria` and
 `forbid_locked_job_min_experience` fire for the service role like any other trigger. The
@@ -253,7 +269,8 @@ an archived Job is finished. Anything else is a 409 rather than a silent write.
 Public browse and read (`GET /v1/jobs`, `/v1/jobs/{id}`, `/v1/jobs/by-link/{token}`) are the
 only endpoints with no session behind them, so they carry their own rate limit and their own
 `where` clause: `status = 'published'`, the owning `tenants.is_active`, and `expires_at`
-either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. `q` is a hard
+either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. Every filter over
+that clause is a hard one — `q`, `location_key`, `employment_type`, `work_mode` — and `q` is a
 filter over `jobs.search_vector` (`websearch_to_tsquery`), never a ranking: the newest Job is
 always first. That vector is trigger-maintained rather than generated, because it reaches
 through `location_key` for the Location's name — a generated column may only read its own row —
@@ -834,5 +851,5 @@ that fails there leaves an object nobody points at, never a row pointing at noth
 
 | Invariant | Enforced by |
 | --- | --- |
-| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's; a hire claim belongs to one Tenant's Recruiter and Application; an answered hire claim records when it was answered and is never answered twice | **Database** |
+| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; an onsite or hybrid Job naming a Location and a published Job naming a Work mode; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's; a hire claim belongs to one Tenant's Recruiter and Application; an answered hire claim records when it was answered and is never answered twice | **Database** |
 | Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying only when the Stage a Candidate reads changes, and doing it in the announcing transaction, a `hired` move naming the day work started, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent, a Tenant logo being an admin's to set and a replacement being written before the object it replaces is dropped, a Tenant's opening Tags and Message templates being written in the transaction that opens it | **Backend** |

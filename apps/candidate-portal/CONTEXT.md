@@ -21,15 +21,25 @@ _Avoid_: Search (the keyword box is one filter of three, not the name of the pag
 listings, feed.
 
 **Filter bar**:
-The three filters over Browse — a keyword, a Location and an employment type — living in the
-address bar rather than in the page, so a reload keeps them, Back takes the last one off, and a
-pasted link reproduces the list it was copied from. All three are the API's own hard filters, so
-a narrowed list is narrowed by the platform rather than in the browser, and one Clear undoes
+The four filters over Browse — a keyword, a Location, a Work mode and an employment type — living
+in the address bar rather than in the page, so a reload keeps them, Back takes the last one off,
+and a pasted link reproduces the list it was copied from. All four are the API's own hard filters,
+so a narrowed list is narrowed by the platform rather than in the browser, and one Clear undoes
 every one of them. It is a single form: whichever control a Candidate reaches for last applies
 the keyword already in the box, so the bar and the list never disagree. A combination that
 matches nothing says exactly that — the platform having published nothing at all is a different
-sentence, and a Candidate who reads the wrong one stops looking.
-_Avoid_: Search bar (it filters three ways), facets, refinements, advanced search.
+sentence, and a Candidate who reads the wrong one stops looking. The Location filter asks "what
+can I do from here", so it answers with that place *and* with the Jobs open to **Anywhere**;
+narrowing to remote work is the Work mode filter's job, not the Location filter's.
+_Avoid_: Search bar (it filters four ways), facets, refinements, advanced search.
+
+**Anywhere**:
+What a remote Job that names no Location reads as, wherever this portal would otherwise print the
+place — a Browse row, Job detail, a row of My Applications. It is the absence of a Location and
+never a place in the taxonomy, so it is written by the portal rather than read from the Job, and
+a Candidate filtering by their own Location still meets it.
+_Avoid_: Remote (that is the Work mode), Worldwide, Any location (that is what the empty filter
+is called).
 
 **Job detail**:
 The public page for one Job at `/jobs/:jobId` — the description, what the role asks for,

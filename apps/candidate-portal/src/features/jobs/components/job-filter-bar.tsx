@@ -13,17 +13,19 @@ import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups } from '@/features/reference/options';
 import {
   asEmploymentType,
+  asWorkMode,
   isFiltered,
   type JobFilters,
   MAX_KEYWORD_LENGTH,
   NO_FILTERS,
 } from '../filters';
-import { EMPLOYMENT_TYPE_LABELS } from '../job';
+import { EMPLOYMENT_TYPE_LABELS, WORK_MODE_LABELS } from '../job';
 
 const EMPLOYMENT_TYPES = { '': 'Any type', ...EMPLOYMENT_TYPE_LABELS };
+const WORK_MODES = { '': 'Any work mode', ...WORK_MODE_LABELS };
 
 const appliedFilters = (filters: JobFilters) =>
-  JSON.stringify([filters.q, filters.location, filters.type]);
+  JSON.stringify([filters.q, filters.location, filters.type, filters.mode]);
 
 interface JobFilterBarProps {
   filters: JobFilters;
@@ -81,6 +83,23 @@ export function JobFilterBar({ filters, onChange }: JobFilterBarProps) {
             value={filters.location ?? null}
             onChange={(location) => commit({ location: location || undefined })}
           />
+
+          <Select
+            items={WORK_MODES}
+            value={filters.mode ?? ''}
+            onValueChange={(chosen: string | null) => commit({ mode: asWorkMode(chosen) })}
+          >
+            <SelectTrigger aria-label="Work mode" className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(WORK_MODES).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Select
             items={EMPLOYMENT_TYPES}
