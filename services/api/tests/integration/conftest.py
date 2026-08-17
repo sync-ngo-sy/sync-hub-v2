@@ -101,6 +101,15 @@ async def _data_tables(database: Database) -> list[str]:
 
 
 @pytest.fixture(scope="session")
+async def _public_sequences(database: Database) -> list[str]:
+    async with database.session() as session:
+        result = await session.execute(
+            text("select sequencename from pg_sequences where schemaname = 'public'")
+        )
+        return [row[0] for row in result]
+
+
+@pytest.fixture(scope="session")
 async def storage(settings: Settings) -> AsyncIterator[Storage]:
     bucket = Storage.build(settings)
     yield bucket
@@ -125,6 +134,7 @@ async def tenant_logo_storage(settings: Settings) -> AsyncIterator[Storage]:
 async def _clean_slate(
     _cleanup_connection: asyncpg.Connection,
     _data_tables: list[str],
+    _public_sequences: list[str],
     storage: Storage,
     avatar_storage: Storage,
     tenant_logo_storage: Storage,
@@ -132,7 +142,7 @@ async def _clean_slate(
     await empty_cv_bucket(_cleanup_connection, storage)
     await empty_avatar_bucket(_cleanup_connection, avatar_storage)
     await empty_logo_bucket(_cleanup_connection, tenant_logo_storage)
-    await _cleanup_connection.execute(stack.truncate_script(_data_tables))
+    await _cleanup_connection.execute(stack.reset_script(_data_tables, _public_sequences))
     await _cleanup_connection.execute(stack.reference_seed_sql())
 
 
