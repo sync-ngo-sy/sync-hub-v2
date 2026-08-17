@@ -218,6 +218,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the caller's password
+         * @description Set a new password from inside the account, without an inbox round trip.
+         *
+         *     Every session the account has open ends here, so a password changed because it leaked takes
+         *     the account back from whoever was holding it. The caller alone is signed in again before
+         *     answering, and carries on with the session in the cookie this sets.
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me": {
         parameters: {
             query?: never;
@@ -2532,6 +2556,21 @@ export interface components {
             role?: components["schemas"]["RecruiterRole"] | null;
             /** Is Active */
             is_active?: boolean | null;
+        };
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            /**
+             * Current Password
+             * @description The password on the account.
+             * @example CorrectHorse9
+             */
+            current_password: string;
+            /**
+             * New Password
+             * @description At least 8 characters, with an uppercase letter, a lowercase letter and a digit.
+             * @example CorrectHorse9
+             */
+            new_password: string;
         };
         /**
          * ChunkType
@@ -5613,6 +5652,73 @@ export interface operations {
             };
             /** @description The link is spent or expired, or the password was refused. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The new password does not meet the policy, or is the current one. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description There is no valid session, or the current password is wrong. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

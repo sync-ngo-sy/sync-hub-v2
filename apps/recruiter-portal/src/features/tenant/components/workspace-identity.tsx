@@ -23,7 +23,9 @@ export function WorkspaceIdentity({ profileId }: { profileId: string }) {
     <Card className="mt-4 max-w-xl">
       <CardHeader>
         <CardTitle>Your Tenant</CardTitle>
-        <CardDescription>to change you name or address contact Sync</CardDescription>
+        <CardDescription>
+          Sync Hub opened your Tenant and keeps its name and address. Ask us to change either.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {isPending || !tenant ? (

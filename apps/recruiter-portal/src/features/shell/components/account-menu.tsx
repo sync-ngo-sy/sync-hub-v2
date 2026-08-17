@@ -6,7 +6,8 @@ import {
   DropdownMenuTrigger,
 } from '@sync/ui/components/ui/dropdown-menu';
 import { cn } from '@sync/ui/lib/utils';
-import { ChevronsUpDown, LogOut } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { ChevronsUpDown, LogOut, Settings } from 'lucide-react';
 import type { Profile } from '@/features/auth/current-profile';
 import { useLogOut } from '@/features/auth/hooks/use-log-out';
 
@@ -52,6 +53,10 @@ export function AccountMenu({ profile, collapsed }: { profile: Profile; collapse
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-56">
+        <DropdownMenuItem render={<Link to="/account" />}>
+          <Settings />
+          Account settings
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={logOut.isPending}
           onClick={() => {

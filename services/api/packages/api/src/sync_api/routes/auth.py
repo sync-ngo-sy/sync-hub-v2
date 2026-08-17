@@ -13,7 +13,7 @@ from sync_api.auth.password_policy import (
 )
 from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
 from sync_api.errors import openapi_problem
-from sync_api.rate_limit import enforce_auth_rate_limit
+from sync_api.rate_limit import enforce_auth_rate_limit, enforce_password_change_rate_limit
 from sync_api.text import OptionalIsoCountry
 from sync_core.models import AccountType
 
@@ -103,6 +103,11 @@ class ConfirmPasswordResetRequest(BaseModel):
 class AcceptInviteRequest(BaseModel):
     token_hash: EmailToken
     password: NewPassword
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: Password
+    new_password: NewPassword
 
 
 @router.post(
@@ -273,6 +278,39 @@ async def confirm_password_reset(
     await auth.reset_password(token_hash=body.token_hash, password=body.password)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     cookies.clear(response)
+    return response
+
+
+@router.post(
+    "/password",
+    operation_id="changePassword",
+    summary="Change the caller's password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    dependencies=[Depends(enforce_password_change_rate_limit)],
+    responses={
+        400: openapi_problem("The new password does not meet the policy, or is the current one."),
+        401: openapi_problem("There is no valid session, or the current password is wrong."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    profile: CurrentProfileDep,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+) -> Response:
+    """Set a new password from inside the account, without an inbox round trip.
+
+    Every session the account has open ends here, so a password changed because it leaked takes
+    the account back from whoever was holding it. The caller alone is signed in again before
+    answering, and carries on with the session in the cookie this sets.
+    """
+    session = await auth.change_password(
+        profile, current_password=body.current_password, new_password=body.new_password
+    )
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookies.issue(response, session)
     return response
 
 

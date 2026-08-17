@@ -113,3 +113,22 @@ export function faultsOnReset(problem: components['schemas']['ProblemDetail']) {
     http.post('/v1/auth/password-reset/confirm', ({ response }) => response(500).json(problem)),
   ];
 }
+
+type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
+
+export function changesPassword(onRequest?: (body: ChangePasswordRequest) => void) {
+  return [
+    http.post('/v1/auth/password', async ({ request, response }) => {
+      onRequest?.((await request.json()) as ChangePasswordRequest);
+      return response(204).empty();
+    }),
+  ];
+}
+
+export function rejectsCurrentPassword(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/password', ({ response }) => response(401).json(problem))];
+}
+
+export function refusesNewPassword(problem: components['schemas']['ProblemDetail']) {
+  return [http.post('/v1/auth/password', ({ response }) => response(400).json(problem))];
+}

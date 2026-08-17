@@ -1,5 +1,4 @@
 import { PageHeader } from '@sync/ui/components/page-header';
-import { Button } from '@sync/ui/components/ui/button';
 import {
   Card,
   CardContent,
@@ -7,20 +6,19 @@ import {
   CardHeader,
   CardTitle,
 } from '@sync/ui/components/ui/card';
-import { useState } from 'react';
-import { ChangePasswordForm } from '@/features/auth/components/change-password-form';
-import type { Profile } from '@/features/auth/current-profile';
-import { DeleteAccountDialog } from './delete-account-dialog';
+import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
+import type { Profile } from '../current-profile';
+import { ChangePasswordForm } from './change-password-form';
 
 export function AccountSettingsPage({ profile }: { profile: Profile }) {
-  const [confirmingDeletion, setConfirmingDeletion] = useState(false);
-
   return (
     <div className="space-y-(--space-section)">
-      <PageHeader
-        title="Account settings"
-        description="Review the details attached to your Sync Hub account."
-      />
+      <WorkspaceHeader>
+        <PageHeader
+          title="Account settings"
+          description="The details attached to your own Sync Hub account, not your Tenant's."
+        />
+      </WorkspaceHeader>
 
       <Card>
         <CardHeader>
@@ -50,27 +48,6 @@ export function AccountSettingsPage({ profile }: { profile: Profile }) {
           <ChangePasswordForm />
         </CardContent>
       </Card>
-
-      <section
-        className="space-y-4 border-t border-destructive/30 pt-8"
-        aria-labelledby="danger-zone-title"
-      >
-        <div className="space-y-1">
-          <h2 id="danger-zone-title" className="font-heading text-h3 text-destructive">
-            Danger zone
-          </h2>
-          <p className="max-w-prose text-dense text-muted-foreground">
-            Deleting your account is permanent. Your profile and CVs will be removed, and you will
-            no longer be able to sign in. Employers can still read the information sent with
-            Applications you already submitted.
-          </p>
-        </div>
-        <Button variant="destructive" onClick={() => setConfirmingDeletion(true)}>
-          Delete my account
-        </Button>
-      </section>
-
-      <DeleteAccountDialog open={confirmingDeletion} onOpenChange={setConfirmingDeletion} />
     </div>
   );
 }

@@ -180,6 +180,20 @@ async def test_logging_out_revokes_the_session_at_the_identity_provider(
     assert (await browser.post("/v1/auth/refresh")).status_code == 401
 
 
+async def test_logging_out_ends_the_sessions_on_other_devices_too(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    signup = await a_confirmed_candidate(browser, mailbox)
+    await sign_in(browser, signup)
+    elsewhere = session_tokens(browser.cookies[SESSION_COOKIE])["r"]
+    assert (await sign_in(browser, signup)).status_code == 200, "a second device signs in"
+
+    assert (await browser.post("/v1/auth/logout")).status_code == 204
+
+    present_only(browser, SESSION_COOKIE, pack_session("", elsewhere))
+    assert (await browser.post("/v1/auth/refresh")).status_code == 401
+
+
 async def test_logging_out_clears_the_session_cookie(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
