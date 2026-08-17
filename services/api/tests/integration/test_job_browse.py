@@ -68,7 +68,11 @@ async def test_a_published_job_names_the_tenant_hiring(
 
     [listed] = await browse(visitor)
 
-    assert listed["tenant"] == {"name": "Acme Recruiting", "slug": listed["tenant"]["slug"]}
+    assert listed["tenant"] == {
+        "name": "Acme Recruiting",
+        "slug": listed["tenant"]["slug"],
+        "logo_url": None,
+    }
     assert listed["title"] == job["title"]
     assert listed["location_name"] == "Damascus"
 

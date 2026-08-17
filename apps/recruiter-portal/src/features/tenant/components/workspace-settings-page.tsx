@@ -52,7 +52,7 @@ export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: Workspace
         </TabsContent>
         <TabsContent value="tenant">
           <WidgetBoundary name="Your Tenant">
-            <WorkspaceIdentity />
+            <WorkspaceIdentity profileId={profileId} />
           </WidgetBoundary>
         </TabsContent>
       </div>

@@ -84,6 +84,7 @@ class ActingTenant:
     name: str
     slug: str
     is_active: bool
+    logo_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,7 +305,11 @@ def _membership_of(row: Row[Any]) -> ActingMembership | None:
         role=row.role,
         is_active=row.recruiter_is_active,
         tenant=ActingTenant(
-            id=tenant.id, name=tenant.name, slug=tenant.slug, is_active=tenant.is_active
+            id=tenant.id,
+            name=tenant.name,
+            slug=tenant.slug,
+            is_active=tenant.is_active,
+            logo_url=tenant.logo_url,
         ),
     )
 

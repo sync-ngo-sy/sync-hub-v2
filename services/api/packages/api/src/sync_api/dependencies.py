@@ -38,7 +38,13 @@ from sync_api.platform import ActingPlatformAdmin, PlatformService, acting_platf
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
 from sync_api.stats import StatsService
-from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
+from sync_api.tenants import (
+    ActingRecruiter,
+    TenantLogoService,
+    TenantService,
+    acting_recruiter,
+    require_admin,
+)
 from sync_assessments import MatchAssessor
 from sync_core import Database, Settings, Storage
 from sync_rag import Embedder
@@ -148,6 +154,21 @@ def get_avatar_service(
 
 
 AvatarServiceDep = Annotated[AvatarService, Depends(get_avatar_service)]
+
+
+def get_tenant_logo_storage(request: Request) -> Storage:
+    return cast("Storage", request.app.state.tenant_logo_storage)
+
+
+def get_tenant_logo_service(
+    session: SessionDep,
+    storage: Annotated[Storage, Depends(get_tenant_logo_storage)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> TenantLogoService:
+    return TenantLogoService(session, storage, settings)
+
+
+TenantLogoServiceDep = Annotated[TenantLogoService, Depends(get_tenant_logo_service)]
 
 
 def get_candidate_deletion(

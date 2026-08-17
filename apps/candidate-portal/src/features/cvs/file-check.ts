@@ -1,4 +1,4 @@
-import { fileRules } from '../uploads/file-check';
+import { fileRules } from '@sync/ui/lib/file-check';
 
 export const MAX_CV_BYTES = 10 * 1024 * 1024;
 

@@ -1,3 +1,4 @@
+import { TenantLogo } from '@sync/ui/components/tenant-logo';
 import { Link } from '@tanstack/react-router';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { type JobSummary, jobMeta } from '../job';
@@ -20,8 +21,9 @@ function JobRow({ job }: { job: JobSummary }) {
       to="/jobs/$jobId"
       params={{ jobId: job.id }}
       preload={false}
-      className="group flex items-center justify-between gap-6 py-5"
+      className="group flex items-center gap-4 py-5"
     >
+      <TenantLogo name={job.tenant.name} logoUrl={job.tenant.logo_url} />
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="text-title text-foreground group-hover:text-accent-foreground">
           {job.title}

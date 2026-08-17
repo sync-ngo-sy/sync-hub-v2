@@ -12,6 +12,7 @@ from sync_api.problems import (
     ACCESS_REQUEST_NOT_FOUND_PROBLEM_TYPE,
     Problem,
 )
+from sync_api.tenants.presets import seed_presets
 from sync_core import get_logger, transaction
 from sync_core.models import AccessRequest, AccessRequestStatus
 
@@ -90,20 +91,27 @@ class AccessRequestService:
         land together or not at all. Anything else leaves a state nobody can get out of: a
         conversion that fails after the Tenant is committed keeps the request pending, and
         retrying it then fails forever on the address already being registered.
+
+        The Tenant opens with a working vocabulary rather than two empty lists, written in that
+        same transaction — the only place the founding admin its templates are attributed to is
+        known to exist.
         """
         request = await self._pending_request(request_id)
 
-        async def record_the_decision(session: AsyncSession, tenant_id: UUID) -> None:
+        async def land_with_the_tenant(
+            session: AsyncSession, tenant_id: UUID, founding_admin_id: UUID
+        ) -> None:
             await self._decide(
                 session, request_id, AccessRequestStatus.CONVERTED, tenant_id=tenant_id
             )
+            await seed_presets(session, tenant_id, founding_admin_id)
 
         created = await self._platform.create_tenant(
             name=request.company,
             slug=slug,
             email=request.email,
             full_name=request.full_name,
-            in_the_same_commit=record_the_decision,
+            in_the_same_commit=land_with_the_tenant,
         )
 
         logger.info(

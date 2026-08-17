@@ -2299,6 +2299,7 @@ export type Database = {
           created_at: string;
           id: string;
           is_active: boolean;
+          logo_url: string | null;
           name: string;
           plan: Database['public']['Enums']['tenant_plan'];
           slug: string;
@@ -2307,6 +2308,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           is_active?: boolean;
+          logo_url?: string | null;
           name: string;
           plan?: Database['public']['Enums']['tenant_plan'];
           slug: string;
@@ -2315,6 +2317,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           is_active?: boolean;
+          logo_url?: string | null;
           name?: string;
           plan?: Database['public']['Enums']['tenant_plan'];
           slug?: string;

@@ -59,7 +59,7 @@ describe('the square behind the circle', () => {
     expect(nothing).toBeNull();
   });
 
-  it('centres a displayed square rather than a natural-size square', () => {
+  it('centres a square, as a share of each side', () => {
     expect(centeredSquare(600, 400)).toEqual({
       unit: '%',
       x: expect.closeTo(23.333, 3),
@@ -67,6 +67,14 @@ describe('the square behind the circle', () => {
       width: expect.closeTo(53.333, 3),
       height: 80,
     });
+  });
+
+  it('frames the same circle whether it is measured on screen or at full size', () => {
+    expect(centeredSquare(1200, 800)).toEqual(centeredSquare(600, 400));
+  });
+
+  it('cuts the middle of the photo out of the circle it opened with', () => {
+    expect(square(centeredSquare(2000, 1000))).toEqual({ x: 600, y: 100, side: 800 });
   });
 
   it('draws the selected source square into the upload canvas', async () => {

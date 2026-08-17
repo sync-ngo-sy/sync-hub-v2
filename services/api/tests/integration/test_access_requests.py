@@ -17,9 +17,11 @@ from sync_core import Settings
 from sync_core.models import (
     AccessRequest,
     AccessRequestStatus,
+    MessageTemplate,
     Recruiter,
     RecruiterRole,
     Tenant,
+    TenantTag,
 )
 from tests.conftest import RECRUITER_PORTAL_URL
 from tests.support.access_requests import (
@@ -290,6 +292,10 @@ async def test_the_tenant_a_request_became_can_be_deleted_again(
     `access_requests.tenant_id` is `on delete set null` precisely so the request survives its
     Tenant; the decision constraint used to insist a converted request still name one, and the
     two together made every `delete from tenants` a constraint violation.
+
+    The Tags and Message templates the Tenant opened with go first, in the order the seed's own
+    purge takes them out in: a template names the Recruiter who wrote it, so it cannot outlive
+    the roster, and a Tag belongs to the Tenant itself.
     """
     await ask_for_access(other_browser, an_ask())
     await a_signed_in_platform_admin(app, browser, db_session)
@@ -297,6 +303,8 @@ async def test_the_tenant_a_request_became_can_be_deleted_again(
     await convert(browser, request_id, slug=a_slug())
     tenant = (await db_session.execute(select(Tenant))).scalar_one()
 
+    await db_session.execute(delete(MessageTemplate).where(MessageTemplate.tenant_id == tenant.id))
+    await db_session.execute(delete(TenantTag).where(TenantTag.tenant_id == tenant.id))
     await db_session.execute(delete(Recruiter).where(Recruiter.tenant_id == tenant.id))
     await db_session.execute(delete(Tenant).where(Tenant.id == tenant.id))
     await db_session.commit()

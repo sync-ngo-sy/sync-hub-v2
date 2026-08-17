@@ -5,7 +5,7 @@ from typing import Annotated, Any, Final
 from fastapi import APIRouter, File, Response, UploadFile, status
 from pydantic import BaseModel, Field
 
-from sync_api.avatars import ACCEPTED_FORMATS, Avatar
+from sync_api.avatars import Avatar
 from sync_api.candidates import (
     CandidateProfile,
     ExperienceTotal,
@@ -20,6 +20,7 @@ from sync_api.dependencies import (
     SessionCookiesDep,
 )
 from sync_api.errors import openapi_problem
+from sync_api.pictures import ACCEPTED_FORMATS
 from sync_api.problems import ValidationProblemDetail
 
 ROUTER_PREFIX: Final = "/candidates"

@@ -26,6 +26,7 @@ class TenantSummary:
     id: UUID
     name: str
     slug: str
+    logo_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +65,10 @@ def acting_recruiter(profile: ActingProfile) -> ActingRecruiter:
     return ActingRecruiter(
         profile=profile,
         tenant=TenantSummary(
-            id=membership.tenant.id, name=membership.tenant.name, slug=membership.tenant.slug
+            id=membership.tenant.id,
+            name=membership.tenant.name,
+            slug=membership.tenant.slug,
+            logo_url=membership.tenant.logo_url,
         ),
         role=membership.role,
     )

@@ -20,9 +20,14 @@ function aPhotoFile(name = 'me.jpg', type = 'image/jpeg', size = 4_000) {
   return new File([new Uint8Array(size)], name, { type });
 }
 
-function standInForTheImageDecodingAndCanvasJsdomLacks() {
+function standInForTheImageDecodingAndCanvasJsdomLacks({
+  laidOut = true,
+}: {
+  laidOut?: boolean;
+} = {}) {
+  const drawImage = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
-    drawImage: vi.fn(),
+    drawImage,
   } as unknown as CanvasRenderingContext2D);
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => {
     done(new Blob([new Uint8Array(128)], { type: 'image/webp' }));
@@ -30,11 +35,12 @@ function standInForTheImageDecodingAndCanvasJsdomLacks() {
   for (const [property, value] of [
     ['naturalWidth', 1200],
     ['naturalHeight', 800],
-    ['width', 600],
-    ['height', 400],
+    ['width', laidOut ? 600 : 0],
+    ['height', laidOut ? 400 : 0],
   ] as const) {
     vi.spyOn(HTMLImageElement.prototype, property, 'get').mockReturnValue(value);
   }
+  return drawImage;
 }
 
 async function openProfile() {
@@ -58,7 +64,9 @@ function useThisPhoto(user: UserEvent) {
 }
 
 describe('putting a photo on the profile', () => {
-  beforeEach(standInForTheImageDecodingAndCanvasJsdomLacks);
+  beforeEach(() => {
+    standInForTheImageDecodingAndCanvasJsdomLacks();
+  });
 
   it('frames the photo the candidate picked before anything is sent', async () => {
     const uploaded = vi.fn();
@@ -136,5 +144,53 @@ describe('putting a photo on the profile', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Frame your photo' })).toBeNull();
     expect(uploaded).not.toHaveBeenCalled();
+  });
+});
+
+describe('what the frame holds is what is uploaded', () => {
+  const CENTRE_SQUARE = { x: 280, y: 80, side: 640 };
+
+  it('cuts out the square the circle held', async () => {
+    const drawImage = standInForTheImageDecodingAndCanvasJsdomLacks();
+    server.use(...savesPhoto(A_PHOTO_URL));
+    const user = await openProfile();
+    await aFramedPhoto(user);
+
+    await useThisPhoto(user);
+
+    await waitFor(() => expect(drawImage).toHaveBeenCalled());
+    expect(drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      CENTRE_SQUARE.x,
+      CENTRE_SQUARE.y,
+      CENTRE_SQUARE.side,
+      CENTRE_SQUARE.side,
+      0,
+      0,
+      CENTRE_SQUARE.side,
+      CENTRE_SQUARE.side,
+    );
+  });
+
+  it('frames the same square when the browser has not laid the photo out yet', async () => {
+    const drawImage = standInForTheImageDecodingAndCanvasJsdomLacks({ laidOut: false });
+    server.use(...savesPhoto(A_PHOTO_URL));
+    const user = await openProfile();
+    await aFramedPhoto(user);
+
+    await useThisPhoto(user);
+
+    await waitFor(() => expect(drawImage).toHaveBeenCalled());
+    expect(drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      CENTRE_SQUARE.x,
+      CENTRE_SQUARE.y,
+      CENTRE_SQUARE.side,
+      CENTRE_SQUARE.side,
+      0,
+      0,
+      CENTRE_SQUARE.side,
+      CENTRE_SQUARE.side,
+    );
   });
 });

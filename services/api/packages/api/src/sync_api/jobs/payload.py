@@ -243,6 +243,9 @@ class PublicTenant(BaseModel):
 
     name: str
     slug: str
+    logo_url: str | None = Field(
+        default=None, description="Public and stable until the Tenant replaces it."
+    )
 
 
 class PublicJobSummary(BaseModel):

@@ -9,6 +9,7 @@ create table tenants (
   slug       text not null unique,
   plan       tenant_plan not null default 'free',
   is_active  boolean not null default true,
+  logo_url   text,
   created_at timestamptz not null default now()
 );
 
