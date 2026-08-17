@@ -2,7 +2,7 @@ import { cn } from '@sync/ui/lib/utils';
 
 const SIZES = {
   default: 'size-10 text-sm',
-  lg: 'size-14 text-base',
+  lg: 'size-30 text-base',
 } as const;
 
 interface TenantLogoProps {

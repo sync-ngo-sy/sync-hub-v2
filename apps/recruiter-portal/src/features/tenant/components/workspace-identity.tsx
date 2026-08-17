@@ -23,10 +23,7 @@ export function WorkspaceIdentity({ profileId }: { profileId: string }) {
     <Card className="mt-4 max-w-xl">
       <CardHeader>
         <CardTitle>Your Tenant</CardTitle>
-        <CardDescription>
-          Sync Hub opened your Tenant and keeps its name and address. Ask us to change either. The
-          logo is yours to set, and Candidates see it wherever one of your Jobs appears.
-        </CardDescription>
+        <CardDescription>to change you name or address contact Sync</CardDescription>
       </CardHeader>
       <CardContent>
         {isPending || !tenant ? (
