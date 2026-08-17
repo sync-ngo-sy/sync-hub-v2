@@ -98,19 +98,34 @@ async def test_changing_ends_the_sessions_open_elsewhere(
     assert (await browser.post("/v1/auth/refresh")).status_code == 401
 
 
-async def test_the_session_that_changed_it_keeps_working(
+async def test_the_caller_stays_signed_in_on_a_fresh_session(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
     signup = await a_signed_in_candidate(browser, mailbox)
     assert (await sign_in(browser, signup)).status_code == 200, "a second device signs in"
+    before = browser.cookies[SESSION_COOKIE]
 
     assert (await change_password(browser)).status_code == 204
 
+    assert browser.cookies[SESSION_COOKIE] != before, "the cookie carries a new session"
     assert (await browser.get("/v1/auth/me")).status_code == 200
-    assert SESSION_COOKIE in browser.cookies
-    # The access token above is a JWT that outlives its session, so it answers 200 either way.
-    # Only a refresh proves the session itself was spared.
+    # /v1/auth/me answers on a JWT that outlives the session it names, so it says nothing about
+    # the session itself. Only a refresh does.
     assert (await browser.post("/v1/auth/refresh")).status_code == 200
+
+
+async def test_the_session_the_caller_arrived_on_is_ended_as_well(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """GoTrue spares nothing when an admin sets a password, thus the caller's own session goes
+    too and is replaced. Nothing minted before the change outlives it."""
+    await a_signed_in_candidate(browser, mailbox)
+    arrived_on = session_tokens(browser.cookies[SESSION_COOKIE])["r"]
+
+    assert (await change_password(browser)).status_code == 204
+
+    present_only(browser, SESSION_COOKIE, pack_session("", arrived_on))
+    assert (await browser.post("/v1/auth/refresh")).status_code == 401
 
 
 async def test_changing_a_password_needs_a_session(browser: AsyncClient) -> None:

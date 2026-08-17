@@ -296,23 +296,22 @@ async def confirm_password_reset(
 )
 async def change_password(
     body: ChangePasswordRequest,
-    request: Request,
     profile: CurrentProfileDep,
     auth: AuthServiceDep,
     cookies: SessionCookiesDep,
 ) -> Response:
     """Set a new password from inside the account, without an inbox round trip.
 
-    Every other session the account has open ends here, so a password changed because it leaked
-    takes the account back from whoever was holding it. The caller's own session survives.
+    Every session the account has open ends here, so a password changed because it leaked takes
+    the account back from whoever was holding it. The caller alone is signed in again before
+    answering, and carries on with the session in the cookie this sets.
     """
-    await auth.change_password(
-        profile,
-        current_password=body.current_password,
-        new_password=body.new_password,
-        access_token=cookies.read_access_token(request),
+    session = await auth.change_password(
+        profile, current_password=body.current_password, new_password=body.new_password
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookies.issue(response, session)
+    return response
 
 
 def _signed_in(signed_in: SignedIn, cookies: SessionCookiesDep, response: Response) -> ProfileView:

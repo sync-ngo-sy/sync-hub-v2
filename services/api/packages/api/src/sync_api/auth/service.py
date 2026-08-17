@@ -237,17 +237,15 @@ class AuthService:
         logger.info("auth.password_reset", profile_id=str(session.user.id))
 
     async def change_password(
-        self,
-        profile: ActingProfile,
-        *,
-        current_password: str,
-        new_password: str,
-        access_token: str | None,
-    ) -> None:
+        self, profile: ActingProfile, *, current_password: str, new_password: str
+    ) -> GoTrueSession:
         """Replace the password of whoever is signed in, and evict every other session they left
-        open — so a password changed because it leaked actually takes the account back."""
-        if access_token is None:
-            raise _unauthenticated("no access token cookie")
+        open — so a password changed because it leaked actually takes the account back.
+
+        GoTrue ends every session of an account whose password an admin sets, the caller's own
+        included, and offers no way to spare one. The caller is therefore signed in again on the
+        new password and handed that session, which is what keeps them where they were.
+        """
         new_password = _vetted(new_password)
         if new_password == current_password:
             # GoTrue's admin update accepts the password an account already has, so the refusal
@@ -277,11 +275,15 @@ class AuthService:
                 detail="Choose a password you have not used on this account before.",
             ) from exc
 
+        session = await self._gotrue.sign_in_with_password(
+            email=profile.email, password=new_password
+        )
         try:
-            await self._gotrue.revoke_other_sessions(access_token)
+            await self._gotrue.revoke_other_sessions(session.access_token)
         except SessionAlreadyEndedError:
             logger.warning("auth.other_sessions_not_revoked", profile_id=str(profile.id))
         logger.info("auth.password_changed", profile_id=str(profile.id))
+        return session
 
     async def acting_profile(self, access_token: str | None) -> ActingProfile:
         if access_token is None:

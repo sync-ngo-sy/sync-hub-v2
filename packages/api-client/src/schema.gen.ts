@@ -231,8 +231,9 @@ export interface paths {
          * Change the caller's password
          * @description Set a new password from inside the account, without an inbox round trip.
          *
-         *     Every other session the account has open ends here, so a password changed because it leaked
-         *     takes the account back from whoever was holding it. The caller's own session survives.
+         *     Every session the account has open ends here, so a password changed because it leaked takes
+         *     the account back from whoever was holding it. The caller alone is signed in again before
+         *     answering, and carries on with the session in the cookie this sets.
          */
         post: operations["changePassword"];
         delete?: never;
