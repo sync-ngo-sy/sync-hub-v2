@@ -13,7 +13,7 @@ from sync_core import get_logger
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-    from supabase_auth.types import Session, User
+    from supabase_auth.types import Session, SignOutScope, User
 
 logger = get_logger(__name__)
 
@@ -25,6 +25,10 @@ class EmailTokenType(StrEnum):
 
 
 GLOBAL_SCOPE: Final = "global"
+
+OTHERS_SCOPE: Final = "others"
+
+LOCAL_SCOPE: Final = "local"
 
 #: A century, which is GoTrue's way of saying "until somebody lifts it".
 BAN_FOREVER: Final = "876000h"
@@ -202,20 +206,30 @@ class GoTrue:
                 str(user_id), {"ban_duration": BAN_FOREVER}
             )
 
-    async def verify_password(self, *, email: str, password: str) -> None:
+    async def verify_password(self, *, email: str, password: str) -> GoTrueSession:
         """Confirm the caller is who the session says, before something irreversible.
 
-        GoTrue offers no way to check a password without signing in, so this mints a session that
-        is never used. Harmless where it is called — the account is banned moments later — but not
-        a general-purpose check.
+        GoTrue offers no way to check a password without signing in, so this mints a session and
+        hands it back. The caller owns it: end it with `revoke_this_session`, or the check leaves
+        a working credential behind.
         """
-        await self.sign_in_with_password(email=email, password=password)
+        return await self.sign_in_with_password(email=email, password=password)
 
     async def revoke_sessions(self, access_token: str) -> None:
+        await self._sign_out(access_token, GLOBAL_SCOPE)
+
+    async def revoke_other_sessions(self, access_token: str) -> None:
+        """Every session this account has except the one the token names, which goes on working."""
+        await self._sign_out(access_token, OTHERS_SCOPE)
+
+    async def revoke_this_session(self, access_token: str) -> None:
+        await self._sign_out(access_token, LOCAL_SCOPE)
+
+    async def _sign_out(self, access_token: str, scope: SignOutScope) -> None:
         with refusals(
             {"session_not_found": SessionAlreadyEndedError, "bad_jwt": SessionAlreadyEndedError}
         ):
-            await self._as_admin().admin.sign_out(access_token, GLOBAL_SCOPE)
+            await self._as_admin().admin.sign_out(access_token, scope)
 
     def _as_caller(self) -> AsyncGoTrueClient:
         return self._client(self._anon_key)

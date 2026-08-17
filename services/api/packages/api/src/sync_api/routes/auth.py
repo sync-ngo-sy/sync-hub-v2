@@ -13,7 +13,7 @@ from sync_api.auth.password_policy import (
 )
 from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
 from sync_api.errors import openapi_problem
-from sync_api.rate_limit import enforce_auth_rate_limit
+from sync_api.rate_limit import enforce_auth_rate_limit, enforce_password_change_rate_limit
 from sync_api.text import OptionalIsoCountry
 from sync_core.models import AccountType
 
@@ -103,6 +103,11 @@ class ConfirmPasswordResetRequest(BaseModel):
 class AcceptInviteRequest(BaseModel):
     token_hash: EmailToken
     password: NewPassword
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: Password
+    new_password: NewPassword
 
 
 @router.post(
@@ -274,6 +279,40 @@ async def confirm_password_reset(
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     cookies.clear(response)
     return response
+
+
+@router.post(
+    "/password",
+    operation_id="changePassword",
+    summary="Change the caller's password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    dependencies=[Depends(enforce_password_change_rate_limit)],
+    responses={
+        400: openapi_problem("The new password does not meet the policy, or is the current one."),
+        401: openapi_problem("There is no valid session, or the current password is wrong."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    profile: CurrentProfileDep,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+) -> Response:
+    """Set a new password from inside the account, without an inbox round trip.
+
+    Every other session the account has open ends here, so a password changed because it leaked
+    takes the account back from whoever was holding it. The caller's own session survives.
+    """
+    await auth.change_password(
+        profile,
+        current_password=body.current_password,
+        new_password=body.new_password,
+        access_token=cookies.read_access_token(request),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _signed_in(signed_in: SignedIn, cookies: SessionCookiesDep, response: Response) -> ProfileView:

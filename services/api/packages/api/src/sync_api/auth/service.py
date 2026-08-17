@@ -236,6 +236,53 @@ class AuthService:
         await self.log_out(session.access_token)
         logger.info("auth.password_reset", profile_id=str(session.user.id))
 
+    async def change_password(
+        self,
+        profile: ActingProfile,
+        *,
+        current_password: str,
+        new_password: str,
+        access_token: str | None,
+    ) -> None:
+        """Replace the password of whoever is signed in, and evict every other session they left
+        open — so a password changed because it leaked actually takes the account back."""
+        if access_token is None:
+            raise _unauthenticated("no access token cookie")
+        new_password = _vetted(new_password)
+        await self._prove(profile.email, current_password)
+        try:
+            await self._gotrue.set_password(user_id=profile.id, password=new_password)
+        except WeakPasswordError as exc:
+            raise weak_password() from exc
+        except PasswordUnchangedError as exc:
+            raise Problem(
+                status=400,
+                type=PASSWORD_UNCHANGED_PROBLEM_TYPE,
+                detail="Choose a password you have not used on this account before.",
+            ) from exc
+
+        try:
+            await self._gotrue.revoke_other_sessions(access_token)
+        except SessionAlreadyEndedError:
+            logger.warning("auth.other_sessions_not_revoked", profile_id=str(profile.id))
+        logger.info("auth.password_changed", profile_id=str(profile.id))
+
+    async def _prove(self, email: str, password: str) -> None:
+        """Checking a password means signing in, so the session that check mints is ended at once
+        — before anything below it can fail and leave a working credential behind."""
+        try:
+            proof = await self._gotrue.verify_password(email=email, password=password)
+        except (InvalidCredentialsError, EmailNotConfirmedError) as exc:
+            raise Problem(
+                status=401,
+                type=INVALID_CREDENTIALS_PROBLEM_TYPE,
+                detail="That is not your current password.",
+            ) from exc
+        try:
+            await self._gotrue.revoke_this_session(proof.access_token)
+        except SessionAlreadyEndedError:
+            logger.warning("auth.proof_session_not_revoked")
+
     async def acting_profile(self, access_token: str | None) -> ActingProfile:
         if access_token is None:
             raise _unauthenticated("no access token cookie")

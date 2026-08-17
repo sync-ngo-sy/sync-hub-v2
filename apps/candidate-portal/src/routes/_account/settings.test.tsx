@@ -1,7 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
-import { signedInAs } from '@/features/auth/testing/handlers';
+import {
+  changesPassword,
+  refusesNewPassword,
+  rejectsCurrentPassword,
+  signedInAs,
+} from '@/features/auth/testing/handlers';
 import {
   deletesAccount,
   refusesAccountDeletion,
@@ -10,6 +15,12 @@ import {
 import { CANDIDATE } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
+
+async function findPasswordCard(): Promise<HTMLElement> {
+  const form = (await screen.findByLabelText('New password')).closest('form');
+  if (!form) throw new Error('the new-password field is not inside a form');
+  return form;
+}
 
 describe('Account settings', () => {
   it('shows account information and separates deletion with honest consequences', async () => {
@@ -23,6 +34,84 @@ describe('Account settings', () => {
     expect(screen.getByRole('heading', { name: 'Danger zone' })).toBeVisible();
     expect(screen.getByText(/profile and CVs will be removed/i)).toBeVisible();
     expect(screen.getByText(/employers can still read.*Applications/i)).toBeVisible();
+  });
+
+  it('changes the password and says the other devices were signed out', async () => {
+    const changed = vi.fn();
+    server.use(...signedInAs(CANDIDATE), ...changesPassword(changed));
+
+    const { user } = await renderApp('/settings');
+    const card = within(await findPasswordCard());
+    await user.type(card.getByLabelText('Current password'), 'Correct-Horse9');
+    await user.type(card.getByLabelText('New password'), 'A-Brand-New-One1');
+    await user.click(card.getByRole('button', { name: 'Change password' }));
+
+    await waitFor(() =>
+      expect(changed).toHaveBeenCalledWith({
+        current_password: 'Correct-Horse9',
+        new_password: 'A-Brand-New-One1',
+      }),
+    );
+    expect(await screen.findByText(/signed out everywhere else/i)).toBeVisible();
+    expect(card.getByLabelText('Current password')).toHaveValue('');
+  });
+
+  it('puts a wrong current password on the field the candidate must correct', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...rejectsCurrentPassword({
+        type: 'urn:sync:problem:invalid-credentials',
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'That is not your current password.',
+      }),
+    );
+
+    const { user } = await renderApp('/settings');
+    const card = within(await findPasswordCard());
+    await user.type(card.getByLabelText('Current password'), 'wrong-password');
+    await user.type(card.getByLabelText('New password'), 'A-Brand-New-One1');
+    await user.click(card.getByRole('button', { name: 'Change password' }));
+
+    expect(await card.findByText('That is not your current password.')).toBeVisible();
+    expect(card.getByLabelText('Current password')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('puts a refused new password on the new-password field', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...refusesNewPassword({
+        type: 'urn:sync:problem:password-unchanged',
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Choose a password you have not used on this account before.',
+      }),
+    );
+
+    const { user } = await renderApp('/settings');
+    const card = within(await findPasswordCard());
+    await user.type(card.getByLabelText('Current password'), 'Correct-Horse9');
+    await user.type(card.getByLabelText('New password'), 'Correct-Horse9');
+    await user.click(card.getByRole('button', { name: 'Change password' }));
+
+    expect(
+      await card.findByText('Choose a password you have not used on this account before.'),
+    ).toBeVisible();
+    expect(card.getByLabelText('New password')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('sends nothing when the new password fails the policy the form already states', async () => {
+    const changed = vi.fn();
+    server.use(...signedInAs(CANDIDATE), ...changesPassword(changed));
+
+    const { user } = await renderApp('/settings');
+    const card = within(await findPasswordCard());
+    await user.type(card.getByLabelText('Current password'), 'Correct-Horse9');
+    await user.type(card.getByLabelText('New password'), 'short');
+    await user.click(card.getByRole('button', { name: 'Change password' }));
+
+    expect(await card.findByText('Use at least 8 characters.')).toBeVisible();
+    expect(changed).not.toHaveBeenCalled();
   });
 
   it('sends no deletion request before the candidate supplies their current password', async () => {
@@ -46,7 +135,8 @@ describe('Account settings', () => {
 
     const { queryClient, router, user } = await renderApp('/settings');
     await user.click(await screen.findByRole('button', { name: 'Delete my account' }));
-    await user.type(screen.getByLabelText('Current password'), 'correct-horse-battery');
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Current password'), 'correct-horse-battery');
     await user.click(screen.getByRole('button', { name: 'Delete account permanently' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/account-deleted'));
@@ -72,10 +162,10 @@ describe('Account settings', () => {
 
     const { router, user } = await renderApp('/settings');
     await user.click(await screen.findByRole('button', { name: 'Delete my account' }));
-    await user.type(screen.getByLabelText('Current password'), 'wrong-password');
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Current password'), 'wrong-password');
     await user.click(screen.getByRole('button', { name: 'Delete account permanently' }));
 
-    const dialog = await screen.findByRole('dialog');
     expect(
       within(dialog).getByText('That is not your password. Deleting an account needs it.'),
     ).toBeVisible();
@@ -90,11 +180,12 @@ describe('Account settings', () => {
 
     const { user } = await renderApp('/settings');
     await user.click(await screen.findByRole('button', { name: 'Delete my account' }));
-    await user.type(screen.getByLabelText('Current password'), 'correct-horse-battery');
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Current password'), 'correct-horse-battery');
     await user.click(screen.getByRole('button', { name: 'Delete account permanently' }));
 
     expect(await screen.findByRole('button', { name: 'Deleting account…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Keep my account' })).toBeDisabled();
-    expect(screen.getByLabelText('Current password')).toBeDisabled();
+    expect(within(dialog).getByLabelText('Current password')).toBeDisabled();
   });
 });

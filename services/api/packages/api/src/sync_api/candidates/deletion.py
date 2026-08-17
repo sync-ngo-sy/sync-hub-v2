@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING, Final
 
 from sqlalchemy import delete, update
 
-from sync_api.auth.gotrue import GoTrueUnavailableError, InvalidCredentialsError
+from sync_api.auth.gotrue import (
+    GoTrueUnavailableError,
+    InvalidCredentialsError,
+    SessionAlreadyEndedError,
+)
 from sync_api.avatars import remove_avatar_folder
 from sync_api.candidates.profile import whole_candidate
 from sync_api.problems import INVALID_CREDENTIALS_PROBLEM_TYPE, Problem
@@ -63,13 +67,17 @@ class CandidateDeletion:
 
     async def _confirm(self, *, email: str, password: str) -> None:
         try:
-            await self._gotrue.verify_password(email=email, password=password)
+            proof = await self._gotrue.verify_password(email=email, password=password)
         except InvalidCredentialsError as exc:
             raise Problem(
                 status=401,
                 type=INVALID_CREDENTIALS_PROBLEM_TYPE,
                 detail="That is not your password. Deleting an account needs it.",
             ) from exc
+        try:
+            await self._gotrue.revoke_this_session(proof.access_token)
+        except SessionAlreadyEndedError:
+            logger.warning("candidates.proof_session_not_revoked")
 
     async def _scrub(self, candidate_id: UUID) -> None:
         """One transaction, in an order the constraints and triggers dictate.
