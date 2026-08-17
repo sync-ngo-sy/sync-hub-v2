@@ -108,6 +108,9 @@ async def test_the_session_that_changed_it_keeps_working(
 
     assert (await browser.get("/v1/auth/me")).status_code == 200
     assert SESSION_COOKIE in browser.cookies
+    # The access token above is a JWT that outlives its session, so it answers 200 either way.
+    # Only a refresh proves the session itself was spared.
+    assert (await browser.post("/v1/auth/refresh")).status_code == 200
 
 
 async def test_changing_a_password_needs_a_session(browser: AsyncClient) -> None:

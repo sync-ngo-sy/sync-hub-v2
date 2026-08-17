@@ -69,6 +69,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "calculateMyExperienceTotal",
         "changeApplicationStatus",
         "changeJob",
+        "changePassword",
         "changeTenantMember",
         "changeTrackedJobLink",
         "confirmEmail",

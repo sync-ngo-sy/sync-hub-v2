@@ -249,6 +249,14 @@ class AuthService:
         if access_token is None:
             raise _unauthenticated("no access token cookie")
         new_password = _vetted(new_password)
+        if new_password == current_password:
+            # GoTrue's admin update accepts the password an account already has, so the refusal
+            # `reset_password` gets from `same_password` has to be made here instead.
+            raise Problem(
+                status=400,
+                type=PASSWORD_UNCHANGED_PROBLEM_TYPE,
+                detail="Choose a password you have not used on this account before.",
+            )
         try:
             await self._gotrue.verify_password(email=profile.email, password=current_password)
         except (InvalidCredentialsError, EmailNotConfirmedError) as exc:
@@ -272,7 +280,7 @@ class AuthService:
         try:
             await self._gotrue.revoke_other_sessions(access_token)
         except SessionAlreadyEndedError:
-            logger.error("auth.other_sessions_not_revoked", profile_id=str(profile.id))
+            logger.warning("auth.other_sessions_not_revoked", profile_id=str(profile.id))
         logger.info("auth.password_changed", profile_id=str(profile.id))
 
     async def acting_profile(self, access_token: str | None) -> ActingProfile:
