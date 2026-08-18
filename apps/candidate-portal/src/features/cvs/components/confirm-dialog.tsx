@@ -1,3 +1,4 @@
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,7 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  subject: string;
   description: ReactNode;
   confirmLabel: string;
   pendingLabel: string;
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   open,
   onOpenChange,
   title,
+  subject,
   description,
   confirmLabel,
   pendingLabel,
@@ -38,7 +41,10 @@ export function ConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogDescription>
+            <TruncatedText className="mb-1 font-medium text-foreground">{subject}</TruncatedText>
+            {description}
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>

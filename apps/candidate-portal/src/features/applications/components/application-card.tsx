@@ -1,6 +1,7 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
 import { TenantLogo } from '@sync/ui/components/tenant-logo';
 import { Button } from '@sync/ui/components/ui/button';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
 import { type Application, applicationMeta, applicationState } from '../application';
@@ -15,13 +16,20 @@ export function ApplicationCard({ application }: { application: Application }) {
     <>
       <article className="space-y-4 py-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
+          <Link
+            to="/jobs/$jobId"
+            params={{ jobId: application.job.id }}
+            preload={false}
+            className="group flex min-w-0 items-start gap-3"
+          >
             <TenantLogo
               name={application.job.tenant.name}
               logoUrl={application.job.tenant.logo_url}
             />
             <div className="min-w-0 space-y-1.5">
-              <h2 className="truncate text-title text-foreground">{application.job.title}</h2>
+              <h2 className="truncate text-title text-foreground group-hover:text-accent-foreground">
+                {application.job.title}
+              </h2>
               <p className="truncate text-meta text-muted-foreground">
                 {applicationMeta(application)}
               </p>
@@ -35,7 +43,7 @@ export function ApplicationCard({ application }: { application: Application }) {
                 </time>
               </p>
             </div>
-          </div>
+          </Link>
           <div className="flex flex-wrap items-center gap-2 self-start sm:justify-end sm:self-auto">
             <StatusMark tone={state.tone} label={state.label} />
             {application.can_withdraw ? (
