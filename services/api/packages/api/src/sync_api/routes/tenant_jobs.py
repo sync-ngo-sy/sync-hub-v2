@@ -4,6 +4,7 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
+from pydantic import AfterValidator
 
 from sync_api.applications import ApplicationSort, ApplicationSummaryPage
 from sync_api.dependencies import (
@@ -29,6 +30,7 @@ from sync_api.jobs import (
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
+from sync_api.text import without_control_characters
 from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus
 from sync_core.profile import MAX_LINE_LENGTH
 
@@ -73,6 +75,7 @@ async def list_jobs(
             "the case.",
             examples=["designer"],
         ),
+        AfterValidator(without_control_characters),
     ] = None,
     job_status: Annotated[
         JobStatus | None,

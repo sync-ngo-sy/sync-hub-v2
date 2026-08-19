@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Query
+from pydantic import AfterValidator
 
 from sync_api.candidate_directory.filters import CandidateFiltersDep
 from sync_api.dependencies import ActingRecruiterDep, CandidateSearchServiceDep
@@ -10,6 +11,7 @@ from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.search import CandidateMatches
+from sync_api.text import without_control_characters
 from sync_core.profile import MAX_LINE_LENGTH
 from sync_rag import MAX_SEARCH_DEPTH
 
@@ -49,6 +51,7 @@ async def search_candidates(
             description="What you are looking for, in your own words.",
             examples=["backend engineer who has run payment systems"],
         ),
+        AfterValidator(without_control_characters),
     ],
     keywords: Annotated[
         str | None,
@@ -57,6 +60,7 @@ async def search_candidates(
             description="Words that must appear somewhere in the profile — a skill, a job "
             'description, a qualification. Supports `"quoted phrases"`, `or` and `-excluded`.',
         ),
+        AfterValidator(without_control_characters),
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")] = (
         DEFAULT_PAGE_SIZE

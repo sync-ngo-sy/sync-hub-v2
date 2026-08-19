@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from sync_core import get_logger
 from sync_core.links import github_address, linkedin_address, portfolio_address
 from sync_core.profile import (
+    CONTROL_CHARACTERS,
     EARLIEST_YEAR,
     LATEST_YEAR,
     MAX_ENTRIES,
@@ -233,7 +234,7 @@ def _link(value: str | None) -> str | None:
 
 
 def _text(value: str | None, limit: int) -> str | None:
-    if value is None:
+    if value is None or CONTROL_CHARACTERS.search(value):
         return None
     trimmed = value.strip()[:limit].strip()
     return trimmed or None

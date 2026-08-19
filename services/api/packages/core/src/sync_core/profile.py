@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from typing import Final
 
@@ -15,6 +16,10 @@ LATEST_YEAR: Final = 2100
 MAX_LINE_LENGTH: Final = 200
 MAX_PARAGRAPH_LENGTH: Final = 5000
 MAX_LINK_LENGTH: Final = 2000
+
+#: The control characters no text column can hold meaningfully — Postgres refuses a NUL
+#: outright — and no screen has a use for. Tab, newline and carriage return are content.
+CONTROL_CHARACTERS: Final = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 
 
 def as_decimal(years: float) -> Decimal:

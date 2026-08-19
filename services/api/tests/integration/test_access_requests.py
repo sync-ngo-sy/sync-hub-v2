@@ -425,3 +425,9 @@ async def test_reading_the_queue_is_not_public(browser: AsyncClient) -> None:
     assert (await ask_for_access(browser, an_ask())).status_code == 202
     assert (await read_queue(browser)).status_code == 401
     assert (await browser.post(f"{ASK}", json={})).status_code == 422
+
+
+async def test_a_company_with_a_control_character_is_refused(browser: AsyncClient) -> None:
+    refused = await ask_for_access(browser, replace(an_ask(), company="Acme\x00Recruiting"))
+
+    assert refused.status_code == 422, refused.text

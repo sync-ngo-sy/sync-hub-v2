@@ -4,7 +4,7 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
 from sync_api.dependencies import (
     ActingRecruiterDep,
@@ -17,6 +17,7 @@ from sync_api.pictures import ACCEPTED_FORMATS
 from sync_api.rate_limit import enforce_auth_rate_limit
 from sync_api.routes.auth import IDENTITY_PROVIDER_UNAVAILABLE
 from sync_api.tenants import Member, TenantLogo, TenantSummary
+from sync_api.text import without_control_characters
 from sync_core.models import RecruiterRole
 
 ROUTER_PREFIX: Final = "/tenants"
@@ -43,7 +44,11 @@ Slug = Annotated[
     ),
 ]
 
-FullName = Annotated[str, Field(min_length=1, max_length=200)]
+FullName = Annotated[
+    str,
+    AfterValidator(without_control_characters),
+    Field(min_length=1, max_length=200),
+]
 
 
 class TenantView(BaseModel):

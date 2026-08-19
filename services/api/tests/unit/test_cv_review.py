@@ -253,3 +253,17 @@ def test_a_section_longer_than_anyone_could_have_typed_is_cut() -> None:
     parse = reviewed(experiences=[an_experience() for _ in range(MAX_ENTRIES + 10)])
 
     assert len(parse.experiences) == MAX_ENTRIES
+
+
+def test_a_parsed_value_with_a_control_character_is_dropped() -> None:
+    parse = reviewed(summary="Builds\x00payment systems", headline="Backend\x1bengineer")
+
+    assert parse.summary is None
+    assert parse.headline is None
+
+
+def test_a_parsed_paragraph_keeps_its_line_breaks() -> None:
+    description = "Led the ledger rewrite.\r\nIt stayed up."
+    parse = reviewed(experiences=[an_experience(description=description)])
+
+    assert parse.experiences[0].description == description

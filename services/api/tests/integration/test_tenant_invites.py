@@ -212,3 +212,15 @@ async def test_an_invited_teammate_cannot_sign_in_before_accepting(
 
     assert response.status_code == 401
     assert (await other_browser.get("/v1/tenants/me")).status_code == 401
+
+
+async def test_inviting_someone_with_a_control_character_in_their_name_is_refused(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+
+    refused = await invite(
+        browser, email=an_invitee_address(), full_name="Yusuf\x00Nasser"
+    )
+
+    assert refused.status_code == 422, refused.text

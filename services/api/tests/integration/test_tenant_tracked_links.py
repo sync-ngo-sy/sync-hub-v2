@@ -9,6 +9,7 @@ from tests.support.jobs import (
     a_tracked_link,
     change_link,
     counted_again,
+    create_link,
     follow_link,
     links_of,
 )
@@ -192,3 +193,11 @@ async def test_another_tenants_links_are_not_in_this_list(
 
     assert await names_in(recruiter) == []
     assert await names_in(rival) == ["Their campaign"]
+
+
+async def test_a_link_name_with_a_control_character_is_refused(recruiter: AsyncClient) -> None:
+    job = await a_published_job(recruiter)
+
+    refused = await create_link(recruiter, job["id"], name="Spring\x00campaign")
+
+    assert refused.status_code == 422, refused.text

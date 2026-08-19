@@ -872,3 +872,13 @@ async def test_correcting_a_date_derives_the_total_again(
 
     assert corrected.json()["total_experience_years"] == 2
     assert (await my_profile(browser))["total_experience_years"] == 2
+
+
+async def test_a_headline_with_a_control_character_is_refused(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    refused = await browser.put(PROFILE, json=a_profile(headline="Backend\x00engineer, 8 years"))
+
+    assert refused.status_code == 422, refused.text

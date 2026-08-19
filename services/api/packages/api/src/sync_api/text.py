@@ -6,7 +6,12 @@ from typing import Annotated, Final
 from pydantic import AfterValidator, BeforeValidator, Field, StringConstraints
 
 from sync_core.links import github_address, linkedin_address, portfolio_address
-from sync_core.profile import MAX_LINE_LENGTH, MAX_LINK_LENGTH, MAX_PARAGRAPH_LENGTH
+from sync_core.profile import (
+    CONTROL_CHARACTERS,
+    MAX_LINE_LENGTH,
+    MAX_LINK_LENGTH,
+    MAX_PARAGRAPH_LENGTH,
+)
 
 #: Backslash rather than the default, which is `%` itself and cannot then escape one.
 LIKE_ESCAPE: Final = "\\"
@@ -28,14 +33,29 @@ def _blank_as_unset(value: object) -> object:
     return None if isinstance(value, str) and not value.strip() else value
 
 
+def without_control_characters(value: str | None) -> str | None:
+    """Postgres cannot store a NUL and no reader can read the rest of the control range, so a
+    value holding one is refused where the text types are defined rather than crashing later
+    where it is written. Tab, newline and carriage return are content, not control."""
+    if value is not None and CONTROL_CHARACTERS.search(value):
+        raise ValueError("Text cannot contain control characters.")
+    return value
+
+
 Line = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
+    str,
+    AfterValidator(without_control_characters),
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
 ]
 Paragraph = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH)
+    str,
+    AfterValidator(without_control_characters),
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH),
 ]
 Link = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH)
+    str,
+    AfterValidator(without_control_characters),
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH),
 ]
 
 OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
@@ -97,6 +117,7 @@ PortfolioUrl = Annotated[
 
 LanguageCode = Annotated[
     str,
+    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
     Field(description="A code from the platform's `languages` table.", examples=["en"]),
 ]

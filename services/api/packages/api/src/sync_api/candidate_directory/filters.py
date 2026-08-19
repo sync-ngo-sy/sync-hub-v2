@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated, Final
 
 from fastapi import Depends, Query
-from pydantic import StringConstraints
+from pydantic import AfterValidator, StringConstraints
 
 from sync_api.dependencies import SessionDep
 from sync_api.problems import (
@@ -13,6 +13,7 @@ from sync_api.problems import (
     InvalidField,
     Problem,
 )
+from sync_api.text import without_control_characters
 from sync_api.vocabulary import (
     canonical_skill_ids,
     refuse_unknown_canonical_role,
@@ -35,11 +36,14 @@ MAX_LANGUAGE_FILTER_LENGTH: Final = 32
 FILTER_SEPARATOR: Final = ":"
 
 SkillFilter = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
+    str,
+    AfterValidator(without_control_characters),
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
 ]
 
 LanguageFilter = Annotated[
     str,
+    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LANGUAGE_FILTER_LENGTH),
 ]
 
@@ -54,6 +58,7 @@ async def candidate_filters(
             "governorate never answers for the one beside it.",
             examples=["sy-damascus"],
         ),
+        AfterValidator(without_control_characters),
     ] = None,
     language: Annotated[
         list[LanguageFilter] | None,
@@ -72,6 +77,7 @@ async def candidate_filters(
             description="A Canonical role's key, from `/v1/roles`.",
             examples=["frontend-engineer"],
         ),
+        AfterValidator(without_control_characters),
     ] = None,
     min_total_experience: Annotated[
         int | None,

@@ -419,3 +419,9 @@ async def test_reading_jobs_is_rate_limited_by_the_route_not_the_job(
         refused = await read_public_job(spa, first["id"])
 
     assert refused.status_code == 429, refused.text
+
+
+async def test_a_search_term_with_a_control_character_is_refused(visitor: AsyncClient) -> None:
+    refused = await visitor.get(JOBS, params={"q": "backend\x00engineer"})
+
+    assert refused.status_code == 422, refused.text

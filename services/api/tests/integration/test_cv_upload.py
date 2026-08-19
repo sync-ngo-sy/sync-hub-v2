@@ -137,6 +137,17 @@ async def test_a_file_that_is_not_a_cv_is_refused(browser: AsyncClient, mailbox:
     assert response.json()["type"].endswith("unsupported-cv-media-type")
 
 
+async def test_a_filename_with_a_control_character_is_refused(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_cv(browser, filename="amina-haddad\x00.pdf")
+
+    assert response.status_code == 422, response.text
+    assert response.json()["type"].endswith("cv-filename")
+
+
 async def test_a_word_document_a_browser_could_not_name_is_still_accepted(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
