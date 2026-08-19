@@ -46,8 +46,8 @@ Slug = Annotated[
 
 FullName = Annotated[
     str,
-    AfterValidator(without_control_characters),
     Field(min_length=1, max_length=200),
+    AfterValidator(without_control_characters),
 ]
 
 

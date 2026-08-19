@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from sqlalchemy import func, or_, select, update
 
 from sync_core import get_logger, transaction
+from sync_core.profile import CONTROL_CHARACTERS
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -259,5 +260,7 @@ class QueueEngine[ResultT]:
 
 
 def failure_reason(error: Exception) -> str:
+    """`error_message` is a text column and an exception's text is not always ours — a model's
+    refusal of a CV reaches here verbatim — so a control character is taken out of it first."""
     described = f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
-    return described[:MAX_ERROR_LENGTH]
+    return CONTROL_CHARACTERS.sub(" ", described)[:MAX_ERROR_LENGTH]

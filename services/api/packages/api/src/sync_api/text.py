@@ -36,7 +36,9 @@ def _blank_as_unset(value: object) -> object:
 def without_control_characters(value: str | None) -> str | None:
     """Postgres cannot store a NUL and no reader can read the rest of the control range, so a
     value holding one is refused where the text types are defined rather than crashing later
-    where it is written. Tab, newline and carriage return are content, not control."""
+    where it is written. Tab, newline and carriage return are content, not control. Runs after
+    the whitespace strip, which has already taken a vertical tab or a form feed off either end,
+    so what is refused here is a control character inside the text."""
     if value is not None and CONTROL_CHARACTERS.search(value):
         raise ValueError("Text cannot contain control characters.")
     return value

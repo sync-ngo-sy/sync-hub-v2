@@ -23,6 +23,7 @@ from tests.support.cvs import (
     some_bytes,
     stored_bytes,
     upload_cv,
+    upload_cv_with_a_raw_filename,
 )
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import an_admin
@@ -138,31 +139,27 @@ async def test_a_file_that_is_not_a_cv_is_refused(browser: AsyncClient, mailbox:
 
 
 async def test_a_filename_with_a_control_character_is_refused(
-    browser: AsyncClient, mailbox: Mailbox
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
 
-    # httpx percent-encodes control bytes in `files=`, so send a raw NUL byte
-    # in the multipart Content-Disposition header by hand.
-    boundary = "sync-control-character-boundary"
-    body = (
-        (
-            f"--{boundary}\r\n"
-            'Content-Disposition: form-data; name="file"; filename="amina-haddad\x00.pdf"\r\n'
-            "Content-Type: application/pdf\r\n\r\n"
-        ).encode()
-        + some_bytes()
-        + f"\r\n--{boundary}--\r\n".encode()
-    )
-
-    response = await browser.post(
-        CVS,
-        content=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-    )
+    response = await upload_cv(browser, filename="amina-haddad\x7f.pdf")
 
     assert response.status_code == 422, response.text
-    assert response.json()["type"].endswith("cv-filename")
+    assert response.json()["type"].endswith("invalid-cv-filename")
+    assert await cv_object_count(db_session) == 0
+
+
+async def test_a_filename_with_a_null_byte_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_cv_with_a_raw_filename(browser, filename="amina-haddad\x00.pdf")
+
+    assert response.status_code == 422, response.text
+    assert response.json()["type"].endswith("invalid-cv-filename")
+    assert await cv_object_count(db_session) == 0
 
 
 async def test_a_word_document_a_browser_could_not_name_is_still_accepted(

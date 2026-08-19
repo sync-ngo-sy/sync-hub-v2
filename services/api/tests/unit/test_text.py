@@ -32,6 +32,10 @@ def test_a_line_refuses_whitespace_only_content() -> None:
         line.validate_python("   ")
 
 
+def test_a_line_strips_a_control_character_the_whitespace_rule_already_covers() -> None:
+    assert line.validate_python("Senior Engineer\x0b") == "Senior Engineer"
+
+
 def test_a_paragraph_keeps_line_breaks_and_tabs_as_content() -> None:
     written = "Strong on payments.\r\nRan the ledger rewrite.\tTwice."
     assert paragraph.validate_python(written) == written

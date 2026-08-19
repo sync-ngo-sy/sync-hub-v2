@@ -80,7 +80,7 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: NewPassword
     full_name: Annotated[
-        str, AfterValidator(without_control_characters), Field(min_length=1, max_length=200)
+        str, Field(min_length=1, max_length=200), AfterValidator(without_control_characters)
     ]
 
 
