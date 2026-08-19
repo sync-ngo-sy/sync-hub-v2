@@ -14,6 +14,7 @@ import { Route as AccountRouteImport } from './routes/_account'
 import { Route as BrowseRouteImport } from './routes/_browse'
 import { Route as AccountDeletedRouteImport } from './routes/account-deleted'
 import { Route as CheckEmailRouteImport } from './routes/check-email'
+import { Route as CropPrototypeRouteImport } from './routes/crop-prototype'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
@@ -51,6 +52,11 @@ const AccountDeletedRoute = AccountDeletedRouteImport.update({
 const CheckEmailRoute = CheckEmailRouteImport.update({
   id: '/check-email',
   path: '/check-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CropPrototypeRoute = CropPrototypeRouteImport.update({
+  id: '/crop-prototype',
+  path: '/crop-prototype',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-deleted': typeof AccountDeletedRoute
   '/check-email': typeof CheckEmailRoute
+  '/crop-prototype': typeof CropPrototypeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-deleted': typeof AccountDeletedRoute
   '/check-email': typeof CheckEmailRoute
+  '/crop-prototype': typeof CropPrototypeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_browse': typeof BrowseRouteWithChildren
   '/account-deleted': typeof AccountDeletedRoute
   '/check-email': typeof CheckEmailRoute
+  '/crop-prototype': typeof CropPrototypeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-deleted'
     | '/check-email'
+    | '/crop-prototype'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-deleted'
     | '/check-email'
+    | '/crop-prototype'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/_browse'
     | '/account-deleted'
     | '/check-email'
+    | '/crop-prototype'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
@@ -263,6 +275,7 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRouteWithChildren
   AccountDeletedRoute: typeof AccountDeletedRoute
   CheckEmailRoute: typeof CheckEmailRoute
+  CropPrototypeRoute: typeof CropPrototypeRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
@@ -307,6 +320,13 @@ declare module '@tanstack/react-router' {
       path: '/check-email'
       fullPath: '/check-email'
       preLoaderRoute: typeof CheckEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crop-prototype': {
+      id: '/crop-prototype'
+      path: '/crop-prototype'
+      fullPath: '/crop-prototype'
+      preLoaderRoute: typeof CropPrototypeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -457,6 +477,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRouteWithChildren,
   AccountDeletedRoute: AccountDeletedRoute,
   CheckEmailRoute: CheckEmailRoute,
+  CropPrototypeRoute: CropPrototypeRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,
