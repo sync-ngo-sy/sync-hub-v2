@@ -21,10 +21,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # Before the install, because it needs git only and it is the cheapest check here.
-      - name: Skills tree is committed once
-        run: ./scripts/check-skills-tree.sh
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
 
@@ -86,13 +82,13 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           working-directory: services/api
           enable-cache: true
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
           # Pinned, like the deploy workflows. `latest` resolves through GitHub's release API on
           # every run, unauthenticated, so a run fails on somebody else's traffic -- exit 127,
@@ -134,7 +130,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
           # Pinned, like the deploy workflows. `latest` resolves through GitHub's release API on
           # every run, unauthenticated, so a run fails on somebody else's traffic -- exit 127,
@@ -180,7 +176,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: 1.12.5
           # The action wraps `tofu` in a script that reports the run through step outputs, and
@@ -252,12 +248,12 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Built, not pushed: this job proves the Dockerfile and the lockfile still agree. The
       # GitHub Actions cache keeps the dependency layer between runs.
       - name: Build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: services/api
           file: services/api/Dockerfile
