@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SCREENING_VERDICTS } from '@/features/applications/application';
 import {
   AMAL_REVIEW,
+  ANYWHERE_JOB,
   DIMA,
   ELIAS,
   FARAH,
@@ -125,6 +126,18 @@ describe('the unified Applications page', () => {
       'title',
       absoluteDateTime(DIMA.applied_at),
     );
+  });
+
+  it('reads a Job open to Anywhere as Anywhere, rather than as no place at all', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsTenantApplications([{ ...DIMA, job: ANYWHERE_JOB }]),
+    );
+
+    await renderApp('/applications');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    expect(rowOf('Dima Sabbagh').getByText('Anywhere')).toBeVisible();
   });
 
   it('takes the reader from the Job column to the Job itself', async () => {

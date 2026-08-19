@@ -1286,6 +1286,14 @@ class Job(Base):
             "minimum_total_experience_years IS NULL OR minimum_total_experience_years >= 0::numeric",
             name="jobs_min_experience_nonneg",
         ),
+        CheckConstraint(
+            "status <> 'published'::job_status OR work_mode IS NOT NULL",
+            name="jobs_published_names_a_work_mode",
+        ),
+        CheckConstraint(
+            "work_mode IS NULL OR work_mode = 'remote'::work_mode OR location_key IS NOT NULL",
+            name="jobs_travelled_to_names_a_place",
+        ),
         ForeignKeyConstraint(
             ["location_key"], ["public.locations.key"], name="jobs_location_key_fkey"
         ),
@@ -1335,7 +1343,10 @@ class Job(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
-    location_key: Mapped[str | None] = mapped_column(Text)
+    location_key: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Where an onsite or hybrid Job is worked, and where a remote Job needs its Candidate to be based. Null on a remote Job means Anywhere.",
+    )
     employment_type: Mapped[EmploymentType | None] = mapped_column(
         Enum(
             EmploymentType,

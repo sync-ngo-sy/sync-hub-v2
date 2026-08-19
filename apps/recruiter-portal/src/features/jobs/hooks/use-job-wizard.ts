@@ -10,7 +10,12 @@ import {
   screens,
   toCriteria,
 } from '../schemas/criteria';
-import { type JobFormValues, jobFormSchema, toNewJob } from '../schemas/job';
+import {
+  type JobFormValues,
+  jobFormSchema,
+  toNewJob,
+  WORK_MODE_BEFORE_PUBLISHING,
+} from '../schemas/job';
 import {
   clearWizardDraft,
   readWizardDraft,
@@ -63,6 +68,10 @@ export function useJobWizard() {
 
   async function submit(status: 'draft' | 'published'): Promise<CreateOutcome> {
     if (!(await details.trigger())) return { kind: 'refused', step: 'details', message: null };
+    if (status === 'published' && details.getValues().workMode === '') {
+      details.setError('workMode', { message: WORK_MODE_BEFORE_PUBLISHING });
+      return { kind: 'refused', step: 'details', message: null };
+    }
     if (!(await screening.trigger())) return { kind: 'refused', step: 'screening', message: null };
 
     let job: Job;

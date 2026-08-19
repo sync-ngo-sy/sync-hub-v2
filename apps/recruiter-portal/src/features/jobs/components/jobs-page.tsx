@@ -27,6 +27,8 @@ import {
   jobLifecycleActions,
   jobMeta,
   jobState,
+  WORK_MODE_LABELS,
+  type WorkMode,
 } from '../job';
 import { ChoicePicker } from './choice-select';
 import { EditJobDialog } from './edit-job-dialog';
@@ -77,13 +79,18 @@ const COLUMNS: DataTableColumn<JobSummary>[] = [
   },
 ];
 
+const WORK_MODES = { '': 'Any work mode', ...WORK_MODE_LABELS };
+
 interface JobsPageProps {
   q?: string;
   status?: JobStatus;
   sort?: JobSort;
+  workMode?: WorkMode;
   onQueryChange: (q?: string) => void;
   onStatusChange: (status?: JobStatus) => void;
   onSortChange: (sort: JobSort) => void;
+  onWorkModeChange: (workMode?: WorkMode) => void;
+  onClearFilters: () => void;
   onJobOpen: (job: JobSummary) => void;
   jobHref: (job: JobSummary) => string;
   onCreateJob: () => void;
@@ -93,15 +100,21 @@ export function JobsPage({
   q,
   status,
   sort = DEFAULT_JOB_SORT,
+  workMode,
   onQueryChange,
   onStatusChange,
   onSortChange,
+  onWorkModeChange,
+  onClearFilters,
   onJobOpen,
   jobHref,
   onCreateJob,
 }: JobsPageProps) {
   const tenant = useMyTenant();
-  const jobs = useJobs(status, sort, q);
+  const jobs = useJobs({ status, sort, q, workMode });
+  const narrowing = [q && `“${q}”`, workMode && WORK_MODE_LABELS[workMode].toLowerCase()]
+    .filter(Boolean)
+    .join(' and ');
   const change = useChangeJob();
   const [editing, setEditing] = useState<JobSummary | null>(null);
   const [lifecycleFailure, setLifecycleFailure] = useState<string | null>(null);
@@ -169,7 +182,20 @@ export function JobsPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <JobSearch q={q} onQueryChange={onQueryChange} />
 
-          <ChoicePicker items={JOB_SORTS} value={sort} onValueChange={onSortChange} label="Order" />
+          <div className="flex flex-wrap items-center gap-3">
+            <ChoicePicker
+              items={WORK_MODES}
+              value={workMode ?? ''}
+              onValueChange={(chosen) => onWorkModeChange(chosen || undefined)}
+              label="Work mode"
+            />
+            <ChoicePicker
+              items={JOB_SORTS}
+              value={sort}
+              onValueChange={onSortChange}
+              label="Order"
+            />
+          </div>
         </div>
 
         {lifecycleFailure ? (
@@ -198,14 +224,16 @@ export function JobsPage({
           isLoading={jobs.isPending}
           empty={{
             icon: BriefcaseBusiness,
-            message: q
-              ? `No Jobs have a title matching “${q}”.`
+            message: narrowing
+              ? `No Jobs match ${narrowing}.`
               : status
                 ? `No ${jobState(status).label.toLowerCase()} Jobs match this view.`
                 : 'No Jobs yet — write the first role your Tenant is hiring for.',
-            action: (
-              <Button onClick={q ? () => onQueryChange(undefined) : onCreateJob}>
-                {q ? 'Clear search' : status ? 'Create job' : 'Create your first job'}
+            action: narrowing ? (
+              <Button onClick={onClearFilters}>Clear filters</Button>
+            ) : (
+              <Button onClick={onCreateJob}>
+                {status ? 'Create job' : 'Create your first job'}
               </Button>
             ),
           }}

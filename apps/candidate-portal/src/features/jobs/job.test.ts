@@ -3,6 +3,7 @@ import { BARE_PUBLIC_JOB, PUBLIC_JOB, PUBLIC_JOBS } from '@/testing/fixtures';
 import {
   experienceLabel,
   jobMeta,
+  jobPlace,
   languageName,
   proficiencyLabel,
   questionShape,
@@ -15,20 +16,38 @@ describe('a Job meta line', () => {
     expect(jobMeta(PUBLIC_JOB)).toBe('Levant Digital · Damascus · Remote · Full time');
   });
 
-  it('keeps a remote Job in the place its team sits, rather than instead of it', () => {
+  it('names the place a remote Job wants a Candidate to be based, not instead of it', () => {
     expect(jobMeta(PUBLIC_JOB)).toContain('Damascus · Remote');
   });
 
+  it('reads a remote Job that names no place as Anywhere', () => {
+    expect(jobMeta(BARE_PUBLIC_JOB)).toBe('Sham Care · Anywhere · Remote');
+  });
+
   it('carries only what the Job actually has', () => {
-    expect(jobMeta(BARE_PUBLIC_JOB)).toBe('Sham Care');
+    expect(jobMeta(BARE_PUBLIC_JOB)).not.toContain('Full time');
   });
 
   it('reads the same for a summary as for the whole Job', () => {
     expect(PUBLIC_JOBS.map(jobMeta)).toEqual([
       'Levant Digital · Damascus · Remote · Full time',
       'Aman Relief · Aleppo · On-site · Contract',
-      'Sham Care',
+      'Sham Care · Anywhere · Remote',
     ]);
+  });
+});
+
+describe('where a Job is', () => {
+  it('is the Location it names', () => {
+    expect(jobPlace(PUBLIC_JOB)).toBe('Damascus');
+  });
+
+  it('is Anywhere when a remote Job names none', () => {
+    expect(jobPlace(BARE_PUBLIC_JOB)).toBe('Anywhere');
+  });
+
+  it('is nowhere at all when the Job is neither', () => {
+    expect(jobPlace({ ...BARE_PUBLIC_JOB, work_mode: null })).toBeNull();
   });
 });
 

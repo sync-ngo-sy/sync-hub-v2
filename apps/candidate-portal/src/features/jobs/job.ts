@@ -9,7 +9,7 @@ type Language = components['schemas']['JobLanguageRequirement'];
 type Proficiency = components['schemas']['LanguageProficiency'];
 type Question = components['schemas']['PublicJobQuestion'];
 export type EmploymentType = components['schemas']['EmploymentType'];
-type WorkMode = components['schemas']['WorkMode'];
+export type WorkMode = components['schemas']['WorkMode'];
 
 export const NOTHING_PUBLISHED =
   'No roles are open right now. New ones appear here the moment an employer publishes them.';
@@ -26,11 +26,13 @@ export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   volunteer: 'Volunteer',
 };
 
-const WORK_MODE_LABELS: Record<WorkMode, string> = {
+export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   onsite: 'On-site',
   hybrid: 'Hybrid',
   remote: 'Remote',
 };
+
+export const ANYWHERE = 'Anywhere';
 
 export function employmentTypeLabel(type: EmploymentType | null | undefined): string | null {
   return type ? EMPLOYMENT_TYPE_LABELS[type] : null;
@@ -40,10 +42,14 @@ export function workModeLabel(mode: WorkMode | null | undefined): string | null 
   return mode ? WORK_MODE_LABELS[mode] : null;
 }
 
+export function jobPlace(job: Pick<JobSummary, 'location_name' | 'work_mode'>): string | null {
+  return job.location_name ?? (job.work_mode === 'remote' ? ANYWHERE : null);
+}
+
 export function jobMeta(job: Job | JobSummary): string {
   return [
     job.tenant.name,
-    job.location_name,
+    jobPlace(job),
     workModeLabel(job.work_mode),
     employmentTypeLabel(job.employment_type),
   ]

@@ -39,6 +39,14 @@ A_FRONTEND_JOB = {
     "work_mode": "remote",
 }
 
+AN_ANYWHERE_JOB = {
+    "title": "Technical Writer",
+    "description": "Write the platform's guides from wherever you already are.",
+    "location_key": None,
+    "employment_type": "contract",
+    "work_mode": "remote",
+}
+
 
 @pytest.fixture
 async def another_visitor(app: FastAPI) -> AsyncIterator[AsyncClient]:
@@ -132,6 +140,68 @@ async def test_the_location_and_the_employment_type_are_hard_filters(
         frontend["id"]
     ]
     assert (await browse(visitor, location_key="sy-damascus", employment_type="part_time")) == []
+
+
+async def test_the_work_mode_is_a_hard_filter(recruiter: AsyncClient, visitor: AsyncClient) -> None:
+    """Looking for remote work is asking the platform, not reading every listing to find out."""
+    onsite = await a_published_job(recruiter)
+    remote = await a_published_job(recruiter, **A_FRONTEND_JOB)
+
+    assert [item["id"] for item in await browse(visitor, work_mode="onsite")] == [onsite["id"]]
+    assert [item["id"] for item in await browse(visitor, work_mode="remote")] == [remote["id"]]
+    assert await browse(visitor, work_mode="hybrid") == []
+
+
+async def test_a_work_mode_outside_the_set_is_refused_rather_than_ignored(
+    visitor: AsyncClient,
+) -> None:
+    response = await visitor.get(JOBS, params={"work_mode": "Work from home"})
+
+    assert response.status_code == 422, response.text
+
+
+async def test_a_location_filter_also_answers_with_the_work_that_can_be_done_anywhere(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """The filter asks "what can I do from here", and a Job open to Anywhere can be done from
+    every here there is."""
+    in_damascus = await a_published_job(recruiter)
+    anywhere = await a_published_job(recruiter, **AN_ANYWHERE_JOB)
+    in_aleppo = await a_published_job(recruiter, **A_FRONTEND_JOB)
+
+    assert [item["id"] for item in await browse(visitor, location_key="sy-damascus")] == [
+        anywhere["id"],
+        in_damascus["id"],
+    ]
+    assert [item["id"] for item in await browse(visitor, location_key="sy-aleppo")] == [
+        in_aleppo["id"],
+        anywhere["id"],
+    ]
+
+
+async def test_a_remote_job_based_somewhere_answers_only_for_that_place(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """A remote Job with a Location says where a Candidate has to be based, so it is no more
+    Anywhere than an onsite one is."""
+    in_aleppo = await a_published_job(recruiter, **A_FRONTEND_JOB)
+
+    assert [item["id"] for item in await browse(visitor, location_key="sy-aleppo")] == [
+        in_aleppo["id"]
+    ]
+    assert await browse(visitor, location_key="sy-damascus") == []
+
+
+async def test_an_anywhere_job_names_no_place_at_all(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """Anywhere is the absence of a Location, never a "Remote" row in the place taxonomy."""
+    await a_published_job(recruiter, **AN_ANYWHERE_JOB)
+
+    (listed,) = await browse(visitor)
+
+    assert (listed["location_key"], listed["location_name"]) == (None, None)
+    assert listed["work_mode"] == "remote"
 
 
 async def test_an_employment_type_outside_the_set_is_refused_rather_than_ignored(

@@ -13,17 +13,44 @@ import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups } from '@/features/reference/options';
 import {
   asEmploymentType,
+  asWorkMode,
   isFiltered,
   type JobFilters,
   MAX_KEYWORD_LENGTH,
   NO_FILTERS,
 } from '../filters';
-import { EMPLOYMENT_TYPE_LABELS } from '../job';
+import { EMPLOYMENT_TYPE_LABELS, WORK_MODE_LABELS } from '../job';
 
 const EMPLOYMENT_TYPES = { '': 'Any type', ...EMPLOYMENT_TYPE_LABELS };
+const WORK_MODES = { '': 'Any work mode', ...WORK_MODE_LABELS };
 
 const appliedFilters = (filters: JobFilters) =>
-  JSON.stringify([filters.q, filters.location, filters.type]);
+  JSON.stringify([filters.q, filters.location, filters.type, filters.mode]);
+
+interface ChosenFromProps {
+  label: string;
+  items: Record<string, string>;
+  width: string;
+  value: string;
+  onChosen: (chosen: string | null) => void;
+}
+
+function ChosenFrom({ label, items, width, value, onChosen }: ChosenFromProps) {
+  return (
+    <Select items={items} value={value} onValueChange={onChosen}>
+      <SelectTrigger aria-label={label} className={`w-full ${width}`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(items).map(([itemValue, itemLabel]) => (
+          <SelectItem key={itemValue} value={itemValue}>
+            {itemLabel}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 interface JobFilterBarProps {
   filters: JobFilters;
@@ -82,22 +109,21 @@ export function JobFilterBar({ filters, onChange }: JobFilterBarProps) {
             onChange={(location) => commit({ location: location || undefined })}
           />
 
-          <Select
+          <ChosenFrom
+            label="Work mode"
+            items={WORK_MODES}
+            width="sm:w-44"
+            value={filters.mode ?? ''}
+            onChosen={(chosen) => commit({ mode: asWorkMode(chosen) })}
+          />
+
+          <ChosenFrom
+            label="Employment type"
             items={EMPLOYMENT_TYPES}
+            width="sm:w-40"
             value={filters.type ?? ''}
-            onValueChange={(chosen: string | null) => commit({ type: asEmploymentType(chosen) })}
-          >
-            <SelectTrigger aria-label="Employment type" className="w-full sm:w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(EMPLOYMENT_TYPES).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChosen={(chosen) => commit({ type: asEmploymentType(chosen) })}
+          />
         </div>
 
         {isFiltered(filters) ? (

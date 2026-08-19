@@ -19,13 +19,19 @@ function statusCounts(items: JobSummary[]) {
   }));
 }
 
-function listed(items: JobSummary[], query: Pick<URLSearchParams, 'get'>): JobSummary[] {
-  const status = query.get('status');
+function narrowed(items: JobSummary[], query: Pick<URLSearchParams, 'get'>): JobSummary[] {
   const q = query.get('q')?.trim().toLocaleLowerCase();
+  const workMode = query.get('work_mode');
   return items.filter(
     (job) =>
-      (!status || job.status === status) && (!q || job.title.toLocaleLowerCase().includes(q)),
+      (!q || job.title.toLocaleLowerCase().includes(q)) &&
+      (!workMode || job.work_mode === workMode),
   );
+}
+
+function listed(items: JobSummary[], query: Pick<URLSearchParams, 'get'>): JobSummary[] {
+  const status = query.get('status');
+  return narrowed(items, query).filter((job) => !status || job.status === status);
 }
 
 function uniqueJobs(groups: JobSummary[][]): JobSummary[] {
@@ -38,7 +44,7 @@ export function listsJobs(items: JobSummary[]) {
       return response(200).json({
         items: listed(items, query),
         next_cursor: null,
-        status_counts: statusCounts(items),
+        status_counts: statusCounts(narrowed(items, query)),
       });
     }),
   ];
@@ -53,7 +59,7 @@ export function sortsJobs(byOrder: Record<string, JobSummary[]>, onSort?: (sort:
       return response(200).json({
         items: listed(byOrder[sort] ?? [], query),
         next_cursor: null,
-        status_counts: statusCounts(all),
+        status_counts: statusCounts(narrowed(all, query)),
       });
     }),
   ];

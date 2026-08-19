@@ -241,6 +241,12 @@ class ApplicationJob(BaseModel):
     id: UUID
     title: str
     location_name: LocationName = None
+    work_mode: WorkMode | None = Field(
+        default=None,
+        description="How the Job is worked. With no `location_name`, `remote` is what makes the "
+        "Job's place read as Anywhere rather than as nothing at all.",
+        examples=[WorkMode.REMOTE],
+    )
 
 
 class TenantApplicationSummary(ApplicationSummary):

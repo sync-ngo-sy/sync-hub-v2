@@ -87,7 +87,7 @@ describe('the candidate landing', () => {
       within(developer).getByText('Levant Digital · Damascus · Remote · Full time'),
     ).toBeVisible();
     const pharmacist = within(index).getByRole('link', { name: /Pharmacist/ });
-    expect(within(pharmacist).getByText('Sham Care')).toBeVisible();
+    expect(within(pharmacist).getByText('Sham Care · Anywhere · Remote')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Browse all jobs' })).toHaveAttribute('href', '/jobs');
   });
 
