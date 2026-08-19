@@ -8,12 +8,21 @@ export const FIELD: ApplicationJob = {
   id: FIELD_COORDINATOR.id,
   title: FIELD_COORDINATOR.title,
   location_name: FIELD_COORDINATOR.location_name,
+  work_mode: FIELD_COORDINATOR.work_mode,
 };
 
 export const MEAL: ApplicationJob = {
   id: '00000000-0000-4000-8000-000000000103',
   title: 'MEAL Officer',
   location_name: 'Damascus',
+  work_mode: 'hybrid',
+};
+
+export const ANYWHERE_JOB: ApplicationJob = {
+  id: '00000000-0000-4000-8000-000000000104',
+  title: 'Technical Writer',
+  location_name: null,
+  work_mode: 'remote',
 };
 
 export const DIMA: TenantApplication = {

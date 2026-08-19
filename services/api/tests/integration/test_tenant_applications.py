@@ -103,7 +103,22 @@ async def test_every_row_names_the_job_it_came_in_for(
         "id": field["job"],
         "title": "Field Coordinator",
         "location_name": "Aleppo",
+        "work_mode": "onsite",
     }
+
+
+async def test_a_row_says_how_its_job_is_worked_so_a_placeless_one_reads_as_anywhere(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Without the Work mode, a Job open to Anywhere is a row with no place on it at all, which
+    reads as a Job nobody said anything about."""
+    job = await a_published_job(recruiter, work_mode="remote", location_key=None)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    await an_accepted_application(other_browser, job["id"])
+
+    [item] = (await recruiter.get(TENANT_APPLICATIONS)).json()["items"]
+
+    assert (item["job"]["location_name"], item["job"]["work_mode"]) == (None, "remote")
 
 
 async def test_a_row_carries_who_applied_and_where_it_stands(

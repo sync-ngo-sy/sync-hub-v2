@@ -30,6 +30,8 @@ export function pagesJobs(pages: JobSummary[][], onQuery?: AskedQuery) {
   ];
 }
 
+const anywhere = (job: JobSummary) => job.work_mode === 'remote' && job.location_key === null;
+
 export function filtersJobs(items: JobSummary[], onQuery?: AskedQuery) {
   return [
     http.get('/v1/jobs', ({ response, query, request }) => {
@@ -37,12 +39,14 @@ export function filtersJobs(items: JobSummary[], onQuery?: AskedQuery) {
       const keywords = query.get('q')?.toLowerCase();
       const location = query.get('location_key');
       const employmentType = query.get('employment_type');
+      const workMode = query.get('work_mode');
       const matched = items.filter(
         (job) =>
           (!keywords ||
             `${job.title} ${job.location_name ?? ''}`.toLowerCase().includes(keywords)) &&
-          (!location || job.location_key === location) &&
-          (!employmentType || job.employment_type === employmentType),
+          (!location || job.location_key === location || anywhere(job)) &&
+          (!employmentType || job.employment_type === employmentType) &&
+          (!workMode || job.work_mode === workMode),
       );
       return response(200).json({ items: matched, next_cursor: null });
     }),

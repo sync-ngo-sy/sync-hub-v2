@@ -111,13 +111,25 @@ sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
 **Pipeline tabs**:
-An Applications list's primary navigation through the Pipeline: `All` followed by each of the
-eight statuses in Pipeline order. Each tab carries the API's count as the other filters leave it;
-the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list. One
-status may be viewed at a time; `All` includes terminal Applications as well as active ones and
-leaves Pipeline out of the address bar. A selected status is written into the address bar, so
-Dashboard deep-links and shared views land on the same tab and list.
+An Applications list's primary navigation through the Pipeline: `Open` first, then each of the
+eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
+leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
+One status may be viewed at a time. `Open` is where an untouched list starts and is the one choice
+the address bar leaves unwritten; `All` is still the whole eight, terminal Applications included,
+but it is now somewhere a reader goes rather than where they land. A selected tab is written into
+the address bar, so Dashboard deep-links and shared views land on the same tab and list.
 _Avoid_: Status filter, pipeline picker, stage filter.
+
+**Open**:
+The Pipeline tab of Applications still being decided — `new` through `offer`, which is
+`PIPELINE_LADDER` without `hired` — and what both Applications lists show before anybody touches a
+filter. A list that opens on thousands of rejections is a list nobody can work, and a Tenant
+receives thousands. The two statuses it leaves out, `rejected` and `withdrawn`, are exactly the two
+that are not on the ladder: one is where a Tenant ends an Application and the other is where a
+Candidate does, and neither is waiting on anybody. It hides nothing that has nowhere else to be
+read — Hired, Rejected and Withdrawn each keep their own tab, and `All` still means all, which is
+what lets every Dashboard deep-link keep landing on the number its stat claimed.
+_Avoid_: Active, In play, Unresolved, Inbox, Current.
 
 **Verdict filter**:
 The Screening filter over a list of Applications: a checkbox dropdown over all four verdicts, any
@@ -132,10 +144,12 @@ _Avoid_: Qualification filter, screening dropdown, verdict picker.
 
 **Applications page**:
 The Workspace destination that lists every Application the Tenant has received, across every Job,
-newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. It
-renders through the same table as the Triage list, with Pipeline tabs in the header and Screening
-kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job column, whose
-link leads to the Job rather than to the Application its row is, and the Time-range filter. A
+newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. Seeing
+everything means every Job rather than every status: it opens on `Open`, as every Applications list
+does. It renders through the same table as the Triage list, with Pipeline tabs in the header and
+Screening kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job
+column, whose link leads to the Job rather than to the Application its row is, and the Time-range
+filter. A
 verdict is reached against the Job that asked for those skills, so the Job column is what a reader
 checks one against here — the filter answers "who passed screening anywhere", which is the question
 the Dashboard's own count asks. The Received column turns around on a click, which is the two orders
@@ -321,13 +335,25 @@ send keeps the draft so the Recruiter can try the same message again.
 _Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
 **Jobs page**:
-The Workspace destination that lists the Tenant's Jobs, filtered by state on tabs and ordered by
-a picker beside them: newest, oldest, or most applications. Both live in the URL, so a view is
-shareable and a reload lands where the Recruiter was. Each row carries the views and the
-applications the Job has drawn, side by side, because reach and conversion are only worth
-anything read against each other. Views are all views, whatever brought them — the Tracked links
-tab is where they are broken down by Source.
+The Workspace destination that lists the Tenant's Jobs, filtered by state on tabs, narrowed by a
+title search and by Work mode, and ordered by a picker beside them: newest, oldest, or most
+applications. All of them live in the URL, so a view is shareable and a reload lands where the
+Recruiter was. The Work mode filter is the one a Candidate has over Browse, pointed at the
+Tenant's own Jobs — so "what have we got that is remote" is one question here rather than a read
+of every row. The two narrowing filters narrow the tab totals with the list; the state tabs never
+narrow each other, so every tab keeps saying how much of the same narrowed set it holds. Each row
+carries the views and the applications the Job has drawn, side by side, because reach and
+conversion are only worth anything read against each other. Views are all views, whatever brought
+them — the Tracked links tab is where they are broken down by Source.
 _Avoid_: Postings list, vacancies page.
+
+**Anywhere**:
+What a remote Job that names no Location reads as, wherever this portal would otherwise print the
+place — a Jobs-page row, the Job's facts, the wizard's Review step, an Applications row. It is the
+absence of a Location and never a place in the taxonomy, so the portal writes it rather than
+reading it off the Job. A Job on its way to being published still reads "Not set" while it has no
+Work mode at all: Anywhere is an answer, and that is the absence of one.
+_Avoid_: Remote (that is the Work mode), Worldwide, Not set (that is the unanswered case).
 
 **Job wizard**:
 The Workspace destination where a Job is written, a page of its own rather than a dialog, walked in

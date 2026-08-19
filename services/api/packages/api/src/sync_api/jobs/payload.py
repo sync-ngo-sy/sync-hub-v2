@@ -233,8 +233,9 @@ class JobPage(BaseModel):
         default=None, description="Send back as `cursor` for the following page."
     )
     status_counts: list[JobStatusCount] = Field(
-        description="Every Job lifecycle status, each with the Tenant's total in it. These "
-        "totals are independent of `q`, `status`, sorting and pagination.",
+        description="Every Job lifecycle status, each with the Tenant's total in it. The "
+        "narrowing filters — `q` and `work_mode` — narrow these too; `status`, sorting and "
+        "pagination leave them alone, so every tab reads its own total under the same filters.",
     )
 
 

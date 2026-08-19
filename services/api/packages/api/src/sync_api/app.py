@@ -48,6 +48,7 @@ from sync_core import (
     Settings,
     Storage,
     configure_logging,
+    documentation_urls,
     get_logger,
     get_settings,
 )
@@ -119,6 +120,7 @@ def create_app(
         lifespan=lifespan,
         responses=PROBLEM_RESPONSES,
         dependencies=[Depends(enforce_csrf_header)],
+        **documentation_urls(resolved),
     )
 
     # Added innermost first — Starlette treats the last one added as the outermost — so the

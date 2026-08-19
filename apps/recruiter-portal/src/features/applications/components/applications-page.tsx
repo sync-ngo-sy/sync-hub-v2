@@ -5,6 +5,7 @@ import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
+import { jobPlace } from '@/features/jobs/job';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
@@ -41,14 +42,17 @@ const JOB: DataTableColumn<TenantApplication> = {
       className="flex min-w-0 flex-col gap-1 rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <TruncatedText className="font-medium">{row.original.job.title}</TruncatedText>
-      {row.original.job.location_name ? (
-        <TruncatedText className="text-meta text-muted-foreground">
-          {row.original.job.location_name}
-        </TruncatedText>
-      ) : null}
+      <JobPlace job={row.original.job} />
     </Link>
   ),
 };
+
+function JobPlace({ job }: { job: TenantApplication['job'] }) {
+  const place = jobPlace(job);
+  if (place === null) return null;
+
+  return <TruncatedText className="text-meta text-muted-foreground">{place}</TruncatedText>;
+}
 
 const COLUMNS = applicationColumns<TenantApplication>(JOB);
 

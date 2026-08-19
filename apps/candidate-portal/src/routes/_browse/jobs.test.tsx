@@ -31,7 +31,7 @@ describe('browsing jobs', () => {
       within(developer).getByText('Levant Digital · Damascus · Remote · Full time'),
     ).toBeVisible();
     const pharmacist = within(list).getByRole('link', { name: /Pharmacist/ });
-    expect(within(pharmacist).getByText('Sham Care')).toBeVisible();
+    expect(within(pharmacist).getByText('Sham Care · Anywhere · Remote')).toBeVisible();
   });
 
   it('marks each row with the Tenant behind it, by its logo or by its letters', async () => {
@@ -152,6 +152,37 @@ describe('filtering jobs', () => {
     await user.click(await screen.findByRole('option', { name: 'Aleppo' }));
 
     await waitFor(() => expect(router.state.location.searchStr).toBe('?location=sy-aleppo'));
+    await waitFor(() =>
+      expect(rows()).toEqual([
+        expect.stringContaining('Field Coordinator'),
+        expect.stringContaining('Pharmacist'),
+      ]),
+    );
+  });
+
+  it('keeps the work that can be done Anywhere in a list narrowed to one Location', async () => {
+    server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
+
+    await renderApp('/jobs?location=sy-damascus');
+
+    await waitFor(() =>
+      expect(rows()).toEqual([
+        expect.stringContaining('Frontend Developer'),
+        expect.stringContaining('Anywhere'),
+      ]),
+    );
+  });
+
+  it('narrows the list to one work mode, and says so in the address bar', async () => {
+    server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
+
+    const { user, router } = await renderApp('/jobs');
+    await screen.findByRole('list', { name: 'Jobs' });
+
+    await user.click(screen.getByLabelText('Work mode'));
+    await user.click(await screen.findByRole('option', { name: 'On-site' }));
+
+    await waitFor(() => expect(router.state.location.searchStr).toBe('?mode=onsite'));
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
   });
 
@@ -180,7 +211,7 @@ describe('filtering jobs', () => {
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Pharmacist')]));
   });
 
-  it('composes all three, carrying a keyword still in the box into the next choice', async () => {
+  it('composes all four, carrying a keyword still in the box into the next choice', async () => {
     const { asked, spy } = records();
     server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS, spy));
 
@@ -190,6 +221,8 @@ describe('filtering jobs', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'coordinator');
     await user.click(screen.getByRole('combobox', { name: 'Location' }));
     await user.click(await screen.findByRole('option', { name: 'Aleppo' }));
+    await user.click(screen.getByLabelText('Work mode'));
+    await user.click(await screen.findByRole('option', { name: 'On-site' }));
     await user.click(screen.getByLabelText('Employment type'));
     await user.click(await screen.findByRole('option', { name: 'Contract' }));
 
@@ -197,6 +230,7 @@ describe('filtering jobs', () => {
       expect(router.state.location.search).toEqual({
         q: 'coordinator',
         location: 'sy-aleppo',
+        mode: 'onsite',
         type: 'contract',
       }),
     );
@@ -204,6 +238,7 @@ describe('filtering jobs', () => {
     expect(Object.fromEntries(asked.at(-1) ?? [])).toMatchObject({
       q: 'coordinator',
       location_key: 'sy-aleppo',
+      work_mode: 'onsite',
       employment_type: 'contract',
     });
   });
@@ -212,15 +247,17 @@ describe('filtering jobs', () => {
     const { asked, spy } = records();
     server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS, spy));
 
-    await renderApp('/jobs?q=field&location=sy-aleppo&type=contract');
+    await renderApp('/jobs?q=field&location=sy-aleppo&type=contract&mode=onsite');
 
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
     expect(screen.getByRole('searchbox', { name: 'Search jobs' })).toHaveValue('field');
     expect(await screen.findByRole('combobox', { name: 'Location' })).toHaveValue('Aleppo');
+    expect(screen.getByLabelText('Work mode')).toHaveTextContent('On-site');
     expect(screen.getByLabelText('Employment type')).toHaveTextContent('Contract');
     expect(Object.fromEntries(asked[0] ?? [])).toMatchObject({
       q: 'field',
       location_key: 'sy-aleppo',
+      work_mode: 'onsite',
       employment_type: 'contract',
     });
   });
@@ -244,10 +281,12 @@ describe('filtering jobs', () => {
     expect(screen.getByRole('searchbox', { name: 'Search jobs' })).toHaveValue('field');
   });
 
-  it('clears all three filters in one action', async () => {
+  it('clears every filter in one action', async () => {
     server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
 
-    const { user, router } = await renderApp('/jobs?q=field&location=sy-aleppo&type=contract');
+    const { user, router } = await renderApp(
+      '/jobs?q=field&location=sy-aleppo&type=contract&mode=onsite',
+    );
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
 
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
@@ -256,6 +295,7 @@ describe('filtering jobs', () => {
     await waitFor(() => expect(rows()).toHaveLength(PUBLIC_JOBS.length));
     expect(screen.getByRole('searchbox', { name: 'Search jobs' })).toHaveValue('');
     expect(screen.getByRole('combobox', { name: 'Location' })).toHaveValue('');
+    expect(screen.getByLabelText('Work mode')).toHaveTextContent('Any work mode');
     expect(screen.getByLabelText('Employment type')).toHaveTextContent('Any type');
     expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
   });
@@ -276,7 +316,7 @@ describe('filtering jobs', () => {
   it('clears a keyword typed but never applied, so nothing survives the one action', async () => {
     server.use(...signedOut(), ...filtersJobs(PUBLIC_JOBS));
 
-    const { user, router } = await renderApp('/jobs?location=sy-aleppo');
+    const { user, router } = await renderApp('/jobs?mode=onsite');
     await waitFor(() => expect(rows()).toEqual([expect.stringContaining('Field Coordinator')]));
     await user.type(screen.getByRole('searchbox', { name: 'Search jobs' }), 'nurse');
 
@@ -298,8 +338,8 @@ describe('filtering jobs', () => {
     const { user } = await renderApp('/jobs');
     await screen.findByRole('list', { name: 'Jobs' });
 
-    await user.click(screen.getByRole('combobox', { name: 'Location' }));
-    await user.click(await screen.findByRole('option', { name: 'Lebanon' }));
+    await user.click(screen.getByLabelText('Work mode'));
+    await user.click(await screen.findByRole('option', { name: 'Hybrid' }));
 
     expect(await screen.findByText(/No open roles match these filters/)).toBeVisible();
     expect(screen.queryByText(/No roles are open right now/)).toBeNull();
