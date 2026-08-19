@@ -219,8 +219,6 @@ async def test_inviting_someone_with_a_control_character_in_their_name_is_refuse
 ) -> None:
     await an_admin(browser, mailbox)
 
-    refused = await invite(
-        browser, email=an_invitee_address(), full_name="Yusuf\x00Nasser"
-    )
+    refused = await invite(browser, email=an_invitee_address(), full_name="Yusuf\x00Nasser")
 
     assert refused.status_code == 422, refused.text
