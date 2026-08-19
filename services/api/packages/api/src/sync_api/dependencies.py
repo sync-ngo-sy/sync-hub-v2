@@ -35,6 +35,7 @@ from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visi
 from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService
 from sync_api.platform import ActingPlatformAdmin, PlatformService, acting_platform_admin
+from sync_api.portals import Portals
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
 from sync_api.stats import StatsService
@@ -84,17 +85,23 @@ def get_session_cookies(
 SessionCookiesDep = Annotated[SessionCookies, Depends(get_session_cookies)]
 
 
+def get_portals(settings: Annotated[Settings, Depends(get_app_settings)]) -> Portals:
+    return Portals.of(settings)
+
+
+PortalsDep = Annotated[Portals, Depends(get_portals)]
+
+
 def get_auth_service(
     session: SessionDep,
     authentication: Annotated[Authentication, Depends(get_authentication)],
-    settings: Annotated[Settings, Depends(get_app_settings)],
+    portals: PortalsDep,
 ) -> AuthService:
     return AuthService(
         session,
         authentication.gotrue,
         authentication.verifier,
-        recruiter_portal_url=str(settings.recruiter_portal_url).rstrip("/"),
-        admin_portal_url=str(settings.admin_portal_url).rstrip("/"),
+        portals=portals,
     )
 
 

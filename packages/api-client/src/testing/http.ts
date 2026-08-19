@@ -5,6 +5,10 @@ export const API_ORIGIN = 'http://sync.test';
 
 export const http = createOpenApiHttp<paths>({ baseUrl: API_ORIGIN });
 
+export const CANDIDATE_PORTAL_ORIGIN = 'http://jobs.sync.test';
+export const RECRUITER_PORTAL_ORIGIN = 'http://app.sync.test';
+export const PLATFORM_PORTAL_ORIGIN = 'http://admin.sync.test';
+
 export const PROFILE: components['schemas']['ProfileView'] = {
   id: '00000000-0000-4000-8000-000000000001',
   email: 'candidate@sync.test',
@@ -12,6 +16,7 @@ export const PROFILE: components['schemas']['ProfileView'] = {
   account_type: 'candidate',
   avatar_url: null,
   phone: null,
+  portal_url: CANDIDATE_PORTAL_ORIGIN,
 };
 
 export const SESSION_EXPIRED: components['schemas']['ProblemDetail'] = {

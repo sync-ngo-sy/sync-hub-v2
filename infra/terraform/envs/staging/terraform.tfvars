@@ -40,6 +40,7 @@ services = {
       # Named explicitly, never a wildcard, and all three portals are needed: each is its own
       # origin and every authenticated request from them is cross-origin (ADR-0005).
       SYNC_CORS_ALLOWED_ORIGINS = "https://jobs-staging.sync.ngo,https://app-staging.sync.ngo,https://admin-staging.sync.ngo"
+      SYNC_CANDIDATE_PORTAL_URL = "https://jobs-staging.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app-staging.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin-staging.sync.ngo"
       # Both environments send from send.sync.ngo, because a second verified domain costs money
@@ -88,6 +89,7 @@ services = {
       # Required by Settings, which both services build in full. The worker needs them for real:
       # the emails it sends carry links into the portals. Without them the container exits at
       # import, which is how the first staging revision died.
+      SYNC_CANDIDATE_PORTAL_URL = "https://jobs-staging.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app-staging.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin-staging.sync.ngo"
     }

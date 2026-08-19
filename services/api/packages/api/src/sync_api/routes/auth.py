@@ -11,8 +11,14 @@ from sync_api.auth.password_policy import (
     MAXIMUM_PASSWORD_LENGTH,
     POLICY_SUMMARY,
 )
-from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
+from sync_api.dependencies import (
+    AuthServiceDep,
+    CurrentProfileDep,
+    PortalsDep,
+    SessionCookiesDep,
+)
 from sync_api.errors import openapi_problem
+from sync_api.portals import Portals
 from sync_api.rate_limit import enforce_auth_rate_limit, enforce_password_change_rate_limit
 from sync_api.text import OptionalIsoCountry, without_control_characters
 from sync_core.models import AccountType
@@ -62,9 +68,16 @@ class ProfileView(BaseModel):
     avatar_url: str | None
     phone: str | None = Field(default=None, description="In E.164.")
     phone_country: OptionalIsoCountry = None
+    portal_url: str = Field(
+        description=(
+            "Absolute URL of the portal that serves this account type. A portal reading a Profile "
+            "it does not serve sends the person here, rather than asking them to sign out."
+        ),
+        examples=["https://app.sync.ngo"],
+    )
 
     @classmethod
-    def of(cls, profile: ActingProfile) -> ProfileView:
+    def of(cls, profile: ActingProfile, portals: Portals) -> ProfileView:
         return cls(
             id=str(profile.id),
             email=profile.email,
@@ -73,6 +86,7 @@ class ProfileView(BaseModel):
             avatar_url=profile.avatar_url,
             phone=profile.phone,
             phone_country=profile.phone_country,
+            portal_url=portals.url_for(profile.account_type),
         )
 
 
@@ -124,12 +138,12 @@ class ChangePasswordRequest(BaseModel):
         **IDENTITY_PROVIDER_UNAVAILABLE,
     },
 )
-async def sign_up(body: SignUpRequest, auth: AuthServiceDep) -> ProfileView:
+async def sign_up(body: SignUpRequest, auth: AuthServiceDep, portals: PortalsDep) -> ProfileView:
     """Create the identity, Profile and Candidate, and email a confirmation link. No session yet."""
     profile = await auth.register_candidate(
         email=body.email, password=body.password, full_name=body.full_name
     )
-    return ProfileView.of(profile)
+    return ProfileView.of(profile, portals)
 
 
 @router.post(
@@ -147,9 +161,10 @@ async def confirm_email(
     auth: AuthServiceDep,
     cookies: SessionCookiesDep,
     response: Response,
+    portals: PortalsDep,
 ) -> ProfileView:
     """Redeem the `token_hash` from the confirmation email, and sign the candidate in."""
-    return _signed_in(await auth.confirm_email(body.token_hash), cookies, response)
+    return _signed_in(await auth.confirm_email(body.token_hash), cookies, response, portals)
 
 
 @router.post(
@@ -167,12 +182,14 @@ async def accept_invite(
     auth: AuthServiceDep,
     cookies: SessionCookiesDep,
     response: Response,
+    portals: PortalsDep,
 ) -> ProfileView:
     """Redeem the `token_hash` from an invite email, choose a password, and sign in."""
     return _signed_in(
         await auth.accept_invite(token_hash=body.token_hash, password=body.password),
         cookies,
         response,
+        portals,
     )
 
 
@@ -192,9 +209,10 @@ async def log_in(
     auth: AuthServiceDep,
     cookies: SessionCookiesDep,
     response: Response,
+    portals: PortalsDep,
 ) -> ProfileView:
     return _signed_in(
-        await auth.log_in(email=body.email, password=body.password), cookies, response
+        await auth.log_in(email=body.email, password=body.password), cookies, response, portals
     )
 
 
@@ -213,10 +231,11 @@ async def refresh_session(
     auth: AuthServiceDep,
     cookies: SessionCookiesDep,
     response: Response,
+    portals: PortalsDep,
 ) -> ProfileView:
     """Exchange the refresh cookie for a new session, and replace both cookies with it."""
     signed_in = await auth.refresh(cookies.read_refresh_token(request))
-    return _signed_in(signed_in, cookies, response)
+    return _signed_in(signed_in, cookies, response, portals)
 
 
 @router.post(
@@ -241,9 +260,9 @@ async def log_out(request: Request, auth: AuthServiceDep, cookies: SessionCookie
     summary="The signed-in Profile",
     responses={401: openapi_problem("There is no valid session.")},
 )
-async def get_current_profile(profile: CurrentProfileDep) -> ProfileView:
+async def get_current_profile(profile: CurrentProfileDep, portals: PortalsDep) -> ProfileView:
     """Who the session cookie belongs to, once Supabase has verified its token."""
-    return ProfileView.of(profile)
+    return ProfileView.of(profile, portals)
 
 
 @router.post(
@@ -316,6 +335,8 @@ async def change_password(
     return response
 
 
-def _signed_in(signed_in: SignedIn, cookies: SessionCookiesDep, response: Response) -> ProfileView:
+def _signed_in(
+    signed_in: SignedIn, cookies: SessionCookiesDep, response: Response, portals: Portals
+) -> ProfileView:
     cookies.issue(response, signed_in.session)
-    return ProfileView.of(signed_in.profile)
+    return ProfileView.of(signed_in.profile, portals)

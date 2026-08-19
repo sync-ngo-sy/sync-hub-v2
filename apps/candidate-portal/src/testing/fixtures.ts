@@ -1,4 +1,9 @@
 import type { components } from '@sync/api-client';
+import {
+  CANDIDATE_PORTAL_ORIGIN,
+  PLATFORM_PORTAL_ORIGIN,
+  RECRUITER_PORTAL_ORIGIN,
+} from '@sync/api-client/testing';
 import type { Cv } from '@/features/cvs/cv';
 import type { Notification } from '@/features/notifications/notification';
 
@@ -9,6 +14,7 @@ export const CANDIDATE: components['schemas']['ProfileView'] = {
   account_type: 'candidate',
   avatar_url: null,
   phone: null,
+  portal_url: CANDIDATE_PORTAL_ORIGIN,
 };
 
 export const RECRUITER: components['schemas']['ProfileView'] = {
@@ -18,6 +24,7 @@ export const RECRUITER: components['schemas']['ProfileView'] = {
   account_type: 'recruiter',
   avatar_url: null,
   phone: null,
+  portal_url: RECRUITER_PORTAL_ORIGIN,
 };
 
 export const PLATFORM_ADMIN: components['schemas']['ProfileView'] = {
@@ -27,6 +34,7 @@ export const PLATFORM_ADMIN: components['schemas']['ProfileView'] = {
   account_type: 'platform_admin',
   avatar_url: null,
   phone: null,
+  portal_url: PLATFORM_PORTAL_ORIGIN,
 };
 
 const FRONTEND_DEVELOPER: components['schemas']['PublicJobSummary'] = {

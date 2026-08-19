@@ -13,6 +13,7 @@ REQUIRED = {
     "database_url": "postgresql+asyncpg://postgres:postgres@127.0.0.1:54322/postgres",
     "supabase_service_role_key": SecretStr("service-role"),
     "supabase_anon_key": SecretStr("anon"),
+    "candidate_portal_url": "http://127.0.0.1:5173",
     "recruiter_portal_url": "http://127.0.0.1:5174",
     "admin_portal_url": "http://127.0.0.1:5175",
 }
