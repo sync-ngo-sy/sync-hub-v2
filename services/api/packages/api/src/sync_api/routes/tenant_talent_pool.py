@@ -4,6 +4,7 @@ from typing import Annotated, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
+from pydantic import BeforeValidator
 
 from sync_api.crm import PooledCandidate, TalentPoolOrder, TalentPoolPage
 from sync_api.dependencies import ActingRecruiterDep, TalentPoolServiceDep
@@ -11,6 +12,7 @@ from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.routes.tenant_candidates import CANDIDATE_OUT_OF_REACH
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
+from sync_api.text import without_control_characters
 from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/tenants/me/talent-pool"
@@ -38,6 +40,7 @@ async def list_talent_pool(
             "and whatever the case. It narrows the pool; it never reaches outside it.",
             examples=["haddad"],
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     sort: Annotated[
         TalentPoolOrder,

@@ -3,12 +3,14 @@ from __future__ import annotations
 from typing import Annotated, Final
 
 from fastapi import APIRouter, Query
+from pydantic import BeforeValidator
 
 from sync_api.dependencies import ActingRecruiterDep, TrackedLinkServiceDep
 from sync_api.errors import openapi_problem
 from sync_api.jobs import TenantTrackedLinkPage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
+from sync_api.text import without_control_characters
 
 ROUTER_PREFIX: Final = "/tenants/me/tracked-links"
 
@@ -35,6 +37,7 @@ async def list_tenant_tracked_links(
             max_length=SEARCH_LENGTH,
             description="Only links whose name contains this, ignoring case.",
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     is_active: Annotated[
         bool | None, Query(description="Only links that are on, or only those turned off.")

@@ -489,3 +489,23 @@ async def test_reading_jobs_is_rate_limited_by_the_route_not_the_job(
         refused = await read_public_job(spa, first["id"])
 
     assert refused.status_code == 429, refused.text
+
+
+async def test_a_search_term_with_a_control_character_searches_without_it(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    await a_published_job(recruiter, title="Backend Engineer")
+
+    found = await browse(visitor, q="backend engineer\x00")
+
+    assert [job["title"] for job in found] == ["Backend Engineer"]
+
+
+async def test_a_control_character_between_two_words_joins_them(
+    recruiter: AsyncClient, visitor: AsyncClient
+) -> None:
+    """Cut out and not replaced, so what was two words is one and matches nothing. It costs a
+    search nobody runs: a control character mid-word is put there, not typed there."""
+    await a_published_job(recruiter, title="Backend Engineer")
+
+    assert await browse(visitor, q="backend\x00engineer") == []

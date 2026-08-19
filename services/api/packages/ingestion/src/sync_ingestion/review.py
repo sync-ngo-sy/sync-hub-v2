@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from sync_core import get_logger
 from sync_core.links import github_address, linkedin_address, portfolio_address
 from sync_core.profile import (
+    CONTROL_CHARACTERS,
     EARLIEST_YEAR,
     LATEST_YEAR,
     MAX_ENTRIES,
@@ -233,9 +234,12 @@ def _link(value: str | None) -> str | None:
 
 
 def _text(value: str | None, limit: int) -> str | None:
+    """A control character is cut out rather than taking the value with it: nobody is waiting to
+    retype what the pipeline read, and a page break inside a summary is not a reason to lose the
+    summary. Tab, newline and carriage return stay: they are how a CV is laid out."""
     if value is None:
         return None
-    trimmed = value.strip()[:limit].strip()
+    trimmed = CONTROL_CHARACTERS.sub("", value).strip()[:limit].strip()
     return trimmed or None
 
 
