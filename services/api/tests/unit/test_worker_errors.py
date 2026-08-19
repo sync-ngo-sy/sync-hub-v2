@@ -18,7 +18,7 @@ def test_a_reason_names_an_exception_that_said_nothing() -> None:
 
 
 def test_a_reason_carries_no_control_character_into_the_column() -> None:
-    assert failure_reason(ValueError("read\x00the file")) == "ValueError: read the file"
+    assert failure_reason(ValueError("read\x00the file")) == "ValueError: readthe file"
 
 
 def test_a_reason_is_bounded() -> None:

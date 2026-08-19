@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated, Final
 
 from fastapi import Depends, Query
-from pydantic import AfterValidator, StringConstraints
+from pydantic import BeforeValidator, StringConstraints
 
 from sync_api.dependencies import SessionDep
 from sync_api.problems import (
@@ -38,13 +38,13 @@ FILTER_SEPARATOR: Final = ":"
 SkillFilter = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
 ]
 
 LanguageFilter = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LANGUAGE_FILTER_LENGTH),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
 ]
 
 
@@ -58,7 +58,7 @@ async def candidate_filters(
             "governorate never answers for the one beside it.",
             examples=["sy-damascus"],
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ] = None,
     language: Annotated[
         list[LanguageFilter] | None,
@@ -77,7 +77,7 @@ async def candidate_filters(
             description="A Canonical role's key, from `/v1/roles`.",
             examples=["frontend-engineer"],
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ] = None,
     min_total_experience: Annotated[
         int | None,

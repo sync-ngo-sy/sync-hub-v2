@@ -4,7 +4,7 @@ from typing import Annotated, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
-from pydantic import AfterValidator
+from pydantic import BeforeValidator
 
 from sync_api.crm import PooledCandidate, TalentPoolOrder, TalentPoolPage
 from sync_api.dependencies import ActingRecruiterDep, TalentPoolServiceDep
@@ -40,7 +40,7 @@ async def list_talent_pool(
             "and whatever the case. It narrows the pool; it never reaches outside it.",
             examples=["haddad"],
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ] = None,
     sort: Annotated[
         TalentPoolOrder,

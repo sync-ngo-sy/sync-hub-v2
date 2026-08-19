@@ -800,11 +800,12 @@ async def test_editing_a_published_job_does_not_pretend_it_just_went_live(
     assert edited.json()["published_at"] is None
 
 
-async def test_a_job_title_with_a_control_character_is_refused(
+async def test_a_job_title_with_a_control_character_is_created_without_it(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
     await an_admin(browser, mailbox)
 
-    refused = await post_job(browser, a_job(title="Staff\x00Engineer"))
+    created = await post_job(browser, a_job(title="Staff\x00Engineer"))
 
-    assert refused.status_code == 422, refused.text
+    assert created.status_code == 201, created.text
+    assert created.json()["title"] == "StaffEngineer"

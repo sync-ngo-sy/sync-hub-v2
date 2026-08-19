@@ -427,7 +427,11 @@ async def test_reading_the_queue_is_not_public(browser: AsyncClient) -> None:
     assert (await browser.post(f"{ASK}", json={})).status_code == 422
 
 
-async def test_a_company_with_a_control_character_is_refused(browser: AsyncClient) -> None:
-    refused = await ask_for_access(browser, replace(an_ask(), company="Acme\x00Recruiting"))
+async def test_a_company_with_a_control_character_is_recorded_without_it(
+    browser: AsyncClient, db_session: AsyncSession
+) -> None:
+    asked = await ask_for_access(browser, replace(an_ask(), company="Acme\x00Recruiting"))
 
-    assert refused.status_code == 422, refused.text
+    assert asked.status_code == 202, asked.text
+    recorded = (await db_session.execute(select(AccessRequest))).scalar_one()
+    assert recorded.company == "AcmeRecruiting"

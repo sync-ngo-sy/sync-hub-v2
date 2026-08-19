@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Query
-from pydantic import AfterValidator
+from pydantic import BeforeValidator
 
 from sync_api.candidate_directory.filters import CandidateFiltersDep
 from sync_api.dependencies import ActingRecruiterDep, CandidateSearchServiceDep
@@ -51,7 +51,7 @@ async def search_candidates(
             description="What you are looking for, in your own words.",
             examples=["backend engineer who has run payment systems"],
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ],
     keywords: Annotated[
         str | None,
@@ -60,7 +60,7 @@ async def search_candidates(
             description="Words that must appear somewhere in the profile — a skill, a job "
             'description, a qualification. Supports `"quoted phrases"`, `or` and `-excluded`.',
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")] = (
         DEFAULT_PAGE_SIZE

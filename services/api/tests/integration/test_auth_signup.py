@@ -149,11 +149,12 @@ async def test_a_signup_that_cannot_reach_the_database_strands_no_identity(
     assert await db_session.scalar(select(func.count()).select_from(Profile)) == 0
 
 
-async def test_signup_refuses_a_control_character_in_the_full_name(
+async def test_signup_cuts_a_control_character_out_of_the_full_name(
     browser: AsyncClient,
 ) -> None:
     signup = replace(a_signup(), full_name="Amina\x00Haddad")
 
-    refused = await sign_up(browser, signup)
+    response = await sign_up(browser, signup)
 
-    assert refused.status_code == 422, refused.text
+    assert response.status_code == 201, response.text
+    assert response.json()["full_name"] == "AminaHaddad"

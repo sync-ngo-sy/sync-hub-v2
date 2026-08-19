@@ -255,10 +255,13 @@ def test_a_section_longer_than_anyone_could_have_typed_is_cut() -> None:
     assert len(parse.experiences) == MAX_ENTRIES
 
 
-def test_a_parsed_value_keeps_the_text_around_a_control_character() -> None:
-    parse = reviewed(summary="Builds\x00payment systems", headline="Backend\x1bengineer")
+def test_a_parsed_value_keeps_its_text_without_the_control_character() -> None:
+    parse = reviewed(
+        summary="Builds payment systems.\n\x0cRan the ledger rewrite.",
+        headline="Backend engineer\x1b",
+    )
 
-    assert parse.summary == "Builds payment systems"
+    assert parse.summary == "Builds payment systems.\nRan the ledger rewrite."
     assert parse.headline == "Backend engineer"
 
 

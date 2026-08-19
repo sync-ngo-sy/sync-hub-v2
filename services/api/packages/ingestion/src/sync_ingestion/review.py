@@ -234,12 +234,12 @@ def _link(value: str | None) -> str | None:
 
 
 def _text(value: str | None, limit: int) -> str | None:
-    """A control character becomes a space rather than taking the value with it: nobody is waiting
-    to retype what the pipeline read, and a page break inside a summary is not a reason to lose the
+    """A control character is cut out rather than taking the value with it: nobody is waiting to
+    retype what the pipeline read, and a page break inside a summary is not a reason to lose the
     summary. Tab, newline and carriage return stay: they are how a CV is laid out."""
     if value is None:
         return None
-    trimmed = CONTROL_CHARACTERS.sub(" ", value).strip()[:limit].strip()
+    trimmed = CONTROL_CHARACTERS.sub("", value).strip()[:limit].strip()
     return trimmed or None
 
 

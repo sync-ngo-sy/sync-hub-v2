@@ -13,7 +13,6 @@ from sync_api.problems import (
     CV_EMPTY_PROBLEM_TYPE,
     CV_MEDIA_TYPE_PROBLEM_TYPE,
     CV_TOO_LARGE_PROBLEM_TYPE,
-    INVALID_CV_FILENAME_PROBLEM_TYPE,
     Problem,
 )
 from sync_api.uploads import limited_chunks
@@ -87,13 +86,10 @@ def _media_type_of(upload: UploadFile) -> str:
 
 
 def _display_name(upload: UploadFile) -> str:
-    name = Path(upload.filename or "").name.strip()
-    if CONTROL_CHARACTERS.search(name):
-        raise Problem(
-            status=422,
-            type=INVALID_CV_FILENAME_PROBLEM_TYPE,
-            detail="A CV filename cannot contain control characters.",
-        )
+    """A control character is cut out rather than refusing the upload: the name is what the
+    candidate reads on their own CV, and no candidate can see the byte that would have cost them
+    the file. A name that was nothing else falls back the way a nameless upload already does."""
+    name = CONTROL_CHARACTERS.sub("", Path(upload.filename or "").name).strip()
     return name[:MAX_LINE_LENGTH] if name else "CV"
 
 

@@ -4,7 +4,7 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
-from pydantic import AfterValidator
+from pydantic import BeforeValidator
 
 from sync_api.applications import ApplicationSort, ApplicationSummaryPage
 from sync_api.dependencies import (
@@ -82,7 +82,7 @@ async def list_jobs(
             "the case.",
             examples=["designer"],
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ] = None,
     job_status: Annotated[
         JobStatus | None,

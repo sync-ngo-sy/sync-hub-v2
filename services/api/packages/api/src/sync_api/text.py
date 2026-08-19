@@ -33,31 +33,29 @@ def _blank_as_unset(value: object) -> object:
     return None if isinstance(value, str) and not value.strip() else value
 
 
-def without_control_characters(value: str | None) -> str | None:
-    """Postgres cannot store a NUL and no reader can read the rest of the control range, so a
-    value holding one is refused where the text types are defined rather than crashing later
-    where it is written. Tab, newline and carriage return are content, not control. Runs after
-    the whitespace strip, which has already taken a vertical tab or a form feed off either end,
-    so what is refused here is a control character inside the text."""
-    if value is not None and CONTROL_CHARACTERS.search(value):
-        raise ValueError("Text cannot contain control characters.")
-    return value
+def without_control_characters(value: object) -> object:
+    """Postgres cannot store a NUL and no reader can read the rest of the control range, so they
+    are cut out where the text types are defined rather than crashing later where the value is
+    written. Cut and not refused: a form feed pasted out of a PDF is invisible to whoever pasted
+    it, and what held nothing else is left empty for the length rule to refuse. Runs before that
+    rule, so the length is the text's own. Tab, newline and carriage return are content."""
+    return CONTROL_CHARACTERS.sub("", value) if isinstance(value, str) else value
 
 
 Line = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
 ]
 Paragraph = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
 ]
 Link = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
 ]
 
 OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
@@ -120,7 +118,7 @@ PortfolioUrl = Annotated[
 LanguageCode = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
     Field(description="A code from the platform's `languages` table.", examples=["en"]),
 ]
 

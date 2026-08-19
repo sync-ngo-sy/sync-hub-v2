@@ -4,7 +4,7 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile, status
-from pydantic import AfterValidator, BaseModel, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field
 
 from sync_api.dependencies import (
     ActingRecruiterDep,
@@ -47,7 +47,7 @@ Slug = Annotated[
 FullName = Annotated[
     str,
     Field(min_length=1, max_length=200),
-    AfterValidator(without_control_characters),
+    BeforeValidator(without_control_characters),
 ]
 
 

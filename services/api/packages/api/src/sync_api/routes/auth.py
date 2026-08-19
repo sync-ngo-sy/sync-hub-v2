@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Depends, Request, Response, status
-from pydantic import AfterValidator, BaseModel, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field
 
 from sync_api.auth import ActingProfile, SignedIn
 from sync_api.auth.password_policy import (
@@ -80,7 +80,7 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: NewPassword
     full_name: Annotated[
-        str, Field(min_length=1, max_length=200), AfterValidator(without_control_characters)
+        str, Field(min_length=1, max_length=200), BeforeValidator(without_control_characters)
     ]
 
 

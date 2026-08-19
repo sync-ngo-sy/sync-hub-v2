@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Final
 
 from fastapi import APIRouter, Query
-from pydantic import AfterValidator
+from pydantic import BeforeValidator
 
 from sync_api.dependencies import ActingRecruiterDep, TrackedLinkServiceDep
 from sync_api.errors import openapi_problem
@@ -37,7 +37,7 @@ async def list_tenant_tracked_links(
             max_length=SEARCH_LENGTH,
             description="Only links whose name contains this, ignoring case.",
         ),
-        AfterValidator(without_control_characters),
+        BeforeValidator(without_control_characters),
     ] = None,
     is_active: Annotated[
         bool | None, Query(description="Only links that are on, or only those turned off.")
