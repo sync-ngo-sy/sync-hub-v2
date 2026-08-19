@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from pydantic import BaseModel
 
-from sync_core import configure_logging, get_logger, get_settings
+from sync_core import configure_logging, documentation_urls, get_logger, get_settings
 from sync_worker.oidc import OidcRejectedError, SchedulerTokens
 from sync_worker.worker import Worker
 
@@ -141,7 +141,7 @@ def create_app(settings: Settings | None = None, worker: Worker | None = None) -
                 await app.state.worker.aclose()
             logger.info("worker.service_stopped")
 
-    app = FastAPI(title="Sync Hub worker", lifespan=lifespan)
+    app = FastAPI(title="Sync Hub worker", lifespan=lifespan, **documentation_urls(resolved))
 
     @app.get("/health")
     async def health() -> dict[str, str]:

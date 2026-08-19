@@ -85,7 +85,9 @@ curl -sS -X POST localhost:8080/scheduled -H "X-Worker-Secret: $SYNC_WORKER_SHAR
 
 For local work the `drain` command is almost always what you want.
 
-The API serves `http://127.0.0.1:8000`, with OpenAPI at `/docs` and `/openapi.json`.
+The API serves `http://127.0.0.1:8000`, with OpenAPI at `/docs` and `/openapi.json`. Both
+are local and CI only: a deployed API and a deployed worker answer 404 on `/docs`,
+`/redoc` and `/openapi.json`, so neither hands out its own surface.
 
 ## 2b. Run the processes as containers
 
