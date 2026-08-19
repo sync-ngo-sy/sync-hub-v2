@@ -111,13 +111,25 @@ sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
 **Pipeline tabs**:
-An Applications list's primary navigation through the Pipeline: `All` followed by each of the
-eight statuses in Pipeline order. Each tab carries the API's count as the other filters leave it;
-the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list. One
-status may be viewed at a time; `All` includes terminal Applications as well as active ones and
-leaves Pipeline out of the address bar. A selected status is written into the address bar, so
-Dashboard deep-links and shared views land on the same tab and list.
+An Applications list's primary navigation through the Pipeline: `Open` first, then each of the
+eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
+leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
+One status may be viewed at a time. `Open` is where an untouched list starts and is the one choice
+the address bar leaves unwritten; `All` is still the whole eight, terminal Applications included,
+but it is now somewhere a reader goes rather than where they land. A selected tab is written into
+the address bar, so Dashboard deep-links and shared views land on the same tab and list.
 _Avoid_: Status filter, pipeline picker, stage filter.
+
+**Open**:
+The Pipeline tab of Applications still being decided — `new` through `offer`, which is
+`PIPELINE_LADDER` without `hired` — and what both Applications lists show before anybody touches a
+filter. A list that opens on thousands of rejections is a list nobody can work, and a Tenant
+receives thousands. The two statuses it leaves out, `rejected` and `withdrawn`, are exactly the two
+that are not on the ladder: one is where a Tenant ends an Application and the other is where a
+Candidate does, and neither is waiting on anybody. It hides nothing that has nowhere else to be
+read — Hired, Rejected and Withdrawn each keep their own tab, and `All` still means all, which is
+what lets every Dashboard deep-link keep landing on the number its stat claimed.
+_Avoid_: Active, In play, Unresolved, Inbox, Current.
 
 **Verdict filter**:
 The Screening filter over a list of Applications: a checkbox dropdown over all four verdicts, any
@@ -132,10 +144,12 @@ _Avoid_: Qualification filter, screening dropdown, verdict picker.
 
 **Applications page**:
 The Workspace destination that lists every Application the Tenant has received, across every Job,
-newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. It
-renders through the same table as the Triage list, with Pipeline tabs in the header and Screening
-kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job column, whose
-link leads to the Job rather than to the Application its row is, and the Time-range filter. A
+newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. Seeing
+everything means every Job rather than every status: it opens on `Open`, as every Applications list
+does. It renders through the same table as the Triage list, with Pipeline tabs in the header and
+Screening kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job
+column, whose link leads to the Job rather than to the Application its row is, and the Time-range
+filter. A
 verdict is reached against the Job that asked for those skills, so the Job column is what a reader
 checks one against here — the filter answers "who passed screening anywhere", which is the question
 the Dashboard's own count asks. The Received column turns around on a click, which is the two orders
