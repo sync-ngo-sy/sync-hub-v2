@@ -32,10 +32,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # The skills tree under `.claude/skills/` is vendored -- `skills-lock.json` names the
+      # upstream of each one. An alert in it is not ours to correct here; the correction goes
+      # upstream, and until it lands the alert sits in this repository's security tab with no
+      # action attached to it. Today the tree holds Markdown, YAML and one shell template, which
+      # neither extractor reads, so this excludes nothing yet. It is here so that stays true when
+      # a skill arrives carrying JavaScript. `paths-ignore` applies because neither language
+      # builds. `.agents/skills` is the symlink to the same files (#328).
       - name: Initialise CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          config: |
+            paths-ignore:
+              - .claude/skills
+              - .agents/skills
 
       # No build step: both languages are interpreted, so CodeQL's default extraction is
       # enough and a build would only add the workspace install to every run.

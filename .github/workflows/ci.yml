@@ -21,6 +21,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Before the install, because it needs git only and it is the cheapest check here.
+      - name: Skills tree is committed once
+        run: ./scripts/check-skills-tree.sh
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
 
