@@ -4,12 +4,14 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BeforeValidator
 
 from sync_api.dependencies import JobBrowseServiceDep, VisitorDep
 from sync_api.errors import openapi_problem
 from sync_api.jobs import PublicJob, PublicJobPage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_public_rate_limit
+from sync_api.text import without_control_characters
 from sync_core.models import EmploymentType, WorkMode
 from sync_core.profile import MAX_LINE_LENGTH
 
@@ -46,6 +48,7 @@ async def browse_jobs(
             "`or` and `-excluded`.",
             examples=["backend engineer python"],
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     location_key: Annotated[
         str | None,
@@ -56,6 +59,7 @@ async def browse_jobs(
             "no Location, because those can be done from here as well as from anywhere else.",
             examples=["sy-damascus"],
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     employment_type: Annotated[
         EmploymentType | None,

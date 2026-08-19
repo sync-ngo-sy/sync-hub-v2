@@ -278,3 +278,14 @@ async def test_suspending_a_tenant_that_does_not_exist_is_a_404(
 
     assert missing.status_code == 404, missing.text
     assert missing.json()["type"] == TENANT_NOT_FOUND
+
+
+async def test_a_tenant_name_with_a_control_character_is_opened_without_it(
+    app: FastAPI, browser: AsyncClient, db_session: AsyncSession
+) -> None:
+    await a_signed_in_platform_admin(app, browser, db_session)
+
+    opened = await create_tenant(browser, replace(a_new_tenant(), name="Acme\x00Recruiting"))
+
+    assert opened.status_code == 201, opened.text
+    assert opened.json()["tenant"]["name"] == "AcmeRecruiting"

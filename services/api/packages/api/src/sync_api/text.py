@@ -6,7 +6,12 @@ from typing import Annotated, Final
 from pydantic import AfterValidator, BeforeValidator, Field, StringConstraints
 
 from sync_core.links import github_address, linkedin_address, portfolio_address
-from sync_core.profile import MAX_LINE_LENGTH, MAX_LINK_LENGTH, MAX_PARAGRAPH_LENGTH
+from sync_core.profile import (
+    CONTROL_CHARACTERS,
+    MAX_LINE_LENGTH,
+    MAX_LINK_LENGTH,
+    MAX_PARAGRAPH_LENGTH,
+)
 
 #: Backslash rather than the default, which is `%` itself and cannot then escape one.
 LIKE_ESCAPE: Final = "\\"
@@ -28,14 +33,29 @@ def _blank_as_unset(value: object) -> object:
     return None if isinstance(value, str) and not value.strip() else value
 
 
+def without_control_characters(value: object) -> object:
+    """Postgres cannot store a NUL and no reader can read the rest of the control range, so they
+    are cut out where the text types are defined rather than crashing later where the value is
+    written. Cut and not refused: a form feed pasted out of a PDF is invisible to whoever pasted
+    it, and what held nothing else is left empty for the length rule to refuse. Runs before that
+    rule, so the length is the text's own. Tab, newline and carriage return are content."""
+    return CONTROL_CHARACTERS.sub("", value) if isinstance(value, str) else value
+
+
 Line = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH)
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
+    BeforeValidator(without_control_characters),
 ]
 Paragraph = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH)
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH),
+    BeforeValidator(without_control_characters),
 ]
 Link = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH)
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH),
+    BeforeValidator(without_control_characters),
 ]
 
 OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
@@ -98,6 +118,7 @@ PortfolioUrl = Annotated[
 LanguageCode = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
+    BeforeValidator(without_control_characters),
     Field(description="A code from the platform's `languages` table.", examples=["en"]),
 ]
 

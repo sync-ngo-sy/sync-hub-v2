@@ -165,3 +165,47 @@ async def test_notes_about_a_candidate_and_notes_on_their_application_stay_apart
 
     assert [note["text"] for note in on_the_application] == ["Answered every question."]
     assert [note["text"] for note in about_the_person] == ["Worth keeping warm."]
+
+
+async def test_a_note_with_a_null_byte_is_saved_without_it_not_crashed(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The pentest's own repro: the byte Postgres refuses used to reach it and become a 500."""
+    application = await an_application_to_this_tenant(recruiter, other_browser, mailbox, db_session)
+
+    written = await write_note(
+        recruiter, application_notes(application["id"]), "Strong on\x00payments."
+    )
+
+    assert written.status_code == 201, written.text
+    assert written.json()["text"] == "Strong onpayments."
+
+
+async def test_a_note_of_nothing_but_control_characters_is_refused(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to_this_tenant(recruiter, other_browser, mailbox, db_session)
+
+    refused = await write_note(recruiter, application_notes(application["id"]), "\x00\x01")
+
+    assert refused.status_code == 422, refused.text
+
+
+async def test_a_multi_line_note_keeps_its_line_breaks(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    application = await an_application_to_this_tenant(recruiter, other_browser, mailbox, db_session)
+    written = "Strong on payments.\r\nWorth a call today."
+
+    note = await a_note(recruiter, application_notes(application["id"]), written)
+
+    assert note["text"] == written
