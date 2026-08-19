@@ -27,6 +27,11 @@ def test_a_line_keeps_a_tab_as_content() -> None:
     assert line.validate_python("Senior\tEngineer") == "Senior\tEngineer"
 
 
+def test_a_line_refuses_whitespace_only_content() -> None:
+    with pytest.raises(ValidationError):
+        line.validate_python("   ")
+
+
 def test_a_paragraph_keeps_line_breaks_and_tabs_as_content() -> None:
     written = "Strong on payments.\r\nRan the ledger rewrite.\tTwice."
     assert paragraph.validate_python(written) == written

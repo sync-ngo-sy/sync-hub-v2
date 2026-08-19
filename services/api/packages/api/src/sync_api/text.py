@@ -44,18 +44,18 @@ def without_control_characters(value: str | None) -> str | None:
 
 Line = Annotated[
     str,
-    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
+    AfterValidator(without_control_characters),
 ]
 Paragraph = Annotated[
     str,
-    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_PARAGRAPH_LENGTH),
+    AfterValidator(without_control_characters),
 ]
 Link = Annotated[
     str,
-    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINK_LENGTH),
+    AfterValidator(without_control_characters),
 ]
 
 OptionalLine = Annotated[Line | None, BeforeValidator(_blank_as_unset)]
@@ -117,8 +117,8 @@ PortfolioUrl = Annotated[
 
 LanguageCode = Annotated[
     str,
-    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),
+    AfterValidator(without_control_characters),
     Field(description="A code from the platform's `languages` table.", examples=["en"]),
 ]
 

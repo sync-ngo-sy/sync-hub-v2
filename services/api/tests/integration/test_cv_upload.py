@@ -142,7 +142,24 @@ async def test_a_filename_with_a_control_character_is_refused(
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
 
-    response = await upload_cv(browser, filename="amina-haddad\x00.pdf")
+    # httpx percent-encodes control bytes in `files=`, so send a raw NUL byte
+    # in the multipart Content-Disposition header by hand.
+    boundary = "sync-control-character-boundary"
+    body = (
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="file"; filename="amina-haddad\x00.pdf"\r\n'
+            "Content-Type: application/pdf\r\n\r\n"
+        ).encode()
+        + some_bytes()
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
+
+    response = await browser.post(
+        CVS,
+        content=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
 
     assert response.status_code == 422, response.text
     assert response.json()["type"].endswith("cv-filename")

@@ -37,14 +37,14 @@ FILTER_SEPARATOR: Final = ":"
 
 SkillFilter = Annotated[
     str,
-    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LINE_LENGTH),
+    AfterValidator(without_control_characters),
 ]
 
 LanguageFilter = Annotated[
     str,
-    AfterValidator(without_control_characters),
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_LANGUAGE_FILTER_LENGTH),
+    AfterValidator(without_control_characters),
 ]
 
 
