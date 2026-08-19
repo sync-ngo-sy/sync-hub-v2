@@ -170,7 +170,7 @@ jobs:
       # Pinned, unlike CI's: this one runs `db push` against production, so the tool that applies
       # the migration is part of the artifact and moves when we say it moves.
       - name: Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
           version: 2.113.0
 
@@ -211,7 +211,7 @@ jobs:
       # The binary that writes state, pinned for the same reason `.terraform.lock.hcl` pins the
       # providers: an upgrade should be a commit, not whatever shipped this morning.
       - name: OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: 1.12.5
 
