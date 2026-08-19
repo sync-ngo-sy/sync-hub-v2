@@ -122,7 +122,10 @@ reviewed profile plus the Candidate's answers, and is the authoritative input to
 Screening. One per (Candidate, Job). Every move it makes is appended to its history, and a move a
 person decided names the person: only the platform itself moves an Application with nobody behind
 it, so an entry from a Recruiter or a Candidate that names no author is one the schema refuses.
-_Avoid_: Submission, Entry.
+It is never put away: there is no archived status and no hidden state, because deciding an
+Application and clearing it from the working list turn out to be the same act — what has ended
+leaves the list of what has not, and nothing else moves.
+_Avoid_: Submission, Entry, Archive (a Job is archived; an Application ends).
 
 **Snapshot**:
 The frozen, candidate-reviewed profile captured when an Application is created — identity,
@@ -143,10 +146,25 @@ to it — Received, In review, then the outcome. Everything a Tenant does betwee
 decision is one Stage, so a Recruiter shortlisting and un-shortlisting somebody is invisible and
 silent. A Candidate is notified when the Stage changes and at no other time, which is what lets
 the pipeline stay as non-linear as hiring really is. It is no column of this schema and never
-will be: it is computed from `applications.status` wherever it is read, so there is no second
-copy of the truth to keep in step, and a status added to the pipeline has to answer what it
-reads as before the code will start.
+will be: it is computed from `applications.status` and the Telling wherever it is read, so there
+is no second copy of the truth to keep in step, and a status added to the pipeline has to answer
+what it reads as before the code will start. It answers to time as well as to status: a rejection
+reads as In review until its Telling.
 _Avoid_: Status (the Tenant's word, and it has eight values), step, progress.
+
+**Telling**:
+The moment a decision reaches the Candidate, three days after the Tenant took it
+(`applications.told_at`). Deciding and telling are two moments rather than one: the Recruiter's
+list clears at the click, and for three days the Candidate's Stage still reads In review, the bell
+is silent and the email waits. One column holds all three to the same day — the Stage projection
+reads it, `notifications.visible_at` holds the bell to it, and `communications.available_at` holds
+the email. Only a rejection has one; a hire and a withdrawal are told at once. Three days is one
+platform-wide number rather than a Tenant's to set, because a Candidate hears from several Tenants
+through Sync, and a wait that varied by employer would read as arbitrary to the person waiting.
+What falls out of it is the point: a decision taken back before its Telling was never a decision
+the Candidate saw, so the queued rejection is cancelled and there is nothing to apologise for.
+_Avoid_: Reveal, Publish, Release, Send (that is the email, one channel of three), Grace period
+(that names the gap rather than the moment).
 
 **Hire claim**:
 What a Tenant says happened when it moves an Application to `hired`: the day the work started,
