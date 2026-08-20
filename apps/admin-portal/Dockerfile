@@ -20,7 +20,6 @@ WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/admin-portal/package.json apps/admin-portal/
 COPY packages/api-client/package.json packages/api-client/
-COPY packages/db-types/package.json packages/db-types/
 COPY packages/ui/package.json packages/ui/
 RUN pnpm install --frozen-lockfile --filter '@sync/admin-portal...'
 
