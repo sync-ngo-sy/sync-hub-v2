@@ -86,8 +86,7 @@ insert into skill_categories (name) values
   ('Cloud & DevOps'),
   ('Data & Machine Learning'),
   ('Design'),
-  ('Tools & Platforms'),
-  ('Soft Skills')
+  ('Tools & Platforms')
 on conflict (name) do nothing;
 
 insert into skill_taxonomy (category_id, canonical_name)
@@ -125,9 +124,6 @@ join (values
   ('Design','Figma'), ('Design','UI/UX Design'), ('Design','Adobe Photoshop'),
 
   ('Tools & Platforms','Git'), ('Tools & Platforms','Jira'),
-  ('Tools & Platforms','GraphQL'), ('Tools & Platforms','REST APIs'),
-
-  ('Soft Skills','Communication'), ('Soft Skills','Leadership'),
-  ('Soft Skills','Teamwork'), ('Soft Skills','Problem Solving')
+  ('Tools & Platforms','GraphQL'), ('Tools & Platforms','REST APIs')
 ) as v(category, name) on c.name = v.category
 on conflict (canonical_name) do nothing;

@@ -319,7 +319,8 @@ _Avoid_: Impression, Hit, Visit.
 
 **Canonical skill**:
 A platform-global entry in the skill taxonomy (one spelling, one id). Everything Screening
-compares — a Candidate's skills, a Job's requirements — is expressed in Canonical skills.
+compares — a Candidate's skills, a Job's requirements — is expressed in Canonical skills. The
+taxonomy names only what a number of years is a fair reading of, so no soft skill is one.
 CV parsing maps free-text skills onto Canonical skills in-model; what cannot be mapped is
 surfaced to the Candidate at review and never influences Screening.
 _Avoid_: Skill string, Keyword.
