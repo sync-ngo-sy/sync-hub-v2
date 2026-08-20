@@ -1,52 +1,24 @@
-import { type QueryClient, queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, client } from '@/lib/api';
+import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import type { PooledCandidate, PoolPage, PoolReading } from '../pool';
 import {
-  POOL_PAGE_SIZE,
-  type PooledCandidate,
-  type PoolPage,
-  type PoolReading,
-  poolQuery,
-  readWholePool,
-} from '../pool';
-
-export const POOL_PATH = '/v1/tenants/me/talent-pool';
-export const POOL_ENTRY_PATH = '/v1/tenants/me/talent-pool/{candidate_id}';
-
-export const SAVED_PAGE_SIZE = 20;
-
-export const talentPoolQuery = queryOptions({
-  queryKey: ['talent-pool', 'whole'],
-  queryFn: () =>
-    readWholePool(async (cursor) => {
-      const { data, error } = await client.GET(POOL_PATH, {
-        params: { query: { cursor, limit: POOL_PAGE_SIZE } },
-      });
-      if (error) throw error;
-      return data;
-    }),
-});
+  POOL_ENTRY_PATH,
+  POOL_PATH,
+  savedCandidatesFirstPage,
+  savedCandidatesPage,
+  useRereadTalentPool,
+  wholePool,
+} from '../reread';
 
 export function warmTalentPool(queryClient: QueryClient): Promise<PooledCandidate[]> {
-  return queryClient.ensureQueryData(talentPoolQuery).catch(() => []);
-}
-
-function savedParams(reading: PoolReading, cursor?: string | null) {
-  return { params: { query: { ...poolQuery(reading), limit: SAVED_PAGE_SIZE, cursor } } };
-}
-
-export function savedCandidatesFirstPageQuery(reading: PoolReading) {
-  return api.queryOptions('get', POOL_PATH, savedParams(reading, null));
-}
-
-function savedCandidatesPrefix() {
-  return api.queryOptions('get', POOL_PATH).queryKey.slice(0, 2);
+  return queryClient.ensureQueryData(wholePool()).catch(() => []);
 }
 
 export function warmSavedCandidates(
   queryClient: QueryClient,
   reading: PoolReading,
 ): Promise<PoolPage | undefined> {
-  return queryClient.ensureQueryData(savedCandidatesFirstPageQuery(reading)).catch(() => undefined);
+  return queryClient.ensureQueryData(savedCandidatesFirstPage(reading)).catch(() => undefined);
 }
 
 export interface TalentPool {
@@ -58,7 +30,7 @@ export interface TalentPool {
 }
 
 export function useTalentPool(): TalentPool {
-  const pool = useQuery(talentPoolQuery);
+  const pool = useQuery(wholePool());
   const saved = pool.data ?? [];
 
   return {
@@ -72,11 +44,11 @@ export function useTalentPool(): TalentPool {
 
 export function useSavedCandidates(reading: PoolReading) {
   const queryClient = useQueryClient();
-  const firstPageQuery = savedCandidatesFirstPageQuery(reading);
+  const firstPageQuery = savedCandidatesFirstPage(reading);
   const firstPage = queryClient.getQueryData<PoolPage>(firstPageQuery.queryKey);
   const firstPageUpdatedAt = queryClient.getQueryState(firstPageQuery.queryKey)?.dataUpdatedAt;
 
-  return api.useInfiniteQuery('get', POOL_PATH, savedParams(reading), {
+  return api.useInfiniteQuery('get', POOL_PATH, savedCandidatesPage(reading), {
     initialPageParam: null,
     getNextPageParam: (page) => page.next_cursor,
     select: (data) => data.pages.flatMap((page) => page.items),
@@ -92,13 +64,7 @@ export interface TalentPoolActions {
 }
 
 export function useTalentPoolActions(): TalentPoolActions {
-  const queryClient = useQueryClient();
-
-  const reread = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: talentPoolQuery.queryKey, refetchType: 'all' }),
-      queryClient.invalidateQueries({ queryKey: savedCandidatesPrefix(), refetchType: 'all' }),
-    ]);
+  const reread = useRereadTalentPool();
 
   const save = api.useMutation('put', POOL_ENTRY_PATH, { onSuccess: reread });
   const drop = api.useMutation('delete', POOL_ENTRY_PATH, { onSuccess: reread });
