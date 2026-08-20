@@ -644,7 +644,9 @@ async def verify(
             if candidate.external_id
         ]
     ledger = Ledger.at(chosen.ledger_path)
-    verdict = await Verification(pool, supabase, ledger).run(in_manatal=in_manatal)
+    verdict = await Verification(
+        pool, supabase, ledger, concurrency=chosen.concurrency, announce=say
+    ).run(in_manatal=in_manatal)
     for line in verdict.as_lines():
         say(line)
     return 0 if verdict.is_sound else 1

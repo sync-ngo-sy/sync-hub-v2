@@ -11,15 +11,17 @@ migration is what mends the ones that can be mended.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from ledger import State
+from progress import Progress
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     import asyncpg
 
@@ -81,20 +83,54 @@ class Verdict:
 class Verification:
     """Reads the platform back and compares it with the ledger, one candidate at a time."""
 
-    def __init__(self, pool: asyncpg.Pool, supabase: Supabase, ledger: Ledger) -> None:
+    def __init__(
+        self,
+        pool: asyncpg.Pool,
+        supabase: Supabase,
+        ledger: Ledger,
+        *,
+        concurrency: int = 4,
+        announce: Callable[[str], None] = lambda _line: None,
+    ) -> None:
         self._pool = pool
         self._supabase = supabase
         self._ledger = ledger
+        self._concurrency = max(1, concurrency)
+        self._announce = announce
 
     async def run(self, *, in_manatal: Sequence[str] = ()) -> Verdict:
+        """Every candidate the ledger claims, checked as many at a time as the import ran.
+
+        The expensive part is re-downloading each CV to re-hash it, and done one at a time that is
+        a long serial pass over 5,000 files — long enough that somebody skips the verification
+        they were told to run, which is the same as having none. Same fan-out as the import,
+        because it is the same two services being asked.
+        """
         verdict = Verdict()
-        for entry in self._ledger:
-            if entry.state not in {State.IMPORTED, State.PUBLISHED, State.LEFT_ALONE}:
-                continue
+        checking = [
+            entry
+            for entry in self._ledger
+            if entry.state in {State.IMPORTED, State.PUBLISHED, State.LEFT_ALONE}
+        ]
+        gate = asyncio.Semaphore(self._concurrency)
+        walking = Progress(total=len(checking))
+
+        async def one(entry: Entry) -> Verdict:
+            """Each candidate collects its own findings, so counting them stays correct however
+            they interleave."""
+            async with gate:
+                found = Verdict()
+                await self._check(entry, found)
+                walking.advance()
+                if walking.done % 100 == 0 or walking.done == walking.total:
+                    self._announce(f"  {walking.line()}")
+                return found
+
+        # `gather` keeps the order it was given, so the report reads the same on every run.
+        for found in await asyncio.gather(*(one(entry) for entry in checking)):
             verdict.checked += 1
-            before = len(verdict.discrepancies)
-            await self._check(entry, verdict)
-            if len(verdict.discrepancies) == before:
+            verdict.discrepancies.extend(found.discrepancies)
+            if not found.discrepancies:
                 verdict.sound += 1
 
         verdict.missing_from_ledger = [

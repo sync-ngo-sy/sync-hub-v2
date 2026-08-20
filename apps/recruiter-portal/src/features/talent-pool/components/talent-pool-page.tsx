@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
+import { StatusMark } from '@sync/ui/components/status-mark';
 import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
@@ -35,6 +36,26 @@ const TO_SEARCH = (
   </Link>
 );
 
+const UNCLAIMED_HINT =
+  'Brought across from Manatal. Nobody has signed in to this account, so nothing on the profile has been confirmed by them.';
+
+const IMPORTED_HINT = 'Brought across from Manatal. They have since signed in.';
+
+function provenanceOf(entry: PooledCandidate) {
+  // Blank rather than an em-dash: the dash means "they told us nothing here", and somebody who
+  // signed themselves up is not missing a provenance — they have the ordinary one.
+  if (!entry.is_imported_from_manatal) return null;
+  const unclaimed = !entry.is_claimed;
+  return (
+    <span title={unclaimed ? UNCLAIMED_HINT : IMPORTED_HINT}>
+      <StatusMark
+        tone={unclaimed ? 'waiting' : 'active'}
+        label={unclaimed ? 'Imported · unclaimed' : 'Imported'}
+      />
+    </span>
+  );
+}
+
 const COLUMNS: DataTableColumn<PooledCandidate>[] = [
   {
     accessorKey: 'full_name',
@@ -69,6 +90,12 @@ const COLUMNS: DataTableColumn<PooledCandidate>[] = [
         <TagList label={`Tags on ${row.original.full_name}`} names={tags.map((tag) => tag.name)} />
       );
     },
+  },
+  {
+    accessorKey: 'is_imported_from_manatal',
+    header: 'Source',
+    meta: { share: 3 },
+    cell: ({ row }) => provenanceOf(row.original),
   },
   {
     accessorKey: 'added_at',
