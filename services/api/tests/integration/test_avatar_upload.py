@@ -10,6 +10,7 @@ from sync_api.pictures import SQUARE_PIXELS
 from tests.support.avatars import (
     PNG,
     a_photo,
+    a_png_claiming,
     an_uploaded_avatar,
     avatar_paths,
     upload_avatar,
@@ -155,6 +156,32 @@ async def test_an_image_in_a_format_the_platform_does_not_take_is_refused(
 
     assert response.status_code == 415, response.text
     assert "JPEG, PNG or WebP" in response.json()["detail"]
+
+
+async def test_a_photo_with_more_pixels_than_the_platform_decodes_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_avatar(
+        browser, a_png_claiming(9000, 9000), filename="huge.png", media_type=PNG
+    )
+
+    assert response.status_code == 413, response.text
+    assert await avatar_paths(db_session) == []
+
+
+async def test_a_decompression_bomb_is_refused_rather_than_failing(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_avatar(
+        browser, a_png_claiming(20000, 20000), filename="bomb.png", media_type=PNG
+    )
+
+    assert response.status_code == 415, response.text
+    assert await avatar_paths(db_session) == []
 
 
 async def test_an_empty_file_is_refused(browser: AsyncClient, mailbox: Mailbox) -> None:

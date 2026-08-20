@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import struct
+import zlib
 from typing import TYPE_CHECKING, Final
 
 from PIL import Image
@@ -33,6 +35,31 @@ def a_photo(
     sink = io.BytesIO()
     Image.new("RGB", (width, height), colour).save(sink, image_format)
     return sink.getvalue()
+
+
+def a_png_claiming(width: int, height: int) -> bytes:
+    """A PNG whose header says it is this big, holding no pixels at all.
+
+    Whatever refuses it has decided on the header, which is the only place a picture too big
+    to hold in memory can be refused from.
+    """
+    return b"\x89PNG\r\n\x1a\n" + b"".join(
+        _chunk(kind, payload)
+        for kind, payload in (
+            (b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)),
+            (b"IDAT", b""),
+            (b"IEND", b""),
+        )
+    )
+
+
+def _chunk(kind: bytes, payload: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(payload))
+        + kind
+        + payload
+        + struct.pack(">I", zlib.crc32(kind + payload))
+    )
 
 
 async def upload_avatar(
