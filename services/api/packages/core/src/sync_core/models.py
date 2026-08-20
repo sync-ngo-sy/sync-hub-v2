@@ -420,6 +420,9 @@ class Candidate(Base):
     is_searchable: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    is_imported_from_manatal: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )

@@ -5,6 +5,7 @@ import { AMINA_RECORD } from '@/features/candidates/testing/fixtures';
 import { readsCandidate } from '@/features/candidates/testing/handlers';
 import {
   AMINA_SAVED,
+  MIGRATED_SAVED,
   RIMA_SAVED,
   savedCandidates,
   YOUSSEF_SAVED,
@@ -425,5 +426,37 @@ describe('dropping a Candidate from the talent pool', () => {
     await user.click(within(asking).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(names()).toEqual(['Open Amina Haddad']));
+  });
+});
+
+describe('where a pooled Candidate came from', () => {
+  it('marks somebody a migration brought across and nobody has claimed', async () => {
+    server.use(...signedInAs(RECRUITER), ...holdsTalentPool([MIGRATED_SAVED]));
+
+    await renderApp(AT);
+
+    const row = within(await saved().findByRole('row', { name: /Bashir Nassar/ }));
+    expect(row.getByText('Imported · unclaimed')).toBeVisible();
+  });
+
+  it('says a migrated Candidate has since signed in', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...holdsTalentPool([{ ...MIGRATED_SAVED, is_claimed: true }]),
+    );
+
+    await renderApp(AT);
+
+    const row = within(await saved().findByRole('row', { name: /Bashir Nassar/ }));
+    expect(row.getByText('Imported')).toBeVisible();
+  });
+
+  it('says nothing about somebody who signed themselves up', async () => {
+    server.use(...signedInAs(RECRUITER), ...holdsTalentPool([AMINA_SAVED]));
+
+    await renderApp(AT);
+
+    const row = within(await saved().findByRole('row', { name: /Amina/ }));
+    expect(row.queryByText(/Imported/)).not.toBeInTheDocument();
   });
 });

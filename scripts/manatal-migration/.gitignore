@@ -1,0 +1,18 @@
+# The ledger holds every migrated candidate's name and email address. It is the audit trail for
+# the run and it belongs on the machine that ran it — never in the repository.
+manatal-migration-ledger.json
+*-ledger.json
+
+# The archive is every Manatal record verbatim — the most sensitive file this migration
+# produces. Same rule, harder: it belongs on the machine that ran it.
+manatal-candidates.jsonl
+*.jsonl
+
+# The report names anybody the migration could not move, so it is the same kind of file.
+manatal-migration-report.html
+*-report.html
+
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

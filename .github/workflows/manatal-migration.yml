@@ -1,0 +1,184 @@
+# Run the one-off Manatal migration from the Actions tab, so nobody needs a terminal.
+#
+# The script in `scripts/manatal-migration` is the whole feature; this only supplies it with the
+# five secrets and a place to run. It is `workflow_dispatch` and nothing else — no schedule, no
+# trigger on push. A migration runs when a person decides it runs.
+#
+# How the target is chosen: the `target` input picks an environment — `manatal-migration-staging`
+# or `manatal-migration-production` — and that environment's five secrets are what decide which
+# database is written to. It is an input rather than a wiring detail because the operator has to
+# be able to see, and to choose, which platform a run touches. Put a required reviewer on the
+# production environment: approving a run is how somebody accepts that 5,000 real people are
+# about to be written, and that should not be one click.
+#
+# The two environments must not share a database. The ledger is what makes this resumable, and it
+# only means anything against the platform it was written for.
+#
+# Why the ledger is downloaded before every run: the migration is resumable *because* of that
+# file — it is what makes a second run skip whoever is already done, and afterwards it is the only
+# record of which Manatal candidate became which Candidate here. A CI runner is a fresh machine
+# every time, so without carrying the ledger forward the second run would try to import everybody
+# again. It is fetched from the last successful run and uploaded again at the end.
+#
+# THE ARTIFACTS HOLD PERSONAL DATA. The ledger is 5,000 names and email addresses; the report
+# names anybody the migration could not move. Anyone who can read this repository can download
+# them. That is the trade for having the run be a button, and it is only acceptable while this
+# repository and this environment stay private and access stays limited to people who are already
+# allowed to see the ATS.
+
+name: Manatal migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: >-
+          Which platform to write to. Staging first, always — a run against production writes
+          real people and cannot be undone by re-running.
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+      step:
+        description: What to do
+        type: choice
+        default: check
+        options:
+          - check
+          - inventory
+          - import and publish
+          - publish only
+          - verify
+          - report
+      batch:
+        description: >-
+          How many people to bring across this run. Start with 100 to try it, then run it again
+          for the next 100. Leave as 0 to do everybody.
+        type: string
+        default: "0"
+      limit:
+        description: Most records to read from Manatal. Leave alone unless the account is huge.
+        type: string
+        default: "10000"
+      phone_region:
+        description: Country a local phone number with no country code belongs to
+        type: string
+        default: SY
+      concurrency:
+        description: Candidates at once. Each is a download and an upload.
+        type: string
+        default: "4"
+
+permissions:
+  contents: read
+  # `gh run list` and `gh run download` read this workflow's own earlier runs, which is how
+  # the ledger is carried forward.
+  actions: read
+
+# One migration at a time, and never cancelled part-way: a killed run loses nothing, but it does
+# leave the ledger un-uploaded, which makes the next run redo work it had already done.
+concurrency:
+  group: manatal-migration-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    # The target is in the name because the Actions list is the only place somebody can check,
+    # after the fact, which platform a run wrote to.
+    name: ${{ inputs.step }} on ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    # One environment per target. Each holds its own five secrets, so choosing here is what
+    # chooses the database — and production can require a reviewer that staging does not.
+    environment: manatal-migration-${{ inputs.target }}
+    timeout-minutes: 360
+    defaults:
+      run:
+        working-directory: scripts/manatal-migration
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Fetch the record of what earlier runs did
+        # A first run has nothing to fetch, which is not a failure. Anything else and the run
+        # would re-import everybody, so a genuine fetch failure has to stop it.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECORD: manatal-migration-record-${{ inputs.target }}
+        run: |
+          set -uo pipefail
+          # Named per target, and searched per target. A ledger describes one database: every
+          # entry says "this Manatal candidate is already done". Carried onto a different
+          # platform it would mark 5,000 people as finished who were never imported there, and
+          # the run would report success having written nobody. That is the worst outcome
+          # available, because it looks exactly like the right one.
+          #
+          # Several runs back rather than only the last, because the most recent success may have
+          # been against the other target, or a `check` that kept no record at all.
+          found=""
+          for last in $(gh run list --workflow manatal-migration.yml --status success \
+                          --limit 20 --json databaseId --jq '.[].databaseId'); do
+            if gh run download "$last" --name "$RECORD" --dir . 2>/dev/null; then
+              echo "Carried $RECORD forward from run $last."
+              ls -l
+              found="$last"
+              break
+            fi
+          done
+          if [ -z "$found" ]; then
+            echo "No earlier run kept a record for this target. Starting from nothing."
+          fi
+
+      - name: What the migration needs before it starts
+        env:
+          SYNC_DATABASE_URL: ${{ secrets.SYNC_DATABASE_URL }}
+          SYNC_SUPABASE_URL: ${{ secrets.SYNC_SUPABASE_URL }}
+          SYNC_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SYNC_SUPABASE_SERVICE_ROLE_KEY }}
+          MANATAL_API_TOKEN: ${{ secrets.MANATAL_API_TOKEN }}
+          MANATAL_RECRUITER_ID: ${{ secrets.MANATAL_RECRUITER_ID }}
+          MANATAL_PHONE_REGION: ${{ inputs.phone_region }}
+        run: uv run migrate.py --check
+
+      - name: ${{ inputs.step }}
+        if: inputs.step != 'check'
+        env:
+          SYNC_DATABASE_URL: ${{ secrets.SYNC_DATABASE_URL }}
+          SYNC_SUPABASE_URL: ${{ secrets.SYNC_SUPABASE_URL }}
+          SYNC_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SYNC_SUPABASE_SERVICE_ROLE_KEY }}
+          MANATAL_API_TOKEN: ${{ secrets.MANATAL_API_TOKEN }}
+          MANATAL_RECRUITER_ID: ${{ secrets.MANATAL_RECRUITER_ID }}
+          MANATAL_PHONE_REGION: ${{ inputs.phone_region }}
+          MANATAL_LIMIT: ${{ inputs.limit }}
+          MANATAL_BATCH: ${{ inputs.batch }}
+          MANATAL_CONCURRENCY: ${{ inputs.concurrency }}
+          # Through the environment rather than interpolated into the script below: an input
+          # substituted into a shell line is a shell line somebody else gets to write.
+          STEP: ${{ inputs.step }}
+        run: |
+          case "$STEP" in
+            "inventory")          uv run migrate.py --inventory ;;
+            "import and publish") uv run migrate.py --summary-file "$GITHUB_STEP_SUMMARY" ;;
+            "publish only")       uv run migrate.py --publish-only --summary-file "$GITHUB_STEP_SUMMARY" ;;
+            "verify")             uv run migrate.py --verify ;;
+            "report")             uv run migrate.py --report --summary-file "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "Unknown step: $STEP" >&2; exit 1 ;;
+          esac
+
+      - name: Keep the record, whatever happened
+        # `always()`: a run that failed half way still moved people, and the record of who is the
+        # only thing that lets the next run pick up rather than start again.
+        if: always() && inputs.step != 'check' && inputs.step != 'inventory'
+        uses: actions/upload-artifact@v4
+        with:
+          name: manatal-migration-record-${{ inputs.target }}
+          path: |
+            scripts/manatal-migration/manatal-migration-ledger.json
+            scripts/manatal-migration/manatal-migration-report.html
+            scripts/manatal-migration/manatal-candidates.jsonl
+          if-no-files-found: warn
+          retention-days: 90

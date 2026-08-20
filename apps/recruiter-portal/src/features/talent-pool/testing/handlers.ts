@@ -72,6 +72,8 @@ export function keepsTalentPool(pool: PooledCandidate[], asked?: string[]) {
         total_experience_years: 0,
         tags: [],
         added_at: ADDED_AT,
+        is_imported_from_manatal: false,
+        is_claimed: true,
       };
       if (!already) current = [saved, ...current];
       return response(200).json(saved);
