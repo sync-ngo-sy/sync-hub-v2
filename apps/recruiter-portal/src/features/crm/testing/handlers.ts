@@ -1,6 +1,6 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
-import { VOCABULARY_PATH, VOCABULARY_TAG_PATH } from '../hooks/use-tag-vocabulary';
+import { VOCABULARY_PATH, VOCABULARY_TAG_PATH } from '../reread';
 import type { Tag } from '../tag';
 
 type Problem = components['schemas']['ProblemDetail'];

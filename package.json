@@ -15,8 +15,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "clean": "turbo run clean && rm -rf node_modules",
-    "gen:api-client": "pnpm --filter @sync/api-client gen",
-    "gen:db-types": "pnpm --filter @sync/db-types gen"
+    "gen:api-client": "pnpm --filter @sync/api-client gen"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",

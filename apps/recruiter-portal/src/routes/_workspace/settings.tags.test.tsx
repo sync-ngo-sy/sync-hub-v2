@@ -1,6 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { AMAL_REVIEW } from '@/features/applications/testing/fixtures';
+import { filesApplicationTags, getsApplication } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
+import { AMINA, AMINA_RECORD } from '@/features/candidates/testing/fixtures';
+import { filesCandidateTags, readsCandidate } from '@/features/candidates/testing/handlers';
 import {
   ARABIC,
   HAS_A_LICENCE,
@@ -257,5 +261,69 @@ describe('the Tags tab', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong on our side.');
     expect(screen.getByRole('alertdialog')).toBeVisible();
     expect(screen.getByText('Arabic')).toBeVisible();
+  });
+});
+
+describe('a word minted in a Tag picker', () => {
+  it('shows up on the Tags tab when it was minted on a Candidate view', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsMembers([RANA]),
+      ...readsCandidate(AMINA_RECORD),
+      ...filesCandidateTags({ vocabulary: [OPEN_TO_RELOCATION] }),
+    );
+
+    const { user, router } = await renderApp(TAGS);
+    expect(await screen.findByText('Open to relocation')).toBeVisible();
+
+    await router.navigate({
+      to: '/candidates/$candidateId',
+      params: { candidateId: AMINA.candidate_id },
+      search: {},
+    });
+
+    const tags = within(await screen.findByRole('region', { name: 'Tags' }));
+    await user.click(tags.getByRole('button', { name: 'Add a Tag' }));
+    await user.type(screen.getByLabelText('Find or create a Tag'), 'Speaks Kurdish');
+    await user.click(screen.getByRole('button', { name: 'Create “Speaks Kurdish”' }));
+
+    const filed = within(await screen.findByRole('list', { name: 'Tags on this Candidate' }));
+    expect(await filed.findByText('Speaks Kurdish')).toBeVisible();
+
+    await router.navigate({ to: '/settings', search: { tab: 'tags' } });
+
+    expect(await screen.findByText('Speaks Kurdish')).toBeVisible();
+    expect(rowOf('Speaks Kurdish').getByText('Candidates')).toBeVisible();
+  });
+
+  it('shows up on the Tags tab when it was minted on an Application review', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsMembers([RANA]),
+      ...getsApplication(AMAL_REVIEW),
+      ...filesApplicationTags({ vocabulary: [ARABIC] }),
+    );
+
+    const { user, router } = await renderApp(TAGS);
+    expect(await screen.findByText('Arabic')).toBeVisible();
+
+    await router.navigate({
+      to: '/applications/$applicationId',
+      params: { applicationId: AMAL_REVIEW.id },
+      search: {},
+    });
+
+    const tags = within(await screen.findByRole('region', { name: 'Tags' }));
+    await user.click(tags.getByRole('button', { name: 'Add a Tag' }));
+    await user.type(screen.getByLabelText('Find or create a Tag'), 'Night shifts');
+    await user.click(screen.getByRole('button', { name: 'Create “Night shifts”' }));
+
+    const filed = within(await screen.findByRole('list', { name: 'Tags on this Application' }));
+    expect(await filed.findByText('Night shifts')).toBeVisible();
+
+    await router.navigate({ to: '/settings', search: { tab: 'tags' } });
+
+    expect(await screen.findByText('Night shifts')).toBeVisible();
+    expect(rowOf('Night shifts').getByText('Applications')).toBeVisible();
   });
 });
