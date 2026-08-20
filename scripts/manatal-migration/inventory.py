@@ -66,7 +66,10 @@ FIELD_MAP: Final[dict[str, Mapped]] = {
     "last_name": Mapped(Home.MIGRATED, "profiles.full_name"),
     "email": Mapped(Home.MIGRATED, "auth.users.email"),
     "emails": Mapped(Home.MIGRATED, "auth.users.email (the first)"),
-    **{key: Mapped(Home.MIGRATED, "profiles.phone") for key in PHONE_KEYS},
+    **{
+        key: Mapped(Home.MIGRATED, "profiles.phone and profiles.phone_country, read as E.164")
+        for key in PHONE_KEYS
+    },
     **{key: Mapped(Home.MIGRATED, "candidates.headline") for key in HEADLINE_KEYS},
     **{key: Mapped(Home.MIGRATED, "candidates.unmapped_skills") for key in SKILL_KEYS},
     **{
@@ -128,8 +131,10 @@ FIELD_MAP: Final[dict[str, Mapped]] = {
     "candidate_industries": Mapped(Home.IGNORED, "Sync has no industry taxonomy"),
     "current_department": Mapped(Home.IGNORED, "Sync records the company, not the department"),
     # Read this one before the run rather than after.
-    "consent": Mapped(Home.DECIDE, "nothing yet — and it bears on Global search"),
-    "consent_date": Mapped(Home.DECIDE, "nothing yet — and it bears on Global search"),
+    "consent": Mapped(
+        Home.MIGRATED, "candidates.is_searchable — whether other Tenants may find them"
+    ),
+    "consent_date": Mapped(Home.ARCHIVED, "the archive; the platform records no date for it"),
     "stage": Mapped(Home.IGNORED, "Sync has its own Pipeline, per Application"),
     "status": Mapped(Home.IGNORED, "Sync has its own Pipeline, per Application"),
     "owner": Mapped(Home.IGNORED, "imports are attributed to the configured Recruiter"),

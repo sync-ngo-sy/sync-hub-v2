@@ -8,6 +8,10 @@ manatal-migration-ledger.json
 manatal-candidates.jsonl
 *.jsonl
 
+# The report names anybody the migration could not move, so it is the same kind of file.
+manatal-migration-report.html
+*-report.html
+
 .venv/
 __pycache__/
 .pytest_cache/

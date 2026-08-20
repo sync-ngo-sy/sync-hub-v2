@@ -46,6 +46,11 @@ LINKEDIN_KEYS: Final = ("linkedinprofile", "linkedin", "linkedin_url")
 PHONE_KEYS: Final = ("phone_number", "phone", "mobile", "mobile_number")
 HEADLINE_KEYS: Final = ("current_position", "job_title", "title", "headline")
 SKILL_KEYS: Final = ("skills", "skill_set")
+CONSENT_KEYS: Final = ("consent", "consent_status", "is_consent_given")
+
+#: How a yes is written. Manatal's own field is a boolean, but this account has custom fields
+#: recording the same thing as text, and a value not in this set is not a yes.
+AGREED: Final = frozenset({"true", "yes", "y", "1", "granted", "given", "agreed", "consented"})
 
 #: What the platform's `cvs` bucket accepts. A resume in anything else cannot become a CV here.
 MEDIA_TYPES: Final[dict[str, str]] = {
@@ -97,6 +102,10 @@ class Candidate:
     #: ones it does not recognise belong in `candidates.unmapped_skills` — which is what these
     #: are until a CV parse maps some of them.
     skills: tuple[str, ...] = ()
+    #: Whether this person agreed to their details being held and shown. The platform treats
+    #: appearing in cross-tenant Global search as the candidate's own opt-in, so this is what
+    #: decides it: migrated either way, found by other Tenants only where they said yes.
+    consent: bool = False
     #: The record exactly as Manatal returned it, carried so the migration can archive every
     #: field — including the ones this platform has no home for. After Manatal is switched off
     #: an unarchived field is gone for good; an archived one can still be backfilled.
@@ -285,8 +294,25 @@ def _candidate(record: Mapping[str, Any]) -> Candidate:
         english_written=_custom(record, WRITTEN_ENGLISH_KEYS) or None,
         graduation_year=_year(_custom(record, GRADUATION_YEAR_KEYS)),
         linkedin_url=_custom(record, LINKEDIN_KEYS) or _first(record, LINKEDIN_KEYS) or None,
+        consent=_agreed(record),
         raw=record,
     )
+
+
+def _agreed(record: Mapping[str, Any]) -> bool:
+    """Whether the record says this person agreed, read strictly.
+
+    Anything other than a plain yes is read as no. Consent is what decides whether somebody is
+    shown to Tenants they never applied to, so an ambiguous value has to fall the safe way: they
+    are still migrated, and still visible to the Tenant that already held their details.
+    """
+    for key in CONSENT_KEYS:
+        stated = record.get(key)
+        if isinstance(stated, bool):
+            return stated
+        if isinstance(stated, str) and stated.strip().lower() in AGREED:
+            return True
+    return False
 
 
 def _custom(record: Mapping[str, Any], keys: Sequence[str]) -> str:

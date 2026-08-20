@@ -9,6 +9,10 @@ dependencies = [
     # Postgres directly. This script writes rows the platform's own schema defines; it does not
     # import the platform's code, so that neither can drift into the other.
     "asyncpg>=0.30",
+    # `profiles` stores a number as E.164 and its country apart, and a number typed by a human is
+    # neither. Which country a bare local number belongs to is a table, not a rule, and this is
+    # that table.
+    "phonenumbers>=8.13",
 ]
 
 [dependency-groups]

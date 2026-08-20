@@ -11,7 +11,7 @@ Written after every candidate rather than at the end, so killing the run loses n
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -58,6 +58,14 @@ class Entry:
     university: str | None = None
     graduation_year: int | None = None
     english: str | None = None
+    #: Manatal's own skill list, kept so publishing can match it to the taxonomy without Manatal.
+    skills: list[str] = field(default_factory=list)
+    #: Whether they agreed to be found by Tenants they never applied to. Read at import and kept,
+    #: because it decides `is_searchable` in the publish pass — which may run days later.
+    consent: bool = False
+    #: Which of the ten requirements the published profile still lacks, for the report. Empty
+    #: means complete; `None` means it has not been published yet.
+    missing: list[str] | None = None
 
 
 class Ledger:

@@ -15,11 +15,14 @@ import io
 import os
 import sys
 from dataclasses import dataclass
+from getpass import getpass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 from uuid import UUID
 
 import platform_writes as writes
+import preflight
+import report
 from archive import DEFAULT_PATH as ARCHIVE_PATH
 from archive import Archive
 from inventory import census_of
@@ -31,17 +34,24 @@ from manatal import (
     ManatalError,
     ResumeMissingError,
 )
+from phones import DEFAULT_REGION, as_phone
 from profile_rows import proficiency_of, profile_from
 from progress import Progress
 from supabase_rest import AddressTakenError, Supabase
 from verify import Verification
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import asyncpg
 
     from manatal import Candidate
 
 DEFAULT_BASE_URL: Final = "https://api.manatal.com/open/v3"
+
+#: Where the readable account of a run is written. Beside the ledger, which holds the same facts
+#: in a form only a program reads.
+REPORT_PATH: Final = Path("manatal-migration-report.html")
 
 #: Stands in for the importing Recruiter when the run never imports anything — `--inventory`
 #: reads Manatal and stops, so it has nobody to attribute anything to.
@@ -67,6 +77,11 @@ class Options:
     publish_only: bool
     inventory_only: bool
     verify_only: bool
+    phone_region: str
+    check_only: bool
+    report_only: bool
+    report_path: Path
+    summary_path: Path | None
 
 
 def options() -> Options:
@@ -111,6 +126,30 @@ def options() -> Options:
         default=DEFAULT_PATH,
         help=f"Where to keep the record of what was done (default {DEFAULT_PATH}).",
     )
+    parsed.add_argument(
+        "--check",
+        action="store_true",
+        help="Check that everything the migration needs is in place, change nothing, and say "
+        "what to do about anything that is not. Run this first.",
+    )
+    parsed.add_argument(
+        "--report",
+        action="store_true",
+        help="Say what the last run did, in plain words, and write it to a file you can open.",
+    )
+    parsed.add_argument(
+        "--report-file",
+        type=Path,
+        default=REPORT_PATH,
+        help=f"Where to write that report (default {REPORT_PATH}).",
+    )
+    parsed.add_argument(
+        "--summary-file",
+        type=Path,
+        default=None,
+        help="Also write the report as Markdown here. Point it at GITHUB_STEP_SUMMARY and the "
+        "numbers appear on the run's own page, so nobody has to download anything.",
+    )
     arguments = parsed.parse_args()
 
     # An inventory only reads Manatal. It touches no database and writes nothing to the
@@ -126,20 +165,39 @@ def options() -> Options:
             "MANATAL_RECRUITER_ID",
         )
     )
+    if arguments.report:
+        # The report only reads the ledger file. Asking for the keys to Manatal and the database
+        # to read a file on this machine would be asking for more than the job needs.
+        needed = ()
+    if arguments.check:
+        # Refusing to start because something is unset is exactly what `--check` exists to say,
+        # one line at a time with a fix beside it, rather than as a wall on the way in.
+        needed = ()
     missing = [name for name in needed if not os.environ.get(name)]
-    if not (
-        arguments.publish_only or arguments.verify or arguments.inventory
-    ) and not os.environ.get("MANATAL_API_TOKEN"):
-        missing.append("MANATAL_API_TOKEN")
+    # `--check` reports; it never asks for anything. A key it cannot see becomes a failed check
+    # with a fix beside it, which is the whole point of running it.
+    wants_the_token = not (
+        arguments.publish_only
+        or arguments.verify
+        or arguments.inventory
+        or arguments.report
+        or arguments.check
+    )
+    if wants_the_token and not os.environ.get("MANATAL_API_TOKEN"):
+        asked = _asked_for_the_token()
+        if asked:
+            os.environ["MANATAL_API_TOKEN"] = asked
+        else:
+            missing.append("MANATAL_API_TOKEN")
     if missing:
-        raise SystemExit(f"Set these first: {', '.join(missing)}. See README.md.")
+        raise SystemExit(_what_is_missing(missing))
 
     return Options(
         database_url=os.environ.get("SYNC_DATABASE_URL", ""),
         supabase_url=os.environ.get("SYNC_SUPABASE_URL", ""),
         service_role_key=os.environ.get("SYNC_SUPABASE_SERVICE_ROLE_KEY", ""),
         manatal_token=os.environ.get("MANATAL_API_TOKEN", ""),
-        recruiter_id=UUID(os.environ.get("MANATAL_RECRUITER_ID", str(NOBODY))),
+        recruiter_id=_recruiter_id(),
         base_url=os.environ.get("MANATAL_API_BASE_URL", DEFAULT_BASE_URL),
         page_size=int(os.environ.get("MANATAL_PAGE_SIZE", "50")),
         limit=int(os.environ.get("MANATAL_LIMIT", "10000")),
@@ -152,6 +210,11 @@ def options() -> Options:
         publish_only=arguments.publish_only,
         inventory_only=arguments.inventory,
         verify_only=arguments.verify,
+        phone_region=os.environ.get("MANATAL_PHONE_REGION", DEFAULT_REGION).upper(),
+        check_only=arguments.check,
+        report_only=arguments.report,
+        report_path=arguments.report_file,
+        summary_path=arguments.summary_file,
     )
 
 
@@ -168,6 +231,7 @@ class Migration:
         *,
         importer: writes.Importer,
         concurrency: int,
+        phone_region: str = DEFAULT_REGION,
     ) -> None:
         self._pool = pool
         self._supabase = supabase
@@ -176,8 +240,10 @@ class Migration:
         self._archive = archive
         self._importer = importer
         self._concurrency = concurrency
+        self._phone_region = phone_region
         self._gate = asyncio.Semaphore(concurrency)
         self._locations: dict[str, str] = {}
+        self._roles: dict[str, str] = {}
 
     async def import_everyone(self, *, limit: int) -> int:
         """Every candidate Manatal holds that this migration has not settled yet."""
@@ -216,6 +282,7 @@ class Migration:
         if not waiting:
             return 0
         taxonomy, languages = await writes.vocabularies(self._pool)
+        self._roles = await writes.role_keys(self._pool)
         published = 0
         publishing = Progress(total=len(waiting))
         for entry in waiting:
@@ -278,7 +345,7 @@ class Migration:
                     candidate_id,
                     full_name=candidate.full_name or candidate.email,
                     headline=candidate.headline,
-                    phone=candidate.phone,
+                    phone=as_phone(candidate.phone, region=self._phone_region),
                     avatar_url=candidate.picture_url,
                     location_key=writes.location_key_of(candidate.location, self._locations),
                     linkedin_url=linkedin_address(candidate.linkedin_url or "")
@@ -350,7 +417,8 @@ class Migration:
             self._ledger.record(entry)
             return False
 
-        await writes.publish_profile(
+        known_skills, _ = writes.matched_skills(entry.skills, taxonomy)
+        missing = await writes.publish_profile(
             self._pool,
             candidate_id,
             cv_id,
@@ -362,10 +430,18 @@ class Migration:
                 university=entry.university,
                 graduation_year=entry.graduation_year,
                 english=entry.english,
+                matched_skills=known_skills,
             ),
             linkedin_url=writes.linkedin_from_parse(state.parsed),
+            github_url=writes.github_from_parse(state.parsed),
+            portfolio_url=writes.portfolio_from_parse(state.parsed),
+            canonical_role_key=writes.role_from_parse(state.parsed, self._roles, entry.position),
+            # Only where they agreed. Global search reaches every Tenant, and nobody consented to
+            # that by having been in somebody's ATS.
+            may_be_searched=entry.consent,
         )
         entry.state = State.PUBLISHED
+        entry.missing = [requirement.value for requirement in missing]
         self._ledger.record(entry)
         return True
 
@@ -432,6 +508,8 @@ def _decided(
         university=candidate.latest_university,
         graduation_year=candidate.graduation_year,
         english=proficiency_of(candidate.english_spoken, candidate.english_written),
+        skills=list(candidate.skills),
+        consent=candidate.consent,
         candidate_id=None if candidate_id is None else str(candidate_id),
         cv_id=None if cv_id is None else str(cv_id),
         file_hash=file_hash,
@@ -488,7 +566,74 @@ async def verify(
     return 0 if verdict.is_sound else 1
 
 
+async def check(chosen: Options) -> int:
+    """Answer every question that has to be yes, change nothing, and say what to do about
+    anything answered no."""
+    manatal = (
+        None
+        if not chosen.manatal_token
+        else Manatal.build(
+            base_url=chosen.base_url,
+            token=chosen.manatal_token,
+            timeout_seconds=chosen.timeout_seconds,
+            page_size=chosen.page_size,
+        )
+    )
+    supabase = (
+        None
+        if not (chosen.supabase_url and chosen.service_role_key)
+        else Supabase.build(
+            url=chosen.supabase_url,
+            service_role_key=chosen.service_role_key,
+            timeout_seconds=chosen.timeout_seconds,
+        )
+    )
+    try:
+        checks = await preflight.run_checks(
+            database_url=chosen.database_url,
+            recruiter_id=chosen.recruiter_id,
+            manatal=manatal,
+            supabase=supabase,
+            phone_region=chosen.phone_region,
+            needs_platform=not chosen.inventory_only,
+            needs_manatal=not chosen.publish_only,
+        )
+    finally:
+        if manatal is not None:
+            await manatal.aclose()
+        if supabase is not None:
+            await supabase.aclose()
+
+    say("")
+    say("Checking everything the migration needs before it starts:")
+    say("")
+    for one in checks:
+        say(one.line)
+    say("")
+    say(preflight.summary(checks))
+    for one in checks:
+        if not one.passed and one.fix:
+            say("")
+            say(f"  {one.question}")
+            say(f"    {one.fix}")
+    say("")
+    return 0 if preflight.passed(checks) else 1
+
+
+def written_report(chosen: Options) -> int:
+    """The last run's outcome, from the ledger, in words and as a file to keep."""
+    ledger = Ledger.at(chosen.ledger_path)
+    if not len(ledger):
+        say(f"No migration has run yet — {chosen.ledger_path} is empty.")
+        return 0
+    return _report(ledger, chosen.report_path, chosen.summary_path)
+
+
 async def run(chosen: Options) -> int:
+    if chosen.check_only:
+        return await check(chosen)
+    if chosen.report_only:
+        return written_report(chosen)
     if chosen.inventory_only:
         manatal = Manatal.build(
             base_url=chosen.base_url,
@@ -535,6 +680,7 @@ async def run(chosen: Options) -> int:
             archive,
             importer=given,
             concurrency=chosen.concurrency,
+            phone_region=chosen.phone_region,
         )
         if not chosen.publish_only:
             await migration.import_everyone(limit=chosen.limit)
@@ -545,15 +691,69 @@ async def run(chosen: Options) -> int:
         await supabase.aclose()
         await pool.close()
 
-    return _report(ledger)
+    return _report(ledger, chosen.report_path, chosen.summary_path)
 
 
-def _report(ledger: Ledger) -> int:
-    tally = ledger.tally()
+def _recruiter_id() -> UUID:
+    """The recruiter to attribute imports to, or nobody.
+
+    Something that is not an id at all comes back as `NOBODY` rather than as an exception, so
+    `--check` gets to say "that is not a recruiter id" in one line. A traceback is not an answer
+    to somebody who did not write this.
+    """
+    written = os.environ.get("MANATAL_RECRUITER_ID", "").strip()
+    try:
+        return UUID(written)
+    except ValueError:
+        return NOBODY
+
+
+def _asked_for_the_token() -> str:
+    """Ask for the Manatal key rather than requiring it to have been set.
+
+    `getpass` does not echo it and nothing here writes it down, so the key does not end up in a
+    file, in the shell's history, or on the screen behind somebody. An operator who cannot be
+    asked — a scheduled run with no terminal — gets the environment variable instead.
+    """
+    if not sys.stdin.isatty():  # pragma: no cover — a run with nobody at the keyboard
+        return ""
     say("")
-    say(f"Ledger: {ledger.path} ({len(ledger)} candidates)")
-    for state, total in sorted(tally.items()):
-        say(f"  {state.value}: {total}")
+    say("The Manatal API key is needed. It is not shown as you type, and is not saved anywhere.")
+    say("Find it in Manatal under Settings, API. Press Enter alone to stop.")
+    try:
+        return getpass("Manatal API key: ").strip()
+    except (EOFError, KeyboardInterrupt):  # pragma: no cover — the operator gave up
+        return ""
+
+
+def _what_is_missing(missing: Sequence[str]) -> str:
+    """What is not set, and what each one is, rather than a list of variable names."""
+    means = {
+        "SYNC_DATABASE_URL": "the connection string for the Sync database",
+        "SYNC_SUPABASE_URL": "the address of the Sync Supabase project",
+        "SYNC_SUPABASE_SERVICE_ROLE_KEY": "that project's service role key, the secret one",
+        "MANATAL_RECRUITER_ID": "the id of the recruiter these imports are recorded against",
+        "MANATAL_API_TOKEN": "the Manatal API key",
+    }
+    said = [f"  {name} — {means.get(name, 'see README.md')}" for name in missing]
+    return "\n".join(
+        ["", "These have to be set before the migration can run:", "", *said, "", "See README.md."]
+    )
+
+
+def _report(ledger: Ledger, report_path: Path, summary_path: Path | None = None) -> int:
+    tally = ledger.tally()
+    result = report.outcome_of(ledger)
+    for line in report.lines(result):
+        say(line)
+    report_path.write_text(report.as_html(result, ledger_path=ledger.path), encoding="utf-8")
+    if summary_path is not None:
+        # Appended: a summary file may already hold what earlier steps of the same run wrote.
+        with summary_path.open("a", encoding="utf-8") as summary:
+            summary.write(report.as_markdown(result))
+    say("")
+    say(f"The same report, as a file you can open and send on: {report_path}")
+    say(f"The full record of who became whom: {ledger.path} — keep it.")
     waiting = tally.get(State.IMPORTED, 0)
     if waiting:
         say("")

@@ -15,7 +15,10 @@ from uuid import UUID, uuid4
 
 import asyncpg
 
-from links import linkedin_address
+from completeness import ProfileFacts, Requirement, missing_requirements
+from links import github_address, linkedin_address, portfolio_address
+from phones import Phone
+from roles import role_key_of
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -99,6 +102,12 @@ async def location_keys(pool: asyncpg.Pool) -> dict[str, str]:
     return {row["name"].strip().lower(): row["key"] for row in rows}
 
 
+async def role_keys(pool: asyncpg.Pool) -> dict[str, str]:
+    """The canonical role taxonomy, keyed by lowercased name, as `role_key_of` wants it."""
+    rows = await pool.fetch("select key, name from canonical_roles")
+    return {row["name"].strip().lower(): row["key"] for row in rows}
+
+
 def location_key_of(typed: str | None, taxonomy: Mapping[str, str]) -> str | None:
     if not typed:
         return None
@@ -115,7 +124,7 @@ async def create_candidate(
     *,
     full_name: str,
     headline: str | None,
-    phone: str | None = None,
+    phone: Phone | None = None,
     avatar_url: str | None = None,
     location_key: str | None = None,
     linkedin_url: str | None = None,
@@ -129,18 +138,22 @@ async def create_candidate(
     async with pool.acquire() as connection, connection.transaction():
         await connection.execute(
             """
-            insert into profiles (id, account_type, full_name, phone, avatar_url)
-            values ($1, 'candidate', $2, $3, $4)
+            insert into profiles (id, account_type, full_name, phone, phone_country, avatar_url)
+            values ($1, 'candidate', $2, $3, $4, $5)
             """,
             account_id,
             full_name,
-            phone,
+            # Both columns or neither: `profiles_phone_has_a_country` refuses one without the
+            # other, so an unreadable number leaves the profile with no phone at all.
+            phone.number if phone else None,
+            phone.country if phone else None,
             avatar_url,
         )
         await connection.execute(
             """
             insert into candidates
-                (id, headline, location_key, linkedin_url, unmapped_skills, is_imported_from_manatal)
+                (id, headline, location_key, linkedin_url, unmapped_skills,
+                 is_imported_from_manatal)
             values ($1, $2, $3, $4, $5, true)
             """,
             account_id,
@@ -323,6 +336,8 @@ class FromManatal:
     graduation_year: int | None = None
     #: The platform's own proficiency for their English, where the account recorded one.
     english: str | None = None
+    #: Manatal's own skill list, already matched to the Canonical taxonomy.
+    matched_skills: tuple[UUID, ...] = ()
 
     def experiences(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
         if not (self.position or self.company):
@@ -362,6 +377,17 @@ class FromManatal:
             return []
         return [(candidate_id, 0, "en", self.english)]
 
+    def skills(self, candidate_id: UUID) -> list[tuple[Any, ...]]:
+        """Manatal's skills as Canonical rows. No years: the ATS recorded the skill, not how long.
+
+        `unmapped_skills` keeps every skill either way, including these. That array is what the
+        Recruiter reads; these rows are what a skill filter and the completeness rule count.
+        """
+        return [
+            (candidate_id, order, taxonomy_id, None)
+            for order, taxonomy_id in enumerate(self.matched_skills)
+        ]
+
 
 #: What the CV parse is measured against when it finds nothing: an empty ATS record.
 NOTHING_FROM_MANATAL: Final = FromManatal()
@@ -375,11 +401,20 @@ async def publish_profile(
     from_manatal: FromManatal = NOTHING_FROM_MANATAL,
     *,
     linkedin_url: str | None = None,
-) -> None:
-    """Write the parse into the profile and make the Candidate findable, in one transaction.
+    github_url: str | None = None,
+    portfolio_url: str | None = None,
+    canonical_role_key: str | None = None,
+    may_be_searched: bool = False,
+) -> tuple[Requirement, ...]:
+    """Write the parse into the profile, in one transaction, and say what it still lacks.
 
     Every write in here fires the platform's own `reembed_on_change`, so the embedding worker
     picks the Candidate up and Global search has them once it has run.
+
+    The two markers that make a Candidate findable go on last and only if the profile has earned
+    them. `candidates` judges every statement against its own CHECKs, so writing them over an
+    incomplete profile would not produce a wrong row — it would abort the transaction and lose
+    the migration that came with it.
     """
     async with pool.acquire() as connection, connection.transaction():
         # The candidate row is what every profile writer queues on in the platform, so this takes
@@ -393,7 +428,9 @@ async def publish_profile(
                    unmapped_skills = $4,
                    linkedin_url = coalesce(linkedin_url, $6),
                    current_cv_id = coalesce(current_cv_id, $5),
-                   is_searchable = true
+                   canonical_role_key = coalesce(canonical_role_key, $7),
+                   github_url = coalesce(github_url, $8),
+                   portfolio_url = coalesce(portfolio_url, $9)
              where id = $1
             """,
             candidate_id,
@@ -405,6 +442,9 @@ async def publish_profile(
             _merged(await _unmapped_skills(connection, candidate_id), profile.unmapped_skills),
             cv_id,
             linkedin_url,
+            canonical_role_key,
+            github_url,
+            portfolio_url,
         )
         # Manatal's own current role and qualification, but only where the CV said nothing of
         # the kind. The parse is richer where it has anything to say; this is what stops an
@@ -435,7 +475,7 @@ async def publish_profile(
             insert into candidate_skills (candidate_id, sort_order, taxonomy_id, years_experience)
             values ($1, $2, $3, $4)
             """,
-            profile.skills,
+            profile.skills or from_manatal.skills(candidate_id),
         )
         await connection.executemany(
             """
@@ -453,6 +493,66 @@ async def publish_profile(
             """,
             profile.projects,
         )
+
+        # Read back rather than reason forward: the row now holds whatever the parse, Manatal and
+        # the import each managed to fill, and only the row knows the total.
+        missing = missing_requirements(await profile_facts(connection, candidate_id))
+        if not missing:
+            await connection.execute(
+                """
+                update candidates
+                   set profile_completed_at = coalesce(profile_completed_at, now()),
+                       is_searchable = $2
+                 where id = $1
+                """,
+                candidate_id,
+                may_be_searched,
+            )
+        return missing
+
+
+async def profile_facts(connection: asyncpg.Connection, candidate_id: UUID) -> ProfileFacts:
+    """The ten facts, as the platform's own `profile_facts` reads them."""
+    row = await connection.fetchrow(
+        """
+        select p.full_name,
+               p.phone,
+               p.phone_country,
+               c.headline,
+               c.summary,
+               c.location_key,
+               c.canonical_role_key,
+               exists (
+                 select 1 from cvs
+                  where cvs.id = c.current_cv_id
+                    and cvs.candidate_id = c.id
+                    and cvs.parsing_status = 'ready'
+                    and cvs.deleted_at is null
+               ) as has_a_read_cv,
+               (select count(*) from candidate_educations where candidate_id = c.id) as educations,
+               (select count(*) from candidate_skills     where candidate_id = c.id) as skills,
+               (select count(*) from candidate_languages  where candidate_id = c.id) as languages
+          from candidates c
+          join profiles   p on p.id = c.id
+         where c.id = $1
+        """,
+        candidate_id,
+    )
+    if row is None:  # pragma: no cover — the caller holds this row under `for update`
+        raise LookupError(f"no candidate row for {candidate_id}")
+    return ProfileFacts(
+        has_a_read_cv=row["has_a_read_cv"],
+        full_name=row["full_name"],
+        phone=row["phone"],
+        phone_country=row["phone_country"],
+        headline=row["headline"],
+        summary=row["summary"],
+        location_key=row["location_key"],
+        canonical_role_key=row["canonical_role_key"],
+        educations=row["educations"],
+        skills=row["skills"],
+        languages=row["languages"],
+    )
 
 
 async def address_is_taken(pool: asyncpg.Pool, email: str) -> bool:
@@ -479,6 +579,55 @@ def _merged(kept: Sequence[str], added: Sequence[str]) -> list[str]:
     for skill in (*kept, *added):
         seen.setdefault(skill.strip().lower(), skill.strip())
     return [skill for skill in seen.values() if skill][:MAX_SKILLS]
+
+
+def matched_skills(
+    named: Sequence[str], taxonomy: Mapping[str, UUID]
+) -> tuple[tuple[UUID, ...], tuple[str, ...]]:
+    """Manatal's skill names split into the ones the taxonomy knows and the ones it does not.
+
+    Returned as both halves because both are wanted: the matched become `candidate_skills`, which
+    is what a skill filter and the completeness rule count, and the rest are reported so the
+    operator can see which skills the platform has no word for yet.
+    """
+    known: dict[UUID, None] = {}
+    unknown: dict[str, None] = {}
+    for name in named:
+        written = name.strip()
+        if not written:
+            continue
+        found = taxonomy.get(written.lower())
+        if found is None:
+            unknown[written] = None
+        else:
+            known[found] = None
+    return tuple(known), tuple(unknown)
+
+
+def role_from_parse(
+    parsed: Mapping[str, Any] | None, taxonomy: Mapping[str, str], typed: str | None = None
+) -> str | None:
+    """The Canonical role for this Candidate: the parse's judgement, else Manatal's job title.
+
+    The parser is given the taxonomy and answers with a key, so its answer is preferred — it read
+    the whole CV. It is still checked against the live list, because a parse stored months ago
+    names whatever the taxonomy held then. Manatal's typed position is the fallback, and no role
+    at all is the answer when neither is certain.
+    """
+    proposed = (parsed or {}).get("canonical_role")
+    if isinstance(proposed, str) and proposed.strip() in set(taxonomy.values()):
+        return proposed.strip()
+    return role_key_of(typed, taxonomy)
+
+
+def github_from_parse(parsed: Mapping[str, Any] | None) -> str | None:
+    stated = (parsed or {}).get("github_url")
+    return github_address(stated) if isinstance(stated, str) else None
+
+
+def portfolio_from_parse(parsed: Mapping[str, Any] | None) -> str | None:
+    stated = (parsed or {}).get("portfolio_url")
+    return portfolio_address(stated) if isinstance(stated, str) else None
 
 
 def linkedin_from_parse(parsed: Mapping[str, Any] | None) -> str | None:

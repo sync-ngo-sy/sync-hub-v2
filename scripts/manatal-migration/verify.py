@@ -173,12 +173,25 @@ class Verification:
                 verdict.wrong(entry, "the CV parse failed, so no profile can be written")
             return
 
-        # Published: the parse ran, the profile was written, and they are findable.
+        # Published: the parse ran and the profile was written. Whether they are *findable* is a
+        # separate question with two answers of its own — see below.
         if parsing != "ready":
             verdict.wrong(entry, f"published but the CV is {parsing}, not ready")
         if not row["profile_rows"]:
             verdict.wrong(entry, "published but the profile has no experience, education or skills")
         if row["current_cv_id"] is None:
             verdict.wrong(entry, "published but no current CV, so Global search excludes them")
-        if not row["is_searchable"]:
-            verdict.wrong(entry, "published but not searchable")
+        self._check_searchable(entry, row, verdict)
+
+    def _check_searchable(self, entry: Entry, row: asyncpg.Record, verdict: Verdict) -> None:
+        """Findable is not a claim about everybody — only about those who agreed and are complete.
+
+        So the disagreements worth reporting are the two the migration would be wrong about: on
+        without consent, which shows somebody who did not agree, and off despite consent and a
+        complete profile, which withholds somebody who did.
+        """
+        searchable = bool(row["is_searchable"])
+        if searchable and not entry.consent:
+            verdict.wrong(entry, "searchable, but Manatal recorded no consent from them")
+        if not searchable and entry.consent and entry.missing == []:
+            verdict.wrong(entry, "consented and complete, but not searchable")
