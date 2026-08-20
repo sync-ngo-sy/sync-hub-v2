@@ -100,7 +100,7 @@ def profile_from(
                 candidate_id,
                 order,
                 _line(entry.get("job_title")) or "Not stated",
-                _line(entry.get("company_name")),
+                _text(entry.get("company_name")),
                 _year(entry.get("start_year")),
                 _month(entry.get("start_month")),
                 None if entry.get("is_current") else _year(entry.get("end_year")),
@@ -108,15 +108,15 @@ def profile_from(
                 bool(entry.get("is_current")),
                 _text(entry.get("description")),
             )
-            for order, entry in enumerate(_entries(parsed, "experiences"))
+            for order, entry in enumerate(_datable(_entries(parsed, "experiences")))
         ],
         educations=[
             (
                 candidate_id,
                 order,
                 _line(entry.get("institution")) or "Not stated",
-                _line(entry.get("degree")),
-                _line(entry.get("field_of_study")),
+                _capped(entry.get("degree")),
+                _capped(entry.get("field_of_study")),
                 _year(entry.get("graduation_year")),
                 _text(entry.get("description")),
             )
@@ -136,8 +136,8 @@ def profile_from(
                 order,
                 _line(entry.get("name")) or "Not stated",
                 _text(entry.get("description")),
-                _line(entry.get("project_url")),
-                _line(entry.get("repository_url")),
+                _capped(entry.get("project_url")),
+                _capped(entry.get("repository_url")),
                 _year(entry.get("start_year")),
                 _month(entry.get("start_month")),
                 _year(entry.get("end_year")),
@@ -207,12 +207,39 @@ def _list(value: object) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
+def _datable(entries: list[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    """Only the jobs `candidate_experiences` will take: dated, and finished ones with an end.
+
+    The table is strict about this on purpose — `start_year int not null`, and
+    `cexp_finished_work_has_an_end check (is_current or end_year is not null)` — because Total
+    experience is derived from these rows and is only honest if every job behind it can be
+    measured. A CV parse has no such guarantee: `ParsedExperience.start_year` is `int | None`.
+
+    The platform never writes an undated job either. It keeps one on the draft and refuses to
+    save the profile until the candidate fills the dates in, and this script has no candidate to
+    ask. So an undated job stays in the archive rather than becoming a row the database rejects —
+    and it would reject the whole transaction, taking the rest of the profile with it.
+    """
+    return [
+        entry
+        for entry in entries
+        if _year(entry.get("start_year")) is not None
+        and (bool(entry.get("is_current")) or _year(entry.get("end_year")) is not None)
+    ]
+
+
 def _key(value: object) -> str:
     return _line(value).lower()
 
 
 def _line(value: object) -> str:
     return str(value).strip()[:MAX_LINE] if isinstance(value, str) else ""
+
+
+def _capped(value: object) -> str | None:
+    """One line, or nothing. For the nullable columns: the platform's own writer stores None for
+    these, so an empty string here would leave migrated rows shaped unlike every other row."""
+    return _line(value) or None
 
 
 def _text(value: object) -> str | None:

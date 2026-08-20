@@ -157,7 +157,9 @@ def test_a_current_job_never_carries_an_end_date() -> None:
     assert profile.experiences[0][6:9] == (None, None, True)
 
 
-def test_years_and_months_outside_what_the_schema_allows_are_dropped() -> None:
+def test_a_year_outside_what_the_schema_allows_leaves_the_job_undated_so_it_is_dropped() -> None:
+    """1719 fails `cexp_start_year_range`, so it cannot be stored — and `start_year` is not
+    nullable, so what is left is not a row. The archive still holds it."""
     profile = built(
         experiences=[
             {
@@ -174,14 +176,63 @@ def test_years_and_months_outside_what_the_schema_allows_are_dropped() -> None:
         educations=[{"institution": "Somewhere", "graduation_year": 3000}],
     )
 
-    assert profile.experiences[0][4:6] == (None, None)
+    assert profile.experiences == []
     assert profile.educations[0][5] is None
+
+
+def test_every_experience_row_satisfies_the_two_constraints_on_the_table() -> None:
+    """`start_year int not null`, and `cexp_finished_work_has_an_end`. A parse returns jobs that
+    meet neither, and one such row aborts the transaction the whole profile is written in."""
+    profile = built(
+        experiences=[
+            {"job_title": "Undated", "start_year": None, "is_current": False},
+            {"job_title": "No end", "start_year": 2018, "end_year": None, "is_current": False},
+            {"job_title": "Still there", "start_year": 2019, "is_current": True},
+            {"job_title": "Finished", "start_year": 2015, "end_year": 2017, "is_current": False},
+        ]
+    )
+
+    assert [row[2] for row in profile.experiences] == ["Still there", "Finished"]
+    for row in profile.experiences:
+        start_year, end_year, is_current = row[4], row[6], row[8]
+        assert start_year is not None
+        assert is_current or end_year is not None
+
+
+def test_the_kept_jobs_are_numbered_from_zero_after_the_undated_go() -> None:
+    """`sort_order` is what the profile is read back in, so a gap would be a missing job."""
+    profile = built(
+        experiences=[
+            {"job_title": "Undated", "is_current": False},
+            {"job_title": "Kept", "start_year": 2019, "is_current": True},
+        ]
+    )
+
+    assert [row[1] for row in profile.experiences] == [0]
+
+
+def test_a_dated_job_keeps_a_month_the_schema_would_refuse_as_null() -> None:
+    """`start_month` is nullable, so a month out of range costs the month, not the job."""
+    profile = built(
+        experiences=[
+            {
+                "job_title": "Engineer",
+                "start_year": 2019,
+                "start_month": 13,
+                "end_year": 2021,
+                "end_month": 0,
+                "is_current": False,
+            }
+        ]
+    )
+
+    assert profile.experiences[0][4:8] == (2019, None, 2021, None)
 
 
 def test_an_entry_with_no_title_still_names_something() -> None:
     """`job_title` and `institution` are not nullable, and a parse can come back thin."""
     profile = built(
-        experiences=[{"company_name": "Acme"}],
+        experiences=[{"company_name": "Acme", "start_year": 2020, "is_current": True}],
         educations=[{"degree": "BSc"}],
         projects=[{"description": "a thing"}],
     )

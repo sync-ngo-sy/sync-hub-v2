@@ -22,7 +22,9 @@ if TYPE_CHECKING:
 
     from manatal import Candidate
 
-DEFAULT_PATH: Final = Path("manatal-candidates.jsonl")
+#: Beside this script, for the reason the ledger is: this is the most sensitive file the run
+#: produces, and the `.gitignore` covering it is in this folder.
+DEFAULT_PATH: Final = Path(__file__).resolve().parent / "manatal-candidates.jsonl"
 
 
 class Archive:

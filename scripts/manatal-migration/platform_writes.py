@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 import asyncpg
 
 from completeness import ProfileFacts, Requirement, missing_requirements
+from experience import business_today, periods_of, total_experience_years
 from links import github_address, linkedin_address, portfolio_address
 from phones import Phone
 from roles import role_key_of
@@ -102,6 +103,21 @@ async def location_keys(pool: asyncpg.Pool) -> dict[str, str]:
     return {row["name"].strip().lower(): row["key"] for row in rows}
 
 
+#: `candidates_headline_length` caps the column at 200. The publish path already truncates to
+#: this through `profile_rows._line`; the import path passed Manatal's `current_position` straight
+#: through, so the two disagreed about the same column and a long title failed the whole import.
+MAX_HEADLINE: Final = 200
+
+#: `profiles.full_name` is not nullable, and a nameless candidate needs something in it. Not the
+#: email address: that column is shown to Recruiters and feeds the cross-tenant search vector
+#: through `reembed_on_change`, so an address there is indexed as a person's name.
+UNNAMED: Final = "Name not stated"
+
+
+def within_a_headline(typed: str | None) -> str | None:
+    return (typed.strip()[:MAX_HEADLINE] or None) if typed else None
+
+
 async def role_keys(pool: asyncpg.Pool) -> dict[str, str]:
     """The canonical role taxonomy, keyed by lowercased name, as `role_key_of` wants it."""
     rows = await pool.fetch("select key, name from canonical_roles")
@@ -164,19 +180,24 @@ async def create_candidate(
         )
 
 
-async def store_cv(
+async def intended_cv(
     pool: asyncpg.Pool,
     candidate_id: UUID,
     *,
-    display_name: str,
     file_hash: str,
     media_type: str,
 ) -> StoredCv:
-    """The `cvs` row, and the path its file belongs at.
+    """Where this Candidate's CV belongs, without writing anything.
 
-    Inserting it is what enqueues the parse: `ingest_on_upload` does that, exactly as it does for
-    an upload. A file this Candidate already has is recognised by the partial unique index the
-    platform puts on `(candidate_id, file_hash)`.
+    Reserving the id and the path separately from recording the row is what lets the file be
+    uploaded first. Inserting the row is what enqueues the parse — `ingest_on_upload` writes an
+    `ingestion_jobs` row, whose own trigger POSTs the worker immediately — so a row inserted
+    before its file exists sends the worker to fetch an object that is not there yet. That
+    failure is terminal: the CV stays `failed` and the Candidate never publishes. The platform's
+    own upload path uploads first for exactly this reason.
+
+    A file this Candidate already has is recognised by the partial unique index the platform puts
+    on `(candidate_id, file_hash)`.
     """
     existing = await pool.fetchval(
         "select id from cvs where candidate_id = $1 and file_hash = $2 and deleted_at is null",
@@ -187,9 +208,21 @@ async def store_cv(
         return StoredCv(
             cv_id=existing, storage_path=_path(candidate_id, existing, media_type), is_new=False
         )
-
     cv_id = uuid4()
-    storage_path = _path(candidate_id, cv_id, media_type)
+    return StoredCv(cv_id=cv_id, storage_path=_path(candidate_id, cv_id, media_type), is_new=True)
+
+
+async def record_cv(
+    pool: asyncpg.Pool,
+    candidate_id: UUID,
+    *,
+    cv_id: UUID,
+    storage_path: str,
+    display_name: str,
+    file_hash: str,
+    media_type: str,
+) -> StoredCv:
+    """The `cvs` row, once its file is really in the bucket. This is what queues the parse."""
     try:
         await pool.execute(
             """
@@ -257,18 +290,50 @@ async def keep_note(
 async def apply_tags(
     pool: asyncpg.Pool, given: Importer, candidate_id: UUID, tags: Sequence[str]
 ) -> None:
-    """Manatal's labels become this Tenant's own Tags, created on first sight."""
+    """Manatal's labels become this Tenant's own Tags, created on first sight.
+
+    `tenant_tags` carries two unique constraints, not one: `(tenant_id, scope, name)` and a
+    case-insensitive index on `(tenant_id, scope, lower(name))`. An arbiter naming only the first
+    lets a Manatal `Backend` arriving against an existing `backend` raise an uncaught
+    `UniqueViolationError` — which fails the candidate, and free-text tags typed by recruiters
+    across 5,000 records make that collision close to certain.
+
+    So the existing Tag is looked for the way the index sees it, and the Tenant's own spelling is
+    kept: the recruiters here named it, not Manatal.
+    """
     for name in tags:
         async with pool.acquire() as connection, connection.transaction():
             tag_id = await connection.fetchval(
                 """
-                insert into tenant_tags (tenant_id, name, scope) values ($1, $2, 'candidate')
-                on conflict (tenant_id, scope, name) do update set name = excluded.name
-                returning id
+                select id from tenant_tags
+                 where tenant_id = $1 and scope = 'candidate' and lower(name) = lower($2)
                 """,
                 given.tenant_id,
                 name,
             )
+            if tag_id is None:
+                tag_id = await connection.fetchval(
+                    """
+                    insert into tenant_tags (tenant_id, name, scope) values ($1, $2, 'candidate')
+                    on conflict do nothing
+                    returning id
+                    """,
+                    given.tenant_id,
+                    name,
+                )
+            if tag_id is None:
+                # Another of these ran between the select and the insert. Whichever spelling won,
+                # it is the one to file against.
+                tag_id = await connection.fetchval(
+                    """
+                    select id from tenant_tags
+                     where tenant_id = $1 and scope = 'candidate' and lower(name) = lower($2)
+                    """,
+                    given.tenant_id,
+                    name,
+                )
+            if tag_id is None:  # pragma: no cover — nothing else can remove it inside this run
+                continue
             await connection.execute(
                 """
                 insert into candidate_tag_assignments
@@ -492,6 +557,16 @@ async def publish_profile(
             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             """,
             profile.projects,
+        )
+
+        # Derived from the rows just written, in the same transaction. Nothing in the schema
+        # maintains this column — the API recomputes it on each profile save — so raw SQL that
+        # skips it leaves every migrated Candidate reading as never having worked, which is what
+        # the commonest Recruiter filter then excludes them by.
+        await connection.execute(
+            "update candidates set total_experience_years = $2 where id = $1",
+            candidate_id,
+            total_experience_years(periods_of(experiences), business_today()),
         )
 
         # Read back rather than reason forward: the row now holds whatever the parse, Manatal and

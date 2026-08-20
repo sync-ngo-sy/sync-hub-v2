@@ -19,14 +19,22 @@ from typing import TYPE_CHECKING, Final
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-DEFAULT_PATH: Final = Path("manatal-migration-ledger.json")
+#: Beside this script, not beside whoever ran it. The `.gitignore` that keeps 5,000 names and
+#: email addresses out of the repository lives in this folder, so anchoring the default here is
+#: what makes that protection hold however the script was invoked.
+DEFAULT_PATH: Final = Path(__file__).resolve().parent / "manatal-migration-ledger.json"
 
 
 class State(StrEnum):
     """Where one candidate got to."""
 
     IMPORTED = "imported"  # account made, CV stored, parse queued — profile not written yet
-    PUBLISHED = "published"  # profile written from the parse, and findable
+    PUBLISHED = "published"  # profile written from the parse
+    #: Settled, and nothing written on purpose: somebody had already filled the profile in, or the
+    #: parse found nothing worth publishing. Distinct from `published` because the verification
+    #: pass asks a published profile to have content and a current CV, and would report three
+    #: disagreements per candidate for these — failing a sign-off on a correct migration.
+    LEFT_ALONE = "left_alone"
     NO_RESUME = "no_resume"
     NO_EMAIL = "no_email"
     ALREADY_REGISTERED = "already_registered"
@@ -36,7 +44,13 @@ class State(StrEnum):
     def is_settled(self) -> bool:
         """Nothing more to do, so a re-run walks past it. `imported` is not settled: its profile
         is still waiting on a parse. Nor is `failed`: retrying is what a re-run is for."""
-        return self in {State.PUBLISHED, State.NO_RESUME, State.NO_EMAIL, State.ALREADY_REGISTERED}
+        return self in {
+            State.PUBLISHED,
+            State.LEFT_ALONE,
+            State.NO_RESUME,
+            State.NO_EMAIL,
+            State.ALREADY_REGISTERED,
+        }
 
 
 @dataclass
@@ -104,11 +118,17 @@ class Ledger:
         return entry is not None and entry.state.is_settled
 
     def awaiting_publication(self) -> list[Entry]:
-        """Imported, parse queued, profile not written yet — plus anything that failed mid-way."""
+        """Imported, parse queued, profile not written yet — plus anything that failed mid-way.
+
+        Failed entries belong here as long as they got as far as a CV. A publish that the database
+        refused leaves one, and without this only a full run would ever pick it up again — so
+        `--publish-only`, the pass somebody runs repeatedly while the worker catches up, would
+        walk past the very candidates it exists to finish.
+        """
         return [
             entry
             for entry in self._entries.values()
-            if entry.state is State.IMPORTED and entry.cv_id is not None
+            if entry.state in {State.IMPORTED, State.FAILED} and entry.cv_id is not None
         ]
 
     def record(self, entry: Entry) -> None:

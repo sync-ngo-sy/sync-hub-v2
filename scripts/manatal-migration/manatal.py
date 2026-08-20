@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -12,7 +13,7 @@ from urllib.parse import urlsplit
 from httpx import AsyncClient, HTTPError, HTTPStatusError, Response
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Awaitable, Callable, Mapping, Sequence
 
 CANDIDATES_PATH: Final = "/candidates/"
 
@@ -61,6 +62,18 @@ MEDIA_TYPES: Final[dict[str, str]] = {
 MEDIA_TYPE_BY_EXTENSION: Final[dict[str, str]] = {
     extension: media_type for media_type, extension in MEDIA_TYPES.items()
 }
+
+TOO_MANY_REQUESTS: Final = 429
+
+#: How many times one request waits out a rate limit before giving up and becoming a failure the
+#: ledger records. Enough to ride out a burst, few enough that a genuinely throttled account stops
+#: rather than hanging for an afternoon.
+RATE_LIMIT_ATTEMPTS: Final = 5
+
+#: Waited when Manatal asks us to slow down but does not say for how long. Doubling per attempt,
+#: capped, so a burst backs off without a run stalling indefinitely.
+RATE_LIMIT_PAUSE: Final = 2.0
+LONGEST_PAUSE: Final = 30.0
 
 #: Anything in an error body that could be replayed if it reached a log.
 SECRETS: Final = re.compile(r"(Token\s+)\S+|((?:Signature|X-Amz-[A-Za-z-]+)=)[^&\s]+")
@@ -143,11 +156,21 @@ class Manatal:
     request rather than sitting on the client.
     """
 
-    def __init__(self, http: AsyncClient, *, base_url: str, token: str, page_size: int) -> None:
+    def __init__(
+        self,
+        http: AsyncClient,
+        *,
+        base_url: str,
+        token: str,
+        page_size: int,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
         self._http = http
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._page_size = page_size
+        #: Injected so a test can prove the waiting happens without waiting for it.
+        self._sleep = sleep
 
     @classmethod
     def build(cls, *, base_url: str, token: str, timeout_seconds: float, page_size: int) -> Manatal:
@@ -214,14 +237,41 @@ class Manatal:
         headers: Mapping[str, str] | None = None,
         params: Mapping[str, str] | None = None,
     ) -> Response:
+        """One request, waiting out a rate limit rather than failing on it.
+
+        Manatal's limits are not documented well enough to pick a safe fan-out, so the fan-out is
+        not what protects this — waiting is. Without it a burst of 429s becomes a pile of failed
+        candidates, each of which then has to be retried by a later run, which is a slower way to
+        do the same work and a worse one: every failure is a chance to leave something half done.
+        """
+        for attempt in range(RATE_LIMIT_ATTEMPTS):
+            try:
+                answered = await self._http.get(
+                    url, headers={"Accept": "application/json", **(headers or {})}, params=params
+                )
+            except HTTPError as unreachable:
+                raise ManatalUnavailableError(
+                    f"Manatal did not answer {_without_query(url)}: {type(unreachable).__name__}"
+                ) from unreachable
+            if answered.status_code != TOO_MANY_REQUESTS or attempt == RATE_LIMIT_ATTEMPTS - 1:
+                return answered
+            await self._sleep(_retry_after(answered, attempt))
+        raise AssertionError("unreachable")  # pragma: no cover — the loop always returns or raises
+
+
+def _retry_after(answered: Response, attempt: int) -> float:
+    """How long to wait: what Manatal asked for, else a doubling pause.
+
+    `Retry-After` is honoured because a server that names a number knows better than we do, and
+    capped because it can name a very large one.
+    """
+    asked = answered.headers.get("retry-after", "").strip()
+    if asked:
         try:
-            return await self._http.get(
-                url, headers={"Accept": "application/json", **(headers or {})}, params=params
-            )
-        except HTTPError as unreachable:
-            raise ManatalUnavailableError(
-                f"Manatal did not answer {_without_query(url)}: {type(unreachable).__name__}"
-            ) from unreachable
+            return min(max(float(asked), 0.0), LONGEST_PAUSE)
+        except ValueError:
+            pass
+    return min(RATE_LIMIT_PAUSE * (2**attempt), LONGEST_PAUSE)
 
 
 def _checked(answered: Response) -> Response:

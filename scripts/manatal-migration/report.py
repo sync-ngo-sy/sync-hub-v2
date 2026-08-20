@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 #: What each state means to somebody who did not write the script.
 IN_PLAIN_WORDS_STATE: Final[dict[State, str]] = {
     State.PUBLISHED: "moved across, profile written",
+    State.LEFT_ALONE: "moved across, profile left as it was",
     State.IMPORTED: "moved across, waiting for their CV to be read",
     State.NO_RESUME: "skipped — no CV in Manatal to move",
     State.NO_EMAIL: "skipped — no email address, so no account could be made",
@@ -51,7 +52,11 @@ class Outcome:
 
     @property
     def moved(self) -> int:
-        return self.by_state.get(State.PUBLISHED, 0) + self.by_state.get(State.IMPORTED, 0)
+        return (
+            self.by_state.get(State.PUBLISHED, 0)
+            + self.by_state.get(State.LEFT_ALONE, 0)
+            + self.by_state.get(State.IMPORTED, 0)
+        )
 
 
 def outcome_of(ledger: Ledger) -> Outcome:

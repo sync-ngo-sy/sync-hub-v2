@@ -13,6 +13,9 @@ dependencies = [
     # neither. Which country a bare local number belongs to is a table, not a rule, and this is
     # that table.
     "phonenumbers>=8.13",
+    # `total_experience_years` is derived in the platform's own business timezone, and Windows
+    # ships no IANA database for `zoneinfo` to read.
+    "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 
 [dependency-groups]

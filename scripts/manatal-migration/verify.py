@@ -89,7 +89,7 @@ class Verification:
     async def run(self, *, in_manatal: Sequence[str] = ()) -> Verdict:
         verdict = Verdict()
         for entry in self._ledger:
-            if entry.state not in {State.IMPORTED, State.PUBLISHED}:
+            if entry.state not in {State.IMPORTED, State.PUBLISHED, State.LEFT_ALONE}:
                 continue
             verdict.checked += 1
             before = len(verdict.discrepancies)
@@ -168,6 +168,10 @@ class Verification:
 
     def _check_parse(self, entry: Entry, row: asyncpg.Record, verdict: Verdict) -> None:
         parsing = row["parsing_status"]
+        if entry.state is State.LEFT_ALONE:
+            # The migration deliberately wrote no profile here, so there is no profile to check.
+            # The account, the CV and the file have already been verified above.
+            return
         if entry.state is State.IMPORTED:
             if parsing == "failed":
                 verdict.wrong(entry, "the CV parse failed, so no profile can be written")

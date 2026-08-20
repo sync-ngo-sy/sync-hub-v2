@@ -51,7 +51,7 @@ DEFAULT_BASE_URL: Final = "https://api.manatal.com/open/v3"
 
 #: Where the readable account of a run is written. Beside the ledger, which holds the same facts
 #: in a form only a program reads.
-REPORT_PATH: Final = Path("manatal-migration-report.html")
+REPORT_PATH: Final = Path(__file__).resolve().parent / "manatal-migration-report.html"
 
 #: Stands in for the importing Recruiter when the run never imports anything — `--inventory`
 #: reads Manatal and stops, so it has nobody to attribute anything to.
@@ -311,13 +311,26 @@ class Migration:
         self._roles = await writes.role_keys(self._pool)
         published = 0
         publishing = Progress(total=len(waiting))
+        stumbled = 0
         for entry in waiting:
-            if await self._publish(entry, taxonomy, languages):
-                published += 1
+            # Guarded per candidate, exactly as the import pass is. Unguarded, the first profile
+            # the database refuses ends the whole pass, the entry stays `imported`, and every
+            # later run walks back into the same one — so a single bad parse stops the other
+            # 4,999 from ever being published.
+            try:
+                if await self._publish(entry, taxonomy, languages):
+                    published += 1
+            except Exception as broke:
+                stumbled += 1
+                entry.state = State.FAILED
+                entry.error = f"{type(broke).__name__}: {broke}"[:500]
+                self._ledger.record(entry)
             publishing.advance()
             if publishing.done % 50 == 0 or publishing.done == publishing.total:
                 say(publishing.line())
         say(f"Published {published} of {len(waiting)} profiles waiting on a parse.")
+        if stumbled:
+            say(f"  {stumbled} could not be published and will be tried again on the next run.")
         return published
 
     async def _bring_across(self, candidate: Candidate) -> None:
@@ -329,15 +342,19 @@ class Migration:
             try:
                 await self._import_one(candidate)
             except Exception as broke:
-                self._ledger.record(
-                    Entry(
-                        manatal_candidate_id=candidate.external_id,
-                        state=State.FAILED,
-                        full_name=candidate.full_name,
-                        email=candidate.email,
-                        error=f"{type(broke).__name__}: {broke}"[:500],
-                    )
-                )
+                # Whatever was already established about this candidate has to survive the
+                # failure. Writing a bare entry would drop `candidate_id` and `cv_id`, and then
+                # the next run — seeing no id — asks whether the address is taken, finds the
+                # account this run made, and settles them as `already_registered` for good: the
+                # account, the CV and the pool entry all exist, and the profile never publishes.
+                known = self._ledger.of(candidate.external_id)
+                failed = _decided(candidate, State.FAILED)
+                if known is not None:
+                    failed.candidate_id = known.candidate_id
+                    failed.cv_id = known.cv_id
+                    failed.file_hash = known.file_hash
+                failed.error = f"{type(broke).__name__}: {broke}"[:500]
+                self._ledger.record(failed)
 
     async def _import_one(self, candidate: Candidate) -> None:
         if self._manatal is None:  # pragma: no cover — only reached with a Manatal client
@@ -369,8 +386,8 @@ class Migration:
                 await writes.create_candidate(
                     self._pool,
                     candidate_id,
-                    full_name=candidate.full_name or candidate.email,
-                    headline=candidate.headline,
+                    full_name=candidate.full_name or writes.UNNAMED,
+                    headline=writes.within_a_headline(candidate.headline),
                     phone=as_phone(candidate.phone, region=self._phone_region),
                     avatar_url=candidate.picture_url,
                     location_key=writes.location_key_of(candidate.location, self._locations),
@@ -383,23 +400,40 @@ class Migration:
                 await self._undo(candidate_id)
                 raise
 
+        uploaded: str | None = None
         try:
-            stored = await writes.store_cv(
+            intended = await writes.intended_cv(
                 self._pool,
                 candidate_id,
-                display_name=resume.filename,
                 file_hash=file_hash,
                 media_type=resume.media_type,
             )
-            if stored.is_new:
+            stored = intended
+            if intended.is_new:
+                # The file first, then the row. Recording the row is what queues the parse, and
+                # the worker is POSTed as soon as it is queued — so a row written before its
+                # object exists sends the worker to fetch nothing, which fails terminally.
+                await self._supabase.upload_cv(
+                    intended.storage_path, resume.content, media_type=resume.media_type
+                )
+                uploaded = intended.storage_path
                 try:
-                    await self._supabase.upload_cv(
-                        stored.storage_path, resume.content, media_type=resume.media_type
+                    stored = await writes.record_cv(
+                        self._pool,
+                        candidate_id,
+                        cv_id=intended.cv_id,
+                        storage_path=intended.storage_path,
+                        display_name=resume.filename,
+                        file_hash=file_hash,
+                        media_type=resume.media_type,
                     )
                 except BaseException:
-                    # No file means no CV: drop the row so the queued parse goes with it.
-                    await writes.remove_cv_row(self._pool, stored.cv_id)
+                    # An uploaded file with no row pointing at it is an orphan nothing collects.
+                    await self._supabase.remove_cv(intended.storage_path)
                     raise
+                if not stored.is_new:
+                    # Somebody else won the race and their row names a different path.
+                    await self._supabase.remove_cv(intended.storage_path)
             await writes.add_to_talent_pool(self._pool, self._importer, candidate_id)
             if candidate.tags:
                 await writes.apply_tags(self._pool, self._importer, candidate_id, candidate.tags)
@@ -408,7 +442,9 @@ class Migration:
                 await writes.keep_note(self._pool, self._importer, candidate_id, written)
         except BaseException:
             if provisioned:
-                await self._undo(candidate_id)
+                # `uploaded` rather than `stored.storage_path`: the object exists from the moment
+                # the upload returns, which is before there is any row naming it.
+                await self._undo(candidate_id, uploaded)
             raise
 
         self._ledger.record(
@@ -430,7 +466,7 @@ class Migration:
             return False
         if not await writes.profile_is_empty(self._pool, candidate_id):
             # Somebody has filled this in — a re-run, or the person themselves. Never overwritten.
-            entry.state = State.PUBLISHED
+            entry.state = State.LEFT_ALONE
             self._ledger.record(entry)
             return False
 
@@ -439,7 +475,7 @@ class Migration:
         )
         if not profile.is_worth_publishing:
             say(f"  {entry.manatal_candidate_id}: the parse found nothing to publish, left alone.")
-            entry.state = State.PUBLISHED
+            entry.state = State.LEFT_ALONE
             self._ledger.record(entry)
             return False
 
@@ -471,9 +507,18 @@ class Migration:
         self._ledger.record(entry)
         return True
 
-    async def _undo(self, candidate_id: UUID) -> None:
+    async def _undo(self, candidate_id: UUID, stored_at: str | None = None) -> None:
         """Delete the account this attempt made. `profiles.id → auth.users` cascades, so this takes
-        the Candidate row with it and leaves the address free to be tried again."""
+        the Candidate row with it and leaves the address free to be tried again.
+
+        The bucket is not in that cascade. #121 asked for a failed import to leave no orphan auth
+        user *and* no orphan file, so the object goes explicitly or not at all.
+        """
+        if stored_at is not None:
+            try:
+                await self._supabase.remove_cv(stored_at)
+            except Exception as broke:
+                say(f"  ! left a file behind at {stored_at}: {broke}")
         try:
             await self._supabase.delete_account(candidate_id)
         except Exception as broke:
