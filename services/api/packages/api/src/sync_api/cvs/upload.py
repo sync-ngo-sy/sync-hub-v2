@@ -79,11 +79,7 @@ def _media_type_of(upload: UploadFile) -> str:
     guessed = CV_MEDIA_TYPE_BY_EXTENSION.get(Path(upload.filename or "").suffix.lower())
     if guessed is not None:
         return guessed
-    raise Problem(
-        status=415,
-        type=CV_MEDIA_TYPE_PROBLEM_TYPE,
-        detail="A CV has to be a PDF, DOC or DOCX file.",
-    )
+    raise _unsupported_media_type()
 
 
 def _display_name(upload: UploadFile) -> str:
@@ -113,17 +109,23 @@ SIGNATURES_BY_MEDIA_TYPE: Final[dict[str, tuple[bytes, ...]]] = {
 }
 
 MAX_SIGNATURE_BYTES: Final = max(
-    len(signature) for media_type in SIGNATURES_BY_MEDIA_TYPE.values() for signature in media_type
+    len(signature) for signatures in SIGNATURES_BY_MEDIA_TYPE.values() for signature in signatures
 )
 
 
-def _refuse_if_signature_mismatches(path: Path, media_type: str) -> None:
-    with path.open("rb") as source:
-        start = source.read(MAX_SIGNATURE_BYTES)
-    if any(start.startswith(signature) for signature in SIGNATURES_BY_MEDIA_TYPE[media_type]):
-        return
-    raise Problem(
+def _unsupported_media_type() -> Problem:
+    return Problem(
         status=415,
         type=CV_MEDIA_TYPE_PROBLEM_TYPE,
         detail="A CV has to be a PDF, DOC or DOCX file.",
     )
+
+
+def _refuse_if_signature_mismatches(path: Path, media_type: str) -> None:
+    """A type accepted in `sync_core.storage` with no signature here is refused, not crashed on."""
+    signatures = SIGNATURES_BY_MEDIA_TYPE.get(media_type, ())
+    with path.open("rb") as source:
+        start = source.read(MAX_SIGNATURE_BYTES)
+    if any(start.startswith(signature) for signature in signatures):
+        return
+    raise _unsupported_media_type()
