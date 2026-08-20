@@ -8,12 +8,12 @@ import { problemMessage } from '@/lib/api-problem';
 import { listedCard, type SearchableCandidate } from '../candidate';
 import { useCandidateDirectory } from '../hooks/use-candidate-directory';
 import {
-  type CandidateSearchFilters,
+  type CandidatesReading,
+  candidatesAddress,
   type DirectoryOrder,
-  hardFilterCount,
-  noCandidatesMessage,
-  searchAddress,
-} from '../search';
+  orderIn,
+} from '../reading';
+import { hardFilterCount, noCandidatesMessage } from '../search';
 import { CandidateNameCell, NOTHING, yearsOf } from './candidate-cells';
 
 const TO_THE_POOL = (
@@ -71,25 +71,19 @@ const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
 ];
 
 interface CandidateDirectoryProps {
-  filters: CandidateSearchFilters;
-  order: DirectoryOrder;
+  reading: CandidatesReading;
   onOrderChange: (order: DirectoryOrder) => void;
   onClear: () => void;
 }
 
-export function CandidateDirectory({
-  filters,
-  order,
-  onOrderChange,
-  onClear,
-}: CandidateDirectoryProps) {
-  const listed = useCandidateDirectory(filters, order);
+export function CandidateDirectory({ reading, onOrderChange, onClear }: CandidateDirectoryProps) {
+  const listed = useCandidateDirectory(reading);
   const navigate = useNavigate();
   const router = useRouter();
   const candidateLocation = (person: SearchableCandidate) => ({
     to: '/candidates/$candidateId' as const,
     params: { candidateId: person.candidate_id },
-    search: searchAddress(filters),
+    search: candidatesAddress(reading),
   });
 
   return (
@@ -110,12 +104,12 @@ export function CandidateDirectory({
             }
           : undefined
       }
-      sort={{ by: order, onChange: (by) => onOrderChange(by as DirectoryOrder) }}
+      sort={{ by: orderIn(reading), onChange: (by) => onOrderChange(by as DirectoryOrder) }}
       empty={{
         icon: Users,
-        message: noCandidatesMessage(filters),
+        message: noCandidatesMessage(reading),
         action:
-          hardFilterCount(filters) > 0 ? (
+          hardFilterCount(reading) > 0 ? (
             <Button variant="outline" onClick={onClear}>
               Clear filters
             </Button>

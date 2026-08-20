@@ -1,7 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { MatchedCandidate } from '../candidate';
-import { type CandidateSearchFilters, isAsked, searchQuery } from '../search';
+import type { CandidateSearchFilters } from '../reading';
+import { isAsked, searchQuery } from '../search';
 
 export const SEARCH_PATH = '/v1/search/candidates';
 

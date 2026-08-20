@@ -9,7 +9,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import { Fragment } from 'react';
 import { applicationsAddress, jobApplicationsAddress } from '@/features/applications/reading';
-import { searchAddress } from '@/features/candidates/search';
+import { candidatesAddress } from '@/features/candidates/reading';
 import type { Crumb, CrumbTarget } from '@/features/shell/origin';
 
 function targetLink(target: CrumbTarget) {
@@ -21,7 +21,7 @@ function targetLink(target: CrumbTarget) {
     case 'applications':
       return <Link to="/applications" search={applicationsAddress(target.reading)} />;
     case 'candidates':
-      return <Link to="/candidates" search={searchAddress(target.filters)} />;
+      return <Link to="/candidates" search={candidatesAddress(target.reading)} />;
     case 'talent-pool':
       return <Link to="/talent-pool" search={{}} />;
     case 'job':
