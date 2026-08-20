@@ -11,12 +11,30 @@ Candidates came from; see below.
 
 ## Running it without a terminal
 
-**Actions → Manatal migration → Run workflow.** Pick what to do, click the button, approve the run
-when GitHub asks. The log says what is happening in plain words as it goes, and the run's own page
-ends up with the numbers on it — how many moved, how many are findable, and what is missing for
-anybody who is not. Nothing to install and nothing to download.
+**Actions → Manatal migration → Run workflow.** Pick the **target** and what to do, click the
+button, approve the run when GitHub asks. The log says what is happening in plain words as it goes,
+and the run's own page ends up with the numbers on it — how many moved, how many are findable, and
+what is missing for anybody who is not. Nothing to install and nothing to download.
 
-Do it in this order:
+### Staging or production
+
+**target** decides which platform a run writes to, and it is the first field on the form. It
+defaults to `staging`. Do the whole sequence there first, look at what landed, and only then do it
+again against `production`.
+
+Each target has its own environment — `manatal-migration-staging` and
+`manatal-migration-production` — holding its own five secrets, so choosing the target is what
+chooses the database. Nothing else has to be edited to switch. Put a required reviewer on the
+production one; approving a run is how somebody accepts that 5,000 real people are about to be
+written.
+
+Each target also keeps its own ledger, and that matters more than it looks. A ledger says "this
+Manatal candidate is already done", and that is only true of the platform it was written for.
+Carried across, it would mark 5,000 people as finished who were never imported, and the run would
+report success having written nobody — a failure that looks exactly like the right answer. The two
+environments must not point at the same database, for the same reason.
+
+Do it in this order, per target:
 
 1. **check** — answers everything that has to be true, changes nothing. Start here every time.
 2. **inventory** — what Manatal actually holds, field by field. Reads Manatal only.
@@ -25,10 +43,9 @@ Do it in this order:
 4. wait for the platform's worker to read the CVs, then **publish only**, until nothing is waiting.
 5. **verify** — reads the platform back and checks every claim. **report** — says it again, any time.
 
-The workflow needs five secrets on its `manatal-migration` environment: `SYNC_DATABASE_URL`,
-`SYNC_SUPABASE_URL`, `SYNC_SUPABASE_SERVICE_ROLE_KEY`, `MANATAL_API_TOKEN` and
-`MANATAL_RECRUITER_ID`. Configure a required reviewer on that environment too: approving a run is
-how somebody accepts that 5,000 people are about to be written into production.
+Each environment needs the same five secrets: `SYNC_DATABASE_URL`, `SYNC_SUPABASE_URL`,
+`SYNC_SUPABASE_SERVICE_ROLE_KEY`, `MANATAL_API_TOKEN` and `MANATAL_RECRUITER_ID`. Run **check**
+first with nothing set if you like — it names exactly which are missing and what each one is.
 
 Two things to know about it. The run keeps the ledger as an artifact and fetches it back at the
 start of the next one — that file is what makes a second run skip whoever is already done, so a

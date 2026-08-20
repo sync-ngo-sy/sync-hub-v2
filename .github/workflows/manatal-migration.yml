@@ -4,10 +4,15 @@
 # five secrets and a place to run. It is `workflow_dispatch` and nothing else — no schedule, no
 # trigger on push. A migration runs when a person decides it runs.
 #
-# Why the environment matters: the writing steps name the `manatal-migration` environment, which
-# is where the secrets live and where a required reviewer is configured. That reviewer is the gate.
-# Approving a run is how somebody accepts that 5,000 people are about to be written into
-# production, and it is deliberately not something a single click can skip.
+# How the target is chosen: the `target` input picks an environment — `manatal-migration-staging`
+# or `manatal-migration-production` — and that environment's five secrets are what decide which
+# database is written to. It is an input rather than a wiring detail because the operator has to
+# be able to see, and to choose, which platform a run touches. Put a required reviewer on the
+# production environment: approving a run is how somebody accepts that 5,000 real people are
+# about to be written, and that should not be one click.
+#
+# The two environments must not share a database. The ledger is what makes this resumable, and it
+# only means anything against the platform it was written for.
 #
 # Why the ledger is downloaded before every run: the migration is resumable *because* of that
 # file — it is what makes a second run skip whoever is already done, and afterwards it is the only
@@ -26,6 +31,15 @@ name: Manatal migration
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: >-
+          Which platform to write to. Staging first, always — a run against production writes
+          real people and cannot be undone by re-running.
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
       step:
         description: What to do
         type: choice
@@ -65,14 +79,18 @@ permissions:
 # One migration at a time, and never cancelled part-way: a killed run loses nothing, but it does
 # leave the ledger un-uploaded, which makes the next run redo work it had already done.
 concurrency:
-  group: manatal-migration
+  group: manatal-migration-${{ inputs.target }}
   cancel-in-progress: false
 
 jobs:
   migrate:
-    name: ${{ inputs.step }}
+    # The target is in the name because the Actions list is the only place somebody can check,
+    # after the fact, which platform a run wrote to.
+    name: ${{ inputs.step }} on ${{ inputs.target }}
     runs-on: ubuntu-latest
-    environment: manatal-migration
+    # One environment per target. Each holds its own five secrets, so choosing here is what
+    # chooses the database — and production can require a reviewer that staging does not.
+    environment: manatal-migration-${{ inputs.target }}
     timeout-minutes: 360
     defaults:
       run:
@@ -91,19 +109,29 @@ jobs:
         # would re-import everybody, so a genuine fetch failure has to stop it.
         env:
           GH_TOKEN: ${{ github.token }}
+          RECORD: manatal-migration-record-${{ inputs.target }}
         run: |
           set -uo pipefail
-          last=$(gh run list --workflow manatal-migration.yml --status success \
-                   --limit 1 --json databaseId --jq '.[0].databaseId // empty')
-          if [ -z "$last" ]; then
-            echo "No earlier successful run. Starting from nothing."
-            exit 0
-          fi
-          if gh run download "$last" --name manatal-migration-record --dir . 2>/dev/null; then
-            echo "Carried the record forward from run $last."
-            ls -l
-          else
-            echo "Run $last kept no record. Starting from nothing."
+          # Named per target, and searched per target. A ledger describes one database: every
+          # entry says "this Manatal candidate is already done". Carried onto a different
+          # platform it would mark 5,000 people as finished who were never imported there, and
+          # the run would report success having written nobody. That is the worst outcome
+          # available, because it looks exactly like the right one.
+          #
+          # Several runs back rather than only the last, because the most recent success may have
+          # been against the other target, or a `check` that kept no record at all.
+          found=""
+          for last in $(gh run list --workflow manatal-migration.yml --status success \
+                          --limit 20 --json databaseId --jq '.[].databaseId'); do
+            if gh run download "$last" --name "$RECORD" --dir . 2>/dev/null; then
+              echo "Carried $RECORD forward from run $last."
+              ls -l
+              found="$last"
+              break
+            fi
+          done
+          if [ -z "$found" ]; then
+            echo "No earlier run kept a record for this target. Starting from nothing."
           fi
 
       - name: What the migration needs before it starts
@@ -147,7 +175,7 @@ jobs:
         if: always() && inputs.step != 'check' && inputs.step != 'inventory'
         uses: actions/upload-artifact@v4
         with:
-          name: manatal-migration-record
+          name: manatal-migration-record-${{ inputs.target }}
           path: |
             scripts/manatal-migration/manatal-migration-ledger.json
             scripts/manatal-migration/manatal-migration-report.html
