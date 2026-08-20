@@ -198,6 +198,12 @@ class Settings(BaseSettings):
                 "domain would send one environment's session cookie to the other's API."
             )
             raise ValueError(message)
+        if not self.auth_cookie_secure and self.environment.is_deployed:
+            message = (
+                "auth_cookie_secure must stay true in deployed environments; session cookies "
+                "carry authentication tokens and must never be sent over plain HTTP."
+            )
+            raise ValueError(message)
         return self
 
     @property
