@@ -20,7 +20,8 @@ Do it in this order:
 
 1. **check** — answers everything that has to be true, changes nothing. Start here every time.
 2. **inventory** — what Manatal actually holds, field by field. Reads Manatal only.
-3. **import and publish** — the real thing.
+3. **import and publish** — the real thing. Set **batch** to `100` the first time.
+   Look at the report, then run it again for the next 100, or set it to `0` for everybody.
 4. wait for the platform's worker to read the CVs, then **publish only**, until nothing is waiting.
 5. **verify** — reads the platform back and checks every claim. **report** — says it again, any time.
 
@@ -62,6 +63,21 @@ at the keyboard.
 
 The Recruiter's own row names the Tenant the candidates land in, so that is the only place the
 Tenant is configured and the two cannot disagree.
+
+### Try it on a hundred first
+
+```bash
+uv run migrate.py --batch 100
+uv run migrate.py --report
+```
+
+Brings across 100 people and stops. Read the report, look at a few of them in the app, then run it
+again for the next 100 — or drop the flag to do the rest in one go.
+
+It caps the people **not yet done**, which is what makes running it again move forward instead of
+repeating. `MANATAL_LIMIT` is the other kind of ceiling and the wrong tool here: it caps records
+*read* from Manatal, so `MANATAL_LIMIT=100` reads the same first hundred every time, and after the
+first run they are all settled and nothing happens.
 
 ### `--check` first, always
 
@@ -146,7 +162,8 @@ Manatal is switched off, this file is the only thing that can map the two togeth
 | `SYNC_SUPABASE_URL`, `SYNC_SUPABASE_SERVICE_ROLE_KEY` | Auth and Storage. The service-role key: run this only from somewhere that key already belongs. |
 | `MANATAL_API_TOKEN` | The Manatal API token. Asked for interactively when unset. Not needed with `--publish-only`, `--verify` or `--report`. |
 | `MANATAL_RECRUITER_ID` | The Recruiter the candidates are brought in as. |
-| `MANATAL_LIMIT` | Ceiling on one run. Default 10,000 — above the size of the account, so it is one pass. |
+| `MANATAL_BATCH` | How many people one run brings across, then stops. `0` (the default) means everybody. This is the one to use for a trial run: it caps the people *not yet done*, so running it again does the next batch rather than the same one. `--batch 100` overrides it. |
+| `MANATAL_LIMIT` | Ceiling on records *read* from Manatal. Default 10,000 — above the size of the account, so it is one pass. Not a trial setting: capping it at 100 reads the same first 100 every run, and after the first they are all done. |
 | `MANATAL_CONCURRENCY` | Candidates at once. Default 4. Each is a download and an upload, so this is what turns hours into minutes. |
 | `MANATAL_PHONE_REGION` | Which country a local phone number with no country code belongs to, as two capitals. Default `SY`. |
 | `MANATAL_API_BASE_URL`, `MANATAL_PAGE_SIZE`, `MANATAL_TIMEOUT_SECONDS` | Manatal host, page size, HTTP timeout. |

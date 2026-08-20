@@ -68,6 +68,7 @@ class Options:
     base_url: str
     page_size: int
     limit: int
+    batch: int
     concurrency: int
     timeout_seconds: float
     ledger_path: Path
@@ -125,6 +126,14 @@ def options() -> Options:
         type=Path,
         default=DEFAULT_PATH,
         help=f"Where to keep the record of what was done (default {DEFAULT_PATH}).",
+    )
+    parsed.add_argument(
+        "--batch",
+        type=int,
+        default=None,
+        help="Bring across at most this many people this run, then stop. For trying an account "
+        "on a hundred before trusting it with all of them. Running it again does the next "
+        "hundred, because whoever is already done is skipped. Unset means everybody.",
     )
     parsed.add_argument(
         "--check",
@@ -201,6 +210,12 @@ def options() -> Options:
         base_url=os.environ.get("MANATAL_API_BASE_URL", DEFAULT_BASE_URL),
         page_size=int(os.environ.get("MANATAL_PAGE_SIZE", "50")),
         limit=int(os.environ.get("MANATAL_LIMIT", "10000")),
+        # The flag wins over the setting, so a one-off trial does not mean editing the config.
+        batch=(
+            arguments.batch
+            if arguments.batch is not None
+            else int(os.environ.get("MANATAL_BATCH", "0") or 0)
+        ),
         concurrency=int(os.environ.get("MANATAL_CONCURRENCY", "4")),
         timeout_seconds=float(os.environ.get("MANATAL_TIMEOUT_SECONDS", "120")),
         ledger_path=arguments.ledger,
@@ -245,8 +260,12 @@ class Migration:
         self._locations: dict[str, str] = {}
         self._roles: dict[str, str] = {}
 
-    async def import_everyone(self, *, limit: int) -> int:
-        """Every candidate Manatal holds that this migration has not settled yet."""
+    async def import_everyone(self, *, limit: int, batch: int = 0) -> int:
+        """Every candidate Manatal holds that this migration has not settled yet.
+
+        `batch` stops it after that many, so an account can be tried on a hundred people before
+        it is trusted with five thousand.
+        """
         if self._manatal is None:
             return 0
         self._locations = await writes.location_keys(self._pool)
@@ -265,12 +284,19 @@ class Migration:
             f"Manatal holds {len(everyone)} candidates; "
             f"{len(everyone) - len(outstanding)} already done, {len(outstanding)} to bring across."
         )
-        walking = Progress(total=len(outstanding))
-        for batch in _batched(outstanding, self._concurrency * 4):
-            await asyncio.gather(*(self._bring_across(candidate) for candidate in batch))
-            walking.advance(len(batch))
+        taking = this_batch(outstanding, batch)
+        if len(taking) < len(outstanding):
+            say(
+                f"Taking {len(taking)} of them this run, as asked. Run it again for the next "
+                f"{min(batch, len(outstanding) - len(taking))}."
+            )
+
+        walking = Progress(total=len(taking))
+        for group in _batched(taking, self._concurrency * 4):
+            await asyncio.gather(*(self._bring_across(candidate) for candidate in group))
+            walking.advance(len(group))
             say(walking.line())
-        return len(outstanding)
+        return len(taking)
 
     async def publish_parsed(self) -> int:
         """Profiles for the CVs the platform's worker has finished reading.
@@ -516,6 +542,19 @@ def _decided(
     )
 
 
+def this_batch[T](outstanding: list[T], batch: int) -> list[T]:
+    """How many of the outstanding to bring across in this run.
+
+    A cap on the *outstanding* rather than on what is read from Manatal, which is the difference
+    between "do a hundred more each time" and "do the same hundred every time": the settled are
+    filtered out before this, so consecutive runs march through the account instead of re-reading
+    the front of it and finding nothing left to do.
+
+    Zero or less means no cap, so leaving it unset migrates everybody.
+    """
+    return outstanding if batch <= 0 else outstanding[:batch]
+
+
 def _batched[T](items: list[T], size: int) -> list[list[T]]:
     return [items[start : start + size] for start in range(0, len(items), max(size, 1))]
 
@@ -683,7 +722,7 @@ async def run(chosen: Options) -> int:
             phone_region=chosen.phone_region,
         )
         if not chosen.publish_only:
-            await migration.import_everyone(limit=chosen.limit)
+            await migration.import_everyone(limit=chosen.limit, batch=chosen.batch)
         await migration.publish_parsed()
     finally:
         if manatal is not None:

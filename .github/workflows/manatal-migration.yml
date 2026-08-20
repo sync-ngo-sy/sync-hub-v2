@@ -37,8 +37,14 @@ on:
           - publish only
           - verify
           - report
+      batch:
+        description: >-
+          How many people to bring across this run. Start with 100 to try it, then run it again
+          for the next 100. Leave as 0 to do everybody.
+        type: string
+        default: "0"
       limit:
-        description: Most candidates to bring across in this run
+        description: Most records to read from Manatal. Leave alone unless the account is huge.
         type: string
         default: "10000"
       phone_region:
@@ -120,6 +126,7 @@ jobs:
           MANATAL_RECRUITER_ID: ${{ secrets.MANATAL_RECRUITER_ID }}
           MANATAL_PHONE_REGION: ${{ inputs.phone_region }}
           MANATAL_LIMIT: ${{ inputs.limit }}
+          MANATAL_BATCH: ${{ inputs.batch }}
           MANATAL_CONCURRENCY: ${{ inputs.concurrency }}
           # Through the environment rather than interpolated into the script below: an input
           # substituted into a shell line is a shell line somebody else gets to write.
