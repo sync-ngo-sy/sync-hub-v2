@@ -68,6 +68,21 @@ that owns the address, which is what a deep link honestly deserves. A fact that 
 reader arrived belongs in the fact grid, not in the Trail.
 _Avoid_: Breadcrumb hierarchy, route ancestry (the destinations form a graph, not a tree).
 
+**Re-read**:
+The readings a write makes untrue, and which of them are asked for again. A writer names the act
+and not the readings: the feature that owns an endpoint publishes what is read from it and the one
+Re-read that covers all of it, so no call site assembles that for itself. `features/crm/reread.ts`
+holds the Tag vocabulary's, so the picker on a Candidate view and the one on an Application review
+cannot ask for different things back; `features/applications/reread.ts` holds the Applications',
+which the Applications page and the Dashboard both read. A Re-read reaches every reading of its
+endpoint, the copy nobody is watching included, because the next reader may be a route loader rather
+than the page the write happened on. One that spans features belongs to the writer and composes what
+its siblings publish; nothing collects them all in one place. A Pipeline move is the first of those:
+it names its own feature's Re-read and the Dashboard's beside it. On an endpoint two features read,
+each one publishes the reading it makes, and both build it from the one path the owner declares.
+_Avoid_: Invalidation, cache key, refetch, stale (each of those says how the cache is told; a
+Re-read says which readings stopped being true).
+
 **Dashboard**:
 The signed-in Recruiter's home: an overview of the Tenant's hiring activity. One
 destination inside the Workspace, not a name for the Workspace itself. Every number on it is the
@@ -261,16 +276,18 @@ _Avoid_: Comments, activity feed, internal messages (a Message goes to the Candi
 leaves the Tenant).
 
 **Tag picker**:
-The one control on the Application review that does both halves of filing: it lists the Tenant's
-application-scoped vocabulary to toggle a Tag on or off, and offers to mint the word the Tenant
-does not have yet from whatever has been typed. Creating reads as one act although it is two on
-the wire, and the two are told apart when only the first lands: a Tag that was minted stays in the
-vocabulary even if the Application could not then be filed under it, so the picker offers the word
-rather than offering to create it a second time — which the API would refuse as a name already
-taken. Only application-scoped Tags are ever offered, because a candidate-scoped one is a refusal
-the picker should not be able to ask for, and a part-match is still a new word: "Arab" is not
-"Arabic", and only the Recruiter knows which they meant. The Tags already on show as removable
-soft pills beside it, so taking one off never needs the picker opened.
+The one control that does both halves of filing, on the Application review and on the Candidate
+view: it lists the Tenant's vocabulary in the scope of the thing it files, to toggle a Tag on or
+off, and offers to mint the word the Tenant does not have yet from whatever has been typed.
+Creating reads as one act although it is two on the wire, and the two are told apart when only the
+first lands: a Tag that was minted stays in the vocabulary even if the Candidate or Application
+could not then be filed under it, so the picker offers the word rather than offering to create it a
+second time — which the API would refuse as a name already taken. A minted word takes the
+vocabulary's own Re-read from either picker, so the vocabulary tab and the other picker both have
+it on their next read. Only Tags of the scope of the thing being filed are ever offered, because a
+Tag of the other scope is a refusal the picker should not be able to ask for, and a part-match is
+still a new word: "Arab" is not "Arabic", and only the Recruiter knows which they meant. The Tags
+already on show as removable soft pills beside it, so taking one off never needs the picker opened.
 _Avoid_: Labels, categories, keywords.
 
 **Independent widget**:
@@ -442,9 +459,10 @@ _Avoid_: Permissions editor, seat management.
 
 **Tag vocabulary**:
 The whole of the Tenant's filing words on one tab, each with what it may be put on and when it was
-added — the counterpart to the Tag picker, which mints into the same vocabulary from an Application.
-The picker's scoped read and this tab's whole one are two cache entries of one path, so a word minted
-in either shows up in both. A word is unique per scope, so a duplicate is refused beside the field
+added — the counterpart to the two Tag pickers, which mint into the same vocabulary from an
+Application review and from a Candidate view. A picker's scoped read and this tab's whole one stay
+two cache entries of one path, and one Re-read covers every entry of it, so a word minted in any of
+them shows up in the others. A word is unique per scope, so a duplicate is refused beside the field
 from the list already on screen, naming the Tag the Tenant actually has rather than the spelling that
 was typed; the API's 409 stays the backstop for a word a colleague minted meanwhile. A rename keeps
 everything filed under it and cannot change its scope; deleting unfiles it from every Candidate or

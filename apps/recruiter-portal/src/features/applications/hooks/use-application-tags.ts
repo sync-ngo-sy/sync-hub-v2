@@ -1,32 +1,16 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { everyVocabularyKey, VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
+import { useQuery } from '@tanstack/react-query';
+import { useMintTag, useVocabularyInScope } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { TagsWidget } from '@/features/crm/tag';
 import { api } from '@/lib/api';
-
-export const TAGS_PATH = '/v1/tenants/me/applications/{application_id}/tags';
-export const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_id}';
-
-const APPLICATION_SCOPE = { params: { query: { scope: 'application' as const } } };
-
-export function applicationTagsQuery(applicationId: string) {
-  return api.queryOptions('get', TAGS_PATH, {
-    params: { path: { application_id: applicationId } },
-  });
-}
+import { applicationTags, TAG_PATH, useRereadApplicationTags } from '../reread';
 
 export function useApplicationTags(applicationId: string): TagsWidget {
-  const queryClient = useQueryClient();
+  const vocabulary = useVocabularyInScope('application');
+  const on = useQuery(applicationTags(applicationId));
 
-  const vocabulary = api.useQuery('get', VOCABULARY_PATH, APPLICATION_SCOPE);
-  const on = api.useQuery('get', TAGS_PATH, {
-    params: { path: { application_id: applicationId } },
-  });
+  const rereadFiling = useRereadApplicationTags(applicationId);
 
-  const rereadVocabulary = () => queryClient.invalidateQueries({ queryKey: everyVocabularyKey() });
-  const rereadFiling = () =>
-    queryClient.invalidateQueries({ queryKey: applicationTagsQuery(applicationId).queryKey });
-
-  const mint = api.useMutation('post', VOCABULARY_PATH, { onSuccess: rereadVocabulary });
+  const mint = useMintTag();
   const put = api.useMutation('put', TAG_PATH, { onSuccess: rereadFiling });
   const take = api.useMutation('delete', TAG_PATH, { onSuccess: rereadFiling });
 

@@ -1,7 +1,7 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
-import { VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { Note } from '@/features/crm/note';
+import { VOCABULARY_PATH } from '@/features/crm/reread';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
 import {
@@ -14,8 +14,17 @@ import {
   type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
-import { NOTE_PATH, NOTES_PATH } from '../hooks/use-application-notes';
-import { TAG_PATH, TAGS_PATH } from '../hooks/use-application-tags';
+import {
+  APPLICATION_PATH,
+  ASSESSMENT_PATH,
+  MESSAGES_PATH,
+  NOTE_PATH,
+  NOTES_PATH,
+  TAG_PATH,
+  TAGS_PATH,
+  TENANT_APPLICATIONS_PATH,
+  TRIAGE_PATH,
+} from '../reread';
 import type { ApplicationReview } from '../review';
 
 type Problem = components['schemas']['ProblemDetail'];
@@ -24,12 +33,6 @@ type NewNote = components['schemas']['NewNote'];
 type NewTag = components['schemas']['NewTag'];
 type OutgoingMessage = components['schemas']['OutgoingMessage'];
 type QueuedMessage = components['schemas']['QueuedMessage'];
-
-const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
-const TENANT_PATH = '/v1/tenants/me/applications';
-const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
-const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessment';
-const MESSAGES_PATH = '/v1/tenants/me/applications/{application_id}/messages';
 
 const NO_SUCH_APPLICATION: Problem = {
   type: 'urn:sync:problem:not-found',
@@ -77,7 +80,7 @@ function countedByVerdict(items: ApplicationSummary[]) {
 
 export function listsJobApplications(items: ApplicationSummary[], asked?: AskedFor[]) {
   return [
-    http.get(PATH, ({ query, response }) => {
+    http.get(TRIAGE_PATH, ({ query, response }) => {
       const statuses = query.getAll('status');
       const verdicts = query.getAll('qualification_status');
       const sort = query.get('sort');
@@ -122,7 +125,7 @@ function byReceived(sort: string | null) {
 
 export function listsTenantApplications(items: TenantApplication[], asked?: TenantAskedFor[]) {
   return [
-    http.get(TENANT_PATH, ({ query, response }) => {
+    http.get(TENANT_APPLICATIONS_PATH, ({ query, response }) => {
       const statuses = query.getAll('status');
       const verdicts = query.getAll('qualification_status');
       const window = query.get('received_within');
@@ -152,7 +155,7 @@ export function listsTenantApplications(items: TenantApplication[], asked?: Tena
 
 export function pagesTenantApplications(pages: TenantApplication[][]) {
   return [
-    http.get(TENANT_PATH, ({ query, response }) => {
+    http.get(TENANT_APPLICATIONS_PATH, ({ query, response }) => {
       const cursor = query.get('cursor');
       const index = cursor === null ? 0 : Number(cursor);
       return response(200).json({
@@ -166,12 +169,12 @@ export function pagesTenantApplications(pages: TenantApplication[][]) {
 }
 
 export function failsToListTenantApplications(problem: Problem) {
-  return [http.get(TENANT_PATH, ({ response }) => response(500).json(problem))];
+  return [http.get(TENANT_APPLICATIONS_PATH, ({ response }) => response(500).json(problem))];
 }
 
 export function pagesJobApplications(pages: ApplicationSummary[][]) {
   return [
-    http.get(PATH, ({ query, response }) => {
+    http.get(TRIAGE_PATH, ({ query, response }) => {
       const cursor = query.get('cursor');
       const index = cursor === null ? 0 : Number(cursor);
       return response(200).json({
@@ -185,12 +188,12 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
 }
 
 export function failsToListJobApplications(problem: Problem) {
-  return [http.get(PATH, ({ response }) => response(500).json(problem))];
+  return [http.get(TRIAGE_PATH, ({ response }) => response(500).json(problem))];
 }
 
 export function getsApplication(review: ApplicationReview) {
   return [
-    http.get(REVIEW_PATH, ({ params, response }) =>
+    http.get(APPLICATION_PATH, ({ params, response }) =>
       params.application_id === review.id
         ? response(200).json(review)
         : response(404).json(NO_SUCH_APPLICATION),
@@ -199,7 +202,7 @@ export function getsApplication(review: ApplicationReview) {
 }
 
 export function failsToGetApplication(problem: Problem) {
-  return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
+  return [http.get(APPLICATION_PATH, ({ response }) => response(500).json(problem))];
 }
 
 // The API's Stage projection, restated for the fake server so a move it answers says whether the
@@ -215,15 +218,19 @@ const STAGE_OF: Record<PipelineStatus, string> = {
   withdrawn: 'withdrawn',
 };
 
-export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
+export function reviewsApplication(
+  review: ApplicationReview,
+  asked?: PipelineStatus[],
+  listed?: TenantApplication[],
+) {
   let current = review;
   return [
-    http.get(REVIEW_PATH, ({ params, response }) =>
+    http.get(APPLICATION_PATH, ({ params, response }) =>
       params.application_id === current.id
         ? response(200).json(current)
         : response(404).json(NO_SUCH_APPLICATION),
     ),
-    http.patch(REVIEW_PATH, async ({ request, response }) => {
+    http.patch(APPLICATION_PATH, async ({ request, response }) => {
       const { status, start_date } = (await request.json()) as StatusChange;
       asked?.push(status);
       const previous = current.status;
@@ -245,6 +252,9 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
           : current.hire,
         updated_at: changed_at,
       };
+      const at = listed?.findIndex((item) => item.id === current.id) ?? -1;
+      const moved = listed?.[at];
+      if (listed && moved) listed[at] = { ...moved, status, updated_at: changed_at };
       return response(200).json({
         id: current.id,
         status,
@@ -256,10 +266,14 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
   ];
 }
 
+export function movesTenantApplications(items: TenantApplication[], review: ApplicationReview) {
+  return [...listsTenantApplications(items), ...reviewsApplication(review, undefined, items)];
+}
+
 export function refusesApplicationMove(review: ApplicationReview, problem: Problem) {
   return [
     ...getsApplication(review),
-    http.patch(REVIEW_PATH, ({ response }) => response(409).json(problem)),
+    http.patch(APPLICATION_PATH, ({ response }) => response(409).json(problem)),
   ];
 }
 
@@ -497,7 +511,7 @@ export function holdsJobApplications(items: ApplicationSummary[]) {
   return {
     arrive: gate.arrive,
     handlers: [
-      http.get(PATH, async ({ response }) => {
+      http.get(TRIAGE_PATH, async ({ response }) => {
         await gate.held;
         return response(200).json({
           items,
