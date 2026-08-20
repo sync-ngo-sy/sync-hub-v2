@@ -1,16 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useMintTag, useVocabularyInScope } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { TagsWidget } from '@/features/crm/tag';
 import { api } from '@/lib/api';
 
-export const VOCABULARY_PATH = '/v1/tenants/me/tags';
 export const TAGS_PATH = '/v1/tenants/me/candidates/{candidate_id}/tags';
 export const TAG_PATH = '/v1/tenants/me/candidates/{candidate_id}/tags/{tag_id}';
-
-const CANDIDATE_SCOPE = { params: { query: { scope: 'candidate' as const } } };
-
-export function candidateVocabularyQuery() {
-  return api.queryOptions('get', VOCABULARY_PATH, CANDIDATE_SCOPE);
-}
 
 export function candidateTagsQuery(candidateId: string) {
   return api.queryOptions('get', TAGS_PATH, {
@@ -21,17 +15,15 @@ export function candidateTagsQuery(candidateId: string) {
 export function useCandidateTags(candidateId: string): TagsWidget {
   const queryClient = useQueryClient();
 
-  const vocabulary = api.useQuery('get', VOCABULARY_PATH, CANDIDATE_SCOPE);
+  const vocabulary = useVocabularyInScope('candidate');
   const on = api.useQuery('get', TAGS_PATH, {
     params: { path: { candidate_id: candidateId } },
   });
 
-  const rereadVocabulary = () =>
-    queryClient.invalidateQueries({ queryKey: candidateVocabularyQuery().queryKey });
   const rereadFiling = () =>
     queryClient.invalidateQueries({ queryKey: candidateTagsQuery(candidateId).queryKey });
 
-  const mint = api.useMutation('post', VOCABULARY_PATH, { onSuccess: rereadVocabulary });
+  const mint = useMintTag();
   const put = api.useMutation('put', TAG_PATH, { onSuccess: rereadFiling });
   const take = api.useMutation('delete', TAG_PATH, { onSuccess: rereadFiling });
 

@@ -1,7 +1,7 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
-import { VOCABULARY_PATH } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { Note } from '@/features/crm/note';
+import { VOCABULARY_PATH } from '@/features/crm/reread';
 import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
 import {
