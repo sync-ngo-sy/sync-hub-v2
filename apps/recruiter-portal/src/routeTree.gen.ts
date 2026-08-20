@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
+import { Route as AccessRefusedRouteImport } from './routes/access-refused'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as KitchenSinkRouteImport } from './routes/kitchen-sink'
 import { Route as LoginRouteImport } from './routes/login'
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/_workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessRefusedRoute = AccessRefusedRouteImport.update({
+  id: '/access-refused',
+  path: '/access-refused',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -158,6 +164,7 @@ const WorkspaceJobsNewRoute = WorkspaceJobsNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/access-refused': typeof AccessRefusedRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/access-refused': typeof AccessRefusedRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_workspace': typeof WorkspaceRouteWithChildren
+  '/access-refused': typeof AccessRefusedRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/kitchen-sink': typeof KitchenSinkRoute
   '/login': typeof LoginRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access-refused'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/access-refused'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_workspace'
+    | '/access-refused'
     | '/forgot-password'
     | '/kitchen-sink'
     | '/login'
@@ -315,6 +327,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
+  AccessRefusedRoute: typeof AccessRefusedRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   KitchenSinkRoute: typeof KitchenSinkRoute
   LoginRoute: typeof LoginRoute
@@ -340,6 +353,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-refused': {
+      id: '/access-refused'
+      path: '/access-refused'
+      fullPath: '/access-refused'
+      preLoaderRoute: typeof AccessRefusedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -539,6 +559,7 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   WorkspaceRoute: WorkspaceRouteWithChildren,
+  AccessRefusedRoute: AccessRefusedRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   KitchenSinkRoute: KitchenSinkRoute,
   LoginRoute: LoginRoute,

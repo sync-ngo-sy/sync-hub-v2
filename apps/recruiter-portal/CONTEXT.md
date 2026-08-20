@@ -660,3 +660,17 @@ The full-page notice shown when a signed-in Profile this portal does not serve o
 names the account type they are signed in with, and the portal they should be in — a Candidate
 is pointed at the Candidate Portal and a Platform admin at the Platform Portal.
 _Avoid_: 403 page, forbidden page.
+
+**Access-refused screen**:
+The full-page notice a Recruiter reaches instead of the Workspace when the API refuses their
+access — one screen for both of its refusals, which names which of the two happened (an admin
+turned their access off, or the platform suspended their Tenant) and points them at their
+Tenant's admins, who can give the access back or ask Sync Hub to restore the Tenant. Two
+things reach it, and neither decides anything itself. The Workspace guard asks the API for the
+Tenant reading on every arrival — never a reading it already holds — and reads the refusal off
+the problem type; and a refusal the API answers anywhere else, to a loader, a widget or a
+write, reaches the same screen through one handler, the way an ended session reaches sign-in.
+So a Recruiter turned off mid-session does not sit in a broken Workspace, and nothing in the
+browser decides who is turned off. The session is left alone: the reader stays signed in, and
+signing out is theirs to do.
+_Avoid_: Deactivated page, suspended page, locked-out page.

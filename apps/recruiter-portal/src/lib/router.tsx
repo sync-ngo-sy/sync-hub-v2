@@ -5,7 +5,7 @@ import { NotFound } from '@/features/shell/components/not-found';
 import { PageSkeleton } from '@/features/shell/components/page-skeleton';
 import { RouteError } from '@/features/shell/components/route-error';
 import { routeTree } from '@/routeTree.gen';
-import { onSessionExpired } from './api';
+import { onAccessRefused, onSessionExpired } from './api';
 
 function whenSettled(router: AnyRouter, run: () => void): void {
   if (router.state.status !== 'pending') {
@@ -49,6 +49,13 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
         .finally(() => {
           redirecting = false;
         });
+    });
+  });
+
+  onAccessRefused(() => {
+    whenSettled(router, () => {
+      if (router.state.location.pathname === '/access-refused') return;
+      void router.navigate({ to: '/access-refused', replace: true });
     });
   });
 
