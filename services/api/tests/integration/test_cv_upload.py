@@ -14,8 +14,11 @@ from sync_core import Settings, Storage
 from sync_core.models import CvParsingStatus, IngestionStatus
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import (
+    A_REAL_DOCX_CV,
+    A_REAL_PDF_CV,
     CVS,
     DOCX,
+    PDF,
     an_uploaded_cv,
     cv_object_count,
     cv_row,
@@ -176,19 +179,58 @@ async def test_a_word_document_a_browser_could_not_name_is_still_accepted(
 ) -> None:
     await a_signed_in_candidate(browser, mailbox)
 
-    response = await upload_cv(browser, filename="cv.docx", media_type="application/octet-stream")
+    response = await upload_cv(
+        browser,
+        A_REAL_DOCX_CV.read_bytes(),
+        filename="cv.docx",
+        media_type="application/octet-stream",
+    )
 
     assert response.status_code == 201, response.text
     row = await cv_row(db_session, response.json()["id"])
     assert row.storage_path.endswith(".docx")
 
 
-async def test_a_docx_is_accepted(browser: AsyncClient, mailbox: Mailbox) -> None:
+@pytest.mark.parametrize(
+    ("filename", "media_type", "content"),
+    [
+        pytest.param("cv.pdf", PDF, A_REAL_PDF_CV.read_bytes(), id="pdf"),
+        pytest.param(
+            "cv.docx",
+            DOCX,
+            A_REAL_DOCX_CV.read_bytes(),
+            id="docx",
+        ),
+        pytest.param(
+            "cv.doc",
+            "application/msword",
+            b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1minimal-doc",
+            id="doc",
+        ),
+    ],
+)
+async def test_a_cv_with_matching_signature_is_accepted(
+    browser: AsyncClient, mailbox: Mailbox, filename: str, media_type: str, content: bytes
+) -> None:
     await a_signed_in_candidate(browser, mailbox)
 
-    response = await upload_cv(browser, filename="cv.docx", media_type=DOCX)
+    response = await upload_cv(browser, content, filename=filename, media_type=media_type)
 
     assert response.status_code == 201, response.text
+
+
+async def test_arbitrary_bytes_declared_as_pdf_are_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_cv(
+        browser, b"this is not a document", filename="cv.pdf", media_type=PDF
+    )
+
+    assert response.status_code == 415, response.text
+    assert response.json()["type"].endswith("unsupported-cv-media-type")
+    assert await cv_object_count(db_session) == 0
 
 
 async def test_a_cv_over_the_ceiling_is_refused(
