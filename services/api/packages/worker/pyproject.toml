@@ -18,7 +18,6 @@ dependencies = [
     "sync-comms",
     "sync-core",
     "sync-ingestion",
-    "sync-manatal",
     "sync-parsers",
     "sync-rag",
 ]
@@ -36,6 +35,5 @@ sync-assessments = { workspace = true }
 sync-comms = { workspace = true }
 sync-core = { workspace = true }
 sync-ingestion = { workspace = true }
-sync-manatal = { workspace = true }
 sync-parsers = { workspace = true }
 sync-rag = { workspace = true }

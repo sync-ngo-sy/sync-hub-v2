@@ -32,8 +32,6 @@ from sync_api.crm import (
 )
 from sync_api.cvs import CvService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
-from sync_api.manatal import ManatalMigrationService
-from sync_api.manatal.start import ManatalMigrationStartService
 from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService
 from sync_api.platform import ActingPlatformAdmin, PlatformService, acting_platform_admin
@@ -346,31 +344,6 @@ def get_stats_service(session: SessionDep) -> StatsService:
 
 
 StatsServiceDep = Annotated[StatsService, Depends(get_stats_service)]
-
-
-SettingsDep = Annotated[Settings, Depends(get_app_settings)]
-
-
-def get_manatal_migration_service(
-    session: SessionDep, settings: SettingsDep
-) -> ManatalMigrationService:
-    return ManatalMigrationService(session, settings)
-
-
-ManatalMigrationServiceDep = Annotated[
-    ManatalMigrationService, Depends(get_manatal_migration_service)
-]
-
-
-def get_manatal_migration_start_service(
-    session: SessionDep, settings: SettingsDep
-) -> ManatalMigrationStartService:
-    return ManatalMigrationStartService(session, settings)
-
-
-ManatalMigrationStartServiceDep = Annotated[
-    ManatalMigrationStartService, Depends(get_manatal_migration_start_service)
-]
 
 
 def get_visitors(settings: Annotated[Settings, Depends(get_app_settings)]) -> Visitors:

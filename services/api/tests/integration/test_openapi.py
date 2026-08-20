@@ -106,8 +106,6 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "getPublicJob",
         "getReadiness",
         "getTenantStats",
-        "getManatalMigrationStatus",
-        "startManatalMigration",
         "inviteTenantMember",
         "listAccessRequests",
         "listApplicationNotes",

@@ -8,7 +8,6 @@ from sync_comms import CommunicationDelivery
 from sync_comms.resend_sender import ResendEmailSender
 from sync_core import Database, Storage, configure_logging, get_logger, get_settings
 from sync_ingestion import CvIngestion
-from sync_manatal.importer import ManatalImporting
 from sync_parsers.openai_extractor import OpenAiCvExtractor
 from sync_rag import ProfileEmbedding
 from sync_rag.openai_embedder import OpenAiEmbedder
@@ -17,7 +16,6 @@ from sync_worker.communications import CommunicationsConsumer
 from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import QueueEngine, RetryPolicy
 from sync_worker.ingestion import CvIngestionConsumer
-from sync_worker.manatal import ManatalImportConsumer
 from sync_worker.runner import Drainable, DrainReport, drain_queue
 
 if TYPE_CHECKING:
@@ -83,24 +81,12 @@ class Worker:
             MatchAssessmentConsumer(MatchAssessing(self._database, self._assessor)),
             self._policy,
         )
-        manatal: QueueEngine[Any] | None = None
-        if self._settings.manatal_api_token is not None:
-            manatal = QueueEngine(
-                self._database,
-                ManatalImportConsumer(
-                    ManatalImporting.build(self._database, self._storage, self._settings)
-                ),
-                self._policy,
-            )
-        engines: list[tuple[Drainable, int]] = [
+        return [
             (ingestion, self._settings.worker_ingestion_concurrency),
             (embedding, self._settings.worker_embedding_concurrency),
             (communications, self._settings.worker_communications_concurrency),
             (assessment, self._settings.worker_assessment_concurrency),
         ]
-        if manatal is not None:
-            engines.append((manatal, self._settings.worker_manatal_concurrency))
-        return engines
 
     async def drain(self) -> DrainReport:
         """Empty every queue, then return. Safe to call concurrently with itself.

@@ -4,7 +4,6 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated
 from urllib.parse import urlsplit
-from uuid import UUID
 
 from pydantic import (
     AnyHttpUrl,
@@ -158,16 +157,6 @@ class Settings(BaseSettings):
     #: Modest on purpose: a burst of Applications is a burst of model calls, and the Recruiter
     #: waiting on them is not watching a spinner — they will open the Job in a minute either way.
     worker_assessment_concurrency: int = Field(default=2, ge=1)
-    worker_manatal_concurrency: int = Field(default=2, ge=1)
-
-    #: Manatal ATS import: only the tenant whose recruiter id matches may start a batch from
-    #: the dashboard. Unset in environments with no Manatal account to bring across.
-    manatal_api_token: SecretStr | None = None
-    manatal_recruiter_id: UUID | None = None
-    manatal_api_base_url: str = "https://api.manatal.com/open/v3"
-    manatal_page_size: int = Field(default=50, ge=1)
-    manatal_limit: int = Field(default=10_000, ge=1)
-    manatal_timeout_seconds: float = Field(default=120.0, gt=0)
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON

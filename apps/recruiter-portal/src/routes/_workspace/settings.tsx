@@ -6,7 +6,7 @@ import {
 } from '@/features/tenant/components/workspace-settings-page';
 import { pageTitle } from '@/lib/page-title';
 
-const settingsTab = z.enum(['team', 'tags', 'tenant', 'migration']);
+const settingsTab = z.enum(['team', 'tags', 'tenant']);
 
 export const Route = createFileRoute('/_workspace/settings')({
   validateSearch: z.object({ tab: settingsTab.optional().catch(undefined) }),
