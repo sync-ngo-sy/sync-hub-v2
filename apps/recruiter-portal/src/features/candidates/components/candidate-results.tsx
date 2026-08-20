@@ -9,14 +9,8 @@ import { useTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
 import { problemMessage } from '@/lib/api-problem';
 import { candidateMeta, type MatchedCandidate, matchEvidence, matchedCard } from '../candidate';
 import { useCandidateSearch } from '../hooks/use-candidate-search';
-import {
-  type CandidateSearchFilters,
-  hardFilterCount,
-  isAsked,
-  noMatchesMessage,
-  SEARCH_LIMIT,
-  searchAddress,
-} from '../search';
+import { type CandidatesReading, candidatesAddress } from '../reading';
+import { hardFilterCount, isAsked, noMatchesMessage, SEARCH_LIMIT } from '../search';
 import { CandidateAvatar } from './candidate-avatar';
 import { MatchEvidenceNote } from './match-evidence';
 
@@ -27,15 +21,15 @@ const TO_THE_POOL = (
 );
 
 interface CandidateResultsProps {
-  filters: CandidateSearchFilters;
+  reading: CandidatesReading;
   onClear: () => void;
 }
 
-export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
-  const matches = useCandidateSearch(filters);
+export function CandidateResults({ reading, onClear }: CandidateResultsProps) {
+  const matches = useCandidateSearch(reading);
   const pool = useTalentPool();
 
-  if (!isAsked(filters)) {
+  if (!isAsked(reading)) {
     return (
       <EmptyState
         icon={Users}
@@ -62,9 +56,9 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
     return (
       <EmptyState
         icon={Users}
-        message={noMatchesMessage(filters)}
+        message={noMatchesMessage(reading)}
         action={
-          hardFilterCount(filters) > 0 ? (
+          hardFilterCount(reading) > 0 ? (
             <Button variant="outline" onClick={onClear}>
               Clear filters
             </Button>
@@ -84,7 +78,7 @@ export function CandidateResults({ filters, onClear }: CandidateResultsProps) {
           <li key={match.candidate_id}>
             <CandidateResult
               match={match}
-              filters={filters}
+              reading={reading}
               saved={pool.holds(match.candidate_id)}
             />
           </li>
@@ -103,11 +97,11 @@ function howMany(shown: number): string {
 
 interface CandidateResultProps {
   match: MatchedCandidate;
-  filters: CandidateSearchFilters;
+  reading: CandidatesReading;
   saved: boolean;
 }
 
-function CandidateResult({ match, filters, saved }: CandidateResultProps) {
+function CandidateResult({ match, reading, saved }: CandidateResultProps) {
   const card = matchedCard(match);
   const meta = candidateMeta(card);
   const evidence = matchEvidence(match);
@@ -116,7 +110,7 @@ function CandidateResult({ match, filters, saved }: CandidateResultProps) {
     <Link
       to="/candidates/$candidateId"
       params={{ candidateId: card.id }}
-      search={searchAddress(filters)}
+      search={candidatesAddress(reading)}
       aria-label={card.fullName}
       className="block space-y-3 rounded-lg border border-border p-4 outline-none transition-colors hover:bg-interactive-hover focus-visible:ring-3 focus-visible:ring-ring/50"
     >

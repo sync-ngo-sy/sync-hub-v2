@@ -40,6 +40,10 @@ function directory() {
   return within(screen.getByRole('table', { name: 'Searchable Candidates' }));
 }
 
+function trail() {
+  return within(screen.getByRole('navigation', { name: 'breadcrumb' }));
+}
+
 function rowNames() {
   return directory()
     .getAllByRole('row')
@@ -255,7 +259,7 @@ describe('the Filter tab', () => {
     expect(amina.getByText('Aleppo')).toBeVisible();
   });
 
-  it('opens the Candidate view from a row, carrying the filters that found them', async () => {
+  it('opens the Candidate view from a row, carrying the tab and the filters that found them', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...listsDirectoryCandidates([LISTED_AMINA]),
@@ -269,7 +273,7 @@ describe('the Filter tab', () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/candidates/${LISTED_AMINA.candidate_id}`),
     );
-    expect(router.state.location.search).toEqual({ role: 'backend-engineer' });
+    expect(router.state.location.search).toEqual({ tab: 'filter', role: 'backend-engineer' });
     expect(await screen.findByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
   });
 
@@ -285,6 +289,32 @@ describe('the Filter tab', () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'filter' }));
+  });
+
+  it('hands the Filter tab back in the order it was left, through the Candidates crumb', async () => {
+    const asked: AskedDirectory[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsDirectoryCandidates([LISTED_AMINA], asked),
+      ...findsCandidates([]),
+      ...readsCandidate(AMINA_RECORD),
+    );
+
+    const { user, router } = await renderApp(`${AT}?tab=filter&sort=name&q=nurse`);
+
+    await user.click(await directory().findByRole('link', { name: 'Open Amina Haddad' }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/candidates/${LISTED_AMINA.candidate_id}`),
+    );
+    expect(router.state.location.search).toEqual({ tab: 'filter', sort: 'name', q: 'nurse' });
+
+    await user.click(await trail().findByRole('link', { name: 'Candidates' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(AT));
+    expect(router.state.location.search).toEqual({ tab: 'filter', sort: 'name', q: 'nurse' });
+    expect(await screen.findByRole('tab', { name: 'Filter', selected: true })).toBeVisible();
+    expect(asked.at(-1)?.sort).toBe('name');
   });
 });
 
@@ -336,7 +366,7 @@ describe('the AI Search tab', () => {
       language: [],
       skill: [],
     });
-    expect(router.state.location.search).toMatchObject({
+    expect(router.state.location.search).toEqual({
       tab: 'search',
       q: 'backend engineer',
       keywords: 'payments',
@@ -546,6 +576,17 @@ describe('the AI Search tab', () => {
     expect(asked[1]).toMatchObject({ q: 'nurse', location_key: null });
   });
 
+  it('stays on the tab the words opened, even once those words are cleared', async () => {
+    server.use(...signedInAs(RECRUITER), ...findsCandidates([AMINA]));
+
+    const { user, router } = await renderApp(`${AT}?q=nurse`);
+
+    await user.click(await screen.findByRole('button', { name: 'Clear' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'search' }));
+    expect(screen.getByRole('tab', { name: 'AI Search', selected: true })).toBeVisible();
+  });
+
   it('says in the server’s words why a search could not run, and runs it again on request', async () => {
     server.use(...signedInAs(RECRUITER), ...failsToSearchCandidates(SEARCH_OFFLINE));
 
@@ -561,7 +602,7 @@ describe('the AI Search tab', () => {
     expect(await results().findByRole('link', { name: 'Amina Haddad' })).toBeVisible();
   });
 
-  it('opens the Candidate view from a match, carrying the search that found them', async () => {
+  it('opens the Candidate view from a match, carrying the tab and the search that found them', async () => {
     server.use(
       ...signedInAs(RECRUITER),
       ...findsCandidates([AMINA]),
@@ -575,7 +616,11 @@ describe('the AI Search tab', () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/candidates/${AMINA.candidate_id}`),
     );
-    expect(router.state.location.search).toEqual({ q: 'engineer', location: 'sy-aleppo' });
+    expect(router.state.location.search).toEqual({
+      tab: 'search',
+      q: 'engineer',
+      location: 'sy-aleppo',
+    });
     expect(await screen.findByRole('heading', { level: 1, name: 'Amina Haddad' })).toBeVisible();
   });
 });

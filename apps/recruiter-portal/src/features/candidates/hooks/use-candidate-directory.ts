@@ -1,36 +1,31 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { SearchableCandidate } from '../candidate';
-import {
-  type CandidateSearchFilters,
-  DEFAULT_ORDER,
-  type DirectoryOrder,
-  directoryQuery,
-} from '../search';
+import type { CandidatesReading } from '../reading';
+import { directoryQuery } from '../search';
 
 export const DIRECTORY_PATH = '/v1/directory/candidates';
 
-function directoryInit(filters: CandidateSearchFilters, order: DirectoryOrder) {
-  return { params: { query: directoryQuery(filters, order) } };
+function directoryInit(reading: CandidatesReading) {
+  return { params: { query: directoryQuery(reading) } };
 }
 
-export function candidateDirectoryQuery(filters: CandidateSearchFilters, order: DirectoryOrder) {
-  return api.queryOptions('get', DIRECTORY_PATH, directoryInit(filters, order));
+export function candidateDirectoryQuery(reading: CandidatesReading) {
+  return api.queryOptions('get', DIRECTORY_PATH, directoryInit(reading));
 }
 
-export function useCandidateDirectory(filters: CandidateSearchFilters, order: DirectoryOrder) {
-  return api.useQuery('get', DIRECTORY_PATH, directoryInit(filters, order));
+export function useCandidateDirectory(reading: CandidatesReading) {
+  return api.useQuery('get', DIRECTORY_PATH, directoryInit(reading));
 }
 
 /** The Candidate view has no by-id read yet, so it reconstructs a person from the list that found
  * them — the directory answers that for the Filter tab exactly as the ranking does for the other. */
 export async function readDirectoryHits(
   queryClient: QueryClient,
-  filters: CandidateSearchFilters,
-  order: DirectoryOrder = DEFAULT_ORDER,
+  reading: CandidatesReading,
 ): Promise<SearchableCandidate[]> {
   const page = await queryClient
-    .ensureQueryData(candidateDirectoryQuery(filters, order))
+    .ensureQueryData(candidateDirectoryQuery(reading))
     .catch(() => null);
   return page?.items ?? [];
 }

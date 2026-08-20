@@ -3,7 +3,12 @@ import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
 import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
-import type { CandidateSearchFilters, CandidateTab, DirectoryOrder } from '../search';
+import {
+  type CandidateSearchFilters,
+  type CandidatesReading,
+  type CandidateTab,
+  tabIn,
+} from '../reading';
 import { CandidateDirectory } from './candidate-directory';
 import { CandidateFilters } from './candidate-filters';
 import { CandidateResults } from './candidate-results';
@@ -15,26 +20,22 @@ const AI_HINT =
   'These results are ranked by AI relevance and may be imperfect. Use the Filter tab when you need exact matching.';
 
 interface CandidateSearchPageProps {
-  tab: CandidateTab;
-  order: DirectoryOrder;
-  filters: CandidateSearchFilters;
-  onTabChange: (tab: CandidateTab) => void;
-  onOrderChange: (order: DirectoryOrder) => void;
-  onFiltersChange: (filters: CandidateSearchFilters) => void;
+  reading: CandidatesReading;
+  onReadingChange: (reading: CandidatesReading) => void;
 }
 
-export function CandidateSearchPage({
-  tab,
-  order,
-  filters,
-  onTabChange,
-  onOrderChange,
-  onFiltersChange,
-}: CandidateSearchPageProps) {
-  const clear = () => onFiltersChange({ q: filters.q });
+export function CandidateSearchPage({ reading, onReadingChange }: CandidateSearchPageProps) {
+  const tab = tabIn(reading);
+  const narrow = (filters: CandidateSearchFilters) =>
+    onReadingChange({ ...filters, tab, sort: reading.sort });
+  const clear = () => narrow({ q: reading.q });
 
   return (
-    <Tabs className="gap-0" value={tab} onValueChange={(next) => onTabChange(next as CandidateTab)}>
+    <Tabs
+      className="gap-0"
+      value={tab}
+      onValueChange={(next) => onReadingChange({ ...reading, tab: next as CandidateTab })}
+    >
       <WorkspaceHeader withTabs>
         <PageHeader title="Candidates" description={DESCRIPTION} />
         <LineTabsList
@@ -50,13 +51,12 @@ export function CandidateSearchPage({
 
       <div className="pt-(--space-section)">
         <TabsContent value="filter" className="space-y-(--space-section)">
-          <CandidateFilters tab="filter" filters={filters} onSearch={onFiltersChange} />
+          <CandidateFilters tab="filter" filters={reading} onSearch={narrow} />
 
           <WidgetBoundary name="Directory">
             <CandidateDirectory
-              filters={filters}
-              order={order}
-              onOrderChange={onOrderChange}
+              reading={reading}
+              onOrderChange={(sort) => onReadingChange({ ...reading, sort })}
               onClear={clear}
             />
           </WidgetBoundary>
@@ -65,10 +65,10 @@ export function CandidateSearchPage({
         <TabsContent value="search" className="space-y-(--space-section)">
           <p className="text-meta text-muted-foreground">{AI_HINT}</p>
 
-          <CandidateFilters tab="search" filters={filters} onSearch={onFiltersChange} />
+          <CandidateFilters tab="search" filters={reading} onSearch={narrow} />
 
           <WidgetBoundary name="Search results">
-            <CandidateResults filters={filters} onClear={clear} />
+            <CandidateResults reading={reading} onClear={clear} />
           </WidgetBoundary>
         </TabsContent>
       </div>
