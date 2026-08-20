@@ -385,8 +385,6 @@ async def test_a_deleted_candidate_keeps_the_password_they_confirmed_with(
 async def test_repeated_wrong_password_deletions_are_rate_limited(
     settings: Settings, mailbox: Mailbox
 ) -> None:
-    """The password check is a full sign-in, so an unbudgeted endpoint is a password oracle that
-    also drains the shared sign-in quota. After the budget a wrong guess is a 429, not a sign-in."""
     async with spa_onto(settings, auth_rate_limit_max_requests=A_TIGHT_LIMIT) as spa:
         await a_signed_in_candidate(spa, mailbox)
         for _ in range(A_TIGHT_LIMIT):
