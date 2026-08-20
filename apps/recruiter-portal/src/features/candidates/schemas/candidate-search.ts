@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import {
-  MAX_EXPERIENCE_FILTER,
-  MAX_LANGUAGE_FILTERS,
-  MAX_SKILL_FILTERS,
-  MIN_QUERY_LENGTH,
-  PROFICIENCY_ORDER,
-} from '../search';
+import { MAX_EXPERIENCE_FILTER, PROFICIENCY_ORDER } from '../reading';
+import { MIN_QUERY_LENGTH } from '../search';
+
+const MAX_LANGUAGE_FILTERS = 20;
+
+const MAX_SKILL_FILTERS = 20;
 
 const optionalLine = z.string().trim().max(200, 'Keep this to 200 characters or fewer.');
 

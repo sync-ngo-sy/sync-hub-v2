@@ -11,16 +11,15 @@ import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
 import { originFrom } from '@/features/shell/origin';
 import { warmTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
 import { pageTitle } from '@/lib/page-title';
-import { candidateRecordSearchParams, filtersFrom } from './-candidate-search-params';
+import { candidateRecordSearchParams } from './-candidate-search-params';
 
 export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
   validateSearch: candidateRecordSearchParams,
   loaderDeps: ({ search }) => search,
   loader: async ({ context, params, deps }) => {
-    const filters = filtersFrom(deps);
     const [record, hits] = await Promise.all([
       ensureCandidateRecord(context.queryClient, params.candidateId),
-      readSearchHits(context.queryClient, filters),
+      readSearchHits(context.queryClient, deps),
       warmTalentPool(context.queryClient),
       warmSearchTaxonomies(context.queryClient),
     ]);
@@ -39,17 +38,16 @@ export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
 
 function CandidateRoute() {
   const found = Route.useLoaderData();
-  const search = Route.useSearch();
-  const filters = filtersFrom(search);
+  const reading = Route.useSearch();
 
-  if (!found) return <CandidateOutOfReach filters={filters} />;
+  if (!found) return <CandidateOutOfReach reading={reading} />;
 
   return (
     <CandidateViewPage
       record={found.record}
       evidence={found.evidence}
-      filters={filters}
-      origin={originFrom(search.from)}
+      reading={reading}
+      origin={originFrom(reading.from)}
     />
   );
 }

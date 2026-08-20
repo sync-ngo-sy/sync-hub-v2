@@ -33,19 +33,24 @@ _Avoid_: App, dashboard area, admin.
 **Reading**:
 Which slice of a list somebody is looking at — the filters, the narrowing and the order, as one
 value. `features/applications/reading.ts` holds the Applications Reading and the narrower one a
-Job's Applications tab can answer, and both are defined once as a schema the URL is parsed with;
-the filter types are inferred from that schema rather than written beside it, so the two cannot
-drift. A Reading travels into a detail page's address so a Trail can hand the list back exactly as
-it was left, which is the same reason the Candidate record carries its search.
+Job's Applications tab can answer; `features/candidates/reading.ts` holds the Candidates one, whose
+tab sits beside its filters and its order, because which of the two seams answered is as much a part
+of what somebody is looking at as the words they typed. Each is defined once as a schema the URL is
+parsed with; the filter types are inferred from that schema rather than written beside it, so the
+two cannot drift. A Reading travels into a detail page's address so a Trail can hand the list back
+exactly as it was left, which is the same reason the Candidate record carries its search.
 _Avoid_: Query state, filter bag (a Reading is what the reader chose, not how it is stored).
 
 **Address**:
 The other direction of a Reading: what it looks like in the URL, with defaults left out so a plain
-list has a plain address. `applicationsAddress` and `jobApplicationsAddress` are the only writers,
-and their return type names every key of the Reading, so adding a filter to the schema fails the
-build until that filter is mapped. That is deliberate — a filter that compiles but never reaches
-the address would be a filter that silently forgets itself on reload. Adding one means: the schema,
-the Address it fails on, the query that sends it, and the control that sets it.
+list has a plain address. `applicationsAddress`, `jobApplicationsAddress` and `candidatesAddress`
+are the only writers, and their return type names every key of the Reading, so adding a filter to
+the schema fails the build until that filter is mapped. That is deliberate — a filter that compiles
+but never reaches the address would be a filter that silently forgets itself on reload. Adding one
+means: the schema, the Address it fails on, the query that sends it, and the control that sets it.
+The Candidates Address always names its tab, so a row link or a crumb out of that page opens the tab
+it was written from; a link naming no tab at all is older than the tabs, and still means the search
+it was copied from.
 _Avoid_: Serialise, to-params (name the thing produced, not the act of producing it).
 
 **Origin**:
