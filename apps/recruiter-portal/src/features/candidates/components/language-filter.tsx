@@ -4,7 +4,7 @@ import { ChoiceSelect } from '@/features/jobs/components/choice-select';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useLanguages } from '@/features/reference/hooks/use-languages';
 import { languageOptions } from '@/features/reference/options';
-import { type LanguageProficiency, PROFICIENCY_ORDER, type SpokenLanguage } from '../search';
+import { type LanguageProficiency, PROFICIENCY_ORDER, type SpokenLanguage } from '../reading';
 
 const ANY_LEVEL = 'Any level';
 
