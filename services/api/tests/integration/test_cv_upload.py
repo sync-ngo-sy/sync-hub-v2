@@ -204,7 +204,7 @@ async def test_a_word_document_a_browser_could_not_name_is_still_accepted(
         pytest.param(
             "cv.doc",
             "application/msword",
-            b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1minimal-doc",
+            b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1minimal-doc",
             id="doc",
         ),
     ],

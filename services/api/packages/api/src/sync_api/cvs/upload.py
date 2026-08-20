@@ -5,7 +5,7 @@ import tempfile
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from anyio import to_thread
 
@@ -104,7 +104,7 @@ def _too_large(max_bytes: int) -> Problem:
 
 SIGNATURES_BY_MEDIA_TYPE: Final[dict[str, tuple[bytes, ...]]] = {
     "application/pdf": (b"%PDF-",),
-    "application/msword": (b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1",),
+    "application/msword": (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",),
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
         b"PK\x03\x04",
         b"PK\x05\x06",
@@ -113,9 +113,7 @@ SIGNATURES_BY_MEDIA_TYPE: Final[dict[str, tuple[bytes, ...]]] = {
 }
 
 MAX_SIGNATURE_BYTES: Final = max(
-    len(signature)
-    for media_type in SIGNATURES_BY_MEDIA_TYPE.values()
-    for signature in media_type
+    len(signature) for media_type in SIGNATURES_BY_MEDIA_TYPE.values() for signature in media_type
 )
 
 
