@@ -78,7 +78,7 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
         <>
           <EmptyState
             icon={FileText}
-            message="No CVs yet. Upload one and we'll read it and fill your profile from it."
+            message="No CVs yet. Upload one and we'll read it and update the fields below from it."
             action={trigger}
           />
           <p className="text-center text-meta text-muted-foreground">{constraints}</p>

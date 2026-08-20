@@ -7,11 +7,11 @@ import { CvCard } from './cv-card';
 import { CvUploader } from './cv-uploader';
 
 interface CvsSectionProps {
-  onFill: (cv: Cv) => void;
-  filling: string | null;
+  onUpdate: (cv: Cv) => void;
+  updating: string | null;
 }
 
-export function CvsSection({ onFill, filling }: CvsSectionProps) {
+export function CvsSection({ onUpdate, updating }: CvsSectionProps) {
   const cvs = useMyCvs();
   const beingRead = useRef(new Set<string>());
 
@@ -22,8 +22,8 @@ export function CvsSection({ onFill, filling }: CvsSectionProps) {
     for (const cv of listed) if (isParsing(cv)) beingRead.current.add(cv.id);
 
     const read = settled.find(isReady);
-    if (read) onFill(read);
-  }, [cvs.data, onFill]);
+    if (read) onUpdate(read);
+  }, [cvs.data, onUpdate]);
 
   return (
     <div className="space-y-5">
@@ -53,7 +53,7 @@ export function CvsSection({ onFill, filling }: CvsSectionProps) {
         <ul aria-label="Your CVs" className="space-y-4">
           {cvs.data.map((cv) => (
             <li key={cv.id}>
-              <CvCard cv={cv} onFill={onFill} filling={filling === cv.id} />
+              <CvCard cv={cv} onUpdate={onUpdate} updating={updating === cv.id} />
             </li>
           ))}
         </ul>

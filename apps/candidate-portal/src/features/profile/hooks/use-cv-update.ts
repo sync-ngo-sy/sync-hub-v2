@@ -5,7 +5,7 @@ import type { Cv } from '@/features/cvs/cv';
 import { useProfileDraft } from '@/features/cvs/hooks/use-profile-draft';
 import { isClientError, problemMessage } from '@/lib/api-problem';
 import { reportError } from '@/lib/report-error';
-import { filledFromCv } from '../fill';
+import { updatedFromCv } from '../cv-update';
 import type { ProfileFormValues } from '../schemas/profile';
 
 interface Form {
@@ -13,18 +13,20 @@ interface Form {
   reset: UseFormReturn<ProfileFormValues>['reset'];
 }
 
-export interface Fill {
+export interface CvUpdate {
   from: (cv: Cv) => Promise<void>;
   pending: string | null;
-  filledBy: string | null;
+  updatedBy: string | null;
   undo: () => void;
   dismiss: () => void;
   refusal: string | null;
 }
 
-export function useCvFill({ getValues, reset }: Form): Fill {
+export function useCvUpdate({ getValues, reset }: Form): CvUpdate {
   const draft = useProfileDraft();
-  const [filled, setFilled] = useState<{ cvName: string; before: ProfileFormValues } | null>(null);
+  const [updated, setUpdated] = useState<{ cvName: string; before: ProfileFormValues } | null>(
+    null,
+  );
   const [refusal, setRefusal] = useState<string | null>(null);
 
   const from = useCallback(
@@ -32,11 +34,11 @@ export function useCvFill({ getValues, reset }: Form): Fill {
       setRefusal(null);
       const before = getValues();
       try {
-        const values = filledFromCv(before, await draft.mutateAsync(cv.id));
+        const values = updatedFromCv(before, await draft.mutateAsync(cv.id));
         reset(values, { keepDefaultValues: true });
-        setFilled({ cvName: cv.display_name, before });
+        setUpdated({ cvName: cv.display_name, before });
       } catch (error) {
-        const message = problemMessage(error, "This CV couldn't fill the form. Try again.");
+        const message = problemMessage(error, "This CV couldn't update the form. Try again.");
         if (isClientError(error)) {
           setRefusal(message);
           return;
@@ -49,20 +51,20 @@ export function useCvFill({ getValues, reset }: Form): Fill {
   );
 
   const undo = useCallback(() => {
-    if (!filled) return;
-    reset(filled.before, { keepDefaultValues: true });
-    setFilled(null);
-  }, [filled, reset]);
+    if (!updated) return;
+    reset(updated.before, { keepDefaultValues: true });
+    setUpdated(null);
+  }, [updated, reset]);
 
   const dismiss = useCallback(() => {
-    setFilled(null);
+    setUpdated(null);
     setRefusal(null);
   }, []);
 
   return {
     from,
     pending: draft.isPending ? (draft.variables ?? null) : null,
-    filledBy: filled?.cvName ?? null,
+    updatedBy: updated?.cvName ?? null,
     undo,
     dismiss,
     refusal,

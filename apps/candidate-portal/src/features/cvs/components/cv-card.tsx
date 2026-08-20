@@ -13,11 +13,11 @@ import { ConfirmDialog } from './confirm-dialog';
 
 interface CvCardProps {
   cv: Cv;
-  onFill: (cv: Cv) => void;
-  filling: boolean;
+  onUpdate: (cv: Cv) => void;
+  updating: boolean;
 }
 
-export function CvCard({ cv, onFill, filling }: CvCardProps) {
+export function CvCard({ cv, onUpdate, updating }: CvCardProps) {
   const makeCurrent = useMakeCvCurrent();
   const remove = useDeleteCv();
   const downloadLink = useCvDownloadLink();
@@ -116,12 +116,12 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
             type="button"
             variant="outline"
             size="sm"
-            disabled={filling}
-            aria-label={`Fill the form from “${cv.display_name}”`}
-            onClick={() => onFill(cv)}
+            disabled={updating}
+            aria-label={`Update the form from “${cv.display_name}”`}
+            onClick={() => onUpdate(cv)}
           >
             <Wand2 aria-hidden="true" />
-            {filling ? 'Filling…' : 'Fill the form from this CV'}
+            {updating ? 'Updating…' : 'Update the form from this CV'}
           </Button>
         ) : null}
 

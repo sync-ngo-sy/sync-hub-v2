@@ -7,18 +7,17 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CvsSection } from '@/features/cvs/components/cvs-section';
 import { problemMessage } from '@/lib/api-problem';
-import { useCvFill } from '../hooks/use-cv-fill';
-import { useFillOnArrival } from '../hooks/use-fill-on-arrival';
+import { useCvUpdate } from '../hooks/use-cv-update';
 import { useMyProfile } from '../hooks/use-my-profile';
 import { useProfileProgress } from '../hooks/use-profile-progress';
 import { useSaveProfile } from '../hooks/use-save-profile';
+import { useUpdateOnArrival } from '../hooks/use-update-on-arrival';
 import { profileRejection } from '../rejection';
 import { type ProfileFormValues, profileSchema, toFormValues, toProfile } from '../schemas/profile';
 import { whatIsUnanswered, whyRecruitersCannotFindYou } from '../unanswered';
 import { CompletionPanel } from './completion-panel';
 import { EducationsSection } from './educations-section';
 import { ExperiencesSection } from './experiences-section';
-import { FilledNotice } from './filled-notice';
 import { IdentitySection } from './identity-section';
 import { LanguagesSection } from './languages-section';
 import { LinksSection } from './links-section';
@@ -27,6 +26,7 @@ import { ProfileSection } from './profile-section';
 import { ProjectsSection } from './projects-section';
 import { SkillsSection } from './skills-section';
 import { UnsavedChangesDialog } from './unsaved-changes-dialog';
+import { UpdateQuestion } from './update-question';
 
 export function ProfileEditor() {
   const { data: profile } = useMyProfile();
@@ -43,8 +43,8 @@ export function ProfileEditor() {
     mode: 'onTouched',
     defaultValues: toFormValues(profile),
   });
-  const fill = useCvFill({ getValues, reset });
-  useFillOnArrival(fill.from);
+  const update = useCvUpdate({ getValues, reset });
+  useUpdateOnArrival(update.from);
   const progress = useProfileProgress(control);
 
   const blocker = useBlocker({
@@ -63,7 +63,7 @@ export function ProfileEditor() {
       try {
         const saved = await saveProfile.mutateAsync({ body: toProfile(body) });
         reset(toFormValues(saved));
-        fill.dismiss();
+        update.dismiss();
         toast[heldBack ? 'info' : 'success'](
           heldBack ? whyRecruitersCannotFindYou(missing) : 'Profile saved.',
         );
@@ -89,22 +89,26 @@ export function ProfileEditor() {
         <ProfileSection
           id="cvs"
           title="CVs"
-          description="Upload one and the fields below fill in from it. The current CV goes out with every application."
+          description="Upload one and it updates the fields below. The current CV goes out with every application."
           needed="One read CV needed to apply"
         >
-          <CvsSection onFill={fill.from} filling={fill.pending} />
+          <CvsSection onUpdate={update.from} updating={update.pending} />
         </ProfileSection>
 
-        {fill.refusal ? (
+        {update.refusal ? (
           <Alert className="bg-muted">
             <CircleAlert aria-hidden="true" />
-            <AlertTitle>That CV did not fill the form</AlertTitle>
-            <AlertDescription>{fill.refusal}</AlertDescription>
+            <AlertTitle>That CV did not update the form</AlertTitle>
+            <AlertDescription>{update.refusal}</AlertDescription>
           </Alert>
         ) : null}
 
-        {fill.filledBy ? (
-          <FilledNotice cvName={fill.filledBy} onUndo={fill.undo} onDismiss={fill.dismiss} />
+        {update.updatedBy ? (
+          <UpdateQuestion
+            cvName={update.updatedBy}
+            onUndo={update.undo}
+            onDismiss={update.dismiss}
+          />
         ) : null}
 
         <MyCandidateCard />

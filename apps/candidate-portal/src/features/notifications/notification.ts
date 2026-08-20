@@ -37,10 +37,10 @@ export function notificationCopy({ payload }: Notification): NotificationCopy {
     case 'cv_parse_succeeded':
       return {
         headline: `“${payload.display_name}” has been read`,
-        detail: 'Open your profile to fill the fields from it, and keep what is right.',
+        detail: 'Open your profile to update the fields from it, and keep what is right.',
         icon: Wand2,
         to: '/profile',
-        search: { fill: payload.cv_id },
+        search: { update: payload.cv_id },
       };
     case 'application_stage_changed':
       return {

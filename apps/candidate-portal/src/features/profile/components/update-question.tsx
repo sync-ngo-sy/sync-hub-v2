@@ -3,13 +3,13 @@ import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/aler
 import { Button } from '@sync/ui/components/ui/button';
 import { Undo2, Wand2 } from 'lucide-react';
 
-interface FilledNoticeProps {
+interface UpdateQuestionProps {
   cvName: string;
   onUndo: () => void;
   onDismiss: () => void;
 }
 
-export function FilledNotice({ cvName, onUndo, onDismiss }: FilledNoticeProps) {
+export function UpdateQuestion({ cvName, onUndo, onDismiss }: UpdateQuestionProps) {
   return (
     <Alert>
       <Wand2 aria-hidden="true" />
@@ -21,7 +21,7 @@ export function FilledNotice({ cvName, onUndo, onDismiss }: FilledNoticeProps) {
       <div className="mt-2 flex flex-wrap gap-2 group-has-[>svg]/alert:col-start-2">
         <Button type="button" variant="outline" size="sm" onClick={onUndo}>
           <Undo2 aria-hidden="true" />
-          Undo the fill
+          Undo the update
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>
           Keep it

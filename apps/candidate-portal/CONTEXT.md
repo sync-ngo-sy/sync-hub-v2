@@ -143,7 +143,7 @@ The one page the whole professional profile is edited on, and saved from, in a s
 the CVs, identity, Experience, Education, Skills, Other skills, Languages, Projects and Links
 together. A save replaces the profile whole, so a section left empty is an emptied section —
 which is why leaving with unsaved changes asks first rather than losing them quietly. The CVs
-come first, because an upload is what fills everything under it; `/cvs`, where they used to
+come first, because an upload is what updates everything under it; `/cvs`, where they used to
 live on their own, redirects here. A CV still being read spins beside the Status Mark that names
 its state: the mark says which state it is in, and the spin says the row will change on its own,
 which is what stops a Candidate waiting on a page they think has stopped.
@@ -156,33 +156,34 @@ result an Avatar. Replacing it updates the Profile before removing only the prev
 object, so concurrent uploads cannot delete the current one.
 _Avoid_: Profile picture as a separate domain concept.
 
-**Fill from a CV**:
+**Update from a CV**:
 Taking what the platform read off a CV into the editor's fields, where the Candidate reads every
 value in context and saves — or does not. It writes nothing: a raw parse is never the
 authoritative profile, so the draft the API computes lands in the form and the Candidate's Save
-is still the only thing that replaces anything. A parse finishing while the Candidate is here fills
-on its own, whether or not the upload happened in this visit; one that finished while they were
-away is what the notification about it opens — the CV it speaks for rides in the address, so the
-page fills from that one and no other, and the link fills again wherever it is opened. A CV
-already read fills on demand. It reaches Links and the Phone as well as the sections — a number
+is still the only thing that replaces anything. A parse finishing while the Candidate is here
+updates on its own, whether or not the upload happened in this visit; one that finished while they
+were away is what the notification about it opens — the CV it speaks for rides in the address, so
+the page updates from that one and no other, and the link updates again wherever it is opened. A CV
+already read updates on demand. It reaches Links and the Phone as well as the sections — a number
 it could not make sense of lands in the field exactly as the CV wrote it, and the field says so,
 because a value quietly dropped is one nobody learns was on their CV. Skills merge, keeping the
 years already typed against them; every other section is replaced, which is safe only because of
 the Undo beside it.
-_Avoid_: Import, apply the draft, review (the dialog that reviewed it is gone), auto-fill.
+_Avoid_: Fill, import, apply the draft, review (the dialog that reviewed it is gone), auto-fill.
 
-**Fill notice**:
-The line that appears where a fill happened, naming the CV that spoke and offering Undo, which
-puts back exactly what the fields held a moment before. For a first upload into an empty profile
-there is nothing to put back and it costs nothing; for a profile written by hand it is the whole
-safety net.
-_Avoid_: Toast (this outlives one), banner, undo bar.
+**Update question**:
+Where the Candidate answers for an update — the line that appears where one happened, naming the CV
+that spoke and offering Undo, which puts back exactly what the fields held a moment before. The
+question is put after the act, so Undo is how it is answered no. For a first upload into an empty
+profile there is nothing to put back and it costs nothing; for a profile written by hand it is the
+whole safety net.
+_Avoid_: Fill notice, toast (this outlives one), banner, undo bar.
 
 **What you do**:
 The editor's name for the Candidate's **Canonical role** — called by what it asks rather than by
 its wire name, because "role" on a page about jobs reads as the job being applied for. A picker
-over the platform's list, or "Not saying". A CV proposes one into the form like any other filled
-field, and it is still the Candidate's Save that claims it. **Total experience** appears here
+over the platform's list, or "Not saying". A CV proposes one into the form like any other field it
+updates, and it is still the Candidate's Save that claims it. **Total experience** appears here
 too, above the jobs it is derived from and with no field to type it into: correcting a date is
 how it changes, and the editor says so rather than leaving somebody hunting for one.
 _Avoid_: Role, Job title, Discipline, Position.
@@ -212,7 +213,7 @@ not read, an Application that moved. Two surfaces over one list — the Bell's d
 few, and the page at `/notifications` for all of them, a cursor at a time. Candidate-only in v1,
 because every payload type is candidate-facing and a recruiter bell would be permanently empty.
 Opening one is the way to what it is about, and the CV that was read is the one that arrives with
-the work already done — it opens a Fill from a CV rather than a page to start one on.
+the work already done — it opens an Update from a CV rather than a page to start one on.
 _Avoid_: Alerts, activity feed, inbox, messages (a Message is a Tenant writing to an applicant).
 
 **Bell**:

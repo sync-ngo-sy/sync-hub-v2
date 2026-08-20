@@ -10,7 +10,7 @@ function mergedSkills(kept: Skill[], fromCv: Skill[]): Skill[] {
   return [...kept, ...fromCv.filter((skill) => !listed.has(skill.name))];
 }
 
-export function filledFromCv(current: ProfileFormValues, draft: ProfileDraft): ProfileFormValues {
+export function updatedFromCv(current: ProfileFormValues, draft: ProfileDraft): ProfileFormValues {
   const fromCv = toFormValues(draft);
 
   return {

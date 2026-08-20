@@ -51,7 +51,7 @@ const QUEUED_CV = {
   parsing_status: 'uploaded' as const,
 };
 
-const FILLED_HEADLINE = CV_DRAFT.headline as string;
+const UPDATED_HEADLINE = CV_DRAFT.headline as string;
 const OWN_HEADLINE = CANDIDATE_PROFILE.headline as string;
 
 async function openProfile(
@@ -80,11 +80,11 @@ function cardFor(displayName: string): HTMLElement {
   return card;
 }
 
-function filledNotice(): HTMLElement {
+function updateQuestion(): HTMLElement {
   const notice = screen
     .getByText('The fields below now say what your CV says')
     .closest('[data-slot="alert"]');
-  if (!notice) throw new Error('no filled notice on the page');
+  if (!notice) throw new Error('no update question on the page');
   return notice as HTMLElement;
 }
 
@@ -100,15 +100,15 @@ function save(user: UserEvent) {
   return user.click(screen.getByRole('button', { name: 'Save profile' }));
 }
 
-async function fillFrom(user: UserEvent, cv: { display_name: string }) {
+async function updateFrom(user: UserEvent, cv: { display_name: string }) {
   await user.click(
-    await screen.findByRole('button', { name: `Fill the form from “${cv.display_name}”` }),
+    await screen.findByRole('button', { name: `Update the form from “${cv.display_name}”` }),
   );
-  await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+  await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
 }
 
 describe('the CVs on the profile', () => {
-  it('is the page’s first section, above the fields it fills', async () => {
+  it('is the page’s first section, above the fields it updates', async () => {
     await openProfile([...listsCvs([READY_CV])]);
 
     const sections = screen.getAllByRole('heading', { level: 2 }).map((node) => node.textContent);
@@ -270,16 +270,16 @@ describe('waiting for a CV to be read', () => {
     expect(within(card).getByText("Couldn't be read")).toBeVisible();
     expect(within(card).getByText(FAILED_CV.parsing_error as string)).toBeVisible();
     expect(
-      within(card).getByText(/It cannot fill the form below or be made current/),
+      within(card).getByText(/It cannot update the form below or be made current/),
     ).toBeVisible();
   });
 
-  it('offers neither current nor a fill on a CV that could not be read', async () => {
+  it('offers neither current nor an update on a CV that could not be read', async () => {
     await openProfile([...listsCvs([FAILED_CV])]);
 
     const card = cardFor(FAILED_CV.display_name);
     expect(within(card).queryByRole('button', { name: /Make .* current/ })).toBeNull();
-    expect(within(card).queryByRole('button', { name: /Fill the form from/ })).toBeNull();
+    expect(within(card).queryByRole('button', { name: /Update the form from/ })).toBeNull();
   });
 });
 
@@ -476,8 +476,8 @@ describe('downloading the original file', () => {
   });
 });
 
-describe('a CV filling the form', () => {
-  it('fills the fields as soon as a newly uploaded CV has been read, saving nothing', async () => {
+describe('a CV updating the form', () => {
+  it('updates the fields as soon as a newly uploaded CV has been read, saving nothing', async () => {
     const saved = vi.fn();
     const { user } = await openProfile([
       ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
@@ -490,11 +490,11 @@ describe('a CV filling the form', () => {
     expect(await screen.findByText('Reading')).toBeVisible();
     expect(headline()).toHaveValue(OWN_HEADLINE);
 
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
     expect(saved).not.toHaveBeenCalled();
   });
 
-  it('fills once for one parse, however often the list is polled after it', async () => {
+  it('updates once for one parse, however often the list is polled after it', async () => {
     const asked = vi.fn();
     const { user } = await openProfile([
       ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
@@ -503,19 +503,19 @@ describe('a CV filling the form', () => {
     ]);
     await pick(user, aPdf());
 
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
     expect(asked).toHaveBeenCalledTimes(1);
     expect(asked).toHaveBeenCalledWith(PROCESSING_CV.id);
   });
 
-  it('fills when a CV that was already being read on arrival finishes', async () => {
+  it('updates when a CV that was already being read on arrival finishes', async () => {
     await openProfile([...listsCvsInTurn([PROCESSING_CV], [PARSED_CV]), ...drafts(CV_DRAFT)]);
 
     expect(await screen.findByText('Reading')).toBeVisible();
     expect(headline()).toHaveValue(OWN_HEADLINE);
 
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
-    expect(within(filledNotice()).getByText(PARSED_CV.display_name)).toBeVisible();
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
+    expect(within(updateQuestion()).getByText(PARSED_CV.display_name)).toBeVisible();
   });
 
   it('leaves a CV that was already read on arrival to be asked for', async () => {
@@ -538,7 +538,7 @@ describe('a CV filling the form', () => {
     expect(headline()).toHaveValue(OWN_HEADLINE);
   });
 
-  it('fills nothing from a CV the platform could not read', async () => {
+  it('updates nothing from a CV the platform could not read', async () => {
     const failed = { ...PROCESSING_CV, parsing_status: 'failed' as const, parsing_error: 'Empty.' };
     const { user } = await openProfile([
       ...listsCvsInTurn([], [PROCESSING_CV], [failed]),
@@ -550,9 +550,9 @@ describe('a CV filling the form', () => {
     expect(headline()).toHaveValue(OWN_HEADLINE);
   });
 
-  it('fills from a CV that was already read, when asked', async () => {
+  it('updates from a CV that was already read, when asked', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
     expect(entry('Job 1').getByLabelText('Employer')).toHaveValue('Levant Digital');
@@ -560,7 +560,7 @@ describe('a CV filling the form', () => {
 
   it('reaches the Links, the same way it reaches the sections', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     const links = within(screen.getByRole('region', { name: 'Links' }));
     expect(links.getByLabelText('LinkedIn')).toHaveValue(
@@ -570,18 +570,18 @@ describe('a CV filling the form', () => {
     expect(links.getByLabelText('Portfolio or website')).toHaveValue('');
   });
 
-  it('names the CV that filled the form, and says nothing has been saved', async () => {
+  it('names the CV that updated the form, and says nothing has been saved', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
-    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
+    expect(within(updateQuestion()).getByText(READY_CV.display_name)).toBeVisible();
     expect(screen.getByText(/Nothing has been saved/)).toBeVisible();
     expect(screen.getByText('Unsaved changes.')).toBeVisible();
   });
 
   it('replaces the sections the CV speaks for, and empties the ones it is silent about', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     expect(screen.queryByRole('group', { name: 'Qualification 1' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Project 1' })).toBeNull();
@@ -592,7 +592,7 @@ describe('a CV filling the form', () => {
 
   it('keeps the skills already listed, with their years, and adds the CV’s', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     expect(entry('Skill 1').getByLabelText('Skill')).toHaveValue('Python');
     expect(entry('Skill 1').getByLabelText('Years')).toHaveValue(3.5);
@@ -607,7 +607,7 @@ describe('a CV filling the form', () => {
       ...drafts(CV_DRAFT),
       ...echoesProfile(saved),
     ]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
     await save(user);
 
     expect(await screen.findByText('Enter years of experience.')).toBeVisible();
@@ -627,7 +627,7 @@ describe('a CV filling the form', () => {
       ...drafts(undated),
       ...echoesProfile(saved),
     ]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
     await save(user);
 
     expect(await screen.findByText('Enter the year.')).toBeVisible();
@@ -636,7 +636,7 @@ describe('a CV filling the form', () => {
 
   it('surfaces a skill the platform has no name for instead of dropping it', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     expect(
       within(screen.getByRole('region', { name: 'Other skills' })).getByText('Sphere Standards'),
@@ -652,7 +652,7 @@ describe('a CV filling the form', () => {
         sent.body = body;
       }),
     ]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     expect(screen.getByLabelText('Location')).toHaveValue('Aleppo');
 
@@ -663,7 +663,7 @@ describe('a CV filling the form', () => {
     expect(sent.body?.location_key).toBe(CANDIDATE_PROFILE.location_key);
   });
 
-  it('saves what the CV filled, and what the candidate changed after it, on Save', async () => {
+  it('saves what the CV updated, and what the candidate changed after it, on Save', async () => {
     const sent: { body?: CandidateProfile } = {};
     const { user } = await openProfile([
       ...listsCvs([READY_CV]),
@@ -672,7 +672,7 @@ describe('a CV filling the form', () => {
         sent.body = body;
       }),
     ]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     await user.type(entry('Skill 2').getByLabelText('Years'), '2');
     await user.clear(headline());
@@ -703,9 +703,9 @@ describe('a CV filling the form', () => {
     expect(screen.getByText('Everything is saved.')).toBeVisible();
   });
 
-  it('still asks before leaving with a fill nobody saved', async () => {
+  it('still asks before leaving with an update nobody saved', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     const nav = screen.getByRole('navigation', { name: 'Sections' });
     await user.click(within(nav).getByRole('link', { name: 'Jobs' }));
@@ -719,10 +719,12 @@ describe('a CV filling the form', () => {
       ...refusesDraft(CV_NOT_READY_FOR_DRAFT),
     ]);
     await user.click(
-      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+      await screen.findByRole('button', {
+        name: `Update the form from “${READY_CV.display_name}”`,
+      }),
     );
 
-    expect(await screen.findByText('That CV did not fill the form')).toBeVisible();
+    expect(await screen.findByText('That CV did not update the form')).toBeVisible();
     expect(screen.getByText(CV_NOT_READY_FOR_DRAFT.detail as string)).toBeVisible();
     expect(headline()).toHaveValue(OWN_HEADLINE);
     expect(screen.getByText('Everything is saved.')).toBeVisible();
@@ -731,11 +733,13 @@ describe('a CV filling the form', () => {
   it('sends a fault on our side to a toast rather than blaming the CV', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...faultsOnDraft(SERVER_FAULT)]);
     await user.click(
-      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+      await screen.findByRole('button', {
+        name: `Update the form from “${READY_CV.display_name}”`,
+      }),
     );
 
     expect(await screen.findByText('Something went wrong on our side.')).toBeVisible();
-    expect(screen.queryByText('That CV did not fill the form')).toBeNull();
+    expect(screen.queryByText('That CV did not update the form')).toBeNull();
   });
 
   it('drops a refusal once the profile has been saved', async () => {
@@ -745,21 +749,23 @@ describe('a CV filling the form', () => {
       ...echoesProfile(),
     ]);
     await user.click(
-      await screen.findByRole('button', { name: `Fill the form from “${READY_CV.display_name}”` }),
+      await screen.findByRole('button', {
+        name: `Update the form from “${READY_CV.display_name}”`,
+      }),
     );
-    await screen.findByText('That CV did not fill the form');
+    await screen.findByText('That CV did not update the form');
 
     await user.clear(headline());
     await user.type(headline(), 'Coordinator and trainer');
     await save(user);
 
     expect(await screen.findByText('Profile saved.')).toBeVisible();
-    expect(screen.queryByText('That CV did not fill the form')).toBeNull();
+    expect(screen.queryByText('That CV did not update the form')).toBeNull();
   });
 });
 
-describe('uploading a CV and saving what it filled', () => {
-  it('reads the file, fills the fields, saves nothing until asked, and keeps what it saved', async () => {
+describe('uploading a CV and saving what it updated', () => {
+  it('reads the file, updates the fields, saves nothing until asked, and keeps what it saved', async () => {
     const sent: { body?: CandidateProfile } = {};
     const { user } = await openProfile([
       ...listsCvsInTurn([], [PROCESSING_CV], [PARSED_CV]),
@@ -774,7 +780,7 @@ describe('uploading a CV and saving what it filled', () => {
     expect(await screen.findByText('Reading')).toBeVisible();
     expect(headline()).toHaveValue(OWN_HEADLINE);
 
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
     expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
     expect(sent.body).toBeUndefined();
 
@@ -798,43 +804,43 @@ describe('uploading a CV and saving what it filled', () => {
 });
 
 describe('arriving from the notification about a parse', () => {
-  it('fills the form from the CV the address names, and says which one spoke', async () => {
+  it('updates the form from the CV the address names, and says which one spoke', async () => {
     await openProfile([...listsCvs([CURRENT_CV, READY_CV]), ...drafts(CV_DRAFT)], {
-      at: `/profile?fill=${READY_CV.id}`,
+      at: `/profile?update=${READY_CV.id}`,
     });
 
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
-    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
+    expect(within(updateQuestion()).getByText(READY_CV.display_name)).toBeVisible();
     expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Backend engineer');
   });
 
   it('asks that CV for the draft, and no other', async () => {
     const asked = vi.fn();
     await openProfile([...listsCvs([CURRENT_CV, READY_CV]), ...drafts(CV_DRAFT, asked)], {
-      at: `/profile?fill=${READY_CV.id}`,
+      at: `/profile?update=${READY_CV.id}`,
     });
 
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
     expect(asked).toHaveBeenCalledTimes(1);
     expect(asked).toHaveBeenCalledWith(READY_CV.id);
   });
 
-  it('puts back what the fields held when the fill is undone', async () => {
+  it('puts back what the fields held when the update is undone', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)], {
-      at: `/profile?fill=${READY_CV.id}`,
+      at: `/profile?update=${READY_CV.id}`,
     });
-    await waitFor(() => expect(headline()).toHaveValue(FILLED_HEADLINE));
+    await waitFor(() => expect(headline()).toHaveValue(UPDATED_HEADLINE));
 
-    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+    await user.click(screen.getByRole('button', { name: 'Undo the update' }));
 
     expect(headline()).toHaveValue(OWN_HEADLINE);
     expect(screen.getByText('Everything is saved.')).toBeVisible();
   });
 
-  it('fills nothing from a CV that is gone, and leaves the page usable', async () => {
+  it('updates nothing from a CV that is gone, and leaves the page usable', async () => {
     const asked = vi.fn();
     await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT, asked)], {
-      at: '/profile?fill=00000000-0000-4000-8000-000000000999',
+      at: '/profile?update=00000000-0000-4000-8000-000000000999',
     });
 
     expect(await screen.findByRole('heading', { name: READY_CV.display_name })).toBeVisible();
@@ -842,10 +848,10 @@ describe('arriving from the notification about a parse', () => {
     expect(asked).not.toHaveBeenCalled();
   });
 
-  it('fills nothing from a CV the platform could not read', async () => {
+  it('updates nothing from a CV the platform could not read', async () => {
     const asked = vi.fn();
     await openProfile([...listsCvs([FAILED_CV]), ...drafts(CV_DRAFT, asked)], {
-      at: `/profile?fill=${FAILED_CV.id}`,
+      at: `/profile?update=${FAILED_CV.id}`,
     });
 
     expect(await screen.findByText("Couldn't be read")).toBeVisible();
@@ -854,15 +860,15 @@ describe('arriving from the notification about a parse', () => {
   });
 });
 
-describe('undoing a fill', () => {
+describe('undoing an update', () => {
   it('puts back exactly what the form held, hand-written and unsaved included', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
 
     await user.clear(headline());
     await user.type(headline(), 'Coordinator and trainer');
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
-    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+    await user.click(screen.getByRole('button', { name: 'Undo the update' }));
 
     expect(headline()).toHaveValue('Coordinator and trainer');
     expect(entry('Job 1').getByLabelText('Job title')).toHaveValue('Field Coordinator');
@@ -881,37 +887,37 @@ describe('undoing a fill', () => {
     expect(screen.queryByText(/The fields below now say/)).toBeNull();
   });
 
-  it('leaves a profile that was untouched before the fill reading as saved', async () => {
+  it('leaves a profile that was untouched before the update reading as saved', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
-    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+    await user.click(screen.getByRole('button', { name: 'Undo the update' }));
 
     expect(headline()).toHaveValue(OWN_HEADLINE);
     expect(screen.getByText('Everything is saved.')).toBeVisible();
   });
 
-  it('keeps the fill, and drops the notice, when that is what the candidate meant', async () => {
+  it('keeps the update, and drops the question, when that is what the candidate meant', async () => {
     const { user } = await openProfile([...listsCvs([READY_CV]), ...drafts(CV_DRAFT)]);
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
     await user.click(screen.getByRole('button', { name: 'Keep it' }));
 
     expect(screen.queryByText(/The fields below now say/)).toBeNull();
-    expect(headline()).toHaveValue(FILLED_HEADLINE);
+    expect(headline()).toHaveValue(UPDATED_HEADLINE);
     expect(screen.getByText('Unsaved changes.')).toBeVisible();
   });
 
-  it('fills an empty profile with nothing to undo, and says so all the same', async () => {
+  it('updates an empty profile with nothing to undo, and says so all the same', async () => {
     const { user } = await openProfile(
       [...listsCvs([READY_CV]), ...drafts(CV_DRAFT), ...savesProfile(EMPTY_PROFILE)],
       { profile: EMPTY_PROFILE },
     );
-    await fillFrom(user, READY_CV);
+    await updateFrom(user, READY_CV);
 
-    expect(screen.getByRole('button', { name: 'Undo the fill' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Undo the update' })).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Undo the fill' }));
+    await user.click(screen.getByRole('button', { name: 'Undo the update' }));
 
     expect(headline()).toHaveValue('');
     expect(screen.getByText('Everything is saved.')).toBeVisible();

@@ -17,15 +17,15 @@ describe('what a notification says', () => {
     expect(copy.to).toBe('/profile');
   });
 
-  it('names the CV that was read, and leads to the profile it fills', () => {
+  it('names the CV that was read, and leads to the profile it updates', () => {
     const copy = notificationCopy(CV_READ_NOTIFICATION);
 
     expect(copy.headline).toBe('“lina-khoury-2024.docx” has been read');
     expect(copy.detail).toBe(
-      'Open your profile to fill the fields from it, and keep what is right.',
+      'Open your profile to update the fields from it, and keep what is right.',
     );
     expect(copy.to).toBe('/profile');
-    expect(copy.search).toEqual({ fill: READY_CV.id });
+    expect(copy.search).toEqual({ update: READY_CV.id });
   });
 
   it('names the Job, the employer and the Stage it reached, and leads to the Application', () => {

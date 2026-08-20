@@ -34,11 +34,11 @@ function rowFor(text: string | RegExp): HTMLElement {
   return row;
 }
 
-function filledNotice(): HTMLElement {
+function updateQuestion(): HTMLElement {
   const notice = screen
     .getByText('The fields below now say what your CV says')
     .closest('[data-slot="alert"]');
-  if (!notice) throw new Error('no filled notice on the page');
+  if (!notice) throw new Error('no update question on the page');
   return notice as HTMLElement;
 }
 
@@ -86,7 +86,7 @@ describe('the notifications page', () => {
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_FAILURE_NOTIFICATION.id));
   });
 
-  it('marks a read CV read, and lands on a profile already filled from it', async () => {
+  it('marks a read CV read, and lands on a profile already updated from it', async () => {
     const read = vi.fn();
     server.use(
       ...signedInAs(CANDIDATE),
@@ -104,8 +104,8 @@ describe('the notifications page', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Headline')).toHaveValue(CV_DRAFT.headline as string),
     );
-    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Undo the fill' })).toBeVisible();
+    expect(within(updateQuestion()).getByText(READY_CV.display_name)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Undo the update' })).toBeVisible();
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_READ_NOTIFICATION.id));
   });
 

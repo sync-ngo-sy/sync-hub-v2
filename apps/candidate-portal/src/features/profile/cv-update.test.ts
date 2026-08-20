@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filledFromCv, type ProfileDraft } from './fill';
+import { type ProfileDraft, updatedFromCv } from './cv-update';
 import { type ProfileFormValues, toFormValues } from './schemas/profile';
 
 function aForm(over: Partial<ProfileFormValues> = {}): ProfileFormValues {
@@ -10,9 +10,9 @@ function aDraft(over: Partial<ProfileDraft> = {}): ProfileDraft {
   return { full_name: 'Lina Khoury', is_searchable: false, ...over };
 }
 
-describe('filling the form from a CV', () => {
+describe('updating the form from a CV', () => {
   it('brings what the CV says into the fields, as the fields hold values', () => {
-    const filled = filledFromCv(
+    const updated = updatedFromCv(
       aForm(),
       aDraft({
         full_name: 'Lina H. Khoury',
@@ -29,10 +29,10 @@ describe('filling the form from a CV', () => {
       }),
     );
 
-    expect(filled.full_name).toBe('Lina H. Khoury');
-    expect(filled.headline).toBe('Backend engineer, 8 years');
-    expect(filled.phone).toBe('');
-    expect(filled.experiences).toEqual([
+    expect(updated.full_name).toBe('Lina H. Khoury');
+    expect(updated.headline).toBe('Backend engineer, 8 years');
+    expect(updated.phone).toBe('');
+    expect(updated.experiences).toEqual([
       {
         job_title: 'Backend engineer',
         company_name: 'Levant Digital',
@@ -58,12 +58,12 @@ describe('filling the form from a CV', () => {
         },
       ],
     });
-    const filled = filledFromCv(
+    const updated = updatedFromCv(
       current,
       aDraft({ educations: [{ institution: 'Damascus University' }] }),
     );
 
-    expect(filled.educations.map((entry) => entry.institution)).toEqual(['Damascus University']);
+    expect(updated.educations.map((entry) => entry.institution)).toEqual(['Damascus University']);
   });
 
   it('empties a section the CV is silent about', () => {
@@ -82,22 +82,22 @@ describe('filling the form from a CV', () => {
       ],
     });
 
-    expect(filledFromCv(current, aDraft()).projects).toEqual([]);
+    expect(updatedFromCv(current, aDraft()).projects).toEqual([]);
   });
 
   it('keeps the skills already in the form, with the years typed into them', () => {
     const current = aForm({ skills: [{ name: 'Python', years_experience: '3.5' }] });
-    const filled = filledFromCv(
+    const updated = updatedFromCv(
       current,
       aDraft({ skills: [{ name: 'Python', years_experience: 3 }] }),
     );
 
-    expect(filled.skills).toEqual([{ name: 'Python', years_experience: '3.5' }]);
+    expect(updated.skills).toEqual([{ name: 'Python', years_experience: '3.5' }]);
   });
 
-  it('adds a skill the CV names with its years left for the candidate to fill', () => {
+  it('adds a skill the CV names with its years left for the candidate to type', () => {
     const current = aForm({ skills: [{ name: 'Python', years_experience: '3.5' }] });
-    const filled = filledFromCv(
+    const updated = updatedFromCv(
       current,
       aDraft({
         skills: [
@@ -107,7 +107,7 @@ describe('filling the form from a CV', () => {
       }),
     );
 
-    expect(filled.skills).toEqual([
+    expect(updated.skills).toEqual([
       { name: 'Python', years_experience: '3.5' },
       { name: 'Kubernetes', years_experience: '' },
     ]);
@@ -115,15 +115,15 @@ describe('filling the form from a CV', () => {
 
   it('never drops a skill the form holds that the CV does not mention', () => {
     const current = aForm({ skills: [{ name: 'PostgreSQL', years_experience: '2' }] });
-    const filled = filledFromCv(current, aDraft({ skills: [{ name: 'Python' }] }));
+    const updated = updatedFromCv(current, aDraft({ skills: [{ name: 'Python' }] }));
 
-    expect(filled.skills.map((skill) => skill.name)).toEqual(['PostgreSQL', 'Python']);
+    expect(updated.skills.map((skill) => skill.name)).toEqual(['PostgreSQL', 'Python']);
   });
 
   it('surfaces the skills the platform has no name for instead of dropping them', () => {
-    const filled = filledFromCv(aForm(), aDraft({ unmapped_skills: ['Kobo Toolbox'] }));
+    const updated = updatedFromCv(aForm(), aDraft({ unmapped_skills: ['Kobo Toolbox'] }));
 
-    expect(filled.unmapped_skills).toEqual([{ value: 'Kobo Toolbox' }]);
+    expect(updated.unmapped_skills).toEqual([{ value: 'Kobo Toolbox' }]);
   });
 
   it('brings the links a CV carries, and empties the ones it is silent about', () => {
@@ -131,23 +131,23 @@ describe('filling the form from a CV', () => {
       linkedin_url: 'https://www.linkedin.com/in/lina-khoury',
       portfolio_url: 'https://lina-khoury.dev',
     });
-    const filled = filledFromCv(
+    const updated = updatedFromCv(
       current,
       aDraft({ linkedin_url: 'https://www.linkedin.com/in/lina-from-the-cv' }),
     );
 
-    expect(filled.linkedin_url).toBe('https://www.linkedin.com/in/lina-from-the-cv');
-    expect(filled.portfolio_url).toBe('');
+    expect(updated.linkedin_url).toBe('https://www.linkedin.com/in/lina-from-the-cv');
+    expect(updated.portfolio_url).toBe('');
   });
 
   it('leaves the settings a CV cannot speak for exactly as the form holds them', () => {
     const current = aForm({ location_key: 'sy-rif-dimashq', is_searchable: true });
-    const filled = filledFromCv(
+    const updated = updatedFromCv(
       current,
       aDraft({ location_key: 'sy-aleppo', is_searchable: false }),
     );
 
-    expect(filled.location_key).toBe('sy-rif-dimashq');
-    expect(filled.is_searchable).toBe(true);
+    expect(updated.location_key).toBe('sy-rif-dimashq');
+    expect(updated.is_searchable).toBe(true);
   });
 });
