@@ -383,6 +383,20 @@ describe('the unified Applications page', () => {
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
   });
 
+  it('counts the filters from what was asked for, not from the counts the API sent', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp(
+      `/applications?pipeline=${inUrl(['hired'])}&screening=${inUrl(['review_required'])}`,
+    );
+
+    expect(await screen.findByText('No Application matches these filters.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+  });
+
   it('points a Tenant nobody has applied to at its Jobs', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications([]));
 

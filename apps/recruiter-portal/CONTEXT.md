@@ -53,6 +53,20 @@ it was written from; a link naming no tab at all is older than the tabs, and sti
 it was copied from.
 _Avoid_: Serialise, to-params (name the thing produced, not the act of producing it).
 
+**Narrowing**:
+How many of a Reading's filters actually cut a list down — what an empty list has to know before it
+can say why it is empty. A filter narrows when it is not what an untouched list shows: a Pipeline
+tab is chosen, the Verdict filter leaves a verdict out, the Time-range reaches back less far than
+All time. Checking all four verdicts by hand is no narrowing, because it is the state every list
+opens in and dropping it would change nothing. `narrowedBy` in `features/applications/reading.ts`
+is the only answer to the question, and the wording each list reaches for is beside it, so both
+lists take the count and the sentence from one place — a list with no Time-range filter simply
+never sets one. It is read off the Reading and never off the API's counts:
+the Pipeline tabs' counts and the Verdict filter's counts each narrow through the other, so both
+read zero on a list two filters emptied, which is how a Triage list came to tell a Job with
+Applications that nobody had applied.
+_Avoid_: Active filters, applied filters, dirty state (a filter can be set and narrow nothing).
+
 **Origin**:
 The place a reader came through to reach a page, carried in that page's address as `from`. An
 Application is reachable from the Triage list, a Job and the Dashboard; a Candidate record from
@@ -134,10 +148,12 @@ _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is
 An Applications list's primary navigation through the Pipeline: `Open` first, then each of the
 eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
 leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
-One status may be viewed at a time. `Open` is where an untouched list starts and is the one choice
-the address bar leaves unwritten; `All` is still the whole eight, terminal Applications included,
-but it is now somewhere a reader goes rather than where they land. A selected tab is written into
-the address bar, so Dashboard deep-links and shared views land on the same tab and list.
+One status may be viewed at a time, which is the rule `pipelineTab` states and every list honours:
+an address naming more than one status names no tab at all. `Open` is where an untouched list
+starts and is the one choice the address bar leaves unwritten; `All` is still the whole eight,
+terminal Applications included, but it is now somewhere a reader goes rather than where they land.
+A selected tab is written into the address bar, so Dashboard deep-links and shared views land on
+the same tab and list.
 _Avoid_: Status filter, pipeline picker, stage filter.
 
 **Open**:
