@@ -15,6 +15,8 @@ from uuid import UUID, uuid4
 
 import asyncpg
 
+from links import linkedin_address
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
@@ -116,6 +118,7 @@ async def create_candidate(
     phone: str | None = None,
     avatar_url: str | None = None,
     location_key: str | None = None,
+    linkedin_url: str | None = None,
     unmapped_skills: Sequence[str] = (),
 ) -> None:
     """The two rows a Candidate is, in one transaction, as signup writes them.
@@ -137,12 +140,13 @@ async def create_candidate(
         await connection.execute(
             """
             insert into candidates
-                (id, headline, location_key, unmapped_skills, is_imported_from_manatal)
-            values ($1, $2, $3, $4, true)
+                (id, headline, location_key, linkedin_url, unmapped_skills, is_imported_from_manatal)
+            values ($1, $2, $3, $4, $5, true)
             """,
             account_id,
             headline,
             location_key,
+            linkedin_url,
             list(unmapped_skills),
         )
 
@@ -369,6 +373,8 @@ async def publish_profile(
     cv_id: UUID,
     profile: Profile,
     from_manatal: FromManatal = NOTHING_FROM_MANATAL,
+    *,
+    linkedin_url: str | None = None,
 ) -> None:
     """Write the parse into the profile and make the Candidate findable, in one transaction.
 
@@ -385,6 +391,7 @@ async def publish_profile(
                set headline = $2,
                    summary = $3,
                    unmapped_skills = $4,
+                   linkedin_url = coalesce(linkedin_url, $6),
                    current_cv_id = coalesce(current_cv_id, $5),
                    is_searchable = true
              where id = $1
@@ -397,6 +404,7 @@ async def publish_profile(
             # be the migration quietly deleting data it had already brought across.
             _merged(await _unmapped_skills(connection, candidate_id), profile.unmapped_skills),
             cv_id,
+            linkedin_url,
         )
         # Manatal's own current role and qualification, but only where the CV said nothing of
         # the kind. The parse is richer where it has anything to say; this is what stops an
@@ -471,6 +479,14 @@ def _merged(kept: Sequence[str], added: Sequence[str]) -> list[str]:
     for skill in (*kept, *added):
         seen.setdefault(skill.strip().lower(), skill.strip())
     return [skill for skill in seen.values() if skill][:MAX_SKILLS]
+
+
+def linkedin_from_parse(parsed: Mapping[str, Any] | None) -> str | None:
+    """A LinkedIn address out of a CV parse, normalised to what the platform stores."""
+    if not parsed:
+        return None
+    stated = parsed.get("linkedin_url")
+    return linkedin_address(stated) if isinstance(stated, str) else None
 
 
 def _path(candidate_id: UUID, cv_id: UUID, media_type: str) -> str:

@@ -278,8 +278,10 @@ ABDULQADER: Final = SeededCandidate(
     joined_days_ago=52,
     profile=CandidateProfile(
         full_name="AbdulQader Qassab",
-        phone="+963 11 555 0134",
+        phone="+963115550134",
+        phone_country="SY",
         headline="Backend engineer, 8 years",
+        total_experience_years=8,
         summary=(
             "Builds boring payment systems that stay up. Comfortable owning a service end to "
             "end, from the schema to the on-call rota, and happier deleting code than adding "
@@ -287,6 +289,9 @@ ABDULQADER: Final = SeededCandidate(
         ),
         location_key="sy-damascus",
         canonical_role_key="backend-engineer",
+        linkedin_url="linkedin.com/in/abdulqader-qassab",
+        github_url="aqassab",
+        portfolio_url="qassab.dev",
         is_searchable=True,
         experiences=[
             Held(
@@ -369,14 +374,18 @@ MOWAFAK: Final = SeededCandidate(
     joined_days_ago=41,
     profile=CandidateProfile(
         full_name="Mowafak Almahaini",
-        phone="+963 21 555 0199",
+        phone="+963215550199",
+        phone_country="SY",
         headline="Frontend engineer, 7 years",
+        total_experience_years=7,
         summary=(
             "Rebuilds interfaces that people have given up on. Owns a design system in React "
             "and TypeScript, and cares more about the empty state than the happy path."
         ),
         location_key="sy-aleppo",
         canonical_role_key="frontend-engineer",
+        linkedin_url="https://www.linkedin.com/in/mowafak-almahaini",
+        portfolio_url="https://almahaini.design",
         is_searchable=True,
         experiences=[
             Held(
@@ -451,14 +460,17 @@ KARIM: Final = SeededCandidate(
     joined_days_ago=38,
     profile=CandidateProfile(
         full_name="Karim Sabbagh",
-        phone="+963 41 555 0121",
+        phone="+96341555012",
+        phone_country="SY",
         headline="Platform engineer, 8 years",
+        total_experience_years=8,
         summary=(
             "Runs the boring infrastructure other people's services sit on. Terraform for "
             "everything, alerts that mean something, and a pager that mostly stays quiet."
         ),
         location_key="sy-latakia",
         canonical_role_key="devops-engineer",
+        github_url="https://github.com/karim-sabbagh",
         is_searchable=True,
         experiences=[
             Held(
@@ -523,8 +535,10 @@ LAYLA: Final = SeededCandidate(
     joined_days_ago=27,
     profile=CandidateProfile(
         full_name="Layla Kassem",
-        phone="+963 31 555 0177",
+        phone="+963315550177",
+        phone_country="SY",
         headline="Data scientist, 4 years",
+        total_experience_years=4,
         summary=(
             "Turns messy operational data into numbers somebody will act on. Prefers a clear "
             "chart and a written caveat to a model nobody can explain."
@@ -587,8 +601,10 @@ NADIA: Final = SeededCandidate(
     joined_days_ago=35,
     profile=CandidateProfile(
         full_name="Nadia Rahal",
-        phone="+961 1 555 0142",
+        phone="+9611555042",
+        phone_country="LB",
         headline="Product designer, 7 years",
+        total_experience_years=7,
         summary=(
             "Designs the parts of a product nobody screenshots: settings, errors, the second "
             "visit. Writes the copy too, because the copy is the design."
@@ -671,8 +687,10 @@ FADI: Final = SeededCandidate(
     joined_days_ago=12,
     profile=CandidateProfile(
         full_name="Fadi Chalhoub",
-        phone="+963 11 555 0188",
+        phone="+963115550188",
+        phone_country="SY",
         headline="Junior full-stack developer",
+        total_experience_years=2,
         summary="A year and a half in, and reading everything. Wants a team that reviews code.",
         location_key="sy-damascus",
         canonical_role_key="fullstack-engineer",
@@ -741,8 +759,10 @@ HIBA: Final = SeededCandidate(
     joined_days_ago=33,
     profile=CandidateProfile(
         full_name="Hiba Othman",
-        phone="+963 11 555 0163",
+        phone="+963115550163",
+        phone_country="SY",
         headline="QA engineer, test automation",
+        total_experience_years=5,
         summary=(
             "Writes the tests that stop a release, and the ones that stop a rollback. Python "
             "and Playwright, mostly."
@@ -804,8 +824,10 @@ ZIAD: Final = SeededCandidate(
     joined_days_ago=6,
     profile=CandidateProfile(
         full_name="Ziad Merhi",
-        phone="+963 43 555 0155",
+        phone="+96343555015",
+        phone_country="SY",
         headline="Mobile engineer, 4 years",
+        total_experience_years=4,
         summary="iOS and Android, and the API in between when nobody else will write it.",
         location_key="sy-tartus",
         canonical_role_key="mobile-engineer",
@@ -1034,9 +1056,11 @@ JOBS: Final = (
                 "engineer can understand on their first day.\n\n"
                 "Kubernetes is already there and nobody trusts it. You will make it "
                 "trustworthy: describe it in Terraform, put the alerts on the things that "
-                "matter, and write down what you did. Fully remote, team in Damascus."
+                "matter, and write down what you did. Fully remote, and we do not mind "
+                "where you are: the team is in Damascus, the work is not."
             ),
-            location_key="sy-damascus",
+            # The seed's one Anywhere Job, so browsing by any Location still meets it.
+            location_key=None,
             employment_type=EmploymentType.CONTRACT,
             work_mode=WorkMode.REMOTE,
         ),
@@ -1305,10 +1329,14 @@ class SeededApplication:
     via: str | None = None
     #: Where a Recruiter took it after `new`, in order. Every hop writes its own history row.
     moves: Sequence[ApplicationStatus] = ()
+    #: The day the Tenant says the work started, relative to the seed's instant. A `hired` move
+    #: needs one; nothing else may carry one.
+    starts_in_days: int | None = None
+    #: What the Candidate said about the claimed hire. `None` is a claim they have not answered,
+    #: which is a claim rather than a Placement.
+    hire_confirmed: bool | None = None
     #: The Candidate's own move, which ends the process for everybody.
     withdrawn: bool = False
-    #: How many advisory AI match assessments have been asked for. Append-only.
-    assessments: int = 0
     #: `(recruiter key, text)`, oldest first.
     notes: Sequence[tuple[str, str]] = ()
     #: Names of the Tenant's application-scoped Tags.
@@ -1334,7 +1362,7 @@ APPLICATIONS: Final = (
         via="backend-linkedin",
         answers={A_RIGHT_TO_WORK: True, AN_ON_CALL_ROTA: True, A_START_DATE: "Two weeks' notice."},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER, HIRED],
-        assessments=2,
+        starts_in_days=14,
         notes=[
             (
                 "lama",
@@ -1358,7 +1386,6 @@ APPLICATIONS: Final = (
         via="backend-linkedin",
         answers={A_RIGHT_TO_WORK: True, AN_ON_CALL_ROTA: True, A_START_DATE: "A month."},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW],
-        assessments=1,
         notes=[
             (
                 "kamal",
@@ -1419,7 +1446,6 @@ APPLICATIONS: Final = (
         via="frontend-linkedin",
         answers={A_DESIGN_SYSTEM: True, A_PORTFOLIO: "https://github.com/SuperMo0"},
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER],
-        assessments=1,
         notes=[
             ("kamal", "Design system work is real - saw the Storybook. Strong on accessibility."),
             ("lina", "Panel liked him. Offer out, waiting to hear."),
@@ -1475,7 +1501,6 @@ APPLICATIONS: Final = (
         via="devops-so",
         answers={AN_ON_CALL_ROTA: True},
         moves=[REVIEWING, SHORTLISTED],
-        assessments=1,
         notes=[
             ("lama", "Same person as the backend shortlist. Decide which role we want him in."),
         ],
@@ -1539,6 +1564,8 @@ APPLICATIONS: Final = (
         applied_days_ago=52,
         via="coordinator-facebook",
         moves=[REVIEWING, SHORTLISTED, INTERVIEW, OFFER, HIRED],
+        starts_in_days=-30,
+        hire_confirmed=True,
         notes=[
             ("lina", "Hired. Started in June and the office has never run better."),
         ],
@@ -1565,7 +1592,6 @@ APPLICATIONS: Final = (
         moves=[
             REVIEWING,
         ],
-        assessments=1,
         notes=[
             (
                 "syriatel_admin",

@@ -4,13 +4,15 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BeforeValidator
 
 from sync_api.dependencies import JobBrowseServiceDep, VisitorDep
 from sync_api.errors import openapi_problem
 from sync_api.jobs import PublicJob, PublicJobPage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.rate_limit import enforce_public_rate_limit
-from sync_core.models import EmploymentType
+from sync_api.text import without_control_characters
+from sync_core.models import EmploymentType, WorkMode
 from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/jobs"
@@ -31,7 +33,8 @@ router = APIRouter(
     responses={
         **TOO_MANY,
         422: openapi_problem(
-            "`cursor` is not one this API issued, or `employment_type` is not one of the set."
+            "`cursor` is not one this API issued, or `employment_type` or `work_mode` is not "
+            "one of its set."
         ),
     },
 )
@@ -45,15 +48,18 @@ async def browse_jobs(
             "`or` and `-excluded`.",
             examples=["backend engineer python"],
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     location_key: Annotated[
         str | None,
         Query(
             max_length=MAX_LINE_LENGTH,
             description="A Location's key, from `/v1/locations`. Matched exactly, so a "
-            "governorate never answers for the one beside it.",
+            "governorate never answers for the one beside it — plus every remote Job that names "
+            "no Location, because those can be done from here as well as from anywhere else.",
             examples=["sy-damascus"],
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     employment_type: Annotated[
         EmploymentType | None,
@@ -61,6 +67,15 @@ async def browse_jobs(
             description="One of the platform's employment types. Anything else is refused "
             "rather than answered with an empty page.",
             examples=[EmploymentType.FULL_TIME],
+        ),
+    ] = None,
+    work_mode: Annotated[
+        WorkMode | None,
+        Query(
+            description="One of the platform's work modes, refused like `employment_type` when "
+            "it is not. Every published Job answers this, so the filter never hides a Job that "
+            "simply would not say.",
+            examples=[WorkMode.REMOTE],
         ),
     ] = None,
     cursor: Annotated[
@@ -79,6 +94,7 @@ async def browse_jobs(
         keywords=q,
         location_key=location_key,
         employment_type=employment_type,
+        work_mode=work_mode,
         cursor=cursor,
         limit=limit,
     )

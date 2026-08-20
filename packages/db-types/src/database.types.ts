@@ -79,6 +79,7 @@ export type Database = {
           match_percentage: number;
           model_name: string;
           prompt_version: string;
+          updated_at: string;
         };
         Insert: {
           application_id: string;
@@ -89,6 +90,7 @@ export type Database = {
           match_percentage: number;
           model_name: string;
           prompt_version: string;
+          updated_at?: string;
         };
         Update: {
           application_id?: string;
@@ -99,12 +101,13 @@ export type Database = {
           match_percentage?: number;
           model_name?: string;
           prompt_version?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'application_ai_match_assessments_application_id_fkey';
             columns: ['application_id'];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: 'applications';
             referencedColumns: ['id'];
           },
@@ -285,9 +288,13 @@ export type Database = {
           canonical_role: string | null;
           captured_at: string;
           full_name: string;
+          github_url: string | null;
           headline: string | null;
+          linkedin_url: string | null;
           location: string | null;
           phone: string | null;
+          phone_country: string | null;
+          portfolio_url: string | null;
           summary: string | null;
           total_experience_years: number;
           unmapped_skills: string[];
@@ -297,9 +304,13 @@ export type Database = {
           canonical_role?: string | null;
           captured_at?: string;
           full_name: string;
+          github_url?: string | null;
           headline?: string | null;
+          linkedin_url?: string | null;
           location?: string | null;
           phone?: string | null;
+          phone_country?: string | null;
+          portfolio_url?: string | null;
           summary?: string | null;
           total_experience_years: number;
           unmapped_skills?: string[];
@@ -309,9 +320,13 @@ export type Database = {
           canonical_role?: string | null;
           captured_at?: string;
           full_name?: string;
+          github_url?: string | null;
           headline?: string | null;
+          linkedin_url?: string | null;
           location?: string | null;
           phone?: string | null;
+          phone_country?: string | null;
+          portfolio_url?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -555,6 +570,7 @@ export type Database = {
         Row: {
           applied_at: string;
           candidate_id: string;
+          current_match_score: number | null;
           cv_id: string;
           id: string;
           job_id: string;
@@ -568,6 +584,7 @@ export type Database = {
         Insert: {
           applied_at?: string;
           candidate_id: string;
+          current_match_score?: number | null;
           cv_id: string;
           id?: string;
           job_id: string;
@@ -581,6 +598,7 @@ export type Database = {
         Update: {
           applied_at?: string;
           candidate_id?: string;
+          current_match_score?: number | null;
           cv_id?: string;
           id?: string;
           job_id?: string;
@@ -1143,10 +1161,14 @@ export type Database = {
           created_at: string;
           current_cv_id: string | null;
           deleted_at: string | null;
+          github_url: string | null;
           headline: string | null;
           id: string;
           is_searchable: boolean;
+          linkedin_url: string | null;
           location_key: string | null;
+          portfolio_url: string | null;
+          profile_completed_at: string | null;
           summary: string | null;
           total_experience_years: number;
           unmapped_skills: string[];
@@ -1158,10 +1180,14 @@ export type Database = {
           created_at?: string;
           current_cv_id?: string | null;
           deleted_at?: string | null;
+          github_url?: string | null;
           headline?: string | null;
           id: string;
           is_searchable?: boolean;
+          linkedin_url?: string | null;
           location_key?: string | null;
+          portfolio_url?: string | null;
+          profile_completed_at?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1173,10 +1199,14 @@ export type Database = {
           created_at?: string;
           current_cv_id?: string | null;
           deleted_at?: string | null;
+          github_url?: string | null;
           headline?: string | null;
           id?: string;
           is_searchable?: boolean;
+          linkedin_url?: string | null;
           location_key?: string | null;
+          portfolio_url?: string | null;
+          profile_completed_at?: string | null;
           summary?: string | null;
           total_experience_years?: number;
           unmapped_skills?: string[];
@@ -1444,6 +1474,61 @@ export type Database = {
           model?: string;
         };
         Relationships: [];
+      };
+      hire_claims: {
+        Row: {
+          answered_at: string | null;
+          application_id: string;
+          claimed_at: string;
+          claimed_by_recruiter_id: string;
+          confirmation: Database['public']['Enums']['hire_confirmation'];
+          start_date: string;
+          status_history_id: string;
+          tenant_id: string;
+        };
+        Insert: {
+          answered_at?: string | null;
+          application_id: string;
+          claimed_at?: string;
+          claimed_by_recruiter_id: string;
+          confirmation?: Database['public']['Enums']['hire_confirmation'];
+          start_date: string;
+          status_history_id: string;
+          tenant_id: string;
+        };
+        Update: {
+          answered_at?: string | null;
+          application_id?: string;
+          claimed_at?: string;
+          claimed_by_recruiter_id?: string;
+          confirmation?: Database['public']['Enums']['hire_confirmation'];
+          start_date?: string;
+          status_history_id?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'hire_claims_status_history_id_fkey';
+            columns: ['status_history_id'];
+            isOneToOne: false;
+            referencedRelation: 'application_status_history';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'hire_claims_tenant_id_application_id_fkey';
+            columns: ['tenant_id', 'application_id'];
+            isOneToOne: false;
+            referencedRelation: 'applications';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'hire_claims_tenant_id_claimed_by_recruiter_id_fkey';
+            columns: ['tenant_id', 'claimed_by_recruiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'recruiters';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
       };
       ingestion_jobs: {
         Row: {
@@ -1756,6 +1841,50 @@ export type Database = {
         };
         Relationships: [];
       };
+      match_assessment_jobs: {
+        Row: {
+          application_id: string;
+          attempts: number;
+          available_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          error_message: string | null;
+          id: string;
+          started_at: string | null;
+          status: Database['public']['Enums']['assessment_status'];
+        };
+        Insert: {
+          application_id: string;
+          attempts?: number;
+          available_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          id?: string;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['assessment_status'];
+        };
+        Update: {
+          application_id?: string;
+          attempts?: number;
+          available_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          id?: string;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['assessment_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'match_assessment_jobs_application_id_fkey';
+            columns: ['application_id'];
+            isOneToOne: true;
+            referencedRelation: 'applications';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       message_templates: {
         Row: {
           body: string;
@@ -1960,6 +2089,7 @@ export type Database = {
           full_name: string;
           id: string;
           phone: string | null;
+          phone_country: string | null;
           updated_at: string;
         };
         Insert: {
@@ -1970,6 +2100,7 @@ export type Database = {
           full_name: string;
           id: string;
           phone?: string | null;
+          phone_country?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -1980,6 +2111,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           phone?: string | null;
+          phone_country?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -2167,6 +2299,7 @@ export type Database = {
           created_at: string;
           id: string;
           is_active: boolean;
+          logo_url: string | null;
           name: string;
           plan: Database['public']['Enums']['tenant_plan'];
           slug: string;
@@ -2175,6 +2308,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           is_active?: boolean;
+          logo_url?: string | null;
           name: string;
           plan?: Database['public']['Enums']['tenant_plan'];
           slug: string;
@@ -2183,6 +2317,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           is_active?: boolean;
+          logo_url?: string | null;
           name?: string;
           plan?: Database['public']['Enums']['tenant_plan'];
           slug?: string;
@@ -2306,6 +2441,48 @@ export type Database = {
           },
         ];
       };
+      placements: {
+        Row: {
+          application_id: string | null;
+          claimed_at: string | null;
+          claimed_by_recruiter_id: string | null;
+          confirmed_at: string | null;
+          start_date: string | null;
+          tenant_id: string | null;
+        };
+        Insert: {
+          application_id?: string | null;
+          claimed_at?: string | null;
+          claimed_by_recruiter_id?: string | null;
+          confirmed_at?: string | null;
+          start_date?: string | null;
+          tenant_id?: string | null;
+        };
+        Update: {
+          application_id?: string | null;
+          claimed_at?: string | null;
+          claimed_by_recruiter_id?: string | null;
+          confirmed_at?: string | null;
+          start_date?: string | null;
+          tenant_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'hire_claims_tenant_id_application_id_fkey';
+            columns: ['tenant_id', 'application_id'];
+            isOneToOne: false;
+            referencedRelation: 'applications';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'hire_claims_tenant_id_claimed_by_recruiter_id_fkey';
+            columns: ['tenant_id', 'claimed_by_recruiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'recruiters';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
     };
     Functions: {
       [_ in never]: never;
@@ -2323,6 +2500,7 @@ export type Database = {
         | 'hired'
         | 'rejected'
         | 'withdrawn';
+      assessment_status: 'pending' | 'processing' | 'completed' | 'failed';
       communication_channel: 'email' | 'sms';
       communication_status: 'queued' | 'processing' | 'sent' | 'failed';
       communication_type:
@@ -2337,11 +2515,12 @@ export type Database = {
         | 'temporary'
         | 'internship'
         | 'volunteer';
+      hire_confirmation: 'unanswered' | 'confirmed' | 'denied';
       ingestion_status: 'pending' | 'processing' | 'completed' | 'failed';
       job_status: 'draft' | 'published' | 'closed' | 'archived';
       language_proficiency: 'beginner' | 'intermediate' | 'advanced' | 'fluent' | 'native';
       location_kind: 'country' | 'governorate';
-      notification_type: 'cv_parse_failed' | 'application_status_changed';
+      notification_type: 'cv_parse_failed' | 'cv_parse_succeeded' | 'application_stage_changed';
       qualification_status: 'pending' | 'qualified' | 'disqualified' | 'review_required';
       recruiter_role: 'admin' | 'recruiter';
       skill_importance: 'required' | 'preferred' | 'optional';
@@ -2490,6 +2669,7 @@ export const Constants = {
         'rejected',
         'withdrawn',
       ],
+      assessment_status: ['pending', 'processing', 'completed', 'failed'],
       communication_channel: ['email', 'sms'],
       communication_status: ['queued', 'processing', 'sent', 'failed'],
       communication_type: [
@@ -2506,11 +2686,12 @@ export const Constants = {
         'internship',
         'volunteer',
       ],
+      hire_confirmation: ['unanswered', 'confirmed', 'denied'],
       ingestion_status: ['pending', 'processing', 'completed', 'failed'],
       job_status: ['draft', 'published', 'closed', 'archived'],
       language_proficiency: ['beginner', 'intermediate', 'advanced', 'fluent', 'native'],
       location_kind: ['country', 'governorate'],
-      notification_type: ['cv_parse_failed', 'application_status_changed'],
+      notification_type: ['cv_parse_failed', 'cv_parse_succeeded', 'application_stage_changed'],
       qualification_status: ['pending', 'qualified', 'disqualified', 'review_required'],
       recruiter_role: ['admin', 'recruiter'],
       skill_importance: ['required', 'preferred', 'optional'],

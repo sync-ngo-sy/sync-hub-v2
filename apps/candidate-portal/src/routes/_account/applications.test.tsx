@@ -2,10 +2,12 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   acceptsApplication,
+  answersHireClaim,
   faultsOnApplications,
   listsApplications,
   listsApplicationsInTurn,
   pagesApplications,
+  refusesHireAnswer,
   refusesWithdrawal,
   withdrawsApplication,
   withholdsApplications,
@@ -17,6 +19,9 @@ import { absoluteDateTime } from '@/lib/dates';
 import {
   APPLICATION,
   CANDIDATE,
+  CLAIMED_HIRE_APPLICATION,
+  CONFIRMED_HIRE,
+  HIRE_ANSWER_REFUSED,
   INTERVIEW_APPLICATION,
   MORE_APPLICATIONS,
   PUBLIC_JOB,
@@ -32,7 +37,64 @@ function cardFor(title: string): HTMLElement {
   return card;
 }
 
+function openerFor(title: string): HTMLElement {
+  return within(cardFor(title)).getByRole('link', { name: (name) => name.startsWith(title) });
+}
+
 describe('My Applications', () => {
+  it('opens the Job a row was sent to, without asking for it on hover', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsApplications([APPLICATION]),
+      ...showsJob(PUBLIC_JOB),
+    );
+
+    const { user } = await renderApp('/applications');
+
+    const opener = openerFor(APPLICATION.job.title);
+    expect(opener).toHaveAttribute('href', `/jobs/${APPLICATION.job.id}`);
+
+    await user.hover(opener);
+    expect(screen.queryByRole('heading', { name: PUBLIC_JOB.title, level: 1 })).toBeNull();
+
+    await user.click(opener);
+
+    expect(await screen.findByRole('heading', { name: PUBLIC_JOB.title, level: 1 })).toBeVisible();
+  });
+
+  it('keeps Withdraw and the Hire claim out of the row opener', async () => {
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsApplications([APPLICATION, CLAIMED_HIRE_APPLICATION]),
+    );
+
+    await renderApp('/applications');
+
+    expect(openerFor(APPLICATION.job.title)).not.toContainElement(
+      within(cardFor(APPLICATION.job.title)).getByRole('button', {
+        name: `Withdraw from “${APPLICATION.job.title}”`,
+      }),
+    );
+
+    const claimed = cardFor(CLAIMED_HIRE_APPLICATION.job.title);
+    const opener = openerFor(CLAIMED_HIRE_APPLICATION.job.title);
+    for (const name of ['Yes, I started', "No, I didn't"]) {
+      expect(opener).not.toContainElement(within(claimed).getByRole('button', { name }));
+    }
+  });
+
+  it('marks each row with the logo of the Tenant it was sent to', async () => {
+    server.use(...signedInAs(CANDIDATE), ...listsApplications([APPLICATION]));
+
+    await renderApp('/applications');
+
+    const card = cardFor(APPLICATION.job.title);
+    expect(card.querySelector('[data-slot="tenant-logo"] img')).toHaveAttribute(
+      'src',
+      'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+    );
+  });
+
   it('lists Applications newest-first with status marks and relative times', async () => {
     const recentApplication = {
       ...APPLICATION,
@@ -53,7 +115,7 @@ describe('My Applications', () => {
     ).toEqual([APPLICATION.job.title, INTERVIEW_APPLICATION.job.title]);
 
     const submitted = cardFor(recentApplication.job.title);
-    expect(within(submitted).getByText('Submitted')).toBeVisible();
+    expect(within(submitted).getByText('Received')).toBeVisible();
     expect(
       within(submitted).getByText('Levant Digital · Damascus · Remote · Full time'),
     ).toBeVisible();
@@ -62,7 +124,7 @@ describe('My Applications', () => {
       absoluteDateTime(recentApplication.applied_at),
     );
 
-    expect(within(cardFor(INTERVIEW_APPLICATION.job.title)).getByText('Interview')).toBeVisible();
+    expect(within(cardFor(INTERVIEW_APPLICATION.job.title)).getByText('In review')).toBeVisible();
   });
 
   it('appends the next cursor page and keeps the first page in place', async () => {
@@ -147,15 +209,15 @@ describe('My Applications', () => {
 
   it('withdraws only after naming that the decision is permanent', async () => {
     const targeted = vi.fn();
-    const withdrawn = { ...APPLICATION, status: 'withdrawn' as const };
+    const withdrawn = { ...APPLICATION, stage: 'withdrawn' as const, can_withdraw: false };
     server.use(
       ...signedInAs(CANDIDATE),
       ...listsApplicationsInTurn([APPLICATION], [withdrawn]),
       ...withdrawsApplication(
         {
           id: APPLICATION.id,
-          status: 'withdrawn',
-          previous_status: 'new',
+          stage: 'withdrawn',
+          previous_stage: 'received',
           changed_at: '2026-08-01T14:00:00Z',
         },
         targeted,
@@ -213,5 +275,60 @@ describe('My Applications', () => {
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(WITHDRAWAL_REFUSED.detail as string)).toBeVisible();
     expect(within(dialog).getByRole('button', { name: 'Withdraw for good' })).toBeVisible();
+  });
+
+  it('offers no withdrawal on an Application the payload has closed', async () => {
+    server.use(...signedInAs(CANDIDATE), ...listsApplications([CLAIMED_HIRE_APPLICATION]));
+
+    await renderApp('/applications');
+
+    const card = cardFor(CLAIMED_HIRE_APPLICATION.job.title);
+    expect(await within(card).findByText('Hired')).toBeVisible();
+    expect(within(card).queryByRole('button', { name: /Withdraw from/ })).toBeNull();
+  });
+
+  it('asks the Candidate to confirm a claimed hire, and keeps their answer', async () => {
+    const answered = vi.fn();
+    const confirmed = { ...CLAIMED_HIRE_APPLICATION, hire: CONFIRMED_HIRE };
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsApplicationsInTurn([CLAIMED_HIRE_APPLICATION], [confirmed]),
+      ...answersHireClaim(CONFIRMED_HIRE, answered),
+    );
+
+    const { user } = await renderApp('/applications');
+    const card = cardFor(CLAIMED_HIRE_APPLICATION.job.title);
+    expect(await within(card).findByText(/Aman Relief says you started this job on/)).toBeVisible();
+
+    await user.click(within(card).getByRole('button', { name: 'Yes, I started' }));
+
+    await waitFor(() => expect(answered).toHaveBeenCalledWith(true));
+    expect(
+      await within(cardFor(CLAIMED_HIRE_APPLICATION.job.title)).findByText(
+        'You confirmed you started this job.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(cardFor(CLAIMED_HIRE_APPLICATION.job.title)).queryByRole('button', {
+        name: 'Yes, I started',
+      }),
+    ).toBeNull();
+  });
+
+  it('keeps a refused answer beside the claim it belongs to', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsApplications([CLAIMED_HIRE_APPLICATION]),
+      ...refusesHireAnswer(HIRE_ANSWER_REFUSED),
+    );
+
+    const { user } = await renderApp('/applications');
+    const card = cardFor(CLAIMED_HIRE_APPLICATION.job.title);
+    await user.click(await within(card).findByRole('button', { name: "No, I didn't" }));
+
+    expect(await within(card).findByText(HIRE_ANSWER_REFUSED.detail as string)).toBeVisible();
+    expect(within(card).getByRole('button', { name: "No, I didn't" })).toBeVisible();
+    consoleError.mockRestore();
   });
 });

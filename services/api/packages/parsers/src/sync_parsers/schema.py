@@ -92,6 +92,22 @@ class ParsedCv(ParsedModel):
     summary: str | None = Field(description="The CV's own professional summary, if it has one.")
     location: str | None = Field(description="Where the candidate is, as the CV puts it.")
 
+    linkedin_url: str | None = Field(
+        description="Their LinkedIn, as the CV writes it — the whole address, or the handle "
+        "alone where that is all it gives.",
+        examples=["linkedin.com/in/amina-haddad"],
+    )
+    github_url: str | None = Field(
+        description="Their GitHub, as the CV writes it — the whole address, or the username "
+        "alone where that is all it gives.",
+        examples=["github.com/amina-haddad"],
+    )
+    portfolio_url: str | None = Field(
+        description="Their own site or portfolio, as the CV writes it. Any personal site that "
+        "is neither the LinkedIn nor the GitHub; null where the CV names none.",
+        examples=["amina-haddad.dev"],
+    )
+
     experiences: list[ParsedExperience] = Field(description="Every job, most recent first.")
     educations: list[ParsedEducation] = Field(description="Every qualification, most recent first.")
     skills: list[ParsedSkill] = Field(

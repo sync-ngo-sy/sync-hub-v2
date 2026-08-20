@@ -233,8 +233,9 @@ class JobPage(BaseModel):
         default=None, description="Send back as `cursor` for the following page."
     )
     status_counts: list[JobStatusCount] = Field(
-        description="Every Job lifecycle status, each with the Tenant's total in it. These "
-        "totals are independent of `q`, `status`, sorting and pagination.",
+        description="Every Job lifecycle status, each with the Tenant's total in it. The "
+        "narrowing filters — `q` and `work_mode` — narrow these too; `status`, sorting and "
+        "pagination leave them alone, so every tab reads its own total under the same filters.",
     )
 
 
@@ -243,6 +244,9 @@ class PublicTenant(BaseModel):
 
     name: str
     slug: str
+    logo_url: str | None = Field(
+        default=None, description="Public and stable until the Tenant replaces it."
+    )
 
 
 class PublicJobSummary(BaseModel):
@@ -306,6 +310,14 @@ class TrackedLink(BaseModel):
     expires_at: datetime | None = None
     created_at: datetime
     view_count: int = Field(description="Job views that arrived through this link.")
+    application_count: int = Field(
+        description="Applications from a visitor this link brought. A link turned off keeps the "
+        "ones it already brought."
+    )
+    conversion_rate: int | None = Field(
+        description="The percentage of this link's views that became Applications, 0-100. Null "
+        "until the link has brought a view: a rate over nothing says nothing."
+    )
 
 
 class TrackedLinkReport(BaseModel):

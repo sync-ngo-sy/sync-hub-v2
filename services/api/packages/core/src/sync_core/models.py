@@ -11,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     Computed,
+    Date,
     DateTime,
     Enum,
     ForeignKeyConstraint,
@@ -63,6 +64,13 @@ class ApplicationStatus(enum.StrEnum):
     WITHDRAWN = "withdrawn"
 
 
+class AssessmentStatus(enum.StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class CommunicationChannel(enum.StrEnum):
     EMAIL = "email"
     SMS = "sms"
@@ -97,6 +105,12 @@ class EmploymentType(enum.StrEnum):
     VOLUNTEER = "volunteer"
 
 
+class HireConfirmation(enum.StrEnum):
+    UNANSWERED = "unanswered"
+    CONFIRMED = "confirmed"
+    DENIED = "denied"
+
+
 class IngestionStatus(enum.StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -126,7 +140,8 @@ class LocationKind(enum.StrEnum):
 
 class NotificationType(enum.StrEnum):
     CV_PARSE_FAILED = "cv_parse_failed"
-    APPLICATION_STATUS_CHANGED = "application_status_changed"
+    CV_PARSE_SUCCEEDED = "cv_parse_succeeded"
+    APPLICATION_STAGE_CHANGED = "application_stage_changed"
 
 
 class QualificationStatus(enum.StrEnum):
@@ -322,10 +337,30 @@ class Candidate(Base):
             "NOT is_searchable OR current_cv_id IS NOT NULL", name="candidates_searchable_needs_cv"
         ),
         CheckConstraint(
+            "NOT is_searchable OR profile_completed_at IS NOT NULL",
+            name="candidates_searchable_needs_a_complete_profile",
+        ),
+        CheckConstraint(
             "account_type = 'candidate'::account_type", name="candidates_account_type_check"
+        ),
+        CheckConstraint(
+            "github_url IS NULL OR github_url ~~ 'https://github.com/%%'::text AND length(github_url) <= 2000",
+            name="candidates_github_url_shape",
         ),
         CheckConstraint("length(headline) <= 200", name="candidates_headline_length"),
         CheckConstraint("length(summary) <= 5000", name="candidates_summary_length"),
+        CheckConstraint(
+            "linkedin_url IS NULL OR linkedin_url ~~ 'https://www.linkedin.com/in/%%'::text AND length(linkedin_url) <= 2000",
+            name="candidates_linkedin_url_shape",
+        ),
+        CheckConstraint(
+            "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
+            name="candidates_portfolio_url_shape",
+        ),
+        CheckConstraint(
+            "profile_completed_at IS NULL OR current_cv_id IS NOT NULL AND headline IS NOT NULL AND btrim(headline) <> ''::text AND summary IS NOT NULL AND btrim(summary) <> ''::text AND location_key IS NOT NULL AND canonical_role_key IS NOT NULL",
+            name="candidates_completed_profile_is_filled_in",
+        ),
         CheckConstraint("total_experience_years >= 0", name="candidates_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["canonical_role_key"],
@@ -399,6 +434,10 @@ class Candidate(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     location_key: Mapped[str | None] = mapped_column(Text)
     canonical_role_key: Mapped[str | None] = mapped_column(Text)
+    linkedin_url: Mapped[str | None] = mapped_column(Text)
+    github_url: Mapped[str | None] = mapped_column(Text)
+    portfolio_url: Mapped[str | None] = mapped_column(Text)
+    profile_completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     canonical_role: Mapped[Optional["CanonicalRole"]] = relationship("CanonicalRole", viewonly=True)
@@ -533,6 +572,19 @@ class Location(Base):
     )
 
 
+t_placements = Table(
+    "placements",
+    Base.metadata,
+    Column("application_id", Uuid),
+    Column("tenant_id", Uuid),
+    Column("claimed_by_recruiter_id", Uuid),
+    Column("start_date", Date),
+    Column("claimed_at", DateTime(True)),
+    Column("confirmed_at", DateTime(True)),
+    schema="public",
+)
+
+
 class SkillCategory(Base):
     __tablename__ = "skill_categories"
     __table_args__ = (
@@ -573,6 +625,7 @@ class Tenant(Base):
         server_default=text("'free'::tenant_plan"),
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    logo_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
@@ -955,6 +1008,11 @@ class IngestionJob(Base):
 class Profile(Base):
     __tablename__ = "profiles"
     __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(phone, phone_country) <> 1", name="profiles_phone_has_a_country"
+        ),
+        CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="profiles_phone_is_e164"),
+        CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="profiles_phone_country_is_iso"),
         ForeignKeyConstraint(
             ["id"], ["auth.users.id"], ondelete="CASCADE", name="profiles_id_fkey"
         ),
@@ -982,6 +1040,7 @@ class Profile(Base):
     )
     avatar_url: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     user: Mapped["User"] = relationship("User", viewonly=True)
@@ -1230,6 +1289,14 @@ class Job(Base):
             "minimum_total_experience_years IS NULL OR minimum_total_experience_years >= 0::numeric",
             name="jobs_min_experience_nonneg",
         ),
+        CheckConstraint(
+            "status <> 'published'::job_status OR work_mode IS NOT NULL",
+            name="jobs_published_names_a_work_mode",
+        ),
+        CheckConstraint(
+            "work_mode IS NULL OR work_mode = 'remote'::work_mode OR location_key IS NOT NULL",
+            name="jobs_travelled_to_names_a_place",
+        ),
         ForeignKeyConstraint(
             ["location_key"], ["public.locations.key"], name="jobs_location_key_fkey"
         ),
@@ -1279,7 +1346,10 @@ class Job(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
-    location_key: Mapped[str | None] = mapped_column(Text)
+    location_key: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Where an onsite or hybrid Job is worked, and where a remote Job needs its Candidate to be based. Null on a remote Job means Anywhere.",
+    )
     employment_type: Mapped[EmploymentType | None] = mapped_column(
         Enum(
             EmploymentType,
@@ -1294,11 +1364,11 @@ class Job(Base):
     )
     minimum_total_experience_years: Mapped[decimal.Decimal | None] = mapped_column(Numeric(4, 1))
     expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
-    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
     published_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(True),
         comment="When this Job first went live. Null while it has never been published, and never rewritten by a later republish.",
     )
+    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR)
 
     location: Mapped[Optional["Location"]] = relationship("Location", viewonly=True)
     recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
@@ -1536,6 +1606,10 @@ class Application(Base):
     __tablename__ = "applications"
     __table_args__ = (
         CheckConstraint(
+            "current_match_score >= 0::numeric AND current_match_score <= 100::numeric",
+            name="applications_current_match_score_range",
+        ),
+        CheckConstraint(
             "qualification_status <> 'disqualified'::qualification_status OR qualification_reason IS NOT NULL",
             name="applications_disqualification_has_a_reason",
         ),
@@ -1564,9 +1638,21 @@ class Application(Base):
         UniqueConstraint("tenant_id", "id", name="applications_tenant_id_id_key"),
         Index("applications_cv_id_idx", "cv_id"),
         Index("applications_job_applied_at_idx", "job_id", "applied_at", "id"),
+        Index(
+            "applications_job_match_score_idx",
+            "job_id",
+            text("COALESCE(current_match_score, (-1)) DESC"),
+            text("id DESC"),
+        ),
         Index("applications_job_status_idx", "job_id", "status"),
         Index("applications_job_tracked_link_idx", "job_id", "tracked_link_id"),
         Index("applications_tenant_applied_at_idx", "tenant_id", "applied_at", "id"),
+        Index(
+            "applications_tenant_match_score_idx",
+            "tenant_id",
+            text("COALESCE(current_match_score, (-1)) DESC"),
+            text("id DESC"),
+        ),
         Index("applications_tenant_status_idx", "tenant_id", "status"),
         {"schema": "public"},
     )
@@ -1604,6 +1690,7 @@ class Application(Base):
     )
     tracked_link_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     qualification_reason: Mapped[str | None] = mapped_column(Text)
+    current_match_score: Mapped[decimal.Decimal | None] = mapped_column(Numeric(5, 2))
 
     cv: Mapped["Cv"] = relationship("Cv", viewonly=True)
     candidate: Mapped["Candidate"] = relationship("Candidate", viewonly=True)
@@ -1628,6 +1715,15 @@ class JobViewEvent(Base):
         Index("job_view_events_job_link_viewed_idx", "job_id", "tracked_link_id", "viewed_at"),
         Index("job_view_events_job_viewed_idx", "job_id", "viewed_at"),
         Index("job_view_events_link_viewed_idx", "tracked_link_id", "viewed_at"),
+        Index(
+            "job_view_events_session_job_attribution_idx",
+            "session_id",
+            "job_id",
+            "viewed_at",
+            "id",
+            postgresql_include=["tracked_link_id"],
+            postgresql_where="(tracked_link_id IS NOT NULL)",
+        ),
         Index(
             "job_view_events_session_job_idx",
             "session_id",
@@ -1680,7 +1776,9 @@ class ApplicationAiMatchAssessment(Base):
             name="application_ai_match_assessments_application_id_fkey",
         ),
         PrimaryKeyConstraint("id", name="application_ai_match_assessments_pkey"),
-        Index("application_ai_match_assessments_app_created_idx", "application_id", "created_at"),
+        UniqueConstraint(
+            "application_id", name="application_ai_match_assessments_application_id_key"
+        ),
         {"schema": "public"},
     )
 
@@ -1692,6 +1790,9 @@ class ApplicationAiMatchAssessment(Base):
     model_name: Mapped[str] = mapped_column(Text, nullable=False)
     prompt_version: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()")
     )
     explanation: Mapped[str | None] = mapped_column(Text)
@@ -1865,6 +1966,23 @@ class ApplicationLanguage(Base):
 class ApplicationProfileSnapshot(Base):
     __tablename__ = "application_profile_snapshots"
     __table_args__ = (
+        CheckConstraint(
+            "github_url IS NULL OR github_url ~~ 'https://github.com/%%'::text AND length(github_url) <= 2000",
+            name="asnap_github_url_shape",
+        ),
+        CheckConstraint(
+            "linkedin_url IS NULL OR linkedin_url ~~ 'https://www.linkedin.com/in/%%'::text AND length(linkedin_url) <= 2000",
+            name="asnap_linkedin_url_shape",
+        ),
+        CheckConstraint(
+            "num_nonnulls(phone, phone_country) <> 1", name="asnap_phone_has_a_country"
+        ),
+        CheckConstraint("phone ~ '^\\+[1-9][0-9]{1,14}$'::text", name="asnap_phone_is_e164"),
+        CheckConstraint("phone_country ~ '^[A-Z]{2}$'::text", name="asnap_phone_country_is_iso"),
+        CheckConstraint(
+            "portfolio_url IS NULL OR (portfolio_url ~~ 'http://%%'::text OR portfolio_url ~~ 'https://%%'::text) AND length(portfolio_url) <= 2000",
+            name="asnap_portfolio_url_shape",
+        ),
         CheckConstraint("total_experience_years >= 0", name="asnap_total_experience_nonneg"),
         ForeignKeyConstraint(
             ["application_id"],
@@ -1886,10 +2004,14 @@ class ApplicationProfileSnapshot(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     phone: Mapped[str | None] = mapped_column(Text)
+    phone_country: Mapped[str | None] = mapped_column(Text)
     headline: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
     canonical_role: Mapped[str | None] = mapped_column(Text)
+    linkedin_url: Mapped[str | None] = mapped_column(Text)
+    github_url: Mapped[str | None] = mapped_column(Text)
+    portfolio_url: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped["Application"] = relationship("Application", viewonly=True)
 
@@ -2234,10 +2356,10 @@ class Communication(Base):
     provider: Mapped[str | None] = mapped_column(Text)
     provider_message_id: Mapped[str | None] = mapped_column(Text)
     template_key: Mapped[str | None] = mapped_column(Text)
-    sent_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    sent_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     application_candidate: Mapped[Optional["Application"]] = relationship(
         "Application", foreign_keys=[application_id, candidate_id], viewonly=True
@@ -2318,8 +2440,8 @@ class Notification(Base):
             "(payload ->> 'type'::text) = type::text", name="notifications_payload_type_matches"
         ),
         CheckConstraint(
-            "type::text <> 'application_status_changed'::text OR application_id IS NOT NULL",
-            name="notifications_status_change_has_an_application",
+            "type::text <> 'application_stage_changed'::text OR application_id IS NOT NULL",
+            name="notifications_stage_change_has_an_application",
         ),
         ForeignKeyConstraint(
             ["application_id", "recipient_profile_id"],
@@ -2365,3 +2487,103 @@ class Notification(Base):
 
     application: Mapped[Optional["Application"]] = relationship("Application", viewonly=True)
     recipient_profile: Mapped["Profile"] = relationship("Profile", viewonly=True)
+
+
+class HireClaim(Base):
+    __tablename__ = "hire_claims"
+    __table_args__ = (
+        CheckConstraint(
+            "confirmation = 'unanswered'::hire_confirmation AND answered_at IS NULL OR confirmation <> 'unanswered'::hire_confirmation AND answered_at IS NOT NULL",
+            name="hire_claim_answer_has_its_moment",
+        ),
+        ForeignKeyConstraint(
+            ["status_history_id"],
+            ["public.application_status_history.id"],
+            ondelete="CASCADE",
+            name="hire_claims_status_history_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "application_id"],
+            ["public.applications.tenant_id", "public.applications.id"],
+            ondelete="CASCADE",
+            name="hire_claims_tenant_id_application_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "claimed_by_recruiter_id"],
+            ["public.recruiters.tenant_id", "public.recruiters.id"],
+            name="hire_claims_tenant_id_claimed_by_recruiter_id_fkey",
+        ),
+        PrimaryKeyConstraint("application_id", name="hire_claims_pkey"),
+        {"schema": "public"},
+    )
+
+    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    claimed_by_recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    status_history_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    start_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    confirmation: Mapped[HireConfirmation] = mapped_column(
+        Enum(
+            HireConfirmation,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="hire_confirmation",
+        ),
+        nullable=False,
+        server_default=text("'unanswered'::hire_confirmation"),
+    )
+    claimed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    answered_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    status_history: Mapped["ApplicationStatusHistory"] = relationship(
+        "ApplicationStatusHistory", viewonly=True
+    )
+    application: Mapped["Application"] = relationship("Application", viewonly=True)
+    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
+
+
+class MatchAssessmentJob(Base):
+    __tablename__ = "match_assessment_jobs"
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="maj_attempts_nonneg"),
+        ForeignKeyConstraint(
+            ["application_id"],
+            ["public.applications.id"],
+            ondelete="CASCADE",
+            name="match_assessment_jobs_application_id_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="match_assessment_jobs_pkey"),
+        UniqueConstraint("application_id", name="match_assessment_jobs_application_id_key"),
+        Index(
+            "match_assessment_jobs_claim_idx",
+            "available_at",
+            postgresql_where="(status = ANY (ARRAY['pending'::assessment_status, 'processing'::assessment_status]))",
+        ),
+        Index("match_assessment_jobs_status_created_idx", "status", "created_at"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    status: Mapped[AssessmentStatus] = mapped_column(
+        Enum(
+            AssessmentStatus,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="assessment_status",
+        ),
+        nullable=False,
+        server_default=text("'pending'::assessment_status"),
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    error_message: Mapped[str | None] = mapped_column(Text)
+    available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+
+    application: Mapped["Application"] = relationship("Application", viewonly=True)

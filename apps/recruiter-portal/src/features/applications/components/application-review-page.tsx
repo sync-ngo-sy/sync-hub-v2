@@ -23,7 +23,7 @@ import { ApplicationHistory } from './application-history';
 import { ApplicationNotes } from './application-notes';
 import { ApplicationPipeline } from './application-pipeline';
 import { ApplicationTags } from './application-tags';
-import { MatchAssessments } from './match-assessments';
+import { MatchAssessmentCard } from './match-assessment';
 
 const SNAPSHOT_HINT =
   'What the candidate reviewed when they applied — not their profile as it stands today.';
@@ -143,7 +143,11 @@ export function ApplicationReviewPage({
               ]}
             />
 
-            <ApplicationPipeline applicationId={applicationId} status={review.status} />
+            <ApplicationPipeline
+              applicationId={applicationId}
+              status={review.status}
+              hire={review.hire ?? null}
+            />
 
             <ReviewCard title="Screening">
               <div className="space-y-3">
@@ -162,7 +166,7 @@ export function ApplicationReviewPage({
             />
             <ApplicationAnswers answers={review.answers} />
             <WidgetBoundary name="Match assessment">
-              <MatchAssessments applicationId={applicationId} />
+              <MatchAssessmentCard applicationId={applicationId} />
             </WidgetBoundary>
           </div>
 

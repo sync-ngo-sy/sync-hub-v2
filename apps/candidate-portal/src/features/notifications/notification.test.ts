@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CV_FAILURE_NOTIFICATION, MOVED_NOTIFICATION, READ_NOTIFICATION } from '@/testing/fixtures';
+import {
+  CV_FAILURE_NOTIFICATION,
+  CV_READ_NOTIFICATION,
+  MOVED_NOTIFICATION,
+  READ_NOTIFICATION,
+  READY_CV,
+} from '@/testing/fixtures';
 import { isUnread, notificationCopy } from './notification';
 
 describe('what a notification says', () => {
@@ -11,18 +17,29 @@ describe('what a notification says', () => {
     expect(copy.to).toBe('/profile');
   });
 
-  it('names the Job, the employer and the move, and leads to the Application', () => {
+  it('names the CV that was read, and leads to the profile it fills', () => {
+    const copy = notificationCopy(CV_READ_NOTIFICATION);
+
+    expect(copy.headline).toBe('“lina-khoury-2024.docx” has been read');
+    expect(copy.detail).toBe(
+      'Open your profile to fill the fields from it, and keep what is right.',
+    );
+    expect(copy.to).toBe('/profile');
+    expect(copy.search).toEqual({ fill: READY_CV.id });
+  });
+
+  it('names the Job, the employer and the Stage it reached, and leads to the Application', () => {
     const copy = notificationCopy(MOVED_NOTIFICATION);
 
     expect(copy.headline).toBe('Frontend Developer (Remote) at Levant Digital');
-    expect(copy.detail).toBe('Moved from Under review to Shortlisted.');
+    expect(copy.detail).toBe('Moved from Received to In review.');
     expect(copy.to).toBe('/applications');
   });
 
-  it("tells a status in the reader's words rather than the wire's", () => {
+  it("tells a Stage in the reader's words rather than the wire's", () => {
     const copy = notificationCopy(READ_NOTIFICATION);
 
-    expect(copy.detail).toBe('Moved from Interview to Not selected.');
+    expect(copy.detail).toBe('Moved from In review to Not selected.');
   });
 });
 

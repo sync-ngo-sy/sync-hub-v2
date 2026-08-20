@@ -24,6 +24,7 @@ from archive import DEFAULT_PATH as ARCHIVE_PATH
 from archive import Archive
 from inventory import census_of
 from ledger import DEFAULT_PATH, Entry, Ledger, State
+from links import linkedin_address
 from manatal import (
     CandidateGoneError,
     Manatal,
@@ -280,6 +281,9 @@ class Migration:
                     phone=candidate.phone,
                     avatar_url=candidate.picture_url,
                     location_key=writes.location_key_of(candidate.location, self._locations),
+                    linkedin_url=linkedin_address(candidate.linkedin_url or "")
+                    if candidate.linkedin_url
+                    else None,
                     unmapped_skills=candidate.skills,
                 )
             except BaseException:
@@ -359,6 +363,7 @@ class Migration:
                 graduation_year=entry.graduation_year,
                 english=entry.english,
             ),
+            linkedin_url=writes.linkedin_from_parse(state.parsed),
         )
         entry.state = State.PUBLISHED
         self._ledger.record(entry)
@@ -389,12 +394,17 @@ def _note_from(candidate: Candidate) -> str:
     """What a recruiter typed in Manatal, plus whatever the account kept in custom fields.
 
     Both are free text nobody here can key on, and both are somebody's work. A Note is where
-    work like that lives in this platform.
+    work like that lives in this platform. LinkedIn is stored on the profile instead.
     """
     written = [candidate.description] if candidate.description else []
     custom = candidate.raw.get("custom_fields")
     if isinstance(custom, dict):
-        written += [f"{key.replace('_', ' ')}: {value}" for key, value in custom.items() if value]
+        skip = {"linkedinprofile", "linkedin", "linkedin_url"}
+        written += [
+            f"{key.replace('_', ' ')}: {value}"
+            for key, value in custom.items()
+            if value and key.lower() not in skip
+        ]
     if not written:
         return ""
     joined = "\n".join(written)

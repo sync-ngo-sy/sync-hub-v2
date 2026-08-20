@@ -1,3 +1,4 @@
+from sync_worker.assessment import MATCH_ASSESSMENT_QUEUE, MatchAssessmentConsumer
 from sync_worker.communications import COMMUNICATIONS_QUEUE, CommunicationsConsumer
 from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import (
@@ -16,6 +17,7 @@ from sync_worker.worker import Worker
 __all__ = [
     "COMMUNICATIONS_QUEUE",
     "INGESTION_QUEUE",
+    "MATCH_ASSESSMENT_QUEUE",
     "SECRET_HEADER",
     "ClaimedJob",
     "CommunicationsConsumer",
@@ -23,6 +25,7 @@ __all__ = [
     "CvIngestionConsumer",
     "DrainReport",
     "Drainable",
+    "MatchAssessmentConsumer",
     "PermanentFailureError",
     "Queue",
     "QueueEngine",

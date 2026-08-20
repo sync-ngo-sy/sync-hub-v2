@@ -284,7 +284,7 @@ def _candidate(record: Mapping[str, Any]) -> Candidate:
         english_spoken=_custom(record, SPOKEN_ENGLISH_KEYS) or None,
         english_written=_custom(record, WRITTEN_ENGLISH_KEYS) or None,
         graduation_year=_year(_custom(record, GRADUATION_YEAR_KEYS)),
-        linkedin_url=_custom(record, LINKEDIN_KEYS) or None,
+        linkedin_url=_custom(record, LINKEDIN_KEYS) or _first(record, LINKEDIN_KEYS) or None,
         raw=record,
     )
 

@@ -28,8 +28,7 @@ type QueuedMessage = components['schemas']['QueuedMessage'];
 const PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 const TENANT_PATH = '/v1/tenants/me/applications';
 const REVIEW_PATH = '/v1/tenants/me/applications/{application_id}';
-const ASSESSMENTS_PATH = '/v1/tenants/me/applications/{application_id}/assessments';
-const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}';
+const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessment';
 const MESSAGES_PATH = '/v1/tenants/me/applications/{application_id}/messages';
 
 const NO_SUCH_APPLICATION: Problem = {
@@ -42,6 +41,20 @@ const NO_SUCH_APPLICATION: Problem = {
 export interface AskedFor {
   status: string[];
   qualification_status: string[];
+  sort: string | null;
+}
+
+/** The `coalesce(…, -1)` the API orders on: unread sorts below every score. */
+function scoreOf(item: ApplicationSummary): number {
+  return item.match?.percentage ?? -1;
+}
+
+function byMatch(sort: string | null) {
+  const bestFirst = sort !== 'lowest_match';
+  return (one: ApplicationSummary, other: ApplicationSummary) => {
+    const gap = scoreOf(one) - scoreOf(other);
+    return bestFirst ? -gap : gap;
+  };
 }
 
 function chosen(named: string[], value: string): boolean {
@@ -67,11 +80,13 @@ export function listsJobApplications(items: ApplicationSummary[], asked?: AskedF
     http.get(PATH, ({ query, response }) => {
       const statuses = query.getAll('status');
       const verdicts = query.getAll('qualification_status');
-      asked?.push({ status: statuses, qualification_status: verdicts });
+      const sort = query.get('sort');
+      asked?.push({ status: statuses, qualification_status: verdicts, sort });
       const ofThisVerdict = items.filter((item) => chosen(verdicts, item.qualification_status));
       const ofThisStatus = items.filter((item) => chosen(statuses, item.status));
+      const listed = ofThisVerdict.filter((item) => chosen(statuses, item.status));
       return response(200).json({
-        items: ofThisVerdict.filter((item) => chosen(statuses, item.status)),
+        items: sort?.endsWith('_match') ? [...listed].sort(byMatch(sort)) : listed,
         next_cursor: null,
         status_counts: countedByStatus(ofThisVerdict),
         verdict_counts: countedByVerdict(ofThisStatus),
@@ -187,6 +202,19 @@ export function failsToGetApplication(problem: Problem) {
   return [http.get(REVIEW_PATH, ({ response }) => response(500).json(problem))];
 }
 
+// The API's Stage projection, restated for the fake server so a move it answers says whether the
+// candidate heard about it. The portal itself never projects: it reads the answer.
+const STAGE_OF: Record<PipelineStatus, string> = {
+  new: 'received',
+  reviewing: 'in_review',
+  shortlisted: 'in_review',
+  interview: 'in_review',
+  offer: 'in_review',
+  hired: 'hired',
+  rejected: 'not_selected',
+  withdrawn: 'withdrawn',
+};
+
 export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
   let current = review;
   return [
@@ -196,7 +224,7 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
         : response(404).json(NO_SUCH_APPLICATION),
     ),
     http.patch(REVIEW_PATH, async ({ request, response }) => {
-      const { status } = (await request.json()) as StatusChange;
+      const { status, start_date } = (await request.json()) as StatusChange;
       asked?.push(status);
       const previous = current.status;
       const changed_at = '2026-08-03T10:00:00Z';
@@ -207,9 +235,23 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
           ...current.history,
           { status, previous_status: previous, source: 'recruiter', changed_at },
         ],
+        hire: start_date
+          ? {
+              start_date,
+              confirmation: 'unanswered' as const,
+              claimed_at: changed_at,
+              answered_at: null,
+            }
+          : current.hire,
         updated_at: changed_at,
       };
-      return response(200).json({ id: current.id, status, previous_status: previous, changed_at });
+      return response(200).json({
+        id: current.id,
+        status,
+        previous_status: previous,
+        candidate_notified: STAGE_OF[status] !== STAGE_OF[previous],
+        changed_at,
+      });
     }),
   ];
 }
@@ -233,13 +275,6 @@ const NO_SUCH_TAG: Problem = {
   title: 'Not Found',
   status: 404,
   detail: 'This tenant has no application or no tag with that id.',
-};
-
-const NO_SUCH_ASSESSMENT: Problem = {
-  type: 'urn:sync:problem:assessment-not-found',
-  title: 'Not Found',
-  status: 404,
-  detail: 'This tenant has no application, or no assessment of it, with that id.',
 };
 
 const WROTE_AT = '2026-08-03T12:00:00Z';
@@ -386,119 +421,51 @@ export function refusesTenantTagCreation(session: TagSession, problem: Problem) 
   ];
 }
 
-export function listsMatchAssessments(items: MatchAssessment[]) {
-  return [
-    http.get(ASSESSMENTS_PATH, ({ response }) => response(200).json({ items, next_cursor: null })),
-  ];
+export function readsMatchAssessment(reading: MatchAssessment | null) {
+  return [http.get(ASSESSMENT_PATH, ({ response }) => response(200).json(reading))];
 }
 
-export function pagesMatchAssessments(pages: MatchAssessment[][]) {
-  return [
-    http.get(ASSESSMENTS_PATH, ({ query, response }) => {
-      const cursor = query.get('cursor');
-      const index = cursor === null ? 0 : Number(cursor);
-      return response(200).json({
-        items: pages[index] ?? [],
-        next_cursor: index + 1 < pages.length ? String(index + 1) : null,
-      });
-    }),
-  ];
+export function failsToReadMatchAssessment(problem: Problem) {
+  return [http.get(ASSESSMENT_PATH, ({ response }) => response(500).json(problem))];
 }
 
-export function failsToListMatchAssessments(problem: Problem) {
-  return [http.get(ASSESSMENTS_PATH, ({ response }) => response(500).json(problem))];
-}
-
-export function failsToPageMatchAssessments(newest: MatchAssessment[], problem: Problem) {
+export function assessesMatch(initial: MatchAssessment | null, written: MatchAssessment) {
+  let reading = initial;
   return [
-    http.get(ASSESSMENTS_PATH, ({ query, response }) =>
-      query.get('cursor')
-        ? response(500).json(problem)
-        : response(200).json({ items: newest, next_cursor: 'older' }),
-    ),
-  ];
-}
-
-export function assessesMatch(initial: MatchAssessment[], written: MatchAssessment) {
-  let items = [...initial];
-  return [
-    http.get(ASSESSMENTS_PATH, ({ response }) => response(200).json({ items, next_cursor: null })),
-    http.post(ASSESSMENTS_PATH, ({ response }) => {
-      items = [written, ...items];
-      return response(201).json(written);
+    http.get(ASSESSMENT_PATH, ({ response }) => response(200).json(reading)),
+    http.post(ASSESSMENT_PATH, ({ response }) => {
+      reading = written;
+      return response(200).json(written);
     }),
   ];
 }
 
 export function failsToAssessMatch(
-  initial: MatchAssessment[],
+  initial: MatchAssessment | null,
   problem: Problem,
   status: 429 | 502 | 503,
 ) {
   return [
-    ...listsMatchAssessments(initial),
-    http.post(ASSESSMENTS_PATH, ({ response }) => response(status).json(problem)),
+    ...readsMatchAssessment(initial),
+    http.post(ASSESSMENT_PATH, ({ response }) => response(status).json(problem)),
   ];
 }
 
-export function forgetsMatchAssessments(initial: MatchAssessment[], forgotten?: string[]) {
-  let items = [...initial];
-  return [
-    http.get(ASSESSMENTS_PATH, ({ response }) => response(200).json({ items, next_cursor: null })),
-    http.delete(ASSESSMENT_PATH, ({ params, response }) => {
-      if (!items.some((item) => item.id === params.assessment_id)) {
-        return response(404).json(NO_SUCH_ASSESSMENT);
-      }
-      forgotten?.push(params.assessment_id);
-      items = items.filter((item) => item.id !== params.assessment_id);
-      return response(204).empty();
-    }),
-  ];
-}
-
-export function holdsMatchAssessmentDeletion(initial: MatchAssessment[]) {
+export function holdsMatchAssessment(initial: MatchAssessment | null, written: MatchAssessment) {
   const gate = holding();
-  let items = [...initial];
+  let reading = initial;
   return {
     arrive: gate.arrive,
     handlers: [
-      http.get(ASSESSMENTS_PATH, ({ response }) =>
-        response(200).json({ items, next_cursor: null }),
-      ),
-      http.delete(ASSESSMENT_PATH, async ({ params, response }) => {
+      http.get(ASSESSMENT_PATH, ({ response }) => response(200).json(reading)),
+      http.post(ASSESSMENT_PATH, async ({ response }) => {
         await gate.held;
-        items = items.filter((item) => item.id !== params.assessment_id);
-        return response(204).empty();
+        reading = written;
+        return response(200).json(written);
       }),
     ],
   };
 }
-
-export function refusesMatchAssessmentDeletion(initial: MatchAssessment[], problem: Problem) {
-  return [
-    ...listsMatchAssessments(initial),
-    http.delete(ASSESSMENT_PATH, ({ response }) => response(500).json(problem)),
-  ];
-}
-
-export function holdsMatchAssessment(initial: MatchAssessment[], written: MatchAssessment) {
-  const gate = holding();
-  let items = [...initial];
-  return {
-    arrive: gate.arrive,
-    handlers: [
-      http.get(ASSESSMENTS_PATH, ({ response }) =>
-        response(200).json({ items, next_cursor: null }),
-      ),
-      http.post(ASSESSMENTS_PATH, async ({ response }) => {
-        await gate.held;
-        items = [written, ...items];
-        return response(201).json(written);
-      }),
-    ],
-  };
-}
-
 export function messagesApplicant(queued: QueuedMessage, asked?: OutgoingMessage[]) {
   return [
     http.post(MESSAGES_PATH, async ({ request, response }) => {

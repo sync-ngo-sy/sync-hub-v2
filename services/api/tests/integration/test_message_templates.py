@@ -228,3 +228,12 @@ async def test_a_candidate_has_no_templates_at_all(
     refused = await create_template(other_browser)
 
     assert refused.status_code == 403, refused.text
+
+
+async def test_a_template_subject_with_a_control_character_is_saved_without_it(
+    recruiter: AsyncClient,
+) -> None:
+    saved = await create_template(recruiter, subject="An interview\x00for {{ job_title }}?")
+
+    assert saved.status_code == 201, saved.text
+    assert saved.json()["subject"] == "An interviewfor {{ job_title }}?"

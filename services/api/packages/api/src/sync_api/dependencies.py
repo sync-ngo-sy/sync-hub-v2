@@ -32,13 +32,20 @@ from sync_api.crm import (
 )
 from sync_api.cvs import CvService
 from sync_api.jobs import JobBrowseService, JobService, TrackedLinkService, Visitor, Visitors
+from sync_api.manatal import ManatalMigrationService
 from sync_api.messaging import MessageTemplateService, OutreachService
 from sync_api.notifications import NotificationService
 from sync_api.platform import ActingPlatformAdmin, PlatformService, acting_platform_admin
 from sync_api.problems import SEARCH_UNAVAILABLE_PROBLEM_TYPE, Problem
 from sync_api.search import CandidateSearchService
 from sync_api.stats import StatsService
-from sync_api.tenants import ActingRecruiter, TenantService, acting_recruiter, require_admin
+from sync_api.tenants import (
+    ActingRecruiter,
+    TenantLogoService,
+    TenantService,
+    acting_recruiter,
+    require_admin,
+)
 from sync_assessments import MatchAssessor
 from sync_core import Database, Settings, Storage
 from sync_rag import Embedder
@@ -148,6 +155,21 @@ def get_avatar_service(
 
 
 AvatarServiceDep = Annotated[AvatarService, Depends(get_avatar_service)]
+
+
+def get_tenant_logo_storage(request: Request) -> Storage:
+    return cast("Storage", request.app.state.tenant_logo_storage)
+
+
+def get_tenant_logo_service(
+    session: SessionDep,
+    storage: Annotated[Storage, Depends(get_tenant_logo_storage)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> TenantLogoService:
+    return TenantLogoService(session, storage, settings)
+
+
+TenantLogoServiceDep = Annotated[TenantLogoService, Depends(get_tenant_logo_service)]
 
 
 def get_candidate_deletion(
@@ -323,6 +345,15 @@ def get_stats_service(session: SessionDep) -> StatsService:
 
 
 StatsServiceDep = Annotated[StatsService, Depends(get_stats_service)]
+
+
+def get_manatal_migration_service(session: SessionDep) -> ManatalMigrationService:
+    return ManatalMigrationService(session)
+
+
+ManatalMigrationServiceDep = Annotated[
+    ManatalMigrationService, Depends(get_manatal_migration_service)
+]
 
 
 def get_visitors(settings: Annotated[Settings, Depends(get_app_settings)]) -> Visitors:

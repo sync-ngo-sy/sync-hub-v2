@@ -9,13 +9,15 @@ from sqlalchemy.exc import IntegrityError
 from sync_api.applications.access import my_application
 from sync_api.applications.answers import answer_rows, refuse_unusable_answers
 from sync_api.applications.criteria import screening_criteria_of
+from sync_api.applications.hires import answer_the_claim, claimed_hires
 from sync_api.applications.payload import (
     Application,
     ApplicationPage,
     AppliedJob,
-    MovedApplication,
+    HireClaim,
+    WithdrawnApplication,
 )
-from sync_api.applications.pipeline import move_application
+from sync_api.applications.pipeline import UNDECIDED, move_application
 from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
 from sync_api.candidates import refuse_incomplete_profile, whole_candidate
@@ -43,11 +45,12 @@ from sync_core.models import (
     StatusChangeSource,
     Tenant,
 )
+from sync_core.stages import stage_of
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.applications.payload import NewApplication
+    from sync_api.applications.payload import HireAnswer, NewApplication
     from sync_api.candidates import ActingCandidate
     from sync_api.jobs import Visitor
 
@@ -148,7 +151,9 @@ class ApplicationService:
         await self._db.refresh(application)
         return _as_payload(application, job, tenant)
 
-    async def withdraw(self, candidate: ActingCandidate, application_id: UUID) -> MovedApplication:
+    async def withdraw(
+        self, candidate: ActingCandidate, application_id: UUID
+    ) -> WithdrawnApplication:
         """Leave the process, for good: the Job stays taken, so re-applying is not a thing."""
         async with transaction(self._db):
             applied = await my_application(self._db, candidate.id, application_id, to_move=True)
@@ -165,12 +170,29 @@ class ApplicationService:
             application_id=str(application_id),
             previous_status=moved.previous_status.value,
         )
-        return MovedApplication(
+        return WithdrawnApplication(
             id=application_id,
-            status=moved.status,
-            previous_status=moved.previous_status,
+            stage=moved.stage,
+            previous_stage=moved.previous_stage,
             changed_at=moved.changed_at,
         )
+
+    async def answer_hire(
+        self, candidate: ActingCandidate, application_id: UUID, answer: HireAnswer
+    ) -> HireClaim:
+        """Confirm or deny what the Tenant claims. Only a yes makes it a Placement."""
+        async with transaction(self._db):
+            applied = await my_application(self._db, candidate.id, application_id)
+            claimed = await answer_the_claim(
+                self._db, applied.application.id, confirmed=answer.confirmed
+            )
+
+        logger.info(
+            "applications.hire_answered",
+            application_id=str(application_id),
+            confirmation=claimed.confirmation.value,
+        )
+        return claimed
 
     async def page(
         self,
@@ -197,7 +219,14 @@ class ApplicationService:
             ).tuples()
         )
         rows, next_cursor = page_of(found, limit=limit, cursor_for=_cursor)
-        return ApplicationPage(items=[_as_payload(*row) for row in rows], next_cursor=next_cursor)
+        claims = await claimed_hires(self._db, [application.id for application, _, _ in rows])
+        return ApplicationPage(
+            items=[
+                _as_payload(application, job, tenant, claims.get(application.id))
+                for application, job, tenant in rows
+            ],
+            next_cursor=next_cursor,
+        )
 
     def _held_cv(self, candidate: Candidate) -> UUID:
         """The CV the candidate holds — the only one they can apply with.
@@ -253,20 +282,26 @@ class ApplicationService:
         return found
 
 
-def _as_payload(application: ApplicationRow, job: Job, tenant: Tenant) -> Application:
+def _as_payload(
+    application: ApplicationRow, job: Job, tenant: Tenant, hire: HireClaim | None = None
+) -> Application:
     return Application(
         id=application.id,
         job=AppliedJob(
             id=job.id,
             title=job.title,
-            tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
+            tenant=PublicTenant(name=tenant.name, slug=tenant.slug, logo_url=tenant.logo_url),
             location_key=job.location_key,
             location_name=location_name(job),
             employment_type=job.employment_type,
             work_mode=job.work_mode,
         ),
         cv_id=application.cv_id,
-        status=application.status,
+        stage=stage_of(application.status),
+        # The pipeline's own answer rather than a second reading of it: whether leaving is still
+        # possible is exactly whether the state machine would allow the move.
+        can_withdraw=application.status in UNDECIDED,
+        hire=hire,
         applied_at=application.applied_at,
         updated_at=application.updated_at,
     )

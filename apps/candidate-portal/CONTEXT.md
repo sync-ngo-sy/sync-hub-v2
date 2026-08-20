@@ -21,15 +21,25 @@ _Avoid_: Search (the keyword box is one filter of three, not the name of the pag
 listings, feed.
 
 **Filter bar**:
-The three filters over Browse — a keyword, a Location and an employment type — living in the
-address bar rather than in the page, so a reload keeps them, Back takes the last one off, and a
-pasted link reproduces the list it was copied from. All three are the API's own hard filters, so
-a narrowed list is narrowed by the platform rather than in the browser, and one Clear undoes
+The four filters over Browse — a keyword, a Location, a Work mode and an employment type — living
+in the address bar rather than in the page, so a reload keeps them, Back takes the last one off,
+and a pasted link reproduces the list it was copied from. All four are the API's own hard filters,
+so a narrowed list is narrowed by the platform rather than in the browser, and one Clear undoes
 every one of them. It is a single form: whichever control a Candidate reaches for last applies
 the keyword already in the box, so the bar and the list never disagree. A combination that
 matches nothing says exactly that — the platform having published nothing at all is a different
-sentence, and a Candidate who reads the wrong one stops looking.
-_Avoid_: Search bar (it filters three ways), facets, refinements, advanced search.
+sentence, and a Candidate who reads the wrong one stops looking. The Location filter asks "what
+can I do from here", so it answers with that place *and* with the Jobs open to **Anywhere**;
+narrowing to remote work is the Work mode filter's job, not the Location filter's.
+_Avoid_: Search bar (it filters four ways), facets, refinements, advanced search.
+
+**Anywhere**:
+What a remote Job that names no Location reads as, wherever this portal would otherwise print the
+place — a Browse row, Job detail, a row of My Applications. It is the absence of a Location and
+never a place in the taxonomy, so it is written by the portal rather than read from the Job, and
+a Candidate filtering by their own Location still meets it.
+_Avoid_: Remote (that is the Work mode), Worldwide, Any location (that is what the empty filter
+is called).
 
 **Job detail**:
 The public page for one Job at `/jobs/:jobId` — the description, what the role asks for,
@@ -45,9 +55,81 @@ address stays the link's so signing in to apply comes back to it and keeps its
 attribution.
 _Avoid_: Campaign page, referral page.
 
+**Tenant logo**:
+The mark of the Tenant behind a Job, on every surface where one appears: a Browse row, Job
+detail, the Tracked-link landing and a row of My Applications. Until a Tenant uploads one, its
+first letters stand in its place, so the four surfaces have the same shape either way.
+_Avoid_: Company logo, brand, employer icon.
+
 **My Applications**:
-The signed-in Candidate's home: their Applications, newest first.
-_Avoid_: Dashboard (reserved for the Recruiter Portal's home).
+The signed-in Candidate's Applications, newest first, at `/applications`. Each says its Stage —
+never the Tenant's eight-value status — and opens the Job it was sent to.
+_Avoid_: My jobs, submissions, dashboard.
+
+**Stage**:
+What this portal tells a Candidate about one of their Applications — Received, In review, then the
+outcome. It is the whole vocabulary a Candidate ever sees of a Tenant's pipeline, and a move that
+does not change it is a move they are never told about; whether an Application may still be
+withdrawn is the API's answer, not one read off a Stage. It draws through the same Status mark
+every other state on the platform draws through, so five values need no fifth colour.
+_Avoid_: Status, pipeline stage, step.
+
+**Hire claim**:
+A Tenant saying, on one Application, that the Candidate started work on a named day. It sits
+under that Application's row and asks the one question it is there to ask: yes, I started, or
+no, I didn't. The answer is given once, so the row afterwards states what was said rather than
+offering the choice again, and only a yes makes the hire a Placement. Refusing it changes
+nothing about where the Application stands — the Tenant's record of hiring them is the Tenant's.
+_Avoid_: Offer, job offer, placement (that is what a yes makes it).
+
+**Profile progress**:
+How much of a Complete profile the Candidate has and which requirements are still unfinished.
+A panel beside the editor carries it — a ring for the percentage, and every requirement listed
+under it with a tick against the ones that are met. Each one moves the page to the section that
+answers it, and moves the page rather than the address: the editor stops a real navigation while
+there are unsaved changes, and a Candidate reaching for a requirement is not leaving. It reads the
+fields as they are typed rather than the saved profile, so the ring moves before a save — with the
+CV the one exception, because no amount of typing reads a CV. A section the rule asks for says so
+once, on the badge beside its heading, and its fields do not repeat it: a Candidate filling in five
+fields under one badge is told five times what they were told once, and the panel beside them is
+already the list of what is outstanding. Optional Projects and Links never prevent 100%; the database's
+Complete-profile marker is what actually gates applying, and the browser restates the rule only so
+the editor can answer before a save rather than after it. The Searchable switch lives at the foot
+of this panel rather than among the fields, because the ticks above it are its precondition: it is
+disabled until every one of them is met, so the one setting the database can refuse cannot be asked
+for in a state the database would refuse.
+_Avoid_: Completion score, profile strength, onboarding progress, step (a Stage is what a step
+reads as here).
+
+**Still to do**:
+What a Save that could not do everything says. An unfinished profile is never a refused Save —
+a Candidate's work is kept whatever state it is in. Asking to be Searchable while unfinished is the
+one thing a Save cannot carry, so it goes without the switch and the toast says which requirements
+are outstanding: "Saved. Recruiters cannot find you yet — still to do: Summary." Only a real
+mistake refuses a Save — a year that is not a year, an address of the wrong kind, an entry begun
+and left blank — and then every place at fault is named in one sentence, "Still to do: Education,
+Skills and Languages", with each named section ringed in red where it sits, so nothing sends a
+Candidate hunting down a long page. One place at fault says that place's own words instead, because
+a single sentence beats a list of one. There is no Save to press until something is edited: a
+button that does nothing still asks to be pressed, and pressing it teaches a Candidate that Save is
+how they check their work rather than how they keep it.
+_Avoid_: Validation summary, error list, form errors.
+
+**Candidate Card**:
+The block above the editor that says who the Candidate is, the way a Recruiter will read them —
+avatar, name, Canonical role, headline, the two ways to reach them, and the Links. This portal
+owns it, and the Recruiter Portal owns its own: the two answer different questions, and neither
+waits on the other to change one. It renders the Links itself rather than taking them as a fact
+the page passes in, so no page can show this person without them.
+_Avoid_: Profile header, summary card, identity band.
+
+**Links**:
+The Candidate's LinkedIn, GitHub and portfolio addresses — three fields rather than a list.
+A handle typed on its own becomes the whole address; Recruiters read these fields and Screening
+never does. The editor answers an address of the wrong kind where it was typed rather than
+waiting for the API to refuse it, and the Candidate Card above reads the saved ones back as
+one fact, so the Candidate sees what a Recruiter will.
+_Avoid_: Social links, profiles, URLs.
 
 **Account area**:
 Everything behind the sign-in guard — My Applications, the profile editor, Notifications,
@@ -58,11 +140,13 @@ _Avoid_: Workspace (that is the Recruiter Portal's), dashboard area, my account.
 
 **Profile editor**:
 The one page the whole professional profile is edited on, and saved from, in a single action:
-the CVs, identity, Experience, Education, Skills, Other skills, Languages and Projects together.
-A save replaces the profile whole, so a section left empty is an emptied section — which is why
-leaving with unsaved changes asks first rather than losing them quietly. The CVs come first,
-because an upload is what fills everything under it; `/cvs`, where they used to live on their
-own, redirects here.
+the CVs, identity, Experience, Education, Skills, Other skills, Languages, Projects and Links
+together. A save replaces the profile whole, so a section left empty is an emptied section —
+which is why leaving with unsaved changes asks first rather than losing them quietly. The CVs
+come first, because an upload is what fills everything under it; `/cvs`, where they used to
+live on their own, redirects here. A CV still being read spins beside the Status Mark that names
+its state: the mark says which state it is in, and the spin says the row will change on its own,
+which is what stops a Candidate waiting on a page they think has stopped.
 _Avoid_: Profile settings, my details, CV builder (a CV is a file the Candidate uploads).
 
 **Avatar**:
@@ -76,9 +160,15 @@ _Avoid_: Profile picture as a separate domain concept.
 Taking what the platform read off a CV into the editor's fields, where the Candidate reads every
 value in context and saves — or does not. It writes nothing: a raw parse is never the
 authoritative profile, so the draft the API computes lands in the form and the Candidate's Save
-is still the only thing that replaces anything. A parse finishing fills on its own, and a CV
-already read fills on demand. Skills merge, keeping the years already typed against them; every
-other section is replaced, which is safe only because of the Undo beside it.
+is still the only thing that replaces anything. A parse finishing while the Candidate is here fills
+on its own, whether or not the upload happened in this visit; one that finished while they were
+away is what the notification about it opens — the CV it speaks for rides in the address, so the
+page fills from that one and no other, and the link fills again wherever it is opened. A CV
+already read fills on demand. It reaches Links and the Phone as well as the sections — a number
+it could not make sense of lands in the field exactly as the CV wrote it, and the field says so,
+because a value quietly dropped is one nobody learns was on their CV. Skills merge, keeping the
+years already typed against them; every other section is replaced, which is safe only because of
+the Undo beside it.
 _Avoid_: Import, apply the draft, review (the dialog that reviewed it is gone), auto-fill.
 
 **Fill notice**:
@@ -117,10 +207,12 @@ _Avoid_: Lookups, master data, enums (an enum reaches the portals through the ge
 these are rows).
 
 **Notifications**:
-Everything the platform has told the signed-in Candidate, newest first: a CV it could not read, an
-Application that moved. Two surfaces over one list — the Bell's dropdown for the newest few, and the
-page at `/notifications` for all of them, a cursor at a time. Candidate-only in v1, because both
-payload types are candidate-facing and a recruiter bell would be permanently empty.
+Everything the platform has told the signed-in Candidate, newest first: a CV it read, a CV it could
+not read, an Application that moved. Two surfaces over one list — the Bell's dropdown for the newest
+few, and the page at `/notifications` for all of them, a cursor at a time. Candidate-only in v1,
+because every payload type is candidate-facing and a recruiter bell would be permanently empty.
+Opening one is the way to what it is about, and the CV that was read is the one that arrives with
+the work already done — it opens a Fill from a CV rather than a page to start one on.
 _Avoid_: Alerts, activity feed, inbox, messages (a Message is a Tenant writing to an applicant).
 
 **Bell**:

@@ -5,10 +5,12 @@ from sync_core.logging import (
     configure_logging,
     get_logger,
 )
+from sync_core.openapi import documentation_urls
 from sync_core.settings import Environment, LogFormat, SameSite, Settings, get_settings
 from sync_core.storage import (
     AVATAR_BUCKET,
     CV_BUCKET,
+    TENANT_LOGO_BUCKET,
     ObjectNotFoundError,
     Storage,
     StorageError,
@@ -18,6 +20,7 @@ from sync_core.transactions import transaction
 __all__ = [
     "AVATAR_BUCKET",
     "CV_BUCKET",
+    "TENANT_LOGO_BUCKET",
     "Database",
     "Environment",
     "LogFormat",
@@ -29,6 +32,7 @@ __all__ = [
     "bind_request_context",
     "clear_request_context",
     "configure_logging",
+    "documentation_urls",
     "get_logger",
     "get_settings",
     "transaction",

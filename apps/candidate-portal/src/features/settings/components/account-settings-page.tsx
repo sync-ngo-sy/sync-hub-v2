@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@sync/ui/components/ui/card';
 import { useState } from 'react';
+import { ChangePasswordForm } from '@/features/auth/components/change-password-form';
 import type { Profile } from '@/features/auth/current-profile';
 import { DeleteAccountDialog } from './delete-account-dialog';
 
@@ -37,6 +38,16 @@ export function AccountSettingsPage({ profile }: { profile: Profile }) {
               <dd className="break-all text-foreground">{profile.email}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Password</CardTitle>
+          <CardDescription>Choose a new password for signing in to Sync Hub.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 

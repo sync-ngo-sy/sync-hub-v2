@@ -14,7 +14,9 @@ from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
     EMPTY_PROFILE,
     SECTIONS,
+    a_filled_profile,
     a_profile,
+    completed_at,
     embedding_jobs,
     give_a_current_cv,
     my_id,
@@ -25,15 +27,20 @@ from tests.support.tenants import an_admin
 
 PROFILE = "/v1/candidates/me/profile"
 EXPERIENCE_TOTAL = f"{PROFILE}/experience-total"
+SEARCHABLE_REFUSAL = "urn:sync:problem:searchable-needs-a-complete-profile"
 
 A_FULL_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
-    "phone": "+963 11 555 0100",
+    "phone": "+963115550100",
+    "phone_country": "SY",
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
     "is_searchable": False,
+    "linkedin_url": "https://www.linkedin.com/in/amina-haddad",
+    "github_url": "https://github.com/amina-haddad",
+    "portfolio_url": "https://amina-haddad.dev",
     "experiences": [
         {
             "job_title": "Senior Engineer",
@@ -146,13 +153,64 @@ async def test_the_name_and_phone_are_written_through_to_the_account(
     await a_signed_in_candidate(browser, mailbox)
 
     saved = await browser.put(
-        PROFILE, json=a_profile(full_name="Amina Haddad-Nassar", phone="+963 11 555 0199")
+        PROFILE,
+        json=a_profile(full_name="Amina Haddad-Nassar", phone="+963115550199", phone_country="SY"),
     )
 
     assert saved.status_code == 200, saved.text
     assert saved.json()["full_name"] == "Amina Haddad-Nassar"
-    assert (await browser.get("/v1/auth/me")).json()["full_name"] == "Amina Haddad-Nassar"
-    assert (await browser.get(PROFILE)).json()["phone"] == "+963 11 555 0199"
+    me = (await browser.get("/v1/auth/me")).json()
+    assert me["full_name"] == "Amina Haddad-Nassar"
+    assert (me["phone"], me["phone_country"]) == ("+963115550199", "SY")
+    reloaded = (await browser.get(PROFILE)).json()
+    assert (reloaded["phone"], reloaded["phone_country"]) == ("+963115550199", "SY")
+
+
+async def test_a_number_is_stored_the_one_way_however_the_candidate_wrote_it(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """The field sends E.164; anything else that reaches here meets the same standard."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json=a_profile(phone="011 555 0100", phone_country="SY"))
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["phone"] == "+963115550100"
+    assert (await browser.get(PROFILE)).json()["phone"] == "+963115550100"
+
+
+async def test_a_number_the_chosen_country_cannot_dial_is_refused(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """A Los Angeles number claimed as Canadian. Both are `+1`, and only one of them is true."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    refused = await browser.put(PROFILE, json=a_profile(phone="+12133734253", phone_country="CA"))
+
+    assert refused.status_code == 422, refused.text
+
+
+@pytest.mark.parametrize(("phone", "country"), [("+963115550100", None), (None, "SY")])
+async def test_half_a_phone_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, phone: str | None, country: str | None
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    refused = await browser.put(PROFILE, json=a_profile(phone=phone, phone_country=country))
+
+    assert refused.status_code == 422, refused.text
+
+
+async def test_a_profile_still_exists_with_no_phone_at_all(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json=a_profile())
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["phone"] is None
+    assert saved.json()["phone_country"] is None
 
 
 async def test_an_email_address_is_not_settable_on_the_profile(
@@ -299,8 +357,8 @@ async def test_the_searchable_flag_goes_on_and_off_again(
     await a_signed_in_candidate(browser, mailbox)
     await give_a_current_cv(db_session, await my_id(browser))
 
-    opted_in = await browser.put(PROFILE, json=a_profile(is_searchable=True))
-    opted_out = await browser.put(PROFILE, json=a_profile(is_searchable=False))
+    opted_in = await browser.put(PROFILE, json=a_filled_profile(is_searchable=True))
+    opted_out = await browser.put(PROFILE, json=a_filled_profile(is_searchable=False))
 
     assert opted_in.status_code == 200, opted_in.text
     assert opted_in.json()["is_searchable"] is True
@@ -331,7 +389,8 @@ async def test_opting_in_without_a_cv_is_refused(browser: AsyncClient, mailbox: 
     )
 
     assert refused.status_code == 409
-    assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
+    assert refused.json()["type"] == SEARCHABLE_REFUSAL
+    assert "a CV that has been read" in refused.json()["detail"]
     assert (await browser.get(PROFILE)).json() == EMPTY_PROFILE
 
 
@@ -346,7 +405,104 @@ async def test_opting_in_before_the_cv_is_parsed_is_refused(
     refused = await browser.put(PROFILE, json=a_profile(is_searchable=True))
 
     assert refused.status_code == 409
-    assert refused.json()["type"] == "urn:sync:problem:searchable-needs-cv"
+    assert refused.json()["type"] == SEARCHABLE_REFUSAL
+
+
+async def test_opting_in_with_a_read_cv_but_a_thin_profile_is_refused_and_says_what_is_missing(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    await give_a_current_cv(db_session, await my_id(browser))
+
+    refused = await browser.put(PROFILE, json=a_filled_profile(languages=[], is_searchable=True))
+
+    assert refused.status_code == 409, refused.text
+    detail = refused.json()["detail"]
+    assert refused.json()["type"] == SEARCHABLE_REFUSAL
+    assert "at least one language" in detail
+    assert "a summary" not in detail
+    assert (await browser.get(PROFILE)).json() == EMPTY_PROFILE
+
+
+async def test_a_complete_profile_may_opt_into_global_search(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    await give_a_current_cv(db_session, await my_id(browser))
+
+    opted_in = await browser.put(PROFILE, json=a_filled_profile(is_searchable=True))
+
+    assert opted_in.status_code == 200, opted_in.text
+    assert opted_in.json()["is_searchable"] is True
+
+
+async def test_a_profile_becomes_complete_in_the_save_that_finishes_it(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+
+    part_way = await browser.put(PROFILE, json=a_filled_profile(summary=None))
+    assert part_way.status_code == 200, part_way.text
+    assert await completed_at(db_session, candidate_id) is None
+
+    finished = await browser.put(PROFILE, json=a_filled_profile())
+
+    assert finished.status_code == 200, finished.text
+    assert await completed_at(db_session, candidate_id) is not None
+
+
+async def test_a_profile_taken_back_apart_is_not_complete_any_more(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+    await browser.put(PROFILE, json=a_filled_profile(is_searchable=True))
+
+    emptied = await browser.put(PROFILE, json=a_filled_profile(skills=[]))
+
+    assert emptied.status_code == 200, emptied.text
+    assert await completed_at(db_session, candidate_id) is None
+    assert (await browser.get(PROFILE)).json()["is_searchable"] is False
+
+
+async def test_emptying_a_field_of_a_complete_profile_saves_rather_than_faults(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The marker is cleared before the emptied field reaches Postgres, not after: a CHECK
+    refuses a complete marker beside a profile with no headline, and a Candidate who deleted
+    one line is owed a saved profile rather than a 500."""
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+    await browser.put(PROFILE, json=a_filled_profile())
+    assert await completed_at(db_session, candidate_id) is not None
+
+    emptied = await browser.put(PROFILE, json=a_filled_profile(headline=None))
+
+    assert emptied.status_code == 200, emptied.text
+    assert emptied.json()["headline"] is None
+    assert await completed_at(db_session, candidate_id) is None
+
+
+async def test_the_optional_sections_never_stand_between_a_profile_and_complete(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+
+    saved = await browser.put(
+        PROFILE,
+        json=a_filled_profile(
+            projects=[], unmapped_skills=[], linkedin_url=None, github_url=None, portfolio_url=None
+        ),
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert await completed_at(db_session, candidate_id) is not None
 
 
 async def test_a_recruiter_is_refused_at_the_candidate_routes(
@@ -517,6 +673,57 @@ async def test_a_candidate_chooses_a_canonical_role_and_clears_it_again(
     assert cleared.json()["canonical_role_key"] is None
 
 
+async def test_a_handle_typed_on_its_own_is_saved_as_the_whole_address(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE,
+        json=a_profile(
+            linkedin_url="in/amina-haddad", github_url="@amina-haddad", portfolio_url="amina.dev"
+        ),
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["linkedin_url"] == "https://www.linkedin.com/in/amina-haddad"
+    assert saved.json()["github_url"] == "https://github.com/amina-haddad"
+    assert saved.json()["portfolio_url"] == "https://amina.dev"
+
+
+async def test_the_links_go_on_and_come_off_again(browser: AsyncClient, mailbox: Mailbox) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    await browser.put(PROFILE, json=a_profile(github_url="amina-haddad"))
+    cleared = await browser.put(PROFILE, json=a_profile(github_url=""))
+
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["github_url"] is None
+    assert (await my_profile(browser))["github_url"] is None
+
+
+@pytest.mark.parametrize(
+    ("field", "typed"),
+    [
+        ("linkedin_url", "https://www.linkedin.com/company/aman-relief"),
+        ("linkedin_url", "https://github.com/amina-haddad"),
+        ("github_url", "https://gitlab.com/amina-haddad"),
+        ("portfolio_url", "javascript:alert(1)"),
+    ],
+)
+async def test_an_address_that_is_not_that_kind_of_link_is_refused_where_it_was_typed(
+    browser: AsyncClient, mailbox: Mailbox, field: str, typed: str
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await browser.put(PROFILE, json=a_profile(**{field: typed}))
+
+    assert response.status_code == 422, response.text
+    problem = response.json()
+    assert problem["type"] == "urn:sync:problem:validation-error"
+    assert [error["location"] for error in problem["errors"]] == [f"body.{field}"]
+
+
 async def test_a_canonical_role_the_platform_does_not_know_is_refused_where_it_was_typed(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
@@ -665,3 +872,15 @@ async def test_correcting_a_date_derives_the_total_again(
 
     assert corrected.json()["total_experience_years"] == 2
     assert (await my_profile(browser))["total_experience_years"] == 2
+
+
+async def test_a_headline_with_a_control_character_is_kept_without_it(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(PROFILE, json=a_profile(headline="Backend\x00engineer, 8 years"))
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["headline"] == "Backendengineer, 8 years"
+    assert (await my_profile(browser))["headline"] == "Backendengineer, 8 years"

@@ -12,8 +12,8 @@ The public page at the portal's root that explains the platform to companies and
 contact (WhatsApp, email) and a way to ask for access. It offers no workspace sign-up: Sync Hub is
 sold, not self-served, so every call to action points at the Access-request page. One of the two
 surfaces where animation is decorative — motion for its own sake — the other being the Candidate
-Portal's landing page. Inside the Workspace motion is only ever a thing arriving or leaving and
-says which way it went: a deleted Match assessment goes out to the right.
+Portal's landing page. Inside the Workspace motion is only ever a thing arriving or
+leaving and says which way it went.
 _Avoid_: Home page, marketing site.
 
 **Access-request page**:
@@ -79,7 +79,12 @@ that panel's own Retry. Each of its four stats is a Dashboard deep-link.
 _Avoid_: Home, overview page.
 
 **Source**:
-A named channel Job views arrived through. On the Dashboard it is tenant-wide: equal Tracked-link
+A named channel Job views arrived through, and the Applications those views turned into. Every
+surface that reports one — the Dashboard card, a Job's Tracked links tab, the Tracked links page —
+says views, Applications and the rate between them, because a channel that delivers crowds and no
+applicants is the thing worth knowing and a view count alone hides it. Ranking stays on views: a
+link with two views and one Application would otherwise lead the card on a rate made of noise. On
+the Dashboard it is tenant-wide: equal Tracked-link
 names are added across Jobs. On a Job's Tracked links tab it belongs to that Job and each link stays
 distinct. `Direct` is the Source for visitors who reached a Job with no link at all; the Dashboard
 omits it at zero views, while a Job report keeps it visible at zero so every share is explicit.
@@ -106,13 +111,25 @@ sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
 **Pipeline tabs**:
-An Applications list's primary navigation through the Pipeline: `All` followed by each of the
-eight statuses in Pipeline order. Each tab carries the API's count as the other filters leave it;
-the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list. One
-status may be viewed at a time; `All` includes terminal Applications as well as active ones and
-leaves Pipeline out of the address bar. A selected status is written into the address bar, so
-Dashboard deep-links and shared views land on the same tab and list.
+An Applications list's primary navigation through the Pipeline: `Open` first, then each of the
+eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
+leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
+One status may be viewed at a time. `Open` is where an untouched list starts and is the one choice
+the address bar leaves unwritten; `All` is still the whole eight, terminal Applications included,
+but it is now somewhere a reader goes rather than where they land. A selected tab is written into
+the address bar, so Dashboard deep-links and shared views land on the same tab and list.
 _Avoid_: Status filter, pipeline picker, stage filter.
+
+**Open**:
+The Pipeline tab of Applications still being decided — `new` through `offer`, which is
+`PIPELINE_LADDER` without `hired` — and what both Applications lists show before anybody touches a
+filter. A list that opens on thousands of rejections is a list nobody can work, and a Tenant
+receives thousands. The two statuses it leaves out, `rejected` and `withdrawn`, are exactly the two
+that are not on the ladder: one is where a Tenant ends an Application and the other is where a
+Candidate does, and neither is waiting on anybody. It hides nothing that has nowhere else to be
+read — Hired, Rejected and Withdrawn each keep their own tab, and `All` still means all, which is
+what lets every Dashboard deep-link keep landing on the number its stat claimed.
+_Avoid_: Active, In play, Unresolved, Inbox, Current.
 
 **Verdict filter**:
 The Screening filter over a list of Applications: a checkbox dropdown over all four verdicts, any
@@ -127,10 +144,12 @@ _Avoid_: Qualification filter, screening dropdown, verdict picker.
 
 **Applications page**:
 The Workspace destination that lists every Application the Tenant has received, across every Job,
-newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. It
-renders through the same table as the Triage list, with Pipeline tabs in the header and Screening
-kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job column, whose
-link leads to the Job rather than to the Application its row is, and the Time-range filter. A
+newest first — the one place a Recruiter sees everything, where a Triage list sees one Job. Seeing
+everything means every Job rather than every status: it opens on `Open`, as every Applications list
+does. It renders through the same table as the Triage list, with Pipeline tabs in the header and
+Screening kept as a secondary filter. It adds the two things a list spanning Jobs needs: a Job
+column, whose link leads to the Job rather than to the Application its row is, and the Time-range
+filter. A
 verdict is reached against the Job that asked for those skills, so the Job column is what a reader
 checks one against here — the filter answers "who passed screening anywhere", which is the question
 the Dashboard's own count asks. The Received column turns around on a click, which is the two orders
@@ -172,11 +191,13 @@ _Avoid_: Drill-down, stat link (name what it does for the reader, not the mechan
 **Application review**:
 The page one Application is read on, reached from the Triage list, a Job, the Dashboard or from its
 own address — headed by an ordinary page header that names the applicant and holds the actions,
-nothing more. Who they are is read below it, in the shared Candidate Card leading the reading
+nothing more. Who they are is read below it, in this portal's Candidate Card leading the reading
 column where the Pipeline used to start: the card integrates the Candidate's live avatar with the
-Snapshot name, headline, Canonical role and contact details, and the page hands it the Job applied
-for, Location, experience and dates as its facts. Facts live with the person they are true of, in
-one place, rather than being split between a header and a card.
+Snapshot name, headline, Canonical role, contact details and Links, and the page hands it the Job
+applied for, Location, experience and dates as its facts. The Links are the Snapshot's, frozen
+with everything else it holds: an address changed after applying does not rewrite what was read.
+Facts live with the person they are true of, in one place, rather than being split between a
+header and a card.
 The Job is a fact rather than a Trail crumb because it is true of the Application however
 the reader arrived, while a crumb is only true of the way they came. The header marks the
 live/frozen distinction with a quiet `Snapshot` badge, beside the name it qualifies. The confirmed
@@ -189,8 +210,10 @@ can lead back to the reading it was opened from.
 The Pipeline spans the page beneath the identity band, combining the current status, allowed moves
 and the six-step progress line in one card. There is no static warning beneath it: move outcomes
 already say the Candidate was notified, while a refused move still explains itself inside the
-Pipeline. The current segment keeps strong contrast in either theme and a small static dot beside
-`now` carries the accent colour. Screening and Tags lead the two-column review below; the Snapshot,
+Pipeline. A Hire claim reads there too — the day it names, and whether the Candidate has
+confirmed it — so an unconfirmed claim is visible rather than silently uncounted. The current
+segment keeps strong contrast in either theme and a small static dot beside `now` carries the
+accent colour. Screening and Tags lead the two-column review below; the Snapshot,
 answers, Match
 assessments and notes follow on the wider reading side, while the Applicant message and history
 follow Tags on the action side.
@@ -201,9 +224,13 @@ One named action on the Application review, offered only where the platform allo
 where the Application stands — so the buttons on screen are the moves that exist, and the
 current status sits above the action row. Adjacent backward and onward moves remain centred while
 `More moves` sits at the right edge. A move forward or back is named
-for its stage, a decision for the decision ("Mark as hired", "Reject"), and each says in its
-outcome toast that the candidate was told, because every move notifies them and a rejection also
-emails them. Each move carries one
+for its stage, a decision for the decision ("Mark as hired", "Reject"). A move says in its outcome
+toast whether the candidate was told, which is not every move: they read a Stage, not a status, so
+a move inside one Stage reaches nobody, and only a move that changes the Stage notifies. A
+rejection also emails them. `Mark as hired` is the one move that asks something first: it opens a
+dialog for the day the work started, because a hire is a claim about a particular day and the
+Candidate is asked to confirm that day. A refusal of that move stays inside the dialog that asked;
+every other refusal reports on the Pipeline card. Each move carries one
 icon: a left arrow for a backward move, a right arrow for an onward move, and a rejection mark for
 Reject. The compact actions wrap at the edge of the card. Only the adjacent move back and the
 adjacent move onward are primary buttons;
@@ -256,21 +283,39 @@ server's words, and changes nothing.
 _Avoid_: Sub-page, partial, fragment.
 
 **Match assessment**:
-An AI's reading of how much of what a Job asks for one Application evidences — a percentage, an
-explanation, the strengths and the gaps — asked for on the Application review and read there,
-newest first. Advice, and the page says so: it carries no Status Mark and no colour, because the
-surface already has a Screening verdict and a second marked state would read as a second verdict.
-The percentage is spelled out as what it measures rather than shown bare. Asking again appends rather
-than replaces, so every past reading stays with the model and prompt version that wrote it, and
-the wait is shown as a wait — the model is slow, nothing is put in the list optimistically, and
-the finished reading arrives only when the API has it. A refusal (asked too often, the model
-failed, no model configured) lands beside the button in the server's own words.
-A reading is thrown away one at a time and nothing is asked first — a stale reading is not a
-decision, and the Recruiter can always ask for another. The one going leaves to the right while
-the API is told, so the list is seen shortening rather than found shorter; the readings left
-behind are untouched, each still with the model and prompt version that wrote it. A refusal lands
-beside the reading it could not delete, in the server's own words, and that reading stays.
-_Avoid_: AI score, match score, rating, fit verdict (a verdict is Screening's).
+An AI's reading of how strong one applicant is for a Job — a percentage, an explanation, the
+strengths and the gaps — written for every Application as it arrives, and read on the Application
+review. About half of the number is how well the Application answers what the Job asks for; the
+rest is how strong it reads in itself, which is what stops it restating a Screening verdict the
+page already shows. Advice, and the page says so: it carries no Status Mark and no colour, because
+a second marked state would read as a second verdict. The percentage is spelled out as what it
+measures rather than shown bare.
+A Recruiter who doubts a reading asks for a new one, which replaces it — the wait is shown as a
+wait, nothing is put on screen optimistically, and the finished reading arrives only when the API
+has it. There is no way to throw a reading away: an Application that has been read never stops
+carrying a Match score, which is what keeps a Job's list sortable all the way down. A refusal
+(asked too often, the model failed, no model configured) lands beside the button in the server's
+own words, and the reading already there is untouched.
+_Avoid_: AI score, rating, fit verdict (a verdict is Screening's), history (there is one reading).
+
+**Match score**:
+The Match assessment's percentage, used to sort Applications while keeping its explanation
+available to the Recruiter. It never changes or reorders a Screening verdict, which remains the
+only result that refuses anybody. On a list it is plain text rather than a Status Mark, for the
+same reason the reading on the review page carries no colour: the row already shows a verdict,
+and a second marked state beside it would read as a second one. Pointing at the number or tabbing
+to it opens what the model said — both, because a Recruiter working the list by keyboard is not a
+worse-served Recruiter — and the whole reading stays on the Application review, which is where a
+touch screen reads it. An Application nobody has read yet says so in words rather than showing a
+zero, and sorts below every one that has been read: last when the best come first, first when the
+weakest do, since an absence belongs beside the weakest readings rather than hidden past them.
+Asking for the column sorts it best-first, which is the only direction a fresh score column reads.
+_Avoid_: Rank, fit, rating, AI verdict.
+
+**Placement**:
+A hire this Tenant claimed and the Candidate confirmed. Marking an Application hired asks for the
+day it starts; until the Candidate answers, the hire remains unconfirmed and is not a Placement.
+_Avoid_: Hire, filled, closed won.
 
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, opened as an editable draft on
@@ -290,13 +335,25 @@ send keeps the draft so the Recruiter can try the same message again.
 _Avoid_: Outreach campaign, bulk email, notification (the Pipeline's own emails are not this).
 
 **Jobs page**:
-The Workspace destination that lists the Tenant's Jobs, filtered by state on tabs and ordered by
-a picker beside them: newest, oldest, or most applications. Both live in the URL, so a view is
-shareable and a reload lands where the Recruiter was. Each row carries the views and the
-applications the Job has drawn, side by side, because reach and conversion are only worth
-anything read against each other. Views are all views, whatever brought them — the Tracked links
-tab is where they are broken down by Source.
+The Workspace destination that lists the Tenant's Jobs, filtered by state on tabs, narrowed by a
+title search and by Work mode, and ordered by a picker beside them: newest, oldest, or most
+applications. All of them live in the URL, so a view is shareable and a reload lands where the
+Recruiter was. The Work mode filter is the one a Candidate has over Browse, pointed at the
+Tenant's own Jobs — so "what have we got that is remote" is one question here rather than a read
+of every row. The two narrowing filters narrow the tab totals with the list; the state tabs never
+narrow each other, so every tab keeps saying how much of the same narrowed set it holds. Each row
+carries the views and the applications the Job has drawn, side by side, because reach and
+conversion are only worth anything read against each other. Views are all views, whatever brought
+them — the Tracked links tab is where they are broken down by Source.
 _Avoid_: Postings list, vacancies page.
+
+**Anywhere**:
+What a remote Job that names no Location reads as, wherever this portal would otherwise print the
+place — a Jobs-page row, the Job's facts, the wizard's Review step, an Applications row. It is the
+absence of a Location and never a place in the taxonomy, so the portal writes it rather than
+reading it off the Job. A Job on its way to being published still reads "Not set" while it has no
+Work mode at all: Anywhere is an answer, and that is the absence of one.
+_Avoid_: Remote (that is the Work mode), Worldwide, Not set (that is the unanswered case).
 
 **Job wizard**:
 The Workspace destination where a Job is written, a page of its own rather than a dialog, walked in
@@ -342,7 +399,14 @@ The three things a Tenant administers about itself, under one address with the o
 Team, the Tag vocabulary, and the Tenant. The page itself reads nothing — each tab is an
 Independent widget that asks for what it needs when it is opened, so a Recruiter who came for the
 Tags never waits on the roster.
-_Avoid_: Admin panel, preferences, account settings (a Profile is not what is administered here).
+_Avoid_: Admin panel, preferences, Account settings (a Profile is not what is administered here —
+Account settings is the separate page a Recruiter reaches for their own credentials).
+
+**Account settings**:
+The Recruiter's own account, apart from the Tenant they work for: the identity they sign in with,
+and the password they sign in by. It sits at its own address, reached from the account menu rather
+than the workspace navigation, because nothing on it belongs to the Tenant.
+_Avoid_: Profile page (a Recruiter has no public profile), Workspace settings.
 
 **Team tab**:
 The Tenant's roster: everyone on it with their role and whether they can still sign in, colleagues
@@ -351,6 +415,12 @@ a Recruiter reads the same list and is told plainly that the changes are an admi
 own role is read off the roster rather than out of their Profile, because that is where it is
 written — which also means a demotion arrives on the next read.
 _Avoid_: Users page, members list, seats.
+
+**Tenant tab**:
+What the Tenant is, and the one thing about it a Tenant admin may change: its logo. The name and
+the address are Sync Hub's to set and are read-only here. An admin picks a picture and it is
+stored square; a Recruiter sees the same logo and is told plainly that setting it is an admin's.
+_Avoid_: Branding, organisation profile, company settings.
 
 **Teammate invitation**:
 One address, one name and one role, sent by the API as an email the invitee sets their own password
@@ -429,11 +499,13 @@ _Avoid_: Semantic search, smart search, vector search (that is the backend's mec
 tab).
 
 **Candidate view**:
-One person as this Tenant knows them: their whole profile with their email and phone, the fragment
-that matched if a search led here, the Tenant's notes and Tags on them, and whether they are in the
-Talent pool. The profile is read by id from the directory, so how you arrived changes nothing about
-who you see — a pasted link shows the same person a click from the Talent pool does, and the Origin
-changes only the Trail that leads back. Opened from an Application, the Trail names this page the
+One person as this Tenant knows them: their whole profile with their email, phone and Links, the
+fragment that matched if a search led here, the Tenant's notes and Tags on them, and whether they
+are in the Talent pool. The Links here are the live ones; the Application review shows the ones
+frozen with that Application. The
+profile is read by id from the directory, so how you arrived changes nothing about who you see
+— a pasted link shows the same person a click from the Talent pool does, and the Origin changes
+only the Trail that leads back. Opened from an Application, the Trail names this page the
 live profile instead of repeating the Candidate's name, which is the same live/frozen distinction
 the `Snapshot` badge makes on the other page. Search is
 read only to recover the matched fragment named in the URL; it never reconstructs or replaces the
@@ -441,14 +513,31 @@ by-id record. This also lets a cold shared link show its evidence. When the dire
 answers that no Candidate this Tenant can reach has that id, the page says exactly that rather than
 inventing a profile. The full profile is the shared component that renders the professional
 sections. `CandidatePageHeader` is the shell above it on both this page and the Application review:
-a Trail, the name, and whatever actions the page offers. The Design System's Candidate Card then
-leads the reading column on both, each page handing it its own facts; the card decides how a
-candidate reads, which is why the Candidate Portal shows the same person the same way. Only the
+a Trail, the name, and whatever actions the page offers. This portal's own Candidate Card then
+leads the reading column on both, each page handing it its own facts. The card is this portal's
+and not the Design System's: a Recruiter reads a candidate to judge them, a Candidate reads
+themselves to correct themselves, and one component serving both meant neither could move. The
+card renders the Links itself, so no page here can show a person without them. Only the
 Application review carries the `Snapshot` badge.
 The notes and the Tags are the Application review's own interactions, naming a Candidate instead of
 an Application; a Tag offered here is candidate-scoped, which is the other half of the same
 vocabulary.
 _Avoid_: Candidate detail (a Profile is the Candidate's own; this is the Tenant's reading of it).
+
+**Candidate Card**:
+The one block that says who a Candidate is — avatar, name, Canonical role, headline, the two ways
+to reach them, and the Links. It leads the reading column on the Application review and on the
+Candidate view, and this portal owns it: the Candidate Portal owns its own, because a Recruiter
+reads a candidate to judge them and a Candidate reads themselves to correct themselves. It owns
+the name heading, at level two, because a page header already names the person above it. Email,
+phone and the Links are the card's own, rendered from the profile it is given rather than passed
+in as facts, so no page here can show a person and leave one out. Everything else is a fact the
+page supplies, because what is worth saying differs by page — the Application review names the
+Job and the dates it moved, the Candidate view names the Location and the experience. Facts sit
+under a hairline rule with no fill of their own, so the card never reads as a box inside a box.
+It holds no actions: anything a reader can do to a Candidate belongs to the page header, not to
+the block that describes them.
+_Avoid_: Profile header, summary card, identity band.
 
 **Full profile**:
 The portal value that puts a live Candidate record and a frozen Application Snapshot into the

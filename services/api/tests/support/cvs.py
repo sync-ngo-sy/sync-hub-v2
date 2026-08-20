@@ -44,6 +44,25 @@ async def upload_cv(
     )
 
 
+async def upload_cv_with_a_raw_filename(
+    browser: AsyncClient, *, filename: str, content: bytes | None = None
+) -> Response:
+    """The pentest's own repro, which `files=` cannot send: httpx percent-encodes a control byte
+    in a filename, so the multipart body carries `%00` and never the NUL itself."""
+    boundary = "sync-raw-filename-boundary"
+    return await browser.post(
+        CVS,
+        content=(
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: {PDF}\r\n\r\n"
+        ).encode()
+        + (content if content is not None else some_bytes())
+        + f"\r\n--{boundary}--\r\n".encode(),
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+
+
 async def an_uploaded_cv(browser: AsyncClient, content: bytes | None = None) -> dict[str, Any]:
     response = await upload_cv(browser, content)
     assert response.status_code == 201, response.text

@@ -373,6 +373,41 @@ async def test_a_search_narrows_the_status_counts_the_way_it_narrows_the_list(
     }
 
 
+async def test_the_list_can_be_narrowed_to_one_work_mode(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """The same control the public board has, over the Tenant's own Jobs."""
+    await an_admin(browser, mailbox)
+    onsite = await a_created_job(browser, title="Onsite role")
+    remote = await a_created_job(browser, title="Remote role", work_mode="remote")
+
+    listed = await browser.get(TENANT_JOBS, params={"work_mode": "remote"})
+
+    assert [item["id"] for item in listed.json()["items"]] == [remote["id"]]
+    assert [item["id"] for item in (await browser.get(TENANT_JOBS)).json()["items"]] == [
+        remote["id"],
+        onsite["id"],
+    ]
+
+
+async def test_a_work_mode_narrows_the_status_counts_the_way_a_search_does(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    await a_created_job(browser, title="Draft role")
+    await a_published_job(browser, title="Published role", work_mode="remote")
+    await a_closed_job(browser, title="Closed role")
+
+    listed = await browser.get(TENANT_JOBS, params={"work_mode": "remote"})
+
+    assert {one["status"]: one["count"] for one in listed.json()["status_counts"]} == {
+        "draft": 0,
+        "published": 1,
+        "closed": 0,
+        "archived": 0,
+    }
+
+
 async def test_the_list_searches_job_titles_only_ignoring_case(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
@@ -582,11 +617,11 @@ async def test_employment_type_and_work_mode_are_chosen_and_never_written(
     assert response.status_code == 422, response.text
 
 
-async def test_a_remote_job_still_says_where_the_team_is(
+async def test_a_remote_job_says_where_a_candidate_has_to_be_based(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
-    """Work mode is not a place. Remote used to be written into the Location, which made the
-    two answers one; now a remote Job keeps the Location its team sits in."""
+    """Work mode is not a place. Remote used to be written into the Location, which made the two
+    answers one; a remote Job's Location is where the Candidate lives, not where the team sits."""
     await an_admin(browser, mailbox)
 
     job = await a_created_job(browser, work_mode="remote", location_key="sy-aleppo")
@@ -594,6 +629,71 @@ async def test_a_remote_job_still_says_where_the_team_is(
     assert job["work_mode"] == "remote"
     assert job["location_key"] == "sy-aleppo"
     assert job["location_name"] == "Aleppo"
+
+
+async def test_a_remote_job_that_names_no_place_is_open_to_anywhere(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """Anywhere is the absence of a Location, which is what keeps "Remote" out of the place
+    taxonomy."""
+    await an_admin(browser, mailbox)
+
+    job = await a_created_job(browser, work_mode="remote", location_key=None)
+
+    assert (job["location_key"], job["location_name"]) == (None, None)
+    assert (await change_job(browser, job["id"], status="published")).status_code == 200
+
+
+@pytest.mark.parametrize("travelled_to", ["onsite", "hybrid"])
+async def test_work_somebody_travels_to_names_the_place_they_travel_to(
+    browser: AsyncClient, mailbox: Mailbox, travelled_to: str
+) -> None:
+    await an_admin(browser, mailbox)
+
+    refused = await post_job(browser, a_job(work_mode=travelled_to, location_key=None))
+
+    assert refused.status_code == 422, refused.text
+    assert [error["location"] for error in refused.json()["errors"]] == ["body.location_key"]
+
+
+async def test_a_job_cannot_be_edited_into_travelling_nowhere(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """The rule holds over the Job the edit leaves behind, not over the fields the edit names."""
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser, work_mode="remote", location_key=None)
+
+    refused = await change_job(browser, job["id"], work_mode="onsite")
+
+    assert refused.status_code == 422, refused.text
+    assert [error["location"] for error in refused.json()["errors"]] == ["body.location_key"]
+
+
+async def test_a_job_that_will_not_say_how_it_is_worked_is_not_published(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    """A listing that will not say is one nobody can judge, so the answer is owed at publication
+    rather than at the first keystroke of a draft."""
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser, work_mode=None)
+
+    refused = await change_job(browser, job["id"], status="published")
+
+    assert refused.status_code == 409, refused.text
+    assert (await read_job(browser, job["id"]))["status"] == "draft"
+
+
+async def test_a_published_job_cannot_have_its_work_mode_taken_away(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+    job = await a_created_job(browser)
+    assert (await change_job(browser, job["id"], status="published")).status_code == 200
+
+    refused = await change_job(browser, job["id"], work_mode=None)
+
+    assert refused.status_code == 409, refused.text
+    assert (await read_job(browser, job["id"]))["work_mode"] == "onsite"
 
 
 async def test_both_sets_can_be_changed_after_the_job_is_written(
@@ -698,3 +798,14 @@ async def test_editing_a_published_job_does_not_pretend_it_just_went_live(
 
     assert edited.status_code == 200, edited.text
     assert edited.json()["published_at"] is None
+
+
+async def test_a_job_title_with_a_control_character_is_created_without_it(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await an_admin(browser, mailbox)
+
+    created = await post_job(browser, a_job(title="Staff\x00Engineer"))
+
+    assert created.status_code == 201, created.text
+    assert created.json()["title"] == "StaffEngineer"

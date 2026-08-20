@@ -52,9 +52,7 @@ describe('Workspace settings', () => {
     expect(await screen.findByText('Aman Relief')).toBeVisible();
     expect(screen.getByText('aman-relief')).toBeVisible();
     expect(
-      screen.getByText(
-        'Sync Hub opened your Tenant and keeps its name and address. Ask us to change either.',
-      ),
+      screen.getByText(/Sync Hub opened your Tenant and keeps its name and address/),
     ).toBeVisible();
   });
 

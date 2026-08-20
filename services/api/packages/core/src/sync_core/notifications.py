@@ -5,7 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from sync_core.models import ApplicationStatus, Notification, NotificationType
+from sync_core.models import Notification, NotificationType
+from sync_core.stages import ApplicationStage
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,31 +24,46 @@ class CvParseFailed(BaseModel):
     )
 
 
-class ApplicationStatusChanged(BaseModel):
-    """An Application has moved. Every move produces one of these, whoever caused it."""
+class CvParseSucceeded(BaseModel):
+    """The platform read a CV. What it found is on the CV, as `parsed_cv_data`."""
 
     model_config = ConfigDict(frozen=True)
 
-    type: Literal[NotificationType.APPLICATION_STATUS_CHANGED] = (
-        NotificationType.APPLICATION_STATUS_CHANGED
+    type: Literal[NotificationType.CV_PARSE_SUCCEEDED] = NotificationType.CV_PARSE_SUCCEEDED
+    cv_id: UUID = Field(description="The CV that was read, and the one a draft is built from.")
+    display_name: str = Field(
+        description="The name of the file the candidate uploaded, so the message can name it."
+    )
+
+
+class ApplicationStageChanged(BaseModel):
+    """An Application has reached a different Stage.
+
+    A Tenant's internal status is not here and never will be: a Candidate hears that their
+    Application is in review, not that a Recruiter moved them from shortlisted to interview
+    and back again.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal[NotificationType.APPLICATION_STAGE_CHANGED] = (
+        NotificationType.APPLICATION_STAGE_CHANGED
     )
     application_id: UUID
     job_title: str
     tenant_name: str
-    status: ApplicationStatus = Field(description="Where the Application stands now.")
-    previous_status: ApplicationStatus = Field(description="Where it stood until this move.")
+    stage: ApplicationStage = Field(description="Where the Application stands now.")
+    previous_stage: ApplicationStage = Field(description="Where it stood until this move.")
 
 
 NotificationPayload = Annotated[
-    CvParseFailed | ApplicationStatusChanged, Field(discriminator="type")
+    CvParseFailed | CvParseSucceeded | ApplicationStageChanged, Field(discriminator="type")
 ]
 
-_STORED_PAYLOAD: Final[TypeAdapter[CvParseFailed | ApplicationStatusChanged]] = TypeAdapter(
-    NotificationPayload
-)
+_STORED_PAYLOAD: Final[TypeAdapter[NotificationPayload]] = TypeAdapter(NotificationPayload)
 
 
-def payload_of(stored: dict[str, Any]) -> CvParseFailed | ApplicationStatusChanged:
+def payload_of(stored: dict[str, Any]) -> NotificationPayload:
     return _STORED_PAYLOAD.validate_python(stored)
 
 
@@ -69,4 +85,4 @@ async def notify(
 
 def _application_of(payload: NotificationPayload) -> UUID | None:
     """The queryable column, filled from the payload so the two cannot disagree."""
-    return payload.application_id if isinstance(payload, ApplicationStatusChanged) else None
+    return payload.application_id if isinstance(payload, ApplicationStageChanged) else None

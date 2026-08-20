@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import ColumnElement, exists, func, literal_column, select
+from sqlalchemy import ColumnElement, and_, exists, func, literal_column, or_, select
 
 from sync_api.jobs.access import location_name, open_job, public_jobs
 from sync_api.jobs.criteria import (
@@ -16,7 +16,7 @@ from sync_api.jobs.payload import PublicJob, PublicJobPage, PublicJobSummary, Pu
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
 from sync_api.problems import TRACKED_LINK_NOT_FOUND_PROBLEM_TYPE, Problem
 from sync_core import get_logger, transaction
-from sync_core.models import EmploymentType, Job, JobViewEvent, Tenant, TrackedJobLink
+from sync_core.models import EmploymentType, Job, JobViewEvent, Tenant, TrackedJobLink, WorkMode
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -29,6 +29,12 @@ logger = get_logger(__name__)
 
 #: Inlined, not bound: as a parameter it reaches the driver as a `regconfig` with no codec.
 ENGLISH: Final[ColumnElement[str]] = literal_column("'english'")
+
+#: Work a Candidate can do from wherever they are. Filtering by a Location means "what can I do
+#: from here", so these answer for every here there is rather than for none of them.
+ANYWHERE: Final[ColumnElement[bool]] = and_(
+    Job.work_mode == WorkMode.REMOTE, Job.location_key.is_(None)
+)
 
 #: How long one browser's readings of one Job through one channel count as the same view. A
 #: refresh, a back button and a second look are the same interest, and counting each of them
@@ -48,6 +54,7 @@ class JobBrowseService:
         keywords: str | None = None,
         location_key: str | None = None,
         employment_type: EmploymentType | None = None,
+        work_mode: WorkMode | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> PublicJobPage:
@@ -57,9 +64,11 @@ class JobBrowseService:
                 Job.search_vector.op("@@")(func.websearch_to_tsquery(ENGLISH, keywords))
             )
         if location_key:
-            query = query.where(Job.location_key == location_key)
+            query = query.where(or_(Job.location_key == location_key, ANYWHERE))
         if employment_type:
             query = query.where(Job.employment_type == employment_type)
+        if work_mode:
+            query = query.where(Job.work_mode == work_mode)
 
         found = list(
             (
@@ -166,7 +175,7 @@ def _summary(job: Job, tenant: Tenant) -> PublicJobSummary:
     return PublicJobSummary(
         id=job.id,
         title=job.title,
-        tenant=PublicTenant(name=tenant.name, slug=tenant.slug),
+        tenant=PublicTenant(name=tenant.name, slug=tenant.slug, logo_url=tenant.logo_url),
         location_key=job.location_key,
         location_name=location_name(job),
         employment_type=job.employment_type,

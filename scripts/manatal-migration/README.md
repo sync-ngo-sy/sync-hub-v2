@@ -103,6 +103,7 @@ Manatal is switched off, this file is the only thing that can map the two togeth
 | full_name / first_name + last_name | `profiles.full_name` | falls back to the address when nameless |
 | email / emails | `auth.users.email` | the account is made from it; no address, no import |
 | phone_number / phone / mobile | `profiles.phone` | |
+| linkedin_url / custom `linkedinprofile` | `candidates.linkedin_url` | normalised to `https://www.linkedin.com/in/…` |
 | current_position / job_title | `candidates.headline` | replaced by the CV parse if it finds better |
 | skills | `candidates.unmapped_skills` | free text here, a taxonomy there — the parse maps what it can, and these are merged, never replaced |
 | resume | the `cvs` bucket + a `cvs` row | which triggers the ordinary parse |

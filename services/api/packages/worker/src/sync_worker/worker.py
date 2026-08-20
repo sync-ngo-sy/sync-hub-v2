@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from sync_assessments import MatchAssessing
+from sync_assessments.openai_assessor import OpenAiMatchAssessor
 from sync_comms import CommunicationDelivery
 from sync_comms.resend_sender import ResendEmailSender
 from sync_core import Database, Storage, configure_logging, get_logger, get_settings
@@ -9,6 +11,7 @@ from sync_ingestion import CvIngestion
 from sync_parsers.openai_extractor import OpenAiCvExtractor
 from sync_rag import ProfileEmbedding
 from sync_rag.openai_embedder import OpenAiEmbedder
+from sync_worker.assessment import MatchAssessmentConsumer
 from sync_worker.communications import CommunicationsConsumer
 from sync_worker.embedding import ReembedEngine, ReembedPolicy
 from sync_worker.engine import QueueEngine, RetryPolicy
@@ -18,6 +21,7 @@ from sync_worker.runner import Drainable, DrainReport, drain_queue
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from sync_assessments import MatchAssessor
     from sync_comms import EmailSender
     from sync_core import Settings
     from sync_parsers import CvExtractor
@@ -37,6 +41,7 @@ class Worker:
         extractor: CvExtractor | None = None,
         embedder: Embedder | None = None,
         sender: EmailSender | None = None,
+        assessor: MatchAssessor | None = None,
     ) -> None:
         self._settings = settings
         self._database = Database(settings)
@@ -44,6 +49,7 @@ class Worker:
         self._extractor = extractor or _openai_extractor(settings)
         self._embedder = embedder or _openai_embedder(settings)
         self._sender = sender or _resend_sender(settings)
+        self._assessor = assessor or _openai_assessor(settings)
         self._policy = RetryPolicy(
             max_attempts=settings.worker_max_attempts,
             backoff_seconds=settings.worker_retry_backoff_seconds,
@@ -70,10 +76,16 @@ class Worker:
             CommunicationsConsumer(CommunicationDelivery(self._database, self._sender)),
             self._policy,
         )
+        assessment: QueueEngine[Any] = QueueEngine(
+            self._database,
+            MatchAssessmentConsumer(MatchAssessing(self._database, self._assessor)),
+            self._policy,
+        )
         return [
             (ingestion, self._settings.worker_ingestion_concurrency),
             (embedding, self._settings.worker_embedding_concurrency),
             (communications, self._settings.worker_communications_concurrency),
+            (assessment, self._settings.worker_assessment_concurrency),
         ]
 
     async def drain(self) -> DrainReport:
@@ -149,6 +161,18 @@ def _openai_embedder(settings: Settings) -> Embedder:
     return OpenAiEmbedder.build(
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_embedding_model,
+        timeout_seconds=settings.openai_timeout_seconds,
+    )
+
+
+def _openai_assessor(settings: Settings) -> MatchAssessor:
+    if settings.openai_api_key is None:
+        raise MissingApiKeyError(
+            "SYNC_OPENAI_API_KEY is not set — the worker cannot assess Applications without it."
+        )
+    return OpenAiMatchAssessor.build(
+        api_key=settings.openai_api_key.get_secret_value(),
+        model=settings.openai_assessment_model,
         timeout_seconds=settings.openai_timeout_seconds,
     )
 

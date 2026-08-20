@@ -1,12 +1,14 @@
 import { FormField } from '@sync/ui/components/form-field';
+import { PhoneField } from '@sync/ui/components/phone-field';
 import { Input } from '@sync/ui/components/ui/input';
-import { Switch } from '@sync/ui/components/ui/switch';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import type { Control } from 'react-hook-form';
+import { type Control, useController } from 'react-hook-form';
 import { ReferencePicker } from '@/features/reference/components/reference-picker';
 import { useCanonicalRoles } from '@/features/reference/hooks/use-canonical-roles';
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups, roleOptions } from '@/features/reference/options';
+import { useUnanswered } from '../hooks/use-unanswered';
+import { FIELDS_IN } from '../places';
 import type { ProfileFormValues } from '../schemas/profile';
 import { ProfileSection } from './profile-section';
 
@@ -15,15 +17,43 @@ const NO_ROLE = { value: '', label: 'Not saying' };
 export function IdentitySection({ control }: { control: Control<ProfileFormValues> }) {
   const places = useLocations();
   const roles = useCanonicalRoles();
+  const country = useController({ control, name: 'phone_country' });
+  const unanswered = useUnanswered(control, FIELDS_IN['about-you']);
 
   return (
-    <ProfileSection title="About you" description="The first thing a recruiter reads.">
+    <ProfileSection
+      id="about-you"
+      title="About you"
+      description="The first thing a recruiter reads."
+      needed="Needed to apply"
+      unanswered={unanswered}
+    >
       <FormField control={control} name="full_name" label="Full name">
-        {(field) => <Input {...field} autoComplete="name" />}
+        {(field) => <Input {...field} autoComplete="name" placeholder="Amina Haddad" />}
       </FormField>
 
-      <FormField control={control} name="phone" label="Phone">
-        {(field) => <Input {...field} type="tel" autoComplete="tel" />}
+      <FormField
+        control={control}
+        name="phone"
+        label="Phone"
+        description="Recruiters read it only on your full profile."
+      >
+        {({ value, onChange, onBlur, id, ...aria }) => (
+          <PhoneField
+            id={id}
+            value={{ country: country.field.value, national: value }}
+            onChange={(next) => {
+              country.field.onChange(next.country);
+              onChange(next.national);
+            }}
+            onBlur={() => {
+              country.field.onBlur();
+              onBlur();
+            }}
+            aria-describedby={aria['aria-describedby']}
+            aria-invalid={aria['aria-invalid']}
+          />
+        )}
       </FormField>
 
       <FormField
@@ -39,7 +69,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="location_key"
         label="Location"
-        description="Where you are. Recruiters filter on it."
+        description="Where you are."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <ReferencePicker
@@ -61,7 +91,7 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         control={control}
         name="canonical_role_key"
         label="What you do"
-        description="The kind of work you are looking for. Recruiters filter on it."
+        description="The kind of work you are looking for."
       >
         {({ value, onChange, onBlur, id, ...aria }) => (
           <ReferencePicker
@@ -79,19 +109,18 @@ export function IdentitySection({ control }: { control: Control<ProfileFormValue
         )}
       </FormField>
 
-      <FormField control={control} name="summary" label="Summary">
-        {(field) => <Textarea {...field} rows={5} />}
-      </FormField>
-
       <FormField
         control={control}
-        name="is_searchable"
-        label="Let recruiters find me"
-        description="Adds you to Global search. Needs a current CV that has been read."
-        orientation="horizontal"
+        name="summary"
+        label="Summary"
+        description="A paragraph about your work."
       >
-        {({ value, onChange, ...field }) => (
-          <Switch {...field} checked={value === true} onCheckedChange={onChange} />
+        {(field) => (
+          <Textarea
+            {...field}
+            rows={5}
+            placeholder="The work you do, where you have done it, and what you are looking for next."
+          />
         )}
       </FormField>
     </ProfileSection>

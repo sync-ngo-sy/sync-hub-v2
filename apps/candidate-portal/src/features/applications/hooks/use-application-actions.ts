@@ -17,3 +17,11 @@ export function useWithdrawApplication() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: myApplicationsQuery.queryKey }),
   });
 }
+
+export function useAnswerHireClaim() {
+  const queryClient = useQueryClient();
+
+  return api.useMutation('post', '/v1/applications/{application_id}/hire', {
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myApplicationsQuery.queryKey }),
+  });
+}

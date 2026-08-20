@@ -21,6 +21,18 @@ import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
 describe('a Job detail page', () => {
+  it('shows the logo of the Tenant behind the Job', async () => {
+    server.use(...signedOut(), ...showsJob(PUBLIC_JOB));
+
+    await renderApp(`/jobs/${PUBLIC_JOB.id}`);
+
+    await screen.findByRole('heading', { level: 1, name: PUBLIC_JOB.title });
+    expect(document.querySelector('[data-slot="tenant-logo"] img')).toHaveAttribute(
+      'src',
+      'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+    );
+  });
+
   it('reads the whole public Job: what the role is, and what it asks for', async () => {
     server.use(...signedOut(), ...showsJob(PUBLIC_JOB));
 

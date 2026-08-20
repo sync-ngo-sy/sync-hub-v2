@@ -38,6 +38,7 @@ export function useJobApplications(jobId: string, filters: ApplicationFilters) {
           limit: APPLICATIONS_PAGE_SIZE,
           status: filters.pipeline,
           qualification_status: filters.screening,
+          sort: filters.sort,
         },
       },
     },

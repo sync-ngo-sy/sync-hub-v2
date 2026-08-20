@@ -67,9 +67,9 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
           },
           {
             label: 'Awaiting review',
-            value: orDash(counted?.applications.by_stage.new),
+            value: orDash(counted?.applications.by_status.new),
             icon: Clock3,
-            trend: counted ? awaitingReview(counted.applications.by_stage.new) : undefined,
+            trend: counted ? awaitingReview(counted.applications.by_status.new) : undefined,
             render: AWAITING_REVIEW,
           },
           {

@@ -33,6 +33,7 @@ from sync_api.routes import (
     tenant_applications,
     tenant_candidates,
     tenant_jobs,
+    tenant_manatal_migration,
     tenant_message_templates,
     tenant_stats,
     tenant_tags,
@@ -43,10 +44,12 @@ from sync_api.routes import (
 from sync_assessments.openai_assessor import OpenAiMatchAssessor
 from sync_core import (
     AVATAR_BUCKET,
+    TENANT_LOGO_BUCKET,
     Database,
     Settings,
     Storage,
     configure_logging,
+    documentation_urls,
     get_logger,
     get_settings,
 )
@@ -87,11 +90,13 @@ def create_app(
         )
         storage = Storage.build(resolved)
         avatar_storage = Storage.build(resolved, bucket=AVATAR_BUCKET)
+        tenant_logo_storage = Storage.build(resolved, bucket=TENANT_LOGO_BUCKET)
         app.state.settings = resolved
         app.state.database = database
         app.state.authentication = authentication
         app.state.storage = storage
         app.state.avatar_storage = avatar_storage
+        app.state.tenant_logo_storage = tenant_logo_storage
         app.state.embedder = embedder or _openai_embedder(resolved)
         app.state.assessor = assessor or _openai_assessor(resolved)
         app.state.auth_rate_limiter = build_auth_rate_limiter(resolved)
@@ -105,6 +110,7 @@ def create_app(
             await authentication.aclose()
             await storage.aclose()
             await avatar_storage.aclose()
+            await tenant_logo_storage.aclose()
             await database.dispose()
             logger.info("api.stopped")
 
@@ -115,6 +121,7 @@ def create_app(
         lifespan=lifespan,
         responses=PROBLEM_RESPONSES,
         dependencies=[Depends(enforce_csrf_header)],
+        **documentation_urls(resolved),
     )
 
     # Added innermost first — Starlette treats the last one added as the outermost — so the
@@ -162,6 +169,7 @@ def create_app(
     app.include_router(tenant_jobs.router, prefix=API_PREFIX)
     app.include_router(tenant_applications.router, prefix=API_PREFIX)
     app.include_router(tenant_stats.router, prefix=API_PREFIX)
+    app.include_router(tenant_manatal_migration.router, prefix=API_PREFIX)
     app.include_router(tenant_tracked_links.router, prefix=API_PREFIX)
     app.include_router(jobs.router, prefix=API_PREFIX)
     app.include_router(applications.router, prefix=API_PREFIX)

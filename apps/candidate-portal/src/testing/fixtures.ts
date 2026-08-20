@@ -32,7 +32,11 @@ export const PLATFORM_ADMIN: components['schemas']['ProfileView'] = {
 const FRONTEND_DEVELOPER: components['schemas']['PublicJobSummary'] = {
   id: '00000000-0000-4000-8000-000000000101',
   title: 'Frontend Developer (Remote)',
-  tenant: { name: 'Levant Digital', slug: 'levant-digital' },
+  tenant: {
+    name: 'Levant Digital',
+    slug: 'levant-digital',
+    logo_url: 'http://sync.test/storage/v1/object/public/tenant-logos/levant/logo.webp',
+  },
   location_key: 'sy-damascus',
   location_name: 'Damascus',
   employment_type: 'full_time',
@@ -60,7 +64,7 @@ const PHARMACIST: components['schemas']['PublicJobSummary'] = {
   location_key: null,
   location_name: null,
   employment_type: null,
-  work_mode: null,
+  work_mode: 'remote',
   expires_at: null,
   created_at: '2026-07-27T09:00:00Z',
 };
@@ -135,7 +139,9 @@ export const APPLICATION: components['schemas']['Application'] = {
     work_mode: PUBLIC_JOB.work_mode,
   },
   cv_id: '00000000-0000-4000-8000-000000000201',
-  status: 'new',
+  stage: 'received',
+  can_withdraw: true,
+  hire: null,
   applied_at: '2026-07-01T12:00:00Z',
   updated_at: '2026-07-01T12:00:00Z',
 };
@@ -152,9 +158,30 @@ export const INTERVIEW_APPLICATION: components['schemas']['Application'] = {
     employment_type: FIELD_COORDINATOR.employment_type,
     work_mode: FIELD_COORDINATOR.work_mode,
   },
-  status: 'interview',
+  stage: 'in_review',
   applied_at: '2026-06-01T12:00:00Z',
   updated_at: '2026-07-15T12:00:00Z',
+};
+
+export const CLAIMED_HIRE_APPLICATION: components['schemas']['Application'] = {
+  ...INTERVIEW_APPLICATION,
+  id: '00000000-0000-4000-8000-000000000304',
+  stage: 'hired',
+  can_withdraw: false,
+  hire: {
+    start_date: '2026-09-01',
+    confirmation: 'unanswered',
+    claimed_at: '2026-08-01T12:00:00Z',
+    answered_at: null,
+  },
+  updated_at: '2026-08-01T12:00:00Z',
+};
+
+export const CONFIRMED_HIRE: components['schemas']['HireClaim'] = {
+  start_date: '2026-09-01',
+  confirmation: 'confirmed',
+  claimed_at: '2026-08-01T12:00:00Z',
+  answered_at: '2026-08-02T12:00:00Z',
 };
 
 export const MORE_APPLICATIONS: components['schemas']['Application'][] = [
@@ -170,7 +197,8 @@ export const MORE_APPLICATIONS: components['schemas']['Application'][] = [
       employment_type: PHARMACIST.employment_type,
       work_mode: PHARMACIST.work_mode,
     },
-    status: 'rejected',
+    stage: 'not_selected',
+    can_withdraw: false,
     applied_at: '2026-05-01T12:00:00Z',
     updated_at: '2026-05-03T12:00:00Z',
   },
@@ -203,6 +231,13 @@ export const WITHDRAWAL_REFUSED: components['schemas']['ProblemDetail'] = {
   title: 'Conflict',
   status: 409,
   detail: 'This application has already been decided and can no longer be withdrawn.',
+};
+
+export const HIRE_ANSWER_REFUSED: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:hire-claim-already-answered',
+  title: 'Conflict',
+  status: 409,
+  detail: 'You have already answered this. An answer is given once and stands.',
 };
 
 function aCv(over: Partial<Cv> & Pick<Cv, 'id' | 'display_name' | 'parsing_status'>): Cv {
@@ -295,12 +330,16 @@ export const CV_NOT_READY_FOR_CURRENT: components['schemas']['ProblemDetail'] = 
 
 export const CANDIDATE_PROFILE: components['schemas']['CandidateProfile'] = {
   full_name: CANDIDATE.full_name,
-  phone: '+963 11 555 0100',
+  phone: '+963115550100',
+  phone_country: 'SY',
   headline: 'Field coordinator, 6 years',
   summary: 'Six years of coordination work across Idlib and Aleppo.',
   location_key: 'sy-aleppo',
   canonical_role_key: 'project-manager',
   is_searchable: false,
+  linkedin_url: 'https://www.linkedin.com/in/lina-khoury',
+  github_url: null,
+  portfolio_url: 'https://lina-khoury.dev',
   total_experience_years: 6,
   experiences: [
     {
@@ -351,6 +390,8 @@ export const CV_DRAFT: components['schemas']['ProfileDraft'] = {
   is_searchable: false,
   headline: 'Backend engineer, 8 years',
   location_key: null,
+  linkedin_url: 'https://www.linkedin.com/in/lina-from-the-cv',
+  github_url: 'https://github.com/lina-from-the-cv',
   experiences: [
     {
       job_title: 'Backend engineer',
@@ -381,16 +422,25 @@ export const CV_FAILURE_NOTIFICATION = aNotification({
   },
 });
 
+export const CV_READ_NOTIFICATION = aNotification({
+  id: '00000000-0000-4000-8000-000000000305',
+  payload: {
+    type: 'cv_parse_succeeded',
+    cv_id: READY_CV.id,
+    display_name: READY_CV.display_name,
+  },
+});
+
 export const MOVED_NOTIFICATION = aNotification({
   id: '00000000-0000-4000-8000-000000000302',
   created_at: '2026-07-30T09:00:00Z',
   payload: {
-    type: 'application_status_changed',
+    type: 'application_stage_changed',
     application_id: '00000000-0000-4000-8000-000000000401',
     job_title: FRONTEND_DEVELOPER.title,
     tenant_name: FRONTEND_DEVELOPER.tenant.name,
-    status: 'shortlisted',
-    previous_status: 'reviewing',
+    stage: 'in_review',
+    previous_stage: 'received',
   },
 });
 
@@ -399,12 +449,12 @@ export const READ_NOTIFICATION = aNotification({
   created_at: '2026-07-29T09:00:00Z',
   read_at: '2026-07-29T10:00:00Z',
   payload: {
-    type: 'application_status_changed',
+    type: 'application_stage_changed',
     application_id: '00000000-0000-4000-8000-000000000402',
     job_title: FIELD_COORDINATOR.title,
     tenant_name: FIELD_COORDINATOR.tenant.name,
-    status: 'rejected',
-    previous_status: 'interview',
+    stage: 'not_selected',
+    previous_stage: 'in_review',
   },
 });
 
@@ -419,12 +469,12 @@ export const MORE_NOTIFICATIONS: Notification[] = [
     id: '00000000-0000-4000-8000-000000000304',
     created_at: '2026-07-28T09:00:00Z',
     payload: {
-      type: 'application_status_changed',
+      type: 'application_stage_changed',
       application_id: '00000000-0000-4000-8000-000000000403',
       job_title: PHARMACIST.title,
       tenant_name: PHARMACIST.tenant.name,
-      status: 'hired',
-      previous_status: 'offer',
+      stage: 'hired',
+      previous_stage: 'in_review',
     },
   }),
 ];
@@ -471,11 +521,14 @@ export const UNKNOWN_SKILL: components['schemas']['ValidationProblemDetail'] = {
   ],
 };
 
-export const SEARCHABLE_NEEDS_CV: components['schemas']['ProblemDetail'] = {
-  type: 'urn:sync:problem:searchable-needs-cv',
+export const SEARCHABLE_NEEDS_A_COMPLETE_PROFILE: components['schemas']['ProblemDetail'] = {
+  type: 'urn:sync:problem:searchable-needs-a-complete-profile',
   title: 'Conflict',
   status: 409,
-  detail: 'Upload a CV and wait for it to be processed before making your profile searchable.',
+  detail:
+    'Recruiters are only shown complete profiles, and only ones with a CV the platform has ' +
+    'read. Yours still needs a CV that has been read and a summary. Everything else you typed ' +
+    'can be saved with this switch off.',
 };
 
 export const NO_SESSION: components['schemas']['ProblemDetail'] = {

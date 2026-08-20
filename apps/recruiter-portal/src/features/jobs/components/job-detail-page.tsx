@@ -25,6 +25,7 @@ import {
   employmentTypeLabel,
   type JobLifecycleAction,
   jobLifecycleActions,
+  jobPlace,
   jobState,
   workModeLabel,
 } from '../job';
@@ -115,7 +116,7 @@ export function JobDetailPage({
             label="Job facts"
             facts={[
               { label: 'Status', value: <StatusMark label={state.label} tone={state.tone} /> },
-              { label: 'Location', value: job.location_name ?? 'Not set' },
+              { label: 'Location', value: jobPlace(job) ?? 'Not set' },
               {
                 label: 'Employment type',
                 value: employmentTypeLabel(job.employment_type) ?? 'Not set',

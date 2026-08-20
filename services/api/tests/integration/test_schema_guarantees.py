@@ -3,11 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from seed.history import STAGE_VALUES
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from sync_core.models import CvParsingStatus
+from sync_core.models import ApplicationStatus, CvParsingStatus
+from sync_core.stages import stage_of
 from tests.support.applications import a_whole_application
+from tests.support.assessments import match_score_of
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_created_job
 from tests.support.profiles import give_a_current_cv, my_id
@@ -156,18 +159,18 @@ async def test_the_history_of_a_refusal_cannot_forget_the_reason_either(
     await db_session.rollback()
 
 
-async def test_a_status_change_notification_cannot_name_no_application(
+async def test_a_stage_change_notification_cannot_name_no_application(
     recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
     await a_whole_application(recruiter, other_browser, mailbox, db_session)
     candidate_id = await my_id(other_browser)
 
-    with pytest.raises(IntegrityError, match="notifications_status_change_has_an_application"):
+    with pytest.raises(IntegrityError, match="notifications_stage_change_has_an_application"):
         await db_session.execute(
             text(
                 "insert into notifications (recipient_profile_id, type, payload) values "
-                "(:id, 'application_status_changed', "
-                '\'{"type": "application_status_changed"}\'::jsonb)'
+                "(:id, 'application_stage_changed', "
+                '\'{"type": "application_stage_changed"}\'::jsonb)'
             ),
             {"id": candidate_id},
         )
@@ -254,6 +257,81 @@ async def test_a_candidate_whose_cv_was_never_read_cannot_become_searchable(
     await db_session.rollback()
 
 
+A_PHONE = text("update profiles set phone = :phone, phone_country = :country where id = :id")
+
+
+@pytest.mark.parametrize(
+    "number", ["0963115550134", "963115550134", "+963 11 555 0134", "+0115550134", "reach me"]
+)
+async def test_a_number_that_is_not_e164_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, number: str
+) -> None:
+    """Spaces and a leading zero included: one stored shape is what lets two readers agree."""
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="profiles_phone_is_e164"):
+        await db_session.execute(
+            A_PHONE, {"phone": number, "country": "SY", "id": await my_id(browser)}
+        )
+    await db_session.rollback()
+
+
+@pytest.mark.parametrize("country", ["sy", "SYR", "S1", "Syria"])
+async def test_a_country_that_is_not_an_iso_code_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession, country: str
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="profiles_phone_country_is_iso"):
+        await db_session.execute(
+            A_PHONE, {"phone": "+963115550134", "country": country, "id": await my_id(browser)}
+        )
+    await db_session.rollback()
+
+
+@pytest.mark.parametrize(("phone", "country"), [("+963115550134", None), (None, "SY")])
+async def test_a_number_and_its_country_are_stored_together_or_not_at_all(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    phone: str | None,
+    country: str | None,
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="profiles_phone_has_a_country"):
+        await db_session.execute(
+            A_PHONE, {"phone": phone, "country": country, "id": await my_id(browser)}
+        )
+    await db_session.rollback()
+
+
+A_FROZEN_PHONE = text(
+    "insert into application_profile_snapshots "
+    "(application_id, full_name, phone, phone_country, total_experience_years) "
+    "values (gen_random_uuid(), 'Amina Haddad', :phone, :country, 0)"
+)
+
+
+@pytest.mark.parametrize(
+    ("phone", "country", "refused"),
+    [
+        ("+963 11 555 0134", "SY", "asnap_phone_is_e164"),
+        ("+963115550134", "sy", "asnap_phone_country_is_iso"),
+        ("+963115550134", None, "asnap_phone_has_a_country"),
+        (None, "SY", "asnap_phone_has_a_country"),
+    ],
+)
+async def test_a_snapshot_freezes_a_phone_the_live_table_would_have_held(
+    db_session: AsyncSession, phone: str | None, country: str | None, refused: str
+) -> None:
+    """An Application is read for years after it arrived. A frozen Phone the live table would
+    refuse is one nobody could read back."""
+    with pytest.raises(IntegrityError, match=refused):
+        await db_session.execute(A_FROZEN_PHONE, {"phone": phone, "country": country})
+    await db_session.rollback()
+
+
 async def test_correcting_a_candidates_name_enqueues_a_re_embed(
     browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
 ) -> None:
@@ -295,3 +373,135 @@ async def test_renaming_a_recruiter_enqueues_nothing(
 
     queued = await db_session.scalar(text("select count(*) from candidate_embedding_jobs"))
     assert queued == 0
+
+
+MARK_COMPLETE = text("update candidates set profile_completed_at = now() where id = :id")
+
+FILL_THE_ROWS_OWN_FIELDS = text(
+    "update candidates set headline = 'Open to work', summary = 'Ships boring things.', "
+    "location_key = 'sy-damascus', canonical_role_key = 'backend-engineer' where id = :id"
+)
+
+
+async def test_a_completion_marker_needs_the_fields_the_candidate_row_itself_holds(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    with pytest.raises(IntegrityError, match="candidates_completed_profile_is_filled_in"):
+        await db_session.execute(MARK_COMPLETE, {"id": await my_id(browser)})
+    await db_session.rollback()
+
+
+async def test_the_service_role_cannot_mark_a_profile_complete_that_is_not(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+    await db_session.execute(FILL_THE_ROWS_OWN_FIELDS, {"id": candidate_id})
+
+    await db_session.execute(MARK_COMPLETE, {"id": candidate_id})
+
+    with pytest.raises(IntegrityError, match="is not complete"):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+async def test_global_search_cannot_be_switched_on_without_the_marker(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await give_a_current_cv(db_session, candidate_id)
+
+    with pytest.raises(IntegrityError, match="candidates_searchable_needs_a_complete_profile"):
+        await db_session.execute(
+            text("update candidates set is_searchable = true where id = :id"), {"id": candidate_id}
+        )
+    await db_session.rollback()
+
+
+async def test_the_seeds_sql_projection_agrees_with_the_one_the_platform_uses(
+    db_session: AsyncSession,
+) -> None:
+    """`seed/history.py` restates the Stage projection in SQL to back-date Notifications.
+
+    Read in Postgres rather than in Python, because a VALUES list that Python builds correctly
+    and Postgres reads differently is exactly the drift this guards.
+    """
+    projected = await db_session.execute(
+        text(f"select status, stage from (values {STAGE_VALUES}) as stages (status, stage)")
+    )
+
+    assert dict(projected.tuples().all()) == {
+        status.value: stage_of(status).value for status in ApplicationStatus
+    }
+
+
+A_READING = text(
+    "insert into application_ai_match_assessments "
+    "(application_id, match_percentage, explanation, model_name, prompt_version) "
+    "values (:id, :percentage, :explanation, 'a-model', 'v-test') "
+    "on conflict (application_id) do update set "
+    "match_percentage = excluded.match_percentage, explanation = excluded.explanation "
+    "returning id"
+)
+
+
+async def test_a_reading_carries_its_score_onto_the_application_whoever_wrote_it(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The Match score a Job's list sorts by is the database's job, not the backend's — the
+    worker and a Recruiter's own request both land as one upsert, and neither has to remember."""
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+
+    await db_session.execute(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
+    )
+
+    assert await match_score_of(db_session, application["id"]) == 61.50
+    await db_session.rollback()
+
+
+async def test_reading_an_application_again_replaces_the_reading_it_had(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """One reading per Application, held by the schema rather than by the backend."""
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+    first = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
+    )
+
+    again = await db_session.scalar(
+        A_READING, {"id": application["id"], "percentage": 72.0, "explanation": "A better read."}
+    )
+
+    assert again == first, "replaced in place rather than written beside"
+    assert await match_score_of(db_session, application["id"]) == 72.00
+    kept = await db_session.execute(
+        text("select count(*) from application_ai_match_assessments where application_id = :id"),
+        {"id": application["id"]},
+    )
+    assert kept.scalar_one() == 1
+    await db_session.rollback()
+
+
+async def test_a_second_reading_cannot_be_written_beside_the_first(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    application = await a_whole_application(recruiter, other_browser, mailbox, db_session)
+    await db_session.execute(
+        A_READING, {"id": application["id"], "percentage": 61.5, "explanation": "The first read."}
+    )
+
+    with pytest.raises(IntegrityError, match="application_ai_match_assessments_application_id"):
+        await db_session.execute(
+            text(
+                "insert into application_ai_match_assessments "
+                "(application_id, match_percentage, model_name, prompt_version) "
+                "values (:id, 40, 'a-model', 'v-test')"
+            ),
+            {"id": application["id"]},
+        )
+    await db_session.rollback()

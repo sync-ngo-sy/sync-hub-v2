@@ -11,6 +11,7 @@ from sync_api.candidates.payload import (
     ProfileProject,
 )
 from sync_core import get_logger
+from sync_core.phone import read
 from sync_core.profile import MAX_ENTRIES
 
 logger = get_logger(__name__)
@@ -41,18 +42,27 @@ def draft_of(
     is not — "Damascus, Syria" names no Location on its own, and guessing which one it meant is
     how the wrong governorate gets saved.
 
+    The Phone is read by the rules the field reads one by, and a number nobody could dial is
+    carried across exactly as the CV wrote it: a value dropped quietly is one nobody learns was
+    on their CV.
+
     The Canonical role is the one thing the CV is allowed to propose into a choice from a list,
     because it is a judgement the parse is asked to make. A CV that supports none leaves
     whatever the candidate has already claimed: a vague CV is not a reason to unsay it.
     """
+    dialled = read(parsed.phone) if parsed.phone else None
     return ProfileDraft(
         full_name=parsed.full_name or full_name,
-        phone=parsed.phone,
+        phone=dialled.number if dialled else parsed.phone,
+        phone_country=dialled.country if dialled else None,
         headline=parsed.headline,
         summary=parsed.summary,
         location_key=candidate.location_key,
         canonical_role_key=parsed.canonical_role or candidate.canonical_role_key,
         is_searchable=candidate.is_searchable,
+        linkedin_url=parsed.linkedin_url,
+        github_url=parsed.github_url,
+        portfolio_url=parsed.portfolio_url,
         unmapped_skills=list(parsed.unmapped_skills),
         experiences=[
             DraftExperience(

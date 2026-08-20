@@ -1,4 +1,5 @@
 import { EmptyState } from '@sync/ui/components/empty-state';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
 import { CircleAlert, FileText, Upload } from 'lucide-react';
@@ -77,7 +78,7 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
         <>
           <EmptyState
             icon={FileText}
-            message="No CVs yet. Upload one and we'll read it, fill your profile from it, and send it with the applications you make."
+            message="No CVs yet. Upload one and we'll read it and fill your profile from it."
             action={trigger}
           />
           <p className="text-center text-meta text-muted-foreground">{constraints}</p>
@@ -122,7 +123,8 @@ export function CvUploader({ slotsLeft, hasCvs, onUploaded }: CvUploaderProps) {
 function UploadProgress({ name }: { name: string }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-meta text-muted-foreground">Uploading “{name}”…</p>
+      <p className="text-meta text-muted-foreground">Uploading…</p>
+      <TruncatedText className="text-meta text-muted-foreground">{name}</TruncatedText>
       <div
         role="progressbar"
         aria-label={`Uploading “${name}”`}

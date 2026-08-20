@@ -18,7 +18,7 @@ export const MEAL_OFFICER: JobSummary = {
   view_count: 214,
 };
 
-const NO_STAGES = {
+const NO_STATUSES = {
   new: 0,
   reviewing: 0,
   shortlisted: 0,
@@ -38,7 +38,7 @@ export const NOTHING_YET: TenantStats = {
     last_24h: 0,
     last_7d: 0,
     previous_7d: 0,
-    by_stage: NO_STAGES,
+    by_status: NO_STATUSES,
     by_qualification: NO_VERDICTS,
     pass_rate: null,
   },
@@ -53,15 +53,15 @@ export const A_BUSY_WEEK: TenantStats = {
     last_24h: 5,
     last_7d: 47,
     previous_7d: 39,
-    by_stage: { ...NO_STAGES, new: 23, reviewing: 8, shortlisted: 5, interview: 3 },
+    by_status: { ...NO_STATUSES, new: 23, reviewing: 8, shortlisted: 5, interview: 3 },
     by_qualification: { ...NO_VERDICTS, qualified: 61, disqualified: 17, pending: 42 },
     pass_rate: 78,
   },
   sources: [
-    { name: 'LinkedIn post', views: 342 },
-    { name: 'WhatsApp groups', views: 281 },
-    { name: 'Direct', views: 190 },
-    { name: 'Facebook page', views: 97 },
+    { name: 'LinkedIn post', views: 342, applications: 41, conversion_rate: 12 },
+    { name: 'WhatsApp groups', views: 281, applications: 14, conversion_rate: 5 },
+    { name: 'Direct', views: 190, applications: 1, conversion_rate: 1 },
+    { name: 'Facebook page', views: 97, applications: 0, conversion_rate: 0 },
   ],
   sources_total: 4,
 };

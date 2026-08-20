@@ -4,9 +4,7 @@ How `services/api` must drive the database. The schema (see `supabase/migrations
 its *structural* invariants itself; the backend owns the *multi-step / cross-row* logic that
 constraints can't express. This document is that division of labour.
 
-Related decisions: root ADR-0001 (backend owns transactions), root ADR-0002 (backend-only
-access / RLS deny-by-default), root ADR-0003 (Postgres-table queues), supabase ADR-0001
-(identity), supabase ADR-0002 (RAG freshness).
+Related decisions: supabase ADR-0001 (identity), supabase ADR-0002 (RAG freshness).
 
 ## Connection & roles
 
@@ -125,7 +123,10 @@ concurrent saves last-write-wins: without it each transaction deletes only what 
 already committed, and both sets of inserts survive.
 
 One profile spans two tables, and the `PUT` writes both in that same transaction:
-`profiles.full_name`/`phone` (the identity) and `candidates` plus its children (the claims).
+`profiles.full_name`/`phone`/`phone_country` (the identity) and `candidates` plus its children
+(the claims). A Phone is one answer in two columns: `sync_core.phone` reads what the request
+carries by Google's libphonenumber rules and stores the E.164 it produced, or refuses the save;
+`profiles_phone_has_a_country` and `profiles_phone_is_e164` hold the same line in the schema.
 `email` is **not** settable here — only `auth.users` holds a confirmed address, and changing one
 stays an auth flow with re-confirmation.
 
@@ -218,7 +219,10 @@ separate `PATCH`, which is why a typo can still be fixed after the applications 
 
 `jobs.location_key` references `locations`, and the public board filters it with `=` — never a
 substring, which used to answer a search for Damascus with Jobs in Rif Dimashq. A key the
-taxonomy does not have is refused at `body.location_key` before anything is written.
+taxonomy does not have is refused at `body.location_key` before anything is written. The one
+thing that filter adds to the equality is **Anywhere**: a `remote` Job with no `location_key` at
+all comes back for every place, because filtering by a Location asks what a Candidate can do from
+where they are, and work open to anywhere can be done from there too.
 
 `jobs.published_at` is write-once, and the backend is the only thing keeping it so: nothing in
 the schema stops an `UPDATE` from rewriting it. It is stamped on the move that first takes a
@@ -234,8 +238,21 @@ approximately never, which reach both portals through the generated client rathe
 listed by hand in either. `employment_type` was `text`, so "Full time" and "Full-time" were two
 kinds of job and the board's filter had to `lower()` both sides and still miss; it is an equality
 on the enum now, and a value outside the set is a 422 rather than an empty page. `work_mode`
-answers a different question from `location_key` and never replaces it — a `remote` Job still
-carries the Location its team sits in, which is what keeps "Remote" out of the place taxonomy.
+answers a different question from `location_key` and never replaces it, which is what keeps
+"Remote" out of the place taxonomy. The two are tied together by two CHECKs rather than by
+convention:
+
+- `jobs_travelled_to_names_a_place` — an `onsite` or `hybrid` Job has a `location_key`, because a
+  place people travel to is the whole point of one.
+- `jobs_published_names_a_work_mode` — a `published` Job has a `work_mode`, because a listing that
+  will not say how it is worked is one nobody can judge. A draft may still be undecided.
+
+A `remote` Job's `location_key` is where a Candidate has to be *based*, not where the team sits,
+and leaving it null says the Job does not mind — **Anywhere**. Both rules are restated in
+`JobService` over the row a write would leave behind, so a Recruiter reads "an onsite or hybrid
+Job names the place people go to" (422, at `body.location_key`) or "a published Job says how much
+of its work happens where the team is" (409) instead of a constraint name. The CHECKs stay
+because the backend is not the only thing that can write these rows.
 
 The lock itself is the database's: `forbid_locked_job_criteria` and
 `forbid_locked_job_min_experience` fire for the service role like any other trigger. The
@@ -252,7 +269,8 @@ an archived Job is finished. Anything else is a 409 rather than a silent write.
 Public browse and read (`GET /v1/jobs`, `/v1/jobs/{id}`, `/v1/jobs/by-link/{token}`) are the
 only endpoints with no session behind them, so they carry their own rate limit and their own
 `where` clause: `status = 'published'`, the owning `tenants.is_active`, and `expires_at`
-either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. `q` is a hard
+either unset or still ahead — the pair `jobs_status_expires_at_idx` indexes. Every filter over
+that clause is a hard one — `q`, `location_key`, `employment_type`, `work_mode` — and `q` is a
 filter over `jobs.search_vector` (`websearch_to_tsquery`), never a ranking: the newest Job is
 always first. That vector is trigger-maintained rather than generated, because it reaches
 through `location_key` for the Location's name — a generated column may only read its own row —
@@ -326,6 +344,7 @@ insert application_status_history(application_id, change_source='candidate', new
 -- then read the rows just written and run screening (below) synchronously, inside this same
 -- transaction — an application is never observable without its verdict
 insert communications(...)                      -- the confirmation, status='queued'
+insert match_assessment_jobs(...)               -- assess_on_arrival, status='pending'
 ```
 The Snapshot is six **column-listed `INSERT … SELECT`s**: one `profiles ⋈ candidates` join for
 the scalar row, and one per child table. The invariant that makes that possible is **identical
@@ -335,7 +354,7 @@ copy mechanical and kills the add-a-column-forget-to-map-it bug. `application_*`
 `created_at`/`updated_at` the candidate children carry and the immutable application children
 correctly do not.
 
-Two deliberate asymmetries: `full_name` and `phone` come from `profiles`, because they are the
+Two deliberate asymmetries: `full_name`, `phone` and `phone_country` come from `profiles`, because they are the
 candidate's identity rather than a per-application claim; and `is_searchable` and
 `current_cv_id` are **never** snapshotted, because they are a setting and a pointer — freezing
 a setting would leave someone asking why changing it changed nothing.
@@ -418,9 +437,14 @@ Every accepted move, in one transaction:
 update applications set status = :to            -- `updated_at` is the trigger's to write
 insert application_status_history(application_id, change_source, changed_by_profile_id,
        previous_status, new_status)
-insert notifications(...)          -- `application_status_changed`, to the applicant
+insert notifications(...)          -- `application_stage_changed`, and only when the Stage
+                                   -- the applicant reads actually changed
+insert hire_claims(...)            -- only a `hired` move, carrying the day work started
 insert communications(...)         -- only a Recruiter's `rejected`, status='queued'
 ```
+The Notification is the one line here that does not always run. A Candidate reads a Stage
+projected from `status` — Received, In review, then the outcome — so a move among the undecided
+statuses writes its history row and tells nobody.
 The verdict is not part of it: `qualification_status`, `qualification_reason` and
 `application_qualification_history` belong to Screening, and moving an Application through the
 pipeline is not a re-screening. The rejection's `idempotency_key` is
@@ -433,13 +457,33 @@ Withdrawal permanence is the schema's rather than the backend's: `UNIQUE(candida
 does not care what state the row is in, so re-applying meets the same 409 carrying the existing
 `application_id` that any duplicate does.
 
-## AI match assessments (advisory, append-only)
+## AI match assessments (advisory, one per Application)
 
-A Recruiter asks for one; it runs synchronously and writes exactly one row:
+Every Application is read as it arrives, and a Recruiter may ask for a better reading at any
+time. Both write the Application's **one** row, from the same document:
 ```
 insert application_ai_match_assessments(application_id, match_percentage, explanation,
-       assessment_details, model_name, prompt_version);
+       assessment_details, model_name, prompt_version)
+on conflict (application_id) do update set ...;
 ```
+`UNIQUE (application_id)` is what makes one reading the schema's rule rather than the backend's,
+and the upsert is the whole concurrency story with it: the worker's automatic reading and a
+Recruiter's own request can race, and the loser updates the winner's row instead of failing. The
+model and the prompt version are overwritten with the number, because they describe the reading
+that is there now. There is no DELETE — an Application that has been read never stops carrying a
+Match score.
+
+The automatic one is enqueued by the arrival itself — `assess_on_arrival` opens a
+`match_assessment_jobs` row in the transaction that created the Application — and the worker
+drains it like any other queue below. The Recruiter's own request still runs synchronously, so
+the reading it returns is the one it just made. `sync_assessments.match_request` builds the
+document for both, which is what keeps the two readings comparable.
+
+The percentage is carried onto `applications.current_match_score` — denormalized because a Job's
+list sorts hundreds of rows by it and an order can only be indexed on a column of the table it
+orders (`applications_job_match_score_idx` on `(job_id, coalesce(current_match_score, -1) desc,
+id desc)`, read forwards for the best first and backwards for the worst). Never written by hand:
+`carry_the_match_score` moves it whenever the reading lands or changes.
 Its input on the Candidate's side is the immutable `application_*` snapshot — what they froze
 when they applied, never their live `candidate_*` rows. On the Job's side it is the criteria
 Screening measured (`job_skills`, `job_languages`, `jobs.minimum_total_experience_years`) plus
@@ -450,8 +494,15 @@ stand: the criteria lock freezes the bar once an Application arrives, and delibe
 prose.
 Nothing else is written: `applications.qualification_status`, `qualification_reason` and
 `application_qualification_history` are Screening's, and no number of assessments is a word in
-them. Running it again appends; the history reads newest first (`created_at desc, id desc`,
-keyset-paged) and nothing ever overwrites an earlier row.
+them. Asking again overwrites the reading and nothing else: `created_at` says when the
+Application was first read and `updated_at` when it was last read, and neither the verdict nor
+its history moves.
+
+About half of what the model is asked to weigh is the Job's criteria; the rest is how strong the
+application reads in itself. That split is deliberate — Screening has already ruled on the
+criteria, so a reading that only restated them would tell a Recruiter nothing they do not have.
+The Snapshot's `total_experience_years` is sent to the model rather than left to be counted off
+the entries, for the same reason Screening does no arithmetic over dates.
 
 `match_percentage` is `numeric(5,2)` under a 0–100 CHECK, and the model's number is clamped
 into that range at the port's edge — the strict-schema subset a provider accepts carries no
@@ -463,7 +514,11 @@ are what make an assessment auditable after either changes.
 The model is called with no transaction open — the reads above are rolled back first, so a
 provider taking its time holds no Postgres connection — and the insert is its own transaction
 afterwards. A provider failure therefore leaves nothing behind (502), and a deployment with no
-`SYNC_OPENAI_API_KEY` answers 503 while still serving the history.
+`SYNC_OPENAI_API_KEY` answers 503 while still serving the reading already there. In the worker the same failure
+is a retry rather than an answer: the queue row keeps its place and comes back under the backoff,
+and an Application whose every attempt failed simply has no Match score — which is what a list
+showing none is truthfully saying. An Application that no longer exists is the one permanent
+failure, because no number of attempts will make one appear.
 
 ## Workers (Postgres-table queues, SKIP LOCKED)
 
@@ -544,6 +599,21 @@ per `project`, and one each for `education`, `skills` and `languages`. `chunk_ty
 which, and `chunk_text` is what a recruiter is shown as the evidence for a hit. An empty
 section produces no chunk, so a profile with nothing in it produces nothing to find.
 
+### Match assessment (`match_assessment_jobs` → `sync_assessments`/`sync_worker`)
+- One row per Application, opened by `assess_on_arrival` in the transaction that created it, so
+  every Application has a reading on the way before it is visible to anybody. `UNIQUE
+  (application_id)` is what keeps that to one automatic reading; a Recruiter asking for a better
+  one goes through the API instead and never touches this table.
+- The generic engine drives it: the same four states, the same claim, the same backoff and sweep.
+  A provider that is down is an ordinary retry. `ApplicationGoneError` — the Application or its
+  Snapshot is no longer there — is the one `PermanentFailureError`, since retrying an absence
+  only spends attempts.
+- Giving up writes no reading, which leaves `applications.current_match_score` null. That is not
+  a zero and is not shown as one: a Job's list says the Application has not been read.
+- The seed settles its own rows (`_settle_assessment`) for the same reason it settles
+  `ingestion_jobs`: a seeded world left `pending` hands a running worker every Application in it
+  to read against a real provider, at a real cost, for numbers that change on every reseed.
+
 ### Communications (`communications` → `sync_comms`/`sync_worker`)
 - The queue row *is* the delivery-audit record, so it carries both: `communication_status`
   spells the generic engine's four states (`queued`/`processing`/`sent`/`failed`) and
@@ -610,9 +680,9 @@ Communication: never delivered externally, never queued, and never sent by a wor
 
 - **Who writes one**: whatever transaction the notification announces, through
   `sync_core.notifications.notify(session, recipient_profile_id, payload)`, which flushes and
-  leaves the commit to its caller. There are two producers: a permanent CV parse failure, and
-  every Application status change. There is no endpoint that creates one — the only client
-  write on this surface is the recipient marking one read.
+  leaves the commit to its caller. The producers are a settled CV parse, either way, and a move
+  that changes the Stage an Application reads as. There is no endpoint that creates one — the
+  only client write on this surface is the recipient marking one read.
 - **Payloads** are a Pydantic discriminated union on the mandatory `type`, spelled once in
   `sync_core.notifications` and exposed through OpenAPI so the SPA narrows on that one field.
   They carry ids and names, never prose: English belongs to the frontend, which keeps a future
@@ -640,6 +710,30 @@ Communication: never delivered externally, never queued, and never sent by a wor
   which is the signup-rollback path, not account deletion. Account deletion *bans* the GoTrue
   user and soft-deletes the Profile, so the cascade never fires and that flow has to delete
   notifications itself.
+
+## Hire claims and Placements
+
+Moving an Application to `hired` is a Tenant saying what it believes happened. `hire_claims`
+records it — one row per Application, the day the work started, and the `application_status_history`
+row the claim was made by — and the Candidate is asked.
+
+- **Written by the move**, in the move's own transaction: the request model insists on a
+  `start_date` for `hired` and refuses one for every other status, so a claim with no day and a
+  day with no hire are both 422s before any row is written.
+- **Answered once**, by the applicant and nobody else: `POST /applications/{id}/hire` takes the
+  row `FOR UPDATE`, so two answers decided at once cannot both read an unanswered claim. A second
+  answer is a 409. The trigger `answered_once` refuses one at the table as well, because RLS does
+  not apply to the backend's role and an answer that can be taken back is a claim about today
+  rather than a record of what was said.
+- **DB-enforced on write** (rely on these): the composite FKs
+  `(tenant_id, application_id) → applications` and `(tenant_id, claimed_by_recruiter_id) →
+  recruiters`, so a Recruiter of another Tenant cannot claim this Application; and
+  `hire_claim_answer_has_its_moment`, so an answer always records when it was given.
+- **A Placement is the `placements` view** over the claims whose `confirmation` is `confirmed`.
+  The view is the definition rather than a report of one: there is no column a backend could set
+  to make a hire count without the Candidate having said so.
+- **A denied claim moves nothing.** The Application stays `hired`: what happened is the
+  Recruiter's to record, and whether it is true is the Candidate's to say.
 
 ## Tenant CRM (notes, tags, talent pool)
 
@@ -744,9 +838,18 @@ written its object before the unique index refuses it. The path is
 `{candidate_id}/{cv_id}{extension}`, built from the media type the API accepted rather than
 from anything the candidate typed.
 
+Pictures — a Candidate's photo in `avatars`, a Tenant's logo in `tenant-logos` — go through the
+API too, and both buckets are public-read: an `<img>` renders them on pages a signed-out visitor
+holds open, and a signed URL would expire mid-page. Nothing a client sends is what lands: every
+upload is re-encoded to one 512x512 WebP, EXIF and all, before it is written. Replacing one runs
+the opposite way round to a CV, because the row already exists: write the new object, remember it
+on `profiles.avatar_url` / `tenants.logo_url`, and only then drop the object it replaced. A step
+that fails there leaves an object nobody points at, never a row pointing at nothing. The path is
+`{owner_id}/{uuid}.webp`, so two uploads racing each other cannot land on one name.
+
 ## Invariant ownership summary
 
 | Invariant | Enforced by |
 | --- | --- |
-| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's | **Database** |
-| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying and confirming in the announcing transaction, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent | **Backend** |
+| A Profile is exactly one of candidate, recruiter, platform admin; a tenant's address is unique; CV/tenant ownership FKs; one application/job; answer↔question; tag scope; unfiling a deleted Tag; exactly one subject per note; date/enum/range CHECKs; an onsite or hybrid Job naming a Location and a published Job naming a Work mode; criteria lock; a tracked link belongs to its job's tenant; one link name per job; one template name per tenant; a recruiter-initiated Communication has an Application of that recruiter's tenant; partial-unique CV; a deleted CV is never a candidate's current CV; notification payload↔type agreement; a notification about an Application is the applicant's; a hire claim belongs to one Tenant's Recruiter and Application; an answered hire claim records when it was answered and is never answered twice | **Database** |
+| Auth (JWT), per-user/tenant authorization, CV `ready` before becoming current, a current CV and a profile worth judging before apply, how many CVs a candidate may keep, refusing to delete the current CV with the guidance to switch first, all required questions answered, screening rules, job lifecycle transitions, `jobs.published_at` being written once on the move that first publishes a Job, what the public may read, tracked-link attribution, chunk atomic-swap, queue backoff, verified-email resolution, notifying only when the Stage a Candidate reads changes, and doing it in the announcing transaction, a `hired` move naming the day work started, which Candidates a Tenant may keep a record on, the placeholder vocabulary and resolving it before a message is queued, platform operations being reachable only by a Platform admin, an address and an email address being checked before an invitation is sent, a Tenant logo being an admin's to set and a replacement being written before the object it replaces is dropped, a Tenant's opening Tags and Message templates being written in the transaction that opens it | **Backend** |

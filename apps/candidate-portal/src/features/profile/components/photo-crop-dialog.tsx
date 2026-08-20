@@ -12,8 +12,6 @@ import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { boundingSquare, centeredSquare, squareBlob } from '../crop';
 
-const DEFAULT_CROP: Crop = { unit: '%', x: 10, y: 10, width: 80, height: 80 };
-
 interface PhotoCropDialogProps {
   file: File;
   pending: boolean;
@@ -23,7 +21,7 @@ interface PhotoCropDialogProps {
 
 export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDialogProps) {
   const [source, setSource] = useState<string | null>(null);
-  const [crop, setCrop] = useState<Crop>(DEFAULT_CROP);
+  const [crop, setCrop] = useState<Crop | null>(null);
   const [unreadable, setUnreadable] = useState(false);
   const photo = useRef<HTMLImageElement>(null);
 
@@ -36,14 +34,12 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
   }, [file]);
 
   function centreTheCircleOn(event: SyntheticEvent<HTMLImageElement>) {
-    const { width, height } = event.currentTarget;
-    if (!width || !height) return;
-    setCrop(centeredSquare(width, height));
+    setCrop(framing(event.currentTarget));
   }
 
   async function save() {
     const image = photo.current;
-    const square = image && boundingSquare(crop, image);
+    const square = image && boundingSquare(crop ?? framing(image), image);
     if (!image || !square) {
       setUnreadable(true);
       return;
@@ -68,7 +64,7 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
 
         {source ? (
           <ReactCrop
-            crop={crop}
+            crop={crop ?? undefined}
             onChange={(_, percent) => setCrop(percent)}
             aspect={1}
             circularCrop
@@ -106,4 +102,10 @@ export function PhotoCropDialog({ file, pending, onCancel, onSave }: PhotoCropDi
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Measured on the photo's own pixels, not the ones it is laid out at: the two are in the same
+ * proportion, and a circle drawn before the browser has measured the element comes out an oval. */
+function framing(photo: HTMLImageElement): Crop {
+  return centeredSquare(photo.naturalWidth, photo.naturalHeight);
 }

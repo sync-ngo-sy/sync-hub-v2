@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import { said } from '@/lib/said';
+import type { ProfileLinks } from './components/candidate-card';
 
 type CandidateRecord = components['schemas']['CandidateRecord'];
 type ApplicationSnapshot = components['schemas']['ApplicationSnapshot'];
@@ -18,6 +19,7 @@ export interface FullProfile {
   totalExperienceYears: number | null;
   location: string | null;
   summary: string | null;
+  links: ProfileLinks;
   experiences: components['schemas']['ProfileExperience'][];
   educations: components['schemas']['ProfileEducation'][];
   skills: components['schemas']['ProfileSkill'][];
@@ -37,6 +39,11 @@ export function recordProfile(record: CandidateRecord): FullProfile {
     totalExperienceYears: record.total_experience_years,
     location: said(record.location_name),
     summary: said(record.summary),
+    links: {
+      linkedinUrl: record.linkedin_url,
+      githubUrl: record.github_url,
+      portfolioUrl: record.portfolio_url,
+    },
     experiences: record.experiences ?? [],
     educations: record.educations ?? [],
     skills: record.skills ?? [],
@@ -60,6 +67,11 @@ export function snapshotProfile(
     totalExperienceYears: snapshot.total_experience_years,
     location: said(snapshot.location),
     summary: said(snapshot.summary),
+    links: {
+      linkedinUrl: snapshot.linkedin_url,
+      githubUrl: snapshot.github_url,
+      portfolioUrl: snapshot.portfolio_url,
+    },
     experiences: snapshot.experiences ?? [],
     educations: snapshot.educations ?? [],
     skills: snapshot.skills ?? [],

@@ -250,4 +250,18 @@ describe('Combobox', () => {
     expect(screen.queryByRole('button', { name: 'Remove Logistics' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove Protection' })).toBeInTheDocument();
   });
+
+  it('draws the mark an option carries, in the list and beside the chosen one', async () => {
+    const user = userEvent.setup();
+    const marked = [{ ...LOGISTICS, icon: <span data-mark="logistics" /> }];
+    render(<Combobox aria-label="Skill" options={marked} defaultValue="logistics" />);
+
+    const field = screen.getByRole('combobox', { name: 'Skill' }).parentElement;
+    expect(field?.querySelector('[data-mark="logistics"]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'Skill' }));
+
+    const option = screen.getByRole('option', { name: 'Logistics' });
+    expect(option.querySelector('[data-mark="logistics"]')).toBeInTheDocument();
+  });
 });

@@ -21,7 +21,8 @@ const RECORD: components['schemas']['CandidateRecord'] = {
   canonical_role_name: 'Backend Engineer',
   total_experience_years: 8,
   in_talent_pool: false,
-  phone: '+963 11 555 0142',
+  phone: '+963115550142',
+  phone_country: 'SY',
   email: 'amina@example.test',
   experiences: [],
   educations: [],
@@ -32,7 +33,8 @@ const RECORD: components['schemas']['CandidateRecord'] = {
 
 const SNAPSHOT: components['schemas']['ApplicationSnapshot'] = {
   full_name: 'Amal Haddad',
-  phone: '+963 11 555 0101',
+  phone: '+963115550101',
+  phone_country: 'SY',
   headline: 'Field logistics lead',
   summary: 'Nine years moving relief cargo.',
   location: 'Aleppo',
@@ -57,7 +59,7 @@ describe('a Candidate read by id, as one profile', () => {
     const profile = recordProfile(RECORD);
 
     expect(profile.email).toBe('amina@example.test');
-    expect(profile.phone).toBe('+963 11 555 0142');
+    expect(profile.phone).toBe('+963115550142');
   });
 
   it('reads the Location by its name and the role by the platform’s name for it', () => {
@@ -81,7 +83,7 @@ describe('an Application’s frozen profile, as the same profile', () => {
   it('carries the phone and the role the candidate froze into it', () => {
     const profile = snapshotProfile(SNAPSHOT, APPLICANT);
 
-    expect(profile.phone).toBe('+963 11 555 0101');
+    expect(profile.phone).toBe('+963115550101');
     expect(profile.role).toBe('Logistics Manager');
   });
 

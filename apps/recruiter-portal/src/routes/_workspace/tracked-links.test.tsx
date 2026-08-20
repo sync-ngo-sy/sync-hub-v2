@@ -72,8 +72,30 @@ describe('the Tracked links page', () => {
     const rows = table();
 
     expect(await rows.findByText('342')).toBeVisible();
+    expect(rows.getByText('41')).toBeVisible();
+    expect(rows.getByText('12%')).toBeVisible();
     expect(rows.getByText('Live')).toBeVisible();
     expect(rows.getByText('Never')).toBeVisible();
+  });
+
+  it('reports a link nobody has followed without a rate over nothing', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...listsTenantTrackedLinks([
+        {
+          ...TENANT_LINKEDIN_FIELD,
+          view_count: 0,
+          application_count: 0,
+          conversion_rate: null,
+        },
+      ]),
+    );
+
+    await renderApp('/tracked-links');
+    const rows = table();
+
+    expect(await rows.findByText('LinkedIn post')).toBeVisible();
+    expect(rows.getByText('—')).toBeVisible();
   });
 
   it('calls a link past its date expired, though the API still calls it switched on', async () => {

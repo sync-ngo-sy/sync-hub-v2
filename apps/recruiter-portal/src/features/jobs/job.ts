@@ -26,6 +26,12 @@ export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   remote: 'Remote',
 };
 
+export const WORK_MODE_VALUES = Object.keys(WORK_MODE_LABELS) as [WorkMode, ...WorkMode[]];
+
+export const TRAVELLED_TO: readonly WorkMode[] = ['onsite', 'hybrid'];
+
+export const ANYWHERE = 'Anywhere';
+
 export function employmentTypeLabel(type: EmploymentType | null | undefined): string | null {
   return type ? EMPLOYMENT_TYPE_LABELS[type] : null;
 }
@@ -50,9 +56,13 @@ export function jobState(status: JobStatus): JobState {
   return JOB_STATE[status];
 }
 
+export function jobPlace(job: Pick<JobSummary, 'location_name' | 'work_mode'>): string | null {
+  return job.location_name ?? (job.work_mode === 'remote' ? ANYWHERE : null);
+}
+
 export function jobMeta(job: JobSummary): string {
   return (
-    [job.location_name, workModeLabel(job.work_mode), employmentTypeLabel(job.employment_type)]
+    [jobPlace(job), workModeLabel(job.work_mode), employmentTypeLabel(job.employment_type)]
       .filter(Boolean)
       .join(' · ') || 'Details not set'
   );

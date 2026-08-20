@@ -116,8 +116,9 @@ class Settings(BaseSettings):
     cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
 
     #: What a candidate may hand us, not what we keep: every photo is re-encoded to one
-    #: small WebP before it is stored.
+    #: small WebP before it is stored. A Tenant logo goes through the same encoder.
     avatar_max_upload_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
+    tenant_logo_max_upload_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
 
     openai_api_key: SecretStr | None = None
     openai_cv_model: str = "gpt-4o-mini"
@@ -153,6 +154,9 @@ class Settings(BaseSettings):
     worker_ingestion_concurrency: int = Field(default=4, ge=1)
     worker_embedding_concurrency: int = Field(default=2, ge=1)
     worker_communications_concurrency: int = Field(default=2, ge=1)
+    #: Modest on purpose: a burst of Applications is a burst of model calls, and the Recruiter
+    #: waiting on them is not watching a spinner — they will open the Job in a minute either way.
+    worker_assessment_concurrency: int = Field(default=2, ge=1)
 
     log_level: LogLevel = LogLevel.INFO
     log_format: LogFormat = LogFormat.JSON

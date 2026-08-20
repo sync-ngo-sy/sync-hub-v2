@@ -14,13 +14,20 @@ from sync_core.models import Candidate, CvParsingStatus, IngestionJob, Ingestion
 from sync_parsers import ParsedSkill, UnreadableCvError
 from sync_worker import RetryPolicy
 from sync_worker.worker import Worker
+from tests.support.assessors import FakeAssessor
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.cvs import CVS, an_uploaded_cv, cv_row, ingestion_job, some_bytes
 from tests.support.embedders import FakeEmbedder
 from tests.support.extractors import FakeExtractor, a_parse
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
-from tests.support.profiles import my_id, my_profile_draft
+from tests.support.profiles import (
+    a_filled_profile,
+    a_saved_profile,
+    completed_at,
+    my_id,
+    my_profile_draft,
+)
 from tests.support.senders import CapturingSender
 from tests.support.worker import an_ingestion_worker
 
@@ -134,7 +141,8 @@ async def test_a_cv_cannot_be_failed_while_it_holds_a_complete_parse(
     assert row.parsing_status is CvParsingStatus.READY
     assert row.parsing_error is None
     assert row.parsed_cv_data is not None
-    assert await my_notifications(browser) == [], "nobody is told a CV that parsed has failed"
+    told = [item["payload"]["type"] for item in await my_notifications(browser)]
+    assert told == ["cv_parse_succeeded"], "a CV that parsed was announced as a failure"
     db_session.expire_all()
     candidate = await db_session.get(Candidate, candidate_id)
     assert candidate is not None
@@ -228,6 +236,30 @@ async def test_the_first_ready_cv_becomes_current_and_later_ones_do_not(
     assert candidate.current_cv_id is not None
     assert str(candidate.current_cv_id) == first["id"]
     assert str(candidate.current_cv_id) != second["id"]
+
+
+async def test_a_profile_finished_while_the_cv_was_read_is_complete_when_the_parse_lands(
+    browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    database: Database,
+    storage: Storage,
+) -> None:
+    """A read CV is the one requirement a Candidate does not finish by typing.
+
+    Everything else was saved while the parse was still running, so the save that judged the
+    profile judged it CV-less. Nothing asked again, and the marker is what applying reads: the
+    Candidate saw a finished profile and was refused every job until they pressed Save once more.
+    """
+    await a_signed_in_candidate(browser, mailbox)
+    candidate_id = await my_id(browser)
+    await an_uploaded_cv(browser)
+    await a_saved_profile(browser, a_filled_profile())
+    assert await completed_at(db_session, candidate_id) is None
+
+    await an_ingestion_worker(database, storage, FakeExtractor()).run_once()
+
+    assert await completed_at(db_session, candidate_id) is not None
 
 
 async def test_a_failed_cv_never_becomes_current(
@@ -508,7 +540,7 @@ async def test_the_worker_drains_the_queue_and_returns(
     """
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender(), FakeAssessor())
 
     try:
         report = await worker.drain()
@@ -526,7 +558,7 @@ async def test_the_scheduled_call_recovers_a_row_no_notification_arrived_for(
     """The dropped-webhook case: nothing tells the worker, and the schedule finishes it."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    worker = Worker(settings, FakeExtractor(), FakeEmbedder(), CapturingSender(), FakeAssessor())
 
     try:
         report = await worker.scheduled()
@@ -551,7 +583,9 @@ async def test_a_row_a_crashed_invocation_abandoned_is_recovered_by_the_schedule
     cv = await an_uploaded_cv(browser)
     await _abandon_the_claim(db_session, cv["id"], claimed_ago=timedelta(minutes=15))
     prompt_retry = settings.model_copy(update={"worker_retry_backoff_seconds": 0.01})
-    worker = Worker(prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender())
+    worker = Worker(
+        prompt_retry, FakeExtractor(), FakeEmbedder(), CapturingSender(), FakeAssessor()
+    )
 
     try:
         first = await worker.scheduled()

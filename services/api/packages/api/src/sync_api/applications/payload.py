@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Final
 from uuid import UUID
@@ -15,16 +15,24 @@ from sync_api.candidates import (
     ProfileSkill,
 )
 from sync_api.jobs import PublicTenant
-from sync_api.text import LocationName, OptionalLine, OptionalParagraph
+from sync_api.text import (
+    LocationName,
+    OptionalIsoCountry,
+    OptionalLine,
+    OptionalLink,
+    OptionalParagraph,
+)
 from sync_core.models import (
     ApplicationQuestionType,
     ApplicationStatus,
     EmploymentType,
+    HireConfirmation,
     QualificationStatus,
     StatusChangeSource,
     WorkMode,
 )
 from sync_core.profile import MAX_ENTRIES
+from sync_core.stages import ApplicationStage
 
 
 class SubmittedAnswer(BaseModel):
@@ -83,17 +91,52 @@ class AppliedJob(BaseModel):
     work_mode: WorkMode | None = None
 
 
+class HireClaim(BaseModel):
+    """A Tenant's claim to have hired somebody, and what the Candidate said about it.
+
+    Only a `confirmed` one is a Placement. A claim they have not answered is still only a
+    claim, and nothing counts it.
+    """
+
+    start_date: date = Field(description="The day the Tenant says the work started.")
+    confirmation: HireConfirmation = Field(
+        description="The Candidate's answer. `unanswered` until they give one."
+    )
+    claimed_at: datetime = Field(description="When the Tenant said so.")
+    answered_at: datetime | None = Field(
+        default=None, description="When the Candidate answered. Null while they have not."
+    )
+
+
+class HireAnswer(BaseModel):
+    """The Candidate's answer to a claimed hire. It is given once and stands."""
+
+    confirmed: bool = Field(description="True if they did start the job the Tenant named.")
+
+
 class Application(BaseModel):
     """One of the caller's own Applications.
 
-    Never the Screening verdict: what a Job screened on and how it landed is the Recruiter's
-    to say, not something a candidate reads off their own dashboard.
+    Never the Tenant's internal status, and never the Screening verdict: a Candidate reads the
+    Stage their Application has reached, and what a Job screened on is the Recruiter's to say.
     """
 
     id: UUID
     job: AppliedJob
     cv_id: UUID
-    status: ApplicationStatus
+    stage: ApplicationStage = Field(
+        description="How far this has got. Everything a Tenant does between arrival and a "
+        "decision reads as `in_review`."
+    )
+    can_withdraw: bool = Field(
+        description="Whether leaving is still possible. False once the Application has an "
+        "outcome, and once it has been withdrawn."
+    )
+    hire: HireClaim | None = Field(
+        default=None,
+        description="The hire this Tenant claims, when it claims one. An `unanswered` claim is "
+        "the Candidate's to confirm or deny.",
+    )
     applied_at: datetime
     updated_at: datetime
 
@@ -105,6 +148,26 @@ class ApplicationPage(BaseModel):
     next_cursor: str | None = Field(
         default=None, description="Send back as `cursor` for the following page."
     )
+
+
+class MatchScore(BaseModel):
+    """The Application's reading, as a list row carries it: the number, and enough of the words
+    behind it that the number is never shown on its own.
+
+    The whole reading — its strengths and its gaps — is on the Application review. This is what
+    a row can hold under a pointer or a focus ring.
+    """
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    percentage: float = Field(
+        description="How strong this applicant is for this Job, 0 to 100 — about half how well "
+        "they answer what the Job asks for, and half how strong the Application reads in "
+        "itself. Advice: it neither is nor changes the Screening verdict."
+    )
+    explanation: str | None = Field(default=None, description="Why, in the model's own words.")
+    model_name: str = Field(description="The model that wrote it.")
+    assessed_at: datetime
 
 
 class ApplicationSummary(BaseModel):
@@ -125,6 +188,12 @@ class ApplicationSummary(BaseModel):
     )
     status: ApplicationStatus
     qualification_status: QualificationStatus = Field(description="The Screening verdict.")
+    match: MatchScore | None = Field(
+        default=None,
+        description="The AI's reading of this Application. Null while no model has managed one "
+        "— the reading is enqueued as the Application arrives, so this fills in shortly after, "
+        "and stays null only if every attempt failed.",
+    )
     applied_at: datetime
     updated_at: datetime
 
@@ -172,6 +241,12 @@ class ApplicationJob(BaseModel):
     id: UUID
     title: str
     location_name: LocationName = None
+    work_mode: WorkMode | None = Field(
+        default=None,
+        description="How the Job is worked. With no `location_name`, `remote` is what makes the "
+        "Job's place read as Anywhere rather than as nothing at all.",
+        examples=[WorkMode.REMOTE],
+    )
 
 
 class TenantApplicationSummary(ApplicationSummary):
@@ -205,14 +280,21 @@ RECEIVED_WITHIN_DAYS: Final[dict[ReceivedWithin, int]] = {
 
 
 class ApplicationSort(StrEnum):
-    """The orders the tenant's Application list can be read in.
+    """The orders an Application list can be read in.
 
-    Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
-    spanning Jobs has no number of its own to be busiest by.
+    Two run on `applied_at`, which is the one date a row here shows. The other two run on the
+    Match score, so a Job with hundreds of Applications can be read best-answered first rather
+    than only newest first. Each names the answer it gives rather than a column and a direction.
+
+    An Application nobody has read yet has no score, and sorts below every one that has: last
+    under `highest_match`, and first under `lowest_match`, where "nothing to show" belongs
+    beside the weakest readings rather than hidden past them.
     """
 
     NEWEST = "newest"
     OLDEST = "oldest"
+    HIGHEST_MATCH = "highest_match"
+    LOWEST_MATCH = "lowest_match"
 
 
 class TenantApplicationPage(BaseModel):
@@ -243,7 +325,8 @@ class ApplicationSnapshot(BaseModel):
     """The candidate's profile as it was frozen when the Application was sent, and never since."""
 
     full_name: str
-    phone: OptionalLine = None
+    phone: OptionalLine = Field(default=None, description="In E.164, as it was that day.")
+    phone_country: OptionalIsoCountry = None
     headline: OptionalLine = None
     summary: OptionalParagraph = None
     location: OptionalLine = None
@@ -256,6 +339,13 @@ class ApplicationSnapshot(BaseModel):
         default_factory=list,
         description="Skills the candidate claims that the platform has no Canonical name for. "
         "Screening never read them; a human reading the Application should.",
+    )
+    linkedin_url: OptionalLink = None
+    github_url: OptionalLink = None
+    portfolio_url: OptionalLink = Field(
+        default=None,
+        description="The Links as they were the day the Application was sent. Screening never "
+        "read them either; a Recruiter reviewing the Application does.",
     )
     total_experience_years: int = Field(
         default=0,
@@ -351,16 +441,22 @@ class ApplicationReview(BaseModel):
     snapshot: ApplicationSnapshot
     answers: list[AnsweredQuestion]
     history: list[StatusHistoryEntry] = Field(description="Every move it has made, oldest first.")
+    hire: HireClaim | None = Field(
+        default=None,
+        description="The hire this Tenant claimed, and whether the Candidate has confirmed it. "
+        "A claim they have not answered is not a Placement.",
+    )
     cv: ApplicationCv
     applied_at: datetime
     updated_at: datetime
 
 
 class MatchAssessment(BaseModel):
-    """One AI reading of how well an Application answers its Job.
+    """The AI's reading of how well an Application answers its Job.
 
     Advice a Recruiter weighs, and nothing more: it is drawn from the Snapshot and the Job's
-    criteria, it never touches the Screening verdict, and running it again appends another.
+    criteria, and it never touches the Screening verdict. One per Application — asking again
+    replaces it, and nothing removes it.
     """
 
     # Pydantic reserves the `model_` prefix for its own members; `model_name` is what the
@@ -369,8 +465,9 @@ class MatchAssessment(BaseModel):
 
     id: UUID
     match_percentage: float = Field(
-        description="How much of what the Job asks for this Application evidences, 0 to 100. "
-        "Not a probability, and not a verdict."
+        description="How strong this applicant is for this Job, 0 to 100 — about half how well "
+        "they answer what the Job asks for, and half how strong the Application reads in "
+        "itself. Not a probability, and not a verdict."
     )
     explanation: str | None = Field(default=None, description="Why, in the model's own words.")
     strengths: list[str] = Field(
@@ -381,15 +478,10 @@ class MatchAssessment(BaseModel):
     )
     model_name: str = Field(description="The model that wrote it.")
     prompt_version: str = Field(description="The prompt it was written under.")
-    assessed_at: datetime
-
-
-class MatchAssessmentPage(BaseModel):
-    """One page of an Application's assessments, newest first."""
-
-    items: list[MatchAssessment]
-    next_cursor: str | None = Field(
-        default=None, description="Send back as `cursor` for the following page."
+    assessed_at: datetime = Field(description="When it was last read.")
+    first_assessed_at: datetime = Field(
+        description="When the Application was first read. The same as `assessed_at` until a "
+        "Recruiter asks for a better reading."
     )
 
 
@@ -400,12 +492,41 @@ class ApplicationStatusChange(BaseModel):
         description="Where it goes. `withdrawn` is refused here: leaving is the candidate's "
         "own move, and theirs alone."
     )
+    start_date: date | None = Field(
+        default=None,
+        description="The day the work started. Required by `hired` and refused by every other "
+        "status: a hire is a claim about a particular day, and the Candidate is asked to "
+        "confirm that day.",
+    )
+
+    @model_validator(mode="after")
+    def _a_hire_names_the_day_it_started(self) -> ApplicationStatusChange:
+        hiring = self.status is ApplicationStatus.HIRED
+        if hiring and self.start_date is None:
+            raise ValueError("marking somebody hired needs the day they started")
+        if not hiring and self.start_date is not None:
+            raise ValueError(f"a {self.status.value} application has no start date")
+        return self
 
 
 class MovedApplication(BaseModel):
-    """Where an Application stands after a move, and where it came from."""
+    """Where an Application stands after a move, where it came from, and what the Candidate
+    heard about it."""
 
     id: UUID
     status: ApplicationStatus
     previous_status: ApplicationStatus
+    candidate_notified: bool = Field(
+        description="Whether this move reached the Candidate. False when it left the Stage they "
+        "read unchanged — which is every move among the undecided statuses."
+    )
+    changed_at: datetime
+
+
+class WithdrawnApplication(BaseModel):
+    """Where the caller's own Application stands after they left it."""
+
+    id: UUID
+    stage: ApplicationStage
+    previous_stage: ApplicationStage
     changed_at: datetime

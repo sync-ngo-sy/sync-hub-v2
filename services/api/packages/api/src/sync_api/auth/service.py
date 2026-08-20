@@ -84,6 +84,7 @@ class ActingTenant:
     name: str
     slug: str
     is_active: bool
+    logo_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +102,7 @@ class ActingProfile:
     account_type: AccountType
     avatar_url: str | None
     phone: str | None
+    phone_country: str | None
     has_account_row: bool = False
     membership: ActingMembership | None = None
 
@@ -144,6 +146,7 @@ class AuthService:
             account_type=AccountType.CANDIDATE,
             avatar_url=None,
             phone=None,
+            phone_country=None,
             has_account_row=True,
         )
 
@@ -199,7 +202,7 @@ class AuthService:
         if access_token is None:
             return
         try:
-            await self._gotrue.revoke_sessions(access_token)
+            await self._gotrue.revoke_all_sessions(access_token)
         except SessionAlreadyEndedError:
             return
         except GoTrueUnavailableError:
@@ -232,6 +235,55 @@ class AuthService:
             ) from exc
         await self.log_out(session.access_token)
         logger.info("auth.password_reset", profile_id=str(session.user.id))
+
+    async def change_password(
+        self, profile: ActingProfile, *, current_password: str, new_password: str
+    ) -> GoTrueSession:
+        """Replace the password of whoever is signed in, and evict every other session they left
+        open — so a password changed because it leaked actually takes the account back.
+
+        GoTrue ends every session of an account whose password an admin sets, the caller's own
+        included, and offers no way to spare one. The caller is therefore signed in again on the
+        new password and handed that session, which is what keeps them where they were.
+        """
+        new_password = _vetted(new_password)
+        if new_password == current_password:
+            # GoTrue's admin update accepts the password an account already has, so the refusal
+            # `reset_password` gets from `same_password` has to be made here instead.
+            raise Problem(
+                status=400,
+                type=PASSWORD_UNCHANGED_PROBLEM_TYPE,
+                detail="Choose a password you have not used on this account before.",
+            )
+        try:
+            await self._gotrue.verify_password(email=profile.email, password=current_password)
+        except (InvalidCredentialsError, EmailNotConfirmedError) as exc:
+            raise Problem(
+                status=401,
+                type=INVALID_CREDENTIALS_PROBLEM_TYPE,
+                detail="That is not your current password.",
+            ) from exc
+
+        try:
+            await self._gotrue.set_password(user_id=profile.id, password=new_password)
+        except WeakPasswordError as exc:
+            raise weak_password() from exc
+        except PasswordUnchangedError as exc:
+            raise Problem(
+                status=400,
+                type=PASSWORD_UNCHANGED_PROBLEM_TYPE,
+                detail="Choose a password you have not used on this account before.",
+            ) from exc
+
+        session = await self._gotrue.sign_in_with_password(
+            email=profile.email, password=new_password
+        )
+        try:
+            await self._gotrue.revoke_other_sessions(session.access_token)
+        except SessionAlreadyEndedError:
+            logger.warning("auth.other_sessions_not_revoked", profile_id=str(profile.id))
+        logger.info("auth.password_changed", profile_id=str(profile.id))
+        return session
 
     async def acting_profile(self, access_token: str | None) -> ActingProfile:
         if access_token is None:
@@ -280,6 +332,7 @@ class AuthService:
             account_type=profile.account_type,
             avatar_url=profile.avatar_url,
             phone=profile.phone,
+            phone_country=profile.phone_country,
             has_account_row=_has_account_row(profile.account_type, row),
             membership=_membership_of(row),
         )
@@ -301,7 +354,11 @@ def _membership_of(row: Row[Any]) -> ActingMembership | None:
         role=row.role,
         is_active=row.recruiter_is_active,
         tenant=ActingTenant(
-            id=tenant.id, name=tenant.name, slug=tenant.slug, is_active=tenant.is_active
+            id=tenant.id,
+            name=tenant.name,
+            slug=tenant.slug,
+            is_active=tenant.is_active,
+            logo_url=tenant.logo_url,
         ),
     )
 

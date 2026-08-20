@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CandidateCard } from '@sync/ui/components/candidate-card';
 import {
   Combobox,
   type ComboboxOption,
@@ -17,10 +16,11 @@ import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import { Info, Search } from 'lucide-react';
+import { Info, Search, Trash2 } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { CandidateCard } from '@/features/profile/components/candidate-card';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -167,18 +167,18 @@ interface DemoApplication {
   job: string;
   tenant: string;
   tone: StatusTone;
-  status: string;
+  stage: string;
 }
 
 const APPLICATIONS: DemoApplication[] = [
   {
     job: 'Field Coordinator, Aleppo',
     tenant: 'Aman Relief',
-    tone: 'interview',
-    status: 'Interview',
+    tone: 'reviewing',
+    stage: 'In review',
   },
-  { job: 'Logistics Assistant', tenant: 'Hand in Hand', tone: 'new', status: 'Submitted' },
-  { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'rejected', status: 'Not selected' },
+  { job: 'Logistics Assistant', tenant: 'Hand in Hand', tone: 'new', stage: 'Received' },
+  { job: 'MEAL Officer, Idlib', tenant: 'Violet Org', tone: 'rejected', stage: 'Not selected' },
 ];
 
 const SURFACES: [label: string, swatch: string][] = [
@@ -218,7 +218,10 @@ export default function KitchenSink() {
           phone="+963 11 555 0100"
           canonicalRole="Project Manager"
           headline="Runs delivery for two field programmes"
-          headingLevel={2}
+          links={{
+            linkedinUrl: 'https://www.linkedin.com/in/lina-khoury',
+            portfolioUrl: 'https://lina-khoury.dev',
+          }}
           facts={[
             { label: 'Total experience', value: '6 years' },
             { label: 'Languages', value: 'Arabic, English' },
@@ -244,6 +247,10 @@ export default function KitchenSink() {
         <Button variant="ghost">Ghost</Button>
         <Button variant="link">Link</Button>
         <Button variant="destructive">Delete account</Button>
+        <Button variant="destructive-outline">
+          <Trash2 data-icon="inline-start" />
+          Delete CV
+        </Button>
         <Button disabled>Disabled</Button>
         <Button size="sm">Small</Button>
         <Button size="lg">Large</Button>
@@ -278,13 +285,13 @@ export default function KitchenSink() {
 
       <Section title="Lists">
         <div className="w-full divide-y divide-border border-t border-border">
-          {APPLICATIONS.map(({ job, tenant, tone, status }) => (
+          {APPLICATIONS.map(({ job, tenant, tone, stage }) => (
             <div key={job} className="flex items-center justify-between gap-4 py-4">
               <div className="min-w-0">
                 <p className="truncate font-medium text-foreground">{job}</p>
                 <p className="truncate text-dense text-muted-foreground">{tenant}</p>
               </div>
-              <StatusMark tone={tone} label={status} />
+              <StatusMark tone={tone} label={stage} />
             </div>
           ))}
         </div>

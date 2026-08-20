@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { answerText, historyLine, pipelineMoves, pipelineOutcome } from './review';
+import {
+  answerText,
+  hireState,
+  historyLine,
+  moveOutcome,
+  pipelineMoves,
+  pipelineOutcome,
+} from './review';
 
 const targets = (status: Parameters<typeof pipelineMoves>[0]) =>
   pipelineMoves(status).map((move) => move.target);
 
 describe('the Pipeline moves offered from a status', () => {
-  it('offers every other undecided stage and both decisions while it is undecided', () => {
+  it('offers every other undecided status and both decisions while it is undecided', () => {
     expect(targets('new')).toEqual([
       'reviewing',
       'shortlisted',
@@ -70,7 +77,7 @@ describe('the Pipeline moves offered from a status', () => {
     }
   });
 
-  it('names a forward move by its stage and a decision by the decision', () => {
+  it('names a forward move by its status and a decision by the decision', () => {
     const labels = pipelineMoves('reviewing').map((move) => move.label);
     expect(labels).toEqual([
       'Move to Shortlisted',
@@ -82,12 +89,60 @@ describe('the Pipeline moves offered from a status', () => {
     ]);
   });
 
-  it('says a rejection is emailed and every other move is only told in-app', () => {
-    const success = (status: 'reviewing', target: string) =>
-      pipelineMoves(status).find((move) => move.target === target)?.success;
+  it('states what a move did, and leaves who heard about it to the answer', () => {
+    const happened = (target: string) =>
+      pipelineMoves('reviewing').find((move) => move.target === target)?.happened;
 
-    expect(success('reviewing', 'rejected')).toBe('Rejected — the candidate has been emailed.');
-    expect(success('reviewing', 'shortlisted')).toBe('Shortlisted — the candidate has been told.');
+    expect(happened('rejected')).toBe('Rejected');
+    expect(happened('shortlisted')).toBe('Shortlisted');
+  });
+});
+
+describe('what a move reports back', () => {
+  const moveTo = (target: string) => {
+    const move = pipelineMoves('reviewing').find((one) => one.target === target);
+    if (!move) throw new Error(`no move to ${target}`);
+    return move;
+  };
+
+  it('says a rejection is emailed, which no other move is', () => {
+    expect(moveOutcome(moveTo('rejected'), true)).toBe(
+      'Rejected — the candidate has been emailed.',
+    );
+  });
+
+  it('says the candidate was told when the move changed their Stage', () => {
+    expect(moveOutcome(moveTo('hired'), true)).toBe(
+      'Marked as hired — the candidate has been told.',
+    );
+  });
+
+  it('says the candidate sees nothing when the move stayed inside one Stage', () => {
+    expect(moveOutcome(moveTo('shortlisted'), false)).toBe(
+      'Shortlisted — the candidate sees no change.',
+    );
+  });
+});
+
+describe('how a claimed hire reads', () => {
+  const claim = { start_date: '2026-09-01', claimed_at: '2026-08-01T09:00:00Z' };
+
+  it('says an unanswered claim is only a claim', () => {
+    expect(hireState({ ...claim, confirmation: 'unanswered', answered_at: null })).toBe(
+      'Waiting for the candidate to confirm. Until they do, this is a claim.',
+    );
+  });
+
+  it('says a confirmed claim is a placement', () => {
+    expect(
+      hireState({ ...claim, confirmation: 'confirmed', answered_at: '2026-08-02T09:00:00Z' }),
+    ).toBe('The candidate confirmed this. It is a placement.');
+  });
+
+  it('says a denied claim is not one', () => {
+    expect(
+      hireState({ ...claim, confirmation: 'denied', answered_at: '2026-08-02T09:00:00Z' }),
+    ).toBe('The candidate says they did not start. This is not a placement.');
   });
 });
 

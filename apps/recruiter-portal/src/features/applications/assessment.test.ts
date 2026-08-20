@@ -10,15 +10,16 @@ const ASSESSMENT = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v3',
   assessed_at: '2026-08-03T09:00:00Z',
+  first_assessed_at: '2026-08-03T09:00:00Z',
 };
 
 describe('how one match assessment reads', () => {
   it('says what the percentage measures, so it is not mistaken for a verdict', () => {
-    expect(matchLabel(82)).toBe('82% of what the Job asks for');
+    expect(matchLabel(82)).toBe('82% strength for this Job');
   });
 
   it('rounds a percentage the model gave to a fraction', () => {
-    expect(matchLabel(66.7)).toBe('67% of what the Job asks for');
+    expect(matchLabel(66.7)).toBe('67% strength for this Job');
   });
 
   it('names the model and the prompt that wrote it, so two readings can be told apart', () => {

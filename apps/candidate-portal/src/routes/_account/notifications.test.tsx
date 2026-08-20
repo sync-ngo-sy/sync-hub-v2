@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import { listsCvs } from '@/features/cvs/testing/handlers';
+import { drafts, listsCvs } from '@/features/cvs/testing/handlers';
 import {
   faultsOnListingNotifications,
   faultsOnMarkingRead,
@@ -14,12 +14,15 @@ import { hasProfile } from '@/features/profile/testing/handlers';
 import {
   CANDIDATE,
   CANDIDATE_PROFILE,
+  CV_DRAFT,
   CV_FAILURE_NOTIFICATION,
+  CV_READ_NOTIFICATION,
   FAILED_CV,
   MORE_NOTIFICATIONS,
   MOVED_NOTIFICATION,
   NOTIFICATIONS,
   READ_NOTIFICATION,
+  READY_CV,
   SERVER_FAULT,
 } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -29,6 +32,14 @@ function rowFor(text: string | RegExp): HTMLElement {
   const row = screen.getByRole('link', { name: text }).closest('li');
   if (!row) throw new Error(`no row for ${String(text)}`);
   return row;
+}
+
+function filledNotice(): HTMLElement {
+  const notice = screen
+    .getByText('The fields below now say what your CV says')
+    .closest('[data-slot="alert"]');
+  if (!notice) throw new Error('no filled notice on the page');
+  return notice as HTMLElement;
 }
 
 describe('the notifications page', () => {
@@ -44,7 +55,7 @@ describe('the notifications page', () => {
       screen.getByText('Open your profile to see why, and upload another file.'),
     ).toBeVisible();
     expect(screen.getByText('Frontend Developer (Remote) at Levant Digital')).toBeVisible();
-    expect(screen.getByText('Moved from Under review to Shortlisted.')).toBeVisible();
+    expect(screen.getByText('Moved from Received to In review.')).toBeVisible();
   });
 
   it('tells the unread from the ones already opened', async () => {
@@ -73,6 +84,29 @@ describe('the notifications page', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/profile'));
     expect(await screen.findByRole('heading', { name: FAILED_CV.display_name })).toBeVisible();
     await waitFor(() => expect(read).toHaveBeenCalledWith(CV_FAILURE_NOTIFICATION.id));
+  });
+
+  it('marks a read CV read, and lands on a profile already filled from it', async () => {
+    const read = vi.fn();
+    server.use(
+      ...signedInAs(CANDIDATE),
+      ...listsNotifications([CV_READ_NOTIFICATION]),
+      ...marksRead([CV_READ_NOTIFICATION], read),
+      ...hasProfile(CANDIDATE_PROFILE),
+      ...listsCvs([READY_CV]),
+      ...drafts(CV_DRAFT),
+    );
+
+    const { router, user } = await renderApp('/notifications');
+    await user.click(await screen.findByRole('link', { name: /has been read/ }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Headline')).toHaveValue(CV_DRAFT.headline as string),
+    );
+    expect(within(filledNotice()).getByText(READY_CV.display_name)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Undo the fill' })).toBeVisible();
+    await waitFor(() => expect(read).toHaveBeenCalledWith(CV_READ_NOTIFICATION.id));
   });
 
   it('marks a status change read and lands on the applications', async () => {

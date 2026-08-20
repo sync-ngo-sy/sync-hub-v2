@@ -1,5 +1,5 @@
 import { ListSkeleton } from '@sync/ui/components/skeletons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ErrorCard } from '@/features/shell/components/error-card';
 import { type Cv, isParsing, isReady, slotsLeft } from '../cv';
 import { useMyCvs } from '../hooks/use-my-cvs';
@@ -13,17 +13,17 @@ interface CvsSectionProps {
 
 export function CvsSection({ onFill, filling }: CvsSectionProps) {
   const cvs = useMyCvs();
-  const [awaited, setAwaited] = useState<string | null>(null);
-  const alreadyFilled = useRef<string | null>(null);
+  const beingRead = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!awaited || alreadyFilled.current === awaited) return;
-    const cv = cvs.data?.find((entry) => entry.id === awaited);
-    if (!cv || isParsing(cv)) return;
-    alreadyFilled.current = awaited;
-    setAwaited(null);
-    if (isReady(cv)) onFill(cv);
-  }, [awaited, cvs.data, onFill]);
+    const listed = cvs.data ?? [];
+    const settled = listed.filter((cv) => !isParsing(cv) && beingRead.current.has(cv.id));
+    for (const cv of settled) beingRead.current.delete(cv.id);
+    for (const cv of listed) if (isParsing(cv)) beingRead.current.add(cv.id);
+
+    const read = settled.find(isReady);
+    if (read) onFill(read);
+  }, [cvs.data, onFill]);
 
   return (
     <div className="space-y-5">
@@ -31,7 +31,7 @@ export function CvsSection({ onFill, filling }: CvsSectionProps) {
         <CvUploader
           slotsLeft={slotsLeft(cvs.data)}
           hasCvs={cvs.data.length > 0}
-          onUploaded={(cv) => setAwaited(cv.id)}
+          onUploaded={(cv) => beingRead.current.add(cv.id)}
         />
       ) : null}
 

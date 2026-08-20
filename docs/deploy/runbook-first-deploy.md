@@ -86,7 +86,7 @@ printf '%s' "$VALUE" | gcloud secrets versions add SYNC_DATABASE_URL --project s
 | `SYNC_SUPABASE_ANON_KEY` | Database project API settings. |
 | `SYNC_WORKER_SHARED_SECRET` | Generated here: `openssl rand -hex 32`. Read by the enqueue trigger, which needs it in the database Vault too — see 8. The schedule does not use it. |
 | `SYNC_RESEND_API_KEY` | Resend. The worker refuses to start without it. |
-| `SYNC_OPENAI_API_KEY` | OpenAI. Without it the worker logs parses it cannot do and the API answers 503 on search and assessment. |
+| `SYNC_OPENAI_API_KEY` | OpenAI. The worker refuses to start without it — it parses CVs, embeds profiles and reads every Application against its Job. The API answers 503 on search and assessment. |
 
 ## 2a. Repository secrets — **out of band**
 

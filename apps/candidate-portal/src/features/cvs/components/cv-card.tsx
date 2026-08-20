@@ -1,12 +1,13 @@
 import { StatusMark } from '@sync/ui/components/status-mark';
+import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
 import { Button } from '@sync/ui/components/ui/button';
-import { CircleX, Download, Star, Trash2, Wand2 } from 'lucide-react';
+import { CircleX, Download, LoaderCircle, Star, Trash2, Wand2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
-import { type Cv, hasFailed, isReady, languageName, PARSE_STATES } from '../cv';
+import { type Cv, hasFailed, isParsing, isReady, languageName, PARSE_STATES } from '../cv';
 import { useCvDownloadLink, useDeleteCv, useMakeCvCurrent } from '../hooks/use-cv-actions';
 import { ConfirmDialog } from './confirm-dialog';
 
@@ -63,8 +64,17 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
     <div className="min-w-0 space-y-4 rounded-lg border border-border p-3 md:p-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-heading text-base font-medium text-foreground">{cv.display_name}</h3>
+          <h3 className="min-w-0 font-heading text-base font-medium text-foreground">
+            <TruncatedText>{cv.display_name}</TruncatedText>
+          </h3>
           {cv.is_current ? <StatusMark tone="active" label="Current" /> : null}
+          {isParsing(cv) ? (
+            <LoaderCircle
+              role="progressbar"
+              aria-label={`Reading “${cv.display_name}”`}
+              className="size-3.5 shrink-0 animate-spin text-muted-foreground"
+            />
+          ) : null}
           <StatusMark tone={state.tone} label={state.label} />
         </div>
 
@@ -129,7 +139,7 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
 
         <Button
           type="button"
-          variant="ghost"
+          variant="destructive-outline"
           size="sm"
           disabled={cv.is_current}
           aria-describedby={cv.is_current ? undeletableId : undefined}
@@ -150,8 +160,9 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
       <ConfirmDialog
         open={confirming === 'current'}
         onOpenChange={(open) => setConfirming(open ? 'current' : null)}
-        title={`Apply with “${cv.display_name}” from now on?`}
-        description="The current CV is the one sent with every new application, and the one recruiters searching the platform find you by. Applications you have already sent keep the CV they went out with."
+        title="Apply with this CV from now on?"
+        subject={cv.display_name}
+        description="It goes out with every new application, and it is what recruiters find you by. Applications already sent keep the CV they went out with."
         confirmLabel="Make it current"
         pendingLabel="Switching…"
         pending={makeCurrent.isPending}
@@ -161,8 +172,9 @@ export function CvCard({ cv, onFill, filling }: CvCardProps) {
       <ConfirmDialog
         open={confirming === 'delete'}
         onOpenChange={(open) => setConfirming(open ? 'delete' : null)}
-        title={`Delete “${cv.display_name}”?`}
-        description="This frees a slot and lets you upload the same file again. Recruiters reviewing an application you sent with it can still read it."
+        title="Delete this CV?"
+        subject={cv.display_name}
+        description="This frees a slot for the same file again. Recruiters reviewing an application you sent with it can still read it."
         confirmLabel="Delete"
         pendingLabel="Deleting…"
         pending={remove.isPending}

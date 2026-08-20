@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 
 from PIL import Image
 
-from sync_api.avatars import AVATAR_PIXELS
+from sync_api.pictures import SQUARE_PIXELS
 from tests.support.avatars import (
     PNG,
     a_photo,
@@ -55,7 +55,7 @@ async def test_the_stored_photo_is_one_square_webp(
 
     stored = await a_stored_photo(web, url)
     assert stored.format == "WEBP"
-    assert stored.size == (AVATAR_PIXELS, AVATAR_PIXELS)
+    assert stored.size == (SQUARE_PIXELS, SQUARE_PIXELS)
 
 
 async def test_the_stored_photo_carries_no_exif(

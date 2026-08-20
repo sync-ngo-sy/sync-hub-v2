@@ -18,11 +18,13 @@ class JobCounts(BaseModel):
     )
 
 
-class StageCounts(BaseModel):
-    """Every stage of the Pipeline, including the ones nobody is working any more.
+class PipelineStatusCounts(BaseModel):
+    """Every status of the Pipeline, including the ones nobody is working any more.
 
-    Complete on purpose: the parts sum to the total, so a reader can add up whichever subset
-    they mean by "in play" without the API having decided that for them.
+    The tenant's own eight, not the five a Candidate reads: this is the internal pipeline, and
+    a Stage is what the other side is told. Complete on purpose — the parts sum to the total,
+    so a reader can add up whichever subset they mean by "in play" without the API having
+    decided that for them.
     """
 
     new: int
@@ -54,7 +56,7 @@ class ApplicationCounts(BaseModel):
         description="Received in the 7 days before `last_7d`, which is what makes a week-on-week "
         "comparison possible."
     )
-    by_stage: StageCounts
+    by_status: PipelineStatusCounts
     by_qualification: QualificationCounts
     pass_rate: int | None = Field(
         description="The percentage of screened Applications that qualified, 0-100. Null when "
@@ -73,6 +75,16 @@ class Source(BaseModel):
         description="The tracked link's name, or `Direct` for visitors who arrived without one."
     )
     views: int
+    applications: int = Field(
+        description="Applications from a visitor this Source brought, over the same Jobs."
+    )
+    conversion_rate: int | None = Field(
+        description="The percentage of this Source's views that became Applications. Null when "
+        "the Source has brought no views: a rate over nothing says nothing. A tracked link is "
+        "0-100, since an Application is attributed by a view it already counted. `Direct` counts "
+        "its two numbers over different populations — an Application that arrived with no view "
+        "recorded is still nobody's link — so `Direct` alone can pass 100."
+    )
 
 
 class TenantStats(BaseModel):

@@ -67,7 +67,7 @@ export function MessageTemplatesPage() {
           rowLabel={(template) => template.name}
           rowActions={(template) => [
             { label: 'Edit template', onSelect: () => setEditing(template) },
-            { label: 'Delete template', onSelect: () => setDeleting(template) },
+            { label: 'Delete template', onSelect: () => setDeleting(template), destructive: true },
           ]}
           isLoading={templates.isPending}
           empty={{

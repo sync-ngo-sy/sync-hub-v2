@@ -4,8 +4,9 @@ from typing import Annotated, Any, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
+from pydantic import BeforeValidator
 
-from sync_api.applications import ApplicationSummaryPage
+from sync_api.applications import ApplicationSort, ApplicationSummaryPage
 from sync_api.dependencies import (
     ActingRecruiterDep,
     ApplicationReviewServiceDep,
@@ -29,7 +30,8 @@ from sync_api.jobs import (
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
-from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus
+from sync_api.text import without_control_characters
+from sync_core.models import ApplicationStatus, JobStatus, QualificationStatus, WorkMode
 from sync_core.profile import MAX_LINE_LENGTH
 
 ROUTER_PREFIX: Final = "/tenants/me/jobs"
@@ -46,7 +48,14 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["jobs"])
     operation_id="createJob",
     summary="Write a new Job",
     status_code=status.HTTP_201_CREATED,
-    responses=TENANT_ACCESS_REFUSED,
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        422: openapi_problem(
+            "A Location the platform does not list, or an onsite or hybrid Job naming no "
+            "Location at all.",
+            ValidationProblemDetail,
+        ),
+    },
 )
 async def create_job(body: NewJob, recruiter: ActingRecruiterDep, jobs: JobServiceDep) -> JobView:
     """Create the Job as a draft. Nobody outside the tenant sees it until it is published."""
@@ -73,10 +82,19 @@ async def list_jobs(
             "the case.",
             examples=["designer"],
         ),
+        BeforeValidator(without_control_characters),
     ] = None,
     job_status: Annotated[
         JobStatus | None,
         Query(alias="status", description="Only Jobs in this state."),
+    ] = None,
+    work_mode: Annotated[
+        WorkMode | None,
+        Query(
+            description="Only Jobs worked this way. Narrows `status_counts` as `q` does, so the "
+            "tabs count the same Jobs the list is showing.",
+            examples=[WorkMode.REMOTE],
+        ),
     ] = None,
     sort: Annotated[
         JobSort,
@@ -94,7 +112,15 @@ async def list_jobs(
     ] = DEFAULT_PAGE_SIZE,
 ) -> JobPage:
     """Every Job of the tenant, whatever its state. Page with `next_cursor`, keeping `sort`."""
-    return await jobs.page(recruiter, q=q, status=job_status, sort=sort, cursor=cursor, limit=limit)
+    return await jobs.page(
+        recruiter,
+        q=q,
+        status=job_status,
+        work_mode=work_mode,
+        sort=sort,
+        cursor=cursor,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -115,7 +141,15 @@ async def get_job(job_id: UUID, recruiter: ActingRecruiterDep, jobs: JobServiceD
     responses={
         **TENANT_ACCESS_REFUSED,
         **JOB_NOT_FOUND,
-        409: openapi_problem("The Job cannot move to that status from the one it is in."),
+        409: openapi_problem(
+            "The Job cannot move to that status from the one it is in, or it would be published "
+            "without a Work mode."
+        ),
+        422: openapi_problem(
+            "A Location the platform does not list, or an edit leaving an onsite or hybrid Job "
+            "with no Location.",
+            ValidationProblemDetail,
+        ),
     },
 )
 async def change_job(
@@ -153,12 +187,12 @@ async def replace_job_criteria(
 @router.get(
     "/{job_id}/applications",
     operation_id="listJobApplications",
-    summary="The Job's Applications, newest first",
+    summary="The Job's Applications, newest first unless another order is asked for",
     tags=["applications"],
     responses={
         **TENANT_ACCESS_REFUSED,
         **JOB_NOT_FOUND,
-        422: openapi_problem("`cursor` is not one this API issued."),
+        422: openapi_problem("`cursor` is not one this API issued, or belongs to another `sort`."),
     },
 )
 async def list_job_applications(
@@ -181,15 +215,24 @@ async def list_job_applications(
             "Repeat it to name several; omit it for every verdict.",
         ),
     ] = None,
+    sort: Annotated[
+        ApplicationSort,
+        Query(description="Whether the list runs on `applied_at` or on the Match score."),
+    ] = ApplicationSort.NEWEST,
     cursor: Annotated[
         str | None,
-        Query(description="A `next_cursor` from a previous page. Omit for the newest page."),
+        Query(description="A `next_cursor` from a previous page. Omit for the first page."),
     ] = None,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="How many to return.")
     ] = DEFAULT_PAGE_SIZE,
 ) -> ApplicationSummaryPage:
-    """The triage list: who applied, where each one stands, and how Screening judged it.
+    """The triage list: who applied, where each one stands, how Screening judged it, and what
+    an AI made of it. Page with `next_cursor`, keeping `sort`.
+
+    Each row carries its Match score with the words behind it, so the number is never the only
+    thing a Recruiter is given. It is advice: `qualification_status` is the verdict, and no
+    assessment moves it.
 
     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
     caller can say how many Applications each one is keeping off the list.
@@ -199,6 +242,7 @@ async def list_job_applications(
         job_id,
         statuses=application_statuses,
         qualification_statuses=qualification_statuses,
+        sort=sort,
         cursor=cursor,
         limit=limit,
     )

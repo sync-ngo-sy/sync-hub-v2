@@ -121,10 +121,19 @@ def _settled(parsing_status: CvParsingStatus) -> dict[str, Any]:
     return {}
 
 
+async def completed_at(session: AsyncSession, candidate_id: UUID) -> datetime | None:
+    session.expire_all()
+    return await session.scalar(
+        select(Candidate.profile_completed_at).where(Candidate.id == candidate_id)
+    )
+
+
 async def make_no_cv_current(session: AsyncSession, candidate_id: UUID) -> None:
     """A candidate back to holding no CV — the one state applying still refuses."""
     await session.execute(
-        update(Candidate).where(Candidate.id == candidate_id).values(current_cv_id=None)
+        update(Candidate)
+        .where(Candidate.id == candidate_id)
+        .values(current_cv_id=None, profile_completed_at=None)
     )
     await session.commit()
 
@@ -137,11 +146,15 @@ def a_profile(**changes: Any) -> dict[str, Any]:
 EMPTY_PROFILE: dict[str, Any] = {
     "full_name": "Amina Haddad",
     "phone": None,
+    "phone_country": None,
     "headline": None,
     "summary": None,
     "location_key": None,
     "canonical_role_key": None,
     "is_searchable": False,
+    "linkedin_url": None,
+    "github_url": None,
+    "portfolio_url": None,
     "total_experience_years": 0,
     "experiences": [],
     "educations": [],
@@ -184,10 +197,13 @@ A_PROJECT: dict[str, Any] = {
 
 FILLED_PROFILE: dict[str, Any] = {
     **EMPTY_PROFILE,
+    "phone": "+963115550134",
+    "phone_country": "SY",
     "headline": "Backend engineer, 8 years",
     "summary": "Builds boring systems that stay up.",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
+    "linkedin_url": "https://www.linkedin.com/in/amina-haddad",
     "experiences": [AN_EXPERIENCE],
     "educations": [AN_EDUCATION],
     "skills": [
@@ -203,7 +219,8 @@ FILLED_PROFILE: dict[str, Any] = {
 
 
 def a_filled_profile(**changes: Any) -> dict[str, Any]:
-    """A profile complete enough to apply with: skills, and a job."""
+    """Every answer a Complete profile asks for. Given a CV that has been read, saving this one
+    marks the profile Complete — which is what applying and Global search are gated on."""
     return {**FILLED_PROFILE, **changes}
 
 

@@ -8,8 +8,7 @@ export function TotalExperience({ years }: { years: number }) {
         </strong>
       </p>
       <p className="mt-1 text-meta text-muted-foreground">
-        Worked out from the jobs below as you edit, so two held at once count once. Save confirms
-        the backend's value.
+        Worked out from the jobs below, so two held at once count once.
       </p>
     </div>
   );

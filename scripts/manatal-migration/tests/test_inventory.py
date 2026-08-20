@@ -19,12 +19,11 @@ def test_a_field_the_migration_writes_is_reported_as_migrated() -> None:
     assert census.fields["email"].mapped.home is Home.MIGRATED
 
 
-def test_a_field_nobody_has_ruled_on_is_surfaced_as_a_decision() -> None:
-    """The whole point: an unknown field is a decision somebody owes, not a silent drop."""
-    census = read({"id": 1, "linkedin_url": "https://example.com/in/amina"})
+def test_a_top_level_linkedin_field_is_reported_as_migrated() -> None:
+    census = read({"id": 1, "linkedin_url": "https://www.linkedin.com/in/amina-haddad"})
 
-    assert census.fields["linkedin_url"].mapped.home is Home.DECIDE
-    assert [found.key for found in census.undecided] == ["linkedin_url"]
+    assert census.fields["linkedin_url"].mapped.home is Home.MIGRATED
+    assert census.fields["linkedin_url"].mapped.lands_in == "candidates.linkedin_url"
 
 
 def test_an_unknown_field_nobody_has_data_in_is_not_a_decision() -> None:

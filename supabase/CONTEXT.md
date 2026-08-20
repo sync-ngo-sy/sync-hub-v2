@@ -13,12 +13,44 @@ An organization (a hiring company) that owns its recruiters, jobs, and private C
 The unit of data isolation.
 _Avoid_: Company, Org, Workspace, Account.
 
+**Picture**:
+The covering term for the two square images the platform stores for somebody: a Candidate's
+avatar and a Tenant logo. They are one thing as far as *storing* one goes — re-encoded to one
+512x512 WebP, kept in a public bucket under the owner's id, and replaced by writing the new
+object before the old one is dropped — and the backend holds that in one place. The covering
+term is never used for either of them on screen: a Candidate has an avatar and a Tenant has a
+logo, and those are the words a person reads.
+_Avoid_: Image, Media, Asset, Upload (that is the act).
+
+**Tenant logo**:
+The mark Candidates identify a Tenant by, on `tenants.logo_url`. One Picture in the public
+`tenant-logos` bucket, so what a browser reads is never what a client sent. Public-read for
+the reason a Candidate's avatar is: it is rendered by an `<img>` on a page a signed-out
+visitor reads, and a signed URL would expire mid-page. Only a Tenant admin sets it.
+_Avoid_: Avatar (that is a Candidate's), Icon, Brand.
+
+**Tenant presets**:
+The Tags and Message templates a Tenant opens with when a Platform admin converts the Access
+request it came from, written in the transaction that opens it — the only place the founding
+admin the templates are attributed to is known to exist. Ordinary
+rows from that moment: no preset column, no flag, and no code that treats them as anything but
+the Tenant's own, so they are renamed and deleted exactly as the ones a Recruiter writes.
+_Avoid_: Defaults, Starter pack, System tags, Built-ins.
+
 **Profile**:
 The identity of one human, sharing its id with a Supabase Auth user. Holds the live
 contact identity — name, avatar, phone. Every Candidate, every Recruiter and every Platform
 admin *is* a Profile, and is exactly one of the three — the `account_type` discriminator and
 each child table's composite foreign key make the other two physically unreferenceable.
 _Avoid_: User, Account.
+
+**Phone**:
+One reachable number on a Profile, held as the country it belongs to (`phone_country`, an ISO
+country) beside the number itself in E.164. Two columns rather than one string, because the
+country somebody chose is not always recoverable from the number — `+1` is twenty-odd countries
+— and a flag that changes on reload reads as the platform losing their answer. Every portal
+writes it through one picker, and an Application freezes the number it was sent with.
+_Avoid_: Mobile, Contact number, Dial code (that is the `+963`, not the field).
 
 **Candidate**:
 A Profile in the job-seeker role: owns a professional profile and applies to Jobs. One of
@@ -32,6 +64,33 @@ their profile — it was read off a CV — and the address on it has never been 
 person behind it. Whether they have since **claimed** the account is not a column:
 `auth.users.last_sign_in_at` already knows, and an account nobody has signed into has none.
 _Avoid_: Ghost candidate, Shadow profile, Sourced candidate.
+
+**Links**:
+The three professional addresses a Candidate may claim — `candidates.linkedin_url`,
+`github_url` and `portfolio_url`. Three columns rather than a list, because each answers a
+different question and a list would have to say what every entry is. Each is stored in one
+normalised form, which a CHECK holds: a LinkedIn is `https://www.linkedin.com/in/…`, a GitHub
+is the account rather than one of its repositories, and a portfolio is an address a browser
+would open. A handle typed on its own becomes the whole address before it is stored, and a CV
+parse fills the same three fields. An Application freezes all three in its Snapshot, in the same
+columns and under the same CHECKs, so an address changed afterwards never rewrites what a
+Recruiter already read. Screening reads none of them, on either side.
+_Avoid_: Social links, Profiles, URLs.
+
+**Complete profile**:
+A Candidate profile carrying everything the platform needs to place somebody: a CV that was
+read, their name, Phone, Canonical role, Location, headline and summary, and at least one
+qualification, one skill and one language. `candidates.profile_completed_at` records when it
+became one and cannot be set on a profile that is not — a CHECK holds the single-row fields, and a
+deferred trigger re-reads the sections and the CV each time the candidate row is written, so the
+database refuses an unearned marker rather than believing the backend about one. Taking a marker
+back is the backend's job, and it does it everywhere completeness can change: saving the profile,
+and every path that changes which CV is current — a parse finishing, or a Candidate switching CVs.
+Saving an unfinished profile is always allowed; applying to a Job and opting into Searchable are
+what it gates. A work history is deliberately not among the ten: somebody who has
+never held a job has a first one to find, and a platform that refuses to let them look for it is
+the wrong platform. Experience still feeds Total experience, and Recruiters still filter on it.
+_Avoid_: Complete, 100%, Profile score, Verified profile.
 
 **Recruiter**:
 A Profile in the staff role, belonging to exactly one Tenant. One of the three kinds a
@@ -71,11 +130,14 @@ reviewed profile plus the Candidate's answers, and is the authoritative input to
 Screening. One per (Candidate, Job). Every move it makes is appended to its history, and a move a
 person decided names the person: only the platform itself moves an Application with nobody behind
 it, so an entry from a Recruiter or a Candidate that names no author is one the schema refuses.
-_Avoid_: Submission, Entry.
+It is never put away: there is no archived status and no hidden state, because deciding an
+Application and clearing it from the working list turn out to be the same act — what has ended
+leaves the list of what has not, and nothing else moves.
+_Avoid_: Submission, Entry, Archive (a Job is archived; an Application ends).
 
 **Snapshot**:
 The frozen, candidate-reviewed profile captured when an Application is created — identity,
-experience, education, skills, languages, projects (the `application_*` tables). Distinct
+Links, experience, education, skills, languages, projects (the `application_*` tables). Distinct
 from the live Candidate profile *and* from the raw AI output in `cvs.parsed_cv_data`; it
 may differ from both. Carries the Candidate's Total experience as it stood that day, so a
 verdict can be re-explained years later from the Snapshot alone. Anything drawn from a
@@ -86,13 +148,56 @@ and not by convention: a trigger refuses every update and delete on those tables
 histories, for the backend's service role like anybody else, because RLS does not apply to it.
 _Avoid_: Copy, Archive.
 
+**Stage**:
+What a Candidate is told about their own Application, projected from its status rather than equal
+to it — Received, In review, then the outcome. Everything a Tenant does between arrival and a
+decision is one Stage, so a Recruiter shortlisting and un-shortlisting somebody is invisible and
+silent. A Candidate is notified when the Stage changes and at no other time, which is what lets
+the pipeline stay as non-linear as hiring really is. It is no column of this schema and never
+will be: it is computed from `applications.status` and the Telling wherever it is read, so there
+is no second copy of the truth to keep in step, and a status added to the pipeline has to answer
+what it reads as before the code will start. It answers to time as well as to status: a rejection
+reads as In review until its Telling.
+_Avoid_: Status (the Tenant's word, and it has eight values), step, progress.
+
+**Telling**:
+The moment a decision reaches the Candidate, three days after the Tenant took it
+(`applications.told_at`). Deciding and telling are two moments rather than one: the Recruiter's
+list clears at the click, and for three days the Candidate's Stage still reads In review, the bell
+is silent and the email waits. One column holds all three to the same day — the Stage projection
+reads it, `notifications.visible_at` holds the bell to it, and `communications.available_at` holds
+the email. Only a rejection has one; a hire and a withdrawal are told at once. Three days is one
+platform-wide number rather than a Tenant's to set, because a Candidate hears from several Tenants
+through Sync, and a wait that varied by employer would read as arbitrary to the person waiting.
+What falls out of it is the point: a decision taken back before its Telling was never a decision
+the Candidate saw, so the queued rejection is cancelled and there is nothing to apologise for.
+_Avoid_: Reveal, Publish, Release, Send (that is the email, one channel of three), Grace period
+(that names the gap rather than the moment).
+
+**Hire claim**:
+What a Tenant says happened when it moves an Application to `hired`: the day the work started,
+and the move it was claimed by (`hire_claims`, one row per Application). Its Recruiter and its
+Application are held to one Tenant by a composite key, like every other row a Tenant owns. The
+Candidate answers it once — yes, no, or not yet — and a trigger refuses a second answer for the
+service role like anybody else, because an answer that can be taken back is a claim about today
+rather than a record of what was said. A denied claim moves nothing: what happened is the
+Recruiter's to record, and whether it is true is the Candidate's to say.
+_Avoid_: Hire, Offer (that is a status), Start date (that is one of its columns).
+
+**Placement**:
+A hire the Candidate confirmed — the `placements` view over the Hire claims they said yes to.
+The view *is* the definition rather than a report of one: there is no column a backend could set
+to make a hire count without the Candidate having said so. A claim nobody confirmed stays a
+claim, and nothing counts it.
+_Avoid_: Hire, Hired (that is a status), Success, Conversion.
+
 ### Search
 
 **Searchable**:
 A Candidate's explicit opt-in (`is_searchable`) to be found by any Tenant — through Global
-search and through the Candidate directory alike; it is one opt-in, not two. Opting in needs a current CV that was actually *read*: a
-document that failed to parse would otherwise leave somebody told they could be found and
-appearing nowhere. Being found is not the same as being contacted: no list of
+search and through the Candidate directory alike; it is one opt-in, not two. Opting in needs a Complete profile and a current CV that was actually
+*read*: a document that failed to parse, or a profile with too little in it to match on, would
+otherwise leave somebody told they could be found and appearing nowhere. Being found is not the same as being contacted: no list of
 Candidates ever carries a phone or an email, and a Tenant reads either only by opening one
 Candidate's profile, one at a time.
 _Avoid_: Public, Listed, Visible.
@@ -180,10 +285,11 @@ _Avoid_: Email (the channel), Notification.
 
 **Notification**:
 An in-app message to one Profile, carrying a typed payload and a read/unread state — how
-Candidates learn about status changes and CV parse failures. Never delivered externally;
-distinct from a Communication. One about a status change names the Application it is about,
-which is what every reader of the table joins on; one about a CV parse names none, because it
-is about a CV.
+Candidates learn about Stage changes and about a CV read, or given up on. Never delivered
+externally; distinct from a Communication. One about a Stage change names the Application it is
+about, which is what every reader of the table joins on; one about a CV parse names none, because
+it is about a CV. Both parse outcomes are written in the transaction that settles the parse, so a
+CV nobody was left to tell — deleted while it was being read — is told to nobody.
 _Avoid_: Alert, Push, Message.
 
 **Message template**:
@@ -244,7 +350,9 @@ everywhere else is a **country**, so somebody outside Syria has an answer that i
 than a governorate they are not in. A place is chosen from the list or left unset — never
 typed — which is what makes filtering by it an equality on the key: Damascus no longer
 answers for Rif Dimashq. Full-text search reaches the name through the relation, so a Job is
-still found by the word a person would type.
+still found by the word a person would type. An onsite or hybrid Job always names one, because a
+place somebody has to travel to is the whole point; a remote Job names the place a Candidate must
+be *based*, and leaving it unset means **Anywhere**.
 _Avoid_: City, Place string, Region, Address.
 
 **Employment type**:
@@ -258,9 +366,11 @@ _Avoid_: Contract type, Job type, Employment status.
 
 **Work mode**:
 How much of a Job's work happens where its team is — `onsite`, `hybrid`, `remote`. An enum,
-for the same reasons as Employment type. It answers a different question from **Location**
-and never stands in for one: remote is not a place, and a remote Job still records the
-Location its team sits in, which is what stops "Remote" being typed into the place taxonomy.
+for the same reasons as Employment type, and answered by every published Job, because a listing
+that will not say is one nobody can judge. It answers a different question from **Location** and
+never stands in for one: remote is not a place, which is what stops "Remote" being typed into the
+place taxonomy. One of the hard filters over Browse, so looking for remote work is asking the
+platform rather than reading every listing to find out.
 _Avoid_: Remote, Location type, Arrangement, Workplace.
 
 **CV**:
@@ -292,8 +402,20 @@ leave a verdict citing requirements the Job no longer has.
 _Avoid_: Scoring, Ranking, Matching.
 
 **AI match assessment**:
-A Recruiter's on-demand second opinion on one Application: a percentage and an explanation
-a model wrote, read from the same Snapshot and Job criteria Screening measured. Advisory,
-and append-only — each run adds one more, stamped with the model and prompt version that
-wrote it, and none of them touches the Screening verdict.
-_Avoid_: Match score, AI screening, Ranking.
+A model's reading of one Application: a percentage and an explanation, from the same Snapshot and
+Job criteria Screening measured. Written for every Application as it arrives, and written again
+whenever a Recruiter doubts it. The automatic one is enqueued by the Application's own arrival, in
+the transaction that created it, and run by the worker rather than inline: a Candidate does not
+wait on a model, and a provider that is down cannot refuse an Application. Advisory — none of it
+touches the Screening verdict.
+An Application carries **one** reading, which a unique constraint holds it to: asking again
+replaces it where it stands rather than writing a second beside it, and nothing removes one. A
+Recruiter who distrusts a number gets a better number, never an empty column. The reading keeps
+the model and the prompt version that wrote *it* — overwritten with the rest, because they
+describe what is there now rather than what used to be. Its percentage is carried onto
+`applications.current_match_score`, because an order can only be indexed on a column of the table
+it orders and a Job's list sorts hundreds of rows by it; a trigger moves it, so no writer can
+leave the two disagreeing. Null until the Application has been read at all, which is either a few
+seconds after it arrived or a provider that stayed down.
+_Avoid_: AI screening, Ranking, Verdict (that word is Screening's), History (there is one reading,
+not a list).

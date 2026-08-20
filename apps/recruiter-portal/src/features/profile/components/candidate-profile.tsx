@@ -1,4 +1,3 @@
-import { CandidateCard, type CandidateFact } from '@sync/ui/components/candidate-card';
 import { Badge } from '@sync/ui/components/ui/badge';
 import type { ReactNode } from 'react';
 import { useLanguageName } from '@/features/reference/hooks/use-languages';
@@ -11,6 +10,7 @@ import {
   profileIsBare,
   yearsOfExperience,
 } from '../profile';
+import { CandidateCard, type CandidateFact } from './candidate-card';
 
 interface CandidateFactsCardProps {
   profile: FullProfile;
@@ -25,11 +25,11 @@ export function CandidateFactsCard({ profile, facts, factsLabel }: CandidateFact
       avatarUrl={profile.avatarUrl}
       email={profile.email}
       phone={profile.phone}
+      links={profile.links}
       canonicalRole={profile.role}
       headline={profile.headline}
       facts={facts}
       factsLabel={factsLabel}
-      headingLevel={2}
     />
   );
 }

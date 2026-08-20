@@ -7,14 +7,19 @@ from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from sync_api.text import (
     CanonicalRoleKey,
+    GitHubUrl,
     LanguageCode,
     Line,
+    LinkedInUrl,
     LocationKey,
+    OptionalIsoCountry,
     OptionalLine,
     OptionalLink,
     OptionalParagraph,
+    PortfolioUrl,
 )
 from sync_core.models import LanguageProficiency
+from sync_core.phone import read
 from sync_core.profile import (
     EARLIEST_YEAR,
     LATEST_YEAR,
@@ -221,10 +226,13 @@ class ProfileProject(DatedRange):
 
 
 class ProfileClaims(BaseModel):
-    """The fields a live profile and a draft of one share, whatever their skills look like."""
+    """The fields a live profile and a draft of one share, whatever their skills look like.
+
+    The Phone is not among them: a profile holds a number the platform has read, and a draft
+    holds whatever a CV wrote — including something nobody could dial.
+    """
 
     full_name: Line = Field(examples=["Amina Haddad"])
-    phone: OptionalLine = None
     headline: OptionalLine = Field(default=None, examples=["Backend engineer, 8 years"])
     summary: OptionalParagraph = None
     location_key: LocationKey = None
@@ -240,6 +248,10 @@ class ProfileClaims(BaseModel):
         description="Opt in to cross-tenant Global search. Requires a current, ready CV.",
     )
 
+    linkedin_url: LinkedInUrl = None
+    github_url: GitHubUrl = None
+    portfolio_url: PortfolioUrl = None
+
     educations: list[ProfileEducation] = _section("Qualifications, in the candidate's own order.")
     languages: OneEntryPerLanguage = _section("Languages spoken, in the candidate's own order.")
     projects: list[ProfileProject] = _section("Projects, in the candidate's own order.")
@@ -252,6 +264,14 @@ class ProfileClaims(BaseModel):
 
 class CandidateProfile(ProfileClaims):
     """Everything a Candidate says about themselves. A `GET` body is a valid `PUT` body."""
+
+    phone: OptionalLine = Field(
+        default=None,
+        description="Stored in E.164. Sent any way at all — spaces, brackets, or the national "
+        "form `phone_country` writes it in — and read back the one way.",
+        examples=["+963115550134"],
+    )
+    phone_country: OptionalIsoCountry = None
 
     experiences: list[ProfileExperience] = _section(
         "Jobs, in the candidate's own order. Each one dated."
@@ -269,6 +289,20 @@ class CandidateProfile(ProfileClaims):
         "is corrected by fixing the work history.",
     )
 
+    @model_validator(mode="after")
+    def _a_number_its_country_can_dial(self) -> CandidateProfile:
+        """One answer in two columns: half of it is no answer, and a number that country cannot
+        dial is not one either. The same rules the field applied as it was typed."""
+        if self.phone is None and self.phone_country is None:
+            return self
+        if self.phone is None or self.phone_country is None:
+            raise ValueError("a phone number and the country it belongs to are given together")
+        stored = read(self.phone, self.phone_country)
+        if stored is None:
+            raise ValueError(f"that is not a number {self.phone_country} can dial")
+        self.phone = stored.number
+        return self
+
 
 class ExperienceTotalRequest(BaseModel):
     experiences: list[ProfileExperience] = _section("Jobs to calculate as one work history.")
@@ -282,9 +316,18 @@ class ProfileDraft(ProfileClaims):
     """A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
 
     Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
-    newly names has no years, and a job it never dated has no dates, until the candidate types
-    them.
+    newly names has no years, a job it never dated has no dates, and a number nobody could dial
+    is still what the CV said, until the candidate types them.
     """
+
+    phone: OptionalLine = Field(
+        default=None,
+        description="In E.164 when the CV wrote a number the platform could read, and exactly "
+        "as the CV wrote it when it did not — so a value is never quietly dropped.",
+    )
+    phone_country: OptionalIsoCountry = Field(
+        default=None, description="Null when the CV's number named no country."
+    )
 
     experiences: list[DraftExperience] = _section(
         "Jobs the CV describes, in its own order — those it did not date with their dates null."

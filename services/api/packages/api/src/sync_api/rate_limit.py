@@ -9,7 +9,7 @@ from limits import RateLimitItemPerSecond
 from limits.aio.storage import MemoryStorage
 from limits.aio.strategies import MovingWindowRateLimiter
 
-from sync_api.dependencies import ActingRecruiterDep
+from sync_api.dependencies import ActingRecruiterDep, CurrentProfileDep
 from sync_api.problems import RATE_LIMITED_PROBLEM_TYPE, Problem
 
 if TYPE_CHECKING:
@@ -93,6 +93,16 @@ async def enforce_access_request_rate_limit(
     """The only unauthenticated write on the platform, and the only thing standing between the
     Platform admin's queue and a script."""
     await _enforce(limiter, request)
+
+
+async def enforce_password_change_rate_limit(
+    request: Request,
+    profile: CurrentProfileDep,
+    limiter: Annotated[RateLimiter, Depends(get_auth_rate_limiter)],
+) -> None:
+    """Spent per account rather than per address: the budget that matters here belongs to the
+    account being guessed at, not to whichever address the guessing arrives from."""
+    await _enforce(limiter, request, caller=str(profile.id))
 
 
 async def enforce_assessment_rate_limit(

@@ -17,6 +17,7 @@ export const applicationsReading = z.object({
 export const jobApplicationsReading = applicationsReading.pick({
   pipeline: true,
   screening: true,
+  sort: true,
 });
 
 export type TenantApplicationFilters = z.infer<typeof applicationsReading>;
@@ -39,5 +40,6 @@ export function jobApplicationsAddress(filters: ApplicationFilters): Address<App
   return {
     pipeline: filters.pipeline,
     screening: filters.screening,
+    sort: sortInAddress(filters.sort),
   };
 }

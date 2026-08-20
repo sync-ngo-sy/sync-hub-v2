@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select, update
 
 from sync_core import ObjectNotFoundError, StorageError, get_logger, transaction
+from sync_core.completeness import refresh_completeness
 from sync_core.models import (
     Candidate,
     CanonicalRole,
@@ -15,7 +16,7 @@ from sync_core.models import (
     Language,
     SkillTaxonomy,
 )
-from sync_core.notifications import CvParseFailed, notify
+from sync_core.notifications import CvParseFailed, CvParseSucceeded, notify
 from sync_core.storage import cv_media_type_of
 from sync_ingestion.review import Vocabularies, reviewable
 from sync_parsers import (
@@ -29,6 +30,7 @@ from sync_parsers import (
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from sqlalchemy import Row
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_core import Database, Storage
@@ -94,14 +96,22 @@ class CvIngestion:
                 parsing_error=None,
             )
         )
-        await self._adopt_as_current(session, cv_id)
+        adopted = await self._adopt_as_current(session, cv_id)
+        if adopted is not None:
+            await refresh_completeness(session, adopted)
+
+        cv = await _whom_to_tell(session, cv_id)
+        if cv is None or cv.deleted_at is not None:
+            logger.info("cv_ingestion.read_cv_gone", cv_id=str(cv_id))
+            return
+        await notify(
+            session,
+            cv.candidate_id,
+            CvParseSucceeded(cv_id=cv_id, display_name=cv.display_name),
+        )
 
     async def fail(self, session: AsyncSession, cv_id: UUID, reason: str) -> None:
-        cv = (
-            await session.execute(
-                select(Cv.candidate_id, Cv.display_name, Cv.deleted_at).where(Cv.id == cv_id)
-            )
-        ).one_or_none()
+        cv = await _whom_to_tell(session, cv_id)
         if cv is None:
             logger.warning("cv_ingestion.failed_cv_gone", cv_id=str(cv_id), reason=reason)
             return
@@ -124,20 +134,21 @@ class CvIngestion:
             deleted=cv.deleted_at is not None,
         )
 
-    async def _adopt_as_current(self, session: AsyncSession, cv_id: UUID) -> None:
+    async def _adopt_as_current(self, session: AsyncSession, cv_id: UUID) -> UUID | None:
         candidate_id = await session.scalar(select(Cv.candidate_id).where(Cv.id == cv_id))
         if candidate_id is None:  # pragma: no cover — `parse` has already read this row
-            return
+            return None
         candidate = await session.get(Candidate, candidate_id, with_for_update=True)
         if candidate is None or candidate.current_cv_id is not None:
-            return
+            return None
         # Read under that lock, which deleting a CV takes too: a CV deleted while it was being
         # read is not adopted, and the parse just paid for is not rolled back by the trigger
         # that would refuse a deleted CV as the current one.
         if await session.scalar(select(Cv.deleted_at).where(Cv.id == cv_id)) is not None:
-            return
+            return None
         candidate.current_cv_id = cv_id
         logger.info("cv_ingestion.adopted_as_current", candidate_id=str(candidate_id))
+        return candidate_id
 
     async def _fetch(self, filename: str, cv_id: UUID, *, storage_path: str) -> bytes:
         try:
@@ -147,6 +158,16 @@ class CvIngestion:
             raise CvUnparseableError(f"the stored file for {filename} is gone") from missing
         except StorageError as unavailable:
             raise IngestionUnavailableError("Storage could not be read") from unavailable
+
+
+async def _whom_to_tell(
+    session: AsyncSession, cv_id: UUID
+) -> Row[tuple[UUID, str, datetime | None]] | None:
+    return (
+        await session.execute(
+            select(Cv.candidate_id, Cv.display_name, Cv.deleted_at).where(Cv.id == cv_id)
+        )
+    ).one_or_none()
 
 
 def _describe(display_name: str, storage_path: str) -> tuple[str, str]:

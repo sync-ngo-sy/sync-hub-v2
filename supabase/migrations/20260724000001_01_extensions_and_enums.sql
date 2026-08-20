@@ -25,13 +25,20 @@ create type ingestion_status   as enum ('pending', 'processing', 'completed', 'f
 create type application_status as enum (
   'new', 'reviewing', 'shortlisted', 'interview', 'offer', 'hired', 'rejected', 'withdrawn'
 );
+-- The queue that reads an Application against its Job as it arrives. Its own enum rather than
+-- `ingestion_status`, so the two queues can be given different states without one moving the
+-- other -- the same reason Communications has one of its own.
+create type assessment_status as enum ('pending', 'processing', 'completed', 'failed');
 create type application_question_type as enum ('yes_no', 'short_text');
 create type status_change_source     as enum ('recruiter', 'candidate', 'system');
 create type qualification_status     as enum ('pending', 'qualified', 'disqualified', 'review_required');
+-- What the Candidate said about a hire their Tenant claims (migration 19). A claim arrives
+-- unanswered and stays a claim until they answer; only `confirmed` makes it a Placement.
+create type hire_confirmation as enum ('unanswered', 'confirmed', 'denied');
 
 create type communication_channel as enum ('email', 'sms');
 create type communication_status  as enum ('queued', 'processing', 'sent', 'failed');
--- A status change and a failed CV parse are Notifications (migration 12), not email.
+-- A Stage change and a failed CV parse are Notifications (migration 12), not email.
 create type communication_type    as enum (
   'application_confirmation', 'application_rejection', 'recruiter_message'
 );

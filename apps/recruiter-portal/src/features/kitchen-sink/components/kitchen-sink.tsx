@@ -4,6 +4,7 @@ import {
   type ComboboxOptionGroup,
 } from '@sync/ui/components/combobox';
 import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { PhoneField, type PhoneValue } from '@sync/ui/components/phone-field';
 import { STATUS_TONES, StatusMark, type StatusTone } from '@sync/ui/components/status-mark';
 import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/alert';
@@ -17,7 +18,7 @@ import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Switch } from '@sync/ui/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sync/ui/components/ui/tabs';
 import { Textarea } from '@sync/ui/components/ui/textarea';
-import { Inbox, Info } from 'lucide-react';
+import { Inbox, Info, Trash2 } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { PageHeader } from '@/features/shell/components/page-header';
 import { ThemeToggle } from '@/features/shell/components/theme-toggle';
@@ -38,7 +39,7 @@ interface DemoApplication {
   candidate: string;
   job: string;
   screening: { tone: StatusTone; label: string };
-  stage: { tone: StatusTone; label: string };
+  status: { tone: StatusTone; label: string };
 }
 
 const APPLICATIONS: DemoApplication[] = [
@@ -47,28 +48,28 @@ const APPLICATIONS: DemoApplication[] = [
     candidate: 'Lina Khoury',
     job: 'Field Coordinator, Aleppo',
     screening: { tone: 'active', label: 'Qualified' },
-    stage: { tone: 'interview', label: 'Interview' },
+    status: { tone: 'interview', label: 'Interview' },
   },
   {
     id: 'a2',
     candidate: 'Yara Salloum',
     job: 'Logistics Assistant',
     screening: { tone: 'ended', label: 'Disqualified' },
-    stage: { tone: 'rejected', label: 'Rejected' },
+    status: { tone: 'rejected', label: 'Rejected' },
   },
   {
     id: 'a3',
     candidate: 'Omar Haddad',
     job: 'MEAL Officer, Idlib',
     screening: { tone: 'attention', label: 'Review required' },
-    stage: { tone: 'new', label: 'New' },
+    status: { tone: 'new', label: 'New' },
   },
   {
     id: 'a4',
     candidate: 'Rana Deeb',
     job: 'Programme Manager',
     screening: { tone: 'active', label: 'Qualified' },
-    stage: { tone: 'hired', label: 'Hired' },
+    status: { tone: 'hired', label: 'Hired' },
   },
 ];
 
@@ -105,9 +106,9 @@ const APPLICATION_COLUMNS: DataTableColumn<DemoApplication>[] = [
     cell: ({ row }) => <StatusMark {...row.original.screening} />,
   },
   {
-    id: 'stage',
+    id: 'status',
     header: 'Status',
-    cell: ({ row }) => <StatusMark {...row.original.stage} />,
+    cell: ({ row }) => <StatusMark {...row.original.status} />,
   },
 ];
 
@@ -124,7 +125,11 @@ function ApplicationsTable() {
       onRowOpen={(application) => console.info('open', application.id)}
       rowActions={(application) => [
         { label: 'Move to shortlist', onSelect: () => console.info('shortlist', application.id) },
-        { label: 'Reject', onSelect: () => console.info('reject', application.id) },
+        {
+          label: 'Reject',
+          onSelect: () => console.info('reject', application.id),
+          destructive: true,
+        },
       ]}
       empty={{
         icon: Inbox,
@@ -178,6 +183,18 @@ const LOCATIONS: ComboboxOptionGroup[] = [
     ],
   },
 ];
+
+function PhoneEntry() {
+  const phoneId = useId();
+  const [phone, setPhone] = useState<PhoneValue>({ country: 'SY', national: '011 555 0100' });
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={phoneId}>Phone</Label>
+      <PhoneField id={phoneId} value={phone} onChange={setPhone} />
+    </div>
+  );
+}
 
 function Pickers() {
   const functionId = useId();
@@ -290,6 +307,10 @@ export default function KitchenSink() {
         </span>
         <Button variant="link">Link</Button>
         <Button variant="destructive">Delete workspace</Button>
+        <Button variant="destructive-outline">
+          <Trash2 data-icon="inline-start" />
+          Remove criterion
+        </Button>
         <Button disabled>Disabled</Button>
         <Button size="sm">Small</Button>
         <Button size="lg">Large</Button>
@@ -301,6 +322,7 @@ export default function KitchenSink() {
             <Label htmlFor={emailId}>Email</Label>
             <Input id={emailId} type="email" placeholder="rana@aman.test" />
           </div>
+          <PhoneEntry />
           <div className="space-y-1.5">
             <Label htmlFor={noteId}>Note</Label>
             <Textarea id={noteId} placeholder="Strong MEAL background." />

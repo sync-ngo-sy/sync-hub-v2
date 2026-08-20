@@ -85,7 +85,9 @@ curl -sS -X POST localhost:8080/scheduled -H "X-Worker-Secret: $SYNC_WORKER_SHAR
 
 For local work the `drain` command is almost always what you want.
 
-The API serves `http://127.0.0.1:8000`, with OpenAPI at `/docs` and `/openapi.json`.
+The API serves `http://127.0.0.1:8000`, with OpenAPI at `/docs` and `/openapi.json`. Both
+are local and CI only: a deployed API and a deployed worker answer 404 on `/docs`,
+`/redoc` and `/openapi.json`, so neither hands out its own surface.
 
 ## 2b. Run the processes as containers
 
@@ -118,7 +120,7 @@ local default.
 
 | Key                    | Without it                                        |
 | ---------------------- | ------------------------------------------------- |
-| `SYNC_OPENAI_API_KEY`  | the worker refuses to start (CV parsing, embedding) |
+| `SYNC_OPENAI_API_KEY`  | the worker refuses to start (CV parsing, embedding, match assessment) |
 | `SYNC_RESEND_API_KEY`  | the worker refuses to start (sending Communications) |
 
 If you only need the API, run `docker compose up api`.
@@ -200,7 +202,14 @@ uv run python scripts/seed_demo.py --purge-only
 uv run python scripts/seed_demo.py --no-embed # skip the OpenAI calls Global search needs
 ```
 
-Three Tenants, nine Candidates, ten Jobs, nineteen Applications across every pipeline stage and
+It spends money. Every Application is read by the real assessment model, once each — nineteen
+calls on `SYNC_OPENAI_ASSESSMENT_MODEL`, plus the embedding calls `--no-embed` turns off. The
+Match scores are what makes a seeded Job worth sorting, and a stand-in's arithmetic would not
+behave the way the deployed reading does. With no `SYNC_OPENAI_API_KEY` set the seed still runs
+and says so: the scores then come from a deterministic stand-in and the rows read
+`seed-assessor` rather than a model's name.
+
+Three Tenants, nine Candidates, ten Jobs, nineteen Applications across every pipeline status and
 every Screening verdict, a month of campaign traffic, and the Tenant records that hang off it all
 — notes, Tags, the Talent pool, Message templates, sent messages, Notifications. It creates the
 Platform admin too, so it replaces section 4 for local work.

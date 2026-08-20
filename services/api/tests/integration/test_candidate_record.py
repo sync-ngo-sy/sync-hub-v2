@@ -33,6 +33,10 @@ A_WHOLE_PROFILE: dict[str, Any] = {
     "headline": "Backend engineer",
     "summary": "Builds payment systems.",
     "phone": "+963115550134",
+    "phone_country": "SY",
+    "linkedin_url": "linkedin.com/in/amina-haddad",
+    "github_url": "amina-haddad",
+    "portfolio_url": "amina-haddad.dev",
     "location_key": "sy-damascus",
     "canonical_role_key": "backend-engineer",
     "skills": [{"name": "Python", "years_experience": 8.0}],
@@ -102,7 +106,20 @@ async def test_a_profile_is_where_a_phone_and_an_email_are_readable(
     record = (await recruiter.get(a_candidate_record(amina.id))).json()
 
     assert record["phone"] == "+963115550134"
+    assert record["phone_country"] == "SY"
     assert record["email"] == amina.signup.email
+
+
+async def test_a_recruiter_reads_the_links_the_candidate_claimed(
+    app: FastAPI, recruiter: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    amina = await a_candidate_with(app, mailbox, db_session, label="amina", **A_WHOLE_PROFILE)
+
+    record = (await recruiter.get(a_candidate_record(amina.id))).json()
+
+    assert record["linkedin_url"] == "https://www.linkedin.com/in/amina-haddad"
+    assert record["github_url"] == "https://github.com/amina-haddad"
+    assert record["portfolio_url"] == "https://amina-haddad.dev"
 
 
 async def test_a_candidate_outside_the_tenants_reach_reads_as_absent(

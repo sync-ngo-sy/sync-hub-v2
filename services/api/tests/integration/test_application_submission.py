@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 from uuid import uuid4
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +12,6 @@ from sync_core.communications import ApplicationConfirmation, payload_of
 from sync_core.models import (
     ApplicationStatus,
     CommunicationStatus,
-    CvParsingStatus,
     QualificationStatus,
     StatusChangeSource,
 )
@@ -44,10 +44,10 @@ from tests.support.jobs import (
 )
 from tests.support.mailbox import Mailbox
 from tests.support.profiles import (
-    AN_EDUCATION,
     AN_EXPERIENCE,
     a_filled_profile,
     a_saved_profile,
+    completed_at,
     give_a_current_cv,
     make_no_cv_current,
     my_id,
@@ -69,7 +69,9 @@ async def test_a_candidate_applies_and_sees_it_in_their_applications(
 
     assert application["job"]["id"] == job["id"]
     assert application["job"]["title"] == job["title"]
-    assert application["status"] == "new"
+    assert application["stage"] == "received"
+    assert application["can_withdraw"] is True
+    assert application["hire"] is None
     assert [item["id"] for item in await my_applications(other_browser)] == [application["id"]]
 
 
@@ -122,6 +124,26 @@ async def test_the_snapshot_is_copied_from_the_live_profile(
     assert [float(row.years_experience) for row in snapshot.skills] == [8.0, 6.0]
 
 
+async def test_the_snapshot_freezes_the_number_and_the_country_it_belongs_to(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Half a frozen answer is not one: an Application is read long after somebody moved."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, phone="+963115550134", phone_country="SY"
+    )
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    await a_saved_profile(other_browser, a_filled_profile(phone="+9611555042", phone_country="LB"))
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert (snapshot.profile.phone, snapshot.profile.phone_country) == ("+963115550134", "SY")
+
+
 async def test_a_profile_in_the_request_is_not_what_gets_snapshotted(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
@@ -165,6 +187,37 @@ async def test_the_snapshot_carries_the_unmapped_skills_and_screening_never_saw_
     assert snapshot.profile.unmapped_skills == ["Kubernetes wrangling", "Bash"]
     stored = await stored_application(db_session, application["id"])
     assert stored.qualification_status is QualificationStatus.QUALIFIED
+
+
+async def test_the_snapshot_freezes_the_links_the_candidate_applied_with(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The Links travel with the Application, and stop travelling with the Candidate: an address
+    changed afterwards does not rewrite what a Recruiter already read."""
+    job = await a_job_screening_on(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser,
+        mailbox,
+        db_session,
+        linkedin_url="amina-haddad",
+        github_url="github.com/amina-haddad",
+        portfolio_url="amina-haddad.dev",
+    )
+    application = await an_accepted_application(other_browser, job["id"])
+
+    moved_on = await save_profile(
+        other_browser, a_filled_profile(linkedin_url="somebody-else-entirely")
+    )
+
+    assert moved_on.status_code == 200, moved_on.text
+    snapshot = await snapshot_of(db_session, application["id"])
+    assert snapshot.profile is not None
+    assert snapshot.profile.linkedin_url == "https://www.linkedin.com/in/amina-haddad"
+    assert snapshot.profile.github_url == "https://github.com/amina-haddad"
+    assert snapshot.profile.portfolio_url == "https://amina-haddad.dev"
 
 
 async def test_the_confirmation_is_queued_in_the_same_transaction(
@@ -263,24 +316,6 @@ async def test_the_cv_is_the_current_one_and_the_request_cannot_name_another(
     assert (await stored_application(db_session, application["id"])).cv_id == swapped
 
 
-async def test_how_far_the_parse_got_is_not_a_submit_precondition(
-    recruiter: AsyncClient,
-    other_browser: AsyncClient,
-    mailbox: Mailbox,
-    db_session: AsyncSession,
-) -> None:
-    """Only `current_cv_id` being set is checked. Whether that CV has been read is not."""
-    job = await a_published_job(recruiter)
-    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
-    await give_a_current_cv(
-        db_session, await my_id(other_browser), parsing_status=CvParsingStatus.PROCESSING
-    )
-
-    accepted = await apply_to(other_browser, job["id"])
-
-    assert accepted.status_code == 201, accepted.text
-
-
 async def test_applying_with_no_skills_is_refused_and_says_so(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
@@ -299,23 +334,54 @@ async def test_applying_with_no_skills_is_refused_and_says_so(
     assert "at least one skill" in problem["detail"]
 
 
-async def test_applying_with_neither_a_job_nor_a_qualification_is_refused_and_says_so(
+async def test_somebody_who_has_never_held_a_job_can_still_apply(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """A first job is still a job. A work history is not what the platform holds anybody to."""
     job = await a_published_job(recruiter)
     await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
-    await a_saved_profile(other_browser, a_filled_profile(experiences=[], educations=[]))
+    await a_saved_profile(other_browser, a_filled_profile(experiences=[]))
+
+    accepted = await apply_to(other_browser, job["id"])
+
+    assert accepted.status_code == 201, accepted.text
+
+
+@pytest.mark.parametrize(
+    ("without", "named"),
+    [
+        ({"educations": []}, "at least one qualification"),
+        ({"languages": []}, "at least one language"),
+        ({"summary": None}, "a summary"),
+        ({"headline": None}, "a headline"),
+        ({"location_key": None}, "where you are"),
+        ({"canonical_role_key": None}, "what kind of work you do"),
+        ({"phone": None, "phone_country": None}, "a phone number and the country it belongs to"),
+    ],
+)
+async def test_a_job_and_a_qualification_are_both_asked_for_like_every_other_requirement(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+    without: dict[str, Any],
+    named: str,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
+    await a_saved_profile(other_browser, a_filled_profile(**without))
 
     refused = await apply_to(other_browser, job["id"])
 
     assert refused.status_code == 422, refused.text
-    assert "either a job or a qualification" in refused.json()["detail"]
+    assert refused.json()["type"] == "urn:sync:problem:incomplete-profile"
+    assert named in refused.json()["detail"]
 
 
-async def test_either_a_job_or_a_qualification_is_enough(
+async def test_the_optional_sections_never_stand_between_a_candidate_and_applying(
     recruiter: AsyncClient,
     other_browser: AsyncClient,
     mailbox: Mailbox,
@@ -324,19 +390,15 @@ async def test_either_a_job_or_a_qualification_is_enough(
     job = await a_published_job(recruiter)
     await a_candidate_with_a_ready_cv(other_browser, mailbox, db_session)
     await a_saved_profile(
-        other_browser, a_filled_profile(experiences=[], educations=[AN_EDUCATION])
+        other_browser,
+        a_filled_profile(
+            projects=[], unmapped_skills=[], linkedin_url=None, github_url=None, portfolio_url=None
+        ),
     )
-    only_educated = await apply_to(other_browser, job["id"])
-    assert only_educated.status_code == 201, only_educated.text
 
-    await a_saved_profile(
-        other_browser, a_filled_profile(experiences=[AN_EXPERIENCE], educations=[])
-    )
-    elsewhere = await a_published_job(recruiter)
+    accepted = await apply_to(other_browser, job["id"])
 
-    only_employed = await apply_to(other_browser, elsewhere["id"])
-
-    assert only_employed.status_code == 201, only_employed.text
+    assert accepted.status_code == 201, accepted.text
 
 
 async def test_an_empty_profile_is_refused_before_anything_is_written(
@@ -654,8 +716,10 @@ async def test_the_applications_list_says_where_each_one_stands_and_no_more(
 
     [listed] = await my_applications(other_browser)
 
-    assert listed["status"] == "new"
+    assert listed["stage"] == "received"
+    assert listed["can_withdraw"] is True
     assert listed["job"]["tenant"]["name"]
+    assert "status" not in listed, "a Candidate reads a Stage, never the Tenant's own status"
     assert "qualification_status" not in listed
     assert "qualification_reason" not in listed
 
@@ -782,3 +846,27 @@ async def test_work_the_snapshot_counts_clears_the_bar(
 
     stored = await stored_application(db_session, application["id"])
     assert stored.qualification_status is QualificationStatus.QUALIFIED
+
+
+async def test_a_candidate_recruiters_can_find_still_applies(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Searchable means Complete, so this is the applicant most entitled to be let through.
+
+    Recomputing completeness took the marker off before it put it back, and the switch outlives
+    a marker only for as long as one statement — which answered 500 to the whole submission.
+    """
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(
+        other_browser, mailbox, db_session, is_searchable=True, label="findable"
+    )
+    candidate_id = await my_id(other_browser)
+    assert (await my_profile(other_browser))["is_searchable"] is True
+
+    application = await an_accepted_application(other_browser, job["id"])
+
+    assert application["stage"] == "received"
+    assert application["can_withdraw"] is True
+    assert application["hire"] is None
+    assert (await my_profile(other_browser))["is_searchable"] is True
+    assert await completed_at(db_session, candidate_id) is not None

@@ -481,7 +481,9 @@ async def test_the_directory_never_carries_a_phone_or_an_email(
 ) -> None:
     amina = await a_candidate_with(app, mailbox, db_session, label="amina", **A_DAMASCUS_BACKEND)
     await db_session.execute(
-        update(Profile).where(Profile.id == amina.id).values(phone="+963115550134")
+        update(Profile)
+        .where(Profile.id == amina.id)
+        .values(phone="+963115550134", phone_country="SY")
     )
     await db_session.commit()
 

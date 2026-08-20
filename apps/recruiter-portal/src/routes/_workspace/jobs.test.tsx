@@ -76,7 +76,7 @@ describe('Jobs', () => {
     expect(screen.getByRole('tab', { name: 'Archived 1' })).toBeVisible();
   });
 
-  it('searches Job titles through the URL and keeps total counts unchanged', async () => {
+  it('searches Job titles through the URL, and the totals narrow with the list', async () => {
     server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
 
     const { router, user } = await renderApp('/jobs');
@@ -85,9 +85,47 @@ describe('Jobs', () => {
     await waitFor(() => expect(router.state.location.search).toEqual({ q: 'programme' }));
     expect(await screen.findByText('Programme Officer')).toBeVisible();
     expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'All 2' })).toBeVisible();
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'All 1' })).toBeVisible());
     expect(screen.getByRole('tab', { name: 'Draft 1' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Published 1' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Published 0' })).toBeVisible();
+  });
+
+  it('keeps the work mode filter in the URL and sends it to the Jobs API', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR, PROGRAMME_OFFICER]));
+
+    const { router, user } = await renderApp('/jobs');
+    expect(await screen.findByText('Field Coordinator')).toBeVisible();
+
+    await user.click(screen.getByLabelText('Work mode'));
+    await user.click(await screen.findByRole('option', { name: 'Remote' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ mode: 'remote' }));
+    expect(await screen.findByText('Programme Officer')).toBeVisible();
+    expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'All 1' })).toBeVisible());
+  });
+
+  it('names every filter that emptied the list, and drops them all in one action', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsJobs([FIELD_COORDINATOR]));
+
+    const { router, user } = await renderApp('/jobs?q=nurse&mode=remote');
+
+    expect(await screen.findByText('No Jobs match “nurse” and remote.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    await waitFor(() => expect(router.state.location.searchStr).toBe(''));
+    expect(await screen.findByText('Field Coordinator')).toBeVisible();
+  });
+
+  it('reads a remote Job that names no Location as Anywhere', async () => {
+    const anywhere = { ...PROGRAMME_OFFICER, location_key: null, location_name: null };
+    server.use(...signedInAs(RECRUITER), ...listsJobs([anywhere]));
+
+    await renderApp('/jobs');
+
+    const row = within(await screen.findByRole('row', { name: /Programme Officer/ }));
+    expect(row.getByText('Anywhere · Remote · Contract')).toBeVisible();
   });
 
   it('shows the views and the applications each Job has drawn', async () => {

@@ -23,6 +23,7 @@ from tests.support.cvs import (
     some_bytes,
     stored_bytes,
     upload_cv,
+    upload_cv_with_a_raw_filename,
 )
 from tests.support.mailbox import Mailbox
 from tests.support.tenants import an_admin
@@ -135,6 +136,39 @@ async def test_a_file_that_is_not_a_cv_is_refused(browser: AsyncClient, mailbox:
 
     assert response.status_code == 415, response.text
     assert response.json()["type"].endswith("unsupported-cv-media-type")
+
+
+async def test_a_filename_with_a_control_character_keeps_the_rest_of_the_name(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_cv(browser, filename="amina-haddad\x7f.pdf")
+
+    assert response.status_code == 201, response.text
+    assert response.json()["display_name"] == "amina-haddad.pdf"
+
+
+async def test_a_filename_that_is_only_control_characters_falls_back_to_cv(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_cv_with_a_raw_filename(browser, filename="\x00\x01")
+
+    assert response.status_code == 201, response.text
+    assert response.json()["display_name"] == "CV"
+
+
+async def test_a_filename_with_a_null_byte_keeps_the_rest_of_the_name(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await upload_cv_with_a_raw_filename(browser, filename="amina-haddad\x00.pdf")
+
+    assert response.status_code == 201, response.text
+    assert response.json()["display_name"] == "amina-haddad.pdf"
 
 
 async def test_a_word_document_a_browser_could_not_name_is_still_accepted(

@@ -1,19 +1,28 @@
 import type { components } from '@sync/api-client';
 import { FIELD_COORDINATOR } from '@/features/jobs/testing/fixtures';
 import type { ApplicationJob, ApplicationSummary, TenantApplication } from '../application';
-import type { MatchAssessment } from '../assessment';
+import type { MatchAssessment, MatchScore } from '../assessment';
 import type { ApplicationReview } from '../review';
 
 export const FIELD: ApplicationJob = {
   id: FIELD_COORDINATOR.id,
   title: FIELD_COORDINATOR.title,
   location_name: FIELD_COORDINATOR.location_name,
+  work_mode: FIELD_COORDINATOR.work_mode,
 };
 
 export const MEAL: ApplicationJob = {
   id: '00000000-0000-4000-8000-000000000103',
   title: 'MEAL Officer',
   location_name: 'Damascus',
+  work_mode: 'hybrid',
+};
+
+export const ANYWHERE_JOB: ApplicationJob = {
+  id: '00000000-0000-4000-8000-000000000104',
+  title: 'Technical Writer',
+  location_name: null,
+  work_mode: 'remote',
 };
 
 export const DIMA: TenantApplication = {
@@ -86,6 +95,13 @@ export const HANI: TenantApplication = {
   job: MEAL,
 };
 
+export const AMAL_MATCH: MatchScore = {
+  percentage: 82,
+  explanation: 'Nine years of field logistics against a role asking for five, and both languages.',
+  model_name: 'gpt-4o-mini',
+  assessed_at: '2026-08-02T09:02:00Z',
+};
+
 export const AMAL: ApplicationSummary = {
   id: '00000000-0000-4000-8000-000000000301',
   candidate_name: 'Amal Haddad',
@@ -95,6 +111,7 @@ export const AMAL: ApplicationSummary = {
   total_experience_years: 9,
   status: 'new',
   qualification_status: 'qualified',
+  match: AMAL_MATCH,
   applied_at: '2026-08-02T09:00:00Z',
   updated_at: '2026-08-02T09:00:00Z',
 };
@@ -108,6 +125,12 @@ export const BASSEL: ApplicationSummary = {
   total_experience_years: 4,
   status: 'shortlisted',
   qualification_status: 'review_required',
+  match: {
+    percentage: 41,
+    explanation: null,
+    model_name: 'gpt-4o-mini',
+    assessed_at: '2026-08-01T09:03:00Z',
+  },
   applied_at: '2026-08-01T09:00:00Z',
   updated_at: '2026-08-01T09:00:00Z',
 };
@@ -121,6 +144,7 @@ export const CARLA: ApplicationSummary = {
   total_experience_years: 2,
   status: 'rejected',
   qualification_status: 'disqualified',
+  match: null,
   applied_at: '2026-07-30T09:00:00Z',
   updated_at: '2026-07-31T09:00:00Z',
 };
@@ -147,12 +171,15 @@ export const AMAL_REVIEW: ApplicationReview = {
   },
   snapshot: {
     full_name: 'Amal Haddad',
-    phone: '+963 11 555 0101',
+    phone: '+963115550101',
+    phone_country: 'SY',
     headline: 'Field logistics lead',
     total_experience_years: 9,
     summary: 'Nine years moving relief cargo across northern Syria.',
     location: 'Aleppo',
     canonical_role: 'Logistics Manager',
+    linkedin_url: 'https://www.linkedin.com/in/amal-haddad',
+    portfolio_url: 'https://amal-haddad.dev',
     unmapped_skills: ['Convoy planning', 'Customs clearance'],
     experiences: [
       {
@@ -256,6 +283,7 @@ export const LATEST_ASSESSMENT: MatchAssessment = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v3',
   assessed_at: '2026-08-03T09:00:00Z',
+  first_assessed_at: '2026-08-03T09:00:00Z',
 };
 
 export const EARLIER_ASSESSMENT: MatchAssessment = {
@@ -267,6 +295,7 @@ export const EARLIER_ASSESSMENT: MatchAssessment = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v2',
   assessed_at: '2026-07-28T09:00:00Z',
+  first_assessed_at: '2026-07-20T09:00:00Z',
 };
 
 export const BARE_ASSESSMENT: MatchAssessment = {
@@ -278,6 +307,7 @@ export const BARE_ASSESSMENT: MatchAssessment = {
   model_name: 'claude-sonnet-5',
   prompt_version: 'v3',
   assessed_at: '2026-07-20T09:00:00Z',
+  first_assessed_at: '2026-07-20T09:00:00Z',
 };
 
 export const TOO_MANY_ASSESSMENTS: components['schemas']['ProblemDetail'] = {

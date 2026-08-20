@@ -3,13 +3,17 @@ from __future__ import annotations
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.support.applications import an_application_through
 from tests.support.jobs import (
     a_published_job,
     a_tracked_link,
     change_link,
     counted_again,
+    create_link,
     follow_link,
+    links_of,
 )
+from tests.support.mailbox import Mailbox
 from tests.support.stats import TENANT_TRACKED_LINKS
 
 
@@ -75,6 +79,36 @@ async def test_a_link_nobody_followed_counts_none(recruiter: AsyncClient) -> Non
     [item] = (await recruiter.get(TENANT_TRACKED_LINKS)).json()["items"]
 
     assert item["view_count"] == 0
+    assert item["application_count"] == 0
+    assert item["conversion_rate"] is None
+
+
+async def test_a_row_reports_what_its_link_reports_on_the_job_it_belongs_to(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Two surfaces reading one link. A Recruiter comparing them is comparing channels, so a
+    page that counted its own way would be reporting a second nearly equal answer."""
+    job = await a_published_job(recruiter, title="Field Coordinator")
+    link = await a_tracked_link(recruiter, job["id"], name="LinkedIn post")
+    await an_application_through(other_browser, mailbox, db_session, job["id"], link["token"])
+    await counted_again(db_session, job["id"])
+    await follow_link(third_browser, link["token"])
+
+    [listed] = (await recruiter.get(TENANT_TRACKED_LINKS)).json()["items"]
+    [on_the_job] = await links_of(recruiter, job["id"])
+
+    assert (listed["view_count"], listed["application_count"], listed["conversion_rate"]) == (
+        2,
+        1,
+        50,
+    )
+    assert listed["view_count"] == on_the_job["view_count"]
+    assert listed["application_count"] == on_the_job["application_count"]
+    assert listed["conversion_rate"] == on_the_job["conversion_rate"]
 
 
 async def test_the_list_is_newest_first_and_pages_by_cursor(recruiter: AsyncClient) -> None:
@@ -159,3 +193,14 @@ async def test_another_tenants_links_are_not_in_this_list(
 
     assert await names_in(recruiter) == []
     assert await names_in(rival) == ["Their campaign"]
+
+
+async def test_a_link_name_with_a_control_character_is_created_without_it(
+    recruiter: AsyncClient,
+) -> None:
+    job = await a_published_job(recruiter)
+
+    created = await create_link(recruiter, job["id"], name="Spring\x00campaign")
+
+    assert created.status_code == 201, created.text
+    assert created.json()["name"] == "Springcampaign"

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Depends, Request, Response, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field
 
 from sync_api.auth import ActingProfile, SignedIn
 from sync_api.auth.password_policy import (
@@ -13,7 +13,8 @@ from sync_api.auth.password_policy import (
 )
 from sync_api.dependencies import AuthServiceDep, CurrentProfileDep, SessionCookiesDep
 from sync_api.errors import openapi_problem
-from sync_api.rate_limit import enforce_auth_rate_limit
+from sync_api.rate_limit import enforce_auth_rate_limit, enforce_password_change_rate_limit
+from sync_api.text import OptionalIsoCountry, without_control_characters
 from sync_core.models import AccountType
 
 ROUTER_PREFIX: Final = "/auth"
@@ -59,7 +60,8 @@ class ProfileView(BaseModel):
     full_name: str
     account_type: AccountType
     avatar_url: str | None
-    phone: str | None
+    phone: str | None = Field(default=None, description="In E.164.")
+    phone_country: OptionalIsoCountry = None
 
     @classmethod
     def of(cls, profile: ActingProfile) -> ProfileView:
@@ -70,13 +72,16 @@ class ProfileView(BaseModel):
             account_type=profile.account_type,
             avatar_url=profile.avatar_url,
             phone=profile.phone,
+            phone_country=profile.phone_country,
         )
 
 
 class SignUpRequest(BaseModel):
     email: EmailStr
     password: NewPassword
-    full_name: str = Field(min_length=1, max_length=200)
+    full_name: Annotated[
+        str, Field(min_length=1, max_length=200), BeforeValidator(without_control_characters)
+    ]
 
 
 class LogInRequest(BaseModel):
@@ -100,6 +105,11 @@ class ConfirmPasswordResetRequest(BaseModel):
 class AcceptInviteRequest(BaseModel):
     token_hash: EmailToken
     password: NewPassword
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: Password
+    new_password: NewPassword
 
 
 @router.post(
@@ -270,6 +280,39 @@ async def confirm_password_reset(
     await auth.reset_password(token_hash=body.token_hash, password=body.password)
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     cookies.clear(response)
+    return response
+
+
+@router.post(
+    "/password",
+    operation_id="changePassword",
+    summary="Change the caller's password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    dependencies=[Depends(enforce_password_change_rate_limit)],
+    responses={
+        400: openapi_problem("The new password does not meet the policy, or is the current one."),
+        401: openapi_problem("There is no valid session, or the current password is wrong."),
+        **IDENTITY_PROVIDER_UNAVAILABLE,
+    },
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    profile: CurrentProfileDep,
+    auth: AuthServiceDep,
+    cookies: SessionCookiesDep,
+) -> Response:
+    """Set a new password from inside the account, without an inbox round trip.
+
+    Every session the account has open ends here, so a password changed because it leaked takes
+    the account back from whoever was holding it. The caller alone is signed in again before
+    answering, and carries on with the session in the cookie this sets.
+    """
+    session = await auth.change_password(
+        profile, current_password=body.current_password, new_password=body.new_password
+    )
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookies.issue(response, session)
     return response
 
 

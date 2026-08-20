@@ -1,6 +1,6 @@
 import type { FieldPath } from 'react-hook-form';
 import { isProblem, problemFields, problemMessage, problemStatus } from '@/lib/api-problem';
-import { SEARCHABLE_NEEDS_CV_PROBLEM } from './problems';
+import { SEARCHABLE_NEEDS_A_COMPLETE_PROFILE_PROBLEM } from './problems';
 import type { ProfileFormValues } from './schemas/profile';
 
 type ProfileField = FieldPath<ProfileFormValues>;
@@ -10,13 +10,16 @@ export interface ProfileRejection {
   root: string | null;
 }
 
-const IDENTITY_FIELDS = [
+const WHOLE_PROFILE_FIELDS = [
   'full_name',
   'phone',
   'headline',
   'summary',
   'location_key',
   'is_searchable',
+  'linkedin_url',
+  'github_url',
+  'portfolio_url',
 ] as const satisfies readonly (keyof ProfileFormValues)[];
 
 type Section = Exclude<
@@ -60,7 +63,7 @@ function fieldFor(location: string): ProfileField | null {
   if (section === undefined) return null;
 
   if (index === undefined) {
-    return IDENTITY_FIELDS.some((name) => name === section) ? (section as ProfileField) : null;
+    return WHOLE_PROFILE_FIELDS.some((name) => name === section) ? (section as ProfileField) : null;
   }
   if (!/^\d+$/.test(index)) return null;
 
@@ -76,12 +79,15 @@ function fieldFor(location: string): ProfileField | null {
 const isSection = (name: string): name is Section => name in SECTION_FIELDS;
 
 export function profileRejection(error: unknown): ProfileRejection | null {
-  if (isProblem(error, SEARCHABLE_NEEDS_CV_PROBLEM)) {
+  if (isProblem(error, SEARCHABLE_NEEDS_A_COMPLETE_PROFILE_PROBLEM)) {
     return {
       fields: [
         {
           name: 'is_searchable',
-          message: problemMessage(error, 'Global search needs a current, processed CV first.'),
+          message: problemMessage(
+            error,
+            'Global search needs a complete profile and a CV that has been read.',
+          ),
         },
       ],
       root: null,

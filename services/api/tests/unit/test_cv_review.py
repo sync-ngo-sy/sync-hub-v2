@@ -202,6 +202,25 @@ def test_a_blank_field_means_the_cv_did_not_say(blank: str) -> None:
     assert parse.location is None
 
 
+def test_a_link_a_cv_prints_is_kept_in_the_one_form_the_profile_stores() -> None:
+    parse = reviewed(
+        linkedin_url="  in/amina-haddad ",
+        github_url="https://github.com/amina-haddad/ledger",
+        portfolio_url="amina-haddad.dev/",
+    )
+
+    assert parse.linkedin_url == "https://www.linkedin.com/in/amina-haddad"
+    assert parse.github_url == "https://github.com/amina-haddad"
+    assert parse.portfolio_url == "https://amina-haddad.dev"
+
+
+def test_a_link_read_into_the_wrong_field_is_dropped_rather_than_shown_as_an_answer() -> None:
+    parse = reviewed(linkedin_url="https://github.com/amina-haddad", github_url="  ")
+
+    assert parse.linkedin_url is None
+    assert parse.github_url is None
+
+
 def test_an_experience_with_no_job_title_is_not_an_experience() -> None:
     parse = reviewed(experiences=[an_experience(job_title="  "), an_experience()])
 
@@ -234,3 +253,20 @@ def test_a_section_longer_than_anyone_could_have_typed_is_cut() -> None:
     parse = reviewed(experiences=[an_experience() for _ in range(MAX_ENTRIES + 10)])
 
     assert len(parse.experiences) == MAX_ENTRIES
+
+
+def test_a_parsed_value_keeps_its_text_without_the_control_character() -> None:
+    parse = reviewed(
+        summary="Builds payment systems.\n\x0cRan the ledger rewrite.",
+        headline="Backend engineer\x1b",
+    )
+
+    assert parse.summary == "Builds payment systems.\nRan the ledger rewrite."
+    assert parse.headline == "Backend engineer"
+
+
+def test_a_parsed_paragraph_keeps_its_line_breaks() -> None:
+    description = "Led the ledger rewrite.\r\nIt stayed up."
+    parse = reviewed(experiences=[an_experience(description=description)])
+
+    assert parse.experiences[0].description == description

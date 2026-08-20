@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WrongPortalRouteImport } from './routes/wrong-portal'
+import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
 import { Route as WorkspaceApplicationsRouteImport } from './routes/_workspace/applications'
 import { Route as WorkspaceCandidatesRouteImport } from './routes/_workspace/candidates'
 import { Route as WorkspaceDashboardRouteImport } from './routes/_workspace/dashboard'
@@ -71,6 +72,11 @@ const WrongPortalRoute = WrongPortalRouteImport.update({
   id: '/wrong-portal',
   path: '/wrong-portal',
   getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => WorkspaceRoute,
 } as any)
 const WorkspaceApplicationsRoute = WorkspaceApplicationsRouteImport.update({
   id: '/applications',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/request-access': typeof RequestAccessRoute
   '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
+  '/account': typeof WorkspaceAccountRoute
   '/applications': typeof WorkspaceApplicationsRoute
   '/candidates': typeof WorkspaceCandidatesRoute
   '/dashboard': typeof WorkspaceDashboardRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/request-access': typeof RequestAccessRoute
   '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
+  '/account': typeof WorkspaceAccountRoute
   '/applications': typeof WorkspaceApplicationsRoute
   '/candidates': typeof WorkspaceCandidatesRoute
   '/dashboard': typeof WorkspaceDashboardRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/request-access': typeof RequestAccessRoute
   '/signup': typeof SignupRoute
   '/wrong-portal': typeof WrongPortalRoute
+  '/_workspace/account': typeof WorkspaceAccountRoute
   '/_workspace/applications': typeof WorkspaceApplicationsRoute
   '/_workspace/candidates': typeof WorkspaceCandidatesRoute
   '/_workspace/dashboard': typeof WorkspaceDashboardRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/request-access'
     | '/signup'
     | '/wrong-portal'
+    | '/account'
     | '/applications'
     | '/candidates'
     | '/dashboard'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/request-access'
     | '/signup'
     | '/wrong-portal'
+    | '/account'
     | '/applications'
     | '/candidates'
     | '/dashboard'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/request-access'
     | '/signup'
     | '/wrong-portal'
+    | '/_workspace/account'
     | '/_workspace/applications'
     | '/_workspace/candidates'
     | '/_workspace/dashboard'
@@ -371,6 +383,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/wrong-portal'
       preLoaderRoute: typeof WrongPortalRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_workspace/account': {
+      id: '/_workspace/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof WorkspaceAccountRouteImport
+      parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/applications': {
       id: '/_workspace/applications'
@@ -481,6 +500,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface WorkspaceRouteChildren {
+  WorkspaceAccountRoute: typeof WorkspaceAccountRoute
   WorkspaceApplicationsRoute: typeof WorkspaceApplicationsRoute
   WorkspaceCandidatesRoute: typeof WorkspaceCandidatesRoute
   WorkspaceDashboardRoute: typeof WorkspaceDashboardRoute
@@ -496,6 +516,7 @@ interface WorkspaceRouteChildren {
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
+  WorkspaceAccountRoute: WorkspaceAccountRoute,
   WorkspaceApplicationsRoute: WorkspaceApplicationsRoute,
   WorkspaceCandidatesRoute: WorkspaceCandidatesRoute,
   WorkspaceDashboardRoute: WorkspaceDashboardRoute,

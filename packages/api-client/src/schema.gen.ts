@@ -218,6 +218,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the caller's password
+         * @description Set a new password from inside the account, without an inbox round trip.
+         *
+         *     Every session the account has open ends here, so a password changed because it leaked takes
+         *     the account back from whoever was holding it. The caller alone is signed in again before
+         *     answering, and carries on with the session in the cookie this sets.
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me": {
         parameters: {
             query?: never;
@@ -280,6 +304,28 @@ export interface paths {
          * @description Promote, demote, deactivate or reinstate a colleague. Deactivating keeps the row.
          */
         patch: operations["changeTenantMember"];
+        trace?: never;
+    };
+    "/v1/tenants/me/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the Tenant's logo
+         * @description The mark Candidates identify this Tenant by, wherever one of its Jobs appears.
+         *
+         *     Replaces whatever logo the Tenant had, at a new address — the old one stops answering.
+         */
+        put: operations["replaceTenantLogo"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/access-requests": {
@@ -1210,8 +1256,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The Job's Applications, newest first
-         * @description The triage list: who applied, where each one stands, and how Screening judged it.
+         * The Job's Applications, newest first unless another order is asked for
+         * @description The triage list: who applied, where each one stands, how Screening judged it, and what
+         *     an AI made of it. Page with `next_cursor`, keeping `sort`.
+         *
+         *     Each row carries its Match score with the words behind it, so the number is never the only
+         *     thing a Recruiter is given. It is advice: `qualification_status` is the verdict, and no
+         *     assessment moves it.
          *
          *     `status_counts` and `verdict_counts` come back whatever the two filters narrow to, so the
          *     caller can say how many Applications each one is keeping off the list.
@@ -1316,15 +1367,21 @@ export interface paths {
         head?: never;
         /**
          * Move an Application through the pipeline
-         * @description Move it anywhere the pipeline allows, backwards included, and tell the candidate.
+         * @description Move it anywhere the pipeline allows, backwards included.
          *
-         *     Every move notifies them in-app; a rejection also queues the one email a human decision
-         *     earns. The Screening verdict is untouched, whatever the Application's status becomes.
+         *     The candidate reads a Stage rather than these statuses, so only a move that changes that
+         *     Stage reaches them — `candidate_notified` says whether this one did. Moving between
+         *     `reviewing`, `shortlisted`, `interview` and `offer` is silent by design.
+         *
+         *     A rejection also queues the one email a human decision earns. A `hired` move records what
+         *     the tenant says happened and the day it started, and asks the candidate to confirm it: until
+         *     they do, it is a claim rather than a Placement. The Screening verdict is untouched, whatever
+         *     the Application's status becomes.
          */
         patch: operations["changeApplicationStatus"];
         trace?: never;
     };
-    "/v1/tenants/me/applications/{application_id}/assessments": {
+    "/v1/tenants/me/applications/{application_id}/assessment": {
         parameters: {
             query?: never;
             header?: never;
@@ -1332,44 +1389,27 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Every AI match assessment of the Application, newest first
-         * @description The whole history, each entry with the model and prompt version that wrote it.
+         * The AI's reading of the Application
+         * @description The one reading the Application carries, with the model and prompt version that wrote it.
+         *
+         *     Null where no model has managed one yet — the reading is enqueued as the Application
+         *     arrives, so this is either a few seconds early or a provider that stayed down.
          */
-        get: operations["listApplicationMatchAssessments"];
+        get: operations["readApplicationMatchAssessment"];
         put?: never;
         /**
-         * Ask an AI how well the Application answers the Job
+         * Ask an AI to read the Application against the Job again
          * @description A percentage and an explanation, drawn from the Snapshot and the Job's criteria.
          *
+         *     Every Application is read once as it arrives; this is how a Recruiter who distrusts that
+         *     reading gets a better one. It replaces the reading in place and answers with what it just
+         *     read, so the Match score a Job's list sorts by moves with it.
+         *
          *     Advice, and only that: it never touches the Screening verdict, and it reads what the
-         *     candidate froze when they applied rather than their profile as it stands today. Each
-         *     call appends another assessment; none of them replaces the last.
+         *     candidate froze when they applied rather than their profile as it stands today.
          */
         post: operations["assessApplicationMatch"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/tenants/me/applications/{application_id}/assessments/{assessment_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Throw away one AI match assessment
-         * @description One reading and no other: the rest of the history keeps the model that wrote each of them.
-         *
-         *     Any recruiter of the Tenant may throw one away, and asking again writes a new one rather than
-         *     bringing this one back.
-         */
-        delete: operations["deleteApplicationMatchAssessment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1508,6 +1548,23 @@ export interface paths {
          *     reached — a rejected Application was still received, so it is still counted as one.
          */
         get: operations["getTenantStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/manatal-migration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far the Manatal import has got */
+        get: operations["getManatalMigrationStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1658,6 +1715,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/applications/{application_id}/hire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or deny that you were hired
+         * @description A Tenant says it hired the caller and names the day. This is the caller's answer.
+         *
+         *     Only a yes makes it a Placement; a no leaves the Tenant's claim on record as a claim, and
+         *     moves nothing. The Application stays where the Tenant put it either way — what happened is
+         *     the Recruiter's to record, and whether it is true is the Candidate's to say.
+         */
+        post: operations["answerHireClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1729,8 +1810,8 @@ export interface components {
          * Application
          * @description One of the caller's own Applications.
          *
-         *     Never the Screening verdict: what a Job screened on and how it landed is the Recruiter's
-         *     to say, not something a candidate reads off their own dashboard.
+         *     Never the Tenant's internal status, and never the Screening verdict: a Candidate reads the
+         *     Stage their Application has reached, and what a Job screened on is the Recruiter's to say.
          */
         Application: {
             /**
@@ -1744,7 +1825,15 @@ export interface components {
              * Format: uuid
              */
             cv_id: string;
-            status: components["schemas"]["ApplicationStatus"];
+            /** @description How far this has got. Everything a Tenant does between arrival and a decision reads as `in_review`. */
+            stage: components["schemas"]["ApplicationStage"];
+            /**
+             * Can Withdraw
+             * @description Whether leaving is still possible. False once the Application has an outcome, and once it has been withdrawn.
+             */
+            can_withdraw: boolean;
+            /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
+            hire?: components["schemas"]["HireClaim"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -1823,7 +1912,7 @@ export interface components {
              * @description Received in the 7 days before `last_7d`, which is what makes a week-on-week comparison possible.
              */
             previous_7d: number;
-            by_stage: components["schemas"]["StageCounts"];
+            by_status: components["schemas"]["PipelineStatusCounts"];
             by_qualification: components["schemas"]["QualificationCounts"];
             /**
              * Pass Rate
@@ -1875,6 +1964,11 @@ export interface components {
              * @example Aleppo
              */
             location_name?: string | null;
+            /**
+             * @description How the Job is worked. With no `location_name`, `remote` is what makes the Job's place read as Anywhere rather than as nothing at all.
+             * @example remote
+             */
+            work_mode?: components["schemas"]["WorkMode"] | null;
         };
         /**
          * ApplicationPage
@@ -1916,6 +2010,8 @@ export interface components {
              * @description Every move it has made, oldest first.
              */
             history: components["schemas"]["StatusHistoryEntry"][];
+            /** @description The hire this Tenant claimed, and whether the Candidate has confirmed it. A claim they have not answered is not a Placement. */
+            hire?: components["schemas"]["HireClaim"] | null;
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Applied At
@@ -1935,8 +2031,17 @@ export interface components {
         ApplicationSnapshot: {
             /** Full Name */
             full_name: string;
-            /** Phone */
+            /**
+             * Phone
+             * @description In E.164, as it was that day.
+             */
             phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
             /** Headline */
             headline?: string | null;
             /** Summary */
@@ -1953,6 +2058,15 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Screening never read them; a human reading the Application should.
              */
             unmapped_skills?: string[];
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The Links as they were the day the Application was sent. Screening never read them either; a Recruiter reviewing the Application does.
+             */
+            portfolio_url?: string | null;
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent. The number Screening measured against the Job's minimum, and the one its verdict cites.
@@ -1972,13 +2086,57 @@ export interface components {
         };
         /**
          * ApplicationSort
-         * @description The orders the tenant's Application list can be read in.
+         * @description The orders an Application list can be read in.
          *
-         *     Both run on `applied_at`, which is the one date a row here shows. Nothing ranks: a list
-         *     spanning Jobs has no number of its own to be busiest by.
+         *     Two run on `applied_at`, which is the one date a row here shows. The other two run on the
+         *     Match score, so a Job with hundreds of Applications can be read best-answered first rather
+         *     than only newest first. Each names the answer it gives rather than a column and a direction.
+         *
+         *     An Application nobody has read yet has no score, and sorts below every one that has: last
+         *     under `highest_match`, and first under `lowest_match`, where "nothing to show" belongs
+         *     beside the weakest readings rather than hidden past them.
          * @enum {string}
          */
-        ApplicationSort: "newest" | "oldest";
+        ApplicationSort: "newest" | "oldest" | "highest_match" | "lowest_match";
+        /**
+         * ApplicationStage
+         * @description What a Candidate is told about their own Application.
+         *
+         *     Five values against the pipeline's eight, and deliberately: everything a Tenant does
+         *     between arrival and a decision is one Stage, so shortlisting somebody and un-shortlisting
+         *     them is invisible from the other side — which is what lets a Recruiter move an Application
+         *     as freely as hiring really needs.
+         * @enum {string}
+         */
+        ApplicationStage: "received" | "in_review" | "hired" | "not_selected" | "withdrawn";
+        /**
+         * ApplicationStageChanged
+         * @description An Application has reached a different Stage.
+         *
+         *     A Tenant's internal status is not here and never will be: a Candidate hears that their
+         *     Application is in review, not that a Recruiter moved them from shortlisted to interview
+         *     and back again.
+         */
+        ApplicationStageChanged: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "application_stage_changed";
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** @description Where the Application stands now. */
+            stage: components["schemas"]["ApplicationStage"];
+            /** @description Where it stood until this move. */
+            previous_stage: components["schemas"]["ApplicationStage"];
+        };
         /**
          * ApplicationStatus
          * @enum {string}
@@ -1991,30 +2149,11 @@ export interface components {
         ApplicationStatusChange: {
             /** @description Where it goes. `withdrawn` is refused here: leaving is the candidate's own move, and theirs alone. */
             status: components["schemas"]["ApplicationStatus"];
-        };
-        /**
-         * ApplicationStatusChanged
-         * @description An Application has moved. Every move produces one of these, whoever caused it.
-         */
-        ApplicationStatusChanged: {
             /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Start Date
+             * @description The day the work started. Required by `hired` and refused by every other status: a hire is a claim about a particular day, and the Candidate is asked to confirm that day.
              */
-            type: "application_status_changed";
-            /**
-             * Application Id
-             * Format: uuid
-             */
-            application_id: string;
-            /** Job Title */
-            job_title: string;
-            /** Tenant Name */
-            tenant_name: string;
-            /** @description Where the Application stands now. */
-            status: components["schemas"]["ApplicationStatus"];
-            /** @description Where it stood until this move. */
-            previous_status: components["schemas"]["ApplicationStatus"];
+            start_date?: string | null;
         };
         /**
          * ApplicationStatusCount
@@ -2053,12 +2192,13 @@ export interface components {
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent — the same number Screening measured against the Job's minimum.
-             * @default 0
              */
             total_experience_years: number;
             status: components["schemas"]["ApplicationStatus"];
             /** @description The Screening verdict. */
             qualification_status: components["schemas"]["QualificationStatus"];
+            /** @description The AI's reading of this Application. Null while no model has managed one — the reading is enqueued as the Application arrives, so this fills in shortly after, and stays null only if every attempt failed. */
+            match?: components["schemas"]["MatchScore"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -2162,6 +2302,14 @@ export interface components {
              */
             file: string;
         };
+        /** Body_replaceTenantLogo */
+        Body_replaceTenantLogo: {
+            /**
+             * File
+             * @description The logo: JPEG, PNG or WebP. Square or it is cropped.
+             */
+            file: string;
+        };
         /** Body_uploadMyCv */
         Body_uploadMyCv: {
             /**
@@ -2212,8 +2360,6 @@ export interface components {
              * @example Amina Haddad
              */
             full_name: string;
-            /** Phone */
-            phone?: string | null;
             /**
              * Headline
              * @example Backend engineer, 8 years
@@ -2240,6 +2386,24 @@ export interface components {
              */
             is_searchable: boolean;
             /**
+             * Linkedin Url
+             * @description The candidate's LinkedIn. A handle on its own is stored as the whole address; anything that is not a LinkedIn profile is refused.
+             * @example https://www.linkedin.com/in/amina-haddad
+             */
+            linkedin_url?: string | null;
+            /**
+             * Github Url
+             * @description The candidate's GitHub. A username on its own is stored as the whole address, and a repository as the account that owns it.
+             * @example https://github.com/amina-haddad
+             */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The candidate's own site. Stored as a browser would open it; only `http` and `https` addresses are accepted.
+             * @example https://amina-haddad.dev
+             */
+            portfolio_url?: string | null;
+            /**
              * Educations
              * @description Qualifications, in the candidate's own order.
              */
@@ -2260,6 +2424,18 @@ export interface components {
              */
             unmapped_skills?: string[];
             /**
+             * Phone
+             * @description Stored in E.164. Sent any way at all — spaces, brackets, or the national form `phone_country` writes it in — and read back the one way.
+             * @example +963115550134
+             */
+            phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
+            /**
              * Experiences
              * @description Jobs, in the candidate's own order. Each one dated.
              */
@@ -2275,7 +2451,7 @@ export interface components {
         };
         /**
          * CandidateRecord
-         * @description One Candidate, whole. The only place a phone or an email is readable.
+         * @description One Candidate, whole. The only place a phone, an email or a Link is readable.
          */
         CandidateRecord: {
             /**
@@ -2325,8 +2501,23 @@ export interface components {
              * @description Whether the acting Tenant has already saved them. Nobody else's pool.
              */
             in_talent_pool: boolean;
-            /** Phone */
+            /**
+             * Phone
+             * @description In E.164.
+             */
             phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
             /**
              * Email
              * @description Read from the authentication store, which is the only place a confirmed address lives.
@@ -2387,6 +2578,21 @@ export interface components {
             role?: components["schemas"]["RecruiterRole"] | null;
             /** Is Active */
             is_active?: boolean | null;
+        };
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            /**
+             * Current Password
+             * @description The password on the account.
+             * @example CorrectHorse9
+             */
+            current_password: string;
+            /**
+             * New Password
+             * @description At least 8 characters, with an uppercase letter, a lowercase letter and a digit.
+             * @example CorrectHorse9
+             */
+            new_password: string;
         };
         /**
          * ChunkType
@@ -2590,6 +2796,28 @@ export interface components {
             display_name: string;
         };
         /**
+         * CvParseSucceeded
+         * @description The platform read a CV. What it found is on the CV, as `parsed_cv_data`.
+         */
+        CvParseSucceeded: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "cv_parse_succeeded";
+            /**
+             * Cv Id
+             * Format: uuid
+             * @description The CV that was read, and the one a draft is built from.
+             */
+            cv_id: string;
+            /**
+             * Display Name
+             * @description The name of the file the candidate uploaded, so the message can name it.
+             */
+            display_name: string;
+        };
+        /**
          * CvParsingStatus
          * @enum {string}
          */
@@ -2712,6 +2940,50 @@ export interface components {
              */
             status: "ok";
         };
+        /**
+         * HireAnswer
+         * @description The Candidate's answer to a claimed hire. It is given once and stands.
+         */
+        HireAnswer: {
+            /**
+             * Confirmed
+             * @description True if they did start the job the Tenant named.
+             */
+            confirmed: boolean;
+        };
+        /**
+         * HireClaim
+         * @description A Tenant's claim to have hired somebody, and what the Candidate said about it.
+         *
+         *     Only a `confirmed` one is a Placement. A claim they have not answered is still only a
+         *     claim, and nothing counts it.
+         */
+        HireClaim: {
+            /**
+             * Start Date
+             * Format: date
+             * @description The day the Tenant says the work started.
+             */
+            start_date: string;
+            /** @description The Candidate's answer. `unanswered` until they give one. */
+            confirmation: components["schemas"]["HireConfirmation"];
+            /**
+             * Claimed At
+             * Format: date-time
+             * @description When the Tenant said so.
+             */
+            claimed_at: string;
+            /**
+             * Answered At
+             * @description When the Candidate answered. Null while they have not.
+             */
+            answered_at?: string | null;
+        };
+        /**
+         * HireConfirmation
+         * @enum {string}
+         */
+        HireConfirmation: "unanswered" | "confirmed" | "denied";
         /**
          * InvalidField
          * @description One rejected input, located by where it appeared in the request.
@@ -2868,7 +3140,7 @@ export interface components {
             next_cursor?: string | null;
             /**
              * Status Counts
-             * @description Every Job lifecycle status, each with the Tenant's total in it. These totals are independent of `q`, `status`, sorting and pagination.
+             * @description Every Job lifecycle status, each with the Tenant's total in it. The narrowing filters — `q` and `work_mode` — narrow these too; `status`, sorting and pagination leave them alone, so every tab reads its own total under the same filters.
              */
             status_counts: components["schemas"]["JobStatusCount"][];
         };
@@ -3145,10 +3417,11 @@ export interface components {
         };
         /**
          * MatchAssessment
-         * @description One AI reading of how well an Application answers its Job.
+         * @description The AI's reading of how well an Application answers its Job.
          *
          *     Advice a Recruiter weighs, and nothing more: it is drawn from the Snapshot and the Job's
-         *     criteria, it never touches the Screening verdict, and running it again appends another.
+         *     criteria, and it never touches the Screening verdict. One per Application — asking again
+         *     replaces it, and nothing removes it.
          */
         MatchAssessment: {
             /**
@@ -3158,7 +3431,7 @@ export interface components {
             id: string;
             /**
              * Match Percentage
-             * @description How much of what the Job asks for this Application evidences, 0 to 100. Not a probability, and not a verdict.
+             * @description How strong this applicant is for this Job, 0 to 100 — about half how well they answer what the Job asks for, and half how strong the Application reads in itself. Not a probability, and not a verdict.
              */
             match_percentage: number;
             /**
@@ -3189,21 +3462,45 @@ export interface components {
             /**
              * Assessed At
              * Format: date-time
+             * @description When it was last read.
              */
             assessed_at: string;
+            /**
+             * First Assessed At
+             * Format: date-time
+             * @description When the Application was first read. The same as `assessed_at` until a Recruiter asks for a better reading.
+             */
+            first_assessed_at: string;
         };
         /**
-         * MatchAssessmentPage
-         * @description One page of an Application's assessments, newest first.
+         * MatchScore
+         * @description The Application's reading, as a list row carries it: the number, and enough of the words
+         *     behind it that the number is never shown on its own.
+         *
+         *     The whole reading — its strengths and its gaps — is on the Application review. This is what
+         *     a row can hold under a pointer or a focus ring.
          */
-        MatchAssessmentPage: {
-            /** Items */
-            items: components["schemas"]["MatchAssessment"][];
+        MatchScore: {
             /**
-             * Next Cursor
-             * @description Send back as `cursor` for the following page.
+             * Percentage
+             * @description How strong this applicant is for this Job, 0 to 100 — about half how well they answer what the Job asks for, and half how strong the Application reads in itself. Advice: it neither is nor changes the Screening verdict.
              */
-            next_cursor?: string | null;
+            percentage: number;
+            /**
+             * Explanation
+             * @description Why, in the model's own words.
+             */
+            explanation?: string | null;
+            /**
+             * Model Name
+             * @description The model that wrote it.
+             */
+            model_name: string;
+            /**
+             * Assessed At
+             * Format: date-time
+             */
+            assessed_at: string;
         };
         /**
          * MatchedCandidate
@@ -3346,7 +3643,8 @@ export interface components {
         };
         /**
          * MovedApplication
-         * @description Where an Application stands after a move, and where it came from.
+         * @description Where an Application stands after a move, where it came from, and what the Candidate
+         *     heard about it.
          */
         MovedApplication: {
             /**
@@ -3356,6 +3654,11 @@ export interface components {
             id: string;
             status: components["schemas"]["ApplicationStatus"];
             previous_status: components["schemas"]["ApplicationStatus"];
+            /**
+             * Candidate Notified
+             * @description Whether this move reached the Candidate. False when it left the Stage they read unchanged — which is every move among the undecided statuses.
+             */
+            candidate_notified: boolean;
             /**
              * Changed At
              * Format: date-time
@@ -3557,7 +3860,7 @@ export interface components {
              * Payload
              * @description What happened. `type` says which shape the rest of this object takes.
              */
-            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["ApplicationStatusChanged"];
+            payload: components["schemas"]["CvParseFailed"] | components["schemas"]["CvParseSucceeded"] | components["schemas"]["ApplicationStageChanged"];
             /**
              * Read At
              * @description When the caller read this. Null while it is still unread.
@@ -3606,6 +3909,33 @@ export interface components {
              * Format: email
              */
             email: string;
+        };
+        /**
+         * PipelineStatusCounts
+         * @description Every status of the Pipeline, including the ones nobody is working any more.
+         *
+         *     The tenant's own eight, not the five a Candidate reads: this is the internal pipeline, and
+         *     a Stage is what the other side is told. Complete on purpose — the parts sum to the total,
+         *     so a reader can add up whichever subset they mean by "in play" without the API having
+         *     decided that for them.
+         */
+        PipelineStatusCounts: {
+            /** New */
+            new: number;
+            /** Reviewing */
+            reviewing: number;
+            /** Shortlisted */
+            shortlisted: number;
+            /** Interview */
+            interview: number;
+            /** Offer */
+            offer: number;
+            /** Hired */
+            hired: number;
+            /** Rejected */
+            rejected: number;
+            /** Withdrawn */
+            withdrawn: number;
         };
         /**
          * PlatformOverviewView
@@ -3757,8 +4087,8 @@ export interface components {
          * @description A profile computed from a parsed CV, saved nowhere. `PUT` it back to make it the profile.
          *
          *     Distinct from `CandidateProfile` because a draft is incomplete by nature: a skill the CV
-         *     newly names has no years, and a job it never dated has no dates, until the candidate types
-         *     them.
+         *     newly names has no years, a job it never dated has no dates, and a number nobody could dial
+         *     is still what the CV said, until the candidate types them.
          */
         ProfileDraft: {
             /**
@@ -3766,8 +4096,6 @@ export interface components {
              * @example Amina Haddad
              */
             full_name: string;
-            /** Phone */
-            phone?: string | null;
             /**
              * Headline
              * @example Backend engineer, 8 years
@@ -3794,6 +4122,24 @@ export interface components {
              */
             is_searchable: boolean;
             /**
+             * Linkedin Url
+             * @description The candidate's LinkedIn. A handle on its own is stored as the whole address; anything that is not a LinkedIn profile is refused.
+             * @example https://www.linkedin.com/in/amina-haddad
+             */
+            linkedin_url?: string | null;
+            /**
+             * Github Url
+             * @description The candidate's GitHub. A username on its own is stored as the whole address, and a repository as the account that owns it.
+             * @example https://github.com/amina-haddad
+             */
+            github_url?: string | null;
+            /**
+             * Portfolio Url
+             * @description The candidate's own site. Stored as a browser would open it; only `http` and `https` addresses are accepted.
+             * @example https://amina-haddad.dev
+             */
+            portfolio_url?: string | null;
+            /**
              * Educations
              * @description Qualifications, in the candidate's own order.
              */
@@ -3813,6 +4159,17 @@ export interface components {
              * @description Skills the candidate claims that the platform has no Canonical name for. Kept as typed, deduplicated case-insensitively. Recruiters read them; Screening never does.
              */
             unmapped_skills?: string[];
+            /**
+             * Phone
+             * @description In E.164 when the CV wrote a number the platform could read, and exactly as the CV wrote it when it did not — so a value is never quietly dropped.
+             */
+            phone?: string | null;
+            /**
+             * Phone Country
+             * @description Null when the CV's number named no country.
+             * @example SY
+             */
+            phone_country?: string | null;
             /**
              * Experiences
              * @description Jobs the CV describes, in its own order — those it did not date with their dates null.
@@ -3943,8 +4300,17 @@ export interface components {
             account_type: components["schemas"]["AccountType"];
             /** Avatar Url */
             avatar_url: string | null;
-            /** Phone */
-            phone: string | null;
+            /**
+             * Phone
+             * @description In E.164.
+             */
+            phone?: string | null;
+            /**
+             * Phone Country
+             * @description The ISO 3166-1 alpha-2 country the number belongs to. Stored beside it because `+1` is twenty-odd countries: which one somebody picked is not readable off the digits.
+             * @example SY
+             */
+            phone_country?: string | null;
         };
         /**
          * PublicJob
@@ -4056,6 +4422,11 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+            /**
+             * Logo Url
+             * @description Public and stable until the Tenant replaces it.
+             */
+            logo_url?: string | null;
         };
         /**
          * QualificationCounts
@@ -4281,31 +4652,16 @@ export interface components {
             name: string;
             /** Views */
             views: number;
-        };
-        /**
-         * StageCounts
-         * @description Every stage of the Pipeline, including the ones nobody is working any more.
-         *
-         *     Complete on purpose: the parts sum to the total, so a reader can add up whichever subset
-         *     they mean by "in play" without the API having decided that for them.
-         */
-        StageCounts: {
-            /** New */
-            new: number;
-            /** Reviewing */
-            reviewing: number;
-            /** Shortlisted */
-            shortlisted: number;
-            /** Interview */
-            interview: number;
-            /** Offer */
-            offer: number;
-            /** Hired */
-            hired: number;
-            /** Rejected */
-            rejected: number;
-            /** Withdrawn */
-            withdrawn: number;
+            /**
+             * Applications
+             * @description Applications from a visitor this Source brought, over the same Jobs.
+             */
+            applications: number;
+            /**
+             * Conversion Rate
+             * @description The percentage of this Source's views that became Applications. Null when the Source has brought no views: a rate over nothing says nothing. A tracked link is 0-100, since an Application is attributed by a view it already counted. `Direct` counts its two numbers over different populations — an Application that arrived with no view recorded is still nobody's link — so `Direct` alone can pass 100.
+             */
+            conversion_rate: number | null;
         };
         /**
          * StatusChangeSource
@@ -4500,12 +4856,13 @@ export interface components {
             /**
              * Total Experience Years
              * @description Whole years of work as the profile stood the day this was sent — the same number Screening measured against the Job's minimum.
-             * @default 0
              */
             total_experience_years: number;
             status: components["schemas"]["ApplicationStatus"];
             /** @description The Screening verdict. */
             qualification_status: components["schemas"]["QualificationStatus"];
+            /** @description The AI's reading of this Application. Null while no model has managed one — the reading is enqueued as the Application arrives, so this fills in shortly after, and stays null only if every attempt failed. */
+            match?: components["schemas"]["MatchScore"] | null;
             /**
              * Applied At
              * Format: date-time
@@ -4517,6 +4874,17 @@ export interface components {
              */
             updated_at: string;
             job: components["schemas"]["ApplicationJob"];
+        };
+        /**
+         * TenantLogo
+         * @description Where the Tenant's logo now answers, for an `<img>` to read.
+         */
+        TenantLogo: {
+            /**
+             * Logo Url
+             * @description Public and stable until the logo is replaced again.
+             */
+            logo_url: string;
         };
         /**
          * TenantPlan
@@ -4544,6 +4912,28 @@ export interface components {
              * @description Every distinct Source the tenant has, including channels that brought no views at all and the ones ranked below the six returned.
              */
             sources_total: number;
+        };
+        ManatalMigrationCounts: {
+            total: number;
+            published: number;
+            complete: number;
+            unclaimed: number;
+            awaiting_parse: number;
+            parse_failed: number;
+            with_linkedin: number;
+        };
+        ManatalMigrationRecent: {
+            candidate_id: string;
+            full_name: string;
+            email: string;
+            is_claimed: boolean;
+            is_searchable: boolean;
+            parsing_status: string | null;
+            saved_at: string;
+        };
+        ManatalMigrationStatus: {
+            counts: components["schemas"]["ManatalMigrationCounts"];
+            recent: components["schemas"]["ManatalMigrationRecent"][];
         };
         /**
          * TenantTrackedLink
@@ -4581,6 +4971,16 @@ export interface components {
              * @description Job views that arrived through this link.
              */
             view_count: number;
+            /**
+             * Application Count
+             * @description Applications from a visitor this link brought. A link turned off keeps the ones it already brought.
+             */
+            application_count: number;
+            /**
+             * Conversion Rate
+             * @description The percentage of this link's views that became Applications, 0-100. Null until the link has brought a view: a rate over nothing says nothing.
+             */
+            conversion_rate: number | null;
             job: components["schemas"]["LinkedJob"];
         };
         /**
@@ -4607,6 +5007,11 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+            /**
+             * Logo Url
+             * @description The logo Candidates see, or null until an admin sets one.
+             */
+            logo_url?: string | null;
         };
         /** TrackedLink */
         TrackedLink: {
@@ -4636,6 +5041,16 @@ export interface components {
              * @description Job views that arrived through this link.
              */
             view_count: number;
+            /**
+             * Application Count
+             * @description Applications from a visitor this link brought. A link turned off keeps the ones it already brought.
+             */
+            application_count: number;
+            /**
+             * Conversion Rate
+             * @description The percentage of this link's views that became Applications, 0-100. Null until the link has brought a view: a rate over nothing says nothing.
+             */
+            conversion_rate: number | null;
         };
         /**
          * TrackedLinkChanges
@@ -4716,6 +5131,24 @@ export interface components {
             errors: components["schemas"]["InvalidField"][];
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * WithdrawnApplication
+         * @description Where the caller's own Application stands after they left it.
+         */
+        WithdrawnApplication: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            stage: components["schemas"]["ApplicationStage"];
+            previous_stage: components["schemas"]["ApplicationStage"];
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
         };
         /**
          * WorkMode
@@ -5311,6 +5744,73 @@ export interface operations {
             };
         };
     };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The new password does not meet the policy, or is the current one. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description There is no valid session, or the current password is wrong. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The identity provider is not answering. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     getMyTenant: {
         parameters: {
             query?: never;
@@ -5572,6 +6072,93 @@ export interface operations {
             };
             /** @description Something went wrong on the server. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replaceTenantLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_replaceTenantLogo"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantLogo"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is larger than the platform accepts. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is not a JPEG, PNG or WebP image. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file is empty. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The file store could not be reached. */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8922,6 +9509,8 @@ export interface operations {
                 q?: string | null;
                 /** @description Only Jobs in this state. */
                 status?: components["schemas"]["JobStatus"] | null;
+                /** @description Only Jobs worked this way. Narrows `status_counts` as `q` does, so the tabs count the same Jobs the list is showing. */
+                work_mode?: components["schemas"]["WorkMode"] | null;
                 /** @description `newest` and `oldest` order by when the Job was written; `applications` puts the busiest first, newest first among ties. */
                 sort?: components["schemas"]["JobSort"];
                 /** @description A `next_cursor` from a previous page. Omit for the first page. */
@@ -9022,7 +9611,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The request did not match the expected shape. */
+            /** @description A Location the platform does not list, or an onsite or hybrid Job naming no Location at all. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9160,7 +9749,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The Job cannot move to that status from the one it is in. */
+            /** @description The Job cannot move to that status from the one it is in, or it would be published without a Work mode. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9169,7 +9758,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The request did not match the expected shape. */
+            /** @description A Location the platform does not list, or an edit leaving an onsite or hybrid Job with no Location. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9276,7 +9865,9 @@ export interface operations {
                 status?: components["schemas"]["ApplicationStatus"][] | null;
                 /** @description Only Applications the Screening verdict decided one of these ways. Repeat it to name several; omit it for every verdict. */
                 qualification_status?: components["schemas"]["QualificationStatus"][] | null;
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
+                /** @description Whether the list runs on `applied_at` or on the Match score. */
+                sort?: components["schemas"]["ApplicationSort"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
                 limit?: number;
@@ -9325,7 +9916,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description `cursor` is not one this API issued, or belongs to another `sort`. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9584,7 +10175,7 @@ export interface operations {
                 job_id?: string | null;
                 /** @description Only Applications received inside this rolling window. Omit it for every Application the tenant has ever had. */
                 received_within?: components["schemas"]["ReceivedWithin"] | null;
-                /** @description Which end of `applied_at` the list starts at. */
+                /** @description Whether the list runs on `applied_at` or on the Match score. */
                 sort?: components["schemas"]["ApplicationSort"];
                 /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
@@ -9780,13 +10371,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The request did not match the expected shape. */
+            /** @description A `hired` move carries no `start_date`, or another status carries one. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
@@ -9800,14 +10391,9 @@ export interface operations {
             };
         };
     };
-    listApplicationMatchAssessments: {
+    readApplicationMatchAssessment: {
         parameters: {
-            query?: {
-                /** @description A `next_cursor` from a previous page. Omit for the newest page. */
-                cursor?: string | null;
-                /** @description How many to return. */
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 application_id: string;
@@ -9822,7 +10408,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MatchAssessmentPage"];
+                    "application/json": components["schemas"]["MatchAssessment"] | null;
                 };
             };
             /** @description There is no valid session. */
@@ -9852,13 +10438,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description `cursor` is not one this API issued. */
+            /** @description The request did not match the expected shape. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
@@ -9884,7 +10470,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9946,7 +10532,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The model could not assess it. Nothing was recorded. */
+            /** @description The model could not read it. The reading it had is untouched. */
             502: {
                 headers: {
                     [name: string]: unknown;
@@ -9957,72 +10543,6 @@ export interface operations {
             };
             /** @description This deployment has no assessment model configured. */
             503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-        };
-    };
-    deleteApplicationMatchAssessment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                application_id: string;
-                assessment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description There is no valid session. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description This tenant has no application, or no assessment of it, with that id. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetail"];
-                };
-            };
-            /** @description The request did not match the expected shape. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
-                };
-            };
-            /** @description Something went wrong on the server. */
-            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10650,6 +11170,62 @@ export interface operations {
             };
         };
     };
+    getManatalMigrationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManatalMigrationStatus"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a tenant admin, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listTenantTrackedLinks: {
         parameters: {
             query?: {
@@ -10720,10 +11296,12 @@ export interface operations {
             query?: {
                 /** @description Words that must appear in the Job. Supports `"quoted phrases"`, `or` and `-excluded`. */
                 q?: string | null;
-                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it. */
+                /** @description A Location's key, from `/v1/locations`. Matched exactly, so a governorate never answers for the one beside it — plus every remote Job that names no Location, because those can be done from here as well as from anywhere else. */
                 location_key?: string | null;
                 /** @description One of the platform's employment types. Anything else is refused rather than answered with an empty page. */
                 employment_type?: components["schemas"]["EmploymentType"] | null;
+                /** @description One of the platform's work modes, refused like `employment_type` when it is not. Every published Job answers this, so the filter never hides a Job that simply would not say. */
+                work_mode?: components["schemas"]["WorkMode"] | null;
                 /** @description A `next_cursor` from a previous page. Omit for the newest page. */
                 cursor?: string | null;
                 /** @description How many to return. */
@@ -10744,7 +11322,7 @@ export interface operations {
                     "application/json": components["schemas"]["PublicJobPage"];
                 };
             };
-            /** @description `cursor` is not one this API issued, or `employment_type` is not one of the set. */
+            /** @description `cursor` is not one this API issued, or `employment_type` or `work_mode` is not one of its set. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -11045,7 +11623,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MovedApplication"];
+                    "application/json": components["schemas"]["WithdrawnApplication"];
                 };
             };
             /** @description There is no valid session. */
@@ -11076,6 +11654,86 @@ export interface operations {
                 };
             };
             /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    answerHireClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HireAnswer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HireClaim"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a candidate. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No Application of the caller's has that id, or nobody has claimed to have hired them for it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The claim has already been answered. An answer is given once. */
             409: {
                 headers: {
                     [name: string]: unknown;

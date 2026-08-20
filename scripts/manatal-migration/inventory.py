@@ -96,7 +96,9 @@ FIELD_MAP: Final[dict[str, Mapped]] = {
     "custom_fields.highestdegree": Mapped(
         Home.MIGRATED, "candidate_educations.degree, where Manatal's own is empty"
     ),
-    "custom_fields.linkedinprofile": Mapped(Home.MIGRATED, "the Note — Sync holds no social links"),
+    "linkedin_url": Mapped(Home.MIGRATED, "candidates.linkedin_url"),
+    "custom_fields.linkedinprofile": Mapped(Home.MIGRATED, "candidates.linkedin_url"),
+    "custom_fields.linkedin": Mapped(Home.MIGRATED, "candidates.linkedin_url"),
     "custom_fields.reference": Mapped(Home.MIGRATED, "the Note"),
     "custom_fields.positiontype": Mapped(Home.MIGRATED, "the Note"),
     "custom_fields.role": Mapped(Home.IGNORED, "a Manatal portal role, meaningless here"),

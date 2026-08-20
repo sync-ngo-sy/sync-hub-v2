@@ -270,7 +270,9 @@ async def test_a_result_never_carries_an_email_or_a_phone_number(
         searching, mailbox, db_session, label="amina", **A_BACKEND_ENGINEER
     )
     await db_session.execute(
-        update(Profile).where(Profile.id == amina.id).values(phone="+963115550134")
+        update(Profile)
+        .where(Profile.id == amina.id)
+        .values(phone="+963115550134", phone_country="SY")
     )
     await db_session.commit()
     await drain(a_reembed_worker(database, embedder))
