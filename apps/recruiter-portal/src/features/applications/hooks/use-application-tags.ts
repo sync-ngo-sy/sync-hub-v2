@@ -1,27 +1,14 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMintTag, useVocabularyInScope } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { TagsWidget } from '@/features/crm/tag';
 import { api } from '@/lib/api';
-
-export const TAGS_PATH = '/v1/tenants/me/applications/{application_id}/tags';
-export const TAG_PATH = '/v1/tenants/me/applications/{application_id}/tags/{tag_id}';
-
-export function applicationTagsQuery(applicationId: string) {
-  return api.queryOptions('get', TAGS_PATH, {
-    params: { path: { application_id: applicationId } },
-  });
-}
+import { applicationTags, TAG_PATH, useRereadApplicationTags } from '../reread';
 
 export function useApplicationTags(applicationId: string): TagsWidget {
-  const queryClient = useQueryClient();
-
   const vocabulary = useVocabularyInScope('application');
-  const on = api.useQuery('get', TAGS_PATH, {
-    params: { path: { application_id: applicationId } },
-  });
+  const on = useQuery(applicationTags(applicationId));
 
-  const rereadFiling = () =>
-    queryClient.invalidateQueries({ queryKey: applicationTagsQuery(applicationId).queryKey });
+  const rereadFiling = useRereadApplicationTags(applicationId);
 
   const mint = useMintTag();
   const put = api.useMutation('put', TAG_PATH, { onSuccess: rereadFiling });
