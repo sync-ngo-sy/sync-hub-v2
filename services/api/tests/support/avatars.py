@@ -24,6 +24,14 @@ PNG: Final = "image/png"
 
 A_COLOUR: Final = (200, 120, 40)
 
+A_SIDE_THE_PLATFORM_WILL_NOT_DECODE: Final = 11000
+
+A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB: Final = 20000
+
+#: Between its own two thresholds Pillow only warns, and the platform's stricter bound is
+#: what refuses the picture — so under `filterwarnings = error` the advisory is in the way.
+IGNORING_PILLOWS_OWN_BOMB_WARNING: Final = "ignore::PIL.Image.DecompressionBombWarning"
+
 
 def a_photo(
     width: int = 900,
@@ -38,14 +46,10 @@ def a_photo(
 
 
 def a_png_claiming(width: int, height: int) -> bytes:
-    """A PNG whose header says it is this big, holding no pixels at all.
-
-    Whatever refuses it has decided on the header, which is the only place a picture too big
-    to hold in memory can be refused from.
-    """
+    """A PNG whose header says it is this big, holding no pixels at all."""
     return b"\x89PNG\r\n\x1a\n" + b"".join(
-        _chunk(kind, payload)
-        for kind, payload in (
+        _chunk(name, payload)
+        for name, payload in (
             (b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)),
             (b"IDAT", b""),
             (b"IEND", b""),
@@ -53,12 +57,12 @@ def a_png_claiming(width: int, height: int) -> bytes:
     )
 
 
-def _chunk(kind: bytes, payload: bytes) -> bytes:
+def _chunk(name: bytes, payload: bytes) -> bytes:
     return (
         struct.pack(">I", len(payload))
-        + kind
+        + name
         + payload
-        + struct.pack(">I", zlib.crc32(kind + payload))
+        + struct.pack(">I", zlib.crc32(name + payload))
     )
 
 

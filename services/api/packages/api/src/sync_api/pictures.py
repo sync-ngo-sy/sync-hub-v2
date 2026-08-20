@@ -29,8 +29,7 @@ SQUARE_QUALITY: Final = 80
 SQUARE_MEDIA_TYPE: Final = "image/webp"
 
 #: Longest side the platform will decode. A decode holds three bytes for every pixel and
-#: the convert that follows holds four more, so the source bounds the memory one upload
-#: costs — and nothing a portal sends comes anywhere near this.
+#: the convert after it four more, so the source is what bounds one upload's memory.
 LARGEST_SOURCE_SIDE: Final = 4096
 
 READABLE_FORMATS: Final = frozenset({"JPEG", "PNG", "WEBP"})
@@ -158,7 +157,7 @@ async def _read(upload: UploadFile, *, kind: PictureKind, max_bytes: int) -> byt
 
 
 def _decoded(data: bytes, kind: PictureKind) -> Image.Image:
-    """The picture an upload holds, decoded here so that nothing Pillow raises escapes as a 500.
+    """The picture an upload holds, refused rather than left to raise out of Pillow.
 
     `Image.open` reads the header and stops, so the size is settled while the decode that would
     allocate for every pixel has not run — the one moment a picture too big to hold can still be
