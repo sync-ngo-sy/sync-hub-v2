@@ -1,11 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
 import { useMintTag, useVocabularyInScope } from '@/features/crm/hooks/use-tag-vocabulary';
 import type { TagsWidget } from '@/features/crm/tag';
 import { api } from '@/lib/api';
-import { onApplication, TAG_PATH, TAGS_PATH, useRereadApplicationTags } from '../reread';
+import { applicationTags, TAG_PATH, useRereadApplicationTags } from '../reread';
 
 export function useApplicationTags(applicationId: string): TagsWidget {
   const vocabulary = useVocabularyInScope('application');
-  const on = api.useQuery('get', TAGS_PATH, onApplication(applicationId));
+  const on = useQuery(applicationTags(applicationId));
 
   const rereadFiling = useRereadApplicationTags(applicationId);
 

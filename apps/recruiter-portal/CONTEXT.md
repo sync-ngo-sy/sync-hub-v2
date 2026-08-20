@@ -78,8 +78,8 @@ which the Applications page and the Dashboard both read. A Re-read reaches every
 endpoint, the copy nobody is watching included, because the next reader may be a route loader rather
 than the page the write happened on. One that spans features belongs to the writer and composes what
 its siblings publish; nothing collects them all in one place. A Pipeline move is the first of those:
-it names its own feature's Re-read and the Dashboard's beside it, and the Dashboard publishes what
-it reads rather than being read into.
+it names its own feature's Re-read and the Dashboard's beside it. On an endpoint two features read,
+each one publishes the reading it makes, and both build it from the one path the owner declares.
 _Avoid_: Invalidation, cache key, refetch, stale (each of those says how the cache is told; a
 Re-read says which readings stopped being true).
 

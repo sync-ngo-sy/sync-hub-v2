@@ -1,8 +1,9 @@
-import { api } from '@/lib/api';
-import { ASSESSMENT_PATH, onApplication } from '../reread';
+import { useQuery } from '@tanstack/react-query';
+import { matchAssessment } from '../reread';
 
 export function useMatchAssessment(applicationId: string) {
-  return api.useQuery('get', ASSESSMENT_PATH, onApplication(applicationId), {
+  return useQuery({
+    ...matchAssessment(applicationId),
     throwOnError: (_error, query) => query.state.data === undefined,
   });
 }

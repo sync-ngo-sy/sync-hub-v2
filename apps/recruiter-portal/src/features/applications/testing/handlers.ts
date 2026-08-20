@@ -218,7 +218,11 @@ const STAGE_OF: Record<PipelineStatus, string> = {
   withdrawn: 'withdrawn',
 };
 
-export function reviewsApplication(review: ApplicationReview, asked?: PipelineStatus[]) {
+export function reviewsApplication(
+  review: ApplicationReview,
+  asked?: PipelineStatus[],
+  listed?: TenantApplication[],
+) {
   let current = review;
   return [
     http.get(APPLICATION_PATH, ({ params, response }) =>
@@ -248,6 +252,9 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
           : current.hire,
         updated_at: changed_at,
       };
+      const at = listed?.findIndex((item) => item.id === current.id) ?? -1;
+      const moved = listed?.[at];
+      if (listed && moved) listed[at] = { ...moved, status, updated_at: changed_at };
       return response(200).json({
         id: current.id,
         status,
@@ -260,39 +267,7 @@ export function reviewsApplication(review: ApplicationReview, asked?: PipelineSt
 }
 
 export function movesTenantApplications(items: TenantApplication[], review: ApplicationReview) {
-  let current = review;
-  return [
-    ...listsTenantApplications(items),
-    http.get(APPLICATION_PATH, ({ params, response }) =>
-      params.application_id === current.id
-        ? response(200).json(current)
-        : response(404).json(NO_SUCH_APPLICATION),
-    ),
-    http.patch(APPLICATION_PATH, async ({ request, response }) => {
-      const { status } = (await request.json()) as StatusChange;
-      const previous = current.status;
-      const changed_at = '2026-08-06T10:00:00Z';
-      current = {
-        ...current,
-        status,
-        history: [
-          ...current.history,
-          { status, previous_status: previous, source: 'recruiter', changed_at },
-        ],
-        updated_at: changed_at,
-      };
-      const at = items.findIndex((item) => item.id === current.id);
-      const moved = items[at];
-      if (moved) items[at] = { ...moved, status, updated_at: changed_at };
-      return response(200).json({
-        id: current.id,
-        status,
-        previous_status: previous,
-        candidate_notified: STAGE_OF[status] !== STAGE_OF[previous],
-        changed_at,
-      });
-    }),
-  ];
+  return [...listsTenantApplications(items), ...reviewsApplication(review, undefined, items)];
 }
 
 export function refusesApplicationMove(review: ApplicationReview, problem: Problem) {

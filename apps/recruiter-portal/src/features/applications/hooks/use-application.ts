@@ -1,13 +1,10 @@
-import type { QueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { type QueryClient, useQuery } from '@tanstack/react-query';
 import { problemStatus } from '@/lib/api-problem';
-import { APPLICATION_PATH, applicationReview, onApplication } from '../reread';
+import { applicationReview } from '../reread';
 import type { ApplicationReview } from '../review';
 
 export function useApplication(applicationId: string) {
-  return api.useQuery('get', APPLICATION_PATH, onApplication(applicationId), {
-    throwOnError: true,
-  });
+  return useQuery({ ...applicationReview(applicationId), throwOnError: true });
 }
 
 export async function ensureApplication(
