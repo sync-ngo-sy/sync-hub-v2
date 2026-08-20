@@ -10,6 +10,7 @@ from sync_api.problems import (
     AVATAR_EMPTY_PROBLEM_TYPE,
     AVATAR_MEDIA_TYPE_PROBLEM_TYPE,
     AVATAR_TOO_LARGE_PROBLEM_TYPE,
+    AVATAR_TOO_MANY_PIXELS_PROBLEM_TYPE,
 )
 from sync_core import StorageError, get_logger, transaction
 from sync_core.models import Profile
@@ -30,6 +31,7 @@ AVATAR = PictureKind(
     subject="A profile photo",
     unreadable_type=AVATAR_MEDIA_TYPE_PROBLEM_TYPE,
     too_large_type=AVATAR_TOO_LARGE_PROBLEM_TYPE,
+    too_many_pixels_type=AVATAR_TOO_MANY_PIXELS_PROBLEM_TYPE,
     empty_type=AVATAR_EMPTY_PROBLEM_TYPE,
 )
 
