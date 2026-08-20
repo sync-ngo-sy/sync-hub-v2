@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { sortInAddress } from './application';
+import {
+  EVERY_TIME,
+  pipelineTab,
+  receivedSelection,
+  SCREENING_VERDICTS,
+  screeningSelection,
+  sortInAddress,
+} from './application';
 import {
   applicationSort,
   pipelineTabSelection,
@@ -22,6 +29,40 @@ export const jobApplicationsReading = applicationsReading.pick({
 
 export type TenantApplicationFilters = z.infer<typeof applicationsReading>;
 export type ApplicationFilters = z.infer<typeof jobApplicationsReading>;
+
+export function narrowedBy(filters: TenantApplicationFilters): number {
+  return [
+    pipelineTab(filters.pipeline) !== undefined,
+    screeningSelection(filters.screening).length < SCREENING_VERDICTS.length,
+    receivedSelection(filters.received) !== EVERY_TIME,
+  ].filter(Boolean).length;
+}
+
+const NO_APPLICATIONS_YET =
+  'No Applications yet — publish a Job and share its tracked links to bring candidates in.';
+
+const NOBODY_HAS_APPLIED =
+  'No one has applied yet — a tracked link is the quickest way to bring candidates to this Job.';
+
+export function noApplicationsMessage(filters: TenantApplicationFilters): string {
+  const narrowing = narrowedBy(filters);
+  if (narrowing === 0) return NO_APPLICATIONS_YET;
+  return narrowing === 1
+    ? 'No Application matches that filter.'
+    : 'No Application matches these filters.';
+}
+
+export function noJobApplicationsMessage(filters: ApplicationFilters): string {
+  const narrowing = narrowedBy(filters);
+  if (narrowing === 0) return NOBODY_HAS_APPLIED;
+  return narrowing === 1
+    ? 'No Application on this Job matches that filter.'
+    : 'No Application on this Job matches both filters.';
+}
+
+export function clearFiltersLabel(filters: TenantApplicationFilters): string {
+  return narrowedBy(filters) === 1 ? 'Clear filter' : 'Clear filters';
+}
 
 type Address<TFilters> = { [K in keyof Required<TFilters>]: TFilters[K] };
 
