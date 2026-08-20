@@ -19,7 +19,7 @@ most contexts below don't have one yet.
   portals: tokens, primitives, and molecules that render purely from props.
 
 Not yet modelled (no `CONTEXT.md` until their terms are resolved):
-`packages/api-client`, `packages/db-types`, `services/api`.
+`packages/api-client`, `services/api`.
 
 ## Relationships
 
@@ -27,8 +27,6 @@ Not yet modelled (no `CONTEXT.md` until their terms are resolved):
   screening verdicts, communications and CV parsing state. The database is designed to
   defend its invariants even so (composite FKs + RLS + constraints), not to trust the
   backend blindly.
-- **Database → packages/db-types**: `db-types` is generated from the live schema; the
-  database is the source of truth.
 - **services/api → packages/api-client**: the client is generated from the API's
   OpenAPI schema; the API is the source of truth.
 - **Portals → services/api**: all three portals speak to the backend only through

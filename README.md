@@ -144,20 +144,14 @@ These live in `packages/` and exist so the three apps don't duplicate code:
 
 - **`@sync/api-client`** — A typed client for talking to the backend. It's generated straight from the FastAPI backend's schema, so if the backend changes, TypeScript will immediately show an error anywhere the frontend used the old shape. No guessing what an API call returns.
 
-- **`@sync/db-types`** — TypeScript types generated from the actual Supabase database. Same idea: the database is the source of truth, and the types just follow it automatically.
-
 ### Regenerating them
 
-These files don't update on their own. Whenever a FastAPI route or a database table changes, regenerate the types by hand:
+These files don't update on their own. Whenever a FastAPI route or database schema changes, regenerate by hand:
 
 ```bash
 # api-client: needs the backend running (reads its live schema at :8000)
 uv run --directory services/api uvicorn sync_api.main:app --reload   # terminal 1
 pnpm gen:api-client                                                   # terminal 2
-
-# db-types: needs Supabase running locally
-supabase start
-pnpm gen:db-types
 
 # SQLAlchemy models: same idea, for the Python side
 supabase db reset
@@ -166,7 +160,7 @@ pnpm --filter @sync/api gen:models
 
 Run these after backend/DB changes, then commit the updated generated files like any other code change.
 
-`sync_core.models` is generated the same way `@sync/db-types` is — from the migrated schema, never hand-edited. Its relationships are all `viewonly`: navigate through them, but write by assigning foreign key columns, because the schema's composite tenant keys give most rows two paths to their tenant.
+`sync_core.models` is generated from the migrated schema, never hand-edited. Its relationships are all `viewonly`: navigate through them, but write by assigning foreign key columns, because the schema's composite tenant keys give most rows two paths to their tenant.
 
 ## Working on an issue
 
