@@ -79,7 +79,15 @@ class CandidateDirectoryService:
         )
 
     async def record(self, recruiter: ActingRecruiter, candidate_id: UUID) -> CandidateRecord:
+        """Logged, not merely counted: the limiter refuses a bulk export while it happens, and
+        this is what says afterwards whose contact details a Tenant read."""
         await reachable_candidate(self._db, recruiter.tenant.id, candidate_id)
+        logger.info(
+            "directory.contact_read",
+            tenant_id=str(recruiter.tenant.id),
+            recruiter_id=str(recruiter.profile.id),
+            candidate_id=str(candidate_id),
+        )
         profile = await self._profiles.profile(candidate_id)
         found = (
             await self._db.execute(

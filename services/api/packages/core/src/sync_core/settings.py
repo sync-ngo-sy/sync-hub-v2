@@ -112,8 +112,27 @@ class Settings(BaseSettings):
     access_request_rate_limit_max_requests: int = Field(default=5, ge=1)
     access_request_rate_limit_window_seconds: float = Field(default=3600.0, gt=0)
 
+    #: The Candidate directory is the contact database, one page at a time, so paging it to the
+    #: end is what a scrape looks like. Per Tenant, because a Tenant's recruiters page it
+    #: together, and with a day's budget as well as a minute's: a patient script stays under any
+    #: per-minute limit on its own.
+    directory_rate_limit_max_requests: int = Field(default=60, ge=1)
+    directory_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    directory_rate_limit_daily_max_requests: int = Field(default=1500, ge=1)
+
+    #: The tightest budget on the platform, because reading one Candidate is the only way to get
+    #: an email address or a phone number, and a scrape needs one read per person.
+    candidate_record_rate_limit_max_requests: int = Field(default=20, ge=1)
+    candidate_record_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    candidate_record_rate_limit_daily_max_requests: int = Field(default=200, ge=1)
+
     cv_max_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     cv_download_url_ttl_seconds: int = Field(default=300, gt=0)
+    #: Per acting profile, not per Tenant: an upload is a Candidate's own, and every one of them
+    #: queues a parse the platform pays a model for.
+    cv_upload_rate_limit_max_requests: int = Field(default=5, ge=1)
+    cv_upload_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    cv_upload_rate_limit_daily_max_requests: int = Field(default=30, ge=1)
 
     #: What a candidate may hand us, not what we keep: every photo is re-encoded to one
     #: small WebP before it is stored. A Tenant logo goes through the same encoder.
@@ -130,6 +149,12 @@ class Settings(BaseSettings):
     #: tenant's recruiters share the cost of every assessment they ask for.
     assessment_rate_limit_max_requests: int = Field(default=20, ge=1)
     assessment_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+
+    #: Also per Tenant, and for both of the reasons the directory's limit exists: every search
+    #: embeds its question, and the ranking it answers with is the same pool of Candidates.
+    search_rate_limit_max_requests: int = Field(default=30, ge=1)
+    search_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    search_rate_limit_daily_max_requests: int = Field(default=600, ge=1)
 
     resend_api_key: SecretStr | None = None
     #: Resend's sandbox sender, which needs no verified domain. Every deployment that sends

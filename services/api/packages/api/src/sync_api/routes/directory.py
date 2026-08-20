@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from sync_api.candidate_directory import CandidateDirectoryPage, CandidateRecord, DirectoryOrder
 from sync_api.candidate_directory.filters import CandidateFiltersDep
@@ -11,6 +11,10 @@ from sync_api.dependencies import ActingRecruiterDep, CandidateDirectoryServiceD
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
+from sync_api.rate_limit import (
+    enforce_candidate_record_rate_limit,
+    enforce_directory_rate_limit,
+)
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/directory"
@@ -23,6 +27,20 @@ UNKNOWN_FILTER: Final[dict[int | str, dict[str, Any]]] = {
     ),
 }
 
+PAGED_TOO_HARD: Final[dict[int | str, dict[str, Any]]] = {
+    429: openapi_problem(
+        "The tenant has paged the directory too hard, this minute or today. `Retry-After` says "
+        "how long to wait."
+    ),
+}
+
+READ_TOO_MANY: Final[dict[int | str, dict[str, Any]]] = {
+    429: openapi_problem(
+        "The tenant has read too many Candidates' contact details, this minute or today. "
+        "`Retry-After` says how long to wait."
+    ),
+}
+
 router = APIRouter(prefix=ROUTER_PREFIX, tags=["directory"])
 
 
@@ -30,7 +48,8 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["directory"])
     "/candidates",
     operation_id="listDirectoryCandidates",
     summary="Searchable Candidates by fact, in the order you ask for",
-    responses={**TENANT_ACCESS_REFUSED, **UNKNOWN_FILTER},
+    dependencies=[Depends(enforce_directory_rate_limit)],
+    responses={**TENANT_ACCESS_REFUSED, **UNKNOWN_FILTER, **PAGED_TOO_HARD},
 )
 async def list_directory_candidates(
     recruiter: ActingRecruiterDep,
@@ -69,12 +88,14 @@ async def list_directory_candidates(
     "/candidates/{candidate_id}",
     operation_id="readDirectoryCandidate",
     summary="One Candidate's whole profile, with their contact details",
+    dependencies=[Depends(enforce_candidate_record_rate_limit)],
     responses={
         **TENANT_ACCESS_REFUSED,
         404: openapi_problem(
             "No Candidate this tenant can reach has that id — they have neither applied to one "
             "of its Jobs nor opted in to Global search."
         ),
+        **READ_TOO_MANY,
     },
 )
 async def read_directory_candidate(
@@ -86,5 +107,7 @@ async def read_directory_candidate(
 
     The one place a phone number and an email address are readable, one Candidate at a time. A
     Candidate outside this Tenant's reach answers exactly as one that does not exist.
+
+    Carries the tightest budget on the platform for that reason, and every read is logged.
     """
     return await directory.record(recruiter, candidate_id)

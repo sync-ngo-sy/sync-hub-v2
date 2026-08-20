@@ -1,32 +1,18 @@
 from __future__ import annotations
 
 import io
-import json
 from collections.abc import Iterator
-from typing import Any
 
 import pytest
 from httpx import AsyncClient
 
-from sync_core import LogFormat, configure_logging
+from tests.support.logs import capturing_logs, entries
 
 
 @pytest.fixture
 def log_stream() -> Iterator[io.StringIO]:
-    stream = io.StringIO()
-    configure_logging(log_format=LogFormat.JSON, stream=stream)
-    yield stream
-    configure_logging()
-
-
-def entries(stream: io.StringIO) -> list[dict[str, Any]]:
-    return [
-        entry
-        for line in stream.getvalue().splitlines()
-        if line.strip()
-        for entry in [json.loads(line)]
-        if str(entry.get("logger", "")).startswith(("sync_api", "sync_core"))
-    ]
+    with capturing_logs() as stream:
+        yield stream
 
 
 async def test_response_carries_a_request_id(client: AsyncClient) -> None:
