@@ -1,15 +1,14 @@
 import { api } from '@/lib/api';
 import type { TenantApplicationFilters } from '../reading';
+import { TENANT_APPLICATIONS_PATH } from '../reread';
 import { statusCountsFrom, verdictCountsFrom } from './use-job-applications';
 
 export const TENANT_APPLICATIONS_PAGE_SIZE = 20;
 
-const PATH = '/v1/tenants/me/applications';
-
 export function useTenantApplications(filters: TenantApplicationFilters) {
   return api.useInfiniteQuery(
     'get',
-    PATH,
+    TENANT_APPLICATIONS_PATH,
     {
       params: {
         query: {

@@ -73,10 +73,13 @@ The readings a write makes untrue, and which of them are asked for again. A writ
 and not the readings: the feature that owns an endpoint publishes what is read from it and the one
 Re-read that covers all of it, so no call site assembles that for itself. `features/crm/reread.ts`
 holds the Tag vocabulary's, so the picker on a Candidate view and the one on an Application review
-cannot ask for different things back. A Re-read reaches every reading of its endpoint, the copy
-nobody is watching included, because the next reader may be a route loader rather than the page the
-write happened on. One that spans features belongs to the writer and composes what its siblings
-publish; nothing collects them all in one place.
+cannot ask for different things back; `features/applications/reread.ts` holds the Applications',
+which the Applications page and the Dashboard both read. A Re-read reaches every reading of its
+endpoint, the copy nobody is watching included, because the next reader may be a route loader rather
+than the page the write happened on. One that spans features belongs to the writer and composes what
+its siblings publish; nothing collects them all in one place. A Pipeline move is the first of those:
+it names its own feature's Re-read and the Dashboard's beside it, and the Dashboard publishes what
+it reads rather than being read into.
 _Avoid_: Invalidation, cache key, refetch, stale (each of those says how the cache is told; a
 Re-read says which readings stopped being true).
 
