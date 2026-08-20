@@ -1,6 +1,9 @@
-"""The demo seed writes its Candidates and Jobs through the API, so a cast naming a skill the
-taxonomy dropped breaks the run partway through. This reads the cast against the seeded
-taxonomy instead."""
+"""The cast, read against the taxonomy it is held to.
+
+The demo seed writes its Candidates and Jobs through the API's own services, so a cast naming a
+skill the taxonomy does not have breaks the run partway through, after it has already made three
+Tenants and nine Candidates. This reads the cast instead.
+"""
 
 from __future__ import annotations
 

@@ -84,7 +84,8 @@ async def test_every_language_the_platform_knows_is_offered(
     assert {language["code"] for language in await read_languages(visitor)} == held
 
 
-#: Nobody is asked how many years of Teamwork they have, so the taxonomy no longer names them.
+#: Prose a Recruiter reads, not a scored field: nobody is asked how many years of Teamwork they
+#: have, so the taxonomy names none of these and they reach a profile as Other skills.
 SOFT_SKILLS = {"Communication", "Leadership", "Teamwork", "Problem Solving"}
 
 
@@ -97,7 +98,8 @@ async def test_the_taxonomy_holds_no_soft_skills(db_session: AsyncSession) -> No
 
 
 async def test_a_picker_is_offered_no_soft_skill(visitor: AsyncClient) -> None:
-    """A skill missing from this list cannot be chosen, and Screening cannot be asked for it."""
+    """What the picker offers is what a Job can require, so this is where Screening stops being
+    able to ask for one."""
     skills = await read_skills(visitor)
 
     assert {skill["name"] for skill in skills} & SOFT_SKILLS == set()

@@ -488,10 +488,10 @@ async def test_a_skill_the_platform_does_not_know_is_demoted_for_review(
 async def test_a_soft_skill_the_cv_names_becomes_an_other_skill(
     browser: AsyncClient, mailbox: Mailbox, database: Database, storage: Storage
 ) -> None:
-    """The taxonomy no longer names one, so a CV's Communication is prose, not a scored field."""
+    """The taxonomy names no soft skill, so a CV's Communication is prose, not a scored field."""
     await a_signed_in_candidate(browser, mailbox)
     cv = await an_uploaded_cv(browser)
-    spoken = a_parse(
+    soft = a_parse(
         skills=[
             ParsedSkill(name="Python", years_experience=8.0),
             ParsedSkill(name="Communication", years_experience=6.0),
@@ -500,7 +500,7 @@ async def test_a_soft_skill_the_cv_names_becomes_an_other_skill(
         unmapped_skills=[],
     )
 
-    await an_ingestion_worker(database, storage, FakeExtractor(spoken)).run_once()
+    await an_ingestion_worker(database, storage, FakeExtractor(soft)).run_once()
 
     draft = (await my_profile_draft(browser, cv["id"])).json()
     assert [skill["name"] for skill in draft["skills"]] == ["Python"]

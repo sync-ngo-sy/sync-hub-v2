@@ -587,7 +587,7 @@ LAYLA: Final = SeededCandidate(
             Spoken(code="en", proficiency=FLUENT),
         ],
         projects=[],
-        unmapped_skills=["R", "Tableau", "Stakeholder communication"],
+        unmapped_skills=["R", "Tableau", "Communication"],
     ),
     cvs=[
         SeededCv(display_name="layla-kassem-cv.pdf", created_days_ago=9, is_current=True),
@@ -669,7 +669,7 @@ NADIA: Final = SeededCandidate(
                 end_month=11,
             ),
         ],
-        unmapped_skills=["Design research", "Copywriting", "Workshop facilitation"],
+        unmapped_skills=["Design research", "Copywriting", "Communication", "Teamwork"],
     ),
     cvs=[
         SeededCv(display_name="nadia-rahal-portfolio-cv.pdf", created_days_ago=16, is_current=True),
@@ -740,7 +740,7 @@ FADI: Final = SeededCandidate(
         ],
         unmapped_skills=[
             "Tailwind CSS",
-            "Technical writing",
+            "Communication",
         ],
     ),
     cvs=[
@@ -803,7 +803,7 @@ HIBA: Final = SeededCandidate(
         ],
         languages=[Spoken(code="ar", proficiency=NATIVE), Spoken(code="en", proficiency=ADVANCED)],
         projects=[],
-        unmapped_skills=["Playwright", "Cypress", "Bug triage"],
+        unmapped_skills=["Playwright", "Cypress", "Communication", "Teamwork", "Problem Solving"],
     ),
     cvs=[
         SeededCv(display_name="hiba-othman-cv.pdf", created_days_ago=25, is_current=True),
