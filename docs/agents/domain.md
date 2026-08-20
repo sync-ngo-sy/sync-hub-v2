@@ -30,7 +30,6 @@ Multi-context monorepo (presence of `CONTEXT-MAP.md` at the root):
 │       └── docs/adr/
 ├── packages/
 │   ├── api-client/CONTEXT.md
-│   ├── db-types/CONTEXT.md
 │   └── ui/CONTEXT.md
 ├── services/
 │   └── api/

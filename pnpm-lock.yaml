@@ -111,9 +111,6 @@ importers:
       '@sync/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@sync/db-types':
-        specifier: workspace:*
-        version: link:../../packages/db-types
       '@sync/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -214,9 +211,6 @@ importers:
       '@sync/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@sync/db-types':
-        specifier: workspace:*
-        version: link:../../packages/db-types
       '@sync/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -360,12 +354,6 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.13.3)(jsdom@30.0.1)(msw@2.15.0(@types/node@24.13.3)(typescript@6.0.3))(vite@8.1.5(@types/node@24.13.3)(jiti@2.7.0))
-
-  packages/db-types:
-    devDependencies:
-      typescript:
-        specifier: ~6.0.3
-        version: 6.0.3
 
   packages/ui:
     dependencies:
