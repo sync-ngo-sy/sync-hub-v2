@@ -3,6 +3,8 @@ import type { components } from '@sync/api-client/schema';
 type ManatalMigrationStatus = components['schemas']['ManatalMigrationStatus'];
 
 export const NO_IMPORT_YET: ManatalMigrationStatus = {
+  configured: true,
+  may_start: true,
   counts: {
     total: 0,
     published: 0,
@@ -12,10 +14,19 @@ export const NO_IMPORT_YET: ManatalMigrationStatus = {
     parse_failed: 0,
     with_linkedin: 0,
   },
+  queue: {
+    ledger_pending: 0,
+    ledger_imported: 0,
+    jobs_pending: 0,
+    jobs_processing: 0,
+    jobs_failed: 0,
+  },
   recent: [],
 };
 
 export const PARTWAY_THROUGH: ManatalMigrationStatus = {
+  configured: true,
+  may_start: true,
   counts: {
     total: 12,
     published: 8,
@@ -24,6 +35,13 @@ export const PARTWAY_THROUGH: ManatalMigrationStatus = {
     awaiting_parse: 2,
     parse_failed: 1,
     with_linkedin: 6,
+  },
+  queue: {
+    ledger_pending: 3,
+    ledger_imported: 2,
+    jobs_pending: 1,
+    jobs_processing: 0,
+    jobs_failed: 0,
   },
   recent: [
     {

@@ -1,6 +1,7 @@
 import type { components } from '@sync/api-client/schema';
 
 export const MANATAL_MIGRATION_PATH = '/v1/tenants/me/manatal-migration';
+export const MANATAL_MIGRATION_START_PATH = '/v1/tenants/me/manatal-migration/start';
 
 export type ManatalMigrationCounts = components['schemas']['ManatalMigrationCounts'];
 export type ManatalMigrationRecent = components['schemas']['ManatalMigrationRecent'];

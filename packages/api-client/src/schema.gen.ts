@@ -1573,6 +1573,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/manatal-migration/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start or continue a Manatal import batch */
+        post: operations["startManatalMigration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/tracked-links": {
         parameters: {
             query?: never;
@@ -4922,6 +4939,13 @@ export interface components {
             parse_failed: number;
             with_linkedin: number;
         };
+        ManatalMigrationQueueCounts: {
+            ledger_pending: number;
+            ledger_imported: number;
+            jobs_pending: number;
+            jobs_processing: number;
+            jobs_failed: number;
+        };
         ManatalMigrationRecent: {
             candidate_id: string;
             full_name: string;
@@ -4931,8 +4955,20 @@ export interface components {
             parsing_status: string | null;
             saved_at: string;
         };
+        /** @enum {string} */
+        ManatalMigrationAction: "import" | "publish";
+        ManatalMigrationStartRequest: {
+            action: components["schemas"]["ManatalMigrationAction"];
+        };
+        ManatalMigrationStartResponse: {
+            action: components["schemas"]["ManatalMigrationAction"];
+            jobs_enqueued: number;
+        };
         ManatalMigrationStatus: {
+            configured: boolean;
+            may_start: boolean;
             counts: components["schemas"]["ManatalMigrationCounts"];
+            queue: components["schemas"]["ManatalMigrationQueueCounts"];
             recent: components["schemas"]["ManatalMigrationRecent"][];
         };
         /**
@@ -11199,6 +11235,75 @@ export interface operations {
             };
             /** @description The caller is not a tenant admin, has been deactivated, or their tenant is suspended. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    startManatalMigration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManatalMigrationStartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManatalMigrationStartResponse"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a tenant admin, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Manatal import is not configured in this environment. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -12,12 +12,13 @@ import {
   CardTitle,
 } from '@sync/ui/components/ui/card';
 import { Button } from '@sync/ui/components/ui/button';
-import { AlertCircle, FileCheck2, RefreshCw, UserCheck, Users } from 'lucide-react';
+import { AlertCircle, FileCheck2, RefreshCw, Upload, UserCheck, Users } from 'lucide-react';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { useMembers } from '@/features/team/hooks/use-members';
 import { isTenantAdmin } from '@/features/team/member';
 import { problemMessage } from '@/lib/api-problem';
 import { useManatalMigrationStatus } from '../hooks/use-manatal-migration-status';
+import { useStartManatalMigration } from '../hooks/use-start-manatal-migration';
 import { parseStatusLabel, progressLabel, type ManatalMigrationRecent } from '../migration';
 
 type ManatalMigrationStatus = components['schemas']['ManatalMigrationStatus'];
@@ -72,6 +73,7 @@ const RECENT_COLUMNS: DataTableColumn<ManatalMigrationRecent>[] = [
 export function ManatalMigrationPanel({ profileId }: { profileId: string }) {
   const members = useMembers();
   const status = useManatalMigrationStatus();
+  const start = useStartManatalMigration();
   const mayAdminister = members.data ? isTenantAdmin(members.data, profileId) : false;
 
   if (members.isPending) {
@@ -117,20 +119,49 @@ export function ManatalMigrationPanel({ profileId }: { profileId: string }) {
           <div className="space-y-1">
             <CardTitle>Manatal import</CardTitle>
             <CardDescription>
-              Candidates brought across from Manatal into your talent pool. Refresh this page while
-              the import runs to see how far it has got.
+              Candidates brought across from Manatal into your talent pool. Start a batch here,
+              then refresh while the worker runs.
             </CardDescription>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void status.refetch()}
-            disabled={status.isFetching}
-          >
-            <RefreshCw aria-hidden="true" className={status.isFetching ? 'animate-spin' : ''} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {body?.may_start ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={start.isPending}
+                  onClick={() =>
+                    void start.mutateAsync({ body: { action: 'import' } }).catch(() => undefined)
+                  }
+                >
+                  <Upload aria-hidden="true" />
+                  Import from Manatal
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={start.isPending}
+                  onClick={() =>
+                    void start.mutateAsync({ body: { action: 'publish' } }).catch(() => undefined)
+                  }
+                >
+                  <FileCheck2 aria-hidden="true" />
+                  Publish parsed profiles
+                </Button>
+              </>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void status.refetch()}
+              disabled={status.isFetching}
+            >
+              <RefreshCw aria-hidden="true" className={status.isFetching ? 'animate-spin' : ''} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-sm text-muted-foreground">
@@ -163,15 +194,40 @@ export function ManatalMigrationPanel({ profileId }: { profileId: string }) {
             ]}
           />
 
-          <Alert>
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Starting or continuing a batch</AlertTitle>
-            <AlertDescription>
-              The import itself still runs as a one-off script against your environment. Your
-              platform team runs it in two passes: first import CVs, then publish parsed profiles.
-              This page reads the results back from your talent pool.
-            </AlertDescription>
-          </Alert>
+          {start.error ? (
+            <RetryNotice
+              message={problemMessage(start.error, "Couldn't start the Manatal batch.")}
+              onRetry={() => start.reset()}
+            />
+          ) : null}
+
+          {body && !body.configured ? (
+            <Alert>
+              <AlertCircle aria-hidden="true" />
+              <AlertTitle>Manatal import is not configured here</AlertTitle>
+              <AlertDescription>
+                Your platform team must set Manatal credentials on this environment before a batch
+                can run from the dashboard.
+              </AlertDescription>
+            </Alert>
+          ) : body && body.configured && !body.may_start ? (
+            <Alert>
+              <AlertCircle aria-hidden="true" />
+              <AlertTitle>Only the importing recruiter can start a batch</AlertTitle>
+              <AlertDescription>
+                Manatal import is tied to one recruiter account in this environment. Ask that admin
+                to run Import and Publish from this tab.
+              </AlertDescription>
+            </Alert>
+          ) : body ? (
+            <p className="text-sm text-muted-foreground">
+              Queue: {body.queue.jobs_pending} waiting, {body.queue.jobs_processing} running
+              {body.queue.ledger_imported > 0
+                ? ` · ${body.queue.ledger_imported} imported and awaiting publish`
+                : ''}
+              .
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

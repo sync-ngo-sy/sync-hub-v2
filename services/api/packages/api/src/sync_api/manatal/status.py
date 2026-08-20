@@ -5,8 +5,24 @@ from typing import TYPE_CHECKING, Any, Final, cast
 from sqlalchemy import Select, String, func, select
 from sqlalchemy import cast as sql_cast
 
-from sync_api.manatal.payload import ManatalMigrationCounts, ManatalMigrationRecent, ManatalMigrationStatus
-from sync_core.models import Candidate, Cv, CvParsingStatus, Profile, TalentPoolMember, User
+from sync_api.manatal.payload import (
+    ManatalMigrationCounts,
+    ManatalMigrationQueueCounts,
+    ManatalMigrationRecent,
+    ManatalMigrationStatus,
+)
+from sync_core.models import (
+    Candidate,
+    Cv,
+    CvParsingStatus,
+    ManatalImportEntry,
+    ManatalImportEntryState,
+    ManatalImportJob,
+    ManatalImportJobStatus,
+    Profile,
+    TalentPoolMember,
+    User,
+)
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -14,6 +30,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.tenants import ActingRecruiter
+    from sync_core import Settings
 
 RECENT_LIMIT: Final = 20
 
@@ -23,14 +40,23 @@ LAST_SIGN_IN = cast("Any", User.last_sign_in_at)
 class ManatalMigrationService:
     """Read-only progress for candidates a Tenant brought across from Manatal."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, settings: Settings) -> None:
         self._db = session
+        self._settings = settings
 
     async def status(self, recruiter: ActingRecruiter) -> ManatalMigrationStatus:
         tenant_id = recruiter.tenant.id
+        configured = (
+            self._settings.manatal_api_token is not None
+            and self._settings.manatal_recruiter_id is not None
+        )
+        may_start = configured and recruiter.profile.id == self._settings.manatal_recruiter_id
         counts = (await self._db.execute(_counts(tenant_id))).mappings().one()
+        queue = (await self._db.execute(_queue(tenant_id))).mappings().one()
         recent = (await self._db.execute(_recent(tenant_id))).mappings().all()
         return ManatalMigrationStatus(
+            configured=configured,
+            may_start=may_start,
             counts=ManatalMigrationCounts(
                 total=counts["total"],
                 published=counts["published"],
@@ -39,6 +65,13 @@ class ManatalMigrationService:
                 awaiting_parse=counts["awaiting_parse"],
                 parse_failed=counts["parse_failed"],
                 with_linkedin=counts["with_linkedin"],
+            ),
+            queue=ManatalMigrationQueueCounts(
+                ledger_pending=queue["ledger_pending"],
+                ledger_imported=queue["ledger_imported"],
+                jobs_pending=queue["jobs_pending"],
+                jobs_processing=queue["jobs_processing"],
+                jobs_failed=queue["jobs_failed"],
             ),
             recent=[
                 ManatalMigrationRecent(
@@ -77,6 +110,61 @@ def _imported_in_pool(tenant_id: UUID) -> Select[Any]:
             TalentPoolMember.tenant_id == tenant_id,
             Candidate.is_imported_from_manatal.is_(True),
         )
+    )
+
+
+def _queue(tenant_id: UUID) -> Select[Any]:
+    ledger_pending = (
+        select(func.count())
+        .select_from(ManatalImportEntry)
+        .where(
+            ManatalImportEntry.tenant_id == tenant_id,
+            ManatalImportEntry.state == ManatalImportEntryState.PENDING,
+        )
+        .scalar_subquery()
+    )
+    ledger_imported = (
+        select(func.count())
+        .select_from(ManatalImportEntry)
+        .where(
+            ManatalImportEntry.tenant_id == tenant_id,
+            ManatalImportEntry.state == ManatalImportEntryState.IMPORTED,
+        )
+        .scalar_subquery()
+    )
+    jobs_pending = (
+        select(func.count())
+        .select_from(ManatalImportJob)
+        .where(
+            ManatalImportJob.tenant_id == tenant_id,
+            ManatalImportJob.status == ManatalImportJobStatus.PENDING,
+        )
+        .scalar_subquery()
+    )
+    jobs_processing = (
+        select(func.count())
+        .select_from(ManatalImportJob)
+        .where(
+            ManatalImportJob.tenant_id == tenant_id,
+            ManatalImportJob.status == ManatalImportJobStatus.PROCESSING,
+        )
+        .scalar_subquery()
+    )
+    jobs_failed = (
+        select(func.count())
+        .select_from(ManatalImportJob)
+        .where(
+            ManatalImportJob.tenant_id == tenant_id,
+            ManatalImportJob.status == ManatalImportJobStatus.FAILED,
+        )
+        .scalar_subquery()
+    )
+    return select(
+        ledger_pending.label("ledger_pending"),
+        ledger_imported.label("ledger_imported"),
+        jobs_pending.label("jobs_pending"),
+        jobs_processing.label("jobs_processing"),
+        jobs_failed.label("jobs_failed"),
     )
 
 

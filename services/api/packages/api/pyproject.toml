@@ -19,6 +19,7 @@ dependencies = [
     "email-validator>=2.2",
     "sync-assessments",
     "sync-core",
+    "sync-manatal",
     "sync-ingestion",
     "sync-parsers",
     "sync-rag",
@@ -41,6 +42,7 @@ build-backend = "uv_build"
 [tool.uv.sources]
 sync-assessments = { workspace = true }
 sync-core = { workspace = true }
+sync-manatal = { workspace = true }
 sync-rag = { workspace = true }
 sync-parsers = { workspace = true }
 sync-ingestion = { workspace = true }

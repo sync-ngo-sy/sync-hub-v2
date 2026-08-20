@@ -118,6 +118,29 @@ class IngestionStatus(enum.StrEnum):
     FAILED = "failed"
 
 
+class ManatalImportEntryState(enum.StrEnum):
+    PENDING = "pending"
+    IMPORTED = "imported"
+    PUBLISHED = "published"
+    NO_EMAIL = "no_email"
+    NO_RESUME = "no_resume"
+    ALREADY_REGISTERED = "already_registered"
+    FAILED = "failed"
+
+
+class ManatalImportJobKind(enum.StrEnum):
+    PLAN = "plan"
+    IMPORT = "import"
+    PUBLISH = "publish"
+
+
+class ManatalImportJobStatus(enum.StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class JobStatus(enum.StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"
@@ -1003,6 +1026,134 @@ class IngestionJob(Base):
     completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     cv: Mapped["Cv"] = relationship("Cv", viewonly=True)
+
+
+class ManatalImportEntry(Base):
+    __tablename__ = "manatal_import_entries"
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="manatal_import_entries_attempts_nonneg"),
+        ForeignKeyConstraint(
+            ["candidate_id"],
+            ["public.candidates.id"],
+            ondelete="SET NULL",
+            name="manatal_import_entries_candidate_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["cv_id"], ["public.cvs.id"], ondelete="SET NULL", name="manatal_import_entries_cv_id_fkey"
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id"],
+            ["public.tenants.id"],
+            ondelete="CASCADE",
+            name="manatal_import_entries_tenant_id_fkey",
+        ),
+        PrimaryKeyConstraint(
+            "tenant_id", "manatal_candidate_id", name="manatal_import_entries_pkey"
+        ),
+        Index("manatal_import_entries_state_idx", "tenant_id", "state"),
+        {"schema": "public"},
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    manatal_candidate_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    state: Mapped[ManatalImportEntryState] = mapped_column(
+        Enum(
+            ManatalImportEntryState,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="manatal_import_entry_state",
+        ),
+        nullable=False,
+        server_default=text("'pending'::manatal_import_entry_state"),
+    )
+    full_name: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''::text"))
+    email: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''::text"))
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    cv_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    file_hash: Mapped[str | None] = mapped_column(Text)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[str | None] = mapped_column(Text)
+    company: Mapped[str | None] = mapped_column(Text)
+    degree: Mapped[str | None] = mapped_column(Text)
+    university: Mapped[str | None] = mapped_column(Text)
+    graduation_year: Mapped[int | None] = mapped_column(Integer)
+    english: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+
+    candidate: Mapped[Optional["Candidate"]] = relationship("Candidate", viewonly=True)
+    cv: Mapped[Optional["Cv"]] = relationship("Cv", viewonly=True)
+    tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
+
+
+class ManatalImportJob(Base):
+    __tablename__ = "manatal_import_jobs"
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="manatal_import_jobs_attempts_nonneg"),
+        CheckConstraint(
+            "kind = 'plan'::manatal_import_job_kind OR manatal_candidate_id IS NOT NULL",
+            name="manatal_import_jobs_candidate_required",
+        ),
+        ForeignKeyConstraint(
+            ["recruiter_id"],
+            ["public.recruiters.id"],
+            ondelete="RESTRICT",
+            name="manatal_import_jobs_recruiter_id_fkey",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id"],
+            ["public.tenants.id"],
+            ondelete="CASCADE",
+            name="manatal_import_jobs_tenant_id_fkey",
+        ),
+        PrimaryKeyConstraint("id", name="manatal_import_jobs_pkey"),
+        Index(
+            "manatal_import_jobs_claim_idx",
+            "available_at",
+            postgresql_where="(status = ANY (ARRAY['pending'::manatal_import_job_status, 'processing'::manatal_import_job_status]))",
+        ),
+        Index("manatal_import_jobs_status_created_idx", "status", "created_at"),
+        {"schema": "public"},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    recruiter_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    kind: Mapped[ManatalImportJobKind] = mapped_column(
+        Enum(
+            ManatalImportJobKind,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="manatal_import_job_kind",
+        ),
+        nullable=False,
+    )
+    manatal_candidate_id: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[ManatalImportJobStatus] = mapped_column(
+        Enum(
+            ManatalImportJobStatus,
+            values_callable=lambda cls: [member.value for member in cls],
+            name="manatal_import_job_status",
+        ),
+        nullable=False,
+        server_default=text("'pending'::manatal_import_job_status"),
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    available_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()")
+    )
+
+    recruiter: Mapped["Recruiter"] = relationship("Recruiter", viewonly=True)
+    tenant: Mapped["Tenant"] = relationship("Tenant", viewonly=True)
 
 
 class Profile(Base):

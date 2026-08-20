@@ -1,6 +1,32 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
+
+
+class ManatalMigrationAction(StrEnum):
+    IMPORT = "import"
+    PUBLISH = "publish"
+
+
+class ManatalMigrationStartRequest(BaseModel):
+    action: ManatalMigrationAction = Field(
+        description="Start bringing candidates across from Manatal, or publish parsed profiles."
+    )
+
+
+class ManatalMigrationStartResponse(BaseModel):
+    action: ManatalMigrationAction
+    jobs_enqueued: int = Field(description="How many worker jobs this request queued.")
+
+
+class ManatalMigrationQueueCounts(BaseModel):
+    ledger_pending: int = Field(description="Manatal candidates not yet imported.")
+    ledger_imported: int = Field(description="Imported candidates waiting to be published.")
+    jobs_pending: int = Field(description="Worker jobs waiting to run.")
+    jobs_processing: int = Field(description="Worker jobs running now.")
+    jobs_failed: int = Field(description="Worker jobs that failed and will not retry.")
 
 
 class ManatalMigrationCounts(BaseModel):
@@ -38,7 +64,14 @@ class ManatalMigrationRecent(BaseModel):
 class ManatalMigrationStatus(BaseModel):
     """Everything a tenant admin needs to see how a Manatal import is going."""
 
+    configured: bool = Field(
+        description="Whether this deployment has Manatal credentials and a recruiter id set."
+    )
+    may_start: bool = Field(
+        description="Whether the signed-in tenant admin may start import or publish batches."
+    )
     counts: ManatalMigrationCounts
+    queue: ManatalMigrationQueueCounts
     recent: list[ManatalMigrationRecent] = Field(
         description="The twenty most recently saved imported candidates."
     )
