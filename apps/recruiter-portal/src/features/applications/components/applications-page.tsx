@@ -10,9 +10,7 @@ import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
   type ApplicationSort,
-  EVERY_TIME,
-  hiddenBehind,
-  PIPELINE_STATUSES,
+  pipelineTab,
   RECEIVED_RANGES,
   type ReceivedRange,
   receivedSelection,
@@ -24,7 +22,12 @@ import {
   type TenantApplication,
 } from '../application';
 import { useTenantApplications } from '../hooks/use-tenant-applications';
-import type { TenantApplicationFilters } from '../reading';
+import {
+  clearFiltersLabel,
+  narrowedBy,
+  noApplicationsMessage,
+  type TenantApplicationFilters,
+} from '../reading';
 import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
@@ -56,9 +59,6 @@ function JobPlace({ job }: { job: TenantApplication['job'] }) {
 
 const COLUMNS = applicationColumns<TenantApplication>(JOB);
 
-const NOTHING_YET =
-  'No Applications yet — publish a Job and share its tracked links to bring candidates in.';
-
 const TO_THE_JOBS = (
   <Link to="/jobs" search={{}} className={buttonVariants({ variant: 'outline' })}>
     Go to your jobs
@@ -78,24 +78,19 @@ export function ApplicationsPage({
   onApplicationOpen,
   applicationHref,
 }: ApplicationsPageProps) {
-  const pipelineFilter = filters.pipeline;
-  const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
+  const pipeline = pipelineTab(filters.pipeline);
   const screening = screeningSelection(filters.screening);
   const range = receivedSelection(filters.received);
   const sort = sortSelection(filters.sort);
   const applications = useTenantApplications({
-    pipeline: pipelineFilter,
+    pipeline,
     screening,
     received: filters.received,
     sort,
   });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
-  const active = [
-    hiddenBehind(SCREENING_VERDICTS, screening, verdictCounts) > 0,
-    hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts) > 0,
-    range !== EVERY_TIME,
-  ].filter(Boolean).length;
+  const narrowing = narrowedBy(filters);
 
   return (
     <>
@@ -109,7 +104,7 @@ export function ApplicationsPage({
       <div className="space-y-(--space-section) pt-(--space-section)">
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
           <ApplicationPipelineFilter
-            pipeline={pipelineFilter}
+            pipeline={pipeline}
             counts={statusCounts}
             onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
           />
@@ -165,14 +160,9 @@ export function ApplicationsPage({
           }
           empty={{
             icon: Inbox,
-            message:
-              active === 0
-                ? NOTHING_YET
-                : active === 1
-                  ? 'No Application matches that filter.'
-                  : 'No Application matches these filters.',
+            message: noApplicationsMessage(filters),
             action:
-              active > 0 ? (
+              narrowing > 0 ? (
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -184,7 +174,7 @@ export function ApplicationsPage({
                     })
                   }
                 >
-                  {active === 1 ? 'Clear filter' : 'Clear filters'}
+                  {clearFiltersLabel(filters)}
                 </Button>
               ) : (
                 TO_THE_JOBS

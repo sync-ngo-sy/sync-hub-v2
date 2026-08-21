@@ -427,3 +427,30 @@ describe('dropping a Candidate from the talent pool', () => {
     await waitFor(() => expect(names()).toEqual(['Open Amina Haddad']));
   });
 });
+
+describe('saving a Candidate into the talent pool', () => {
+  it('puts them in the list, which is not the reading the save was made on', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...keepsTalentPool([YOUSSEF_SAVED]),
+      ...readsCandidate(AMINA_RECORD),
+    );
+
+    const { user, router } = await renderApp(AT);
+    await waitFor(() => expect(names()).toEqual(['Open Youssef Nassar']));
+
+    await router.navigate({
+      to: '/candidates/$candidateId',
+      params: { candidateId: AMINA_SAVED.candidate_id },
+      search: {},
+    });
+    expect(await screen.findByText('Amina Haddad is not in your talent pool.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Save to talent pool' }));
+    expect(await screen.findByText('Amina Haddad is in your talent pool.')).toBeVisible();
+
+    await router.navigate({ to: AT, search: {} });
+
+    await waitFor(() => expect(names()).toEqual(['Open Amina Haddad', 'Open Youssef Nassar']));
+  });
+});

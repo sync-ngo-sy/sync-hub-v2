@@ -95,3 +95,20 @@ def test_a_cookie_domain_is_still_allowed_locally() -> None:
     local = settings_with(environment=Environment.LOCAL, auth_cookie_domain="localhost")
 
     assert local.auth_cookie_domain == "localhost"
+
+
+@pytest.mark.parametrize("environment", [Environment.STAGING, Environment.PRODUCTION])
+def test_an_insecure_session_cookie_is_refused_in_a_deployed_environment(
+    environment: Environment,
+) -> None:
+    with pytest.raises(ValidationError, match="must stay true"):
+        settings_with(environment=environment, auth_cookie_secure=False)
+
+
+@pytest.mark.parametrize("environment", [Environment.LOCAL, Environment.CI])
+def test_an_insecure_session_cookie_is_still_allowed_outside_deployments(
+    environment: Environment,
+) -> None:
+    settings = settings_with(environment=environment, auth_cookie_secure=False)
+
+    assert settings.auth_cookie_secure is False

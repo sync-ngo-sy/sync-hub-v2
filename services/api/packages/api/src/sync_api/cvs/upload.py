@@ -5,7 +5,7 @@ import tempfile
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from anyio import to_thread
 
@@ -41,6 +41,7 @@ async def received(upload: UploadFile, *, max_bytes: int) -> AsyncGenerator[Rece
     with tempfile.TemporaryDirectory(prefix="sync-cv-") as directory:
         spooled = Path(directory) / "upload"
         digest, size = await _spool(upload, spooled, max_bytes=max_bytes)
+        _refuse_if_signature_mismatches(spooled, media_type)
         with spooled.open("rb") as reader:
             yield ReceivedFile(
                 reader=reader,
@@ -78,11 +79,7 @@ def _media_type_of(upload: UploadFile) -> str:
     guessed = CV_MEDIA_TYPE_BY_EXTENSION.get(Path(upload.filename or "").suffix.lower())
     if guessed is not None:
         return guessed
-    raise Problem(
-        status=415,
-        type=CV_MEDIA_TYPE_PROBLEM_TYPE,
-        detail="A CV has to be a PDF, DOC or DOCX file.",
-    )
+    raise _unsupported_media_type()
 
 
 def _display_name(upload: UploadFile) -> str:
@@ -99,3 +96,36 @@ def _too_large(max_bytes: int) -> Problem:
         type=CV_TOO_LARGE_PROBLEM_TYPE,
         detail=f"A CV has to be {max_bytes // (1024 * 1024)} MB or smaller.",
     )
+
+
+SIGNATURES_BY_MEDIA_TYPE: Final[dict[str, tuple[bytes, ...]]] = {
+    "application/pdf": (b"%PDF-",),
+    "application/msword": (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",),
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
+        b"PK\x03\x04",
+        b"PK\x05\x06",
+        b"PK\x07\x08",
+    ),
+}
+
+MAX_SIGNATURE_BYTES: Final = max(
+    len(signature) for signatures in SIGNATURES_BY_MEDIA_TYPE.values() for signature in signatures
+)
+
+
+def _unsupported_media_type() -> Problem:
+    return Problem(
+        status=415,
+        type=CV_MEDIA_TYPE_PROBLEM_TYPE,
+        detail="A CV has to be a PDF, DOC or DOCX file.",
+    )
+
+
+def _refuse_if_signature_mismatches(path: Path, media_type: str) -> None:
+    """A type accepted in `sync_core.storage` with no signature here is refused, not crashed on."""
+    signatures = SIGNATURES_BY_MEDIA_TYPE.get(media_type, ())
+    with path.open("rb") as source:
+        start = source.read(MAX_SIGNATURE_BYTES)
+    if any(start.startswith(signature) for signature in signatures):
+        return
+    raise _unsupported_media_type()

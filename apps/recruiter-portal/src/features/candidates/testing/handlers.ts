@@ -1,13 +1,14 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
 import type { Note } from '@/features/crm/note';
+import { VOCABULARY_PATH } from '@/features/crm/reread';
 import type { Tag } from '@/features/crm/tag';
 import type { MatchedCandidate, SearchableCandidate } from '../candidate';
 import { CANDIDATE_PATH, type CandidateRecord } from '../candidate-record';
 import { DIRECTORY_PATH } from '../hooks/use-candidate-directory';
 import { NOTE_PATH, NOTES_PATH } from '../hooks/use-candidate-notes';
 import { SEARCH_PATH } from '../hooks/use-candidate-search';
-import { TAG_PATH, TAGS_PATH, VOCABULARY_PATH } from '../hooks/use-candidate-tags';
+import { TAG_PATH, TAGS_PATH } from '../hooks/use-candidate-tags';
 import { CANDIDATE_OUT_OF_REACH } from './fixtures';
 
 type Problem = components['schemas']['ProblemDetail'];

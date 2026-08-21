@@ -2,12 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
 import type { JobSummary } from '@/features/jobs/job';
 import { api } from '@/lib/api';
-import {
-  OVERVIEW_JOBS,
-  RECENT_APPLICATIONS,
-  type TenantApplication,
-  type TenantStats,
-} from '../dashboard';
+import { OVERVIEW_JOBS, type TenantApplication, type TenantStats } from '../dashboard';
+import { recentApplications, tenantStats } from '../reread';
 
 export interface PanelRead<TData> {
   data?: TData;
@@ -23,20 +19,10 @@ export interface DashboardRead {
   jobs: PanelRead<JobSummary[]>;
 }
 
-export function statsQuery() {
-  return api.queryOptions('get', '/v1/tenants/me/stats', {});
-}
-
-export function recentApplicationsQuery() {
-  return api.queryOptions('get', '/v1/tenants/me/applications', {
-    params: { query: { limit: RECENT_APPLICATIONS, cursor: null, status: null, job_id: null } },
-  });
-}
-
 export function useDashboard(): DashboardRead {
   const tenant = api.useQuery('get', '/v1/tenants/me', {});
-  const stats = useQuery(statsQuery());
-  const applications = useQuery(recentApplicationsQuery());
+  const stats = useQuery(tenantStats());
+  const applications = useQuery(recentApplications());
   const jobs = useQuery(jobsFirstPageQuery());
 
   return {

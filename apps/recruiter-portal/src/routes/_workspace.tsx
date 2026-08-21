@@ -4,6 +4,7 @@ import { ensureCurrentProfile } from '@/features/auth/current-profile';
 import { AppShell } from '@/features/shell/components/app-shell';
 import { PageSkeleton } from '@/features/shell/components/page-skeleton';
 import { AppCrash } from '@/features/shell/components/route-error';
+import { askTenantAccess } from '@/features/tenant/access';
 
 export const Route = createFileRoute('/_workspace')({
   staticData: { requiresSession: true },
@@ -14,6 +15,9 @@ export const Route = createFileRoute('/_workspace')({
     }
     if (profile.account_type !== 'recruiter') {
       throw redirect({ to: '/wrong-portal' });
+    }
+    if (await askTenantAccess(context.queryClient)) {
+      throw redirect({ to: '/access-refused' });
     }
     return { profile };
   },

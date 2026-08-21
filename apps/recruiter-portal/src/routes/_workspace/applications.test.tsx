@@ -6,6 +6,7 @@ import {
   AMAL_REVIEW,
   ANYWHERE_JOB,
   DIMA,
+  DIMA_REVIEW,
   ELIAS,
   FARAH,
   GHADA,
@@ -15,12 +16,13 @@ import {
   failsToListTenantApplications,
   getsApplication,
   listsTenantApplications,
+  movesTenantApplications,
   pagesTenantApplications,
   type TenantAskedFor,
 } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { A_BUSY_WEEK } from '@/features/dashboard/testing/fixtures';
-import { servesStats } from '@/features/dashboard/testing/handlers';
+import { countsApplications, servesStats } from '@/features/dashboard/testing/handlers';
 import { FIELD_COORDINATOR_VIEW } from '@/features/jobs/testing/fixtures';
 import { getsJob, listsJobs } from '@/features/jobs/testing/handlers';
 import { absoluteDateTime, relativeTime } from '@/lib/dates';
@@ -381,6 +383,20 @@ describe('the unified Applications page', () => {
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
   });
 
+  it('counts the filters from what was asked for, not from the counts the API sent', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp(
+      `/applications?pipeline=${inUrl(['hired'])}&screening=${inUrl(['review_required'])}`,
+    );
+
+    expect(await screen.findByText('No Application matches these filters.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+  });
+
   it('points a Tenant nobody has applied to at its Jobs', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications([]));
 
@@ -419,5 +435,68 @@ describe('the unified Applications page', () => {
 
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('a Pipeline move made from the Applications page', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(TODAY);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function awaitingReview() {
+    return within(screen.getByRole('region', { name: 'Hiring at a glance' }))
+      .getByText('Awaiting review')
+      .closest('a');
+  }
+
+  function recentRow(candidate: string) {
+    return within(
+      within(screen.getByRole('region', { name: 'Recent applications' })).getByRole('row', {
+        name: new RegExp(candidate),
+      }),
+    );
+  }
+
+  it('leaves the Pipeline tabs, the Verdict counts and the Dashboard saying where it went', async () => {
+    const tenant = [DIMA, FARAH, ELIAS];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...movesTenantApplications(tenant, DIMA_REVIEW),
+      ...countsApplications(tenant, A_BUSY_WEEK),
+    );
+
+    const { router, user } = await renderApp('/dashboard');
+    await waitFor(() => expect(awaitingReview()).toHaveTextContent('2'));
+    expect(recentRow('Dima Sabbagh').getByText('New')).toBeVisible();
+
+    await router.navigate({ to: '/applications', search: { pipeline: ['new'] } });
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    expect(pipelineChip('New')).toHaveAccessibleName('New 2');
+    expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 1');
+
+    await user.click(screen.getByRole('link', { name: "Open Dima Sabbagh's Application" }));
+    await user.click(await screen.findByRole('button', { name: 'Move to Reviewing' }));
+    expect(await screen.findByText(/Moved to Reviewing/)).toBeVisible();
+
+    await router.navigate({ to: '/applications', search: { pipeline: ['new'] } });
+
+    expect(await screen.findByText('Farah Doumani')).toBeVisible();
+    await waitFor(() => expect(pipelineChip('New')).toHaveAccessibleName('New 1'));
+    expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 2');
+    expect(screen.queryByText('Dima Sabbagh')).toBeNull();
+
+    await openVerdicts(user);
+    expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 1');
+    await user.keyboard('{Escape}');
+
+    await router.navigate({ to: '/dashboard' });
+
+    await waitFor(() => expect(awaitingReview()).toHaveTextContent('1'));
+    expect(recentRow('Dima Sabbagh').getByText('Reviewing')).toBeVisible();
   });
 });

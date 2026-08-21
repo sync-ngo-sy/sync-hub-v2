@@ -1,29 +1,28 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useRereadTenantStats } from '@/features/dashboard/reread';
 import { api } from '@/lib/api';
-import { applicationQuery } from './use-application';
-import { jobApplicationsQueryPrefix } from './use-job-applications';
-import { matchAssessmentQueryKey } from './use-match-assessment';
+import {
+  APPLICATION_PATH,
+  ASSESSMENT_PATH,
+  MESSAGES_PATH,
+  useRereadMatchAssessment,
+  useRereadMovedApplication,
+} from '../reread';
 
 export function useMoveApplication(applicationId: string) {
-  const queryClient = useQueryClient();
+  const rereadApplications = useRereadMovedApplication(applicationId);
+  const rereadStats = useRereadTenantStats();
 
-  return api.useMutation('patch', '/v1/tenants/me/applications/{application_id}', {
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: applicationQuery(applicationId).queryKey });
-      return queryClient.invalidateQueries({ queryKey: jobApplicationsQueryPrefix() });
-    },
+  return api.useMutation('patch', APPLICATION_PATH, {
+    onSuccess: () => Promise.all([rereadApplications(), rereadStats()]),
   });
 }
 
 export function useAssessMatch(applicationId: string) {
-  const queryClient = useQueryClient();
+  const reread = useRereadMatchAssessment(applicationId);
 
-  return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/assessment', {
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: matchAssessmentQueryKey(applicationId) }),
-  });
+  return api.useMutation('post', ASSESSMENT_PATH, { onSuccess: reread });
 }
 
 export function useMessageApplicant() {
-  return api.useMutation('post', '/v1/tenants/me/applications/{application_id}/messages');
+  return api.useMutation('post', MESSAGES_PATH);
 }

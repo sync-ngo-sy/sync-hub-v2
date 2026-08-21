@@ -469,6 +469,48 @@ describe("a Job's Applications tab", () => {
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
   });
 
+  it('blames the filters on a list whose every count reads zero', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { router, user } = await renderApp(
+      `/jobs/${JOB.id}?pipeline=${inUrl(['interview'])}&screening=${inUrl(['pending'])}&sort=oldest`,
+    );
+
+    expect(
+      await screen.findByText('No Application on this Job matches both filters.'),
+    ).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'All 0' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Interview 0' })).toBeVisible();
+
+    await openScreening(user);
+    expect(checkItem('Pending')).toHaveAccessibleName('Pending, 0');
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'oldest' }));
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+  });
+
+  it('reads all four verdicts as an untouched filter, and offers no Clear', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([]),
+      ...listsTrackedLinks([LINKEDIN_POST]),
+    );
+
+    await renderApp(`/jobs/${JOB.id}?screening=${inUrl(EVERY_VERDICT)}`);
+
+    expect(await screen.findByText(/No one has applied yet/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Go to tracked links' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^Clear filter/ })).toBeNull();
+  });
+
   it('carries the filters across a trip to another tab', async () => {
     server.use(
       ...signedInAs(RECRUITER),

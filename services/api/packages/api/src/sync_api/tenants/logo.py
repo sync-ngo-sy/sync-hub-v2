@@ -10,6 +10,7 @@ from sync_api.problems import (
     TENANT_LOGO_EMPTY_PROBLEM_TYPE,
     TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE,
     TENANT_LOGO_TOO_LARGE_PROBLEM_TYPE,
+    TENANT_LOGO_TOO_MANY_PIXELS_PROBLEM_TYPE,
 )
 from sync_core import transaction
 from sync_core.models import Tenant
@@ -28,6 +29,7 @@ TENANT_LOGO = PictureKind(
     subject="A logo",
     unreadable_type=TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE,
     too_large_type=TENANT_LOGO_TOO_LARGE_PROBLEM_TYPE,
+    too_many_pixels_type=TENANT_LOGO_TOO_MANY_PIXELS_PROBLEM_TYPE,
     empty_type=TENANT_LOGO_EMPTY_PROBLEM_TYPE,
 )
 

@@ -1,7 +1,7 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
-import { POOL_ENTRY_PATH, POOL_PATH } from '../hooks/use-talent-pool';
 import type { PooledCandidate, TalentPoolOrder } from '../pool';
+import { POOL_ENTRY_PATH, POOL_PATH } from '../reread';
 
 type Problem = components['schemas']['ProblemDetail'];
 
