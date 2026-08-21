@@ -105,6 +105,17 @@ async def enforce_password_change_rate_limit(
     await _enforce(limiter, request, caller=str(profile.id))
 
 
+async def enforce_account_deletion_rate_limit(
+    request: Request,
+    profile: CurrentProfileDep,
+    limiter: Annotated[RateLimiter, Depends(get_auth_rate_limiter)],
+) -> None:
+    """The deletion password check is a full sign-in, so without a budget it is an unlimited
+    password oracle whose every guess also drains the platform's shared sign-in quota. Spent per
+    account being guessed at, like the password change."""
+    await _enforce(limiter, request, caller=str(profile.id))
+
+
 async def enforce_assessment_rate_limit(
     request: Request,
     recruiter: ActingRecruiterDep,

@@ -26,7 +26,7 @@ from tests.support.candidates import (
 from tests.support.crm import a_searchable_candidate, pool_of, save_to_pool
 from tests.support.cvs import CVS, an_uploaded_cv
 from tests.support.embedders import FakeEmbedder
-from tests.support.harness import SPA_HEADERS, asgi_client
+from tests.support.harness import SPA_HEADERS, asgi_client, spa_onto
 from tests.support.jobs import a_published_job
 from tests.support.notifications import failed_parses
 from tests.support.profiles import (
@@ -58,6 +58,10 @@ WRONG_PASSWORD: Final = "not-the-right-password"
 INVALID_CREDENTIALS: Final = "urn:sync:problem:invalid-credentials"
 
 CANDIDATE_ONLY: Final = "urn:sync:problem:candidate-only"
+
+RATE_LIMITED: Final = "urn:sync:problem:rate-limited"
+
+A_TIGHT_LIMIT: Final = 2
 
 A_BACKEND_ENGINEER: dict[str, Any] = {
     "headline": "Backend engineer, 8 years",
@@ -376,3 +380,17 @@ async def test_a_deleted_candidate_keeps_the_password_they_confirmed_with(
 
     await a_deleted_account(browser, DEFAULT_PASSWORD)
     assert (await sign_in(browser, signup)).status_code != 200
+
+
+async def test_repeated_wrong_password_deletions_are_rate_limited(
+    settings: Settings, mailbox: Mailbox
+) -> None:
+    async with spa_onto(settings, auth_rate_limit_max_requests=A_TIGHT_LIMIT) as spa:
+        await a_signed_in_candidate(spa, mailbox)
+        for _ in range(A_TIGHT_LIMIT):
+            assert (await delete_my_account(spa, WRONG_PASSWORD)).status_code == 401
+
+        response = await delete_my_account(spa, WRONG_PASSWORD)
+
+    assert response.status_code == 429
+    assert response.json()["type"] == RATE_LIMITED

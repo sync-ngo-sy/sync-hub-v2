@@ -345,3 +345,24 @@ export const NO_SUCH_TEMPLATE_TO_SEND: components['schemas']['ProblemDetail'] = 
   status: 404,
   detail: 'This tenant has no message template with that id.',
 };
+
+export const DIMA_REVIEW: ApplicationReview = {
+  ...AMAL_REVIEW,
+  id: DIMA.id,
+  job: { id: MEAL.id, title: MEAL.title },
+  status: DIMA.status,
+  screening: { status: DIMA.qualification_status, reason: null },
+  snapshot: {
+    ...AMAL_REVIEW.snapshot,
+    full_name: DIMA.candidate_name,
+    headline: DIMA.headline,
+    location: DIMA.location,
+    canonical_role: DIMA.canonical_role,
+    total_experience_years: DIMA.total_experience_years,
+  },
+  history: [
+    { status: 'new', previous_status: null, source: 'candidate', changed_at: DIMA.applied_at },
+  ],
+  applied_at: DIMA.applied_at,
+  updated_at: DIMA.updated_at,
+};

@@ -10,7 +10,7 @@ import { CircleAlert } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { isProblem, problemDetail } from '@/lib/api-problem';
-import { useCreateTag, useRenameTag } from '../hooks/use-tag-vocabulary';
+import { useMintTag, useRenameTag } from '../hooks/use-tag-vocabulary';
 import { TAG_NAME_TAKEN_PROBLEM } from '../problems';
 import { type TagFormValues, tagFormSchema } from '../schemas/tag';
 import { SCOPE_DESCRIPTIONS, SCOPE_LABELS, TAG_SCOPES, type Tag, type TagScope } from '../tag';
@@ -23,7 +23,7 @@ interface TagFormProps {
 }
 
 export function TagForm({ vocabulary, tag, onSaved, onCancel }: TagFormProps) {
-  const create = useCreateTag();
+  const mint = useMintTag();
   const rename = useRenameTag();
   const form = useForm<TagFormValues>({
     resolver: zodResolver(tagFormSchema(vocabulary, tag)),
@@ -38,7 +38,7 @@ export function TagForm({ vocabulary, tag, onSaved, onCancel }: TagFormProps) {
         await rename.mutateAsync({ params: { path: { tag_id: tag.id } }, body: { name } });
         toast.success('Tag renamed');
       } else {
-        await create.mutateAsync({ body: { name, scope: values.scope } });
+        await mint.mutateAsync({ body: { name, scope: values.scope } });
         toast.success('Tag added');
       }
       onSaved();
@@ -51,7 +51,7 @@ export function TagForm({ vocabulary, tag, onSaved, onCancel }: TagFormProps) {
     }
   });
 
-  const isPending = create.isPending || rename.isPending;
+  const isPending = mint.isPending || rename.isPending;
 
   return (
     <form onSubmit={save} noValidate>

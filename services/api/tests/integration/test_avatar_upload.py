@@ -4,12 +4,17 @@ import asyncio
 import io
 from typing import TYPE_CHECKING, Final
 
+import pytest
 from PIL import Image
 
-from sync_api.pictures import SQUARE_PIXELS
+from sync_api.pictures import LARGEST_SOURCE_SIDE, SQUARE_PIXELS
 from tests.support.avatars import (
+    A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB,
+    A_SIDE_THE_PLATFORM_WILL_NOT_DECODE,
+    IGNORING_PILLOWS_OWN_BOMB_WARNING,
     PNG,
     a_photo,
+    a_png_claiming,
     an_uploaded_avatar,
     avatar_paths,
     upload_avatar,
@@ -155,6 +160,35 @@ async def test_an_image_in_a_format_the_platform_does_not_take_is_refused(
 
     assert response.status_code == 415, response.text
     assert "JPEG, PNG or WebP" in response.json()["detail"]
+
+
+@pytest.mark.filterwarnings(IGNORING_PILLOWS_OWN_BOMB_WARNING)
+async def test_a_photo_with_more_pixels_than_the_platform_decodes_is_refused(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    huge = a_png_claiming(A_SIDE_THE_PLATFORM_WILL_NOT_DECODE, A_SIDE_THE_PLATFORM_WILL_NOT_DECODE)
+
+    response = await upload_avatar(browser, huge, filename="huge.png", media_type=PNG)
+
+    assert response.status_code == 413, response.text
+    assert f"{LARGEST_SOURCE_SIDE} pixels" in response.json()["detail"]
+    assert await avatar_paths(db_session) == []
+
+
+async def test_a_decompression_bomb_is_refused_rather_than_failing(
+    browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    bomb = a_png_claiming(A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB, A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB)
+
+    response = await upload_avatar(browser, bomb, filename="bomb.png", media_type=PNG)
+
+    assert response.status_code == 415, response.text
+    assert "JPEG, PNG or WebP" in response.json()["detail"]
+    assert await avatar_paths(db_session) == []
 
 
 async def test_an_empty_file_is_refused(browser: AsyncClient, mailbox: Mailbox) -> None:

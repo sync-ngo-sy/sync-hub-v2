@@ -1,23 +1,23 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-
-export const VOCABULARY_PATH = '/v1/tenants/me/tags';
-export const VOCABULARY_TAG_PATH = '/v1/tenants/me/tags/{tag_id}';
-
-export function everyVocabularyKey() {
-  return ['get', VOCABULARY_PATH] as const;
-}
+import {
+  useRereadVocabulary,
+  VOCABULARY_PATH,
+  VOCABULARY_TAG_PATH,
+  vocabularyInScope,
+  wholeVocabulary,
+} from '../reread';
+import type { TagScope } from '../tag';
 
 export function useTagVocabulary() {
-  return api.useQuery('get', VOCABULARY_PATH, {});
+  return useQuery(wholeVocabulary());
 }
 
-function useRereadVocabulary() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: everyVocabularyKey() });
+export function useVocabularyInScope(scope: TagScope) {
+  return useQuery(vocabularyInScope(scope));
 }
 
-export function useCreateTag() {
+export function useMintTag() {
   const reread = useRereadVocabulary();
   return api.useMutation('post', VOCABULARY_PATH, { onSuccess: reread });
 }

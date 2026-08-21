@@ -10,16 +10,17 @@ import { useCanonicalSkills } from '@/features/reference/hooks/use-canonical-ski
 import { useLocations } from '@/features/reference/hooks/use-locations';
 import { locationGroups, roleOptions, skillGroups } from '@/features/reference/options';
 import {
-  type CandidateSearchValues,
-  candidateFilterSchema,
-  candidateSearchSchema,
-} from '../schemas/candidate-search';
-import {
   type CandidateSearchFilters,
   type CandidateTab,
   languagesFrom,
   languageTokens,
-} from '../search';
+  wordsIn,
+} from '../reading';
+import {
+  type CandidateSearchValues,
+  candidateFilterSchema,
+  candidateSearchSchema,
+} from '../schemas/candidate-search';
 import { LanguageFilter } from './language-filter';
 
 interface CandidateFiltersProps {
@@ -40,7 +41,7 @@ const EMPTY: CandidateSearchValues = {
 
 function values(filters: CandidateSearchFilters): CandidateSearchValues {
   return {
-    q: filters.q,
+    q: wordsIn(filters),
     location: filters.location ?? '',
     languages: languagesFrom(filters.languages),
     skills: filters.skills ?? [],

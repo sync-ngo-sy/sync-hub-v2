@@ -7,13 +7,21 @@ import pytest
 from PIL import Image
 
 from sync_api.avatars import AVATAR
-from sync_api.pictures import SQUARE_PIXELS, square_webp
+from sync_api.pictures import LARGEST_SOURCE_SIDE, SQUARE_PIXELS, square_webp
 from sync_api.problems import (
     AVATAR_MEDIA_TYPE_PROBLEM_TYPE,
+    AVATAR_TOO_MANY_PIXELS_PROBLEM_TYPE,
     TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE,
+    TENANT_LOGO_TOO_MANY_PIXELS_PROBLEM_TYPE,
     Problem,
 )
 from sync_api.tenants import TENANT_LOGO
+from tests.support.avatars import (
+    A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB,
+    A_SIDE_THE_PLATFORM_WILL_NOT_DECODE,
+    IGNORING_PILLOWS_OWN_BOMB_WARNING,
+    a_png_claiming,
+)
 
 RED: Final = (220, 30, 30)
 BLUE: Final = (30, 60, 220)
@@ -139,3 +147,57 @@ def test_calls_a_logo_a_logo_when_it_refuses_one() -> None:
     assert refusal.value.status == 415
     assert refusal.value.type == TENANT_LOGO_MEDIA_TYPE_PROBLEM_TYPE
     assert (refusal.value.detail or "").startswith("A logo")
+
+
+@pytest.mark.filterwarnings(IGNORING_PILLOWS_OWN_BOMB_WARNING)
+def test_refuses_a_photo_with_more_pixels_than_the_platform_decodes() -> None:
+    with pytest.raises(Problem) as refusal:
+        stored_form(
+            a_png_claiming(A_SIDE_THE_PLATFORM_WILL_NOT_DECODE, A_SIDE_THE_PLATFORM_WILL_NOT_DECODE)
+        )
+
+    assert refusal.value.status == 413
+    assert refusal.value.type == AVATAR_TOO_MANY_PIXELS_PROBLEM_TYPE
+    assert str(LARGEST_SOURCE_SIDE) in (refusal.value.detail or "")
+
+
+def test_a_photo_at_the_largest_side_reaches_the_decode() -> None:
+    with pytest.raises(Problem) as refusal:
+        stored_form(a_png_claiming(LARGEST_SOURCE_SIDE, LARGEST_SOURCE_SIDE))
+
+    assert refusal.value.type == AVATAR_MEDIA_TYPE_PROBLEM_TYPE
+
+
+def test_refuses_a_decompression_bomb_rather_than_letting_it_escape() -> None:
+    with pytest.raises(Problem) as refusal:
+        stored_form(
+            a_png_claiming(A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB, A_SIDE_PILLOW_ITSELF_CALLS_A_BOMB)
+        )
+
+    assert refusal.value.status == 415
+    assert refusal.value.type == AVATAR_MEDIA_TYPE_PROBLEM_TYPE
+
+
+@pytest.mark.filterwarnings(IGNORING_PILLOWS_OWN_BOMB_WARNING)
+def test_calls_a_logo_a_logo_when_it_has_too_many_pixels() -> None:
+    with pytest.raises(Problem) as refusal:
+        square_webp(
+            a_png_claiming(
+                A_SIDE_THE_PLATFORM_WILL_NOT_DECODE, A_SIDE_THE_PLATFORM_WILL_NOT_DECODE
+            ),
+            TENANT_LOGO,
+        )
+
+    assert refusal.value.status == 413
+    assert refusal.value.type == TENANT_LOGO_TOO_MANY_PIXELS_PROBLEM_TYPE
+    assert (refusal.value.detail or "").startswith("A logo")
+
+
+def test_refuses_a_photo_that_stops_halfway_through() -> None:
+    whole = encoded(halves(200, 200, vertical_split=True), "PNG")
+
+    with pytest.raises(Problem) as refusal:
+        stored_form(whole[: len(whole) // 2])
+
+    assert refusal.value.status == 415
+    assert refusal.value.type == AVATAR_MEDIA_TYPE_PROBLEM_TYPE

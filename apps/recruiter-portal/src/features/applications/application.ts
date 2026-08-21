@@ -74,6 +74,10 @@ export function pipelineStep(status: PipelineStatus): number | null {
   return place === -1 ? null : place + 1;
 }
 
+export function pipelineTab(chosen: PipelineStatus[] | undefined): PipelineStatus[] | undefined {
+  return chosen?.length === 1 ? chosen : undefined;
+}
+
 export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {
   return chosen ?? [...SCREENING_VERDICTS];
 }
@@ -137,14 +141,4 @@ export function sortSelection(chosen: ApplicationSort | undefined): ApplicationS
 
 export function sortInAddress(sort: ApplicationSort | undefined): ApplicationSort | undefined {
   return sort === DEFAULT_APPLICATION_SORT ? undefined : sort;
-}
-
-export function hiddenBehind<TValue extends string>(
-  all: readonly TValue[],
-  selected: TValue[],
-  counts: Partial<Record<TValue, number>>,
-): number {
-  return all
-    .filter((one) => !selected.includes(one))
-    .reduce((sum, one) => sum + (counts[one] ?? 0), 0);
 }

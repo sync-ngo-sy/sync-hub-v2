@@ -88,14 +88,25 @@ describe('where the Candidate view says the reader came from', () => {
     expect(crumbs.getByText('Live profile')).toBeVisible();
   });
 
-  it('keeps the search a Candidates crumb has to reopen', async () => {
+  it('keeps the tab and the search a Candidates crumb has to reopen', async () => {
     server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD), ...findsCandidates([]));
 
     await renderApp(FOUND_BY);
 
     expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
       'href',
-      '/candidates?q=backend+engineer',
+      '/candidates?tab=search&q=backend+engineer',
+    );
+  });
+
+  it('reopens the Filter tab in the order it was sorted into', async () => {
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD));
+
+    await renderApp(`${AT}?tab=filter&sort=name&role=nurse`);
+
+    expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
+      'href',
+      '/candidates?tab=filter&sort=name&role=nurse',
     );
   });
 
@@ -106,7 +117,7 @@ describe('where the Candidate view says the reader came from', () => {
 
     expect(await trail().findByRole('link', { name: 'Candidates' })).toHaveAttribute(
       'href',
-      '/candidates',
+      '/candidates?tab=filter',
     );
   });
 });

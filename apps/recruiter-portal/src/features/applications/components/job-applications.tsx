@@ -5,15 +5,19 @@ import { problemMessage } from '@/lib/api-problem';
 import {
   type ApplicationSort,
   type ApplicationSummary,
-  hiddenBehind,
-  PIPELINE_STATUSES,
+  pipelineTab,
   SCREENING_VERDICTS,
   screeningSelection,
   screeningState,
   sortSelection,
 } from '../application';
 import { useJobApplications } from '../hooks/use-job-applications';
-import type { ApplicationFilters } from '../reading';
+import {
+  type ApplicationFilters,
+  clearFiltersLabel,
+  narrowedBy,
+  noJobApplicationsMessage,
+} from '../reading';
 import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
@@ -37,23 +41,19 @@ export function JobApplications({
   applicationHref,
   onShowLinks,
 }: JobApplicationsProps) {
-  const pipelineFilter = filters.pipeline?.length === 1 ? filters.pipeline : undefined;
-  const pipeline = pipelineFilter ?? [...PIPELINE_STATUSES];
+  const pipeline = pipelineTab(filters.pipeline);
   const screening = screeningSelection(filters.screening);
   const sort = sortSelection(filters.sort);
-  const applications = useJobApplications(jobId, { pipeline: pipelineFilter, screening, sort });
+  const applications = useJobApplications(jobId, { pipeline, screening, sort });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
-  const active = [
-    hiddenBehind(SCREENING_VERDICTS, screening, verdictCounts),
-    hiddenBehind(PIPELINE_STATUSES, pipeline, statusCounts),
-  ].filter((hidden) => hidden > 0).length;
+  const narrowing = narrowedBy(filters);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
         <ApplicationPipelineFilter
-          pipeline={pipelineFilter}
+          pipeline={pipeline}
           counts={statusCounts}
           onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
@@ -94,24 +94,20 @@ export function JobApplications({
         }
         empty={{
           icon: Inbox,
-          message:
-            active === 0
-              ? 'No one has applied yet — a tracked link is the quickest way to bring candidates to this Job.'
-              : active === 1
-                ? 'No Application on this Job matches that filter.'
-                : 'No Application on this Job matches both filters.',
+          message: noJobApplicationsMessage(filters),
           action:
-            active > 0 ? (
+            narrowing > 0 ? (
               <Button
                 variant="outline"
                 onClick={() =>
                   onFiltersChange({
+                    ...filters,
                     pipeline: undefined,
                     screening: undefined,
                   })
                 }
               >
-                {active === 1 ? 'Clear filter' : 'Clear filters'}
+                {clearFiltersLabel(filters)}
               </Button>
             ) : (
               <Button variant="outline" onClick={onShowLinks}>

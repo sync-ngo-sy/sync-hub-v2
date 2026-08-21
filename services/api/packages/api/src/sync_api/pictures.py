@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from anyio import to_thread
 from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL.Image import DecompressionBombError
 
 from sync_api.problems import Problem
 from sync_api.uploads import discard_on_failure, limited_chunks, remove_uploaded
@@ -26,6 +27,10 @@ SQUARE_PIXELS: Final = 512
 SQUARE_QUALITY: Final = 80
 
 SQUARE_MEDIA_TYPE: Final = "image/webp"
+
+#: Longest side the platform will decode. A decode holds three bytes for every pixel and
+#: the convert after it four more, so the source is what bounds one upload's memory.
+LARGEST_SOURCE_SIDE: Final = 4096
 
 READABLE_FORMATS: Final = frozenset({"JPEG", "PNG", "WEBP"})
 
@@ -50,6 +55,7 @@ class PictureKind:
     subject: str
     unreadable_type: str
     too_large_type: str
+    too_many_pixels_type: str
     empty_type: str
 
     def unreadable(self) -> Problem:
@@ -65,6 +71,14 @@ class PictureKind:
             type=self.too_large_type,
             detail=f"{self.subject} has to be {max_bytes // (1024 * 1024)} MB or smaller. "
             f"Crop it or pick a smaller {ACCEPTED_FORMATS} file.",
+        )
+
+    def too_many_pixels(self) -> Problem:
+        return Problem(
+            status=413,
+            type=self.too_many_pixels_type,
+            detail=f"{self.subject} has to be {LARGEST_SOURCE_SIDE} pixels or smaller on each "
+            f"side. Crop it or pick a smaller {ACCEPTED_FORMATS} file.",
         )
 
     def empty(self) -> Problem:
@@ -143,13 +157,27 @@ async def _read(upload: UploadFile, *, kind: PictureKind, max_bytes: int) -> byt
 
 
 def _decoded(data: bytes, kind: PictureKind) -> Image.Image:
+    """The picture an upload holds, refused rather than left to raise out of Pillow.
+
+    `Image.open` reads the header and stops, so the size is settled while the decode that would
+    allocate for every pixel has not run — the one moment a picture too big to hold can still be
+    turned away.
+    """
     try:
         picture = Image.open(io.BytesIO(data))
-    except (UnidentifiedImageError, OSError, ValueError) as unreadable:
+    except (DecompressionBombError, UnidentifiedImageError, OSError, ValueError) as unreadable:
         raise kind.unreadable() from unreadable
     if picture.format not in READABLE_FORMATS:
         picture.close()
         raise kind.unreadable()
+    if max(picture.size) > LARGEST_SOURCE_SIDE:
+        picture.close()
+        raise kind.too_many_pixels()
+    try:
+        picture.load()
+    except (OSError, ValueError) as unreadable:
+        picture.close()
+        raise kind.unreadable() from unreadable
     return picture
 
 

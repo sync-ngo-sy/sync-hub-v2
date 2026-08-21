@@ -12,14 +12,14 @@ import { candidateTrail, type Origin } from '@/features/shell/origin';
 import { TalentPoolCard } from '@/features/talent-pool/components/talent-pool-card';
 import type { MatchEvidence } from '../candidate';
 import type { CandidateRecord } from '../candidate-record';
-import { type CandidateSearchFilters, searchAddress } from '../search';
+import { type CandidatesReading, candidatesAddress } from '../reading';
 import { CandidateNotes } from './candidate-notes';
 import { CandidateTags } from './candidate-tags';
 import { MatchEvidenceNote } from './match-evidence';
 
 const PROFILE_EMPTY = 'This Candidate has filled in nothing beyond the facts above.';
 
-export function CandidateOutOfReach({ filters }: { filters: CandidateSearchFilters }) {
+export function CandidateOutOfReach({ reading }: { reading: CandidatesReading }) {
   return (
     <div className="mx-auto max-w-xl space-y-4 py-16 text-center">
       <h1 className="font-heading text-h3 text-foreground">This Candidate can’t be shown</h1>
@@ -29,7 +29,7 @@ export function CandidateOutOfReach({ filters }: { filters: CandidateSearchFilte
       </p>
       <Link
         to="/candidates"
-        search={searchAddress(filters)}
+        search={candidatesAddress(reading)}
         className={buttonVariants({ variant: 'outline' })}
       >
         Back to candidate search
@@ -41,11 +41,11 @@ export function CandidateOutOfReach({ filters }: { filters: CandidateSearchFilte
 interface CandidateViewPageProps {
   record: CandidateRecord;
   evidence: MatchEvidence | null;
-  filters: CandidateSearchFilters;
+  reading: CandidatesReading;
   origin: Origin | null;
 }
 
-export function CandidateViewPage({ record, evidence, filters, origin }: CandidateViewPageProps) {
+export function CandidateViewPage({ record, evidence, reading, origin }: CandidateViewPageProps) {
   const profile = recordProfile(record);
   const experience =
     profile.totalExperienceYears === null
@@ -57,7 +57,7 @@ export function CandidateViewPage({ record, evidence, filters, origin }: Candida
       <CandidatePageHeader
         name={profile.name}
         breadcrumbs={
-          <PageBreadcrumbs trail={candidateTrail(origin, { name: profile.name, filters })} />
+          <PageBreadcrumbs trail={candidateTrail(origin, { name: profile.name, reading })} />
         }
       />
 

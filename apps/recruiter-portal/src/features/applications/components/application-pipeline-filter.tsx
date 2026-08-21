@@ -1,5 +1,5 @@
 import { ChipFilter } from '@sync/ui/components/chip-filter';
-import { PIPELINE_STATUSES, type PipelineStatus, pipelineState } from '../application';
+import { PIPELINE_STATUSES, type PipelineStatus, pipelineState, pipelineTab } from '../application';
 
 interface ApplicationPipelineFilterProps {
   pipeline?: PipelineStatus[];
@@ -14,7 +14,7 @@ export function ApplicationPipelineFilter({
   onChange,
   className,
 }: ApplicationPipelineFilterProps) {
-  const selected = pipeline?.length === 1 && pipeline[0] ? pipeline[0] : 'all';
+  const selected = pipelineTab(pipeline)?.[0] ?? 'all';
   const total = PIPELINE_STATUSES.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
   const chips = [
     { value: 'all', label: 'All', count: total },

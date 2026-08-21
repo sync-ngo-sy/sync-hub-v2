@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { signedInAs, signedInUntilLogOut, signedOut } from '@/features/auth/testing/handlers';
 import { HEADLINE_TEXT } from '@/features/landing/headline';
+import { ACCESS_TURNED_OFF, TENANT_SUSPENDED } from '@/features/tenant/testing/fixtures';
+import { refusesTenantAccess } from '@/features/tenant/testing/handlers';
 import { client } from '@/lib/api';
 import { CANDIDATE, PLATFORM_ADMIN, RECRUITER } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
@@ -57,6 +59,71 @@ describe('the workspace guard', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
     expect(router.state.location.search).toEqual({ returnTo: '/jobs' });
+  });
+});
+
+describe('a workspace the API refuses', () => {
+  it('answers a recruiter whose access an admin turned off with one full-page screen', async () => {
+    server.use(...signedInAs(RECRUITER), ...refusesTenantAccess(ACCESS_TURNED_OFF));
+
+    const { router } = await renderApp('/jobs');
+
+    expect(router.state.location.pathname).toBe('/access-refused');
+    expect(
+      await screen.findByRole('heading', { name: 'You cannot open this workspace' }),
+    ).toBeVisible();
+    expect(screen.getByText(/An admin turned off your access/)).toBeVisible();
+    expect(screen.getByText(/your Tenant’s admins/)).toBeVisible();
+    expect(screen.queryByRole('navigation', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('answers a suspended tenant with the same screen, in words that fit it', async () => {
+    server.use(...signedInAs(RECRUITER), ...refusesTenantAccess(TENANT_SUSPENDED));
+
+    const { router } = await renderApp('/dashboard');
+
+    expect(router.state.location.pathname).toBe('/access-refused');
+    expect(
+      await screen.findByRole('heading', { name: 'You cannot open this workspace' }),
+    ).toBeVisible();
+    expect(screen.getByText(/suspended this Tenant/)).toBeVisible();
+    expect(screen.getByText(/your Tenant’s admins/)).toBeVisible();
+    expect(screen.queryByText(/An admin turned off your access/)).not.toBeInTheDocument();
+  });
+
+  it('flips a recruiter turned off mid-session onto the screen, wherever they stand', async () => {
+    server.use(...signedInAs(RECRUITER));
+    const { router } = await renderApp('/jobs');
+
+    server.use(...refusesTenantAccess(ACCESS_TURNED_OFF));
+    await client.GET('/v1/tenants/me');
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/access-refused'));
+    expect(
+      await screen.findByRole('heading', { name: 'You cannot open this workspace' }),
+    ).toBeVisible();
+  });
+
+  it('asks the API again on arrival rather than trusting a tenant reading it holds', async () => {
+    server.use(...signedInAs(RECRUITER));
+    const { router, user } = await renderApp('/jobs');
+
+    server.use(...refusesTenantAccess(TENANT_SUSPENDED));
+    await user.click(screen.getByRole('link', { name: 'Templates' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/access-refused'));
+    expect(await screen.findByText(/suspended this Tenant/)).toBeVisible();
+  });
+
+  it('leaves the session alone rather than signing the recruiter out', async () => {
+    server.use(...signedInAs(RECRUITER), ...refusesTenantAccess(ACCESS_TURNED_OFF));
+
+    const { router, queryClient } = await renderApp('/jobs');
+
+    expect(await screen.findByText(/still signed in/)).toBeVisible();
+    expect(queryClient.getQueryData(currentProfileQuery.queryKey)).toEqual(RECRUITER);
+    expect(router.state.location.pathname).toBe('/access-refused');
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
   });
 });
 

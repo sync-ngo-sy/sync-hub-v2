@@ -1,17 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { CandidateSearchFilters } from './reading';
 import {
-  type CandidateSearchFilters,
   directoryQuery,
   hardFilterCount,
   isAsked,
-  languagesFrom,
-  languageTokens,
   noCandidatesMessage,
   noMatchesMessage,
-  orderFrom,
-  searchAddress,
   searchQuery,
-  tabFrom,
 } from './search';
 
 const ASKED: CandidateSearchFilters = { q: 'backend engineer' };
@@ -83,18 +78,16 @@ describe('what the API is asked for', () => {
 describe('what the directory is asked for', () => {
   it('sends the same hard filters, and the order, and no words at all', () => {
     expect(
-      directoryQuery(
-        {
-          q: 'ignored',
-          location: 'sy-aleppo',
-          languages: ['ar:native'],
-          skills: ['React'],
-          role: 'frontend-engineer',
-          experience: 5,
-          keywords: 'also ignored',
-        },
-        'name',
-      ),
+      directoryQuery({
+        q: 'ignored',
+        location: 'sy-aleppo',
+        languages: ['ar:native'],
+        skills: ['React'],
+        role: 'frontend-engineer',
+        experience: 5,
+        keywords: 'also ignored',
+        sort: 'name',
+      }),
     ).toEqual({
       location_key: 'sy-aleppo',
       language: ['ar:native'],
@@ -103,48 +96,6 @@ describe('what the directory is asked for', () => {
       min_total_experience: 5,
       sort: 'name',
       limit: 20,
-    });
-  });
-});
-
-describe('reading the address back', () => {
-  it('keeps only an order the directory offers, and falls back to the newest', () => {
-    expect(orderFrom('most_experience')).toBe('most_experience');
-    expect(orderFrom('name_reversed')).toBe('name_reversed');
-    expect(orderFrom('cheapest')).toBe('newest');
-    expect(orderFrom(undefined)).toBe('newest');
-  });
-
-  it('opens the tab that was asked for', () => {
-    expect(tabFrom('search', {})).toBe('search');
-    expect(tabFrom('filter', { q: 'nurse' })).toBe('filter');
-  });
-
-  it('reads a link that predates the tabs by what it carries', () => {
-    expect(tabFrom(undefined, { q: 'nurse' })).toBe('search');
-    expect(tabFrom(undefined, {})).toBe('filter');
-    expect(tabFrom(undefined, { q: '   ' })).toBe('filter');
-  });
-
-  it('writes every filter back into the address it came from', () => {
-    const filters: CandidateSearchFilters = {
-      q: 'nurse',
-      location: 'sy-aleppo',
-      languages: ['ar'],
-      skills: ['React'],
-      role: 'frontend-engineer',
-      experience: 5,
-      keywords: 'triage',
-    };
-
-    expect(searchAddress(filters)).toEqual({
-      q: 'nurse',
-      location: 'sy-aleppo',
-      languages: ['ar'],
-      skills: ['React'],
-      role: 'frontend-engineer',
-      experience: 5,
-      keywords: 'triage',
     });
   });
 });
@@ -201,36 +152,5 @@ describe('what a search with no matches says', () => {
     expect(noMatchesMessage({ ...ASKED, languages: ['ar'], keywords: 'triage' })).toBe(
       'No Searchable Candidate matches those words with those filters.',
     );
-  });
-});
-
-describe('a language and the least proficiency that will do', () => {
-  it('reads a bare code as any level', () => {
-    expect(languagesFrom(['ar'])).toEqual([{ code: 'ar', level: '' }]);
-  });
-
-  it('reads the level written after the colon', () => {
-    expect(languagesFrom(['ar:native', 'en:intermediate'])).toEqual([
-      { code: 'ar', level: 'native' },
-      { code: 'en', level: 'intermediate' },
-    ]);
-  });
-
-  it('writes a level back only where one was asked for', () => {
-    expect(
-      languageTokens([
-        { code: 'ar', level: 'native' },
-        { code: 'en', level: '' },
-      ]),
-    ).toEqual(['ar:native', 'en']);
-  });
-
-  it('drops a row that names no language at all', () => {
-    expect(languageTokens([{ code: '', level: 'native' }])).toEqual([]);
-  });
-
-  it('survives a round trip', () => {
-    const tokens = ['ar:native', 'en'];
-    expect(languageTokens(languagesFrom(tokens))).toEqual(tokens);
   });
 });
