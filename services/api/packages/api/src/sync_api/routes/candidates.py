@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Final
 
-from fastapi import APIRouter, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from pydantic import BaseModel, Field
 
 from sync_api.avatars import Avatar
@@ -22,6 +22,7 @@ from sync_api.dependencies import (
 from sync_api.errors import openapi_problem
 from sync_api.pictures import ACCEPTED_FORMATS
 from sync_api.problems import ValidationProblemDetail
+from sync_api.rate_limit import enforce_account_deletion_rate_limit
 
 ROUTER_PREFIX: Final = "/candidates"
 
@@ -126,6 +127,7 @@ async def replace_my_avatar(
     summary="Delete the caller's account",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
+    dependencies=[Depends(enforce_account_deletion_rate_limit)],
     responses={
         **CANDIDATE_ACCESS_REFUSED,
         401: openapi_problem("There is no valid session, or the password is wrong."),
