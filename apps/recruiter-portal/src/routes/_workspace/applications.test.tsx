@@ -309,6 +309,19 @@ describe('the unified Applications page', () => {
     expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
   });
 
+  it('counts the verdicts as the tab it opens on leaves them', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await openVerdicts(user);
+
+    expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 2');
+    expect(checkItem('Pending')).toHaveAccessibleName('Pending, 1');
+    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
+  });
+
   it('narrows the list to one verdict and writes it into the address bar', async () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));

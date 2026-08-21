@@ -48,6 +48,11 @@ are the only writers, and their return type names every key of the Reading, so a
 the schema fails the build until that filter is mapped. That is deliberate — a filter that compiles
 but never reaches the address would be a filter that silently forgets itself on reload. Adding one
 means: the schema, the Address it fails on, the query that sends it, and the control that sets it.
+The third direction of a Reading is what the API is **asked** for — `ApplicationsAsked` in
+`features/applications/reread.ts`, where every default the Address left out is spelled back in: all
+four verdicts named, and the statuses the chosen Pipeline tab stands for. A Reading is what somebody
+chose, an Address is how it is written down, and an Asked is what the wire carries; the three are
+not the same shape, and the type of each says so.
 The Candidates Address always names its tab, so a row link or a crumb out of that page opens the tab
 it was written from; a link naming no tab at all is older than the tabs, and still means the search
 it was copied from.
@@ -55,11 +60,12 @@ _Avoid_: Serialise, to-params (name the thing produced, not the act of producing
 
 **Narrowing**:
 How many of a Reading's filters actually cut a list down — what an empty list has to know before it
-can say why it is empty. A filter narrows when it cuts the list down: a Pipeline tab holds one
-status, the Verdict filter leaves a verdict out, the Time-range reaches back less far than All
-time. Checking all four verdicts by hand is no narrowing, because it is the state every list
-opens in and dropping it would change nothing. Neither `Open` nor `All` narrows: `Open` is what an
-untouched list shows and `All` holds more than that, so neither can be what emptied one. `narrowedBy` in `features/applications/reading.ts`
+can say why it is empty. A filter narrows when it cuts a list down from what an untouched one
+shows: a Pipeline tab holds one status, the Verdict filter leaves a verdict out, the Time-range
+reaches back less far than All time. Checking all four verdicts by hand is no narrowing, because it
+is the state every list opens in and dropping it would change nothing. Neither `Open` nor `All`
+narrows either: `Open` is what an untouched list shows, and `All` only adds to it, so neither can
+be what emptied one. `narrowedBy` in `features/applications/reading.ts`
 is the only answer to the question, and the wording each list reaches for is beside it, so both
 lists take the count and the sentence from one place — a list with no Time-range filter simply
 never sets one. It is read off the Reading and never off the API's counts:

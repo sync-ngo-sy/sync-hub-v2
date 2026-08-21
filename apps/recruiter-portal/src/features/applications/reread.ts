@@ -23,8 +23,6 @@ function forApplication(applicationId: string) {
   return { params: { path: { application_id: applicationId } } };
 }
 
-/** What a list asks the API for, once its Reading has been resolved: no status at all is every
- * status, and every verdict is named. */
 export interface ApplicationsAsked {
   statuses: PipelineStatus[] | undefined;
   verdicts: ScreeningVerdict[];

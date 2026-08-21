@@ -114,6 +114,10 @@ export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined
   return tab === OPEN_TAB ? [...OPEN_STATUSES] : [tab];
 }
 
+export function holdsOneStatus(tab: PipelineTab): boolean {
+  return tab !== OPEN_TAB && tab !== ALL_TAB;
+}
+
 export function pipelineTabCount(
   tab: PipelineTab,
   counts: Partial<Record<PipelineStatus, number>>,

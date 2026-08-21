@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_TAB,
+  holdsOneStatus,
   OPEN_TAB,
   PIPELINE_TABS,
   pipelineInAddress,
@@ -56,6 +57,12 @@ describe('the Pipeline tabs', () => {
     expect(pipelineInAddress(undefined)).toBeUndefined();
     expect(pipelineInAddress(ALL_TAB)).toBe(ALL_TAB);
     expect(pipelineInAddress('withdrawn')).toBe('withdrawn');
+  });
+
+  it('holds one status on every tab but the two that are not statuses', () => {
+    expect(holdsOneStatus(OPEN_TAB)).toBe(false);
+    expect(holdsOneStatus(ALL_TAB)).toBe(false);
+    expect(holdsOneStatus('offer')).toBe(true);
   });
 
   it('names the two tabs that are not statuses, and reads the rest off the status', () => {
