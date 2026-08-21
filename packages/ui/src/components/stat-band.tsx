@@ -41,6 +41,7 @@ function Cell({
     defaultTagName: 'div',
     render,
     props: {
+      'data-slot': 'stat',
       className: cn(
         cards ? CARD_CELL : BAND_CELL,
         render && (cards ? LINKED_CARD_CELL : LINKED_BAND_CELL),
@@ -103,7 +104,7 @@ export function StatBandSkeleton({
   return (
     <div className={variant === 'cards' ? CARDS : BAND} aria-hidden="true">
       {labels.map((label) => (
-        <div key={label} className={variant === 'cards' ? CARD_CELL : BAND_CELL}>
+        <div key={label} data-slot="stat" className={variant === 'cards' ? CARD_CELL : BAND_CELL}>
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-8 w-16" />
           <Skeleton className="h-3 w-20" />

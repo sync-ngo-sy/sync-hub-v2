@@ -10,6 +10,13 @@ export const RECENT_APPLICATIONS = 6;
 
 export const OVERVIEW_JOBS = 5;
 
+export const STAT_LABELS = [
+  'Open jobs',
+  'Applications this week',
+  'Awaiting review',
+  'Qualified by screening',
+];
+
 const DASHBOARD_DATE = new Intl.DateTimeFormat('en-GB', {
   weekday: 'long',
   day: 'numeric',

@@ -34,7 +34,7 @@ import { ChoicePicker } from './choice-select';
 import { EditJobDialog } from './edit-job-dialog';
 import { JobSearch } from './job-search';
 
-const COLUMNS: DataTableColumn<JobSummary>[] = [
+export const JOB_COLUMNS: DataTableColumn<JobSummary>[] = [
   {
     accessorKey: 'title',
     header: 'Job',
@@ -208,7 +208,7 @@ export function JobsPage({
 
         <DataTable
           label="Jobs"
-          columns={COLUMNS}
+          columns={JOB_COLUMNS}
           data={jobs.data?.items ?? []}
           getRowId={(job) => job.id}
           rowLabel={(job) => job.title}

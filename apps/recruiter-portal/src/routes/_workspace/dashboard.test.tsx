@@ -92,7 +92,7 @@ describe('the Dashboard', () => {
 
     expect(await screen.findByRole('radio', { name: /^New / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
-    expect(router.state.location.search).toEqual({ pipeline: ['new'] });
+    expect(router.state.location.search).toEqual({ pipeline: 'new' });
   });
 
   it('sends Applications this week to the week, terminal Applications included', async () => {
@@ -106,7 +106,7 @@ describe('the Dashboard', () => {
     );
     expect(router.state.location.pathname).toBe('/applications');
     expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
-    expect(router.state.location.search).toEqual({ received: '7d' });
+    expect(router.state.location.search).toEqual({ pipeline: 'all', received: '7d' });
   });
 
   it('sends Open jobs to the published Jobs the number counted', async () => {
@@ -133,7 +133,7 @@ describe('the Dashboard', () => {
     );
     expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
-    expect(router.state.location.search).toEqual({ screening: ['qualified'] });
+    expect(router.state.location.search).toEqual({ pipeline: 'all', screening: ['qualified'] });
   });
 
   it('compares this week with the one before it', async () => {

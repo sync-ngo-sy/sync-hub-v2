@@ -1,9 +1,8 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { Suspense } from 'react';
 import { ensureCurrentProfile, isCandidate } from '@/features/auth/current-profile';
 import { AppShell } from '@/features/shell/components/app-shell';
-import { PageSkeleton } from '@/features/shell/components/page-skeleton';
 import { AppCrash } from '@/features/shell/components/route-error';
+import { AccountShellSkeleton } from '@/features/shell/components/shell-skeleton';
 
 export const Route = createFileRoute('/_account')({
   staticData: { requiresSession: true },
@@ -17,6 +16,7 @@ export const Route = createFileRoute('/_account')({
     }
     return { profile };
   },
+  pendingComponent: AccountShellSkeleton,
   component: AccountLayout,
   errorComponent: AppCrash,
 });
@@ -25,9 +25,7 @@ function AccountLayout() {
   const { profile } = Route.useRouteContext();
   return (
     <AppShell profile={profile}>
-      <Suspense fallback={<PageSkeleton />}>
-        <Outlet />
-      </Suspense>
+      <Outlet />
     </AppShell>
   );
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { z } from 'zod';
 import { JobsPage as JobsFeaturePage } from '@/features/jobs/components/jobs-page';
+import { JobsSkeleton } from '@/features/jobs/components/jobs-skeleton';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
 import {
   DEFAULT_JOB_SORT,
@@ -45,6 +46,7 @@ export const Route = createFileRoute('/_workspace/jobs')({
       warmLocations(context.queryClient),
     ]),
   head: () => ({ meta: [{ title: pageTitle('Jobs') }] }),
+  pendingComponent: JobsSkeleton,
   component: JobsPage,
 });
 

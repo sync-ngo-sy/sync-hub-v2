@@ -9,7 +9,10 @@ import { jobPlace } from '@/features/jobs/job';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
+  ALL_TAB,
   type ApplicationSort,
+  anythingEnded,
+  pipelineStatuses,
   pipelineTab,
   RECEIVED_RANGES,
   type ReceivedRange,
@@ -57,7 +60,7 @@ function JobPlace({ job }: { job: TenantApplication['job'] }) {
   return <TruncatedText className="text-meta text-muted-foreground">{place}</TruncatedText>;
 }
 
-const COLUMNS = applicationColumns<TenantApplication>(JOB);
+export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(JOB);
 
 const TO_THE_JOBS = (
   <Link to="/jobs" search={{}} className={buttonVariants({ variant: 'outline' })}>
@@ -83,14 +86,46 @@ export function ApplicationsPage({
   const range = receivedSelection(filters.received);
   const sort = sortSelection(filters.sort);
   const applications = useTenantApplications({
-    pipeline,
-    screening,
+    statuses: pipelineStatuses(pipeline),
+    verdicts: screening,
     received: filters.received,
     sort,
   });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
+  const ended = anythingEnded(statusCounts);
+
+  function whereEmptyLeads() {
+    if (narrowing > 0) {
+      return (
+        <Button
+          variant="outline"
+          onClick={() =>
+            onFiltersChange({
+              ...filters,
+              pipeline: undefined,
+              screening: undefined,
+              received: undefined,
+            })
+          }
+        >
+          {clearFiltersLabel(filters)}
+        </Button>
+      );
+    }
+    if (ended) {
+      return (
+        <Button
+          variant="outline"
+          onClick={() => onFiltersChange({ ...filters, pipeline: ALL_TAB })}
+        >
+          Go to all Applications
+        </Button>
+      );
+    }
+    return TO_THE_JOBS;
+  }
 
   return (
     <>
@@ -139,7 +174,7 @@ export function ApplicationsPage({
 
         <DataTable
           label="Applications"
-          columns={COLUMNS}
+          columns={TENANT_APPLICATION_COLUMNS}
           data={applications.data?.items ?? []}
           getRowId={(application) => application.id}
           rowLabel={(application) => `${application.candidate_name}'s Application`}
@@ -160,25 +195,8 @@ export function ApplicationsPage({
           }
           empty={{
             icon: Inbox,
-            message: noApplicationsMessage(filters),
-            action:
-              narrowing > 0 ? (
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    onFiltersChange({
-                      ...filters,
-                      pipeline: undefined,
-                      screening: undefined,
-                      received: undefined,
-                    })
-                  }
-                >
-                  {clearFiltersLabel(filters)}
-                </Button>
-              ) : (
-                TO_THE_JOBS
-              ),
+            message: noApplicationsMessage(filters, ended),
+            action: whereEmptyLeads(),
           }}
           loadMore={{
             hasMore: applications.hasNextPage,

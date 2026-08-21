@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
+import { holding } from '@/testing/holding';
 
 type JobSummary = components['schemas']['JobSummary'];
 type JobView = components['schemas']['JobView'];
@@ -48,6 +49,23 @@ export function listsJobs(items: JobSummary[]) {
       });
     }),
   ];
+}
+
+export function holdsJobs(items: JobSummary[]) {
+  const gate = holding();
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get('/v1/tenants/me/jobs', async ({ query, response }) => {
+        await gate.held;
+        return response(200).json({
+          items: listed(items, query),
+          next_cursor: null,
+          status_counts: statusCounts(narrowed(items, query)),
+        });
+      }),
+    ],
+  };
 }
 
 export function sortsJobs(byOrder: Record<string, JobSummary[]>, onSort?: (sort: string) => void) {
@@ -116,6 +134,19 @@ export function getsJob(job: JobView) {
       return response(200).json(job);
     }),
   ];
+}
+
+export function holdsJob(job: JobView) {
+  const gate = holding();
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get('/v1/tenants/me/jobs/{job_id}', async ({ response }) => {
+        await gate.held;
+        return response(200).json(job);
+      }),
+    ],
+  };
 }
 
 export function changesJob(job: JobView, onChange?: (body: JobChanges) => void) {

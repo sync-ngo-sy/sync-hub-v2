@@ -1,10 +1,13 @@
 import { api } from '@/lib/api';
-import type { TenantApplicationFilters } from '../reading';
-import { TENANT_APPLICATIONS_PATH, tenantApplications } from '../reread';
+import {
+  TENANT_APPLICATIONS_PATH,
+  type TenantApplicationsAsked,
+  tenantApplications,
+} from '../reread';
 import { statusCountsFrom, verdictCountsFrom } from './use-job-applications';
 
-export function useTenantApplications(filters: TenantApplicationFilters) {
-  return api.useInfiniteQuery('get', TENANT_APPLICATIONS_PATH, tenantApplications(filters), {
+export function useTenantApplications(asked: TenantApplicationsAsked) {
+  return api.useInfiniteQuery('get', TENANT_APPLICATIONS_PATH, tenantApplications(asked), {
     initialPageParam: null,
     getNextPageParam: (page) => page.next_cursor,
     select: (data) => ({

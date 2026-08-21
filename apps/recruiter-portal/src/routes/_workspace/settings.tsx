@@ -4,6 +4,7 @@ import {
   type SettingsTab,
   WorkspaceSettingsPage,
 } from '@/features/tenant/components/workspace-settings-page';
+import { WorkspaceSettingsSkeleton } from '@/features/tenant/components/workspace-settings-skeleton';
 import { pageTitle } from '@/lib/page-title';
 
 const settingsTab = z.enum(['team', 'tags', 'tenant']);
@@ -11,6 +12,7 @@ const settingsTab = z.enum(['team', 'tags', 'tenant']);
 export const Route = createFileRoute('/_workspace/settings')({
   validateSearch: z.object({ tab: settingsTab.optional().catch(undefined) }),
   head: () => ({ meta: [{ title: pageTitle('Settings') }] }),
+  pendingComponent: WorkspaceSettingsSkeleton,
   component: SettingsPage,
 });
 
