@@ -22,7 +22,7 @@ const TO_THE_POOL = (
   </Link>
 );
 
-const COLUMNS: DataTableColumn<SearchableCandidate>[] = [
+export const DIRECTORY_COLUMNS: DataTableColumn<SearchableCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Name',
@@ -89,7 +89,7 @@ export function CandidateDirectory({ reading, onOrderChange, onClear }: Candidat
   return (
     <DataTable
       label="Searchable Candidates"
-      columns={COLUMNS}
+      columns={DIRECTORY_COLUMNS}
       data={listed.data?.items ?? []}
       getRowId={(person) => person.candidate_id}
       rowLabel={(person) => listedCard(person).fullName}

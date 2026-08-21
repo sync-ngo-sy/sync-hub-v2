@@ -60,7 +60,7 @@ function JobPlace({ job }: { job: TenantApplication['job'] }) {
   return <TruncatedText className="text-meta text-muted-foreground">{place}</TruncatedText>;
 }
 
-const COLUMNS = applicationColumns<TenantApplication>(JOB);
+export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(JOB);
 
 const TO_THE_JOBS = (
   <Link to="/jobs" search={{}} className={buttonVariants({ variant: 'outline' })}>
@@ -174,7 +174,7 @@ export function ApplicationsPage({
 
         <DataTable
           label="Applications"
-          columns={COLUMNS}
+          columns={TENANT_APPLICATION_COLUMNS}
           data={applications.data?.items ?? []}
           getRowId={(application) => application.id}
           rowLabel={(application) => `${application.candidate_name}'s Application`}

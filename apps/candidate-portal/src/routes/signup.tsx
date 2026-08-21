@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
+import { AUTH_LINK, AuthScreen, AuthScreenSkeleton } from '@/features/auth/components/auth-screen';
 import { SignUpForm } from '@/features/auth/components/sign-up-form';
 import { pageTitle } from '@/lib/page-title';
 import { bounceSignedIn } from './-public-only';
@@ -7,6 +7,7 @@ import { bounceSignedIn } from './-public-only';
 export const Route = createFileRoute('/signup')({
   beforeLoad: bounceSignedIn,
   head: () => ({ meta: [{ title: pageTitle('Create your account') }] }),
+  pendingComponent: () => <AuthScreenSkeleton fields={4} />,
   component: SignUpPage,
 });
 

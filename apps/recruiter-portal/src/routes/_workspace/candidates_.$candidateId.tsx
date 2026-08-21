@@ -5,6 +5,7 @@ import {
   CandidateOutOfReach,
   CandidateViewPage,
 } from '@/features/candidates/components/candidate-view-page';
+import { CandidateViewSkeleton } from '@/features/candidates/components/candidate-view-skeleton';
 import { readSearchHits } from '@/features/candidates/hooks/use-candidate-search';
 import { recordProfile } from '@/features/profile/profile';
 import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
@@ -33,6 +34,7 @@ export const Route = createFileRoute('/_workspace/candidates_/$candidateId')({
   head: ({ loaderData }) => ({
     meta: [{ title: pageTitle(loaderData ? recordProfile(loaderData.record).name : 'Candidate') }],
   }),
+  pendingComponent: CandidateViewSkeleton,
   component: CandidateRoute,
 });
 

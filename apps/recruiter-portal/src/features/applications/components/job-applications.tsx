@@ -25,7 +25,7 @@ import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 
-const COLUMNS = applicationColumns<ApplicationSummary>();
+export const JOB_APPLICATION_COLUMNS = applicationColumns<ApplicationSummary>();
 
 interface JobApplicationsProps {
   jobId: string;
@@ -109,7 +109,7 @@ export function JobApplications({
 
       <DataTable
         label="Applications"
-        columns={COLUMNS}
+        columns={JOB_APPLICATION_COLUMNS}
         data={applications.data?.items ?? []}
         getRowId={(application) => application.id}
         rowLabel={(application) => `${application.candidate_name}'s Application`}

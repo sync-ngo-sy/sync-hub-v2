@@ -1,9 +1,9 @@
-import { SkeletonText } from '@sync/ui/components/skeletons';
+import { RouteSkeleton, SkeletonText } from '@sync/ui/components/skeletons';
 import { Skeleton } from '@sync/ui/components/ui/skeleton';
 
 export function JobDetailSkeleton() {
   return (
-    <div role="status" aria-label="Loading this role" className="space-y-10">
+    <RouteSkeleton label="Loading this role" className="space-y-10">
       <div className="space-y-4" aria-hidden="true">
         <Skeleton className="h-7 w-3/5" />
         <Skeleton className="h-4 w-2/5" />
@@ -13,6 +13,6 @@ export function JobDetailSkeleton() {
         <Skeleton className="h-5 w-32" />
         <SkeletonText lines={4} />
       </div>
-    </div>
+    </RouteSkeleton>
   );
 }

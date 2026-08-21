@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
-import { SignInScreen } from '@/features/auth/components';
+import { ScreenSkeleton, SignInScreen } from '@/features/auth/components';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
 import { portalDestination } from '@/lib/portal-destination';
 import { resolveReturnTo } from '@/lib/return-to';
@@ -11,6 +11,7 @@ export const Route = createFileRoute('/login')({
     const profile = await ensureCurrentProfile(context.queryClient);
     if (profile) throw redirect({ to: portalDestination(profile) });
   },
+  pendingComponent: () => <ScreenSkeleton fields={2} />,
   component: LoginPage,
 });
 

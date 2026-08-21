@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { WrongPortalScreen } from '@/features/auth/components';
+import { ScreenSkeleton, WrongPortalScreen } from '@/features/auth/components';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
 
 export const Route = createFileRoute('/wrong-portal')({
@@ -10,5 +10,6 @@ export const Route = createFileRoute('/wrong-portal')({
     if (profile.account_type === 'platform_admin') throw redirect({ to: '/overview' });
     return { profile };
   },
+  pendingComponent: () => <ScreenSkeleton fields={0} submit={false} action />,
   component: () => <WrongPortalScreen accountType={Route.useRouteContext().profile.account_type} />,
 });

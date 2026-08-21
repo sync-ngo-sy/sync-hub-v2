@@ -2,7 +2,6 @@ import type { QueryClient } from '@tanstack/react-query';
 import { type AnyRouter, createRouter, type RouterHistory } from '@tanstack/react-router';
 import { currentProfileQuery } from '@/features/auth/current-profile';
 import { NotFound } from '@/features/shell/components/not-found';
-import { PageSkeleton } from '@/features/shell/components/page-skeleton';
 import { RouteError } from '@/features/shell/components/route-error';
 import { routeTree } from '@/routeTree.gen';
 import { onAccessRefused, onSessionExpired } from './api';
@@ -24,7 +23,6 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
     context: { queryClient },
     history,
     defaultPreload: 'intent',
-    defaultPendingComponent: PageSkeleton,
     defaultErrorComponent: RouteError,
     defaultNotFoundComponent: NotFound,
     scrollRestoration: true,

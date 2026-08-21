@@ -1,9 +1,8 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { Suspense } from 'react';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
 import { AppShell } from '@/features/shell/components/app-shell';
-import { PageSkeleton } from '@/features/shell/components/page-skeleton';
 import { AppCrash } from '@/features/shell/components/route-error';
+import { ShellSkeleton } from '@/features/shell/components/shell-skeleton';
 import { askTenantAccess } from '@/features/tenant/access';
 
 export const Route = createFileRoute('/_workspace')({
@@ -21,6 +20,7 @@ export const Route = createFileRoute('/_workspace')({
     }
     return { profile };
   },
+  pendingComponent: ShellSkeleton,
   component: WorkspaceLayout,
   errorComponent: AppCrash,
 });
@@ -29,9 +29,7 @@ function WorkspaceLayout() {
   const { profile } = Route.useRouteContext();
   return (
     <AppShell profile={profile}>
-      <Suspense fallback={<PageSkeleton />}>
-        <Outlet />
-      </Suspense>
+      <Outlet />
     </AppShell>
   );
 }

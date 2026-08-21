@@ -13,7 +13,7 @@ import { type PlatformTenant, tenantPlanLabel } from './tenant';
 import { platformTenantsQuery, useResendFoundingAdminInvite } from './tenant-queries';
 import { TenantStatusDialog } from './tenant-status-dialog';
 
-const tenantColumns: DataTableColumn<PlatformTenant>[] = [
+export const TENANT_COLUMNS: DataTableColumn<PlatformTenant>[] = [
   {
     accessorKey: 'name',
     header: 'Tenant',
@@ -80,7 +80,7 @@ export function PlatformTenants() {
       />
       <DataTable
         label="Platform tenants"
-        columns={tenantColumns}
+        columns={TENANT_COLUMNS}
         data={tenants.data ?? []}
         getRowId={(tenant) => tenant.id}
         rowLabel={(tenant) => tenant.name}

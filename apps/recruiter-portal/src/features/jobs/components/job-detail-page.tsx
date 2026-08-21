@@ -33,7 +33,7 @@ import { CriteriaForm } from './criteria-form';
 
 export type JobDetailTab = 'applications' | 'criteria' | 'links';
 
-const JOB_DETAIL_TABS = [
+export const JOB_DETAIL_TABS = [
   { value: 'applications', label: 'Applications' },
   { value: 'criteria', label: 'Screening criteria' },
   { value: 'links', label: 'Tracked links' },

@@ -11,6 +11,7 @@ import {
   type JobDetailTab,
   JobNotFound,
 } from '@/features/jobs/components/job-detail-page';
+import { JobDetailSkeleton } from '@/features/jobs/components/job-detail-skeleton';
 import { ensureJob } from '@/features/jobs/hooks/use-job';
 import { warmReferenceData } from '@/features/reference/reference-queries';
 import { originAddress } from '@/features/shell/origin';
@@ -30,6 +31,7 @@ export const Route = createFileRoute('/_workspace/jobs_/$jobId')({
     return job;
   },
   head: ({ loaderData }) => ({ meta: [{ title: pageTitle(loaderData?.title ?? 'Job') }] }),
+  pendingComponent: JobDetailSkeleton,
   component: JobRoute,
 });
 
