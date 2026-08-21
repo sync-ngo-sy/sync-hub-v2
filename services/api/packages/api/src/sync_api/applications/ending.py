@@ -150,10 +150,12 @@ async def _end_those_in(
             ],
             select(
                 moved.c.id,
-                _of(StatusChangeSource.RECRUITER, ApplicationStatusHistory.change_source),
-                _of(by, ApplicationStatusHistory.changed_by_profile_id),
-                _of(previous, ApplicationStatusHistory.previous_status),
-                _of(ApplicationStatus.REJECTED, ApplicationStatusHistory.new_status),
+                _constant(
+                    StatusChangeSource.RECRUITER, like=ApplicationStatusHistory.change_source
+                ),
+                _constant(by, like=ApplicationStatusHistory.changed_by_profile_id),
+                _constant(previous, like=ApplicationStatusHistory.previous_status),
+                _constant(ApplicationStatus.REJECTED, like=ApplicationStatusHistory.new_status),
             ),
         )
         .returning(
@@ -168,7 +170,7 @@ async def _end_those_in(
             ["recipient_profile_id", "type", "payload", "application_id", "visible_at"],
             select(
                 moved.c.candidate_id,
-                _of(NotificationType.APPLICATION_STAGE_CHANGED, Notification.type),
+                _constant(NotificationType.APPLICATION_STAGE_CHANGED, like=Notification.type),
                 _payload(
                     ApplicationStageChanged(
                         application_id=_FILLED_IN_PER_ROW,
@@ -180,7 +182,7 @@ async def _end_those_in(
                     application_id=moved.c.id,
                 ),
                 moved.c.id,
-                _of(telling, Notification.visible_at),
+                _constant(telling, like=Notification.visible_at),
             ),
         )
         .returning(Notification.id)
@@ -204,11 +206,13 @@ async def _end_those_in(
             ],
             select(
                 moved.c.candidate_id,
-                _of(job.tenant_id, Communication.tenant_id),
+                _constant(job.tenant_id, like=Communication.tenant_id),
                 recorded.c.application_id,
-                _of(by, Communication.initiated_by_recruiter_id),
-                _of(CommunicationChannel.EMAIL, Communication.channel),
-                _of(CommunicationType.APPLICATION_REJECTION, Communication.communication_type),
+                _constant(by, like=Communication.initiated_by_recruiter_id),
+                _constant(CommunicationChannel.EMAIL, like=Communication.channel),
+                _constant(
+                    CommunicationType.APPLICATION_REJECTION, like=Communication.communication_type
+                ),
                 func.coalesce(User.email, _text("")),
                 _payload(
                     ApplicationRejection(
@@ -222,7 +226,7 @@ async def _end_those_in(
                 ),
                 _text(ApplicationRejection.template_key),
                 _text(REJECTION_KEY_PREFIX).concat(cast(recorded.c.id, Text)),
-                _of(telling, Communication.available_at),
+                _constant(telling, like=Communication.available_at),
             )
             .select_from(recorded)
             .join(moved, moved.c.id == recorded.c.application_id)
@@ -239,10 +243,11 @@ async def _end_those_in(
     return ended or 0
 
 
-def _of(value: Any, column: Any) -> ColumnElement[Any]:
-    """A constant of the column's own type, cast in SQL. An `INSERT … SELECT` gives Postgres no
-    column to read a parameter's type off, so every constant here says what it is."""
-    return cast(literal(value, column.type), column.type)
+def _constant(value: Any, *, like: Any) -> ColumnElement[Any]:
+    """One value, the same down every row, typed as the column it is going into. An
+    `INSERT … SELECT` gives Postgres no column to read a parameter's type off, so each of these
+    says in SQL what it is."""
+    return cast(literal(value, like.type), like.type)
 
 
 def _text(value: str) -> ColumnElement[str]:

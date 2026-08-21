@@ -15,17 +15,17 @@ import { useId, useState } from 'react';
 import { problemDetail } from '@/lib/api-problem';
 import type { PipelineStatus } from '../application';
 import {
+  actConsequence,
+  actLabel,
   endableStatuses,
   endingTotalMessage,
-  endLabel,
   endsWhatItTicked,
   type SweptApplications,
 } from '../ending';
 
-const WHAT_A_SWEEP_COSTS =
-  'Everything you tick is rejected together, and nothing else on this Job is touched. The ' +
-  'people it ends hear three days from now — until then nothing has reached them, and moving ' +
-  'one back to Reviewing inside those three days cancels it.';
+const WHAT_A_SWEEP_COSTS = `Everything you tick is rejected together, and nothing else on this Job is touched. ${actConsequence(
+  'end',
+)}`;
 
 const INHERITED =
   'The filters on your list still apply. Only the Pipeline tab is replaced by what you tick here.';
@@ -121,7 +121,7 @@ export function EndManyDialog({ counts, narrowed, onConfirm, onClose }: EndManyD
             disabled={ending || total === 0}
             onClick={() => void confirm()}
           >
-            {ending ? 'Ending…' : endLabel(total)}
+            {ending ? 'Ending…' : actLabel('end', total)}
           </Button>
         </DialogFooter>
       </DialogContent>

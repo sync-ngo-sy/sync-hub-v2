@@ -25,8 +25,15 @@ import {
   sortSelection,
   type TenantApplication,
 } from '../application';
-import { endedMessage, endLabel, stillOpen, tickedLabel } from '../ending';
-import { useEndApplications } from '../hooks/use-application-actions';
+import {
+  actedMessage,
+  actLabel,
+  tickable,
+  tickedAct,
+  tickedLabel,
+  whereTickedRowsGo,
+} from '../ending';
+import { useMoveTickedApplications } from '../hooks/use-application-actions';
 import { useTenantApplications } from '../hooks/use-tenant-applications';
 import {
   clearFiltersLabel,
@@ -37,7 +44,7 @@ import {
 import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
-import { EndTickedDialog } from './end-ticked-dialog';
+import { TickedActDialog } from './ticked-act-dialog';
 
 export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(jobColumn());
 
@@ -88,23 +95,25 @@ export function ApplicationsPage({
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
   const ended = anythingEnded(statusCounts);
-  const ending = useEndApplications();
+  const moving = useMoveTickedApplications();
   const [ticked, setTicked] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const items = applications.data?.items ?? [];
+  const tickedRows = items.filter((application) => ticked.includes(application.id));
+  const act = tickedAct(tickedRows.map((application) => application.status));
 
-  // A tick is a statement about a row on screen, so a list that is no longer the same list has
-  // no ticks: whatever was ticked leaves with the Reading it was ticked under.
-  function changeFilters(next: TenantApplicationFilters) {
+  function changeReading(next: TenantApplicationFilters) {
     setTicked([]);
     onFiltersChange(next);
   }
 
-  async function endTicked(chosen: string[]) {
-    const swept = await ending.mutateAsync(chosen);
+  async function moveTicked(chosen: string[]) {
+    if (!act) throw new Error('nothing is ticked');
+    const done = await moving.mutateAsync({ ids: chosen, to: whereTickedRowsGo(act) });
     setConfirming(false);
     setTicked([]);
-    toast.success(endedMessage(swept, chosen.length));
-    return swept;
+    toast.success(actedMessage(act, done, chosen.length));
+    return done;
   }
 
   function whereEmptyLeads() {
@@ -153,7 +162,7 @@ export function ApplicationsPage({
             <ApplicationPipelineFilter
               pipeline={pipeline}
               counts={statusCounts}
-              onChange={(chosen) => changeFilters({ ...filters, pipeline: chosen })}
+              onChange={(chosen) => changeReading({ ...filters, pipeline: chosen })}
             />
             {pipeline === 'hired' ? TO_THE_PLACEMENTS : null}
           </div>
@@ -168,7 +177,7 @@ export function ApplicationsPage({
               }))}
               selected={screening}
               counts={verdictCounts}
-              onChange={(chosen) => changeFilters({ ...filters, screening: chosen })}
+              onChange={(chosen) => changeReading({ ...filters, screening: chosen })}
             />
             <div className="flex min-w-0 items-center gap-3">
               <span aria-hidden="true" className="shrink-0 text-meta text-muted-foreground">
@@ -179,24 +188,27 @@ export function ApplicationsPage({
                 items={RECEIVED_RANGES}
                 value={range}
                 onValueChange={(chosen: ReceivedRange) =>
-                  changeFilters({ ...filters, received: receivedWithin(chosen) })
+                  changeReading({ ...filters, received: receivedWithin(chosen) })
                 }
               />
             </div>
           </div>
         </div>
 
-        {ticked.length > 0 ? (
+        {act ? (
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-card px-(--space-card) py-3 shadow-card">
             <p role="status" className="text-dense text-foreground">
-              {tickedLabel(ticked.length)}
+              {tickedLabel(tickedRows.length)}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="ghost" onClick={() => setTicked([])}>
                 Clear ticks
               </Button>
-              <Button variant="destructive" onClick={() => setConfirming(true)}>
-                {endLabel(ticked.length)}
+              <Button
+                variant={act === 'end' ? 'destructive' : 'default'}
+                onClick={() => setConfirming(true)}
+              >
+                {actLabel(act, tickedRows.length)}
               </Button>
             </div>
           </div>
@@ -205,21 +217,20 @@ export function ApplicationsPage({
         <DataTable
           label="Applications"
           columns={TENANT_APPLICATION_COLUMNS}
-          data={applications.data?.items ?? []}
+          data={items}
           getRowId={(application) => application.id}
           rowLabel={(application) => `${application.candidate_name}'s Application`}
           onRowOpen={onApplicationOpen}
           rowHref={applicationHref}
           isLoading={applications.isPending}
           ticks={{
-            ticked,
+            ticked: tickedRows.map((application) => application.id),
             onChange: setTicked,
-            can: (application) => stillOpen(application.status),
-            everyLabel: 'Tick every Application shown',
+            can: (application) => tickable(application.status, act),
           }}
           sort={{
             by: sort,
-            onChange: (by) => onFiltersChange({ ...filters, sort: by as ApplicationSort }),
+            onChange: (by) => changeReading({ ...filters, sort: by as ApplicationSort }),
           }}
           error={
             applications.isError
@@ -242,10 +253,11 @@ export function ApplicationsPage({
         />
       </div>
 
-      {confirming ? (
-        <EndTickedDialog
-          ticked={ticked}
-          onConfirm={endTicked}
+      {confirming && act ? (
+        <TickedActDialog
+          act={act}
+          ticked={tickedRows.map((application) => application.id)}
+          onConfirm={moveTicked}
           onClose={() => setConfirming(false)}
         />
       ) : null}

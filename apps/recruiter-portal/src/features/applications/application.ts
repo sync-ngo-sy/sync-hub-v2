@@ -91,6 +91,11 @@ export const SCREENING_VERDICTS = [
   'review_required',
 ] as const satisfies readonly ScreeningVerdict[];
 
+/** How many Applications of a list stand in each Pipeline status, as every list carries them. */
+export type StatusCounts = Partial<Record<PipelineStatus, number>>;
+
+export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;
+
 export function pipelineState(status: PipelineStatus): PipelineState {
   return PIPELINE_STATE[status];
 }
@@ -124,14 +129,11 @@ export function holdsOneStatus(tab: PipelineTab): boolean {
   return tab !== OPEN_TAB && tab !== ALL_TAB;
 }
 
-export function anythingEnded(counts: Partial<Record<PipelineStatus, number>>): boolean {
+export function anythingEnded(counts: StatusCounts): boolean {
   return ENDED_STATUSES.some((status) => (counts[status] ?? 0) > 0);
 }
 
-export function pipelineTabCount(
-  tab: PipelineTab,
-  counts: Partial<Record<PipelineStatus, number>>,
-): number {
+export function pipelineTabCount(tab: PipelineTab, counts: StatusCounts): number {
   const counted: readonly PipelineStatus[] = pipelineStatuses(tab) ?? PIPELINE_STATUSES;
   return counted.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
 }

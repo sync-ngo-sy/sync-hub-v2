@@ -2,7 +2,8 @@ import { useMutation } from '@tanstack/react-query';
 import { useRereadTenantStats } from '@/features/dashboard/reread';
 import { useRereadHireClaims } from '@/features/placements/reread';
 import { api, client } from '@/lib/api';
-import { type SweptApplications, sweptTogether } from '../ending';
+import type { PipelineStatus } from '../application';
+import { aFewAtATime, type Moved, movedTogether } from '../ending';
 import {
   APPLICATION_PATH,
   ASSESSMENT_PATH,
@@ -33,39 +34,43 @@ export function useSweepJobApplications() {
   });
 }
 
+export interface TickedMove {
+  ids: string[];
+  to: PipelineStatus;
+}
+
 /**
- * The rows a Recruiter ticked, ended one move at a time — which is what the Tenant-wide list
- * offers instead of a sweep.
+ * The rows a Recruiter ticked, moved one at a time — which is what the Tenant-wide list offers
+ * instead of a sweep, both for ending them and for taking a sweep back.
  *
- * A row that moved between the tick and the click is a row the pipeline refuses, and that is an
- * answer rather than a failure: it comes back as one fewer ending. A move that failed for any
- * other reason is raised, and the lists are read again either way — some of them did end, and a
- * screen still showing them as open would be the one thing worse than the failure.
+ * A few requests at once rather than all of them: a reader who ticked a whole loaded page would
+ * otherwise open a hundred. A row the pipeline refuses is a row that moved between the tick and
+ * the click, and that is an answer rather than a failure — it comes back as one fewer move. A move
+ * that failed for any other reason is raised, and the lists are read again either way, because
+ * some of them did move and a screen still showing them where they were is worse than the failure.
  */
-export function useEndApplications() {
+export function useMoveTickedApplications() {
   const reread = useRereadEndedApplications();
   const rereadStats = useRereadTenantStats();
 
   return useMutation({
-    mutationFn: async (ids: string[]): Promise<SweptApplications> => {
-      const moves = await Promise.allSettled(ids.map(endOne));
-      const failed = moves.find((move) => move.status === 'rejected');
-      if (failed) throw failed.reason;
-      return sweptTogether(moves.map((move) => (move.status === 'fulfilled' ? move.value : null)));
+    mutationFn: async ({ ids, to }: TickedMove): Promise<Moved> => {
+      const outcomes = await aFewAtATime(ids, (id) => moveOne(id, to));
+      const refused = outcomes.find((one) => one.status === 'rejected');
+      if (refused) throw refused.reason;
+      return movedTogether(outcomes.map((one) => (one.status === 'fulfilled' ? one.value : null)));
     },
     onSettled: () => Promise.all([reread(), rereadStats()]),
   });
 }
 
-async function endOne(applicationId: string) {
+async function moveOne(applicationId: string, to: PipelineStatus) {
   const { data, error, response } = await client.PATCH(APPLICATION_PATH, {
     params: { path: { application_id: applicationId } },
-    body: { status: 'rejected', start_date: null },
+    body: { status: to, start_date: null },
   });
   if (data) return data;
-  // The pipeline refusing the move, or the row having gone: it is no longer a row to end, which
-  // is what the answer says rather than what it fails over.
-  if (response.status === 409 || response.status === 404) return null;
+  if (response.status === 409) return null;
   throw error;
 }
 

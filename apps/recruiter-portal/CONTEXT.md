@@ -327,16 +327,25 @@ _Avoid_: Bulk action, mass reject, select all (a sweep names statuses, never row
 (nothing is hidden — the Applications have ended).
 
 **Row ticks**:
-The Applications page's answer to the same need, and deliberately the smaller one: a box on each
-row the reader can see, and no sweep. A sweep is a statement about one hiring effort, and across
-forty Jobs at once it is a statement about nothing — so the Tenant-wide list will not make one.
-A tick is offered only on a row still being decided, because an Application that has ended cannot
-end again, and ending what is ticked is that many single moves, reported as the one answer a sweep
-gives — including how many of the ticked rows the list had already moved out from under the reader.
-The ticks leave with the Reading they were made under: changing a filter drops them, because a tick
-was a statement about the rows then on screen. They are also what takes a sweep back — the Rejected
-tab, ticked and moved to Reviewing.
-_Avoid_: Selection, bulk bar, batch (there is no batch, and nothing names one).
+The Applications page's answer to the same need, and deliberately the smaller one: a box on each row
+the reader can see, one row at a time, and no sweep. A sweep is a statement about one hiring effort,
+and across forty Jobs at once it is a statement about nothing — so the Tenant-wide list will not
+make one, and offers no box that ticks a whole page either: the gesture the ticks exist to refuse is
+exactly the one a select-all would hand back.
+
+Two acts, and the ticks carry either: ending the Applications still being decided, and moving the
+rejected ones back to Reviewing — which is how a sweep is taken back, with no batch id and nothing
+named after it. The **Act** is decided by the first tick, and every row that would mean the other
+one loses its box, so a set of ticks can never mean two things at once; a hired or a withdrawn row
+is never tickable, because nothing moves it. Either act is that many single moves, a few at a time
+rather than all at once, and reports through the one answer a sweep gives — including how many of the
+ticked rows the list had already moved out from under the reader.
+
+The ticks leave with the Reading they were made under: changing a filter or the order drops them,
+because a tick was a statement about the rows then on screen. What is ticked is read back against
+the rows on screen too, so a row that leaves takes its tick with it rather than being counted from
+memory.
+_Avoid_: Selection, select all, bulk bar, batch (there is no batch, and nothing names one).
 
 **Refused move**:
 A Pipeline move the API answers with a 409, rendered where the buttons are rather than as a

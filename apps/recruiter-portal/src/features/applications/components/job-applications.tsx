@@ -17,7 +17,7 @@ import {
   screeningState,
   sortSelection,
 } from '../application';
-import { endedMessage, nothingIsOpen } from '../ending';
+import { actedMessage, nothingIsOpen, whatItSwept } from '../ending';
 import { useSweepJobApplications } from '../hooks/use-application-actions';
 import { useJobApplications } from '../hooks/use-job-applications';
 import {
@@ -66,14 +66,13 @@ export function JobApplications({
   const ended = anythingEnded(statusCounts);
   const everyVerdict = screening.length === SCREENING_VERDICTS.length;
 
-  // The list's own filters, with the Pipeline tab left out: the ticks are what replaces it.
   async function endMany(statuses: PipelineStatus[]) {
     const swept = await sweeping.mutateAsync({
       params: { path: { job_id: jobId } },
       body: { statuses, qualification_statuses: everyVerdict ? null : screening },
     });
     setEndingMany(false);
-    toast.success(endedMessage(swept));
+    toast.success(actedMessage('end', whatItSwept(swept)));
     return swept;
   }
 

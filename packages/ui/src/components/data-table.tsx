@@ -77,16 +77,15 @@ export interface DataTableError {
   onRetry: () => void;
 }
 
-/** Ticks over the rows on screen, and only those: a tick is a statement about a row somebody can
- * see, so nothing here reaches a row the reader has not loaded. */
+/** Ticks over the rows on screen, one row at a time, and only those: a tick is a statement about
+ * a row somebody can see, so nothing here reaches a row the reader has not loaded — and there is
+ * no box that ticks them all, because a table cannot know what ticking everything would say. */
 export interface DataTableTicks<TRow> {
   /** The rows ticked, by id. */
   ticked: string[];
   onChange: (ticked: string[]) => void;
   /** Which rows a tick is offered on. A row this refuses shows no box rather than a dead one. */
   can?: (row: TRow) => boolean;
-  /** What the one box that ticks every row shown is called. */
-  everyLabel: string;
 }
 
 export interface DataTableProps<TRow> {
@@ -190,21 +189,11 @@ export function DataTable<TRow>({
   const extraCells = (rowActions ? 1 : 0) + (ticks ? 1 : 0);
   const skeletonCellKeys = placeholderKeys(columns.length + extraCells, 'cell');
   const loadingFirstPage = isLoading && rows.length === 0;
-  const tickable = ticks ? rows.filter((row) => ticks.can?.(row.original) ?? true) : [];
   const isTicked = (row: Row<TRow>) => ticks?.ticked.includes(row.id) ?? false;
 
   function tick(row: Row<TRow>, on: boolean) {
     ticks?.onChange(
       on ? [...ticks.ticked, row.id] : ticks.ticked.filter((ticked) => ticked !== row.id),
-    );
-  }
-
-  function tickEveryRowShown(on: boolean) {
-    const shown = tickable.map((row) => row.id);
-    ticks?.onChange(
-      on
-        ? [...ticks.ticked, ...shown.filter((id) => !ticks.ticked.includes(id))]
-        : ticks.ticked.filter((ticked) => !shown.includes(ticked)),
     );
   }
 
@@ -277,13 +266,7 @@ export function DataTable<TRow>({
                   <TableHead
                     className={cn(CELL_BORDER, 'w-px bg-table-header', flush && 'border-t')}
                   >
-                    <Checkbox
-                      aria-label={ticks.everyLabel}
-                      disabled={tickable.length === 0}
-                      checked={tickable.length > 0 && tickable.every(isTicked)}
-                      indeterminate={!tickable.every(isTicked) && tickable.some(isTicked)}
-                      onCheckedChange={tickEveryRowShown}
-                    />
+                    <span className="sr-only">Ticks</span>
                   </TableHead>
                 ) : null}
                 {headerGroup.headers.map((header, index) => {

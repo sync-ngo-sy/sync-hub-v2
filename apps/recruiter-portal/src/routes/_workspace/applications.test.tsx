@@ -13,11 +13,11 @@ import {
   HANI,
 } from '@/features/applications/testing/fixtures';
 import {
-  endsTickedApplications,
   failsToListTenantApplications,
   getsApplication,
   listsTenantApplications,
   movesTenantApplications,
+  movesTickedApplications,
   pagesTenantApplications,
   type TenantAskedFor,
 } from '@/features/applications/testing/handlers';
@@ -601,11 +601,7 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     return screen.getByRole('checkbox', { name: `Tick ${candidate}'s Application` });
   }
 
-  function everyTick() {
-    return screen.getByRole('checkbox', { name: 'Tick every Application shown' });
-  }
-
-  it('offers a tick on every row still being decided, and none on one that has ended', async () => {
+  it('offers a tick on every row an act reaches, and none on one nothing moves', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
     await renderApp('/applications?pipeline=all');
@@ -613,8 +609,30 @@ describe('the ticks on the Tenant-wide Applications page', () => {
 
     expect(tickOf('Dima Sabbagh')).toBeInTheDocument();
     expect(tickOf('Elias Murad')).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: "Tick Ghada Kanaan's Application" })).toBeNull();
+    expect(tickOf('Ghada Kanaan')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: "Tick Hani Barakat's Application" })).toBeNull();
+  });
+
+  it('lets the first tick decide the act, and takes the box off every row that means the other', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await user.click(tickOf('Dima Sabbagh'));
+
+    expect(screen.getByRole('button', { name: 'End 1 Application' })).toBeVisible();
+    expect(tickOf('Farah Doumani')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: "Tick Ghada Kanaan's Application" })).toBeNull();
+  });
+
+  it('offers no box that ticks every row at once', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    await renderApp('/applications?pipeline=all');
+
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(4);
   });
 
   it('offers no sweep, because a statement about every Job at once is one about none', async () => {
@@ -642,21 +660,10 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     expect(screen.queryByRole('button', { name: /^End / })).toBeNull();
   });
 
-  it('ticks every row shown at once, and only the ones a tick means anything on', async () => {
-    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
-
-    const { user } = await renderApp('/applications?pipeline=all');
-    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
-
-    await user.click(everyTick());
-
-    expect(screen.getByRole('status')).toHaveTextContent('3 Applications ticked');
-  });
-
   it('ends the rows it ticked, one move each, and says when they hear', async () => {
     const asked: string[] = [];
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
-    server.use(...signedInAs(RECRUITER), ...endsTickedApplications(listed, asked));
+    server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed, asked));
 
     const { user } = await renderApp('/applications?pipeline=all');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
@@ -677,7 +684,7 @@ describe('the ticks on the Tenant-wide Applications page', () => {
 
   it('says which of the ticked rows had already moved under the reader', async () => {
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
-    server.use(...signedInAs(RECRUITER), ...endsTickedApplications(listed));
+    server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed));
 
     const { user } = await renderApp('/applications?pipeline=all');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
@@ -700,7 +707,7 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
     server.use(
       ...signedInAs(RECRUITER),
-      ...endsTickedApplications(listed, undefined, { id: FARAH.id, problem: SERVER_FAULT }),
+      ...movesTickedApplications(listed, undefined, { id: FARAH.id, problem: SERVER_FAULT }),
     );
 
     const { user } = await renderApp('/applications?pipeline=all');
@@ -714,11 +721,44 @@ describe('the ticks on the Tenant-wide Applications page', () => {
       }),
     );
 
-    expect(await screen.findByText('Not all ended')).toBeVisible();
+    expect(await screen.findByText('Not all moved')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 2'));
     expect(screen.getByText('Farah Doumani')).toBeVisible();
+  });
+
+  it('takes a sweep back by reading the rejections and moving them to Reviewing', async () => {
+    const asked: string[] = [];
+    const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
+    server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed, asked));
+
+    const { user } = await renderApp('/applications?pipeline=rejected');
+    expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
+    await user.click(tickOf('Ghada Kanaan'));
+    await user.click(screen.getByRole('button', { name: 'Move 1 Application back to Reviewing' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Move 1 Application back to Reviewing',
+      }),
+    );
+
+    expect(await screen.findByText(/^1 Application is back in Reviewing\./)).toBeVisible();
+    expect(asked).toEqual([GHADA.id]);
+    await waitFor(() => expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 2'));
+  });
+
+  it('drops the ticks when the order the list is read in changes', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    expect(screen.getByRole('status')).toHaveTextContent('1 Application ticked');
+
+    await user.click(receivedHeader());
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^End / })).toBeNull());
   });
 
   it('drops the ticks when the list the reader is looking at changes', async () => {

@@ -430,6 +430,16 @@ async def qualification_history_of(
     return list(rows)
 
 
+async def notifications_of(session: AsyncSession, application_id: str | UUID) -> list[Notification]:
+    session.expire_all()
+    rows = await session.scalars(
+        select(Notification)
+        .where(Notification.application_id == UUID(str(application_id)))
+        .order_by(Notification.created_at)
+    )
+    return list(rows)
+
+
 async def communications_of(
     session: AsyncSession, application_id: str | UUID
 ) -> list[Communication]:

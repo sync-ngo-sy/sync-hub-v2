@@ -21,19 +21,21 @@ from tests.support.applications import (
     a_moved_application,
     a_swept_job,
     an_accepted_application,
+    an_application_through,
     communications_of,
     job_applications_of,
     move_to,
     my_applications,
+    notifications_of,
     status_history_of,
     stored_application,
     sweep_the_job,
     the_telling_comes,
 )
-from tests.support.jobs import a_published_job
+from tests.support.jobs import a_published_job, a_tracked_link, link_report, read_job
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications, my_unread_count
-from tests.support.stats import decide
+from tests.support.stats import decide, stats_of
 from tests.support.tenants import an_admin
 
 UNDECIDED = ["new", "reviewing", "shortlisted", "interview", "offer"]
@@ -423,3 +425,122 @@ async def test_a_sweep_is_undone_by_reading_back_what_it_rejected_and_moving_it(
     _confirmation, rejection = await communications_of(db_session, first["id"])
     assert rejection.status is CommunicationStatus.CANCELLED
     assert [mine["stage"] for mine in await my_applications(other_browser)] == ["in_review"]
+
+
+async def the_rejection_of(session: AsyncSession, application_id: str | UUID) -> dict[str, Any]:
+    """Everything one rejection leaves behind, as a shape two paths can be compared through.
+
+    The Application, the candidate and the moment are left out: those are what differ between two
+    rejections of two people. Everything else is what a rejection *is*, and the set-based ending
+    and the single move have to agree on all of it.
+    """
+    application = await stored_application(session, application_id)
+    status, told_at = application.status, application.told_at
+
+    *_, ending = await status_history_of(session, application_id)
+    decided_by = ending.id
+    history = (
+        ending.change_source,
+        ending.previous_status,
+        ending.new_status,
+        ending.changed_by_profile_id is not None,
+        ending.reason,
+    )
+
+    [bell] = await notifications_of(session, application_id)
+    rang = (bell.type, bell.visible_at == told_at, bell.read_at)
+    bell_payload = {name: value for name, value in bell.payload.items() if name != "application_id"}
+
+    _confirmation, email = await communications_of(session, application_id)
+    return {
+        "status": status,
+        "told_at_is_set": told_at is not None,
+        "history": history,
+        "bell": rang,
+        "bell_payload": bell_payload,
+        "email": (
+            email.channel,
+            email.communication_type,
+            email.status,
+            email.template_key,
+            email.available_at == told_at,
+            email.attempts,
+            email.subject,
+            email.tenant_id is not None,
+            email.initiated_by_recruiter_id is not None,
+            bool(email.recipient),
+            email.idempotency_key == f"application-rejection:{decided_by}",
+        ),
+        "email_payload": {
+            name: value
+            for name, value in email.payload.items()
+            if name not in {"application_id", "candidate_name"}
+        },
+    }
+
+
+async def test_a_sweep_leaves_behind_what_one_move_leaves_behind(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The set-based ending is the single move taken over a set, and nothing less.
+
+    Nothing couples the two paths — one writes through the ORM and the other in SQL — so this is
+    what says they still agree. A column one of them fills and the other forgets would be two
+    Candidates told two different things by the same decision.
+    """
+    job, by_hand, swept = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+
+    await a_moved_application(recruiter, by_hand["id"], ApplicationStatus.REJECTED)
+    await a_swept_job(recruiter, job["id"], [ApplicationStatus.NEW])
+
+    assert await the_rejection_of(db_session, swept["id"]) == await the_rejection_of(
+        db_session, by_hand["id"]
+    )
+
+
+async def test_a_sweep_moves_no_count_the_platform_keeps(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Housekeeping moves no figure: every Application the Tenant received still counts, on the
+    Job's own total, on the Dashboard and in what a Tracked link converted. Only the Pipeline
+    counts move, which is the sweep's own moves and nothing else."""
+    job = await a_published_job(recruiter)
+    link = await a_tracked_link(recruiter, job["id"])
+    await an_application_through(
+        other_browser, mailbox, db_session, job["id"], link["token"], "first"
+    )
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "second")
+    await an_accepted_application(third_browser, job["id"])
+
+    def figures(job_view: dict[str, Any], stats: dict[str, Any], report: dict[str, Any]) -> Any:
+        applications = dict(stats["applications"])
+        moved = applications.pop("by_status")
+        return (job_view["application_count"], applications, stats["sources"], report), moved
+
+    before, moved_before = figures(
+        await read_job(recruiter, job["id"]),
+        await stats_of(recruiter),
+        await link_report(recruiter, job["id"]),
+    )
+
+    swept = await a_swept_job(recruiter, job["id"], [ApplicationStatus.NEW])
+
+    after, moved_after = figures(
+        await read_job(recruiter, job["id"]),
+        await stats_of(recruiter),
+        await link_report(recruiter, job["id"]),
+    )
+    assert swept["ended"] == 2
+    assert after == before
+    assert moved_before["new"] == 2 and moved_before["rejected"] == 0
+    assert moved_after["new"] == 0 and moved_after["rejected"] == 2

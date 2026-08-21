@@ -6,7 +6,6 @@ import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
 import {
   type ApplicationSummary,
-  OPEN_STATUSES,
   PIPELINE_STATUSES,
   type PipelineStatus,
   RECEIVED_WITHIN_VALUES,
@@ -15,7 +14,7 @@ import {
   type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
-import type { Sweep } from '../ending';
+import { actFor, type Sweep, whereTickedRowsGo } from '../ending';
 import {
   APPLICATION_PATH,
   ASSESSMENT_PATH,
@@ -190,11 +189,11 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
   ];
 }
 
-const ALREADY_ENDED: Problem = {
+const MOVE_REFUSED: Problem = {
   type: 'urn:sync:problem:application-transition',
   title: 'Conflict',
   status: 409,
-  detail: 'A rejected application cannot become rejected.',
+  detail: 'This application cannot move there from where it is.',
 };
 
 export interface SweepAskedFor {
@@ -232,9 +231,9 @@ export function refusesTheSweep(items: ApplicationSummary[], problem: Problem) {
   ];
 }
 
-/** The Tenant-wide list, where ending the ticked rows is that many single moves — and where a
- * row that moved between the tick and the click is refused rather than ended twice. */
-export function endsTickedApplications(
+/** The Tenant-wide list, where acting on the ticked rows is that many single moves — and where a
+ * move the pipeline would refuse is refused here too, exactly as the API refuses it. */
+export function movesTickedApplications(
   items: TenantApplication[],
   asked?: string[],
   refusing?: { id: string; problem: Problem },
@@ -250,8 +249,9 @@ export function endsTickedApplications(
       const at = items.findIndex((item) => item.id === params.application_id);
       const item = items[at];
       if (!item) return response(404).json(NO_SUCH_APPLICATION);
-      if (!(OPEN_STATUSES as readonly PipelineStatus[]).includes(item.status)) {
-        return response(409).json(ALREADY_ENDED);
+      const admits = actFor(item.status);
+      if (admits === null || whereTickedRowsGo(admits) !== status) {
+        return response(409).json(MOVE_REFUSED);
       }
       items[at] = { ...item, status, updated_at: THE_TELLING };
       return response(200).json({
@@ -259,7 +259,7 @@ export function endsTickedApplications(
         status,
         previous_status: item.status,
         candidate_notified: false,
-        told_at: THE_TELLING,
+        told_at: status === 'rejected' ? THE_TELLING : null,
         changed_at: '2026-08-03T10:00:00Z',
       });
     }),
