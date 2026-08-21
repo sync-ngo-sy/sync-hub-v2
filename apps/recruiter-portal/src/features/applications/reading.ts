@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
   EVERY_TIME,
+  holdsOneStatus,
+  pipelineInAddress,
   pipelineTab,
   receivedSelection,
   SCREENING_VERDICTS,
@@ -32,7 +34,7 @@ export type ApplicationFilters = z.infer<typeof jobApplicationsReading>;
 
 export function narrowedBy(filters: TenantApplicationFilters): number {
   return [
-    pipelineTab(filters.pipeline) !== undefined,
+    holdsOneStatus(pipelineTab(filters.pipeline)),
     screeningSelection(filters.screening).length < SCREENING_VERDICTS.length,
     receivedSelection(filters.received) !== EVERY_TIME,
   ].filter(Boolean).length;
@@ -44,17 +46,23 @@ const NO_APPLICATIONS_YET =
 const NOBODY_HAS_APPLIED =
   'No one has applied yet — a tracked link is the quickest way to bring candidates to this Job.';
 
-export function noApplicationsMessage(filters: TenantApplicationFilters): string {
+const EVERYTHING_HAS_ENDED =
+  'Nothing is waiting on a decision — every Application this Tenant received has ended.';
+
+const EVERYTHING_ON_THIS_JOB_HAS_ENDED =
+  'Nothing on this Job is waiting on a decision — every Application it received has ended.';
+
+export function noApplicationsMessage(filters: TenantApplicationFilters, ended: boolean): string {
   const narrowing = narrowedBy(filters);
-  if (narrowing === 0) return NO_APPLICATIONS_YET;
+  if (narrowing === 0) return ended ? EVERYTHING_HAS_ENDED : NO_APPLICATIONS_YET;
   return narrowing === 1
     ? 'No Application matches that filter.'
     : 'No Application matches these filters.';
 }
 
-export function noJobApplicationsMessage(filters: ApplicationFilters): string {
+export function noJobApplicationsMessage(filters: ApplicationFilters, ended: boolean): string {
   const narrowing = narrowedBy(filters);
-  if (narrowing === 0) return NOBODY_HAS_APPLIED;
+  if (narrowing === 0) return ended ? EVERYTHING_ON_THIS_JOB_HAS_ENDED : NOBODY_HAS_APPLIED;
   return narrowing === 1
     ? 'No Application on this Job matches that filter.'
     : 'No Application on this Job matches both filters.';
@@ -70,7 +78,7 @@ export function applicationsAddress(
   filters: TenantApplicationFilters,
 ): Address<TenantApplicationFilters> {
   return {
-    pipeline: filters.pipeline,
+    pipeline: pipelineInAddress(filters.pipeline),
     screening: filters.screening,
     received: filters.received,
     sort: sortInAddress(filters.sort),
@@ -79,7 +87,7 @@ export function applicationsAddress(
 
 export function jobApplicationsAddress(filters: ApplicationFilters): Address<ApplicationFilters> {
   return {
-    pipeline: filters.pipeline,
+    pipeline: pipelineInAddress(filters.pipeline),
     screening: filters.screening,
     sort: sortInAddress(filters.sort),
   };

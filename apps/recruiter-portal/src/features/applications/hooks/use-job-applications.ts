@@ -1,7 +1,6 @@
 import { api } from '@/lib/api';
 import type { PipelineStatus, ScreeningVerdict } from '../application';
-import type { ApplicationFilters } from '../reading';
-import { TRIAGE_PATH } from '../reread';
+import { type ApplicationsAsked, TRIAGE_PATH } from '../reread';
 
 export const APPLICATIONS_PAGE_SIZE = 20;
 
@@ -22,7 +21,7 @@ export function verdictCountsFrom(
   ) as VerdictCounts;
 }
 
-export function useJobApplications(jobId: string, filters: ApplicationFilters) {
+export function useJobApplications(jobId: string, asked: ApplicationsAsked) {
   return api.useInfiniteQuery(
     'get',
     TRIAGE_PATH,
@@ -31,9 +30,9 @@ export function useJobApplications(jobId: string, filters: ApplicationFilters) {
         path: { job_id: jobId },
         query: {
           limit: APPLICATIONS_PAGE_SIZE,
-          status: filters.pipeline,
-          qualification_status: filters.screening,
-          sort: filters.sort,
+          status: asked.statuses,
+          qualification_status: asked.verdicts,
+          sort: asked.sort,
         },
       },
     },

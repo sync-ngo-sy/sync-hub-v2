@@ -15,11 +15,13 @@ import type { PanelRead } from '../hooks/use-dashboard';
 
 const OPEN_JOBS = <Link to="/jobs" search={{ status: 'published' }} />;
 
-const THIS_WEEK = <Link to="/applications" search={{ received: '7d' }} />;
+const THIS_WEEK = <Link to="/applications" search={{ pipeline: 'all', received: '7d' }} />;
 
-const AWAITING_REVIEW = <Link to="/applications" search={{ pipeline: ['new'] }} />;
+const AWAITING_REVIEW = <Link to="/applications" search={{ pipeline: 'new' }} />;
 
-const QUALIFIED_BY_SCREENING = <Link to="/applications" search={{ screening: ['qualified'] }} />;
+const QUALIFIED_BY_SCREENING = (
+  <Link to="/applications" search={{ pipeline: 'all', screening: ['qualified'] }} />
+);
 
 function orDash(value: number | undefined): string {
   return value === undefined ? '—' : String(value);
