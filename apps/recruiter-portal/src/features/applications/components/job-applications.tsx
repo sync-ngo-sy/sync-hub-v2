@@ -5,6 +5,7 @@ import { problemMessage } from '@/lib/api-problem';
 import {
   type ApplicationSort,
   type ApplicationSummary,
+  pipelineStatuses,
   pipelineTab,
   SCREENING_VERDICTS,
   screeningSelection,
@@ -44,7 +45,11 @@ export function JobApplications({
   const pipeline = pipelineTab(filters.pipeline);
   const screening = screeningSelection(filters.screening);
   const sort = sortSelection(filters.sort);
-  const applications = useJobApplications(jobId, { pipeline, screening, sort });
+  const applications = useJobApplications(jobId, {
+    statuses: pipelineStatuses(pipeline),
+    verdicts: screening,
+    sort,
+  });
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);

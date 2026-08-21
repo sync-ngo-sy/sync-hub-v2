@@ -1,6 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { TenantApplicationFilters } from './reading';
+import type {
+  ApplicationSort,
+  PipelineStatus,
+  ReceivedWithin,
+  ScreeningVerdict,
+} from './application';
 
 export const TENANT_APPLICATIONS_PATH = '/v1/tenants/me/applications';
 export const TRIAGE_PATH = '/v1/tenants/me/jobs/{job_id}/applications';
@@ -18,15 +23,27 @@ function forApplication(applicationId: string) {
   return { params: { path: { application_id: applicationId } } };
 }
 
-export function tenantApplications(filters: TenantApplicationFilters) {
+/** What a list asks the API for, once its Reading has been resolved: no status at all is every
+ * status, and every verdict is named. */
+export interface ApplicationsAsked {
+  statuses: PipelineStatus[] | undefined;
+  verdicts: ScreeningVerdict[];
+  sort: ApplicationSort;
+}
+
+export interface TenantApplicationsAsked extends ApplicationsAsked {
+  received: ReceivedWithin | undefined;
+}
+
+export function tenantApplications(asked: TenantApplicationsAsked) {
   return {
     params: {
       query: {
         limit: TENANT_APPLICATIONS_PAGE_SIZE,
-        status: filters.pipeline,
-        qualification_status: filters.screening,
-        received_within: filters.received ?? null,
-        sort: filters.sort,
+        status: asked.statuses,
+        qualification_status: asked.verdicts,
+        received_within: asked.received ?? null,
+        sort: asked.sort,
       },
     },
   };

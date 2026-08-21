@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import {
+  ALL_TAB,
   EVERY_TIME,
+  OPEN_TAB,
+  type PipelineTab,
+  pipelineInAddress,
   pipelineTab,
   receivedSelection,
   SCREENING_VERDICTS,
@@ -30,9 +34,15 @@ export const jobApplicationsReading = applicationsReading.pick({
 export type TenantApplicationFilters = z.infer<typeof applicationsReading>;
 export type ApplicationFilters = z.infer<typeof jobApplicationsReading>;
 
+/** Open is where an untouched list starts and All holds more than it, so neither can be what
+ * emptied one. */
+function narrowsToOneStatus(tab: PipelineTab): boolean {
+  return tab !== OPEN_TAB && tab !== ALL_TAB;
+}
+
 export function narrowedBy(filters: TenantApplicationFilters): number {
   return [
-    pipelineTab(filters.pipeline) !== undefined,
+    narrowsToOneStatus(pipelineTab(filters.pipeline)),
     screeningSelection(filters.screening).length < SCREENING_VERDICTS.length,
     receivedSelection(filters.received) !== EVERY_TIME,
   ].filter(Boolean).length;
@@ -70,7 +80,7 @@ export function applicationsAddress(
   filters: TenantApplicationFilters,
 ): Address<TenantApplicationFilters> {
   return {
-    pipeline: filters.pipeline,
+    pipeline: pipelineInAddress(filters.pipeline),
     screening: filters.screening,
     received: filters.received,
     sort: sortInAddress(filters.sort),
@@ -79,7 +89,7 @@ export function applicationsAddress(
 
 export function jobApplicationsAddress(filters: ApplicationFilters): Address<ApplicationFilters> {
   return {
-    pipeline: filters.pipeline,
+    pipeline: pipelineInAddress(filters.pipeline),
     screening: filters.screening,
     sort: sortInAddress(filters.sort),
   };

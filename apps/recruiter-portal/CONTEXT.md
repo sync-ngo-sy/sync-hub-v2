@@ -55,10 +55,11 @@ _Avoid_: Serialise, to-params (name the thing produced, not the act of producing
 
 **Narrowing**:
 How many of a Reading's filters actually cut a list down — what an empty list has to know before it
-can say why it is empty. A filter narrows when it is not what an untouched list shows: a Pipeline
-tab is chosen, the Verdict filter leaves a verdict out, the Time-range reaches back less far than
-All time. Checking all four verdicts by hand is no narrowing, because it is the state every list
-opens in and dropping it would change nothing. `narrowedBy` in `features/applications/reading.ts`
+can say why it is empty. A filter narrows when it cuts the list down: a Pipeline tab holds one
+status, the Verdict filter leaves a verdict out, the Time-range reaches back less far than All
+time. Checking all four verdicts by hand is no narrowing, because it is the state every list
+opens in and dropping it would change nothing. Neither `Open` nor `All` narrows: `Open` is what an
+untouched list shows and `All` holds more than that, so neither can be what emptied one. `narrowedBy` in `features/applications/reading.ts`
 is the only answer to the question, and the wording each list reaches for is beside it, so both
 lists take the count and the sentence from one place — a list with no Time-range filter simply
 never sets one. It is read off the Reading and never off the API's counts:
@@ -148,11 +149,14 @@ _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is
 An Applications list's primary navigation through the Pipeline: `Open` first, then each of the
 eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
 leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
-One status may be viewed at a time, which is the rule `pipelineTab` states and every list honours:
-an address naming more than one status names no tab at all. `Open` is where an untouched list
-starts and is the one choice the address bar leaves unwritten; `All` is still the whole eight,
-terminal Applications included, but it is now somewhere a reader goes rather than where they land.
-A selected tab is written into the address bar, so Dashboard deep-links and shared views land on
+One tab may be viewed at a time, which is what the address names — the tab rather than the statuses
+behind it, so `pipelineStatuses` is the one place that says which statuses a tab asks the API for
+and `Open` costs a reader no more of the address bar than a single status tab does. `Open` is where
+an untouched list starts and is the one choice the address bar leaves unwritten, so a clean link
+opens the working list; `All` is still the whole eight, terminal Applications included, but it is
+now somewhere a reader goes rather than where they land, and it says so in the address. A tab the
+platform does not know is read as `Open`, the way every other filter it cannot honour is dropped.
+Every other tab is written into the address bar, so Dashboard deep-links and shared views land on
 the same tab and list.
 _Avoid_: Status filter, pipeline picker, stage filter.
 
@@ -216,7 +220,9 @@ Awaiting review leads to the Applications page's New tab, because New is what th
 counts; Applications this week leads to the week's window on the All tab, because the stat counts
 what arrived, Rejected and Withdrawn included. Qualified by screening leads to the Qualified
 verdict on the All tab for the same reason: Screening judged the Application before anybody moved
-it, so a verdict outlives the rejection that may have followed it. Open jobs is the one that leaves
+it, so a verdict outlives the rejection that may have followed it. Both of those two name `All` in
+the link rather than leaving the tab out, because leaving it out is now `Open` and a stat counting
+what arrived would land on a smaller number than it claimed. Open jobs is the one that leaves
 the Applications page entirely, for the Jobs page on its Published tab. The rule each of them keeps
 is that the list it opens counts what the stat says: a link landing on a different number would be
 worse than no link, which is why a stat gets its link only once the page it leads to can be narrowed

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { SCREENING_VERDICTS } from '@/features/applications/application';
+import { OPEN_STATUSES, SCREENING_VERDICTS } from '@/features/applications/application';
 import {
   AMAL,
   AMAL_MATCH,
@@ -30,6 +30,8 @@ import { server } from '@/testing/server';
 const JOB = FIELD_COORDINATOR_VIEW;
 
 const EVERY_VERDICT = [...SCREENING_VERDICTS];
+
+const STILL_OPEN = [...OPEN_STATUSES];
 
 function inUrl(chosen: readonly string[]) {
   return encodeURIComponent(JSON.stringify(chosen));
@@ -66,7 +68,7 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    await renderApp(`/jobs/${JOB.id}`);
+    await renderApp(`/jobs/${JOB.id}?pipeline=all`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
     expect(listedInOrder()).toEqual([
@@ -91,7 +93,7 @@ describe("a Job's Applications tab", () => {
     );
   });
 
-  it('starts on All and leaves Pipeline out of the request and address bar', async () => {
+  it('starts on Open, asking for new through offer and leaving the address bar clean', async () => {
     const asked: AskedFor[] = [];
     server.use(
       ...signedInAs(RECRUITER),
@@ -99,13 +101,14 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    await renderApp(`/jobs/${JOB.id}`);
+    const { router } = await renderApp(`/jobs/${JOB.id}`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
     expect(screen.getByText('Bassel Nasser')).toBeVisible();
-    expect(screen.getByText('Carla Rizk')).toBeVisible();
-    expect(asked.every((one) => one.status.length === 0)).toBe(true);
-    expect(screen.getByRole('radio', { name: 'All 3' })).toBeChecked();
+    expect(screen.queryByText('Carla Rizk')).toBeNull();
+    expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
+    expect(screen.getByRole('radio', { name: 'Open 2' })).toBeChecked();
+    expect(router.state.location.search).toEqual({});
   });
 
   it('shows the API count on every Pipeline chip', async () => {
@@ -118,10 +121,12 @@ describe("a Job's Applications tab", () => {
     await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
+    expect(screen.getByRole('radio', { name: 'Open 2' })).toBeVisible();
     expect(screen.getByRole('radio', { name: 'New 1' })).toBeVisible();
     expect(screen.getByRole('radio', { name: 'Shortlisted 1' })).toBeVisible();
     expect(screen.getByRole('radio', { name: 'Rejected 1' })).toBeVisible();
     expect(screen.getByRole('radio', { name: 'Withdrawn 0' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'All 3' })).toBeVisible();
   });
 
   it('opens one Pipeline status and writes it into the address bar', async () => {
@@ -137,13 +142,13 @@ describe("a Job's Applications tab", () => {
 
     await user.click(screen.getByRole('radio', { name: 'Rejected 1' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: ['rejected'] }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'rejected' }));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual(['rejected']));
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
     expect(screen.queryByText('Amal Haddad')).toBeNull();
   });
 
-  it('returns to every status when All is picked', async () => {
+  it('returns to every status when All is picked, and writes All into the address bar', async () => {
     const asked: AskedFor[] = [];
     server.use(
       ...signedInAs(RECRUITER),
@@ -151,14 +156,33 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['new'])}`);
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=new`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await user.click(screen.getByRole('radio', { name: 'All 3' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual([]));
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
+  });
+
+  it('goes back to the working list when Open is picked, and leaves it unwritten', async () => {
+    const asked: AskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=rejected`);
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+
+    await user.click(screen.getByRole('radio', { name: 'Open 2' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(asked.at(-1)?.status).toEqual(STILL_OPEN));
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    expect(screen.queryByText('Carla Rizk')).toBeNull();
   });
 
   it('asks for every verdict until the reader says otherwise', async () => {
@@ -185,7 +209,7 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['new'])}`);
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=new`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await openScreening(user);
@@ -246,7 +270,7 @@ describe("a Job's Applications tab", () => {
 
     await waitFor(() => expect(router.state.location.search).toEqual({ screening: EVERY_VERDICT }));
     await waitFor(() => expect(asked.at(-1)?.qualification_status).toEqual(EVERY_VERDICT));
-    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+    expect(await screen.findByText('Bassel Nasser')).toBeVisible();
     expect(screeningTrigger()).toHaveAccessibleName('Screening: All verdicts');
   });
 
@@ -259,10 +283,7 @@ describe("a Job's Applications tab", () => {
     );
 
     const { router, user } = await renderApp(
-      `/jobs/${JOB.id}?pipeline=${inUrl(['shortlisted'])}&screening=${inUrl([
-        'qualified',
-        'review_required',
-      ])}`,
+      `/jobs/${JOB.id}?pipeline=shortlisted&screening=${inUrl(['qualified', 'review_required'])}`,
     );
     expect(await screen.findByText('Bassel Nasser')).toBeVisible();
 
@@ -271,7 +292,7 @@ describe("a Job's Applications tab", () => {
 
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
-        pipeline: ['shortlisted'],
+        pipeline: 'shortlisted',
         screening: ['review_required'],
       }),
     );
@@ -295,9 +316,7 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    await renderApp(
-      `/jobs/${JOB.id}?pipeline=${inUrl(['rejected'])}&screening=${inUrl(['disqualified'])}`,
-    );
+    await renderApp(`/jobs/${JOB.id}?pipeline=rejected&screening=${inUrl(['disqualified'])}`);
 
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
     expect(screen.queryByText('Amal Haddad')).toBeNull();
@@ -318,9 +337,9 @@ describe("a Job's Applications tab", () => {
     await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
-    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === 'qualified')).toBe(true);
-    expect(screen.getByRole('radio', { name: 'All 1' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Open 1' })).toBeChecked();
   });
 
   it('drops a filter the platform cannot honour rather than failing the page', async () => {
@@ -330,7 +349,7 @@ describe("a Job's Applications tab", () => {
     await renderApp(`/jobs/${JOB.id}?pipeline=on-a-yacht&screening=on-a-yacht`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
-    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
       true,
     );
@@ -437,7 +456,7 @@ describe("a Job's Applications tab", () => {
     );
 
     const { router, user } = await renderApp(
-      `/jobs/${JOB.id}?pipeline=${inUrl(['new'])}&screening=${inUrl(['review_required'])}`,
+      `/jobs/${JOB.id}?pipeline=new&screening=${inUrl(['review_required'])}`,
     );
 
     expect(
@@ -447,7 +466,7 @@ describe("a Job's Applications tab", () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({}));
-    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+    expect(await screen.findByText('Bassel Nasser')).toBeVisible();
   });
 
   it('counts the filters it blames an empty view on', async () => {
@@ -457,7 +476,7 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=${inUrl(['hired'])}`);
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=hired`);
 
     expect(
       await screen.findByText('No Application on this Job matches that filter.'),
@@ -477,7 +496,7 @@ describe("a Job's Applications tab", () => {
     );
 
     const { router, user } = await renderApp(
-      `/jobs/${JOB.id}?pipeline=${inUrl(['interview'])}&screening=${inUrl(['pending'])}&sort=oldest`,
+      `/jobs/${JOB.id}?pipeline=interview&screening=${inUrl(['pending'])}&sort=oldest`,
     );
 
     expect(
@@ -519,7 +538,7 @@ describe("a Job's Applications tab", () => {
     );
 
     const { router, user } = await renderApp(
-      `/jobs/${JOB.id}?pipeline=${inUrl(['new'])}&screening=${inUrl(['qualified'])}`,
+      `/jobs/${JOB.id}?pipeline=new&screening=${inUrl(['qualified'])}`,
     );
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
@@ -528,7 +547,7 @@ describe("a Job's Applications tab", () => {
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
         tab: 'links',
-        pipeline: ['new'],
+        pipeline: 'new',
         screening: ['qualified'],
       }),
     );
@@ -549,7 +568,7 @@ describe('the Match score on a Job triage list', () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    await renderApp(`/jobs/${JOB.id}`);
+    await renderApp(`/jobs/${JOB.id}?pipeline=all`);
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
     expect(rowOf('Amal Haddad').getByText('82%')).toBeVisible();
@@ -602,12 +621,14 @@ describe('the Match score on a Job triage list', () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}`);
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Match' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'highest_match' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ pipeline: 'all', sort: 'highest_match' }),
+    );
     await waitFor(() => expect(asked.at(-1)?.sort).toBe('highest_match'));
     expect(listedInOrder()).toEqual([
       "Open Amal Haddad's Application",
@@ -624,12 +645,14 @@ describe('the Match score on a Job triage list', () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA], asked),
     );
 
-    const { router, user } = await renderApp(`/jobs/${JOB.id}?sort=highest_match`);
+    const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=all&sort=highest_match`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Match' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'lowest_match' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ pipeline: 'all', sort: 'lowest_match' }),
+    );
     await waitFor(() => expect(asked.at(-1)?.sort).toBe('lowest_match'));
     expect(listedInOrder()).toEqual([
       "Open Carla Rizk's Application",

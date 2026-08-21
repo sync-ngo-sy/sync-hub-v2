@@ -58,6 +58,26 @@ export const PIPELINE_LADDER = [
   'hired',
 ] as const satisfies readonly PipelineStatus[];
 
+export const OPEN_STATUSES = [
+  'new',
+  'reviewing',
+  'shortlisted',
+  'interview',
+  'offer',
+] as const satisfies readonly PipelineStatus[];
+
+export const OPEN_TAB = 'open';
+
+export const ALL_TAB = 'all';
+
+export type PipelineTab = typeof OPEN_TAB | typeof ALL_TAB | PipelineStatus;
+
+export const PIPELINE_TABS = [
+  OPEN_TAB,
+  ...PIPELINE_STATUSES,
+  ALL_TAB,
+] as const satisfies readonly PipelineTab[];
+
 export const SCREENING_VERDICTS = [
   'pending',
   'qualified',
@@ -74,8 +94,32 @@ export function pipelineStep(status: PipelineStatus): number | null {
   return place === -1 ? null : place + 1;
 }
 
-export function pipelineTab(chosen: PipelineStatus[] | undefined): PipelineStatus[] | undefined {
-  return chosen?.length === 1 ? chosen : undefined;
+export function pipelineTab(chosen: PipelineTab | undefined): PipelineTab {
+  return chosen ?? OPEN_TAB;
+}
+
+export function pipelineInAddress(tab: PipelineTab | undefined): PipelineTab | undefined {
+  return tab === OPEN_TAB ? undefined : tab;
+}
+
+export function pipelineTabLabel(tab: PipelineTab): string {
+  if (tab === OPEN_TAB) return 'Open';
+  if (tab === ALL_TAB) return 'All';
+  return pipelineState(tab).label;
+}
+
+/** No status at all is what the API reads as every status, which is what `All` asks for. */
+export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined {
+  if (tab === ALL_TAB) return undefined;
+  return tab === OPEN_TAB ? [...OPEN_STATUSES] : [tab];
+}
+
+export function pipelineTabCount(
+  tab: PipelineTab,
+  counts: Partial<Record<PipelineStatus, number>>,
+): number {
+  const counted: readonly PipelineStatus[] = pipelineStatuses(tab) ?? PIPELINE_STATUSES;
+  return counted.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
 }
 
 export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {

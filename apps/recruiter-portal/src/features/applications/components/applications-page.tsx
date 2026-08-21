@@ -10,6 +10,7 @@ import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
   type ApplicationSort,
+  pipelineStatuses,
   pipelineTab,
   RECEIVED_RANGES,
   type ReceivedRange,
@@ -83,8 +84,8 @@ export function ApplicationsPage({
   const range = receivedSelection(filters.received);
   const sort = sortSelection(filters.sort);
   const applications = useTenantApplications({
-    pipeline,
-    screening,
+    statuses: pipelineStatuses(pipeline),
+    verdicts: screening,
     received: filters.received,
     sort,
   });
