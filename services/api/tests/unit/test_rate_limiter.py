@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from asyncio import sleep
 
-import pytest
-
 from sync_api.rate_limit import Budget, RateLimiter
 
 A_MOMENT = 1.0
@@ -11,11 +9,6 @@ A_MINUTE = 60.0
 A_DAY = 86400.0
 
 AN_ENDPOINT = "/v1/directory/candidates"
-
-A_BURST_THEN_A_DAY = (
-    Budget(max_requests=1, window_seconds=A_MOMENT),
-    Budget(max_requests=2, window_seconds=A_DAY),
-)
 
 
 async def test_a_request_under_every_budget_is_let_through() -> None:
@@ -47,11 +40,11 @@ async def test_the_daily_budget_refuses_a_caller_the_fast_one_would_admit() -> N
     assert retry_after > A_MINUTE
 
 
-@pytest.mark.parametrize("budgets", [A_BURST_THEN_A_DAY, A_BURST_THEN_A_DAY[::-1]])
-async def test_a_burst_the_fast_budget_refuses_does_not_spend_the_day(
-    budgets: tuple[Budget, ...],
-) -> None:
-    limiter = RateLimiter(*budgets)
+async def test_a_burst_the_fast_budget_refuses_does_not_spend_the_day() -> None:
+    limiter = RateLimiter(
+        Budget(max_requests=1, window_seconds=A_MOMENT),
+        Budget(max_requests=2, window_seconds=A_DAY),
+    )
 
     assert await limiter.consume(AN_ENDPOINT, "acme") is None
     for _ in range(10):

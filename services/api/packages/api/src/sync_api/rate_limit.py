@@ -26,17 +26,18 @@ class Budget(NamedTuple):
 
 
 class RateLimiter:
-    def __init__(self, *budgets: Budget) -> None:
-        """Shortest window first, whatever order the budgets arrive in: a request the fast
-        window has already refused must not spend the slow one, or a caller who retries into a
-        429 would burn the day's budget on answers nobody gave them."""
+    def __init__(self, fast: Budget, daily: Budget | None = None) -> None:
         self._limits = tuple(
             RateLimitItemPerSecond(budget.max_requests, int(budget.window_seconds))
-            for budget in sorted(budgets, key=lambda budget: budget.window_seconds)
+            for budget in (fast, daily)
+            if budget is not None
         )
         self._window = MovingWindowRateLimiter(MemoryStorage())
 
     async def consume(self, endpoint: str, caller: str) -> float | None:
+        """The fast budget is spent first, so a request it has already refused never reaches the
+        day's — a caller who retries into a 429 would otherwise burn the day on answers nobody
+        gave them."""
         for limit in self._limits:
             if await self._window.hit(limit, endpoint, caller):
                 continue
@@ -203,8 +204,10 @@ async def enforce_candidate_record_rate_limit(
     recruiter: ActingRecruiterDep,
     limiter: Annotated[RateLimiter, Depends(get_candidate_record_rate_limiter)],
 ) -> None:
-    """The tightest budget on the platform: this is the only endpoint that answers with an email
-    address and a phone number, so a Tenant's day of them is what a scrape has to fit inside."""
+    """The tightest budget of the four, because this is the only way to turn a directory listing
+    into an email address and a phone number, so a Tenant's day of them is what a scrape has to
+    fit inside. An Application already carries the contact details of whoever sent it; reaching
+    a Candidate who never applied goes through here."""
     await _enforce(limiter, request, caller=str(recruiter.tenant.id))
 
 

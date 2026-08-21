@@ -120,8 +120,8 @@ class Settings(BaseSettings):
     directory_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     directory_rate_limit_daily_max_requests: int = Field(default=1500, ge=1)
 
-    #: The tightest budget on the platform, because reading one Candidate is the only way to get
-    #: an email address or a phone number, and a scrape needs one read per person.
+    #: The tightest of the four, because reading one Candidate is the only way to turn a directory
+    #: listing into an email address or a phone number, and a scrape needs one read per person.
     candidate_record_rate_limit_max_requests: int = Field(default=20, ge=1)
     candidate_record_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
     candidate_record_rate_limit_daily_max_requests: int = Field(default=200, ge=1)

@@ -161,7 +161,7 @@ async def test_a_contact_read_says_who_read_whom(
     assert len(reads) == 1
     assert reads[0]["candidate_id"] == str(amina.id)
     assert reads[0]["tenant_id"]
-    assert reads[0]["recruiter_id"]
+    assert reads[0]["profile_id"]
 
 
 async def test_the_directory_and_a_contact_read_do_not_share_a_budget(

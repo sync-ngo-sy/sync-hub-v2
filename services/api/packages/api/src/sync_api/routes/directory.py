@@ -108,6 +108,7 @@ async def read_directory_candidate(
     The one place a phone number and an email address are readable, one Candidate at a time. A
     Candidate outside this Tenant's reach answers exactly as one that does not exist.
 
-    Carries the tightest budget on the platform for that reason, and every read is logged.
+    Carries the tightest budget of the discovery routes for that reason, and every read is
+    logged.
     """
     return await directory.record(recruiter, candidate_id)

@@ -85,7 +85,7 @@ class CandidateDirectoryService:
         logger.info(
             "directory.contact_read",
             tenant_id=str(recruiter.tenant.id),
-            recruiter_id=str(recruiter.profile.id),
+            profile_id=str(recruiter.profile.id),
             candidate_id=str(candidate_id),
         )
         profile = await self._profiles.profile(candidate_id)
