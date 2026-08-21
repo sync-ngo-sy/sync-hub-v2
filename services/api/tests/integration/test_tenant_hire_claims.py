@@ -17,7 +17,7 @@ from tests.support.applications import (
     list_hire_claims,
     tenant_hire_claims,
 )
-from tests.support.jobs import a_published_job
+from tests.support.jobs import a_published_job, read_job
 from tests.support.mailbox import Mailbox
 from tests.support.notifications import my_notifications
 
@@ -232,3 +232,124 @@ async def test_a_denial_tells_nobody(
 
     assert await my_notifications(other_browser) == before
     assert [message.id for message in await communications_of(db_session, application_id)] == queued
+
+
+async def test_a_job_narrows_the_list_to_the_claims_made_on_it(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    meal = await a_published_job(recruiter, title="MEAL Officer")
+    field = await a_published_job(recruiter, title="Field Coordinator")
+    on_meal = await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=meal, label="placed", answer=True
+    )
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=field, label="elsewhere", answer=True
+    )
+
+    page = await tenant_hire_claims(recruiter, job_id=meal["id"])
+
+    assert ids_in(page) == [on_meal]
+
+
+async def test_a_job_narrows_the_counts_as_well_as_the_list(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """The tabs count the claims the list is showing, or a tab would name a size it cannot open."""
+    meal = await a_published_job(recruiter, title="MEAL Officer")
+    field = await a_published_job(recruiter, title="Field Coordinator")
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=meal, label="placed", answer=True
+    )
+    await a_hire_claim(recruiter, other_browser, mailbox, db_session, job=meal, label="waiting")
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=field, label="elsewhere", answer=False
+    )
+
+    page = await tenant_hire_claims(recruiter, job_id=meal["id"])
+
+    assert counts_of(page) == {"confirmed": 1, "unanswered": 1, "denied": 0}
+
+
+async def test_the_page_names_every_job_a_hire_was_claimed_on(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Whatever the list is narrowed to: the Job filter offers what it offered before a Job was
+    chosen, so choosing one never empties the picker it was chosen from."""
+    meal = await a_published_job(recruiter, title="MEAL Officer")
+    field = await a_published_job(recruiter, title="Field Coordinator")
+    await a_published_job(recruiter, title="Nobody Hired Here")
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=meal, label="placed", answer=True
+    )
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=field, label="denied", answer=False
+    )
+
+    narrowed = await tenant_hire_claims(recruiter, job_id=meal["id"])
+
+    assert [job["title"] for job in narrowed["jobs"]] == ["Field Coordinator", "MEAL Officer"]
+    assert {job["id"] for job in narrowed["jobs"]} == {meal["id"], field["id"]}
+
+
+async def test_another_tenants_job_narrows_this_tenants_claims_to_nothing(
+    recruiter: AsyncClient,
+    rival: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_hire_claim(recruiter, other_browser, mailbox, db_session, job=job, answer=True)
+    theirs = await a_published_job(rival)
+
+    page = await tenant_hire_claims(recruiter, job_id=theirs["id"])
+
+    assert page["items"] == []
+    assert counts_of(page) == {"confirmed": 0, "unanswered": 0, "denied": 0}
+
+
+async def test_the_job_being_read_is_named_even_when_nobody_was_claimed_on_it(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """A Job's own Placements count opens this page on a zero, and the filter still has to say
+    which Job it is showing."""
+    hiring = await a_published_job(recruiter, title="MEAL Officer")
+    quiet = await a_published_job(recruiter, title="Field Coordinator")
+    await a_hire_claim(recruiter, other_browser, mailbox, db_session, job=hiring, answer=True)
+
+    page = await tenant_hire_claims(recruiter, job_id=quiet["id"])
+
+    assert page["items"] == []
+    assert [job["title"] for job in page["jobs"]] == ["Field Coordinator", "MEAL Officer"]
+
+
+async def test_a_job_carries_how_many_of_its_hires_the_candidate_confirmed(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    """Read through the view that defines a Placement, so the Job's number and the Placements
+    page's cannot disagree. A claim nobody answered is not one of them, and neither is a denial."""
+    job = await a_published_job(recruiter)
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=job, label="placed", answer=True
+    )
+    await a_hire_claim(recruiter, other_browser, mailbox, db_session, job=job, label="waiting")
+    await a_hire_claim(
+        recruiter, other_browser, mailbox, db_session, job=job, label="denied", answer=False
+    )
+
+    read = await read_job(recruiter, job["id"])
+
+    assert read["placement_count"] == 1
+    assert read["application_count"] == 3, "the Applications are counted as they always were"
+
+
+async def test_a_job_nobody_was_hired_for_places_nobody(
+    recruiter: AsyncClient, other_browser: AsyncClient, mailbox: Mailbox, db_session: AsyncSession
+) -> None:
+    hiring = await a_published_job(recruiter, title="MEAL Officer")
+    quiet = await a_published_job(recruiter, title="Field Coordinator")
+    await a_hire_claim(recruiter, other_browser, mailbox, db_session, job=hiring, answer=True)
+
+    read = await read_job(recruiter, quiet["id"])
+
+    assert read["placement_count"] == 0

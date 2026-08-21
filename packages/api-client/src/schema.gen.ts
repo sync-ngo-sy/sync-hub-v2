@@ -1558,7 +1558,8 @@ export interface paths {
          *     announced to nobody.
          *
          *     `counts` comes back whichever standing is being read, so the sizes of the other two are
-         *     never hidden by the one on screen.
+         *     never hidden by the one on screen. `jobs` comes back whichever Job is being read, because it
+         *     is what the Job filter offers and a picker narrowed by its own choice could not be unpicked.
          */
         get: operations["listTenantHireClaims"];
         put?: never;
@@ -2954,6 +2955,19 @@ export interface components {
             experiences?: components["schemas"]["ProfileExperience"][];
         };
         /**
+         * FilterableJob
+         * @description One Job the Placements page's Job filter can name.
+         */
+        FilterableJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /**
          * Health
          * @description The process is up and serving.
          */
@@ -3368,6 +3382,11 @@ export interface components {
             view_count: number;
             /** Description */
             description: string;
+            /**
+             * Placement Count
+             * @description How many of this Job's hires the Candidate confirmed, read through the `placements` view that defines a Placement. Never another Application total: a claim nobody has answered is not counted here, and neither is one they denied.
+             */
+            placement_count: number;
             criteria: components["schemas"]["JobCriteriaView"];
             /**
              * Criteria Locked
@@ -4957,9 +4976,14 @@ export interface components {
             next_cursor?: string | null;
             /**
              * Counts
-             * @description Every standing a Hire claim can have, each with how many of the Tenant's claims stand that way. Counted whichever standing `confirmation` narrows the list to, so each of them says its own size while another is being read.
+             * @description Every standing a Hire claim can have, each with how many of the Tenant's claims stand that way. Counted whichever standing `confirmation` narrows the list to, so each of them says its own size while another is being read. `job_id` does narrow them, because a tab that named a size the list cannot show would be counting other Jobs' claims.
              */
             counts?: components["schemas"]["HireClaimCount"][];
+            /**
+             * Jobs
+             * @description What the Job filter can name, by title: every Job this Tenant has claimed a hire on, whatever the standing, and the Job `job_id` names even if nobody was ever claimed on it — a Job's own Placements count opens this page on a zero, and a filter that could not name what it was showing would read as broken. Never narrowed by the Job that was chosen, so choosing one cannot empty the picker it was chosen from.
+             */
+            jobs?: components["schemas"]["FilterableJob"][];
         };
         /**
          * TenantLogo
@@ -11183,6 +11207,8 @@ export interface operations {
             query?: {
                 /** @description Which claims to answer with: the ones the Candidate confirmed, the ones nobody has answered, or the ones they denied. */
                 confirmation?: components["schemas"]["HireConfirmation"];
+                /** @description Only claims made on this Job. Narrows `counts` as it narrows the list, so a tab never names a size its own list cannot show. A Job of another tenant narrows the list to nothing. */
+                job_id?: string | null;
                 /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */

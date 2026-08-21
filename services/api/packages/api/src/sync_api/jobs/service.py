@@ -44,6 +44,7 @@ from sync_core.models import (
     JobStatus,
     JobViewEvent,
     WorkMode,
+    t_placements,
 )
 
 if TYPE_CHECKING:
@@ -213,12 +214,15 @@ class JobService:
         return bool(await self._db.scalar(select(exists().where(Application.job_id == job_id))))
 
     async def _view(self, job: Job) -> JobView:
-        applications, views = (
-            await self._db.execute(select(APPLICATION_COUNT, VIEW_COUNT).where(Job.id == job.id))
+        applications, views, placements = (
+            await self._db.execute(
+                select(APPLICATION_COUNT, VIEW_COUNT, PLACEMENT_COUNT).where(Job.id == job.id)
+            )
         ).one()
         return JobView(
             **_summary(job, applications, views).model_dump(),
             description=job.description,
+            placement_count=placements,
             criteria=await criteria_of(self._db, job),
             criteria_locked=applications > 0,
         )
@@ -238,6 +242,17 @@ def _job_count(model: type[Application] | type[JobViewEvent]):
 APPLICATION_COUNT: Final = _job_count(Application)
 
 VIEW_COUNT: Final = _job_count(JobViewEvent)
+
+#: Through the view rather than over `hire_claims`, so the number a Job carries and the one the
+#: Placements page reads are the database's single definition of a Placement, counted twice.
+PLACEMENT_COUNT: Final = (
+    select(func.count())
+    .select_from(t_placements)
+    .join(Application, Application.id == t_placements.c.application_id)
+    .where(Application.job_id == Job.id)
+    .correlate(Job)
+    .scalar_subquery()
+)
 
 
 type JobRow = tuple[Job, int, int]

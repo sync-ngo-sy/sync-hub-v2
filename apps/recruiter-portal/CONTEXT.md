@@ -387,23 +387,44 @@ _Avoid_: Rank, fit, rating, AI verdict.
 A hire this Tenant claimed and the Candidate confirmed. Marking an Application hired asks for the
 day it starts; until the Candidate answers, the hire remains unconfirmed and is not a Placement.
 The Placements page is where they are read, and both the list and its count come from the
-database's own definition of one rather than from a second definition the portal keeps.
+database's own definition of one rather than from a second definition the portal keeps. A Job
+header carries its own Placements count, read from that same definition, and the count is a link
+to the Placements page narrowed to that Job — the list a stat opens counts what the stat said.
+It is the one number on a Job page that is not an Application total, which is why it is named
+Placements rather than counted among the Pipeline's.
 _Avoid_: Hire, filled, closed won.
 
 **Placements page**:
-The Workspace destination holding every Hire claim the Tenant has made — Tenant-wide, with no
-per-Job form of it — in three tabs it counts one by one: **Placements** (confirmed, and what the
+The Workspace destination holding every Hire claim the Tenant has made — Tenant-wide, narrowed
+to one Job by a filter rather than by a page of its own — in three tabs it counts one by one: **Placements** (confirmed, and what the
 page opens on), **Waiting** (unanswered) and **Denied**. There is no `All`: three states and a few
 dozen rows need no escape hatch, and the tab the page opens on is the one the Address leaves
 unwritten. A row names the person, the Job, the day the work started and where the claim stands;
 the name opens the Application and the Job column leads to the Job. Newest claim first, in the
 order the API answers in.
+Beside the Job column sits the Job filter, which is what a Job's own Placements count opens the
+page with.
 Nothing here decides anything. An unanswered claim never lapses, auto-confirms or auto-denies —
 the row reads its age (*Waiting since March 4, 2026*) and a Recruiter judges the silence.
 A denial is readable on its own tab and announced nowhere else: no bell, no email, no marker. What
 a Tenant learns from is the gap between what it claimed and what it placed, which is why the Hired
 Pipeline tab carries one line pointing here.
 _Avoid_: Hires page, Hired page (that is a Pipeline tab), Onboarding, All tab.
+
+**Job filter**:
+The Placements page's picker of which Job's claims to read — `Every Job`, which is what an
+untouched page shows and the one choice the Address leaves unwritten, then the Jobs by title. It
+names the Jobs a hire was claimed on rather than every Job the Tenant has, so it can only offer a
+Job that has claims to show on some tab, and it names the Job being read even when nobody was
+claimed on that one, because a Job's Placements count of zero opens this page and a filter that
+could not say which Job it was showing would read as broken. It keeps naming all of them once one
+is chosen: a picker narrowed by its own choice could not be unpicked. Choosing a Job narrows the
+three counts as well as the rows, or a tab would name a size its own list cannot open. It is the
+one filter on this page that narrows, which is why an empty Placements page speaks of this Job
+and offers `Show every Job` rather than the hired Applications.
+The Applications page has no equivalent: its Job axis is a column, so this is new work rather
+than a pattern copied from there.
+_Avoid_: Job picker, job dropdown, job selector.
 
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, opened as an editable draft on

@@ -738,6 +738,12 @@ row the claim was made by — and the Candidate is asked.
   time. `confirmed` — the list and its count alike — is read from the `placements` view, so the
   Placements page and anything else counting Placements cannot disagree; `unanswered` and `denied`
   are read from `hire_claims`, which is the only place a claim that is not a Placement exists.
+  `job_id` narrows both the list and the counts to one Job; the `jobs` the answer names are what a
+  Job filter can name rather than a summary of the page — every Job the Tenant has claimed a hire
+  on, narrowed by nothing, plus the Job `job_id` names even when nobody was claimed on it.
+- **A Job's `placement_count`** counts the same view, joined to the Job through `applications`.
+  The view has no `job_id` of its own and is not given one: a Placement is a claim the Candidate
+  confirmed, and which Job it was on is the Application's to say.
 
 ## Tenant CRM (notes, tags, talent pool)
 

@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { FIELD, MEAL } from '@/features/applications/testing/fixtures';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import type { HireConfirmation } from '@/features/placements/placement';
+import { PROGRAMME_OFFICER } from '@/features/jobs/testing/fixtures';
 import {
   claimedHires,
   EVERY_CLAIM,
@@ -11,6 +12,7 @@ import {
 } from '@/features/placements/testing/fixtures';
 import {
   failsToListHireClaims,
+  type HireClaimsAsked,
   holdsHireClaims,
   pagesHireClaims,
 } from '@/features/placements/testing/handlers';
@@ -24,6 +26,10 @@ function tabs() {
   return within(screen.getByRole('radiogroup', { name: 'Hire claims' }));
 }
 
+function jobFilter() {
+  return screen.getByRole('combobox', { name: 'Job' });
+}
+
 function names() {
   return screen
     .getAllByRole('link', { name: /Application$/ })
@@ -32,14 +38,14 @@ function names() {
 
 describe('the Placements page', () => {
   it('opens on the hires the Candidate confirmed, without the address saying so', async () => {
-    const asked: HireConfirmation[] = [];
+    const asked: HireClaimsAsked[] = [];
     server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM, asked));
 
     const { router } = await renderApp(AT);
 
     expect(await screen.findByText('Nour Haddad')).toBeVisible();
     expect(names()).toEqual(["Open Nour Haddad's Application"]);
-    expect(asked).toEqual(['confirmed']);
+    expect(asked).toEqual([{ confirmation: 'confirmed' }]);
     expect(router.state.location.search).toEqual({});
   });
 
@@ -85,7 +91,7 @@ describe('the Placements page', () => {
   });
 
   it('writes a chosen tab into the address and leaves the one it opens on unwritten', async () => {
-    const asked: HireConfirmation[] = [];
+    const asked: HireClaimsAsked[] = [];
     server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM, asked));
     const { router, user } = await renderApp(AT);
 
@@ -98,7 +104,7 @@ describe('the Placements page', () => {
 
     await waitFor(() => expect(router.state.location.search).toEqual({}));
     expect(await screen.findByText('Nour Haddad')).toBeVisible();
-    expect(asked).toEqual(['confirmed', 'unanswered']);
+    expect(asked).toEqual([{ confirmation: 'confirmed' }, { confirmation: 'unanswered' }]);
   });
 
   it('reads an unanswered claim its age rather than resolving it', async () => {
@@ -154,6 +160,98 @@ describe('the Placements page', () => {
 
     expect(await screen.findByText('Nour Haddad')).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('narrows the list to one Job and writes that Job into the address', async () => {
+    const asked: HireClaimsAsked[] = [];
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM, asked));
+    const { router, user } = await renderApp(AT);
+    expect(await screen.findByText('Nour Haddad')).toBeVisible();
+
+    await user.click(jobFilter());
+    await user.click(await screen.findByRole('option', { name: MEAL.title }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ job: MEAL.id }));
+    await waitFor(() => expect(asked.at(-1)?.job).toBe(MEAL.id));
+  });
+
+  it('opens narrowed to the Job the address names', async () => {
+    const asked: HireClaimsAsked[] = [];
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM, asked));
+
+    await renderApp(`${AT}?job=${FIELD.id}&tab=unanswered`);
+
+    expect(await screen.findByText('Samer Khoury')).toBeVisible();
+    expect(asked).toEqual([{ confirmation: 'unanswered', job: FIELD.id }]);
+    expect(jobFilter()).toHaveTextContent(FIELD.title);
+  });
+
+  it('offers every Job a hire was claimed on, whichever one is chosen', async () => {
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM));
+    const { user } = await renderApp(`${AT}?job=${MEAL.id}`);
+    expect(await screen.findByText('Nour Haddad')).toBeVisible();
+
+    await user.click(jobFilter());
+
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Every Job',
+      FIELD.title,
+      MEAL.title,
+    ]);
+  });
+
+  it('counts the tabs over the Job the list is narrowed to', async () => {
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM));
+
+    await renderApp(`${AT}?job=${FIELD.id}`);
+
+    await waitFor(() =>
+      expect(
+        tabs()
+          .getAllByRole('radio')
+          .map((chip) => chip.getAttribute('aria-label')),
+      ).toEqual(['Placements 0', 'Waiting 1', 'Denied 0']),
+    );
+  });
+
+  it('says an empty Job in its own words and leads back to every Job', async () => {
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims([SAMER_WAITING]));
+    const { router, user } = await renderApp(`${AT}?job=${MEAL.id}`);
+
+    expect(
+      await screen.findByText(
+        'No Placements on this Job — a hire your team records becomes one when the Candidate confirms it.',
+      ),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Show every Job' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+  });
+
+  it('leaves the Job out of the address once every Job is being read again', async () => {
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM));
+    const { router, user } = await renderApp(`${AT}?job=${MEAL.id}`);
+    expect(await screen.findByText('Nour Haddad')).toBeVisible();
+
+    await user.click(jobFilter());
+    await user.click(await screen.findByRole('option', { name: 'Every Job' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+  });
+
+  it('names the Job it is narrowed to even when nobody was ever claimed on it', async () => {
+    const quiet = { id: PROGRAMME_OFFICER.id, title: PROGRAMME_OFFICER.title };
+    server.use(...signedInAs(RECRUITER), ...holdsHireClaims(EVERY_CLAIM, undefined, quiet));
+
+    await renderApp(`${AT}?job=${quiet.id}`);
+
+    expect(
+      await screen.findByText(
+        'No Placements on this Job — a hire your team records becomes one when the Candidate confirms it.',
+      ),
+    ).toBeVisible();
+    expect(jobFilter()).toHaveTextContent(quiet.title);
   });
 
   it('is a destination of its own in the Workspace', async () => {

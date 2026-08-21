@@ -15,7 +15,7 @@ export function PlacementsSkeleton() {
       </WorkspaceHeader>
 
       <div className="space-y-(--space-section) pt-(--space-section)">
-        <ToolbarSkeleton />
+        <ToolbarSkeleton controls={1} />
         <TableSkeleton columns={PLACEMENT_COLUMNS.length} />
       </div>
     </RouteSkeleton>
