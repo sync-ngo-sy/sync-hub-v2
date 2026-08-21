@@ -43,9 +43,10 @@ def test_a_rejection_reads_as_in_review_until_its_telling() -> None:
     assert stage_of(ApplicationStatus.REJECTED, told_at=telling, now=decided) is (
         ApplicationStage.IN_REVIEW
     )
-    assert stage_of(
-        ApplicationStatus.REJECTED, told_at=telling, now=telling - timedelta(seconds=1)
-    ) is ApplicationStage.IN_REVIEW
+    assert (
+        stage_of(ApplicationStatus.REJECTED, told_at=telling, now=telling - timedelta(seconds=1))
+        is ApplicationStage.IN_REVIEW
+    )
 
 
 def test_a_rejection_reads_as_not_selected_at_its_telling_and_after_it() -> None:
@@ -54,9 +55,10 @@ def test_a_rejection_reads_as_not_selected_at_its_telling_and_after_it() -> None
     assert stage_of(ApplicationStatus.REJECTED, told_at=telling, now=telling) is (
         ApplicationStage.NOT_SELECTED
     )
-    assert stage_of(
-        ApplicationStatus.REJECTED, told_at=telling, now=telling + timedelta(days=400)
-    ) is ApplicationStage.NOT_SELECTED
+    assert (
+        stage_of(ApplicationStatus.REJECTED, told_at=telling, now=telling + timedelta(days=400))
+        is ApplicationStage.NOT_SELECTED
+    )
 
 
 def test_a_telling_is_honoured_only_while_the_status_is_rejected() -> None:

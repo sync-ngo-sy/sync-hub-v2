@@ -391,8 +391,7 @@ async def _derived(session: AsyncSession) -> None:
     )
     await session.execute(
         text(
-            "update notifications set visible_at = created_at + :delay "
-            "where visible_at is not null"
+            "update notifications set visible_at = created_at + :delay where visible_at is not null"
         ).bindparams(delay=TELLING_DELAY)
     )
     # Read, unless it is recent enough that not having got to it yet is believable. A held
