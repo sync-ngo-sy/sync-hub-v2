@@ -149,7 +149,7 @@ export function moveOutcome(move: PipelineMove, moved: MovedApplication, now = n
   // `rejected` is the only state a reopen leaves, so where it came from says which of the two
   // reopens this was without the page having to know which button was pressed.
   if (moved.previous_status === 'rejected') {
-    const day = told(moved.told_at, now);
+    const day = dayTheyWereTold(moved.told_at, now);
     return `${move.happened} — ${day ? `the candidate was told on ${day}, and ${NO_EMAIL}` : CANCELLED}`;
   }
   if (move.direction === 'rejection' && moved.told_at) {
@@ -159,20 +159,39 @@ export function moveOutcome(move: PipelineMove, moved: MovedApplication, now = n
 }
 
 export interface Telling {
+  /** Whether the candidate has read the rejection this Telling belongs to. */
   told: boolean;
+  /** Set only where the Recruiter is about to act on it, and it is theirs to weigh. */
+  title: string | null;
   text: string;
 }
 
+/**
+ * What the review says about the Telling, which is not only a warning: a Telling outlives the
+ * rejection that set it, so a reopened Application still says the candidate read one. Only
+ * where reopening is still ahead of the Recruiter does it carry a title and become a warning.
+ */
 export function telling(
   status: PipelineStatus,
   toldAt: string | null | undefined,
   now = new Date(),
 ): Telling | null {
-  if (status !== 'rejected' || !toldAt) return null;
-  const day = told(toldAt, now);
+  if (!toldAt) return null;
+  const day = dayTheyWereTold(toldAt, now);
+  if (status !== 'rejected') {
+    if (!day) return null;
+    return {
+      told: true,
+      title: null,
+      text:
+        `The candidate was told on ${day} that they were not selected, and has not been told ` +
+        'they are back in review.',
+    };
+  }
   if (!day) {
     return {
       told: false,
+      title: null,
       text:
         `The candidate has not been told. They hear on ${absoluteDate(toldAt)} — until then, ` +
         'reopening this cancels the email and leaves them in review.',
@@ -180,13 +199,14 @@ export function telling(
   }
   return {
     told: true,
+    title: 'Already told',
     text:
       `The candidate was told on ${day}. Reopening sends no email — message them by hand if ` +
       'they should know.',
   };
 }
 
-function told(toldAt: string | null | undefined, now: Date): string | null {
+function dayTheyWereTold(toldAt: string | null | undefined, now: Date): string | null {
   if (!toldAt || new Date(toldAt) > now) return null;
   return absoluteDate(toldAt);
 }

@@ -189,14 +189,14 @@ export function ApplicationPipeline({
 
           {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}
 
-          {theTelling && !theTelling.told ? (
+          {theTelling && theTelling.title === null ? (
             <p className="text-dense text-muted-foreground">{theTelling.text}</p>
           ) : null}
 
-          {theTelling?.told ? (
+          {theTelling?.title ? (
             <Alert>
               <CircleAlert aria-hidden="true" />
-              <AlertTitle>Already told</AlertTitle>
+              <AlertTitle>{theTelling.title}</AlertTitle>
               <AlertDescription>{theTelling.text}</AlertDescription>
             </Alert>
           ) : null}

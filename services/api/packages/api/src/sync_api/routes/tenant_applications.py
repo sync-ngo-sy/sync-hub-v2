@@ -167,10 +167,16 @@ async def change_application_status(
     Stage reaches them — `candidate_notified` says whether this one did. Moving between
     `reviewing`, `shortlisted`, `interview` and `offer` is silent by design.
 
-    A rejection also queues the one email a human decision earns. A `hired` move records what
-    the tenant says happened and the day it started, and asks the candidate to confirm it: until
-    they do, it is a claim rather than a Placement. The Screening verdict is untouched, whatever
-    the Application's status becomes.
+    A rejection is decided now and told three days later, at the `told_at` this returns: until
+    then the candidate's Stage still reads in review, their bell is silent, and the one email a
+    human decision earns waits in the queue. Taking it back to `reviewing` inside those three
+    days cancels all three, so `candidate_notified` is false for both moves. Reopening after
+    `told_at` has passed is allowed too, and is equally silent — the candidate has read the
+    rejection, and no message says it has been undone.
+
+    A `hired` move records what the tenant says happened and the day it started, and asks the
+    candidate to confirm it: until they do, it is a claim rather than a Placement. The Screening
+    verdict is untouched, whatever the Application's status becomes.
     """
     return await applications.move(recruiter, application_id, body)
 

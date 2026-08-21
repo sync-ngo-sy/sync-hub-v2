@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import delete, update
+from sqlalchemy import delete, func, update
 
 from sync_api.problems import APPLICATION_TRANSITION_PROBLEM_TYPE, Problem
 from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
@@ -62,18 +62,32 @@ MOVES: Final[
     },
 }
 
-#: The one move the Candidate never hears about, and the only exit from `rejected`. Before the
-#: Telling there is nothing to tell: the Stage never changed. After it, the Stage does read In
-#: review again, silently — a Tenant reversing its own decision is not news to deliver, and
-#: telling somebody they are back in review after they have read a rejection offers hope the
-#: Tenant has not committed to.
+#: The one move the Candidate never hears about. Before the Telling there is nothing to tell:
+#: the Stage never changed. After it, the Stage does read In review again, silently — a Tenant
+#: reversing its own decision is not news to deliver, and telling somebody they are back in
+#: review after they have read a rejection offers hope the Tenant has not committed to.
 _REOPENING: Final = (ApplicationStatus.REJECTED, ApplicationStatus.REVIEWING)
+
+# Taking a rejection back is hooked on that one move, which is complete rather than
+# best-effort only while it is the only way out of `rejected`. A second exit would leave a
+# Candidate an unseen Notification and an email nobody meant to send, so the module refuses to
+# import instead — the same guard `sync_core.stages` keeps over its own projection.
+_OTHER_EXITS_FROM_REJECTED = {
+    state
+    for by_status in MOVES.values()
+    for state in by_status.get(ApplicationStatus.REJECTED, frozenset())
+} - {_REOPENING[1]}
+if _OTHER_EXITS_FROM_REJECTED:  # pragma: no cover
+    raise RuntimeError(
+        f"a rejection now also leaves for {sorted(_OTHER_EXITS_FROM_REJECTED)}, "
+        "which nothing takes the queued rejection back from"
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class Moved:
-    """One move that happened, the history row recording it, and whether it was worth telling
-    the Candidate about."""
+    """One move that happened, the history row recording it, whether it was worth telling the
+    Candidate about, and — if it was a rejection — the day they hear."""
 
     status_history_id: UUID
     status: ApplicationStatus
@@ -92,7 +106,6 @@ async def move_application(
     to: ApplicationStatus,
     source: StatusChangeSource,
     by: UUID,
-    now: datetime | None = None,
 ) -> Moved:
     """Move the Application, append the history, and hold all three channels to one Telling.
 
@@ -111,7 +124,7 @@ async def move_application(
     application = applied.application
     _refuse_impossible_move(application.status, to, source)
 
-    at = now if now is not None else datetime.now(UTC)
+    at = datetime.now(UTC)
     previous, previously_told_at = application.status, application.told_at
     application.status = to
     reopening = (previous, to) == _REOPENING
@@ -135,8 +148,8 @@ async def move_application(
     )
     session.add(history)
     await session.flush()
-    told = stage is not previous_stage and not reopening
-    if told:
+    notified = stage is not previous_stage and not reopening
+    if notified:
         await notify(
             session,
             application.candidate_id,
@@ -150,16 +163,16 @@ async def move_application(
             visible_at=telling,
         )
     if telling is not None:
-        await _queue_the_rejection(session, applied, by=by, decided_by=history.id, sent_at=telling)
+        await _queue_the_rejection(session, applied, by=by, decided_by=history.id, telling=telling)
     if reopening:
-        await _take_the_rejection_back(session, application.id, now=at)
+        await _take_the_rejection_back(session, application.id)
     return Moved(
         status_history_id=history.id,
         status=to,
         previous_status=previous,
         stage=stage,
         previous_stage=previous_stage,
-        candidate_notified=told and telling is None,
+        candidate_notified=notified and telling is None,
         told_at=application.told_at,
         changed_at=history.created_at,
     )
@@ -171,10 +184,11 @@ async def _queue_the_rejection(
     *,
     by: UUID,
     decided_by: UUID,
-    sent_at: datetime | None,
+    telling: datetime,
 ) -> None:
     """The one rejection that emails: keyed by the move, so undoing and deciding it again is a
-    second decision the Candidate hears about, not a swallowed duplicate."""
+    second decision the Candidate hears about, not a swallowed duplicate. The sender may not
+    take it before the Telling, which is the same moment the Stage and the bell answer to."""
     application = applied.application
     full_name, email = await candidate_contact(session, application.candidate_id)
     await enqueue_email(
@@ -185,7 +199,7 @@ async def _queue_the_rejection(
         initiated_by_recruiter_id=by,
         recipient=email,
         idempotency_key=f"application-rejection:{decided_by}",
-        available_at=sent_at,
+        available_at=telling,
         payload=ApplicationRejection(
             application_id=application.id,
             job_title=applied.job.title,
@@ -195,19 +209,21 @@ async def _queue_the_rejection(
     )
 
 
-async def _take_the_rejection_back(
-    session: AsyncSession, application_id: UUID, *, now: datetime
-) -> None:
+async def _take_the_rejection_back(session: AsyncSession, application_id: UUID) -> None:
     """Undo what a rejection queued, as far as it can still be undone.
 
     The unseen Notification is dropped and the waiting email cancelled. Each narrows itself to
     what is still ahead of the Telling, so this is the whole undo inside the three days and
     nothing at all after them: a Notification the Candidate has read is not the platform's to
     drop, and an email that has gone cannot be un-sent.
+
+    Both read the clock in Postgres rather than here, because both are racing the readers that
+    do — the bell's own gate and the sender's claim — and a row this call thinks is still ahead
+    of its Telling while they think it has passed is the one row that must not be left behind.
     """
     await session.execute(
         delete(Notification).where(
-            Notification.application_id == application_id, Notification.visible_at > now
+            Notification.application_id == application_id, Notification.visible_at > func.now()
         )
     )
     await session.execute(
@@ -216,9 +232,9 @@ async def _take_the_rejection_back(
             Communication.application_id == application_id,
             Communication.communication_type == CommunicationType.APPLICATION_REJECTION,
             Communication.status == CommunicationStatus.QUEUED,
-            Communication.available_at > now,
+            Communication.available_at > func.now(),
         )
-        .values(status=CommunicationStatus.CANCELLED, completed_at=now)
+        .values(status=CommunicationStatus.CANCELLED, completed_at=func.now())
     )
 
 

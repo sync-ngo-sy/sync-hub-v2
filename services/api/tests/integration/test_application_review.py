@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sync_core.communications import ApplicationRejection, payload_of
@@ -875,6 +876,48 @@ async def test_reopening_after_the_telling_keeps_what_the_candidate_already_read
     ], "no second notification, and the one they read is not the platform's to take back"
     _confirmation, rejection = await communications_of(db_session, application["id"])
     assert rejection.status is CommunicationStatus.QUEUED
+
+
+async def test_a_held_notification_arrives_dated_the_day_it_reached_them(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """A rejection is written three days before the Candidate may read it, so the day it was
+    written is a day it would sort under everything that arrived meanwhile — and would read as
+    three days old on the morning it turned up."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    rejected = await an_accepted_application(other_browser, job["id"])
+    other_job = await a_published_job(recruiter, title="Data Engineer")
+    reviewed = await an_accepted_application(other_browser, other_job["id"])
+    await a_moved_application(recruiter, rejected["id"], ApplicationStatus.REJECTED)
+    await a_moved_application(recruiter, reviewed["id"], ApplicationStatus.REVIEWING)
+
+    # The decision three days back, the other move two, and the Telling a minute ago.
+    await _happened(db_session, rejected["id"], written="3 days", visible="1 minute")
+    await _happened(db_session, reviewed["id"], written="2 days", visible=None)
+
+    told = await my_notifications(other_browser)
+    assert [item["payload"]["stage"] for item in told] == ["not_selected", "in_review"]
+    reached = datetime.fromisoformat(told[0]["created_at"])
+    assert datetime.now(UTC) - reached < timedelta(minutes=2), "dated the day it arrived"
+
+
+async def _happened(
+    session: AsyncSession, application_id: str, *, written: str, visible: str | None
+) -> None:
+    """Put one Application's Notification where the calendar would have put it."""
+    reached = "null" if visible is None else "now() - cast(:visible as interval)"
+    statement = text(
+        f"update notifications set created_at = now() - cast(:written as interval), "
+        f"visible_at = {reached} where application_id = cast(:application_id as uuid)"
+    ).bindparams(written=written, application_id=application_id)
+    if visible is not None:
+        statement = statement.bindparams(visible=visible)
+    await session.execute(statement)
+    await session.commit()
 
 
 async def test_the_review_says_whether_the_candidate_has_been_told_yet(
