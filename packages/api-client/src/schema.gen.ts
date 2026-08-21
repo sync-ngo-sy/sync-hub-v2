@@ -1997,6 +1997,11 @@ export interface components {
             hire?: components["schemas"]["HireClaim"] | null;
             cv: components["schemas"]["ApplicationCv"];
             /**
+             * Told At
+             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. It survives a reopen, so a Telling on anything but a `rejected` Application is the record of what the Candidate was once told. Null on an Application never rejected.
+             */
+            told_at?: string | null;
+            /**
              * Applied At
              * Format: date-time
              */
@@ -2586,7 +2591,7 @@ export interface components {
          * CommunicationStatus
          * @enum {string}
          */
-        CommunicationStatus: "queued" | "processing" | "sent" | "failed";
+        CommunicationStatus: "queued" | "processing" | "sent" | "failed" | "cancelled";
         /** ConfirmEmailRequest */
         ConfirmEmailRequest: {
             /**
@@ -3639,9 +3644,14 @@ export interface components {
             previous_status: components["schemas"]["ApplicationStatus"];
             /**
              * Candidate Notified
-             * @description Whether this move reached the Candidate. False when it left the Stage they read unchanged — which is every move among the undecided statuses.
+             * @description Whether this move reached the Candidate at once. False when it left the Stage they read unchanged — which is every move among the undecided statuses — and false for a rejection, which reaches them at its Telling three days later.
              */
             candidate_notified: boolean;
+            /**
+             * Told At
+             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected.
+             */
+            told_at?: string | null;
             /**
              * Changed At
              * Format: date-time

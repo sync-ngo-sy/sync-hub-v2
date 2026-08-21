@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import ColumnElement, func, or_, select, update
 
 from sync_api.notifications.payload import Notification, NotificationPage, UnreadNotificationCount
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
@@ -20,6 +20,12 @@ class NotificationService:
     def __init__(self, session: AsyncSession) -> None:
         self._db = session
 
+    @staticmethod
+    def _the_telling_has_come() -> ColumnElement[bool]:
+        """A rejection's Notification is written at the decision and held to its Telling, so
+        the bell is silent for the three days the Recruiter's list has already cleared."""
+        return or_(NotificationRow.visible_at.is_(None), NotificationRow.visible_at <= func.now())
+
     async def page(
         self, profile_id: UUID, *, cursor: str | None = None, limit: int = DEFAULT_PAGE_SIZE
     ) -> NotificationPage:
@@ -27,7 +33,8 @@ class NotificationService:
             await self._db.scalars(
                 newest_first(
                     select(NotificationRow).where(
-                        NotificationRow.recipient_profile_id == profile_id
+                        NotificationRow.recipient_profile_id == profile_id,
+                        self._the_telling_has_come(),
                     ),
                     created_at=NotificationRow.created_at,
                     id_=NotificationRow.id,
@@ -46,6 +53,7 @@ class NotificationService:
             .where(
                 NotificationRow.recipient_profile_id == profile_id,
                 NotificationRow.read_at.is_(None),
+                self._the_telling_has_come(),
             )
         )
         return UnreadNotificationCount(unread=int(unread or 0))
@@ -57,6 +65,7 @@ class NotificationService:
                 .where(
                     NotificationRow.id == notification_id,
                     NotificationRow.recipient_profile_id == profile_id,
+                    self._the_telling_has_come(),
                 )
                 .values(read_at=func.coalesce(NotificationRow.read_at, func.now()))
                 .returning(NotificationRow)

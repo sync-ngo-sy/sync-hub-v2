@@ -218,6 +218,9 @@ const STAGE_OF: Record<PipelineStatus, string> = {
   withdrawn: 'withdrawn',
 };
 
+/** Where a rejection taken in this fake world reaches the candidate: three days on. */
+export const THE_TELLING = '2026-08-06T10:00:00Z';
+
 export function reviewsApplication(
   review: ApplicationReview,
   asked?: PipelineStatus[],
@@ -235,9 +238,12 @@ export function reviewsApplication(
       asked?.push(status);
       const previous = current.status;
       const changed_at = '2026-08-03T10:00:00Z';
+      // A rejection is told three days on, and the Telling it sets survives every later move.
+      const told_at = status === 'rejected' ? THE_TELLING : (current.told_at ?? null);
       current = {
         ...current,
         status,
+        told_at,
         history: [
           ...current.history,
           { status, previous_status: previous, source: 'recruiter', changed_at },
@@ -259,7 +265,11 @@ export function reviewsApplication(
         id: current.id,
         status,
         previous_status: previous,
-        candidate_notified: STAGE_OF[status] !== STAGE_OF[previous],
+        candidate_notified:
+          status !== 'rejected' &&
+          previous !== 'rejected' &&
+          STAGE_OF[status] !== STAGE_OF[previous],
+        told_at,
         changed_at,
       });
     }),

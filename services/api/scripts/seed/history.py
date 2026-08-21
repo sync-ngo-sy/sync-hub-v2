@@ -41,6 +41,7 @@ from sync_core.models import (
     TrackedJobLink,
 )
 from sync_core.stages import stage_of
+from sync_core.telling import TELLING_DELAY
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -326,15 +327,20 @@ async def _derived(session: AsyncSession) -> None:
             "from applications a where a.id = j.application_id"
         )
     )
-    # A Notification was written by the move it announces, so it takes that move's moment. Only
-    # the moves that changed the Stage wrote one, so only those are counted here — the
-    # projection comes from `sync_core.stages` rather than being spelled again in SQL.
+    # A Notification was written by the move it announces, so it takes that move's moment. The
+    # two are paired on the Stages they name rather than by counting moves, because not every
+    # move that changed the Stage still has its Notification: a rejection taken back inside
+    # its three days took the unread one with it, and counting would then shift every later
+    # Notification onto an earlier move. The projection comes from `sync_core.stages` rather
+    # than being spelled again in SQL.
     await session.execute(
         text(f"""
             with stages (status, stage) as (values {STAGE_VALUES}),
             heard as (
               select h.application_id, h.created_at,
-                     row_number() over (partition by h.application_id
+                     left_behind.stage as came_from, reached.stage as went_to,
+                     row_number() over (partition by h.application_id,
+                                                     left_behind.stage, reached.stage
                                         order by h.created_at, h.id) as hop_index
               from application_status_history h
               join stages reached on reached.status = h.new_status::text
@@ -343,7 +349,11 @@ async def _derived(session: AsyncSession) -> None:
             ),
             told as (
               select n.id, n.application_id,
-                     row_number() over (partition by n.application_id
+                     n.payload ->> 'previous_stage' as came_from,
+                     n.payload ->> 'stage' as went_to,
+                     row_number() over (partition by n.application_id,
+                                                     n.payload ->> 'previous_stage',
+                                                     n.payload ->> 'stage'
                                         order by n.created_at, n.id) as told_index
               from notifications n
               where n.type = 'application_stage_changed'
@@ -352,6 +362,8 @@ async def _derived(session: AsyncSession) -> None:
                set created_at = heard.created_at
               from told
               join heard on heard.application_id = told.application_id
+                        and heard.came_from = told.came_from
+                        and heard.went_to = told.went_to
                         and heard.hop_index = told.told_index
              where n.id = told.id
         """)
@@ -364,14 +376,36 @@ async def _derived(session: AsyncSession) -> None:
             "and (n.payload ->> 'cv_id')::uuid = c.id"
         )
     )
-    # Read, unless it is recent enough that not having got to it yet is believable. The CV
-    # parse failure stays unread whatever its age: it is the one notification that asks the
-    # Candidate to do something, and they have not done it — they still hold no CV.
+    # The Telling follows the rejection it belongs to, three days behind it. Both the
+    # Application's own and the bell's, because they are one moment: the seed's rejections
+    # were taken weeks ago, and a Telling left at three days from the reseed would leave a
+    # Candidate reading In review for a decision the demo says was taken a fortnight back.
     await session.execute(
         text(
-            "update notifications set read_at = created_at + make_interval(hours => :hours) "
-            "where created_at < now() - make_interval(days => :days) "
-            "and type <> 'cv_parse_failed'"
+            "update applications a set told_at = decided.at + :delay "
+            "from (select application_id, max(created_at) as at "
+            "        from application_status_history where new_status = 'rejected' "
+            "       group by application_id) decided "
+            "where decided.application_id = a.id"
+        ).bindparams(delay=TELLING_DELAY)
+    )
+    await session.execute(
+        text(
+            "update notifications set visible_at = created_at + :delay "
+            "where visible_at is not null"
+        ).bindparams(delay=TELLING_DELAY)
+    )
+    # Read, unless it is recent enough that not having got to it yet is believable. A held
+    # Notification is read from its Telling rather than from when it was written, which is the
+    # only moment the Candidate could have read it. The CV parse failure stays unread whatever
+    # its age: it is the one notification that asks the Candidate to do something, and they
+    # have not done it — they still hold no CV.
+    await session.execute(
+        text(
+            "update notifications "
+            "   set read_at = coalesce(visible_at, created_at) + make_interval(hours => :hours) "
+            " where coalesce(visible_at, created_at) < now() - make_interval(days => :days) "
+            "   and type <> 'cv_parse_failed'"
         ).bindparams(hours=READ_AFTER_HOURS, days=UNREAD_WITHIN_DAYS)
     )
 
@@ -484,9 +518,14 @@ async def _deliveries(session: AsyncSession, seeded: Seeded) -> None:
     """When each Communication was queued, and what became of it.
 
     A Communication is queued in the same transaction as the thing it announces, so its date is
-    that thing's. What the sender then did with it is the seed's own decision: anything old is
-    delivered, anything from the last two days is still queued — which is what a Recruiter who
-    has just pressed send is looking at — and one is left failed, so the error path has a row.
+    that thing's. What the sender then did with it is the seed's own decision: anything the
+    sender could have taken more than two days ago is delivered, anything newer is still queued
+    — which is what a Recruiter who has just pressed send is looking at — and one is left
+    failed, so the error path has a row. A rejection is the sender's only from its Telling, so
+    that, and not when it was queued, is the moment each of those two reads.
+
+    A rejection the Tenant took back is left cancelled where the run left it, since what became
+    of it was decided by the reopen rather than by any sender.
 
     No provider ever saw these. `provider` says `seed` rather than `resend` for that reason.
     """
@@ -497,18 +536,17 @@ async def _deliveries(session: AsyncSession, seeded: Seeded) -> None:
             "where a.id = c.application_id and c.communication_type = 'application_confirmation'"
         )
     )
-    # A rejection was queued by the move that decided it; a recruiter's message, by hand, later.
+    # A rejection was queued by the move that decided it, which its idempotency key names — so a
+    # second rejection takes its own moment rather than both taking the last one's.
     await session.execute(
         text("""
             update communications c
-               set created_at = h.created_at
-              from (select application_id, max(created_at) as created_at
-                      from application_status_history
-                     where new_status = 'rejected'
-                     group by application_id) h
-             where h.application_id = c.application_id
-               and c.communication_type = 'application_rejection'
-        """)
+               set created_at = h.created_at,
+                   available_at = h.created_at + :delay
+              from application_status_history h
+             where c.communication_type = 'application_rejection'
+               and c.idempotency_key = 'application-rejection:' || h.id::text
+        """).bindparams(delay=TELLING_DELAY)
     )
     await session.execute(
         text(
@@ -518,21 +556,38 @@ async def _deliveries(session: AsyncSession, seeded: Seeded) -> None:
             " where a.id = c.application_id and c.communication_type = 'recruiter_message'"
         )
     )
+    # A cancelled rejection stopped being live at the move that took it back, which is the
+    # first thing that happened to the Application after it was queued.
+    await session.execute(
+        text("""
+            update communications c
+               set completed_at = (select min(h.created_at)
+                                     from application_status_history h
+                                    where h.application_id = c.application_id
+                                      and h.created_at > c.created_at)
+             where c.status = 'cancelled'
+        """)
+    )
 
     failed_for = seeded.applications.get(A_FAILED_DELIVERY)
     await session.execute(
         text(
             "update communications set status = 'sent', attempts = 1, provider = :provider, "
-            "sent_at = created_at + interval '90 seconds', "
-            "completed_at = created_at + interval '90 seconds', available_at = null "
-            "where created_at < now() - make_interval(days => :days)"
+            "sent_at = coalesce(available_at, created_at) + interval '90 seconds', "
+            "completed_at = coalesce(available_at, created_at) + interval '90 seconds', "
+            "available_at = null "
+            "where status <> 'cancelled' "
+            "and coalesce(available_at, created_at) < now() - make_interval(days => :days)"
         ).bindparams(provider=SEEDED_PROVIDER, days=DELIVERED_AFTER_DAYS)
     )
     await session.execute(
         text(
             "update communications set status = 'queued', attempts = 0, provider = null, "
-            "sent_at = null, completed_at = null, available_at = created_at "
-            "where created_at >= now() - make_interval(days => :days)"
+            "sent_at = null, completed_at = null, "
+            "available_at = case when communication_type = 'application_rejection' "
+            "                    then available_at else created_at end "
+            "where status <> 'cancelled' "
+            "and coalesce(available_at, created_at) >= now() - make_interval(days => :days)"
         ).bindparams(days=DELIVERED_AFTER_DAYS)
     )
     if failed_for is not None:

@@ -1,7 +1,9 @@
 import type { components } from '@sync/api-client';
+import { absoluteDate } from '@/lib/dates';
 import { PIPELINE_LADDER, type PipelineStatus, pipelineState } from './application';
 
 export type ApplicationReview = components['schemas']['ApplicationReview'];
+export type MovedApplication = components['schemas']['MovedApplication'];
 export type AnsweredQuestion = components['schemas']['AnsweredQuestion'];
 export type StatusHistoryEntry = components['schemas']['StatusHistoryEntry'];
 export type HireClaim = components['schemas']['HireClaim'];
@@ -140,11 +142,53 @@ export function pipelineOutcome(status: PipelineStatus): string | null {
 
 const TOLD = 'the candidate has been told.';
 const UNCHANGED = 'the candidate sees no change.';
-const EMAILED = 'the candidate has been emailed.';
+const CANCELLED = 'the candidate was never told, and the email is cancelled.';
+const NO_EMAIL = 'no email is sent.';
 
-export function moveOutcome(move: PipelineMove, candidateNotified: boolean): string {
-  if (move.direction === 'rejection') return `${move.happened} — ${EMAILED}`;
-  return `${move.happened} — ${candidateNotified ? TOLD : UNCHANGED}`;
+export function moveOutcome(move: PipelineMove, moved: MovedApplication, now = new Date()): string {
+  // `rejected` is the only state a reopen leaves, so where it came from says which of the two
+  // reopens this was without the page having to know which button was pressed.
+  if (moved.previous_status === 'rejected') {
+    const day = told(moved.told_at, now);
+    return `${move.happened} — ${day ? `the candidate was told on ${day}, and ${NO_EMAIL}` : CANCELLED}`;
+  }
+  if (move.direction === 'rejection' && moved.told_at) {
+    return `${move.happened} — the candidate hears on ${absoluteDate(moved.told_at)}.`;
+  }
+  return `${move.happened} — ${moved.candidate_notified ? TOLD : UNCHANGED}`;
+}
+
+export interface Telling {
+  told: boolean;
+  text: string;
+}
+
+export function telling(
+  status: PipelineStatus,
+  toldAt: string | null | undefined,
+  now = new Date(),
+): Telling | null {
+  if (status !== 'rejected' || !toldAt) return null;
+  const day = told(toldAt, now);
+  if (!day) {
+    return {
+      told: false,
+      text:
+        `The candidate has not been told. They hear on ${absoluteDate(toldAt)} — until then, ` +
+        'reopening this cancels the email and leaves them in review.',
+    };
+  }
+  return {
+    told: true,
+    text:
+      `The candidate was told on ${day}. Reopening sends no email — message them by hand if ` +
+      'they should know.',
+  };
+}
+
+function told(toldAt: string | null | undefined, now: Date): string | null {
+  if (!toldAt || new Date(toldAt) > now) return null;
+  return absoluteDate(toldAt);
 }
 
 const HIRE_STATE: Record<HireClaim['confirmation'], string> = {

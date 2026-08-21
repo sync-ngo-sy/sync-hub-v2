@@ -37,7 +37,11 @@ create type qualification_status     as enum ('pending', 'qualified', 'disqualif
 create type hire_confirmation as enum ('unanswered', 'confirmed', 'denied');
 
 create type communication_channel as enum ('email', 'sms');
-create type communication_status  as enum ('queued', 'processing', 'sent', 'failed');
+-- `cancelled` is the end of a message the platform decided not to send after all: a rejection
+-- queued for a Telling that never came, because the Tenant took the decision back inside the
+-- three days. The row stays, so what was nearly sent is still readable; the sender's claim
+-- index does not see it.
+create type communication_status  as enum ('queued', 'processing', 'sent', 'failed', 'cancelled');
 -- A Stage change and a failed CV parse are Notifications (migration 12), not email.
 create type communication_type    as enum (
   'application_confirmation', 'application_rejection', 'recruiter_message'

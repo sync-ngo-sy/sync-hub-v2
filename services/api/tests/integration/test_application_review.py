@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from httpx import AsyncClient
@@ -13,6 +14,7 @@ from sync_core.models import (
     QualificationStatus,
     StatusChangeSource,
 )
+from sync_core.telling import TELLING_DELAY
 from tests.support.applications import (
     A_SHORT_TEXT_QUESTION,
     A_YES_NO_QUESTION,
@@ -35,11 +37,12 @@ from tests.support.applications import (
     read_application,
     status_history_of,
     stored_application,
+    the_telling_comes,
     withdraw,
 )
 from tests.support.jobs import a_published_job
 from tests.support.mailbox import Mailbox
-from tests.support.notifications import my_notifications
+from tests.support.notifications import my_notifications, my_unread_count
 from tests.support.profiles import a_filled_profile, a_saved_profile
 from tests.support.tenants import an_admin
 
@@ -727,9 +730,171 @@ async def test_a_rejection_a_human_decided_also_queues_the_email(
     assert isinstance(payload, ApplicationRejection)
     assert payload.job_title == job["title"]
     assert payload.candidate_name == "Amina Haddad"
+
+
+async def test_a_rejection_carries_a_telling_three_days_out(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+
+    moved = await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    stored = await stored_application(db_session, application["id"])
+    assert stored.told_at is not None
+    assert abs(stored.told_at - (datetime.now(UTC) + TELLING_DELAY)) < timedelta(minutes=1)
+    assert datetime.fromisoformat(moved["told_at"]) == stored.told_at
+    assert moved["candidate_notified"] is False
+
+
+async def test_the_recruiters_list_clears_while_all_three_channels_wait(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The whole point: the decision is taken, and for three days nobody has been told."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    [listed] = await job_applications_of(recruiter, job["id"], status="rejected")
+    assert listed["id"] == application["id"], "the Recruiter's list cleared at the click"
+    [mine] = await my_applications(other_browser)
+    assert mine["stage"] == "in_review"
+    assert await my_notifications(other_browser) == []
+    assert await my_unread_count(other_browser) == 0
+    told_at = (await stored_application(db_session, application["id"])).told_at
+    _confirmation, rejection = await communications_of(db_session, application["id"])
+    assert rejection.available_at == told_at
+
+
+async def test_a_rejection_reaches_all_three_channels_at_its_telling(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    await the_telling_comes(db_session, application["id"])
+
+    [mine] = await my_applications(other_browser)
+    assert mine["stage"] == "not_selected"
     assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
         "not_selected"
     ]
+    assert await my_unread_count(other_browser) == 1
+
+
+async def test_a_hire_and_a_withdrawal_are_told_at_once(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Only a rejection waits. Nothing else has anything to take back."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    hired = await an_accepted_application(other_browser, job["id"])
+    other_job = await a_published_job(recruiter, title="Data Engineer")
+    left = await an_accepted_application(other_browser, other_job["id"])
+
+    moved = await a_moved_application(
+        recruiter, hired["id"], ApplicationStatus.HIRED, start_date="2026-09-01"
+    )
+    await a_withdrawn_application(other_browser, left["id"])
+
+    assert moved["candidate_notified"] is True
+    assert moved["told_at"] is None
+    assert (await stored_application(db_session, hired["id"])).told_at is None
+    stages = {item["id"]: item["stage"] for item in await my_applications(other_browser)}
+    assert stages == {hired["id"]: "hired", left["id"]: "withdrawn"}
+    assert await my_unread_count(other_browser) == 2
+
+
+async def test_taking_a_rejection_back_before_its_telling_leaves_nothing_behind(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """A decision the Candidate never saw was never a decision: there is nothing to apologise
+    for, and nothing left over to apologise for it later either."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    moved = await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
+
+    assert moved["candidate_notified"] is False
+    [mine] = await my_applications(other_browser)
+    assert mine["stage"] == "in_review"
+    _confirmation, rejection = await communications_of(db_session, application["id"])
+    assert rejection.status is CommunicationStatus.CANCELLED
+    await the_telling_comes(db_session, application["id"])
+    assert await my_notifications(other_browser) == [], "the bell never rings for what was undone"
+    assert await my_unread_count(other_browser) == 0
+
+
+async def test_reopening_after_the_telling_keeps_what_the_candidate_already_read(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Reopening is never blocked — one person has one Application per Job forever, so a block
+    would lock them out of that Job — and it never un-sends what has gone."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+    await the_telling_comes(db_session, application["id"])
+    told_at = (await stored_application(db_session, application["id"])).told_at
+    assert told_at is not None
+
+    moved = await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
+
+    assert moved["candidate_notified"] is False
+    assert datetime.fromisoformat(moved["told_at"]) == told_at, "the Telling survives a reopen"
+    assert (await stored_application(db_session, application["id"])).told_at == told_at
+    [mine] = await my_applications(other_browser)
+    assert mine["stage"] == "in_review", "the Telling is honoured only while the status is rejected"
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
+        "not_selected"
+    ], "no second notification, and the one they read is not the platform's to take back"
+    _confirmation, rejection = await communications_of(db_session, application["id"])
+    assert rejection.status is CommunicationStatus.QUEUED
+
+
+async def test_the_review_says_whether_the_candidate_has_been_told_yet(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    assert (await a_reviewed_application(recruiter, application["id"]))["told_at"] is None
+
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    waiting = (await a_reviewed_application(recruiter, application["id"]))["told_at"]
+    assert datetime.fromisoformat(waiting) > datetime.now(UTC), "not told yet"
+    await the_telling_comes(db_session, application["id"])
+    told = (await a_reviewed_application(recruiter, application["id"]))["told_at"]
+    assert datetime.fromisoformat(told) < datetime.now(UTC), "told"
 
 
 async def test_only_a_rejection_is_worth_an_email(
@@ -771,6 +936,34 @@ async def test_a_second_rejection_is_a_second_email(
     ]
     assert len(rejections) == 2
     assert len({row.idempotency_key for row in rejections}) == 2
+    assert [row.status for row in rejections] == [
+        CommunicationStatus.CANCELLED,
+        CommunicationStatus.QUEUED,
+    ]
+
+
+async def test_a_second_rejection_sets_a_fresh_three_days(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Off the clock rather than off the date the first one left behind, which has passed and
+    would tell this one instantly."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+    await the_telling_comes(db_session, application["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
+
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    stored = await stored_application(db_session, application["id"])
+    assert stored.told_at is not None
+    assert stored.told_at > datetime.now(UTC)
+    [mine] = await my_applications(other_browser)
+    assert mine["stage"] == "in_review"
 
 
 async def test_no_status_change_ever_touches_the_verdict(

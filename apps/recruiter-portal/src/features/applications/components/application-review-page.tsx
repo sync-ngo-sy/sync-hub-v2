@@ -147,6 +147,7 @@ export function ApplicationReviewPage({
               applicationId={applicationId}
               status={review.status}
               hire={review.hire ?? null}
+              toldAt={review.told_at ?? null}
             />
 
             <ReviewCard title="Screening">
