@@ -1,10 +1,16 @@
 import { ChipFilter } from '@sync/ui/components/chip-filter';
-import { PIPELINE_STATUSES, type PipelineStatus, pipelineState, pipelineTab } from '../application';
+import {
+  PIPELINE_TABS,
+  type PipelineStatus,
+  type PipelineTab,
+  pipelineTabCount,
+  pipelineTabLabel,
+} from '../application';
 
 interface ApplicationPipelineFilterProps {
-  pipeline?: PipelineStatus[];
+  pipeline: PipelineTab;
   counts: Partial<Record<PipelineStatus, number>>;
-  onChange: (pipeline?: PipelineStatus[]) => void;
+  onChange: (pipeline: PipelineTab) => void;
   className?: string;
 }
 
@@ -14,26 +20,19 @@ export function ApplicationPipelineFilter({
   onChange,
   className,
 }: ApplicationPipelineFilterProps) {
-  const selected = pipelineTab(pipeline)?.[0] ?? 'all';
-  const total = PIPELINE_STATUSES.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
-  const chips = [
-    { value: 'all', label: 'All', count: total },
-    ...PIPELINE_STATUSES.map((status) => ({
-      value: status,
-      label: pipelineState(status).label,
-      count: counts[status] ?? 0,
-    })),
-  ];
+  const chips = PIPELINE_TABS.map((tab) => ({
+    value: tab,
+    label: pipelineTabLabel(tab),
+    count: pipelineTabCount(tab, counts),
+  }));
 
   return (
     <ChipFilter
       label="Pipeline"
-      value={selected}
+      value={pipeline}
       chips={chips}
       className={className}
-      onValueChange={(chosen) =>
-        onChange(chosen === 'all' ? undefined : [chosen as PipelineStatus])
-      }
+      onValueChange={(chosen) => onChange(chosen as PipelineTab)}
     />
   );
 }
