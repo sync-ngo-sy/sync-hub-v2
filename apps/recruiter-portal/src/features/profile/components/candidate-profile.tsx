@@ -2,6 +2,7 @@ import { Badge } from '@sync/ui/components/ui/badge';
 import type { ReactNode } from 'react';
 import { useLanguageName } from '@/features/reference/hooks/use-languages';
 import { ReviewCard } from '@/features/shell/components/review-card';
+import { webHref } from '@/lib/web-href';
 import {
   type FullProfile,
   LANGUAGE_PROFICIENCY_LABELS,
@@ -185,8 +186,10 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  const safe = webHref(href);
+  if (safe === null) return <>{children}</>;
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+    <a href={safe} target="_blank" rel="noreferrer" className="underline underline-offset-4">
       {children}
     </a>
   );
