@@ -23,6 +23,12 @@ import {
   OPEN_TO_RELOCATION,
   WORKED_WITH_US,
 } from '@/features/crm/testing/fixtures';
+import { PLACED_AS_MEAL, PLACED_IN_THE_FIELD } from '@/features/placements/testing/fixtures';
+import {
+  failsToListCandidatePlacements,
+  holdsCandidatePlacements,
+  listsCandidatePlacements,
+} from '@/features/placements/testing/handlers';
 import { AMINA_SAVED } from '@/features/talent-pool/testing/fixtures';
 import {
   failsToReadTalentPool,
@@ -418,5 +424,87 @@ describe('the Candidate view', () => {
     await user.click(screen.getByRole('button', { name: 'Create “Speaks Kurdish”' }));
 
     await waitFor(() => expect(created).toEqual([{ name: 'Speaks Kurdish', scope: 'candidate' }]));
+  });
+});
+
+describe('the Placements card beside Talent pool, Tags and Notes', () => {
+  function placements() {
+    return within(screen.getByRole('region', { name: 'Placements' }));
+  }
+
+  it('names the Job and the day the work started, for each Placement of this Tenant', async () => {
+    const asked: string[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...readsCandidate(AMINA_RECORD),
+      ...listsCandidatePlacements([PLACED_AS_MEAL, PLACED_IN_THE_FIELD], asked),
+    );
+
+    await renderApp(AT);
+
+    expect(await screen.findByRole('region', { name: 'Placements' })).toBeVisible();
+    const placed = placements().getAllByRole('listitem');
+    expect(placed).toHaveLength(2);
+    expect(within(placed[0] as HTMLElement).getByText('MEAL Officer')).toBeVisible();
+    expect(within(placed[0] as HTMLElement).getByText('September 1, 2026')).toBeVisible();
+    expect(within(placed[1] as HTMLElement).getByText('Field Coordinator')).toBeVisible();
+    expect(within(placed[1] as HTMLElement).getByText('March 1, 2026')).toBeVisible();
+    expect(asked).toEqual([AMINA.candidate_id]);
+  });
+
+  it('opens the Job it names', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...readsCandidate(AMINA_RECORD),
+      ...listsCandidatePlacements([PLACED_AS_MEAL]),
+    );
+
+    await renderApp(AT);
+
+    expect(await placements().findByRole('link', { name: 'MEAL Officer' })).toHaveAttribute(
+      'href',
+      `/jobs/${PLACED_AS_MEAL.job.id}`,
+    );
+  });
+
+  it('shows nothing at all for a Candidate this Tenant has not placed', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...readsCandidate(AMINA_RECORD),
+      ...listsCandidatePlacements([]),
+    );
+
+    await renderApp(AT);
+
+    expect(await screen.findByRole('region', { name: 'Talent pool' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Placements' })).toBeNull();
+  });
+
+  it('promises no card while the reading is still on the wire', async () => {
+    const held = holdsCandidatePlacements([PLACED_AS_MEAL]);
+    server.use(...signedInAs(RECRUITER), ...readsCandidate(AMINA_RECORD), ...held.handlers);
+
+    await renderApp(AT);
+
+    expect(await screen.findByRole('region', { name: 'Talent pool' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Placements' })).toBeNull();
+
+    held.arrive();
+
+    expect(await screen.findByRole('region', { name: 'Placements' })).toBeVisible();
+  });
+
+  it('says a refused reading is refused rather than letting it read as unplaced', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...readsCandidate(AMINA_RECORD),
+      ...failsToListCandidatePlacements(SERVER_FAULT),
+    );
+
+    await renderApp(AT);
+
+    const refused = within(await screen.findByRole('region', { name: 'Placements' }));
+    expect(refused.getByRole('alert')).toHaveTextContent('Something went wrong on our side.');
+    expect(refused.queryByRole('list')).toBeNull();
   });
 });

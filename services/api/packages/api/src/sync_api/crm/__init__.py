@@ -11,6 +11,7 @@ from sync_api.crm.payload import (
     TagChanges,
     TalentPoolPage,
 )
+from sync_api.crm.placements import PlacementService
 from sync_api.crm.tags import TagService
 from sync_api.crm.talent_pool import TalentPoolOrder, TalentPoolService
 
@@ -25,6 +26,7 @@ __all__ = [
     "NoteChanges",
     "NotePage",
     "NoteService",
+    "PlacementService",
     "PooledCandidate",
     "Tag",
     "TagAssignmentService",

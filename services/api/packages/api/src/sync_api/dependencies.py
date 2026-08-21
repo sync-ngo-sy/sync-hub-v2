@@ -27,6 +27,7 @@ from sync_api.crm import (
     ON_APPLICATIONS,
     ON_CANDIDATES,
     NoteService,
+    PlacementService,
     TagAssignmentService,
     TagService,
     TalentPoolService,
@@ -296,6 +297,13 @@ def get_candidate_notes(session: SessionDep) -> NoteService:
 
 
 CandidateNotesDep = Annotated[NoteService, Depends(get_candidate_notes)]
+
+
+def get_candidate_placements(session: SessionDep) -> PlacementService:
+    return PlacementService(session)
+
+
+CandidatePlacementsDep = Annotated[PlacementService, Depends(get_candidate_placements)]
 
 
 def get_message_template_service(session: SessionDep) -> MessageTemplateService:
