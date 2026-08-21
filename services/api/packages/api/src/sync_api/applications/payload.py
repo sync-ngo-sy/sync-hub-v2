@@ -510,9 +510,10 @@ class ApplicationReview(BaseModel):
         default=None,
         description="The Telling: when this Application's rejection reaches the Candidate, "
         "three days after it was taken. A moment still ahead is a decision they have not "
-        "seen; one behind is a decision they have read. It survives a reopen, so a Telling on "
-        "anything but a `rejected` Application is the record of what the Candidate was once "
-        "told. Null on an Application never rejected.",
+        "seen; one behind is a decision they have read. It outlives the rejection that set "
+        "it, so on anything but a `rejected` Application read it against now: a moment behind "
+        "is what the Candidate was once told, and one still ahead is a Telling that was "
+        "cancelled and will never come. Null on an Application never rejected.",
     )
     applied_at: datetime
     updated_at: datetime
