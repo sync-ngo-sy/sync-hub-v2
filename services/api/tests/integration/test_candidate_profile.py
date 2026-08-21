@@ -724,13 +724,13 @@ async def test_an_address_that_is_not_that_kind_of_link_is_refused_where_it_was_
     assert [error["location"] for error in problem["errors"]] == [f"body.{field}"]
 
 
+@pytest.mark.parametrize("field", ["project_url", "repository_url"])
 @pytest.mark.parametrize(
-    ("field", "typed"),
+    "typed",
     [
-        ("project_url", "javascript:alert(1)"),
-        ("project_url", "data:text/html,<script>alert(1)</script>"),
-        ("repository_url", "javascript:alert(1)"),
-        ("repository_url", "vbscript:msgbox(1)"),
+        "javascript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "vbscript:msgbox(1)",
     ],
 )
 async def test_a_project_link_that_is_not_a_web_address_is_refused_where_it_was_typed(
