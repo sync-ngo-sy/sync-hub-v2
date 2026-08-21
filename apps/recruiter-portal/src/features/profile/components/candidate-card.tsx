@@ -4,6 +4,7 @@ import { readable } from '@sync/ui/lib/phone';
 import { cn } from '@sync/ui/lib/utils';
 import { Globe, Mail, Phone } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
+import { webHref } from '@/lib/web-href';
 
 function initials(name: string): string {
   return name
@@ -54,7 +55,7 @@ function destinations(links: ProfileLinks): Destination[] {
     { name: 'LinkedIn', url: links.linkedinUrl ?? '', Mark: LinkedInMark },
     { name: 'GitHub', url: links.githubUrl ?? '', Mark: GitHubMark },
     { name: site.replace(SCHEME_AND_WWW, '').replace(/\/$/, ''), url: site, Mark: Globe },
-  ].filter((destination) => destination.url !== '');
+  ].filter((destination) => webHref(destination.url) !== null);
 }
 
 export interface CandidateFact {
