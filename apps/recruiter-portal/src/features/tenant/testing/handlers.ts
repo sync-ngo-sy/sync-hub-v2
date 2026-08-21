@@ -12,6 +12,10 @@ export function failsToReadTenant(problem: Problem) {
   return [http.get('/v1/tenants/me', ({ response }) => response(500).json(problem))];
 }
 
+export function refusesTenantAccess(problem: Problem) {
+  return [http.get('/v1/tenants/me', ({ response }) => response(403).json(problem))];
+}
+
 export function savesLogo(
   tenant: Tenant,
   logoUrl: string,
