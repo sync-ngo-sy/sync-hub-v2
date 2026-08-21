@@ -27,6 +27,10 @@ export function absoluteDateTime(value: string): string {
 
 const CALENDAR_DAY = new Intl.DateTimeFormat('en', { dateStyle: 'long' });
 
+export function absoluteDate(value: string): string {
+  return CALENDAR_DAY.format(new Date(value));
+}
+
 export function calendarDay(value: string): string {
   // Built from the parts rather than parsed: `new Date('2026-09-01')` is UTC midnight, which
   // renders as the day before anywhere west of Greenwich.

@@ -297,7 +297,7 @@ def _as_payload(
             work_mode=job.work_mode,
         ),
         cv_id=application.cv_id,
-        stage=stage_of(application.status),
+        stage=stage_of(application.status, told_at=application.told_at),
         # The pipeline's own answer rather than a second reading of it: whether leaving is still
         # possible is exactly whether the state machine would allow the move.
         can_withdraw=application.status in UNDECIDED,

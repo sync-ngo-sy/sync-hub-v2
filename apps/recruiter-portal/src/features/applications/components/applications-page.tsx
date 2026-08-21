@@ -34,7 +34,7 @@ import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 
-const COLUMNS = applicationColumns<TenantApplication>(jobColumn());
+export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(jobColumn());
 
 const TO_THE_PLACEMENTS = (
   <p className="text-meta text-muted-foreground">
@@ -132,7 +132,7 @@ export function ApplicationsPage({
               counts={statusCounts}
               onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
             />
-            {pipeline?.[0] === 'hired' ? TO_THE_PLACEMENTS : null}
+            {pipeline === 'hired' ? TO_THE_PLACEMENTS : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
@@ -165,7 +165,7 @@ export function ApplicationsPage({
 
         <DataTable
           label="Applications"
-          columns={COLUMNS}
+          columns={TENANT_APPLICATION_COLUMNS}
           data={applications.data?.items ?? []}
           getRowId={(application) => application.id}
           rowLabel={(application) => `${application.candidate_name}'s Application`}

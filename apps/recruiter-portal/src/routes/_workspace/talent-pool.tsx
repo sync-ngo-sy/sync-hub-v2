@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { originAddress } from '@/features/shell/origin';
 import { TalentPoolPage as TalentPoolFeaturePage } from '@/features/talent-pool/components/talent-pool-page';
+import { TalentPoolSkeleton } from '@/features/talent-pool/components/talent-pool-skeleton';
 import { warmSavedCandidates } from '@/features/talent-pool/hooks/use-talent-pool';
 import { type PooledCandidate, poolAddress } from '@/features/talent-pool/pool';
 import { pageTitle } from '@/lib/page-title';
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/_workspace/talent-pool')({
   loaderDeps: ({ search }) => readingFrom(search),
   loader: ({ context, deps }) => warmSavedCandidates(context.queryClient, deps),
   head: () => ({ meta: [{ title: pageTitle('Talent pool') }] }),
+  pendingComponent: TalentPoolSkeleton,
   component: TalentPoolPage,
 });
 

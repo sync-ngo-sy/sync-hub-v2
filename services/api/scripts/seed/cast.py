@@ -1459,7 +1459,8 @@ APPLICATIONS: Final = (
             "Take-home sent",
         ],
     ),
-    # Rejected, taken back to reviewing, and rejected again: two decisions, two emails.
+    # Rejected, taken back inside the three days, and rejected again: the first email was
+    # cancelled where it waited and she never knew, and the second is the one she was told by.
     SeededApplication(
         candidate="nadia",
         job="frontend",

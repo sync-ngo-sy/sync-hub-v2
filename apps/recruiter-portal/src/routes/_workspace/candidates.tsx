@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { CandidateSearchPage } from '@/features/candidates/components/candidate-search-page';
+import { CandidateSearchSkeleton } from '@/features/candidates/components/candidate-search-skeleton';
 import { candidatesAddress } from '@/features/candidates/reading';
 import { warmSearchTaxonomies } from '@/features/reference/reference-queries';
 import { warmTalentPool } from '@/features/talent-pool/hooks/use-talent-pool';
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/_workspace/candidates')({
     ]);
   },
   head: () => ({ meta: [{ title: pageTitle('Candidates') }] }),
+  pendingComponent: CandidateSearchSkeleton,
   component: CandidatesRoute,
 });
 

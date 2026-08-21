@@ -18,7 +18,11 @@ class Notification(BaseModel):
     read_at: datetime | None = Field(
         default=None, description="When the caller read this. Null while it is still unread."
     )
-    created_at: datetime = Field(description="When the platform recorded it.")
+    created_at: datetime = Field(
+        description="When this became yours to read. The moment the platform recorded it, "
+        "except for a rejection, which is recorded when the Tenant decides it and held three "
+        "days — so this is the day it reached you rather than the day it was written."
+    )
 
 
 class NotificationPage(BaseModel):

@@ -9,6 +9,12 @@ import { WorkspaceIdentity } from './workspace-identity';
 
 export type SettingsTab = 'team' | 'tags' | 'tenant';
 
+export const SETTINGS_TABS = [
+  { value: 'team', label: 'Team' },
+  { value: 'tags', label: 'Tags' },
+  { value: 'tenant', label: 'Tenant' },
+] as const satisfies readonly { value: SettingsTab; label: string }[];
+
 interface WorkspaceSettingsPageProps {
   profileId: string;
   tab: SettingsTab;
@@ -30,11 +36,7 @@ export function WorkspaceSettingsPage({ profileId, tab, onTabChange }: Workspace
         <LineTabsList
           label="Workspace settings"
           value={tab}
-          tabs={[
-            { value: 'team', label: 'Team' },
-            { value: 'tags', label: 'Tags' },
-            { value: 'tenant', label: 'Tenant' },
-          ]}
+          tabs={SETTINGS_TABS}
           className="-mb-px mt-5"
         />
       </WorkspaceHeader>

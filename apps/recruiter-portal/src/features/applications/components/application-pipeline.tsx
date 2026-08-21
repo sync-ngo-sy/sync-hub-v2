@@ -23,6 +23,7 @@ import {
   type PipelineMove,
   pipelineMoveChoices,
   pipelineOutcome,
+  telling,
 } from '../review';
 import { MarkAsHiredDialog } from './mark-as-hired-dialog';
 
@@ -30,9 +31,15 @@ interface ApplicationPipelineProps {
   applicationId: string;
   status: PipelineStatus;
   hire: HireClaim | null;
+  toldAt: string | null;
 }
 
-export function ApplicationPipeline({ applicationId, status, hire }: ApplicationPipelineProps) {
+export function ApplicationPipeline({
+  applicationId,
+  status,
+  hire,
+  toldAt,
+}: ApplicationPipelineProps) {
   const headingId = useId();
   const moving = useMoveApplication(applicationId);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -41,6 +48,7 @@ export function ApplicationPipeline({ applicationId, status, hire }: Application
   const step = pipelineStep(status);
   const choices = pipelineMoveChoices(status);
   const outcome = pipelineOutcome(status);
+  const theTelling = telling(status, toldAt);
   const onlyMenu = choices.adjacent.length === 0;
 
   async function makeMove(move: PipelineMove, startDate?: string) {
@@ -48,7 +56,7 @@ export function ApplicationPipeline({ applicationId, status, hire }: Application
       params: { path: { application_id: applicationId } },
       body: { status: move.target, start_date: startDate ?? null },
     });
-    toast.success(moveOutcome(move, moved.candidate_notified));
+    toast.success(moveOutcome(move, moved));
   }
 
   // A hire is a claim about a particular day, so it asks for one before it is made — and a
@@ -180,6 +188,18 @@ export function ApplicationPipeline({ applicationId, status, hire }: Application
           </ol>
 
           {outcome ? <p className="text-dense text-muted-foreground">{outcome}</p> : null}
+
+          {theTelling && theTelling.title === null ? (
+            <p className="text-dense text-muted-foreground">{theTelling.text}</p>
+          ) : null}
+
+          {theTelling?.title ? (
+            <Alert>
+              <CircleAlert aria-hidden="true" />
+              <AlertTitle>{theTelling.title}</AlertTitle>
+              <AlertDescription>{theTelling.text}</AlertDescription>
+            </Alert>
+          ) : null}
 
           {hire ? (
             <div className="space-y-1 rounded-md border border-border bg-muted/40 p-3">

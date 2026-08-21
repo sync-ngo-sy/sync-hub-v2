@@ -3,6 +3,7 @@ import {
   ApplicationNotFound,
   ApplicationReviewPage,
 } from '@/features/applications/components/application-review-page';
+import { ApplicationReviewSkeleton } from '@/features/applications/components/application-review-skeleton';
 import { ensureApplication } from '@/features/applications/hooks/use-application';
 import { warmReferenceData } from '@/features/reference/reference-queries';
 import { originFrom } from '@/features/shell/origin';
@@ -21,6 +22,7 @@ export const Route = createFileRoute('/_workspace/applications_/$applicationId')
   head: ({ loaderData }) => ({
     meta: [{ title: pageTitle(loaderData?.snapshot.full_name ?? 'Application') }],
   }),
+  pendingComponent: ApplicationReviewSkeleton,
   component: ApplicationRoute,
 });
 

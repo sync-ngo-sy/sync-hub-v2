@@ -272,7 +272,10 @@ _Avoid_: Admin action, Privileged call.
 An outbound message (email for now) to a Candidate, recorded once and auditable forever.
 Candidate-facing email is deliberately scarce: an application confirmation, a rejection decided
 by a human Recruiter, and what a Recruiter writes an applicant from a Message template. A
-Screening verdict never messages anyone by itself.
+Screening verdict never messages anyone by itself. A rejection is queued at the decision and
+held to its Telling by `available_at`, so the sender cannot take it for three days; a rejection
+the Tenant takes back inside them is left `cancelled` rather than deleted, because what was
+nearly sent is worth being able to read.
 _Avoid_: Email (the channel), Notification.
 
 **Notification**:
@@ -281,7 +284,10 @@ Candidates learn about Stage changes and about a CV read, or given up on. Never 
 externally; distinct from a Communication. One about a Stage change names the Application it is
 about, which is what every reader of the table joins on; one about a CV parse names none, because
 it is about a CV. Both parse outcomes are written in the transaction that settles the parse, so a
-CV nobody was left to tell — deleted while it was being read — is told to nobody.
+CV nobody was left to tell — deleted while it was being read — is told to nobody. One about a
+rejection is written at the decision and held to its Telling by `visible_at`, and is deleted
+rather than shown if the Tenant takes the decision back first: a Notification nobody could read
+never happened.
 _Avoid_: Alert, Push, Message.
 
 **Message template**:

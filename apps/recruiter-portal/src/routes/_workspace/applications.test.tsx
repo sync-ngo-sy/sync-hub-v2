@@ -272,7 +272,7 @@ describe('the unified Applications page', () => {
   it('says nothing about Placements on a tab that is not Hired', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    await renderApp('/applications?pipeline=%5B%22rejected%22%5D');
+    await renderApp('/applications?pipeline=rejected');
 
     expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
     expect(screen.queryByText(/Hired counts every hire your team has claimed/)).toBeNull();

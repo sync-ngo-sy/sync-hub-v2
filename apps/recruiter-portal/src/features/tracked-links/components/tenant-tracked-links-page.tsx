@@ -37,7 +37,7 @@ const STATE_TABS = LINK_FILTER_ORDER.map((state) => ({
 
 const SETTLE_MS = 300;
 
-const COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
+export const TRACKED_LINK_COLUMNS: DataTableColumn<TenantTrackedLink>[] = [
   {
     id: 'name',
     header: 'Link',
@@ -210,7 +210,7 @@ export function TenantTrackedLinksPage({
 
         <DataTable
           label="Tracked links"
-          columns={COLUMNS}
+          columns={TRACKED_LINK_COLUMNS}
           data={shown}
           getRowId={(link) => link.id}
           rowLabel={(link) => `${link.name} on ${link.job.title}`}

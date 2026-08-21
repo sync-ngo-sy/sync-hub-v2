@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { WrongPortalScreen } from '@/features/auth/components/wrong-portal-screen';
 import { ensureCurrentProfile, isCandidate } from '@/features/auth/current-profile';
+import { CenteredSkeleton } from '@/features/shell/components/centered-skeleton';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/wrong-portal')({
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/wrong-portal')({
     return { profile };
   },
   head: () => ({ meta: [{ title: pageTitle('Wrong portal') }] }),
+  pendingComponent: () => <CenteredSkeleton label="Loading this notice" action />,
   component: WrongPortalPage,
 });
 

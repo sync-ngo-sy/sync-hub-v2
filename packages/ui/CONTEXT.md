@@ -90,6 +90,22 @@ inside would otherwise read as a box in a box, and spend two paddings and two bo
 edge.
 _Avoid_: Bare, borderless, naked.
 
+**Skeleton**:
+The rendering of a region that has not arrived: grey bars in the shape, count and rough
+dimensions of what is coming, so a screen does not rearrange itself under the reader once it
+does. A Skeleton is a shape and never a spinner. The shared ones here are the pieces a page is
+built from — a page header, a table, a tab strip, a toolbar, a fact grid, a card, a form — and
+each renders from what a page can count about itself: how many tabs, columns, facts or fields.
+So a page that owns four of something asks for four, and reads the count off the same list the
+page reads. A whole page's Skeleton is composed from these where its route lives, and a Promotion
+brings a whole screen here only once a second portal renders the same one — the auth screen has.
+Every piece carries `aria-hidden`, because a placeholder says nothing worth announcing. The one
+thing that speaks is the **Route skeleton** wrapped around a page's worth of them: a single
+`status` region, named for what is arriving — the page where a page can be named, and the portal
+where a shell is still deciding which page that is.
+_Avoid_: Loading state, spinner, shimmer, ghost, stub. (**Placeholder** is the Recruiter Portal's
+word for a fillable name in a Message template, and is not this.)
+
 **Promotion**:
 The move of a component from one portal's feature into the Design System, permitted only
 when a second consumer appears. Until then the component stays where it was born.

@@ -1,7 +1,9 @@
 import { PasswordInput } from '@sync/ui/components/password-input';
+import { FormSkeleton, RouteSkeleton, SkeletonText } from '@sync/ui/components/skeletons';
 import { Button } from '@sync/ui/components/ui/button';
 import { Input } from '@sync/ui/components/ui/input';
 import { Label } from '@sync/ui/components/ui/label';
+import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { Link } from '@tanstack/react-router';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { problemMessage } from '@/lib/api-problem';
@@ -9,11 +11,34 @@ import type { Profile } from './current-profile';
 import { useLogIn, useLogOut, useRequestPasswordReset, useResetPassword } from './hooks';
 import { PASSWORD_POLICY_SUMMARY } from './password-rules';
 
+const SCREEN_COLUMN = 'mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-5 px-5';
+
 function Screen({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-5 px-5">
+    <main className={SCREEN_COLUMN}>
       <h1 className="font-heading text-h3 text-foreground">{title}</h1>
       {children}
+    </main>
+  );
+}
+
+export function ScreenSkeleton({
+  fields = 2,
+  submit = true,
+  action = false,
+}: {
+  fields?: number;
+  submit?: boolean;
+  action?: boolean;
+}) {
+  return (
+    <main className={SCREEN_COLUMN}>
+      <RouteSkeleton label="Loading" className="space-y-5">
+        <Skeleton className="h-7 w-52" aria-hidden="true" />
+        <SkeletonText lines={1} />
+        {fields > 0 || submit ? <FormSkeleton fields={fields} submit={submit} /> : null}
+        {action ? <Skeleton className="h-10 w-28" aria-hidden="true" /> : null}
+      </RouteSkeleton>
     </main>
   );
 }

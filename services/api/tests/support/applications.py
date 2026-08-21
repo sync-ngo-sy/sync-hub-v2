@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 
 from sync_core.models import (
     Application,
@@ -24,6 +24,7 @@ from sync_core.models import (
     Cv,
     CvParsingStatus,
     HireClaim,
+    Notification,
 )
 from tests.support.candidates import Signup, a_signed_in_candidate
 from tests.support.cvs import an_uploaded_cv
@@ -340,6 +341,34 @@ async def stored_application(session: AsyncSession, application_id: str | UUID) 
     application = await session.get(Application, UUID(str(application_id)))
     assert application is not None, f"no applications row for {application_id}"
     return application
+
+
+async def the_telling_comes(session: AsyncSession, application_id: str | UUID) -> None:
+    """Three days on, without waiting three days.
+
+    Everything the rejection held to its Telling is pulled back to a moment that has passed —
+    the Application's own, the Notification's and the queued email's — because they are one
+    moment and a test that moved only one of them would be testing a state the platform
+    cannot reach.
+    """
+    identifier = UUID(str(application_id))
+    a_moment_ago = func.now() - text("interval '1 second'")
+    await session.execute(
+        update(Application)
+        .where(Application.id == identifier, Application.told_at.is_not(None))
+        .values(told_at=a_moment_ago)
+    )
+    await session.execute(
+        update(Notification)
+        .where(Notification.application_id == identifier, Notification.visible_at.is_not(None))
+        .values(visible_at=a_moment_ago)
+    )
+    await session.execute(
+        update(Communication)
+        .where(Communication.application_id == identifier, Communication.available_at.is_not(None))
+        .values(available_at=a_moment_ago)
+    )
+    await session.commit()
 
 
 async def answers_of(session: AsyncSession, application_id: str | UUID) -> list[ApplicationAnswer]:

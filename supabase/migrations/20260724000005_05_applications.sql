@@ -14,6 +14,16 @@ create table applications (
   qualification_status qualification_status not null default 'pending',
   qualification_reason text,
 
+  -- The Telling: the moment this Application's rejection reaches the Candidate, three days
+  -- after the Tenant took it. Deciding and telling are two moments rather than one, and this
+  -- one column holds all three channels to the same day -- the Stage projection reads it,
+  -- `notifications.visible_at` is set from it, and so is `communications.available_at`. Only a
+  -- rejection has one; a hire and a withdrawal are told at once. Three days is one
+  -- platform-wide number, never a Tenant's to set. It is not constrained against `status`,
+  -- and cannot be: it survives a reopen, so a `reviewing` row carrying one is the record of a
+  -- Candidate who was told, and the projection honours it only while the status is `rejected`.
+  told_at timestamptz,
+
   -- The Match score: the percentage the Application's reading gave, kept here as well as on the
   -- reading itself. A Job's list orders hundreds of rows by it, and an order can only be indexed
   -- on a column of the table it orders. Never written by hand -- the trigger in migration 07

@@ -35,7 +35,7 @@ const TO_SEARCH = (
   </Link>
 );
 
-const COLUMNS: DataTableColumn<PooledCandidate>[] = [
+export const POOL_COLUMNS: DataTableColumn<PooledCandidate>[] = [
   {
     accessorKey: 'full_name',
     header: 'Candidate',
@@ -110,7 +110,7 @@ export function TalentPoolPage({
 
         <DataTable
           label="Saved Candidates"
-          columns={COLUMNS}
+          columns={POOL_COLUMNS}
           data={saved.data ?? []}
           getRowId={(entry) => entry.candidate_id}
           rowLabel={(entry) => entry.full_name}
