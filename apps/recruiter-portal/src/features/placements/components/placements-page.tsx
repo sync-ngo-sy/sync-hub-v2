@@ -24,7 +24,7 @@ import {
 const DESCRIPTION =
   'Everyone your team has said it hired. A claim becomes a Placement when the Candidate confirms it, and until they answer it is neither confirmed nor refused.';
 
-const COLUMNS: DataTableColumn<HireClaim>[] = [
+export const PLACEMENT_COLUMNS: DataTableColumn<HireClaim>[] = [
   {
     accessorKey: 'candidate_name',
     header: 'Candidate',
@@ -93,7 +93,7 @@ export function PlacementsPage({ tab, onTabChange, onClaimOpen, claimHref }: Pla
 
         <DataTable
           label={tabLabel(tab)}
-          columns={COLUMNS}
+          columns={PLACEMENT_COLUMNS}
           data={claims.data?.items ?? []}
           getRowId={(claim) => claim.application_id}
           rowLabel={(claim) => `${claim.candidate_name}'s Application`}

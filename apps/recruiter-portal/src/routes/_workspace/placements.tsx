@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { PlacementsPage as PlacementsFeaturePage } from '@/features/placements/components/placements-page';
+import { PlacementsSkeleton } from '@/features/placements/components/placements-skeleton';
 import { claimTab, type HireClaim } from '@/features/placements/placement';
 import { placementsAddress } from '@/features/placements/reading';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
@@ -10,6 +11,7 @@ import { placementsSearchParams } from './-placements-search-params';
 export const Route = createFileRoute('/_workspace/placements')({
   validateSearch: placementsSearchParams,
   head: () => ({ meta: [{ title: pageTitle('Placements') }] }),
+  pendingComponent: PlacementsSkeleton,
   component: PlacementsPage,
 });
 
