@@ -1,4 +1,5 @@
 import { useRereadTenantStats } from '@/features/dashboard/reread';
+import { useRereadHireClaims } from '@/features/placements/reread';
 import { api } from '@/lib/api';
 import {
   APPLICATION_PATH,
@@ -11,9 +12,10 @@ import {
 export function useMoveApplication(applicationId: string) {
   const rereadApplications = useRereadMovedApplication(applicationId);
   const rereadStats = useRereadTenantStats();
+  const rereadHireClaims = useRereadHireClaims();
 
   return api.useMutation('patch', APPLICATION_PATH, {
-    onSuccess: () => Promise.all([rereadApplications(), rereadStats()]),
+    onSuccess: () => Promise.all([rereadApplications(), rereadStats(), rereadHireClaims()]),
   });
 }
 

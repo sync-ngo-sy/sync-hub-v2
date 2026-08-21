@@ -734,6 +734,10 @@ row the claim was made by — and the Candidate is asked.
   to make a hire count without the Candidate having said so.
 - **A denied claim moves nothing.** The Application stays `hired`: what happened is the
   Recruiter's to record, and whether it is true is the Candidate's to say.
+- **The Tenant reads its claims** at `GET /v1/tenants/me/hire-claims`, one `confirmation` at a
+  time. `confirmed` — the list and its count alike — is read from the `placements` view, so the
+  Placements page and anything else counting Placements cannot disagree; `unanswered` and `denied`
+  are read from `hire_claims`, which is the only place a claim that is not a Placement exists.
 
 ## Tenant CRM (notes, tags, talent pool)
 

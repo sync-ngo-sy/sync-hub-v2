@@ -20,6 +20,8 @@ function targetLink(target: CrumbTarget) {
       return <Link to="/jobs" search={{}} />;
     case 'applications':
       return <Link to="/applications" search={applicationsAddress(target.reading)} />;
+    case 'placements':
+      return <Link to="/placements" search={{}} />;
     case 'candidates':
       return <Link to="/candidates" search={candidatesAddress(target.reading)} />;
     case 'talent-pool':

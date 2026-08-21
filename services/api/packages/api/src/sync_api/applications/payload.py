@@ -15,6 +15,7 @@ from sync_api.candidates import (
     ProfileSkill,
 )
 from sync_api.jobs import PublicTenant
+from sync_api.jobs.access import location_name
 from sync_api.text import (
     LocationName,
     OptionalIsoCountry,
@@ -27,6 +28,7 @@ from sync_core.models import (
     ApplicationStatus,
     EmploymentType,
     HireConfirmation,
+    Job,
     QualificationStatus,
     StatusChangeSource,
     WorkMode,
@@ -248,6 +250,13 @@ class ApplicationJob(BaseModel):
         examples=[WorkMode.REMOTE],
     )
 
+    @classmethod
+    def of(cls, job: Job) -> ApplicationJob:
+        """The Job as a row names it. Loaded `WITH_LOCATION`, or its place reads as nothing."""
+        return cls(
+            id=job.id, title=job.title, location_name=location_name(job), work_mode=job.work_mode
+        )
+
 
 class TenantApplicationSummary(ApplicationSummary):
     """One Application in the tenant's own list.
@@ -318,6 +327,55 @@ class TenantApplicationPage(BaseModel):
         "narrows anything, so a filter that hides some of them still says how much it is "
         "hiding. The other filters do narrow it: the counts describe the list the reader is "
         "looking at.",
+    )
+
+
+class TenantHireClaim(BaseModel):
+    """One Hire claim as the Tenant's own list of them reads it.
+
+    Only a `confirmed` one is a Placement. The other two are here to be read rather than
+    counted: nothing about an unanswered claim lapses, and a denied one moves nothing.
+    """
+
+    application_id: UUID = Field(
+        description="The Application the claim was made on. Read it for who applied, what they "
+        "sent, and what the Tenant has done since."
+    )
+    candidate_name: str = Field(description="The Snapshot's name: who they applied as.")
+    job: ApplicationJob = Field(description="The Job they were hired for.")
+    start_date: date = Field(description="The day the Tenant says the work started.")
+    confirmation: HireConfirmation = Field(
+        description="The Candidate's answer. `unanswered` until they give one, and they may "
+        "never give one."
+    )
+    claimed_at: datetime = Field(
+        description="When the Tenant said so, which is what the age of an unanswered claim is "
+        "measured from."
+    )
+    answered_at: datetime | None = Field(
+        default=None, description="When the Candidate answered. Null while they have not."
+    )
+
+
+class HireClaimCount(BaseModel):
+    """How many of the Tenant's Hire claims stand one of the three ways."""
+
+    confirmation: HireConfirmation
+    count: int
+
+
+class TenantHireClaimPage(BaseModel):
+    """One page of the Tenant's Hire claims of one standing, newest claim first."""
+
+    items: list[TenantHireClaim]
+    next_cursor: str | None = Field(
+        default=None, description="Send back as `cursor` for the following page."
+    )
+    counts: list[HireClaimCount] = Field(
+        default_factory=list,
+        description="Every standing a Hire claim can have, each with how many of the Tenant's "
+        "claims stand that way. Counted whichever standing `confirmation` narrows the list to, "
+        "so each of them says its own size while another is being read.",
     )
 
 

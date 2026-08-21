@@ -52,6 +52,8 @@ A_START_DATE: Final = date(2026, 9, 1)
 
 TENANT_APPLICATIONS: Final = "/v1/tenants/me/applications"
 
+TENANT_HIRE_CLAIMS: Final = "/v1/tenants/me/hire-claims"
+
 A_YES_NO_QUESTION: Final[dict[str, Any]] = {
     "question_text": "Do you have the right to work in Syria?",
     "question_type": "yes_no",
@@ -296,6 +298,17 @@ async def an_answered_hire(
     assert response.status_code == 200, response.text
     answered: dict[str, Any] = response.json()
     return answered
+
+
+async def list_hire_claims(recruiter: AsyncClient, **params: Any) -> Response:
+    return await recruiter.get(TENANT_HIRE_CLAIMS, params=params)
+
+
+async def tenant_hire_claims(recruiter: AsyncClient, **params: Any) -> dict[str, Any]:
+    response = await list_hire_claims(recruiter, **params)
+    assert response.status_code == 200, response.text
+    page: dict[str, Any] = response.json()
+    return page
 
 
 async def hire_claim_of(session: AsyncSession, application_id: str | UUID) -> HireClaim | None:

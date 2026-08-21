@@ -1,4 +1,5 @@
 from sync_api.applications.assessment import MatchAssessmentService
+from sync_api.applications.hires import HireClaimService
 from sync_api.applications.payload import (
     RECEIVED_WITHIN_DAYS,
     AnsweredQuestion,
@@ -17,6 +18,7 @@ from sync_api.applications.payload import (
     AppliedJob,
     HireAnswer,
     HireClaim,
+    HireClaimCount,
     MatchAssessment,
     MatchScore,
     MovedApplication,
@@ -29,6 +31,8 @@ from sync_api.applications.payload import (
     SubmittedAnswer,
     TenantApplicationPage,
     TenantApplicationSummary,
+    TenantHireClaim,
+    TenantHireClaimPage,
     WithdrawnApplication,
 )
 from sync_api.applications.review import ApplicationReviewService
@@ -54,6 +58,8 @@ __all__ = [
     "AppliedJob",
     "HireAnswer",
     "HireClaim",
+    "HireClaimCount",
+    "HireClaimService",
     "MatchAssessment",
     "MatchAssessmentService",
     "MatchScore",
@@ -67,5 +73,7 @@ __all__ = [
     "SubmittedAnswer",
     "TenantApplicationPage",
     "TenantApplicationSummary",
+    "TenantHireClaim",
+    "TenantHireClaimPage",
     "WithdrawnApplication",
 ]

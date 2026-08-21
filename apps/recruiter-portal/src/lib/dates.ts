@@ -37,3 +37,7 @@ export function calendarDay(value: string): string {
   const [year = 0, month = 1, day = 1] = value.split('-').map(Number);
   return CALENDAR_DAY.format(new Date(year, month - 1, day));
 }
+
+export function absoluteDay(value: string): string {
+  return CALENDAR_DAY.format(new Date(value));
+}

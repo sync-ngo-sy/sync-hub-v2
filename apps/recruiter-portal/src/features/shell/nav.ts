@@ -1,6 +1,7 @@
 import {
   Briefcase,
   FileText,
+  Handshake,
   Inbox,
   LayoutDashboard,
   Link2,
@@ -21,6 +22,7 @@ export const DESTINATIONS: Destination[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/jobs', label: 'Jobs', icon: Briefcase },
   { to: '/applications', label: 'Applications', icon: Inbox },
+  { to: '/placements', label: 'Placements', icon: Handshake },
   { to: '/candidates', label: 'Candidates', icon: Users },
   { to: '/talent-pool', label: 'Talent pool', icon: Star },
   { to: '/templates', label: 'Templates', icon: FileText },

@@ -30,7 +30,7 @@ from sync_api.applications.payload import (
 from sync_api.applications.pipeline import move_application
 from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.cvs import signed_download
-from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
+from sync_api.jobs.access import WITH_LOCATION, own_job
 from sync_api.pagination import DEFAULT_PAGE_SIZE, cursor_for, ordered_by, page_of
 from sync_api.windows import rolling_since
 from sync_core import get_logger, transaction
@@ -207,12 +207,7 @@ class ApplicationReviewService:
             items=[
                 TenantApplicationSummary(
                     **_summary(application, snapshot, assessment).model_dump(),
-                    job=ApplicationJob(
-                        id=job.id,
-                        title=job.title,
-                        location_name=location_name(job),
-                        work_mode=job.work_mode,
-                    ),
+                    job=ApplicationJob.of(job),
                 )
                 for application, snapshot, assessment, job in rows
             ],
