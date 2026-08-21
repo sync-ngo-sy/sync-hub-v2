@@ -63,7 +63,7 @@ async def test_no_routine_in_public_is_executable_by_the_client_roles(
         text(
             "select p.proname, who from pg_proc p "
             "join pg_namespace n on n.oid = p.pronamespace "
-            "cross join unnest(:roles) as who "
+            "cross join unnest(:roles::text[]) as who "
             "where n.nspname = 'public' and has_function_privilege(who, p.oid, 'execute')"
         ),
         {"roles": list(CLIENT_ROLES)},
@@ -81,7 +81,7 @@ async def test_a_routine_added_later_to_public_is_born_unreachable_by_the_client
 
     result = await db_session.execute(
         text(
-            "select who from unnest(:roles) as who "
+            "select who from unnest(:roles::text[]) as who "
             "where has_function_privilege(who, 'public.perm_probe()', 'execute')"
         ),
         {"roles": list(CLIENT_ROLES)},
