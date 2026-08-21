@@ -55,7 +55,7 @@ const COLUMNS: DataTableColumn<HireClaim>[] = [
 const TO_THE_HIRED = (
   <Link
     to="/applications"
-    search={applicationsAddress({ pipeline: ['hired'] })}
+    search={applicationsAddress({ pipeline: 'hired' })}
     className={buttonVariants({ variant: 'outline' })}
   >
     Go to the hired Applications
