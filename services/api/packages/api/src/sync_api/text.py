@@ -115,6 +115,8 @@ PortfolioUrl = Annotated[
     ),
 ]
 
+WebUrl = Annotated[OptionalLink, AfterValidator(_normalized(portfolio_address))]
+
 LanguageCode = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=2, max_length=8),

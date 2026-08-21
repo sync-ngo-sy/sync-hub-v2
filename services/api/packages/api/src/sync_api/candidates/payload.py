@@ -14,9 +14,9 @@ from sync_api.text import (
     LocationKey,
     OptionalIsoCountry,
     OptionalLine,
-    OptionalLink,
     OptionalParagraph,
     PortfolioUrl,
+    WebUrl,
 )
 from sync_core.models import LanguageProficiency
 from sync_core.phone import read
@@ -221,8 +221,8 @@ class ProfileProject(DatedRange):
 
     name: Line
     description: OptionalParagraph = None
-    project_url: OptionalLink = None
-    repository_url: OptionalLink = None
+    project_url: WebUrl = None
+    repository_url: WebUrl = None
 
 
 class ProfileClaims(BaseModel):

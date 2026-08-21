@@ -724,6 +724,54 @@ async def test_an_address_that_is_not_that_kind_of_link_is_refused_where_it_was_
     assert [error["location"] for error in problem["errors"]] == [f"body.{field}"]
 
 
+@pytest.mark.parametrize(
+    ("field", "typed"),
+    [
+        ("project_url", "javascript:alert(1)"),
+        ("project_url", "data:text/html,<script>alert(1)</script>"),
+        ("repository_url", "javascript:alert(1)"),
+        ("repository_url", "vbscript:msgbox(1)"),
+    ],
+)
+async def test_a_project_link_that_is_not_a_web_address_is_refused_where_it_was_typed(
+    browser: AsyncClient, mailbox: Mailbox, field: str, typed: str
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    response = await browser.put(
+        PROFILE, json=a_profile(projects=[{"name": "Atlas", field: typed}])
+    )
+
+    assert response.status_code == 422, response.text
+    problem = response.json()
+    assert problem["type"] == "urn:sync:problem:validation-error"
+    assert [error["location"] for error in problem["errors"]] == [f"body.projects.0.{field}"]
+
+
+async def test_a_projects_web_links_are_stored_as_a_browser_would_open_them(
+    browser: AsyncClient, mailbox: Mailbox
+) -> None:
+    await a_signed_in_candidate(browser, mailbox)
+
+    saved = await browser.put(
+        PROFILE,
+        json=a_profile(
+            projects=[
+                {
+                    "name": "Atlas",
+                    "project_url": "amina-haddad.dev/atlas",
+                    "repository_url": "https://github.com/amina-haddad/atlas",
+                }
+            ]
+        ),
+    )
+
+    assert saved.status_code == 200, saved.text
+    project = saved.json()["projects"][0]
+    assert project["project_url"] == "https://amina-haddad.dev/atlas"
+    assert project["repository_url"] == "https://github.com/amina-haddad/atlas"
+
+
 async def test_a_canonical_role_the_platform_does_not_know_is_refused_where_it_was_typed(
     browser: AsyncClient, mailbox: Mailbox
 ) -> None:
