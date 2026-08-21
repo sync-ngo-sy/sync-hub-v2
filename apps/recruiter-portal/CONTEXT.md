@@ -282,7 +282,10 @@ current status sits above the action row. Adjacent backward and onward moves rem
 for its stage, a decision for the decision ("Mark as hired", "Reject"). A move says in its outcome
 toast whether the candidate was told, which is not every move: they read a Stage, not a status, so
 a move inside one Stage reaches nobody, and only a move that changes the Stage notifies. A
-rejection also emails them. `Mark as hired` is the one move that asks something first: it opens a
+rejection reaches nobody either, yet: it is told three days later, and its toast names the day
+rather than claiming the candidate has heard. Reopening one says which of the two reopens it was —
+the email cancelled before the candidate saw anything, or the day they were told and that no email
+goes. `Mark as hired` is the one move that asks something first: it opens a
 dialog for the day the work started, because a hire is a claim about a particular day and the
 Candidate is asked to confirm that day. A refusal of that move stays inside the dialog that asked;
 every other refusal reports on the Pipeline card. Each move carries one
@@ -295,6 +298,17 @@ because it is the one move a Recruiter would regret making by accident.
 Withdrawing is never offered: that is the Candidate's alone.
 _Avoid_: Stage number, pipeline position, progress percentage.
 _Avoid_: Status change, transition, stage update.
+
+**Telling**:
+The day a rejection reaches the candidate, three days after a Recruiter takes it, carried on the
+Application review as `told_at`. The card says which side of it the Application is on, because
+that is what decides whether reopening is free: before it, the candidate has seen nothing and the
+queued email is cancelled, so the card says so in plain muted text; after it, they have read a
+rejection, so the card raises an `Already told` alert naming the day and saying that reopening
+sends no email and the Recruiter should message them by hand. A Telling outlives the rejection
+that set it, so a reopened Application still says the candidate read one and has not been told
+they are back in review. There is no Tenant setting for the three days and never will be.
+_Avoid_: Grace period, cooling-off, delay, send date.
 
 **Refused move**:
 A Pipeline move the API answers with a 409, rendered where the buttons are rather than as a

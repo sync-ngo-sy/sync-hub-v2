@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { PipelineStatus } from './application';
 import {
   answerText,
   hireState,
   historyLine,
+  type MovedApplication,
   moveOutcome,
   pipelineMoves,
   pipelineOutcome,
+  telling,
 } from './review';
 
 const targets = (status: Parameters<typeof pipelineMoves>[0]) =>
@@ -99,28 +102,110 @@ describe('the Pipeline moves offered from a status', () => {
 });
 
 describe('what a move reports back', () => {
-  const moveTo = (target: string) => {
-    const move = pipelineMoves('reviewing').find((one) => one.target === target);
+  const moveTo = (target: string, from: PipelineStatus = 'reviewing') => {
+    const move = pipelineMoves(from).find((one) => one.target === target);
     if (!move) throw new Error(`no move to ${target}`);
     return move;
   };
+  const NOW = new Date('2026-08-21T10:00:00Z');
+  const AHEAD = '2026-08-24T10:00:00Z';
+  const BEHIND = '2026-08-18T10:00:00Z';
+  const moved = (changes: Partial<MovedApplication>): MovedApplication => ({
+    id: '00000000-0000-4000-8000-000000000001',
+    status: 'reviewing',
+    previous_status: 'reviewing',
+    candidate_notified: false,
+    told_at: null,
+    changed_at: '2026-08-21T10:00:00Z',
+    ...changes,
+  });
 
-  it('says a rejection is emailed, which no other move is', () => {
-    expect(moveOutcome(moveTo('rejected'), true)).toBe(
-      'Rejected — the candidate has been emailed.',
+  it('names the day a rejection reaches the candidate, rather than claiming it has', () => {
+    expect(
+      moveOutcome(
+        moveTo('rejected'),
+        moved({ status: 'rejected', previous_status: 'reviewing', told_at: AHEAD }),
+        NOW,
+      ),
+    ).toBe('Rejected — the candidate hears on August 24, 2026.');
+  });
+
+  it('says a reopen inside the three days cancelled the email nobody saw', () => {
+    expect(
+      moveOutcome(
+        moveTo('reviewing', 'rejected'),
+        moved({ previous_status: 'rejected', told_at: AHEAD }),
+        NOW,
+      ),
+    ).toBe('Reopened for review — the candidate was never told, and the email is cancelled.');
+  });
+
+  it('names the day the candidate was told when the reopen comes after it', () => {
+    expect(
+      moveOutcome(
+        moveTo('reviewing', 'rejected'),
+        moved({ previous_status: 'rejected', told_at: BEHIND }),
+        NOW,
+      ),
+    ).toBe(
+      'Reopened for review — the candidate was told on August 18, 2026, and no email is sent.',
     );
   });
 
   it('says the candidate was told when the move changed their Stage', () => {
-    expect(moveOutcome(moveTo('hired'), true)).toBe(
-      'Marked as hired — the candidate has been told.',
-    );
+    expect(
+      moveOutcome(moveTo('hired'), moved({ status: 'hired', candidate_notified: true }), NOW),
+    ).toBe('Marked as hired — the candidate has been told.');
   });
 
   it('says the candidate sees nothing when the move stayed inside one Stage', () => {
-    expect(moveOutcome(moveTo('shortlisted'), false)).toBe(
+    expect(moveOutcome(moveTo('shortlisted'), moved({ status: 'shortlisted' }), NOW)).toBe(
       'Shortlisted — the candidate sees no change.',
     );
+  });
+});
+
+describe('what the review says about the Telling', () => {
+  const NOW = new Date('2026-08-21T10:00:00Z');
+  const AHEAD = '2026-08-24T10:00:00Z';
+  const BEHIND = '2026-08-18T10:00:00Z';
+
+  it('says nothing at all about an Application that was never rejected', () => {
+    expect(telling('shortlisted', null, NOW)).toBeNull();
+  });
+
+  it('names the day a waiting candidate hears, and what reopening does before then', () => {
+    expect(telling('rejected', AHEAD, NOW)).toEqual({
+      told: false,
+      title: null,
+      text:
+        'The candidate has not been told. They hear on August 24, 2026 — until then, ' +
+        'reopening this cancels the email and leaves them in review.',
+    });
+  });
+
+  it('warns after the Telling, names the day, and says no email is sent', () => {
+    expect(telling('rejected', BEHIND, NOW)).toEqual({
+      told: true,
+      title: 'Already told',
+      text:
+        'The candidate was told on August 18, 2026. Reopening sends no email — message them ' +
+        'by hand if they should know.',
+    });
+  });
+
+  it('still says a reopened candidate read a rejection, and warns about nothing', () => {
+    expect(telling('reviewing', BEHIND, NOW)).toEqual({
+      told: true,
+      title: null,
+      text:
+        'The candidate was told on August 18, 2026 that they were not selected, and has not ' +
+        'been told they are back in review.',
+    });
+  });
+
+  it('says nothing of a Telling a reopened candidate never reached', () => {
+    expect(telling('reviewing', AHEAD, NOW)).toBeNull();
   });
 });
 

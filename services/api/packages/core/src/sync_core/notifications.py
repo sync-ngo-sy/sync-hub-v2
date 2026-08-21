@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, Any, Final, Literal
 from uuid import UUID
 
@@ -68,15 +69,23 @@ def payload_of(stored: dict[str, Any]) -> NotificationPayload:
 
 
 async def notify(
-    session: AsyncSession, recipient_profile_id: UUID, payload: NotificationPayload
+    session: AsyncSession,
+    recipient_profile_id: UUID,
+    payload: NotificationPayload,
+    *,
+    visible_at: datetime | None = None,
 ) -> Notification:
-    # Flushed, never committed: the caller's transaction is what makes the notification and
-    # the outcome it announces atomic.
+    """Write one Notification, `visible_at` holding it back until its Telling if it has one.
+
+    Flushed, never committed: the caller's transaction is what makes the notification and the
+    outcome it announces atomic.
+    """
     notification = Notification(
         recipient_profile_id=recipient_profile_id,
         type=payload.type,
         payload=payload.model_dump(mode="json"),
         application_id=_application_of(payload),
+        visible_at=visible_at,
     )
     session.add(notification)
     await session.flush()

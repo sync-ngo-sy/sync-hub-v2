@@ -18,6 +18,13 @@ create table notifications (
 
   application_id uuid,
 
+  -- The Telling, on the bell's side: a Notification is not the Candidate's to read until this
+  -- moment. Only a rejection sets one, from `applications.told_at`, and the three days it
+  -- names are why the bell is silent while the Recruiter's list has already cleared. Null on
+  -- everything told at once. A rejection taken back before it comes deletes the row rather
+  -- than moving it: a Notification nobody could see never happened.
+  visible_at timestamptz,
+
   read_at    timestamptz,
   created_at timestamptz not null default now(),
 

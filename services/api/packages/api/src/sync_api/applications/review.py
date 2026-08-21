@@ -34,7 +34,6 @@ from sync_api.jobs.access import WITH_LOCATION, location_name, own_job
 from sync_api.pagination import DEFAULT_PAGE_SIZE, cursor_for, ordered_by, page_of
 from sync_api.windows import rolling_since
 from sync_core import get_logger, transaction
-from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
 from sync_core.models import (
     Application,
     ApplicationAiMatchAssessment,
@@ -58,7 +57,6 @@ if TYPE_CHECKING:
     from sqlalchemy import Select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.applications.access import Applied
     from sync_api.applications.payload import ApplicationStatusChange
     from sync_api.pagination import Ordering, SortCursor
     from sync_api.tenants import ActingRecruiter
@@ -246,6 +244,7 @@ class ApplicationReviewService:
             history=await self._history(application.id),
             hire=await claimed_hire(self._db, application.id),
             cv=await self._cv(application.cv_id),
+            told_at=application.told_at,
             applied_at=application.applied_at,
             updated_at=application.updated_at,
         )
@@ -264,8 +263,6 @@ class ApplicationReviewService:
                 source=StatusChangeSource.RECRUITER,
                 by=recruiter.profile.id,
             )
-            if change.status is ApplicationStatus.REJECTED:
-                await self._queue_the_rejection(recruiter, applied, moved.status_history_id)
             if change.status is ApplicationStatus.HIRED and change.start_date is not None:
                 await claim_the_hire(
                     self._db,
@@ -289,30 +286,8 @@ class ApplicationReviewService:
             status=moved.status,
             previous_status=moved.previous_status,
             candidate_notified=moved.candidate_notified,
+            told_at=moved.told_at,
             changed_at=moved.changed_at,
-        )
-
-    async def _queue_the_rejection(
-        self, recruiter: ActingRecruiter, applied: Applied, status_history_id: UUID
-    ) -> None:
-        """The one rejection that emails: keyed by the move, so undoing and deciding it again
-        is a second decision the Candidate hears about, not a swallowed duplicate."""
-        application = applied.application
-        full_name, email = await candidate_contact(self._db, application.candidate_id)
-        await enqueue_email(
-            self._db,
-            candidate_id=application.candidate_id,
-            tenant_id=application.tenant_id,
-            application_id=application.id,
-            initiated_by_recruiter_id=recruiter.profile.id,
-            recipient=email,
-            idempotency_key=f"application-rejection:{status_history_id}",
-            payload=ApplicationRejection(
-                application_id=application.id,
-                job_title=applied.job.title,
-                tenant_name=applied.tenant_name,
-                candidate_name=full_name,
-            ),
         )
 
     async def _candidate(self, candidate_id: UUID) -> ReviewedCandidate:

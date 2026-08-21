@@ -447,6 +447,14 @@ class ApplicationReview(BaseModel):
         "A claim they have not answered is not a Placement.",
     )
     cv: ApplicationCv
+    told_at: datetime | None = Field(
+        default=None,
+        description="The Telling: when this Application's rejection reaches the Candidate, "
+        "three days after it was taken. A moment still ahead is a decision they have not "
+        "seen; one behind is a decision they have read. It survives a reopen, so a Telling on "
+        "anything but a `rejected` Application is the record of what the Candidate was once "
+        "told. Null on an Application never rejected.",
+    )
     applied_at: datetime
     updated_at: datetime
 
@@ -517,8 +525,15 @@ class MovedApplication(BaseModel):
     status: ApplicationStatus
     previous_status: ApplicationStatus
     candidate_notified: bool = Field(
-        description="Whether this move reached the Candidate. False when it left the Stage they "
-        "read unchanged — which is every move among the undecided statuses."
+        description="Whether this move reached the Candidate at once. False when it left the "
+        "Stage they read unchanged — which is every move among the undecided statuses — and "
+        "false for a rejection, which reaches them at its Telling three days later."
+    )
+    told_at: datetime | None = Field(
+        default=None,
+        description="The Telling this Application now carries. Ahead of now on a rejection "
+        "just taken; behind it on one the Candidate has already read. Null on an Application "
+        "never rejected.",
     )
     changed_at: datetime
 

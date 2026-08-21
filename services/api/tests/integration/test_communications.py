@@ -20,6 +20,7 @@ from tests.support.applications import (
     a_moved_application,
     an_accepted_application,
     communications_of,
+    the_telling_comes,
 )
 from tests.support.candidates import a_signed_in_candidate
 from tests.support.jobs import a_published_job
@@ -385,6 +386,8 @@ async def test_a_recruiters_rejection_is_delivered_the_same_way(
     worker = a_communications_worker(database, sender)
 
     assert await worker.run_once() is True, "the confirmation"
+    assert await worker.run_once() is False, "the rejection is not the sender's until its Telling"
+    await the_telling_comes(db_session, application["id"])
     assert await worker.run_once() is True, "the rejection"
 
     _confirmation, rejection = await communications_of(db_session, application["id"])

@@ -1373,10 +1373,16 @@ export interface paths {
          *     Stage reaches them — `candidate_notified` says whether this one did. Moving between
          *     `reviewing`, `shortlisted`, `interview` and `offer` is silent by design.
          *
-         *     A rejection also queues the one email a human decision earns. A `hired` move records what
-         *     the tenant says happened and the day it started, and asks the candidate to confirm it: until
-         *     they do, it is a claim rather than a Placement. The Screening verdict is untouched, whatever
-         *     the Application's status becomes.
+         *     A rejection is decided now and told three days later, at the `told_at` this returns: until
+         *     then the candidate's Stage still reads in review, their bell is silent, and the one email a
+         *     human decision earns waits in the queue. Taking it back to `reviewing` inside those three
+         *     days cancels all three, so `candidate_notified` is false for both moves. Reopening after
+         *     `told_at` has passed is allowed too, and is equally silent — the candidate has read the
+         *     rejection, and no message says it has been undone.
+         *
+         *     A `hired` move records what the tenant says happened and the day it started, and asks the
+         *     candidate to confirm it: until they do, it is a claim rather than a Placement. The Screening
+         *     verdict is untouched, whatever the Application's status becomes.
          */
         patch: operations["changeApplicationStatus"];
         trace?: never;
@@ -1997,6 +2003,11 @@ export interface components {
             hire?: components["schemas"]["HireClaim"] | null;
             cv: components["schemas"]["ApplicationCv"];
             /**
+             * Told At
+             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. It survives a reopen, so a Telling on anything but a `rejected` Application is the record of what the Candidate was once told. Null on an Application never rejected.
+             */
+            told_at?: string | null;
+            /**
              * Applied At
              * Format: date-time
              */
@@ -2586,7 +2597,7 @@ export interface components {
          * CommunicationStatus
          * @enum {string}
          */
-        CommunicationStatus: "queued" | "processing" | "sent" | "failed";
+        CommunicationStatus: "queued" | "processing" | "sent" | "failed" | "cancelled";
         /** ConfirmEmailRequest */
         ConfirmEmailRequest: {
             /**
@@ -3639,9 +3650,14 @@ export interface components {
             previous_status: components["schemas"]["ApplicationStatus"];
             /**
              * Candidate Notified
-             * @description Whether this move reached the Candidate. False when it left the Stage they read unchanged — which is every move among the undecided statuses.
+             * @description Whether this move reached the Candidate at once. False when it left the Stage they read unchanged — which is every move among the undecided statuses — and false for a rejection, which reaches them at its Telling three days later.
              */
             candidate_notified: boolean;
+            /**
+             * Told At
+             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected.
+             */
+            told_at?: string | null;
             /**
              * Changed At
              * Format: date-time
@@ -3852,7 +3868,7 @@ export interface components {
             /**
              * Created At
              * Format: date-time
-             * @description When the platform recorded it.
+             * @description When this became yours to read. The moment the platform recorded it, except for a rejection, which is recorded when the Tenant decides it and held three days — so this is the day it reached you rather than the day it was written.
              */
             created_at: string;
         };

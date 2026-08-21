@@ -8,14 +8,18 @@ import {
   getsApplication,
   refusesApplicationMove,
   reviewsApplication,
+  THE_TELLING,
 } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
-import { absoluteDateTime } from '@/lib/dates';
+import { absoluteDate, absoluteDateTime } from '@/lib/dates';
 import { RECRUITER, SERVER_FAULT } from '@/testing/fixtures';
 import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
 const REVIEW = AMAL_REVIEW;
+
+const STILL_WAITING = '2099-01-02T10:00:00Z';
+const ALREADY_TOLD = '2020-01-02T10:00:00Z';
 
 function section(name: string) {
   return within(screen.getByRole('region', { name }));
@@ -655,24 +659,68 @@ describe('the Pipeline on the Application review page', () => {
     await waitFor(() => expect(asked).toEqual([target]));
   });
 
-  it('offers a rejected Application the one way back, and says a rejection was emailed', async () => {
+  it('says a rejection reaches the candidate three days on, rather than at once', async () => {
+    server.use(...signedInAs(RECRUITER), ...reviewsApplication(REVIEW));
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    await chooseMove(user, 'Reject');
+
+    expect(
+      await screen.findByText(`Rejected — the candidate hears on ${absoluteDate(THE_TELLING)}.`),
+    ).toBeVisible();
+  });
+
+  it('offers a rejected Application the one way back, and says what it cancels', async () => {
     const asked: PipelineStatus[] = [];
     server.use(
       ...signedInAs(RECRUITER),
-      ...reviewsApplication({ ...REVIEW, status: 'rejected' }, asked),
+      ...reviewsApplication({ ...REVIEW, status: 'rejected', told_at: STILL_WAITING }, asked),
     );
 
     const { user } = await renderApp(`/applications/${REVIEW.id}`);
 
     const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
     expect(pipeline.getAllByRole('button').map((move) => move.textContent)).toEqual(['More moves']);
+    expect(
+      pipeline.getByText(
+        `The candidate has not been told. They hear on ${absoluteDate(STILL_WAITING)} — until ` +
+          'then, reopening this cancels the email and leaves them in review.',
+      ),
+    ).toBeVisible();
 
     await chooseMove(user, 'Reopen for review');
 
     expect(
-      await screen.findByText('Reopened for review — the candidate has been told.'),
+      await screen.findByText(
+        'Reopened for review — the candidate was never told, and the email is cancelled.',
+      ),
     ).toBeVisible();
     await waitFor(() => expect(asked).toEqual(['reviewing']));
+  });
+
+  it('warns before a reopen the candidate has already read, and names the day', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...reviewsApplication({ ...REVIEW, status: 'rejected', told_at: ALREADY_TOLD }),
+    );
+
+    const { user } = await renderApp(`/applications/${REVIEW.id}`);
+
+    const pipeline = within(await screen.findByRole('region', { name: 'Pipeline' }));
+    expect(await pipeline.findByRole('alert')).toHaveTextContent(
+      `Already toldThe candidate was told on ${absoluteDate(ALREADY_TOLD)}. Reopening sends no ` +
+        'email — message them by hand if they should know.',
+    );
+
+    await chooseMove(user, 'Reopen for review');
+
+    expect(
+      await screen.findByText(
+        `Reopened for review — the candidate was told on ${absoluteDate(ALREADY_TOLD)}, and no ` +
+          'email is sent.',
+      ),
+    ).toBeVisible();
   });
 
   it("puts the server's reason for refusing beside the action, and leaves the status alone", async () => {

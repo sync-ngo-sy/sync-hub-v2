@@ -81,6 +81,7 @@ class CommunicationStatus(enum.StrEnum):
     PROCESSING = "processing"
     SENT = "sent"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class CommunicationType(enum.StrEnum):
@@ -1687,6 +1688,7 @@ class Application(Base):
     )
     tracked_link_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     qualification_reason: Mapped[str | None] = mapped_column(Text)
+    told_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     current_match_score: Mapped[decimal.Decimal | None] = mapped_column(Numeric(5, 2))
 
     cv: Mapped["Cv"] = relationship("Cv", viewonly=True)
@@ -2480,6 +2482,7 @@ class Notification(Base):
         DateTime(True), nullable=False, server_default=text("now()")
     )
     application_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    visible_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
     read_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(True))
 
     application: Mapped[Optional["Application"]] = relationship("Application", viewonly=True)

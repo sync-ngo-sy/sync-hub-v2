@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Literal
 from uuid import UUID
 
@@ -110,12 +111,14 @@ async def enqueue_email(
     tenant_id: UUID | None,
     application_id: UUID | None,
     initiated_by_recruiter_id: UUID | None = None,
+    available_at: datetime | None = None,
 ) -> Communication:
     """Queue one message for the sender to deliver, and audit it.
 
     Flushed, never committed: the caller's transaction is what keeps the message and the thing
     it announces from ever disagreeing. `recipient` is what the address was at the time; the
-    sender resolves the verified one again before it sends.
+    sender resolves the verified one again before it sends. `available_at` is the earliest the
+    sender may take it, which a rejection sets to its Telling.
     """
     communication = Communication(
         candidate_id=candidate_id,
@@ -128,6 +131,7 @@ async def enqueue_email(
         payload=payload.model_dump(mode="json"),
         template_key=payload.template_key,
         idempotency_key=idempotency_key,
+        available_at=available_at,
     )
     session.add(communication)
     await session.flush()

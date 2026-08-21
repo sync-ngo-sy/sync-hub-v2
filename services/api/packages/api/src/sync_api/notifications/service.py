@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import ColumnElement, func, or_, select, update
 
 from sync_api.notifications.payload import Notification, NotificationPage, UnreadNotificationCount
 from sync_api.pagination import DEFAULT_PAGE_SIZE, Cursor, newest_first, page_of
@@ -14,6 +15,22 @@ from sync_core.notifications import payload_of
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def _the_telling_has_come() -> ColumnElement[bool]:
+    """A rejection's Notification is written at the decision and held to its Telling, so the
+    bell stays silent for the three days the Recruiter's list has already cleared."""
+    return or_(NotificationRow.visible_at.is_(None), NotificationRow.visible_at <= func.now())
+
+
+def _reached_them() -> ColumnElement[datetime]:
+    """When a Notification became the Candidate's to read, which is the only moment they can
+    date it by: a rejection's is written at the decision and held three days.
+
+    The list orders on this and the bell renders it, so a held Notification arrives at the top
+    of the list on the day it arrives rather than three days down it on the day it was written.
+    """
+    return func.coalesce(NotificationRow.visible_at, NotificationRow.created_at)
 
 
 class NotificationService:
@@ -27,9 +44,10 @@ class NotificationService:
             await self._db.scalars(
                 newest_first(
                     select(NotificationRow).where(
-                        NotificationRow.recipient_profile_id == profile_id
+                        NotificationRow.recipient_profile_id == profile_id,
+                        _the_telling_has_come(),
                     ),
-                    created_at=NotificationRow.created_at,
+                    created_at=_reached_them(),
                     id_=NotificationRow.id,
                     cursor=cursor,
                     limit=limit,
@@ -46,6 +64,7 @@ class NotificationService:
             .where(
                 NotificationRow.recipient_profile_id == profile_id,
                 NotificationRow.read_at.is_(None),
+                _the_telling_has_come(),
             )
         )
         return UnreadNotificationCount(unread=int(unread or 0))
@@ -57,6 +76,7 @@ class NotificationService:
                 .where(
                     NotificationRow.id == notification_id,
                     NotificationRow.recipient_profile_id == profile_id,
+                    _the_telling_has_come(),
                 )
                 .values(read_at=func.coalesce(NotificationRow.read_at, func.now()))
                 .returning(NotificationRow)
@@ -72,7 +92,7 @@ class NotificationService:
 
 
 def _cursor(row: NotificationRow) -> Cursor:
-    return Cursor(created_at=row.created_at, id=row.id)
+    return Cursor(created_at=_when_it_reached(row), id=row.id)
 
 
 def _as_payload(row: NotificationRow) -> Notification:
@@ -80,5 +100,11 @@ def _as_payload(row: NotificationRow) -> Notification:
         id=row.id,
         payload=payload_of(row.payload),
         read_at=row.read_at,
-        created_at=row.created_at,
+        created_at=_when_it_reached(row),
     )
+
+
+def _when_it_reached(row: NotificationRow) -> datetime:
+    """`_reached_them()` read off a row, which the page's order and its cursor have to agree
+    with exactly or a page would resume somewhere it never left off."""
+    return row.visible_at or row.created_at
