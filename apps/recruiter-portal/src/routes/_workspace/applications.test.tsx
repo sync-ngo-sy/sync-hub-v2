@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SCREENING_VERDICTS } from '@/features/applications/application';
+import { OPEN_STATUSES, SCREENING_VERDICTS } from '@/features/applications/application';
 import {
   AMAL_REVIEW,
   ANYWHERE_JOB,
@@ -31,6 +31,8 @@ import { renderApp } from '@/testing/render-app';
 import { server } from '@/testing/server';
 
 const EVERY_VERDICT = [...SCREENING_VERDICTS];
+
+const STILL_OPEN = [...OPEN_STATUSES];
 
 const EVERYONE = [DIMA, FARAH, ELIAS, GHADA, HANI];
 
@@ -86,7 +88,7 @@ describe('the unified Applications page', () => {
   it('replaces the placeholder with every Application the Tenant has', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    await renderApp('/applications');
+    await renderApp('/applications?pipeline=all');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Applications' })).toBeVisible();
     expect(screen.queryByText(/arrives with its own ticket/)).toBeNull();
@@ -172,23 +174,52 @@ describe('the unified Applications page', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/applications/${DIMA.id}`));
   });
 
-  it('asks for every Pipeline status, every verdict, all time and newest first', async () => {
+  it('opens on Open, asking for new through offer, every verdict, all time and newest first', async () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
 
-    await renderApp('/applications');
+    const { router } = await renderApp('/applications');
 
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
-    expect(screen.getByText('Ghada Kanaan')).toBeVisible();
-    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(screen.getByText('Elias Murad')).toBeVisible();
+    expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
       true,
     );
     expect(asked.every((one) => one.received_within === null)).toBe(true);
     expect(asked.every((one) => one.sort === 'newest')).toBe(true);
-    expect(pipelineChip('All')).toBeChecked();
+    expect(pipelineChip('Open')).toBeChecked();
     expect(verdictTrigger()).toHaveAccessibleName('Screening: All verdicts');
     expect(rangeTrigger()).toHaveTextContent('All time');
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it('leaves the Applications that have ended off the list it opens', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    await renderApp('/applications');
+
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    expect(screen.queryByText('Ghada Kanaan')).toBeNull();
+    expect(screen.queryByText('Hani Barakat')).toBeNull();
+  });
+
+  it('holds every terminal Application on the tab each of them keeps', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await user.click(pipelineChip('Hired'));
+    expect(await screen.findByText('Hani Barakat')).toBeVisible();
+
+    await user.click(pipelineChip('Rejected'));
+    expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
+
+    await user.click(pipelineChip('All'));
+    expect(await screen.findByText('Hani Barakat')).toBeVisible();
+    expect(screen.getByText('Ghada Kanaan')).toBeVisible();
+    expect(screen.getByText('Dima Sabbagh')).toBeVisible();
   });
 
   it('shows stable backend totals beside every Pipeline chip', async () => {
@@ -197,6 +228,7 @@ describe('the unified Applications page', () => {
     await renderApp('/applications');
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
+    expect(pipelineChip('Open')).toHaveAccessibleName('Open 3');
     expect(pipelineChip('All')).toHaveAccessibleName('All 5');
     expect(pipelineChip('New')).toHaveAccessibleName('New 2');
     expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 1');
@@ -213,7 +245,7 @@ describe('the unified Applications page', () => {
 
     await user.click(pipelineChip('Rejected'));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: ['rejected'] }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'rejected' }));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual(['rejected']));
     expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
     expect(screen.queryByText('Dima Sabbagh')).toBeNull();
@@ -250,13 +282,15 @@ describe('the unified Applications page', () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
 
-    const { router, user } = await renderApp('/applications');
+    const { router, user } = await renderApp('/applications?pipeline=all');
     expect(await screen.findByText('Hani Barakat')).toBeVisible();
 
     await user.click(rangeTrigger());
     await user.click(await screen.findByRole('option', { name: 'Last 30 days' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ received: '30d' }));
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ pipeline: 'all', received: '30d' }),
+    );
     await waitFor(() => expect(asked.at(-1)?.received_within).toBe('30d'));
     expect(screen.queryByText('Hani Barakat')).toBeNull();
     expect(screen.getByText('Dima Sabbagh')).toBeVisible();
@@ -265,13 +299,13 @@ describe('the unified Applications page', () => {
   it('leaves the window out of the address bar when it is back to all time', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    const { router, user } = await renderApp(`/applications?received=24h`);
+    const { router, user } = await renderApp(`/applications?pipeline=all&received=24h`);
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
     await user.click(rangeTrigger());
     await user.click(await screen.findByRole('option', { name: 'All time' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
     expect(await screen.findByText('Hani Barakat')).toBeVisible();
   });
 
@@ -289,7 +323,9 @@ describe('the unified Applications page', () => {
   it('counts every verdict, including the ones the filter is hiding', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    const { user } = await renderApp(`/applications?screening=${inUrl(['qualified'])}`);
+    const { user } = await renderApp(
+      `/applications?pipeline=all&screening=${inUrl(['qualified'])}`,
+    );
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
 
     await openVerdicts(user);
@@ -298,6 +334,19 @@ describe('the unified Applications page', () => {
     expect(checkItem('Pending')).toHaveAccessibleName('Pending, 1');
     expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 1');
     expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
+  });
+
+  it('counts the verdicts as the tab it opens on leaves them', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await openVerdicts(user);
+
+    expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 2');
+    expect(checkItem('Pending')).toHaveAccessibleName('Pending, 1');
+    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
   });
 
   it('narrows the list to one verdict and writes it into the address bar', async () => {
@@ -332,14 +381,14 @@ describe('the unified Applications page', () => {
 
     await waitFor(() => expect(router.state.location.search).toEqual({ sort: 'oldest' }));
     await waitFor(() => expect(asked.at(-1)?.sort).toBe('oldest'));
-    expect(namesInOrder()[0]).toBe("Open Hani Barakat's Application");
+    expect(namesInOrder()[0]).toBe("Open Elias Murad's Application");
   });
 
   it('leaves newest first out of the address bar when the column turns back', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
     const { router, user } = await renderApp('/applications?sort=oldest');
-    expect(await screen.findByText('Hani Barakat')).toBeVisible();
+    expect(await screen.findByText('Elias Murad')).toBeVisible();
 
     await user.click(receivedHeader());
 
@@ -352,7 +401,7 @@ describe('the unified Applications page', () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
 
     await renderApp(
-      `/applications?pipeline=${inUrl(['rejected'])}&screening=${inUrl(['disqualified'])}&received=7d&sort=oldest`,
+      `/applications?pipeline=rejected&screening=${inUrl(['disqualified'])}&received=7d&sort=oldest`,
     );
 
     expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
@@ -375,7 +424,7 @@ describe('the unified Applications page', () => {
     );
 
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
-    expect(asked.every((one) => one.status.length === 0)).toBe(true);
+    expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
       true,
     );
@@ -386,16 +435,14 @@ describe('the unified Applications page', () => {
   it('says a filtered view is empty because of the filters, and offers to drop them', async () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
-    const { router, user } = await renderApp(
-      `/applications?pipeline=${inUrl(['hired'])}&received=24h`,
-    );
+    const { router, user } = await renderApp('/applications?pipeline=hired&received=24h');
 
     expect(await screen.findByText('No Application matches these filters.')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({}));
-    expect(await screen.findByText('Hani Barakat')).toBeVisible();
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
   });
 
   it('says which single filter emptied the list when only one is narrowing', async () => {
@@ -414,7 +461,7 @@ describe('the unified Applications page', () => {
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
 
     const { user } = await renderApp(
-      `/applications?pipeline=${inUrl(['hired'])}&screening=${inUrl(['review_required'])}`,
+      `/applications?pipeline=hired&screening=${inUrl(['review_required'])}`,
     );
 
     expect(await screen.findByText('No Application matches these filters.')).toBeVisible();
@@ -434,6 +481,26 @@ describe('the unified Applications page', () => {
     await user.click(screen.getByRole('link', { name: 'Go to your jobs' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+  });
+
+  it('tells a Tenant whose every Application ended, and leads to where they are', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications([GHADA, HANI]));
+
+    const { router, user } = await renderApp('/applications');
+
+    expect(
+      await screen.findByText(
+        'Nothing is waiting on a decision — every Application this Tenant received has ended.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Go to your jobs' })).toBeNull();
+    expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 1');
+
+    await user.click(screen.getByRole('button', { name: 'Go to all Applications' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
+    expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
+    expect(screen.getByText('Hani Barakat')).toBeVisible();
   });
 
   it('fetches the next cursor page on demand', async () => {
@@ -501,7 +568,7 @@ describe('a Pipeline move made from the Applications page', () => {
     await waitFor(() => expect(awaitingReview()).toHaveTextContent('2'));
     expect(recentRow('Dima Sabbagh').getByText('New')).toBeVisible();
 
-    await router.navigate({ to: '/applications', search: { pipeline: ['new'] } });
+    await router.navigate({ to: '/applications', search: { pipeline: 'new' } });
     expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
     expect(pipelineChip('New')).toHaveAccessibleName('New 2');
     expect(pipelineChip('Reviewing')).toHaveAccessibleName('Reviewing 1');
@@ -510,7 +577,7 @@ describe('a Pipeline move made from the Applications page', () => {
     await user.click(await screen.findByRole('button', { name: 'Move to Reviewing' }));
     expect(await screen.findByText(/Moved to Reviewing/)).toBeVisible();
 
-    await router.navigate({ to: '/applications', search: { pipeline: ['new'] } });
+    await router.navigate({ to: '/applications', search: { pipeline: 'new' } });
 
     expect(await screen.findByText('Farah Doumani')).toBeVisible();
     await waitFor(() => expect(pipelineChip('New')).toHaveAccessibleName('New 1'));
