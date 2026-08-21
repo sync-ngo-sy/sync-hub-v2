@@ -1,8 +1,14 @@
+import { Skeleton } from '@sync/ui/components/ui/skeleton';
 import { microLabel } from '@sync/ui/lib/micro-label';
 import { cn } from '@sync/ui/lib/utils';
 import type { ReactNode } from 'react';
+import { FormSkeleton, RouteSkeleton } from './skeletons';
 
 export const AUTH_LINK = 'font-medium text-accent-foreground underline underline-offset-4';
+
+const AUTH_FRAME = 'flex min-h-dvh flex-col';
+
+const AUTH_COLUMN = 'mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-5 py-12';
 
 export function AuthScreen({
   header,
@@ -16,9 +22,9 @@ export function AuthScreen({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={AUTH_FRAME}>
       {header}
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-5 py-12">
+      <main className={AUTH_COLUMN}>
         <div className="space-y-3">
           <p
             className={cn(
@@ -35,6 +41,32 @@ export function AuthScreen({
           </div>
         </div>
         {children}
+      </main>
+    </div>
+  );
+}
+
+export function AuthScreenSkeleton({
+  header,
+  fields = 2,
+  submit = true,
+}: {
+  header: ReactNode;
+  fields?: number;
+  submit?: boolean;
+}) {
+  return (
+    <div className={AUTH_FRAME}>
+      {header}
+      <main className={AUTH_COLUMN}>
+        <RouteSkeleton label="Loading" className="space-y-6">
+          <div className="space-y-3" aria-hidden="true">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-44" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+          <FormSkeleton fields={fields} submit={submit} />
+        </RouteSkeleton>
       </main>
     </div>
   );

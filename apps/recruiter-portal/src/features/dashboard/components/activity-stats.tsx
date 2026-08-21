@@ -7,12 +7,11 @@ import {
   awaitingReview,
   openedThisWeek,
   passRate,
+  STAT_LABELS,
   type TenantStats,
   weekOnWeek,
 } from '../dashboard';
 import type { PanelRead } from '../hooks/use-dashboard';
-
-const SKELETON_LABELS = ['Open jobs', 'Applications this week', 'Awaiting review', 'Qualified'];
 
 const OPEN_JOBS = <Link to="/jobs" search={{ status: 'published' }} />;
 
@@ -30,7 +29,7 @@ export function ActivityStats({ stats }: { stats: PanelRead<TenantStats> }) {
   if (!stats.error && stats.isPending) {
     return (
       <div role="status" aria-label="Loading the counts">
-        <StatBandSkeleton labels={SKELETON_LABELS} variant="cards" />
+        <StatBandSkeleton labels={STAT_LABELS} variant="cards" />
       </div>
     );
   }

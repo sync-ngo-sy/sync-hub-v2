@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { ensureCurrentProfile } from '@/features/auth/current-profile';
+import { CenteredSkeleton } from '@/features/shell/components/centered-skeleton';
 import { askTenantAccess } from '@/features/tenant/access';
 import { AccessRefusedScreen } from '@/features/tenant/components/access-refused-screen';
 import { pageTitle } from '@/lib/page-title';
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/access-refused')({
     return { refusal };
   },
   head: () => ({ meta: [{ title: pageTitle('No access') }] }),
+  pendingComponent: () => <CenteredSkeleton label="Loading this notice" action />,
   component: AccessRefusedPage,
 });
 

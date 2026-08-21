@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
-import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
+import { AUTH_LINK, AuthScreen, AuthScreenSkeleton } from '@/features/auth/components/auth-screen';
 import { LogInForm } from '@/features/auth/components/log-in-form';
 import { ensureCurrentProfile, isCandidate } from '@/features/auth/current-profile';
 import { pageTitle } from '@/lib/page-title';
@@ -16,6 +16,7 @@ export const Route = createFileRoute('/login')({
     throw returnTo ? redirect({ href: returnTo }) : redirect({ to: '/applications' });
   },
   head: () => ({ meta: [{ title: pageTitle('Sign in') }] }),
+  pendingComponent: () => <AuthScreenSkeleton fields={2} />,
   component: LogInPage,
 });
 

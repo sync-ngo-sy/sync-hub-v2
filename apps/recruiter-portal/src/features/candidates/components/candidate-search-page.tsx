@@ -13,6 +13,11 @@ import { CandidateDirectory } from './candidate-directory';
 import { CandidateFilters } from './candidate-filters';
 import { CandidateResults } from './candidate-results';
 
+export const CANDIDATE_SEARCH_TABS = [
+  { value: 'filter', label: 'Filter' },
+  { value: 'search', label: 'AI Search' },
+] as const satisfies readonly { value: CandidateTab; label: string }[];
+
 const DESCRIPTION =
   'Every Candidate on the platform who has opted into being found, not only the ones who applied to you. Open anyone to read their whole profile, contact details included.';
 
@@ -41,10 +46,7 @@ export function CandidateSearchPage({ reading, onReadingChange }: CandidateSearc
         <LineTabsList
           label="Candidate search"
           value={tab}
-          tabs={[
-            { value: 'filter', label: 'Filter' },
-            { value: 'search', label: 'AI Search' },
-          ]}
+          tabs={CANDIDATE_SEARCH_TABS}
           className="-mb-px mt-5"
         />
       </WorkspaceHeader>

@@ -2,13 +2,14 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { z } from 'zod';
 import { AcceptInviteForm } from '@/features/auth/components/accept-invite-form';
-import { AuthScreen } from '@/features/auth/components/auth-screen';
+import { AuthScreen, AuthScreenSkeleton } from '@/features/auth/components/auth-screen';
 import { DeadLinkScreen } from '@/features/auth/components/dead-link-screen';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/auth/accept-invite')({
   validateSearch: z.object({ token_hash: z.string().optional() }),
   head: () => ({ meta: [{ title: pageTitle('Join your workspace') }] }),
+  pendingComponent: () => <AuthScreenSkeleton fields={1} />,
   component: AcceptInvitePage,
 });
 

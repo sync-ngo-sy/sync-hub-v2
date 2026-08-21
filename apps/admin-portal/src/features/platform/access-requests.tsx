@@ -12,7 +12,7 @@ import { accessRequestsQuery } from './access-request-queries';
 import { ConvertRequestDialog } from './convert-request-dialog';
 import { DismissRequestDialog } from './dismiss-request-dialog';
 
-const requestColumns: DataTableColumn<AccessRequest>[] = [
+export const ACCESS_REQUEST_COLUMNS: DataTableColumn<AccessRequest>[] = [
   {
     accessorKey: 'company',
     header: 'Company',
@@ -47,7 +47,7 @@ export function AccessRequests() {
       />
       <DataTable
         label="Access requests"
-        columns={requestColumns}
+        columns={ACCESS_REQUEST_COLUMNS}
         data={requests.data ?? []}
         getRowId={(request) => request.id}
         rowLabel={(request) => request.company}

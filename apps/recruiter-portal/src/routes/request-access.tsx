@@ -2,13 +2,14 @@ import { buttonVariants } from '@sync/ui/components/ui/button';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { RequestAccessForm } from '@/features/access/components/request-access-form';
-import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
+import { AUTH_LINK, AuthScreen, AuthScreenSkeleton } from '@/features/auth/components/auth-screen';
 import { pageTitle } from '@/lib/page-title';
 import { bounceSignedIn } from './-public-only';
 
 export const Route = createFileRoute('/request-access')({
   beforeLoad: bounceSignedIn,
   head: () => ({ meta: [{ title: pageTitle('Request access') }] }),
+  pendingComponent: () => <AuthScreenSkeleton fields={3} />,
   component: RequestAccessPage,
 });
 

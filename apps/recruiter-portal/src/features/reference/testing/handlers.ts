@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
+import { holding } from '@/testing/holding';
 
 type CanonicalRole = components['schemas']['CanonicalRole'];
 type CanonicalSkill = components['schemas']['CanonicalSkill'];
@@ -21,6 +22,19 @@ export function hasLanguages(languages: Language[]) {
 
 export function hasLocations(locations: Location[]) {
   return [http.get('/v1/locations', ({ response }) => response(200).json(locations))];
+}
+
+export function holdsLocations(locations: Location[]) {
+  const gate = holding();
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get('/v1/locations', async ({ response }) => {
+        await gate.held;
+        return response(200).json(locations);
+      }),
+    ],
+  };
 }
 
 export function failsToLoadCanonicalSkills(problem: ProblemDetail) {

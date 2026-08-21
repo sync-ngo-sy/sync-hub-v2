@@ -1,5 +1,6 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
+import { holding } from '@/testing/holding';
 
 type CandidateProfile = components['schemas']['CandidateProfile'];
 type ProfileExperience = components['schemas']['ProfileExperience'];
@@ -8,6 +9,19 @@ type ValidationProblemDetail = components['schemas']['ValidationProblemDetail'];
 
 export function hasProfile(profile: CandidateProfile) {
   return [http.get('/v1/candidates/me/profile', ({ response }) => response(200).json(profile))];
+}
+
+export function holdsProfile(profile: CandidateProfile) {
+  const gate = holding();
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get('/v1/candidates/me/profile', async ({ response }) => {
+        await gate.held;
+        return response(200).json(profile);
+      }),
+    ],
+  };
 }
 
 export function failsToLoadProfile(problem: ProblemDetail) {

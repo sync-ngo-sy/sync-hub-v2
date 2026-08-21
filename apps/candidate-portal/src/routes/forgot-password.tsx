@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { AUTH_LINK, AuthScreen } from '@/features/auth/components/auth-screen';
+import { AUTH_LINK, AuthScreen, AuthScreenSkeleton } from '@/features/auth/components/auth-screen';
 import { CheckEmailScreen, SentTo } from '@/features/auth/components/check-email-screen';
 import { ForgotPasswordForm } from '@/features/auth/components/forgot-password-form';
 import { pageTitle } from '@/lib/page-title';
@@ -9,6 +9,7 @@ import { bounceSignedIn } from './-public-only';
 export const Route = createFileRoute('/forgot-password')({
   beforeLoad: bounceSignedIn,
   head: () => ({ meta: [{ title: pageTitle('Reset your password') }] }),
+  pendingComponent: () => <AuthScreenSkeleton fields={1} />,
   component: ForgotPasswordPage,
 });
 

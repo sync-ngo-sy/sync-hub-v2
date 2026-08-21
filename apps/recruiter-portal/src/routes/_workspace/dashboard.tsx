@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { DashboardPage as DashboardFeaturePage } from '@/features/dashboard/components/dashboard-page';
+import { DashboardSkeleton } from '@/features/dashboard/components/dashboard-skeleton';
 import type { TenantApplication } from '@/features/dashboard/dashboard';
 import { jobsFirstPageQuery } from '@/features/jobs/hooks/use-jobs';
 import { warmLocations } from '@/features/reference/reference-queries';
@@ -13,6 +14,7 @@ export const Route = createFileRoute('/_workspace/dashboard')({
       warmLocations(context.queryClient),
     ]),
   head: () => ({ meta: [{ title: pageTitle('Dashboard') }] }),
+  pendingComponent: DashboardSkeleton,
   component: DashboardPage,
 });
 

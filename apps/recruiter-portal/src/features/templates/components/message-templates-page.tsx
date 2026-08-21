@@ -13,7 +13,7 @@ import { CreateTemplateDialog } from './create-template-dialog';
 import { DeleteTemplateDialog } from './delete-template-dialog';
 import { EditTemplateDialog } from './edit-template-dialog';
 
-const COLUMNS: DataTableColumn<MessageTemplate>[] = [
+export const TEMPLATE_COLUMNS: DataTableColumn<MessageTemplate>[] = [
   {
     accessorKey: 'name',
     header: 'Template',
@@ -61,7 +61,7 @@ export function MessageTemplatesPage() {
       <div className="space-y-(--space-section) pt-(--space-section)">
         <DataTable
           label="Message templates"
-          columns={COLUMNS}
+          columns={TEMPLATE_COLUMNS}
           data={templates.data ?? []}
           getRowId={(template) => template.id}
           rowLabel={(template) => template.name}
