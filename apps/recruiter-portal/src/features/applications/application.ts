@@ -66,6 +66,12 @@ export const OPEN_STATUSES = [
   'offer',
 ] as const satisfies readonly PipelineStatus[];
 
+export const ENDED_STATUSES = [
+  'hired',
+  'rejected',
+  'withdrawn',
+] as const satisfies readonly PipelineStatus[];
+
 export const OPEN_TAB = 'open';
 
 export const ALL_TAB = 'all';
@@ -116,6 +122,10 @@ export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined
 
 export function holdsOneStatus(tab: PipelineTab): boolean {
   return tab !== OPEN_TAB && tab !== ALL_TAB;
+}
+
+export function anythingEnded(counts: Partial<Record<PipelineStatus, number>>): boolean {
+  return ENDED_STATUSES.some((status) => (counts[status] ?? 0) > 0);
 }
 
 export function pipelineTabCount(

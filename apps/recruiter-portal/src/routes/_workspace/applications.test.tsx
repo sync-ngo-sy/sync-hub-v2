@@ -456,6 +456,26 @@ describe('the unified Applications page', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
   });
 
+  it('tells a Tenant whose every Application ended, and leads to where they are', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications([GHADA, HANI]));
+
+    const { router, user } = await renderApp('/applications');
+
+    expect(
+      await screen.findByText(
+        'Nothing is waiting on a decision — every Application this Tenant received has ended.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Go to your jobs' })).toBeNull();
+    expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 1');
+
+    await user.click(screen.getByRole('button', { name: 'Go to all Applications' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
+    expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
+    expect(screen.getByText('Hani Barakat')).toBeVisible();
+  });
+
   it('fetches the next cursor page on demand', async () => {
     server.use(...signedInAs(RECRUITER), ...pagesTenantApplications([[DIMA], [FARAH]]));
 

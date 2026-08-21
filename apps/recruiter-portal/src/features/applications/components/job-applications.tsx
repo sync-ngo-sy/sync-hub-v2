@@ -3,8 +3,10 @@ import { Button } from '@sync/ui/components/ui/button';
 import { Inbox } from 'lucide-react';
 import { problemMessage } from '@/lib/api-problem';
 import {
+  ALL_TAB,
   type ApplicationSort,
   type ApplicationSummary,
+  anythingEnded,
   pipelineStatuses,
   pipelineTab,
   SCREENING_VERDICTS,
@@ -53,6 +55,35 @@ export function JobApplications({
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
+  const ended = anythingEnded(statusCounts);
+
+  function whereEmptyLeads() {
+    if (narrowing > 0) {
+      return (
+        <Button
+          variant="outline"
+          onClick={() => onFiltersChange({ ...filters, pipeline: undefined, screening: undefined })}
+        >
+          {clearFiltersLabel(filters)}
+        </Button>
+      );
+    }
+    if (ended) {
+      return (
+        <Button
+          variant="outline"
+          onClick={() => onFiltersChange({ ...filters, pipeline: ALL_TAB })}
+        >
+          Go to all Applications
+        </Button>
+      );
+    }
+    return (
+      <Button variant="outline" onClick={onShowLinks}>
+        Go to tracked links
+      </Button>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -99,26 +130,8 @@ export function JobApplications({
         }
         empty={{
           icon: Inbox,
-          message: noJobApplicationsMessage(filters),
-          action:
-            narrowing > 0 ? (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  onFiltersChange({
-                    ...filters,
-                    pipeline: undefined,
-                    screening: undefined,
-                  })
-                }
-              >
-                {clearFiltersLabel(filters)}
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={onShowLinks}>
-                Go to tracked links
-              </Button>
-            ),
+          message: noJobApplicationsMessage(filters, ended),
+          action: whereEmptyLeads(),
         }}
         loadMore={{
           hasMore: applications.hasNextPage,

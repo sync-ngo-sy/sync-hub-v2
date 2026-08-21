@@ -75,18 +75,37 @@ describe('what a list writes into the address', () => {
 
 describe('what an empty list says', () => {
   it('tells a Tenant nobody has applied to, and a Job nobody has applied to, apart', () => {
-    expect(noApplicationsMessage(read({}))).toMatch(/^No Applications yet/);
-    expect(noJobApplicationsMessage(read({}))).toMatch(/^No one has applied yet/);
+    expect(noApplicationsMessage(read({}), false)).toMatch(/^No Applications yet/);
+    expect(noJobApplicationsMessage(read({}), false)).toMatch(/^No one has applied yet/);
+  });
+
+  it('will not tell a Tenant whose every Application ended that nobody has applied', () => {
+    expect(noApplicationsMessage(read({}), true)).toBe(
+      'Nothing is waiting on a decision — every Application this Tenant received has ended.',
+    );
+    expect(noJobApplicationsMessage(read({}), true)).toBe(
+      'Nothing on this Job is waiting on a decision — every Application it received has ended.',
+    );
+  });
+
+  it('blames the filters ahead of what has ended, because they are what a reader can drop', () => {
+    expect(noApplicationsMessage(read({ pipeline: 'interview' }), true)).toBe(
+      'No Application matches that filter.',
+    );
   });
 
   it('blames one filter or several, in the words each list uses', () => {
     const one = read({ pipeline: 'hired' });
     const two = read({ pipeline: 'hired', screening: ['pending'] });
 
-    expect(noApplicationsMessage(one)).toBe('No Application matches that filter.');
-    expect(noApplicationsMessage(two)).toBe('No Application matches these filters.');
-    expect(noJobApplicationsMessage(one)).toBe('No Application on this Job matches that filter.');
-    expect(noJobApplicationsMessage(two)).toBe('No Application on this Job matches both filters.');
+    expect(noApplicationsMessage(one, false)).toBe('No Application matches that filter.');
+    expect(noApplicationsMessage(two, false)).toBe('No Application matches these filters.');
+    expect(noJobApplicationsMessage(one, false)).toBe(
+      'No Application on this Job matches that filter.',
+    );
+    expect(noJobApplicationsMessage(two, false)).toBe(
+      'No Application on this Job matches both filters.',
+    );
   });
 
   it('offers to clear what it blamed, and says how many that is', () => {

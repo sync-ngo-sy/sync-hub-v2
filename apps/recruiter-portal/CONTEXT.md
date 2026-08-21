@@ -68,10 +68,14 @@ narrows either: `Open` is what an untouched list shows, and `All` only adds to i
 be what emptied one. `narrowedBy` in `features/applications/reading.ts`
 is the only answer to the question, and the wording each list reaches for is beside it, so both
 lists take the count and the sentence from one place — a list with no Time-range filter simply
-never sets one. It is read off the Reading and never off the API's counts:
-the Pipeline tabs' counts and the Verdict filter's counts each narrow through the other, so both
-read zero on a list two filters emptied, which is how a Triage list came to tell a Job with
-Applications that nobody had applied.
+never sets one. The count itself is read off the Reading and never off the API's counts: the
+Pipeline tabs' counts and the Verdict filter's counts each narrow through the other, so both read
+zero on a list two filters emptied, which is how a Triage list came to tell a Job with
+Applications that nobody had applied. An empty list asks the counts one question and only where
+nothing narrows: whether anything the `Open` tab leaves out has ended. Nothing narrowing is exactly
+the case in which there is nothing for either count to narrow through, so the answer is the API's
+own totals, and it is the difference between a Tenant nobody has applied to and a Tenant that has
+finished with everybody.
 _Avoid_: Active filters, applied filters, dirty state (a filter can be set and narrow nothing).
 
 **Origin**:
@@ -174,7 +178,10 @@ receives thousands. The two statuses it leaves out, `rejected` and `withdrawn`, 
 that are not on the ladder: one is where a Tenant ends an Application and the other is where a
 Candidate does, and neither is waiting on anybody. It hides nothing that has nowhere else to be
 read — Hired, Rejected and Withdrawn each keep their own tab, and `All` still means all, which is
-what lets every Dashboard deep-link keep landing on the number its stat claimed.
+what lets every Dashboard deep-link keep landing on the number its stat claimed. An `Open` list
+with nothing on it says that every Application has ended and offers `All`, rather than saying that
+nobody has applied: a Tenant that has finished with everybody is the very Tenant this tab is for,
+and telling it to go and share a tracked link would be answering a question it did not ask.
 _Avoid_: Active, In play, Unresolved, Inbox, Current.
 
 **Verdict filter**:

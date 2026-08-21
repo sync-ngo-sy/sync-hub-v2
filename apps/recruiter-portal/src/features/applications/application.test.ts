@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_TAB,
+  anythingEnded,
+  ENDED_STATUSES,
   holdsOneStatus,
+  OPEN_STATUSES,
   OPEN_TAB,
+  PIPELINE_STATUSES,
   PIPELINE_TABS,
   pipelineInAddress,
   pipelineStatuses,
@@ -59,6 +63,10 @@ describe('the Pipeline tabs', () => {
     expect(pipelineInAddress('withdrawn')).toBe('withdrawn');
   });
 
+  it('splits the eight statuses between the ones still open and the ones that ended', () => {
+    expect([...OPEN_STATUSES, ...ENDED_STATUSES].sort()).toEqual([...PIPELINE_STATUSES].sort());
+  });
+
   it('holds one status on every tab but the two that are not statuses', () => {
     expect(holdsOneStatus(OPEN_TAB)).toBe(false);
     expect(holdsOneStatus(ALL_TAB)).toBe(false);
@@ -100,5 +108,19 @@ describe("what a Pipeline tab's count adds up", () => {
   it('reads a status the API left uncounted as none', () => {
     expect(pipelineTabCount('hired', {})).toBe(0);
     expect(pipelineTabCount(OPEN_TAB, { new: 2 })).toBe(2);
+  });
+});
+
+describe('whether anything a list leaves out has ended', () => {
+  it('reads the three statuses an Application ends on, and nothing else', () => {
+    expect(anythingEnded({ hired: 1 })).toBe(true);
+    expect(anythingEnded({ rejected: 90 })).toBe(true);
+    expect(anythingEnded({ withdrawn: 2 })).toBe(true);
+    expect(anythingEnded({ new: 3, reviewing: 1, offer: 2 })).toBe(false);
+  });
+
+  it('reads a count of none, and a count the API never sent, as nothing ended', () => {
+    expect(anythingEnded({ hired: 0, rejected: 0, withdrawn: 0 })).toBe(false);
+    expect(anythingEnded({})).toBe(false);
   });
 });

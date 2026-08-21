@@ -448,6 +448,29 @@ describe("a Job's Applications tab", () => {
     expect(await screen.findByText(LINKEDIN_POST.name)).toBeVisible();
   });
 
+  it('tells a Job whose every Application ended apart from one nobody applied to', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([CARLA]),
+      ...listsTrackedLinks([LINKEDIN_POST]),
+    );
+
+    const { router, user } = await renderApp(`/jobs/${JOB.id}`);
+
+    expect(
+      await screen.findByText(
+        'Nothing on this Job is waiting on a decision — every Application it received has ended.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Go to tracked links' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Go to all Applications' }));
+
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+  });
+
   it('says a filtered view is empty because of the filters, and offers to drop them', async () => {
     server.use(
       ...signedInAs(RECRUITER),
