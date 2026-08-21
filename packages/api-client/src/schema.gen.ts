@@ -1849,7 +1849,7 @@ export interface components {
             stage: components["schemas"]["ApplicationStage"];
             /**
              * Can Withdraw
-             * @description Whether leaving is still possible. False once the Application has an outcome, and once it has been withdrawn.
+             * @description Whether leaving is still possible. It answers to the `stage` beside it and to nothing else, so it is true exactly while that stage reads `received` or `in_review` — a decision the Candidate has not been told of included.
              */
             can_withdraw: boolean;
             /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
@@ -11724,7 +11724,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            /** @description The Application has reached an outcome the Candidate has been told of, or they have already left it. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
             409: {
                 headers: {
                     [name: string]: unknown;

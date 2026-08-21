@@ -307,7 +307,10 @@ queued email is cancelled, so the card says so in plain muted text; after it, th
 rejection, so the card raises an `Already told` alert naming the day and saying that reopening
 sends no email and the Recruiter should message them by hand. A Telling outlives the rejection
 that set it, so a reopened Application still says the candidate read one and has not been told
-they are back in review. There is no Tenant setting for the three days and never will be.
+they are back in review. The candidate may also leave inside those three days, because what they
+read is In review: the Application moves from the Rejected tab to Withdrawn with no warning and no
+notification, and its history says that a rejected candidate then walked away. There is no Tenant
+setting for the three days and never will be.
 _Avoid_: Grace period, cooling-off, delay, send date.
 
 **Refused move**:

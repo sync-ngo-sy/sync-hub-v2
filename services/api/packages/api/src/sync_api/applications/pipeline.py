@@ -18,7 +18,7 @@ from sync_core.models import (
     StatusChangeSource,
 )
 from sync_core.notifications import ApplicationStageChanged, notify
-from sync_core.stages import stage_of
+from sync_core.stages import ApplicationStage, stage_of
 from sync_core.telling import the_telling_after
 
 if TYPE_CHECKING:
@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from sync_api.applications.access import Applied
-    from sync_core.stages import ApplicationStage
 
 #: The states an Application is still being decided in, and which a Recruiter moves freely
 #: among — a pipeline that only ever went forwards would not match how hiring actually goes.
@@ -47,9 +46,26 @@ _RECRUITER_DECIDES: Final[frozenset[ApplicationStatus]] = UNDECIDED | {
     ApplicationStatus.REJECTED,
 }
 
+#: The Stages an Application is still the Candidate's to leave from. Leaving answers to the
+#: Stage rather than to the status under it, because the Stage is the whole of what the
+#: Candidate can see: an Application that reads In review offers a Withdraw button, and a
+#: rejection before its Telling reads In review. One reading serves the button and the move
+#: alike, which is the only arrangement in which they cannot disagree.
+_LEAVABLE: Final[frozenset[ApplicationStage]] = frozenset(
+    {ApplicationStage.RECEIVED, ApplicationStage.IN_REVIEW}
+)
+
+
+def may_withdraw(stage: ApplicationStage) -> bool:
+    """Whether an Application reading this Stage is still the Candidate's to leave."""
+    return stage in _LEAVABLE
+
+
 #: Where each source may take an Application from each state. Anything unspelled is refused,
-#: so `hired` ends it, `rejected` ends it until a human takes it back to `reviewing`, and
-#: `withdrawn` — the Candidate's own move — ends it for everybody.
+#: so `hired` ends it, `rejected` ends it until a human takes it back to `reviewing` or the
+#: Candidate leaves it, and `withdrawn` — the Candidate's own move — ends it for everybody.
+#: The Candidate's column is what a status could read as rather than what it does read as: a
+#: `rejected` row is theirs to leave only while `may_withdraw` still says so.
 MOVES: Final[
     Mapping[StatusChangeSource, Mapping[ApplicationStatus, frozenset[ApplicationStatus]]]
 ] = {
@@ -58,7 +74,8 @@ MOVES: Final[
         ApplicationStatus.REJECTED: frozenset({ApplicationStatus.REVIEWING}),
     },
     StatusChangeSource.CANDIDATE: {
-        state: frozenset({ApplicationStatus.WITHDRAWN}) for state in UNDECIDED
+        state: frozenset({ApplicationStatus.WITHDRAWN})
+        for state in UNDECIDED | {ApplicationStatus.REJECTED}
     },
 }
 
@@ -68,18 +85,27 @@ MOVES: Final[
 #: review after they have read a rejection offers hope the Tenant has not committed to.
 _REOPENING: Final = (ApplicationStatus.REJECTED, ApplicationStatus.REVIEWING)
 
-# Taking a rejection back is hooked on that one move, which is complete rather than
-# best-effort only while it is the only way out of `rejected`. A second exit would leave a
-# Candidate an unseen Notification and an email nobody meant to send, so the module refuses to
-# import instead — the same guard `sync_core.stages` keeps over its own projection.
-_OTHER_EXITS_FROM_REJECTED = {
+#: The two ways out of `rejected`: the Tenant takes its decision back, or the Candidate walks
+#: away from an Application still reading In review. Both take the queued rejection back with
+#: them — a withdrawal inside the three days is a decision taken without knowing about the
+#: Tenant's, and sending the rejection afterwards would be the discourtesy the Telling exists
+#: to prevent.
+_EXITS_FROM_REJECTED: Final[frozenset[ApplicationStatus]] = frozenset(
+    {ApplicationStatus.REVIEWING, ApplicationStatus.WITHDRAWN}
+)
+
+# The take-back is complete rather than best-effort only while it covers every exit. An
+# unnamed one would leave a Candidate an unseen Notification and an email nobody meant to
+# send, so the module refuses to import instead — the same guard `sync_core.stages` keeps over
+# its own projection.
+_UNCOVERED_EXITS_FROM_REJECTED = {
     state
     for by_status in MOVES.values()
     for state in by_status.get(ApplicationStatus.REJECTED, frozenset())
-} - {_REOPENING[1]}
-if _OTHER_EXITS_FROM_REJECTED:  # pragma: no cover
+} - _EXITS_FROM_REJECTED
+if _UNCOVERED_EXITS_FROM_REJECTED:  # pragma: no cover
     raise RuntimeError(
-        f"a rejection now also leaves for {sorted(_OTHER_EXITS_FROM_REJECTED)}, "
+        f"a rejection now also leaves for {sorted(_UNCOVERED_EXITS_FROM_REJECTED)}, "
         "which nothing takes the queued rejection back from"
     )
 
@@ -116,28 +142,31 @@ async def move_application(
     A rejection is decided here and told three days later: `told_at` drives the Stage the
     Candidate reads, the Notification's `visible_at` and the email's `available_at` alike, so
     a decision taken back inside those three days is one they never saw — and taking it back
-    drops the unseen Notification and cancels the waiting email.
+    drops the unseen Notification and cancels the waiting email. Either exit takes it back:
+    the Tenant's own reopen, and the Candidate leaving an Application that still reads In
+    review to them.
 
     No transaction of its own: the caller's is what keeps the four from ever disagreeing, and
     what takes them all back with a move that turns out not to have happened.
     """
     application = applied.application
-    _refuse_impossible_move(application.status, to, source)
-
     at = datetime.now(UTC)
     previous, previously_told_at = application.status, application.told_at
+    # Where the Candidate stands now, against where this move leaves them once it has landed:
+    # a rejection's Notification is written at the decision and read at the Telling, so the
+    # Stage it names is the one waiting at the other end of those three days.
+    previous_stage = stage_of(previous, told_at=previously_told_at, now=at)
+    _refuse_impossible_move(previous, to, source, from_stage=previous_stage)
+
     application.status = to
     reopening = (previous, to) == _REOPENING
+    leaving_rejected = previous is ApplicationStatus.REJECTED and to in _EXITS_FROM_REJECTED
     # A fresh three days rather than the date the last rejection left behind, which has long
     # since passed and would tell this one instantly.
     telling = the_telling_after(at) if to is ApplicationStatus.REJECTED else None
     if telling is not None:
         application.told_at = telling
 
-    # Where the Candidate stands now, against where this move leaves them once it has landed:
-    # a rejection's Notification is written at the decision and read at the Telling, so the
-    # Stage it names is the one waiting at the other end of those three days.
-    previous_stage = stage_of(previous, told_at=previously_told_at, now=at)
     stage = stage_of(to)
     history = ApplicationStatusHistory(
         application_id=application.id,
@@ -164,7 +193,7 @@ async def move_application(
         )
     if telling is not None:
         await _queue_the_rejection(session, applied, by=by, decided_by=history.id, telling=telling)
-    if reopening:
+    if leaving_rejected:
         await _take_the_rejection_back(session, application.id)
     return Moved(
         status_history_id=history.id,
@@ -239,11 +268,25 @@ async def _take_the_rejection_back(session: AsyncSession, application_id: UUID) 
 
 
 def _refuse_impossible_move(
-    current: ApplicationStatus, wanted: ApplicationStatus, source: StatusChangeSource
+    current: ApplicationStatus,
+    wanted: ApplicationStatus,
+    source: StatusChangeSource,
+    *,
+    from_stage: ApplicationStage,
 ) -> None:
-    if wanted in MOVES.get(source, {}).get(current, frozenset()):
-        return
-    raise Problem(
+    """The status table says what is structurally possible; the Stage says what the Candidate
+    is looking at. The Candidate's one move has to pass both, so that the Withdraw button and
+    this refusal never answer the same Application differently."""
+    if wanted not in MOVES.get(source, {}).get(current, frozenset()):
+        raise _no_such_move(current, wanted, source)
+    if source is StatusChangeSource.CANDIDATE and not may_withdraw(from_stage):
+        raise _no_such_move(current, wanted, source)
+
+
+def _no_such_move(
+    current: ApplicationStatus, wanted: ApplicationStatus, source: StatusChangeSource
+) -> Problem:
+    return Problem(
         status=409,
         type=APPLICATION_TRANSITION_PROBLEM_TYPE,
         detail=_why_not(current, wanted, source),

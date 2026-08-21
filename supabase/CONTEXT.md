@@ -163,6 +163,8 @@ platform-wide number rather than a Tenant's to set, because a Candidate hears fr
 through Sync, and a wait that varied by employer would read as arbitrary to the person waiting.
 What falls out of it is the point: a decision taken back before its Telling was never a decision
 the Candidate saw, so the queued rejection is cancelled and there is nothing to apologise for.
+Either exit takes it back — the Tenant reopening the Application, and the Candidate leaving one
+that still reads In review to them.
 _Avoid_: Reveal, Publish, Release, Send (that is the email, one channel of three), Grace period
 (that names the gap rather than the moment).
 

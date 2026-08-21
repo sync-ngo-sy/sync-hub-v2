@@ -131,8 +131,9 @@ class Application(BaseModel):
         "decision reads as `in_review`."
     )
     can_withdraw: bool = Field(
-        description="Whether leaving is still possible. False once the Application has an "
-        "outcome, and once it has been withdrawn."
+        description="Whether leaving is still possible. It answers to the `stage` beside it "
+        "and to nothing else, so it is true exactly while that stage reads `received` or "
+        "`in_review` — a decision the Candidate has not been told of included."
     )
     hire: HireClaim | None = Field(
         default=None,
