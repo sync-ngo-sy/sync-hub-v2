@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from sync_core.models import CanonicalRole, Language, Location, SkillTaxonomy
+from sync_core.models import CanonicalRole, Language, Location, SkillCategory, SkillTaxonomy
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -82,6 +82,28 @@ async def test_every_language_the_platform_knows_is_offered(
     held = set((await db_session.scalars(select(Language.code))).all())
 
     assert {language["code"] for language in await read_languages(visitor)} == held
+
+
+#: Prose a Recruiter reads, not a scored field: nobody is asked how many years of Teamwork they
+#: have, so the taxonomy names none of these and they reach a profile as Other skills.
+SOFT_SKILLS = {"Communication", "Leadership", "Teamwork", "Problem Solving"}
+
+
+async def test_the_taxonomy_holds_no_soft_skills(db_session: AsyncSession) -> None:
+    categories = set((await db_session.scalars(select(SkillCategory.name))).all())
+    held = set((await db_session.scalars(select(SkillTaxonomy.canonical_name))).all())
+
+    assert "Soft Skills" not in categories
+    assert held & SOFT_SKILLS == set()
+
+
+async def test_a_picker_is_offered_no_soft_skill(visitor: AsyncClient) -> None:
+    """What the picker offers is what a Job can require, so this is where Screening stops being
+    able to ask for one."""
+    skills = await read_skills(visitor)
+
+    assert {skill["name"] for skill in skills} & SOFT_SKILLS == set()
+    assert "Soft Skills" not in {skill["category"] for skill in skills}
 
 
 async def read_locations(client: AsyncClient) -> list[dict[str, str]]:

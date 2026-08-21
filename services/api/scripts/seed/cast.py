@@ -581,14 +581,13 @@ LAYLA: Final = SeededCandidate(
             Skill(name="NumPy", years_experience=4.0),
             Skill(name="scikit-learn", years_experience=2.0),
             Skill(name="Machine Learning", years_experience=3.0),
-            Skill(name="Communication", years_experience=4.0),
         ],
         languages=[
             Spoken(code="ar", proficiency=NATIVE),
             Spoken(code="en", proficiency=FLUENT),
         ],
         projects=[],
-        unmapped_skills=["R", "Tableau"],
+        unmapped_skills=["R", "Tableau", "Communication"],
     ),
     cvs=[
         SeededCv(display_name="layla-kassem-cv.pdf", created_days_ago=9, is_current=True),
@@ -651,8 +650,6 @@ NADIA: Final = SeededCandidate(
             Skill(name="Figma", years_experience=6.0),
             Skill(name="UI/UX Design", years_experience=7.0),
             Skill(name="Adobe Photoshop", years_experience=7.0),
-            Skill(name="Communication", years_experience=6.0),
-            Skill(name="Teamwork", years_experience=5.0),
             Skill(name="SQL", years_experience=2.0),
             Skill(name="Data Analysis", years_experience=2.5),
         ],
@@ -672,7 +669,7 @@ NADIA: Final = SeededCandidate(
                 end_month=11,
             ),
         ],
-        unmapped_skills=["Design research", "Copywriting"],
+        unmapped_skills=["Design research", "Copywriting", "Communication", "Teamwork"],
     ),
     cvs=[
         SeededCv(display_name="nadia-rahal-portfolio-cv.pdf", created_days_ago=16, is_current=True),
@@ -729,7 +726,6 @@ FADI: Final = SeededCandidate(
             Skill(name="Django", years_experience=1.5),
             Skill(name="SQL", years_experience=2.0),
             Skill(name="Data Analysis", years_experience=2.0),
-            Skill(name="Communication", years_experience=2.0),
             Skill(name="Git", years_experience=2.0),
         ],
         languages=[Spoken(code="ar", proficiency=NATIVE), Spoken(code="en", proficiency=ADVANCED)],
@@ -744,6 +740,7 @@ FADI: Final = SeededCandidate(
         ],
         unmapped_skills=[
             "Tailwind CSS",
+            "Communication",
         ],
     ),
     cvs=[
@@ -803,13 +800,10 @@ HIBA: Final = SeededCandidate(
             Skill(name="SQL", years_experience=3.5),
             Skill(name="Git", years_experience=4.0),
             Skill(name="Jira", years_experience=3.5),
-            Skill(name="Communication", years_experience=4.0),
-            Skill(name="Teamwork", years_experience=4.0),
-            Skill(name="Problem Solving", years_experience=4.0),
         ],
         languages=[Spoken(code="ar", proficiency=NATIVE), Spoken(code="en", proficiency=ADVANCED)],
         projects=[],
-        unmapped_skills=["Playwright", "Cypress"],
+        unmapped_skills=["Playwright", "Cypress", "Communication", "Teamwork", "Problem Solving"],
     ),
     cvs=[
         SeededCv(display_name="hiba-othman-cv.pdf", created_days_ago=25, is_current=True),
@@ -1180,10 +1174,6 @@ JOBS: Final = (
         ),
         criteria=JobCriteria(
             minimum_total_experience_years=1,
-            skills=[
-                JobSkillRequirement(name="Communication", importance=REQUIRED, minimum_years=1),
-                JobSkillRequirement(name="Teamwork", importance=PREFERRED),
-            ],
             languages=[
                 JobLanguageRequirement(code="ar", minimum_proficiency=NATIVE),
             ],
@@ -1240,7 +1230,6 @@ JOBS: Final = (
             skills=[
                 JobSkillRequirement(name="SQL", importance=REQUIRED, minimum_years=2),
                 JobSkillRequirement(name="Data Analysis", importance=REQUIRED, minimum_years=2),
-                JobSkillRequirement(name="Communication", importance=PREFERRED),
             ],
             languages=[
                 JobLanguageRequirement(code="ar", minimum_proficiency=NATIVE),
@@ -1283,9 +1272,6 @@ JOBS: Final = (
             work_mode=WorkMode.ONSITE,
         ),
         criteria=JobCriteria(
-            skills=[
-                JobSkillRequirement(name="Communication", importance=REQUIRED, minimum_years=1),
-            ],
             languages=[
                 JobLanguageRequirement(code="ar", minimum_proficiency=NATIVE),
             ],

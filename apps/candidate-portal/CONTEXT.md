@@ -192,7 +192,8 @@ The skills a Candidate claims that the platform has no Canonical name for — `u
 the wire. Recruiters read them; Screening never does, which is why the editor keeps them in a
 section of their own rather than mixed in with Skills. Now that Skills can only be picked from
 the taxonomy, this is the only route for anything the taxonomy lacks, so it is a peer of Skills
-rather than a footnote to it.
+rather than a footnote to it. Soft skills live here: nobody is asked how many years of Teamwork
+they have.
 _Avoid_: Unmapped skills (the wire's word, not the reader's), custom skills, free-text skills.
 
 **Reference data**:
