@@ -86,6 +86,7 @@ async def test_a_routine_added_later_to_public_is_born_unreachable_by_the_client
         ),
         {"roles": list(CLIENT_ROLES)},
     )
-
-    assert result.scalars().all() == []
+    reachable = result.scalars().all()
     await db_session.rollback()
+
+    assert reachable == []
