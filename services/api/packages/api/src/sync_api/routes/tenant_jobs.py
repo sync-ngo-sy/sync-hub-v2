@@ -6,7 +6,12 @@ from uuid import UUID
 from fastapi import APIRouter, Query, status
 from pydantic import BeforeValidator
 
-from sync_api.applications import ApplicationSort, ApplicationSummaryPage
+from sync_api.applications import (
+    ApplicationSort,
+    ApplicationSummaryPage,
+    ApplicationSweep,
+    SweptApplications,
+)
 from sync_api.dependencies import (
     ActingRecruiterDep,
     ApplicationReviewServiceDep,
@@ -246,6 +251,45 @@ async def list_job_applications(
         cursor=cursor,
         limit=limit,
     )
+
+
+@router.post(
+    "/{job_id}/applications/sweep",
+    operation_id="sweepJobApplications",
+    summary="End every Application on the Job standing in the statuses named",
+    tags=["applications"],
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        **JOB_NOT_FOUND,
+        422: openapi_problem(
+            "`statuses` names a status that has already ended, or names none at all.",
+            ValidationProblemDetail,
+        ),
+    },
+)
+async def sweep_job_applications(
+    job_id: UUID,
+    body: ApplicationSweep,
+    recruiter: ActingRecruiterDep,
+    applications: ApplicationReviewServiceDep,
+) -> SweptApplications:
+    """Clear a finished hiring effort in one act: every Application in the ticked statuses is
+    rejected together, in one transaction.
+
+    The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
+    the same request as a sweep of twelve and there is no selection too large to send. `statuses`
+    is what the Pipeline tab would have narrowed to, and `qualification_statuses` is the list's
+    Screening filter carried over, so the sweep acts on the list the Recruiter was reading. The
+    counts to choose against are the `status_counts` the list already returns.
+
+    Each ending is the same rejection a single move makes, held to the same Telling: `told_at` is
+    three days out and shared by all of them, and until it comes every Candidate's Stage still
+    reads in review, their bell is silent and their email waits in the queue. Undoing it is
+    reading the rejections back and moving them to `reviewing` one by one — there is no batch to
+    name, and no exemption to make: `hired`, `rejected` and `withdrawn` are refused here because
+    an Application that has ended cannot end again.
+    """
+    return await applications.sweep(recruiter, job_id, body)
 
 
 @router.post(

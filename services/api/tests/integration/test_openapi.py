@@ -152,6 +152,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "setPlatformTenantStatus",
         "signUp",
         "submitApplication",
+        "sweepJobApplications",
         "tagApplication",
         "tagCandidate",
         "untagApplication",
@@ -161,3 +162,11 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "writeApplicationNote",
         "writeCandidateNote",
     ]
+
+
+async def test_a_sweep_asks_for_a_reading_and_never_a_list_of_ids(app: FastAPI) -> None:
+    """The whole point of the endpoint: the payload of a sweep of fifty thousand Applications is
+    the payload of a sweep of twelve, so no selection is too large to send."""
+    sweep = app.openapi()["components"]["schemas"]["ApplicationSweep"]
+
+    assert set(sweep["properties"]) == {"statuses", "qualification_statuses"}

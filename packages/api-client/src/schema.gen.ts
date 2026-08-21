@@ -1276,6 +1276,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/jobs/{job_id}/applications/sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End every Application on the Job standing in the statuses named
+         * @description Clear a finished hiring effort in one act: every Application in the ticked statuses is
+         *     rejected together, in one transaction.
+         *
+         *     The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
+         *     the same request as a sweep of twelve and there is no selection too large to send. `statuses`
+         *     is what the Pipeline tab would have narrowed to, and `qualification_statuses` is the list's
+         *     Screening filter carried over, so the sweep acts on the list the Recruiter was reading. The
+         *     counts to choose against are the `status_counts` the list already returns.
+         *
+         *     Each ending is the same rejection a single move makes, held to the same Telling: `told_at` is
+         *     three days out and shared by all of them, and until it comes every Candidate's Stage still
+         *     reads in review, their bell is silent and their email waits in the queue. Undoing it is
+         *     reading the rejections back and moving them to `reviewing` one by one — there is no batch to
+         *     name, and no exemption to make: `hired`, `rejected` and `withdrawn` are refused here because
+         *     an Application that has ended cannot end again.
+         */
+        post: operations["sweepJobApplications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/jobs/{job_id}/links": {
         parameters: {
             query?: never;
@@ -2257,6 +2291,30 @@ export interface components {
              * @description Every Screening verdict the platform has, each with how many of the Job's Applications it decided that way. Counted before `qualification_status` narrows anything, so a filter that hides some of them still says how much it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
              */
             verdict_counts?: components["schemas"]["ApplicationVerdictCount"][];
+        };
+        /**
+         * ApplicationSweep
+         * @description Which of a Job's Applications one act ends: the Reading the list was showing, with its
+         *     Pipeline tab replaced by the statuses ticked.
+         *
+         *     No ids anywhere, and none possible. A sweep of fifty thousand Applications is the same
+         *     request as a sweep of twelve, so a selection too large to send is not a state to reach.
+         */
+        ApplicationSweep: {
+            /**
+             * Statuses
+             * @description The statuses to end, as the ticks name them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
+             * @example [
+             *       "new",
+             *       "reviewing"
+             *     ]
+             */
+            statuses: components["schemas"]["ApplicationStatus"][];
+            /**
+             * Qualification Statuses
+             * @description The list's Screening filter, inherited, so the sweep acts on the list the Recruiter was reading. Omit it to end whatever the verdict.
+             */
+            qualification_statuses?: components["schemas"]["QualificationStatus"][] | null;
         };
         /**
          * ApplicationVerdictCount
@@ -4775,6 +4833,22 @@ export interface components {
              * @description The answer to a `short_text` question.
              */
             answer_text?: string | null;
+        };
+        /**
+         * SweptApplications
+         * @description What one sweep ended, and when the people it ended hear about it.
+         */
+        SweptApplications: {
+            /**
+             * Ended
+             * @description How many Applications the sweep moved. Zero where the Reading matched none of them, which is an answer rather than a refusal.
+             */
+            ended: number;
+            /**
+             * Told At
+             * @description The Telling every Application it ended now carries: three days out, the same moment for all of them, and the moment their Candidates hear. Null where it ended nothing, because nobody is waiting to be told.
+             */
+            told_at?: string | null;
         };
         /**
          * Tag
@@ -9987,6 +10061,77 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    sweepJobApplications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationSweep"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweptApplications"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `statuses` names a status that has already ended, or names none at all. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */

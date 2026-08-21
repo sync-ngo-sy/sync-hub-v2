@@ -6,6 +6,7 @@ import type { Tag } from '@/features/crm/tag';
 import { holding } from '@/testing/holding';
 import {
   type ApplicationSummary,
+  OPEN_STATUSES,
   PIPELINE_STATUSES,
   type PipelineStatus,
   RECEIVED_WITHIN_VALUES,
@@ -14,12 +15,14 @@ import {
   type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
+import type { Sweep } from '../ending';
 import {
   APPLICATION_PATH,
   ASSESSMENT_PATH,
   MESSAGES_PATH,
   NOTE_PATH,
   NOTES_PATH,
+  SWEEP_PATH,
   TAG_PATH,
   TAGS_PATH,
   TENANT_APPLICATIONS_PATH,
@@ -182,6 +185,82 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
         status_counts: countedByStatus(pages.flat()),
         verdict_counts: countedByVerdict(pages.flat()),
+      });
+    }),
+  ];
+}
+
+const ALREADY_ENDED: Problem = {
+  type: 'urn:sync:problem:application-transition',
+  title: 'Conflict',
+  status: 409,
+  detail: 'A rejected application cannot become rejected.',
+};
+
+export interface SweepAskedFor {
+  statuses: string[];
+  qualification_statuses: string[] | null;
+}
+
+/** A Job whose Applications a sweep really ends: the ticked statuses move, the list they came
+ * from moves with them, and the answer counts what moved. */
+export function sweepsJobApplications(items: ApplicationSummary[], asked?: SweepAskedFor[]) {
+  return [
+    ...listsJobApplications(items),
+    http.post(SWEEP_PATH, async ({ request, response }) => {
+      const sweep = (await request.json()) as Sweep;
+      const verdicts = sweep.qualification_statuses ?? null;
+      asked?.push({ statuses: sweep.statuses, qualification_statuses: verdicts });
+      let ended = 0;
+      items.forEach((item, at) => {
+        const swept =
+          sweep.statuses.includes(item.status) &&
+          (verdicts === null || verdicts.includes(item.qualification_status));
+        if (!swept) return;
+        items[at] = { ...item, status: 'rejected', updated_at: THE_TELLING };
+        ended += 1;
+      });
+      return response(200).json({ ended, told_at: ended > 0 ? THE_TELLING : null });
+    }),
+  ];
+}
+
+export function refusesTheSweep(items: ApplicationSummary[], problem: Problem) {
+  return [
+    ...listsJobApplications(items),
+    http.post(SWEEP_PATH, ({ response }) => response(500).json(problem)),
+  ];
+}
+
+/** The Tenant-wide list, where ending the ticked rows is that many single moves — and where a
+ * row that moved between the tick and the click is refused rather than ended twice. */
+export function endsTickedApplications(
+  items: TenantApplication[],
+  asked?: string[],
+  refusing?: { id: string; problem: Problem },
+) {
+  return [
+    ...listsTenantApplications(items),
+    http.patch(APPLICATION_PATH, async ({ params, request, response }) => {
+      const { status } = (await request.json()) as StatusChange;
+      asked?.push(params.application_id);
+      if (refusing && params.application_id === refusing.id) {
+        return response(500).json(refusing.problem);
+      }
+      const at = items.findIndex((item) => item.id === params.application_id);
+      const item = items[at];
+      if (!item) return response(404).json(NO_SUCH_APPLICATION);
+      if (!(OPEN_STATUSES as readonly PipelineStatus[]).includes(item.status)) {
+        return response(409).json(ALREADY_ENDED);
+      }
+      items[at] = { ...item, status, updated_at: THE_TELLING };
+      return response(200).json({
+        id: item.id,
+        status,
+        previous_status: item.status,
+        candidate_notified: false,
+        told_at: THE_TELLING,
+        changed_at: '2026-08-03T10:00:00Z',
       });
     }),
   ];

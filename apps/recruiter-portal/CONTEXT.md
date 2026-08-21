@@ -310,6 +310,34 @@ that set it, so a reopened Application still says the candidate read one and has
 they are back in review. There is no Tenant setting for the three days and never will be.
 _Avoid_: Grace period, cooling-off, delay, send date.
 
+**Sweep**:
+Ending every Application on one Job that stands in the statuses ticked, in one act. It is a modal
+behind `End many` on a Job's Applications tab: the five statuses an Application is still being
+decided in, the count each has, ticks on any combination, and a running total saying how many one
+confirm decides. The counts are the `status_counts` the list already returned, so choosing against
+real numbers costs no request of its own. The request carries the Reading and never a list of ids —
+it inherits the filters the list had and replaces the Pipeline tab with the ticks — so a sweep of
+fifty thousand Applications is the same request as a sweep of twelve, and a selection too large to
+send is not a state to reach. Every ending is the rejection a Pipeline move makes, held to the same
+Telling, so a sweep is undone by reading the rejections back and moving them: there is no batch id
+anywhere, and no undo of its own. `End many` is dead on a Job with nothing left to end.
+`features/applications/ending.ts` owns which statuses can end, the running total, and every
+sentence either list says about an ending.
+_Avoid_: Bulk action, mass reject, select all (a sweep names statuses, never rows); Archive
+(nothing is hidden — the Applications have ended).
+
+**Row ticks**:
+The Applications page's answer to the same need, and deliberately the smaller one: a box on each
+row the reader can see, and no sweep. A sweep is a statement about one hiring effort, and across
+forty Jobs at once it is a statement about nothing — so the Tenant-wide list will not make one.
+A tick is offered only on a row still being decided, because an Application that has ended cannot
+end again, and ending what is ticked is that many single moves, reported as the one answer a sweep
+gives — including how many of the ticked rows the list had already moved out from under the reader.
+The ticks leave with the Reading they were made under: changing a filter drops them, because a tick
+was a statement about the rows then on screen. They are also what takes a sweep back — the Rejected
+tab, ticked and moved to Reviewing.
+_Avoid_: Selection, bulk bar, batch (there is no batch, and nothing names one).
+
 **Refused move**:
 A Pipeline move the API answers with a 409, rendered where the buttons are rather than as a
 toast or a page-wide banner — the reason belongs beside the thing that caused it, and the

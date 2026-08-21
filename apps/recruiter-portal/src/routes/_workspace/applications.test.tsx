@@ -13,6 +13,7 @@ import {
   HANI,
 } from '@/features/applications/testing/fixtures';
 import {
+  endsTickedApplications,
   failsToListTenantApplications,
   getsApplication,
   listsTenantApplications,
@@ -592,5 +593,144 @@ describe('a Pipeline move made from the Applications page', () => {
 
     await waitFor(() => expect(awaitingReview()).toHaveTextContent('1'));
     expect(recentRow('Dima Sabbagh').getByText('Reviewing')).toBeVisible();
+  });
+});
+
+describe('the ticks on the Tenant-wide Applications page', () => {
+  function tickOf(candidate: string) {
+    return screen.getByRole('checkbox', { name: `Tick ${candidate}'s Application` });
+  }
+
+  function everyTick() {
+    return screen.getByRole('checkbox', { name: 'Tick every Application shown' });
+  }
+
+  it('offers a tick on every row still being decided, and none on one that has ended', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    expect(tickOf('Dima Sabbagh')).toBeInTheDocument();
+    expect(tickOf('Elias Murad')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: "Tick Ghada Kanaan's Application" })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: "Tick Hani Barakat's Application" })).toBeNull();
+  });
+
+  it('offers no sweep, because a statement about every Job at once is one about none', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    await renderApp('/applications?pipeline=all');
+
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'End many' })).toBeNull();
+  });
+
+  it('says how many rows are ticked, and gives them all back', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await user.click(tickOf('Dima Sabbagh'));
+    expect(screen.getByRole('status')).toHaveTextContent('1 Application ticked');
+
+    await user.click(tickOf('Farah Doumani'));
+    expect(screen.getByRole('status')).toHaveTextContent('2 Applications ticked');
+
+    await user.click(screen.getByRole('button', { name: 'Clear ticks' }));
+    expect(screen.queryByRole('button', { name: /^End / })).toBeNull();
+  });
+
+  it('ticks every row shown at once, and only the ones a tick means anything on', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await user.click(everyTick());
+
+    expect(screen.getByRole('status')).toHaveTextContent('3 Applications ticked');
+  });
+
+  it('ends the rows it ticked, one move each, and says when they hear', async () => {
+    const asked: string[] = [];
+    const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
+    server.use(...signedInAs(RECRUITER), ...endsTickedApplications(listed, asked));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(tickOf('Farah Doumani'));
+    await user.click(screen.getByRole('button', { name: 'End 2 Applications' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'End 2 Applications',
+      }),
+    );
+
+    expect(await screen.findByText(/2 Applications ended/)).toBeVisible();
+    expect(asked).toEqual([DIMA.id, FARAH.id]);
+    await waitFor(() => expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 3'));
+    expect(screen.queryByRole('button', { name: /^End / })).toBeNull();
+  });
+
+  it('says which of the ticked rows had already moved under the reader', async () => {
+    const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
+    server.use(...signedInAs(RECRUITER), ...endsTickedApplications(listed));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(tickOf('Farah Doumani'));
+    listed[1] = { ...FARAH, status: 'hired' };
+    await user.click(screen.getByRole('button', { name: 'End 2 Applications' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'End 2 Applications',
+      }),
+    );
+
+    expect(
+      await screen.findByText('1 of 2 Applications ended — the other had already moved.'),
+    ).toBeVisible();
+  });
+
+  it('says so and reads the list again when one of the moves fails outright', async () => {
+    const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...endsTickedApplications(listed, undefined, { id: FARAH.id, problem: SERVER_FAULT }),
+    );
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(tickOf('Farah Doumani'));
+    await user.click(screen.getByRole('button', { name: 'End 2 Applications' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'End 2 Applications',
+      }),
+    );
+
+    expect(await screen.findByText('Not all ended')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 2'));
+    expect(screen.getByText('Farah Doumani')).toBeVisible();
+  });
+
+  it('drops the ticks when the list the reader is looking at changes', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    expect(screen.getByRole('status')).toHaveTextContent('1 Application ticked');
+
+    await user.click(pipelineChip('New'));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^End / })).toBeNull());
   });
 });

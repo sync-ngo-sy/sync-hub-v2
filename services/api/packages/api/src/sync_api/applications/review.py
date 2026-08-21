@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 
 from sync_api.applications.access import own_application
+from sync_api.applications.ending import end_them_all
 from sync_api.applications.hires import claim_the_hire, claimed_hire
 from sync_api.applications.ordering import ORDERINGS
 from sync_api.applications.payload import (
@@ -24,6 +25,7 @@ from sync_api.applications.payload import (
     ReviewedJob,
     ScreeningVerdict,
     StatusHistoryEntry,
+    SweptApplications,
     TenantApplicationPage,
     TenantApplicationSummary,
 )
@@ -57,7 +59,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.applications.payload import ApplicationStatusChange
+    from sync_api.applications.payload import ApplicationStatusChange, ApplicationSweep
     from sync_api.pagination import Ordering, SortCursor
     from sync_api.tenants import ActingRecruiter
     from sync_core import Settings, Storage
@@ -284,6 +286,28 @@ class ApplicationReviewService:
             told_at=moved.told_at,
             changed_at=moved.changed_at,
         )
+
+    async def sweep(
+        self, recruiter: ActingRecruiter, job_id: UUID, sweep: ApplicationSweep
+    ) -> SweptApplications:
+        async with transaction(self._db):
+            job = await own_job(self._db, recruiter.tenant.id, job_id)
+            ended = await end_them_all(
+                self._db,
+                job,
+                statuses=sweep.statuses,
+                qualification_statuses=sweep.qualification_statuses,
+                by=recruiter.profile.id,
+            )
+
+        logger.info(
+            "applications.swept",
+            job_id=str(job_id),
+            tenant_id=str(recruiter.tenant.id),
+            statuses=sorted(status.value for status in sweep.statuses),
+            ended=ended.count,
+        )
+        return SweptApplications(ended=ended.count, told_at=ended.told_at)
 
     async def _candidate(self, candidate_id: UUID) -> ReviewedCandidate:
         found = (

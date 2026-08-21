@@ -3,6 +3,8 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
 import { jobColumn } from '@/features/jobs/components/job-column';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
@@ -23,6 +25,8 @@ import {
   sortSelection,
   type TenantApplication,
 } from '../application';
+import { endedMessage, endLabel, stillOpen, tickedLabel } from '../ending';
+import { useEndApplications } from '../hooks/use-application-actions';
 import { useTenantApplications } from '../hooks/use-tenant-applications';
 import {
   clearFiltersLabel,
@@ -33,6 +37,7 @@ import {
 import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
+import { EndTickedDialog } from './end-ticked-dialog';
 
 export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(jobColumn());
 
@@ -83,6 +88,24 @@ export function ApplicationsPage({
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
   const ended = anythingEnded(statusCounts);
+  const ending = useEndApplications();
+  const [ticked, setTicked] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState(false);
+
+  // A tick is a statement about a row on screen, so a list that is no longer the same list has
+  // no ticks: whatever was ticked leaves with the Reading it was ticked under.
+  function changeFilters(next: TenantApplicationFilters) {
+    setTicked([]);
+    onFiltersChange(next);
+  }
+
+  async function endTicked(chosen: string[]) {
+    const swept = await ending.mutateAsync(chosen);
+    setConfirming(false);
+    setTicked([]);
+    toast.success(endedMessage(swept, chosen.length));
+    return swept;
+  }
 
   function whereEmptyLeads() {
     if (narrowing > 0) {
@@ -130,7 +153,7 @@ export function ApplicationsPage({
             <ApplicationPipelineFilter
               pipeline={pipeline}
               counts={statusCounts}
-              onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
+              onChange={(chosen) => changeFilters({ ...filters, pipeline: chosen })}
             />
             {pipeline === 'hired' ? TO_THE_PLACEMENTS : null}
           </div>
@@ -145,7 +168,7 @@ export function ApplicationsPage({
               }))}
               selected={screening}
               counts={verdictCounts}
-              onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
+              onChange={(chosen) => changeFilters({ ...filters, screening: chosen })}
             />
             <div className="flex min-w-0 items-center gap-3">
               <span aria-hidden="true" className="shrink-0 text-meta text-muted-foreground">
@@ -156,12 +179,28 @@ export function ApplicationsPage({
                 items={RECEIVED_RANGES}
                 value={range}
                 onValueChange={(chosen: ReceivedRange) =>
-                  onFiltersChange({ ...filters, received: receivedWithin(chosen) })
+                  changeFilters({ ...filters, received: receivedWithin(chosen) })
                 }
               />
             </div>
           </div>
         </div>
+
+        {ticked.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-card px-(--space-card) py-3 shadow-card">
+            <p role="status" className="text-dense text-foreground">
+              {tickedLabel(ticked.length)}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" onClick={() => setTicked([])}>
+                Clear ticks
+              </Button>
+              <Button variant="destructive" onClick={() => setConfirming(true)}>
+                {endLabel(ticked.length)}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         <DataTable
           label="Applications"
@@ -172,6 +211,12 @@ export function ApplicationsPage({
           onRowOpen={onApplicationOpen}
           rowHref={applicationHref}
           isLoading={applications.isPending}
+          ticks={{
+            ticked,
+            onChange: setTicked,
+            can: (application) => stillOpen(application.status),
+            everyLabel: 'Tick every Application shown',
+          }}
           sort={{
             by: sort,
             onChange: (by) => onFiltersChange({ ...filters, sort: by as ApplicationSort }),
@@ -196,6 +241,14 @@ export function ApplicationsPage({
           }}
         />
       </div>
+
+      {confirming ? (
+        <EndTickedDialog
+          ticked={ticked}
+          onConfirm={endTicked}
+          onClose={() => setConfirming(false)}
+        />
+      ) : null}
     </>
   );
 }

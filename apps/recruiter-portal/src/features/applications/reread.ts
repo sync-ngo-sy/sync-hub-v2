@@ -9,6 +9,7 @@ import type {
 
 export const TENANT_APPLICATIONS_PATH = '/v1/tenants/me/applications';
 export const TRIAGE_PATH = '/v1/tenants/me/jobs/{job_id}/applications';
+export const SWEEP_PATH = '/v1/tenants/me/jobs/{job_id}/applications/sweep';
 export const APPLICATION_PATH = '/v1/tenants/me/applications/{application_id}';
 export const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessment';
 export const MESSAGES_PATH = '/v1/tenants/me/applications/{application_id}/messages';
@@ -67,6 +68,10 @@ function everyTriageReading() {
   return ['get', TRIAGE_PATH] as const;
 }
 
+function everyApplicationReading() {
+  return ['get', APPLICATION_PATH] as const;
+}
+
 function everyNotesReading(applicationId: string) {
   return ['get', NOTES_PATH, forApplication(applicationId)] as const;
 }
@@ -76,6 +81,19 @@ export function useRereadMovedApplication(applicationId: string) {
   return () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: applicationReview(applicationId).queryKey }),
+      queryClient.invalidateQueries({ queryKey: everyTriageReading() }),
+      queryClient.invalidateQueries({ queryKey: everyTenantApplicationsReading() }),
+    ]);
+}
+
+/** What an ending makes untrue: both lists, and every Application review — an ending reaches
+ * more rows than the page it was made from can name, so no reading of one is still to be
+ * trusted. */
+export function useRereadEndedApplications() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: everyApplicationReading() }),
       queryClient.invalidateQueries({ queryKey: everyTriageReading() }),
       queryClient.invalidateQueries({ queryKey: everyTenantApplicationsReading() }),
     ]);

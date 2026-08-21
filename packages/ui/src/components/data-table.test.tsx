@@ -318,6 +318,81 @@ describe('DataTable sorted by a column', () => {
   });
 });
 
+describe('DataTable ticked row by row', () => {
+  const TICKS = { ticked: [], onChange: () => {}, everyLabel: 'Tick every Application shown' };
+
+  function tickOf(candidate: string) {
+    return screen.getByRole('checkbox', { name: `Tick ${candidate}` });
+  }
+
+  it('offers a box per row and one over the rows shown', () => {
+    renderTable({ ticks: TICKS });
+
+    expect(tickOf('Lina Khoury')).not.toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: 'Tick every Application shown' }),
+    ).not.toBeChecked();
+  });
+
+  it('adds the row a reader ticks to what was ticked already', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({ ticks: { ...TICKS, ticked: ['a2'], onChange } });
+
+    await user.click(tickOf('Lina Khoury'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(['a2', 'a1']);
+  });
+
+  it('takes back the row a reader unticks and leaves the rest', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({ ticks: { ...TICKS, ticked: ['a1', 'a2'], onChange } });
+
+    await user.click(tickOf('Lina Khoury'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(['a2']);
+  });
+
+  it('ticks every row shown at once, and unticks them again', async () => {
+    const onChange = vi.fn();
+    const { user, rerender } = renderTable({ ticks: { ...TICKS, onChange } });
+    const everyRow = () => screen.getByRole('checkbox', { name: 'Tick every Application shown' });
+
+    await user.click(everyRow());
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(['a1', 'a2']);
+
+    rerender({ ticks: { ...TICKS, ticked: ['a1', 'a2'], onChange } });
+    expect(everyRow()).toBeChecked();
+    await user.click(everyRow());
+
+    expect(onChange).toHaveBeenLastCalledWith([]);
+  });
+
+  it('reads as partly ticked while some of the rows shown are', () => {
+    renderTable({ ticks: { ...TICKS, ticked: ['a1'] } });
+
+    expect(screen.getByRole('checkbox', { name: 'Tick every Application shown' })).toHaveAttribute(
+      'aria-checked',
+      'mixed',
+    );
+  });
+
+  it('offers no box at all on a row a tick would mean nothing on', () => {
+    renderTable({ ticks: { ...TICKS, can: (row) => row.id !== 'a2' } });
+
+    expect(tickOf('Lina Khoury')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Tick Yara Salloum' })).not.toBeInTheDocument();
+  });
+
+  it('leaves the row shut when a tick is what was clicked', async () => {
+    const onRowOpen = vi.fn();
+    const { user } = renderTable({ ticks: TICKS, onRowOpen });
+
+    await user.click(tickOf('Lina Khoury'));
+
+    expect(onRowOpen).not.toHaveBeenCalled();
+  });
+});
+
 describe('DataTable on a narrow viewport', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', (query: string) => ({
@@ -362,6 +437,20 @@ describe('DataTable on a narrow viewport', () => {
 
     expect(screen.getByText('Lina Khoury')).toBeInTheDocument();
     expect(screen.queryByText('Field Coordinator')).not.toBeInTheDocument();
+  });
+
+  it('keeps the ticks beside the card titles', async () => {
+    const onChange = vi.fn();
+    const { user } = renderTable({
+      ticks: { ticked: [], onChange, everyLabel: 'Tick every Application shown' },
+    });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Tick Lina Khoury' }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(['a1']);
+    expect(
+      screen.queryByRole('checkbox', { name: 'Tick every Application shown' }),
+    ).not.toBeInTheDocument();
   });
 
   it('still opens a row, and still counts what is shown', async () => {

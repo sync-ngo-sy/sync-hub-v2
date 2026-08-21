@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import delete, func, update
 
 from sync_api.problems import APPLICATION_TRANSITION_PROBLEM_TYPE, Problem
-from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
+from sync_core.communications import (
+    ApplicationRejection,
+    candidate_contact,
+    enqueue_email,
+    rejection_key,
+)
 from sync_core.models import (
     ApplicationStatus,
     ApplicationStatusHistory,
@@ -198,7 +203,7 @@ async def _queue_the_rejection(
         application_id=application.id,
         initiated_by_recruiter_id=by,
         recipient=email,
-        idempotency_key=f"application-rejection:{decided_by}",
+        idempotency_key=rejection_key(decided_by),
         available_at=telling,
         payload=ApplicationRejection(
             application_id=application.id,

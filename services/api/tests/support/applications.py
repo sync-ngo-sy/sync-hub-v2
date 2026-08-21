@@ -240,6 +240,31 @@ async def job_applications_of(
     return items
 
 
+async def sweep_the_job(
+    recruiter: AsyncClient,
+    job_id: str | UUID,
+    statuses: list[ApplicationStatus | str],
+    **reading: Any,
+) -> Response:
+    """One sweep of the Job's Applications: the ticks, and whatever the list was narrowed by."""
+    return await recruiter.post(
+        f"{TENANT_JOBS}/{job_id}/applications/sweep",
+        json={"statuses": [str(status) for status in statuses], **reading},
+    )
+
+
+async def a_swept_job(
+    recruiter: AsyncClient,
+    job_id: str | UUID,
+    statuses: list[ApplicationStatus | str],
+    **reading: Any,
+) -> dict[str, Any]:
+    response = await sweep_the_job(recruiter, job_id, statuses, **reading)
+    assert response.status_code == 200, response.text
+    swept: dict[str, Any] = response.json()
+    return swept
+
+
 async def read_application(recruiter: AsyncClient, application_id: str | UUID) -> Response:
     return await recruiter.get(f"{TENANT_APPLICATIONS}/{application_id}")
 

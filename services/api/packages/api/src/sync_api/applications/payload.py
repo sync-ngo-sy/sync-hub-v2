@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from sync_api.applications.pipeline import UNDECIDED
 from sync_api.candidates import (
     ProfileEducation,
     ProfileExperience,
@@ -573,6 +574,51 @@ class ApplicationStatusChange(BaseModel):
         if not hiring and self.start_date is not None:
             raise ValueError(f"a {self.status.value} application has no start date")
         return self
+
+
+class ApplicationSweep(BaseModel):
+    """Which of a Job's Applications one act ends: the Reading the list was showing, with its
+    Pipeline tab replaced by the statuses ticked.
+
+    No ids anywhere, and none possible. A sweep of fifty thousand Applications is the same
+    request as a sweep of twelve, so a selection too large to send is not a state to reach.
+    """
+
+    statuses: list[ApplicationStatus] = Field(
+        min_length=1,
+        description="The statuses to end, as the ticks name them. Only the five an Application "
+        "is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and "
+        "naming one of them is refused rather than ignored.",
+        examples=[[ApplicationStatus.NEW, ApplicationStatus.REVIEWING]],
+    )
+    qualification_statuses: list[QualificationStatus] | None = Field(
+        default=None,
+        min_length=1,
+        description="The list's Screening filter, inherited, so the sweep acts on the list the "
+        "Recruiter was reading. Omit it to end whatever the verdict.",
+    )
+
+    @model_validator(mode="after")
+    def _only_what_has_not_ended_can_end(self) -> ApplicationSweep:
+        ended = sorted({one.value for one in self.statuses if one not in UNDECIDED})
+        if ended:
+            raise ValueError(f"{', '.join(ended)} has already ended, so it cannot be ended")
+        return self
+
+
+class SweptApplications(BaseModel):
+    """What one sweep ended, and when the people it ended hear about it."""
+
+    ended: int = Field(
+        description="How many Applications the sweep moved. Zero where the Reading matched "
+        "none of them, which is an answer rather than a refusal."
+    )
+    told_at: datetime | None = Field(
+        default=None,
+        description="The Telling every Application it ended now carries: three days out, the "
+        "same moment for all of them, and the moment their Candidates hear. Null where it "
+        "ended nothing, because nobody is waiting to be told.",
+    )
 
 
 class MovedApplication(BaseModel):

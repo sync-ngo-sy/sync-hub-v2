@@ -1,12 +1,15 @@
 import { DataTable } from '@sync/ui/components/data-table';
 import { Button } from '@sync/ui/components/ui/button';
 import { Inbox } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import {
   ALL_TAB,
   type ApplicationSort,
   type ApplicationSummary,
   anythingEnded,
+  type PipelineStatus,
   pipelineStatuses,
   pipelineTab,
   SCREENING_VERDICTS,
@@ -14,6 +17,8 @@ import {
   screeningState,
   sortSelection,
 } from '../application';
+import { endedMessage, nothingIsOpen } from '../ending';
+import { useSweepJobApplications } from '../hooks/use-application-actions';
 import { useJobApplications } from '../hooks/use-job-applications';
 import {
   type ApplicationFilters,
@@ -24,6 +29,7 @@ import {
 import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
+import { EndManyDialog } from './end-many-dialog';
 
 export const JOB_APPLICATION_COLUMNS = applicationColumns<ApplicationSummary>();
 
@@ -52,10 +58,24 @@ export function JobApplications({
     verdicts: screening,
     sort,
   });
+  const sweeping = useSweepJobApplications();
+  const [endingMany, setEndingMany] = useState(false);
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
   const ended = anythingEnded(statusCounts);
+  const everyVerdict = screening.length === SCREENING_VERDICTS.length;
+
+  // The list's own filters, with the Pipeline tab left out: the ticks are what replaces it.
+  async function endMany(statuses: PipelineStatus[]) {
+    const swept = await sweeping.mutateAsync({
+      params: { path: { job_id: jobId } },
+      body: { statuses, qualification_statuses: everyVerdict ? null : screening },
+    });
+    setEndingMany(false);
+    toast.success(endedMessage(swept));
+    return swept;
+  }
 
   function whereEmptyLeads() {
     if (narrowing > 0) {
@@ -94,17 +114,26 @@ export function JobApplications({
           onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
         />
 
-        <ChecklistFilter
-          label="Screening"
-          noun="verdicts"
-          options={SCREENING_VERDICTS.map((verdict) => ({
-            value: verdict,
-            label: screeningState(verdict).label,
-          }))}
-          selected={screening}
-          counts={verdictCounts}
-          onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
-        />
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <ChecklistFilter
+            label="Screening"
+            noun="verdicts"
+            options={SCREENING_VERDICTS.map((verdict) => ({
+              value: verdict,
+              label: screeningState(verdict).label,
+            }))}
+            selected={screening}
+            counts={verdictCounts}
+            onChange={(chosen) => onFiltersChange({ ...filters, screening: chosen })}
+          />
+          <Button
+            variant="outline"
+            disabled={nothingIsOpen(statusCounts)}
+            onClick={() => setEndingMany(true)}
+          >
+            End many
+          </Button>
+        </div>
       </div>
 
       <DataTable
@@ -139,6 +168,15 @@ export function JobApplications({
           onLoadMore: () => void applications.fetchNextPage(),
         }}
       />
+
+      {endingMany ? (
+        <EndManyDialog
+          counts={statusCounts}
+          narrowed={!everyVerdict}
+          onConfirm={endMany}
+          onClose={() => setEndingMany(false)}
+        />
+      ) : null}
     </div>
   );
 }

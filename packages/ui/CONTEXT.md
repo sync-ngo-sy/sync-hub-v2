@@ -84,6 +84,18 @@ a value that fits carries no tooltip at all. It takes a focus stop of its own un
 already holds one.
 _Avoid_: Ellipsis, clamp, overflow text.
 
+**Ticks**:
+A Data Table's boxes over the rows on screen: one per row, and one in the header that ticks every
+row shown. Over the rows on screen and no further — a tick is a statement about a row somebody can
+see, so nothing here reaches a row that has not been loaded, and a table paged by cursor cannot
+tick what it has not read. The table holds no selection of its own: the ticked ids and what to do
+with them belong to the page, which passes them in and gets them back changed. A row the caller
+says a tick would mean nothing on shows no box rather than a dead one, and the header box reads as
+partly ticked while some of the rows shown are. The header box names what it ticks in the caller's
+own words, because the Design System never knows what a row is.
+_Avoid_: Selection, row select, checkbox column, bulk bar (the table offers the ticks and never the
+act).
+
 **Flush**:
 A Data Table with no card of its own, for when it already sits in one. A panel with a table
 inside would otherwise read as a box in a box, and spend two paddings and two borders on the same

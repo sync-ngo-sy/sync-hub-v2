@@ -16,6 +16,9 @@ import {
   holdsJobApplications,
   listsJobApplications,
   pagesJobApplications,
+  refusesTheSweep,
+  type SweepAskedFor,
+  sweepsJobApplications,
 } from '@/features/applications/testing/handlers';
 import { signedInAs } from '@/features/auth/testing/handlers';
 import { FIELD_COORDINATOR_VIEW } from '@/features/jobs/testing/fixtures';
@@ -697,5 +700,158 @@ describe('the Match score on a Job triage list', () => {
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
     expect(router.state.location.search).toEqual({});
     expect(asked.every((one) => one.sort === 'newest')).toBe(true);
+  });
+});
+
+describe("ending many of a Job's Applications at once", () => {
+  function endMany() {
+    return screen.getByRole('button', { name: 'End many' });
+  }
+
+  function tickOf(status: string, count: number) {
+    return screen.getByRole('checkbox', { name: `${status} ${count}` });
+  }
+
+  async function openTheModal(user: UserEvent) {
+    await user.click(endMany());
+    return screen.findByRole('dialog', { name: 'End many Applications' });
+  }
+
+  it('lists the five undecided statuses with the counts the list already returned', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    const modal = within(await openTheModal(user));
+
+    const boxes = modal.getAllByRole('checkbox');
+    expect(boxes).toHaveLength(5);
+    expect(boxes[0]).toHaveAccessibleName('New 1');
+    expect(boxes[1]).toHaveAccessibleName('Reviewing 0');
+    expect(boxes[2]).toHaveAccessibleName('Shortlisted 1');
+    expect(boxes[3]).toHaveAccessibleName('Interview 0');
+    expect(boxes[4]).toHaveAccessibleName('Offer 0');
+    expect(modal.queryByRole('checkbox', { name: /^Rejected/ })).toBeNull();
+    expect(modal.queryByRole('checkbox', { name: /^Hired/ })).toBeNull();
+  });
+
+  it('adds the ticks up into a running total, and says what one confirm decides', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await openTheModal(user);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Nothing is ticked.');
+    expect(screen.getByRole('button', { name: 'End Applications' })).toBeDisabled();
+
+    await user.click(tickOf('New', 1));
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '1 Application ends. They hear three days from now.',
+    );
+
+    await user.click(tickOf('Shortlisted', 1));
+    expect(screen.getByRole('status')).toHaveTextContent('2 Applications end.');
+    expect(screen.getByRole('button', { name: 'End 2 Applications' })).toBeEnabled();
+  });
+
+  it('offers no tick on a status nothing stands in', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL]));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await openTheModal(user);
+
+    expect(tickOf('New', 1)).not.toHaveAttribute('aria-disabled');
+    expect(tickOf('Offer', 0)).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('sends the Reading and no ids at all, and reports what it ended', async () => {
+    const asked: SweepAskedFor[] = [];
+    const listed = [AMAL, BASSEL, CARLA];
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...sweepsJobApplications(listed, asked));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await openTheModal(user);
+    await user.click(tickOf('New', 1));
+    await user.click(screen.getByRole('button', { name: 'End 1 Application' }));
+
+    expect(await screen.findByText(/1 Application ended/)).toBeVisible();
+    expect(asked).toEqual([{ statuses: ['new'], qualification_statuses: null }]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('leaves the list and its counts saying what the sweep did', async () => {
+    const listed = [AMAL, BASSEL, CARLA];
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...sweepsJobApplications(listed));
+
+    const { user } = await renderApp(`/jobs/${JOB.id}`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await openTheModal(user);
+    await user.click(tickOf('New', 1));
+    await user.click(tickOf('Shortlisted', 1));
+    await user.click(screen.getByRole('button', { name: 'End 2 Applications' }));
+
+    await waitFor(() => expect(screen.queryByText('Amal Haddad')).toBeNull());
+    expect(screen.getByRole('radio', { name: /^Rejected/ })).toHaveAccessibleName('Rejected 3');
+    expect(screen.getByRole('radio', { name: /^Open/ })).toHaveAccessibleName('Open 0');
+  });
+
+  it("carries the Screening filter over, and says the list's filters still apply", async () => {
+    const asked: SweepAskedFor[] = [];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...sweepsJobApplications([AMAL, BASSEL, CARLA], asked),
+    );
+
+    const { user } = await renderApp(
+      `/jobs/${JOB.id}?pipeline=all&screening=${inUrl(['qualified'])}`,
+    );
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await openTheModal(user);
+
+    expect(screen.getByText(/Only the Pipeline tab is replaced/)).toBeVisible();
+    await user.click(tickOf('New', 1));
+    await user.click(screen.getByRole('button', { name: 'End 1 Application' }));
+
+    expect(await screen.findByText(/1 Application ended/)).toBeVisible();
+    expect(asked).toEqual([{ statuses: ['new'], qualification_statuses: ['qualified'] }]);
+  });
+
+  it('offers nothing to end on a Job whose Applications have all ended', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([CARLA]));
+
+    await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+    expect(endMany()).toBeDisabled();
+  });
+
+  it('keeps the modal open and says why when the sweep is refused', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...refusesTheSweep([AMAL, BASSEL, CARLA], SERVER_FAULT),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await openTheModal(user);
+    await user.click(tickOf('New', 1));
+    await user.click(screen.getByRole('button', { name: 'End 1 Application' }));
+
+    expect(await screen.findByText('Nothing ended')).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'End many Applications' })).toBeVisible();
+    expect(screen.getByText('Amal Haddad')).toBeVisible();
   });
 });
