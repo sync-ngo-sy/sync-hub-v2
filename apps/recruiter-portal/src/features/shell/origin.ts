@@ -1,7 +1,15 @@
 import type { ApplicationFilters, TenantApplicationFilters } from '@/features/applications/reading';
 import type { CandidatesReading } from '@/features/candidates/reading';
 
-const SECTIONS = ['dashboard', 'jobs', 'applications', 'candidates', 'talent-pool', 'job'] as const;
+const SECTIONS = [
+  'dashboard',
+  'jobs',
+  'applications',
+  'placements',
+  'candidates',
+  'talent-pool',
+  'job',
+] as const;
 
 type Section = (typeof SECTIONS)[number];
 
@@ -11,6 +19,7 @@ export type CrumbTarget =
   | { at: 'dashboard' }
   | { at: 'jobs' }
   | { at: 'applications'; reading: TenantApplicationFilters }
+  | { at: 'placements' }
   | { at: 'candidates'; reading: CandidatesReading }
   | { at: 'talent-pool' }
   | { at: 'job'; jobId: string; reading: ApplicationFilters }
@@ -57,6 +66,8 @@ export function applicationTrail(origin: Origin | null, leaf: ApplicationLeaf): 
       ];
     case 'dashboard':
       return [{ label: 'Dashboard', target: { at: 'dashboard' } }, { label: leaf.name }];
+    case 'placements':
+      return [{ label: 'Placements', target: { at: 'placements' } }, { label: leaf.name }];
     default:
       return [
         { label: 'Applications', target: { at: 'applications', reading: leaf.reading } },

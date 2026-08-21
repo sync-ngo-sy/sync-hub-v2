@@ -353,7 +353,24 @@ _Avoid_: Rank, fit, rating, AI verdict.
 **Placement**:
 A hire this Tenant claimed and the Candidate confirmed. Marking an Application hired asks for the
 day it starts; until the Candidate answers, the hire remains unconfirmed and is not a Placement.
+The Placements page is where they are read, and both the list and its count come from the
+database's own definition of one rather than from a second definition the portal keeps.
 _Avoid_: Hire, filled, closed won.
+
+**Placements page**:
+The Workspace destination holding every Hire claim the Tenant has made — Tenant-wide, with no
+per-Job form of it — in three tabs it counts one by one: **Placements** (confirmed, and what the
+page opens on), **Waiting** (unanswered) and **Denied**. There is no `All`: three states and a few
+dozen rows need no escape hatch, and the tab the page opens on is the one the Address leaves
+unwritten. A row names the person, the Job, the day the work started and where the claim stands;
+the name opens the Application and the Job column leads to the Job. Newest claim first, in the
+order the API answers in.
+Nothing here decides anything. An unanswered claim never lapses, auto-confirms or auto-denies —
+the row reads its age (*Waiting since March 4, 2026*) and a Recruiter judges the silence.
+A denial is readable on its own tab and announced nowhere else: no bell, no email, no marker. What
+a Tenant learns from is the gap between what it claimed and what it placed, which is why the Hired
+Pipeline tab carries one line pointing here.
+_Avoid_: Hires page, Hired page (that is a Pipeline tab), Onboarding, All tab.
 
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, opened as an editable draft on

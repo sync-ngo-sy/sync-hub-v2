@@ -1,11 +1,10 @@
-import { DataTable, type DataTableColumn } from '@sync/ui/components/data-table';
+import { DataTable } from '@sync/ui/components/data-table';
 import { PageHeader } from '@sync/ui/components/page-header';
-import { TruncatedText } from '@sync/ui/components/truncated-text';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
-import { jobPlace } from '@/features/jobs/job';
+import { jobColumn } from '@/features/jobs/components/job-column';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
@@ -32,32 +31,21 @@ import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 
-const JOB: DataTableColumn<TenantApplication> = {
-  id: 'job',
-  header: 'Job',
-  meta: { share: 1 },
-  cell: ({ row }) => (
+const COLUMNS = applicationColumns<TenantApplication>(jobColumn());
+
+const TO_THE_PLACEMENTS = (
+  <p className="text-meta text-muted-foreground">
+    Hired counts every hire your team has claimed. The ones the Candidate confirmed are your{' '}
     <Link
-      to="/jobs/$jobId"
-      params={{ jobId: row.original.job.id }}
+      to="/placements"
       search={{}}
-      onClick={(event) => event.stopPropagation()}
-      className="flex min-w-0 flex-col gap-1 rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="rounded-sm font-medium text-accent-foreground underline underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
-      <TruncatedText className="font-medium">{row.original.job.title}</TruncatedText>
-      <JobPlace job={row.original.job} />
+      Placements
     </Link>
-  ),
-};
-
-function JobPlace({ job }: { job: TenantApplication['job'] }) {
-  const place = jobPlace(job);
-  if (place === null) return null;
-
-  return <TruncatedText className="text-meta text-muted-foreground">{place}</TruncatedText>;
-}
-
-const COLUMNS = applicationColumns<TenantApplication>(JOB);
+    .
+  </p>
+);
 
 const TO_THE_JOBS = (
   <Link to="/jobs" search={{}} className={buttonVariants({ variant: 'outline' })}>
@@ -103,11 +91,14 @@ export function ApplicationsPage({
 
       <div className="space-y-(--space-section) pt-(--space-section)">
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
-          <ApplicationPipelineFilter
-            pipeline={pipeline}
-            counts={statusCounts}
-            onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
-          />
+          <div className="flex min-w-0 flex-col gap-3">
+            <ApplicationPipelineFilter
+              pipeline={pipeline}
+              counts={statusCounts}
+              onChange={(chosen) => onFiltersChange({ ...filters, pipeline: chosen })}
+            />
+            {pipeline?.[0] === 'hired' ? TO_THE_PLACEMENTS : null}
+          </div>
 
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <ChecklistFilter

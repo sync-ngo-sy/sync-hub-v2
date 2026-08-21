@@ -23,6 +23,7 @@ import { Route as WorkspaceApplicationsRouteImport } from './routes/_workspace/a
 import { Route as WorkspaceCandidatesRouteImport } from './routes/_workspace/candidates'
 import { Route as WorkspaceDashboardRouteImport } from './routes/_workspace/dashboard'
 import { Route as WorkspaceJobsRouteImport } from './routes/_workspace/jobs'
+import { Route as WorkspacePlacementsRouteImport } from './routes/_workspace/placements'
 import { Route as WorkspaceSettingsRouteImport } from './routes/_workspace/settings'
 import { Route as WorkspaceTalentPoolRouteImport } from './routes/_workspace/talent-pool'
 import { Route as WorkspaceTemplatesRouteImport } from './routes/_workspace/templates'
@@ -104,6 +105,11 @@ const WorkspaceJobsRoute = WorkspaceJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspacePlacementsRoute = WorkspacePlacementsRouteImport.update({
+  id: '/placements',
+  path: '/placements',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceSettingsRoute = WorkspaceSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/candidates': typeof WorkspaceCandidatesRoute
   '/dashboard': typeof WorkspaceDashboardRoute
   '/jobs': typeof WorkspaceJobsRoute
+  '/placements': typeof WorkspacePlacementsRoute
   '/settings': typeof WorkspaceSettingsRoute
   '/talent-pool': typeof WorkspaceTalentPoolRoute
   '/templates': typeof WorkspaceTemplatesRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/candidates': typeof WorkspaceCandidatesRoute
   '/dashboard': typeof WorkspaceDashboardRoute
   '/jobs': typeof WorkspaceJobsRoute
+  '/placements': typeof WorkspacePlacementsRoute
   '/settings': typeof WorkspaceSettingsRoute
   '/talent-pool': typeof WorkspaceTalentPoolRoute
   '/templates': typeof WorkspaceTemplatesRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/_workspace/candidates': typeof WorkspaceCandidatesRoute
   '/_workspace/dashboard': typeof WorkspaceDashboardRoute
   '/_workspace/jobs': typeof WorkspaceJobsRoute
+  '/_workspace/placements': typeof WorkspacePlacementsRoute
   '/_workspace/settings': typeof WorkspaceSettingsRoute
   '/_workspace/talent-pool': typeof WorkspaceTalentPoolRoute
   '/_workspace/templates': typeof WorkspaceTemplatesRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/candidates'
     | '/dashboard'
     | '/jobs'
+    | '/placements'
     | '/settings'
     | '/talent-pool'
     | '/templates'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/candidates'
     | '/dashboard'
     | '/jobs'
+    | '/placements'
     | '/settings'
     | '/talent-pool'
     | '/templates'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/_workspace/candidates'
     | '/_workspace/dashboard'
     | '/_workspace/jobs'
+    | '/_workspace/placements'
     | '/_workspace/settings'
     | '/_workspace/talent-pool'
     | '/_workspace/templates'
@@ -439,6 +451,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceJobsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/placements': {
+      id: '/_workspace/placements'
+      path: '/placements'
+      fullPath: '/placements'
+      preLoaderRoute: typeof WorkspacePlacementsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/settings': {
       id: '/_workspace/settings'
       path: '/settings'
@@ -525,6 +544,7 @@ interface WorkspaceRouteChildren {
   WorkspaceCandidatesRoute: typeof WorkspaceCandidatesRoute
   WorkspaceDashboardRoute: typeof WorkspaceDashboardRoute
   WorkspaceJobsRoute: typeof WorkspaceJobsRoute
+  WorkspacePlacementsRoute: typeof WorkspacePlacementsRoute
   WorkspaceSettingsRoute: typeof WorkspaceSettingsRoute
   WorkspaceTalentPoolRoute: typeof WorkspaceTalentPoolRoute
   WorkspaceTemplatesRoute: typeof WorkspaceTemplatesRoute
@@ -541,6 +561,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceCandidatesRoute: WorkspaceCandidatesRoute,
   WorkspaceDashboardRoute: WorkspaceDashboardRoute,
   WorkspaceJobsRoute: WorkspaceJobsRoute,
+  WorkspacePlacementsRoute: WorkspacePlacementsRoute,
   WorkspaceSettingsRoute: WorkspaceSettingsRoute,
   WorkspaceTalentPoolRoute: WorkspaceTalentPoolRoute,
   WorkspaceTemplatesRoute: WorkspaceTemplatesRoute,

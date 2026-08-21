@@ -219,6 +219,33 @@ describe('the unified Applications page', () => {
     expect(screen.queryByText('Dima Sabbagh')).toBeNull();
   });
 
+  it('points the Hired tab at the Placements, and leaves the tab itself as it was', async () => {
+    const asked: TenantAskedFor[] = [];
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));
+
+    const { user } = await renderApp('/applications');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+
+    await user.click(pipelineChip('Hired'));
+
+    const note = await screen.findByText(/Hired counts every hire your team has claimed/);
+    expect(within(note).getByRole('link', { name: 'Placements' })).toHaveAttribute(
+      'href',
+      '/placements',
+    );
+    await waitFor(() => expect(asked.at(-1)?.status).toEqual(['hired']));
+    expect(namesInOrder()).toEqual(["Open Hani Barakat's Application"]);
+  });
+
+  it('says nothing about Placements on a tab that is not Hired', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    await renderApp('/applications?pipeline=%5B%22rejected%22%5D');
+
+    expect(await screen.findByText('Ghada Kanaan')).toBeVisible();
+    expect(screen.queryByText(/Hired counts every hire your team has claimed/)).toBeNull();
+  });
+
   it('narrows the list to a rolling window and writes it into the address bar', async () => {
     const asked: TenantAskedFor[] = [];
     server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE, asked));

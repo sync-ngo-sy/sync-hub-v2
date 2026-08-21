@@ -1532,6 +1532,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/hire-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The hires the tenant has claimed, newest claim first
+         * @description Every hire the tenant says it made, across every Job, one standing at a time.
+         *
+         *     `confirmed` is the default and the only one of the three that is a Placement: it is read
+         *     from the `placements` view, so this list and anything else counting Placements cannot
+         *     disagree. The other two are read from the claims themselves.
+         *
+         *     Nothing here lapses. An unanswered claim stays unanswered for as long as the Candidate
+         *     leaves it, and `claimed_at` is what says how long that has been. A denial is recorded and
+         *     announced to nobody.
+         *
+         *     `counts` comes back whichever standing is being read, so the sizes of the other two are
+         *     never hidden by the one on screen.
+         */
+        get: operations["listTenantHireClaims"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/stats": {
         parameters: {
             query?: never;
@@ -2961,6 +2992,15 @@ export interface components {
              * @description When the Candidate answered. Null while they have not.
              */
             answered_at?: string | null;
+        };
+        /**
+         * HireClaimCount
+         * @description How many of the Tenant's Hire claims stand one of the three ways.
+         */
+        HireClaimCount: {
+            confirmation: components["schemas"]["HireConfirmation"];
+            /** Count */
+            count: number;
         };
         /**
          * HireConfirmation
@@ -4845,6 +4885,65 @@ export interface components {
              */
             updated_at: string;
             job: components["schemas"]["ApplicationJob"];
+        };
+        /**
+         * TenantHireClaim
+         * @description One Hire claim as the Tenant's own list of them reads it.
+         *
+         *     Only a `confirmed` one is a Placement. The other two are here to be read rather than
+         *     counted: nothing about an unanswered claim lapses, and a denied one moves nothing.
+         */
+        TenantHireClaim: {
+            /**
+             * Application Id
+             * Format: uuid
+             * @description The Application the claim was made on. Read it for who applied, what they sent, and what the Tenant has done since.
+             */
+            application_id: string;
+            /**
+             * Candidate Name
+             * @description The Snapshot's name: who they applied as.
+             */
+            candidate_name: string;
+            /** @description The Job they were hired for. */
+            job: components["schemas"]["ApplicationJob"];
+            /**
+             * Start Date
+             * Format: date
+             * @description The day the Tenant says the work started.
+             */
+            start_date: string;
+            /** @description The Candidate's answer. `unanswered` until they give one, and they may never give one. */
+            confirmation: components["schemas"]["HireConfirmation"];
+            /**
+             * Claimed At
+             * Format: date-time
+             * @description When the Tenant said so, which is what the age of an unanswered claim is measured from.
+             */
+            claimed_at: string;
+            /**
+             * Answered At
+             * @description When the Candidate answered. Null while they have not.
+             */
+            answered_at?: string | null;
+        };
+        /**
+         * TenantHireClaimPage
+         * @description One page of the Tenant's Hire claims of one standing, newest claim first.
+         */
+        TenantHireClaimPage: {
+            /** Items */
+            items: components["schemas"]["TenantHireClaim"][];
+            /**
+             * Next Cursor
+             * @description Send back as `cursor` for the following page.
+             */
+            next_cursor?: string | null;
+            /**
+             * Counts
+             * @description Every standing a Hire claim can have, each with how many of the Tenant's claims stand that way. Counted whichever standing `confirmation` narrows the list to, so each of them says its own size while another is being read.
+             */
+            counts?: components["schemas"]["HireClaimCount"][];
         };
         /**
          * TenantLogo
@@ -11050,6 +11149,69 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listTenantHireClaims: {
+        parameters: {
+            query?: {
+                /** @description Which claims to answer with: the ones the Candidate confirmed, the ones nobody has answered, or the ones they denied. */
+                confirmation?: components["schemas"]["HireConfirmation"];
+                /** @description A `next_cursor` from a previous page. Omit for the first page. */
+                cursor?: string | null;
+                /** @description How many to return. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantHireClaimPage"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `cursor` is not one this API issued, or belongs to another `confirmation`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */

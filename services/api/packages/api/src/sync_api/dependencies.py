@@ -9,6 +9,7 @@ from sync_api.access_requests import AccessRequestService
 from sync_api.applications import (
     ApplicationReviewService,
     ApplicationService,
+    HireClaimService,
     MatchAssessmentService,
 )
 from sync_api.auth import ActingProfile, Authentication, AuthService, SessionCookies
@@ -382,6 +383,13 @@ def get_application_review_service(
 ApplicationReviewServiceDep = Annotated[
     ApplicationReviewService, Depends(get_application_review_service)
 ]
+
+
+def get_hire_claim_service(session: SessionDep) -> HireClaimService:
+    return HireClaimService(session)
+
+
+HireClaimServiceDep = Annotated[HireClaimService, Depends(get_hire_claim_service)]
 
 
 def get_assessor(request: Request) -> MatchAssessor | None:
