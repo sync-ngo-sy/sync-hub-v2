@@ -1,6 +1,14 @@
 import type { components } from '@sync/api-client';
 import { http } from '@sync/api-client/testing';
-import { CLAIM_TABS, DEFAULT_TAB, type HireClaim, type HireConfirmation } from '../placement';
+import { holding } from '@/testing/holding';
+import { CANDIDATE_PLACEMENTS_PATH } from '../hooks/use-candidate-placements';
+import {
+  type CandidatePlacement,
+  CLAIM_TABS,
+  DEFAULT_TAB,
+  type HireClaim,
+  type HireConfirmation,
+} from '../placement';
 import { HIRE_CLAIMS_PATH } from '../reread';
 
 type Problem = components['schemas']['ProblemDetail'];
@@ -46,4 +54,30 @@ export function pagesHireClaims(pages: HireClaim[][]) {
 
 export function failsToListHireClaims(problem: Problem) {
   return [http.get(HIRE_CLAIMS_PATH, ({ response }) => response(500).json(problem))];
+}
+
+export function listsCandidatePlacements(placed: CandidatePlacement[], asked?: string[]) {
+  return [
+    http.get(CANDIDATE_PLACEMENTS_PATH, ({ params, response }) => {
+      asked?.push(params.candidate_id);
+      return response(200).json(placed);
+    }),
+  ];
+}
+
+export function failsToListCandidatePlacements(problem: Problem) {
+  return [http.get(CANDIDATE_PLACEMENTS_PATH, ({ response }) => response(500).json(problem))];
+}
+
+export function holdsCandidatePlacements(placed: CandidatePlacement[]) {
+  const gate = holding();
+  return {
+    arrive: gate.arrive,
+    handlers: [
+      http.get(CANDIDATE_PLACEMENTS_PATH, async ({ response }) => {
+        await gate.held;
+        return response(200).json(placed);
+      }),
+    ],
+  };
 }

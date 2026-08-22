@@ -11,6 +11,7 @@ import {
   listsDirectoryCandidates,
 } from '@/features/candidates/testing/handlers';
 import { listsJobs } from '@/features/jobs/testing/handlers';
+import { listsCandidatePlacements } from '@/features/placements/testing/handlers';
 import {
   hasCanonicalRoles,
   hasCanonicalSkills,
@@ -30,6 +31,7 @@ export const server = setupServer(
   ...readsMatchAssessment(null),
   ...listsCandidateNotes([]),
   ...listsCandidateTags([]),
+  ...listsCandidatePlacements([]),
   ...listsDirectoryCandidates([]),
   ...holdsTalentPool([]),
   ...belongsToTenant(AMAN),
