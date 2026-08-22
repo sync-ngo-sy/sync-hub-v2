@@ -19,7 +19,7 @@ from sync_core import (
     Storage,
     get_settings,
 )
-from tests.conftest import ADMIN_PORTAL_URL, RECRUITER_PORTAL_URL
+from tests.conftest import ADMIN_PORTAL_URL, CANDIDATE_PORTAL_URL, RECRUITER_PORTAL_URL
 from tests.support import stack
 from tests.support.avatars import empty_avatar_bucket
 from tests.support.cvs import empty_cv_bucket
@@ -54,6 +54,7 @@ def _stack_environment() -> Iterator[None]:
             "SYNC_PUBLIC_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_ASSESSMENT_RATE_LIMIT_MAX_REQUESTS": "100000",
             "SYNC_ACCESS_REQUEST_RATE_LIMIT_MAX_REQUESTS": "100000",
+            "SYNC_CANDIDATE_PORTAL_URL": CANDIDATE_PORTAL_URL,
             "SYNC_RECRUITER_PORTAL_URL": RECRUITER_PORTAL_URL,
             "SYNC_ADMIN_PORTAL_URL": ADMIN_PORTAL_URL,
         }

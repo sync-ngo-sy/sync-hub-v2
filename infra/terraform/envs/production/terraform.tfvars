@@ -34,6 +34,7 @@ services = {
       SYNC_ENVIRONMENT          = "production"
       SYNC_SUPABASE_URL         = "https://skmsobeqyljduzkjmokr.supabase.co"
       SYNC_CORS_ALLOWED_ORIGINS = "https://jobs.sync.ngo,https://app.sync.ngo,https://admin.sync.ngo"
+      SYNC_CANDIDATE_PORTAL_URL = "https://jobs.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin.sync.ngo"
       # A subdomain, not the root domain, and this is a mail-safety decision rather than a
@@ -79,6 +80,7 @@ services = {
       # Required by Settings, which both services build in full. The worker needs them for real:
       # the emails it sends carry links into the portals. Without them the container exits at
       # import, which is how the first staging revision died.
+      SYNC_CANDIDATE_PORTAL_URL = "https://jobs.sync.ngo"
       SYNC_RECRUITER_PORTAL_URL = "https://app.sync.ngo"
       SYNC_ADMIN_PORTAL_URL     = "https://admin.sync.ngo"
     }

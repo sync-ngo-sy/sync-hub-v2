@@ -99,6 +99,10 @@ class Settings(BaseSettings):
     auth_cookie_domain: str | None = None
     auth_rate_limit_max_requests: int = Field(default=20, ge=1)
     auth_rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    #: All three, because the API is the one place that answers which portal serves an account —
+    #: for the Profile a portal loads and for the portal a password-reset link returns to. The
+    #: candidate one is also Auth's `site_url`, which is what an auth email falls back to.
+    candidate_portal_url: AnyHttpUrl
     recruiter_portal_url: AnyHttpUrl
     admin_portal_url: AnyHttpUrl
 

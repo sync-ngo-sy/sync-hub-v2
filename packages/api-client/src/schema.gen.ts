@@ -4404,6 +4404,12 @@ export interface components {
              * @example SY
              */
             phone_country?: string | null;
+            /**
+             * Portal Url
+             * @description Absolute URL of the portal that serves this account type. A portal reading a Profile it does not serve sends the person here, rather than asking them to sign out.
+             * @example https://app.sync.ngo
+             */
+            portal_url: string;
         };
         /**
          * PublicJob

@@ -54,6 +54,7 @@ if TYPE_CHECKING:
 
     from sync_api.auth.gotrue import GoTrue, GoTrueSession
     from sync_api.auth.tokens import JwtVerifier
+    from sync_api.portals import Portals
 
 logger = get_logger(__name__)
 
@@ -120,14 +121,12 @@ class AuthService:
         gotrue: GoTrue,
         verifier: JwtVerifier,
         *,
-        recruiter_portal_url: str | None = None,
-        admin_portal_url: str | None = None,
+        portals: Portals,
     ) -> None:
         self._db = session
         self._gotrue = gotrue
         self._verifier = verifier
-        self._recruiter_portal_url = recruiter_portal_url
-        self._admin_portal_url = admin_portal_url
+        self._portals = portals
 
     async def register_candidate(
         self, *, email: str, password: str, full_name: str
@@ -212,12 +211,10 @@ class AuthService:
         account_type = await self._db.scalar(
             select(Profile.account_type).join(User, User.id == Profile.id).where(*by_address(email))
         )
-        if account_type == AccountType.RECRUITER:
-            redirect_to = self._recruiter_portal_url
-        elif account_type == AccountType.PLATFORM_ADMIN:
-            redirect_to = self._admin_portal_url
-        else:
-            redirect_to = None
+        # An address with no live Profile names no portal to return to. Nothing is emailed to a
+        # stranger, so this only decides what an address we do not recognise resolves to: Auth's
+        # own `site_url`, exactly as before this became one mapping.
+        redirect_to = None if account_type is None else self._portals.url_for(account_type)
         await self._gotrue.send_password_reset_email(email, redirect_to=redirect_to)
 
     async def reset_password(self, *, token_hash: str, password: str) -> None:
