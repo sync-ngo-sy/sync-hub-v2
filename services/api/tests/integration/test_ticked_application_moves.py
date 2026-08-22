@@ -262,11 +262,16 @@ async def test_a_ticked_move_along_the_ladder_tells_nobody(
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
+    """The four rungs above `new` are one Stage, so moving between them is silent. Counted rather
+    than asserted empty, because getting them onto the ladder crosses the one boundary there is."""
     _, first, second = await a_job_two_people_applied_to(
         recruiter, other_browser, third_browser, mailbox, db_session
     )
     await a_moved_application(recruiter, first["id"], ApplicationStatus.REVIEWING)
     await a_moved_application(recruiter, second["id"], ApplicationStatus.REVIEWING)
+    before = {
+        each["id"]: len(await notifications_of(db_session, each["id"])) for each in (first, second)
+    }
 
     moved = await the_ticked_moved(recruiter, [first["id"], second["id"]], to="shortlisted")
 
@@ -276,7 +281,7 @@ async def test_a_ticked_move_along_the_ladder_tells_nobody(
             ApplicationStatus.SHORTLISTED
         )
         assert await rejections_of(db_session, each["id"]) == []
-    assert await my_notifications(other_browser) == []
+        assert len(await notifications_of(db_session, each["id"])) == before[each["id"]]
 
 
 async def test_a_ticked_move_off_new_tells_them_their_application_is_in_review(

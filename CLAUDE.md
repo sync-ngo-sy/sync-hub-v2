@@ -14,7 +14,8 @@ Multi-context — root `CONTEXT-MAP.md` pointing to a `CONTEXT.md` per workspace
 
 ## Don't comment
 
-Comments should be **zero** unless it's **literally impossible** to infer from the code.
+Code Comments: Do not use inline comments; write self-explanatory code instead.
+API Docstrings: Permitted only on *endpoints* and must be kept to one line maximum for OpenAPI documentation.
 
 ## PR
 
