@@ -15,6 +15,7 @@ import {
   getsApplication,
   holdsJobApplications,
   listsJobApplications,
+  movesTickedJobApplications,
   pagesJobApplications,
   refusesTheSweep,
   type SweepAskedFor,
@@ -853,5 +854,212 @@ describe("ending many of a Job's Applications at once", () => {
     expect(await screen.findByText('Nothing ended')).toBeVisible();
     expect(screen.getByRole('dialog', { name: 'End many Applications' })).toBeVisible();
     expect(screen.getByText('Amal Haddad')).toBeVisible();
+  });
+});
+
+describe("the ticks on a Job's Applications tab", () => {
+  function tickOf(candidate: string) {
+    return screen.getByRole('checkbox', { name: `Tick ${candidate}'s Application` });
+  }
+
+  function noTickOn(candidate: string) {
+    return screen.queryByRole('checkbox', { name: `Tick ${candidate}'s Application` });
+  }
+
+  async function openMoveTo(user: UserEvent) {
+    await user.click(screen.getByRole('button', { name: /^Move to/ }));
+    return within(await screen.findByRole('menu'));
+  }
+
+  function pipelineChip(label: string) {
+    return screen.getByRole('radio', { name: new RegExp(`^${label}(?: |$)`) });
+  }
+
+  it('offers a tick on every row an act reaches, as the Tenant-wide list does', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    expect(tickOf('Amal Haddad')).toBeInTheDocument();
+    expect(tickOf('Bassel Nasser')).toBeInTheDocument();
+    expect(tickOf('Carla Rizk')).toBeInTheDocument();
+  });
+
+  it('offers no box that ticks a whole page, here either', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  });
+
+  it('keeps End many beside the ticks, because a sweep reaches rows no tick has loaded', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.click(tickOf('Amal Haddad'));
+
+    expect(screen.getByRole('button', { name: 'End many' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'End 1 Application' })).toBeVisible();
+  });
+
+  it('takes the box off a rejected row once an undecided one is ticked', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await user.click(tickOf('Amal Haddad'));
+
+    expect(tickOf('Bassel Nasser')).toBeInTheDocument();
+    expect(noTickOn('Carla Rizk')).toBeNull();
+  });
+
+  it('offers the ladder moves the whole set admits, and never one to where a row already is', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await user.click(tickOf('Amal Haddad'));
+    await user.click(tickOf('Bassel Nasser'));
+
+    const menu = await openMoveTo(user);
+
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Reviewing',
+      'Interview',
+      'Offer',
+    ]);
+  });
+
+  it('moves the ticked rows up the ladder, one move each, and says where they landed', async () => {
+    const asked: string[] = [];
+    const listed = [AMAL, BASSEL, CARLA];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...movesTickedJobApplications(listed, asked),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await user.click(tickOf('Amal Haddad'));
+    await user.click(tickOf('Bassel Nasser'));
+    const menu = await openMoveTo(user);
+    await user.click(menu.getByRole('menuitem', { name: 'Interview' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Move 2 Applications to Interview',
+      }),
+    );
+
+    expect(await screen.findByText('2 Applications are in Interview.')).toBeVisible();
+    expect(asked).toEqual([AMAL.id, BASSEL.id]);
+    await waitFor(() => expect(pipelineChip('Interview')).toHaveAccessibleName('Interview 2'));
+    expect(screen.queryByRole('button', { name: /^Move to/ })).toBeNull();
+  });
+
+  it('promises a ladder move reaches nobody before anybody confirms it', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...movesTickedJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await user.click(tickOf('Amal Haddad'));
+    const menu = await openMoveTo(user);
+    await user.click(menu.getByRole('menuitem', { name: 'Shortlisted' }));
+
+    const dialog = within(await screen.findByRole('alertdialog'));
+    expect(dialog.getByText(/read as In review to the Candidate/)).toBeVisible();
+  });
+
+  it('ends the ticked rows one at a time, which is the act the sweep cannot narrow to', async () => {
+    const asked: string[] = [];
+    const listed = [AMAL, BASSEL, CARLA];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...movesTickedJobApplications(listed, asked),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await user.click(tickOf('Bassel Nasser'));
+    await user.click(screen.getByRole('button', { name: 'End 1 Application' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'End 1 Application',
+      }),
+    );
+
+    expect(await screen.findByText(/1 Application ended/)).toBeVisible();
+    expect(asked).toEqual([BASSEL.id]);
+  });
+
+  it('takes a sweep back by ticking the rejections it left', async () => {
+    const asked: string[] = [];
+    const listed = [AMAL, BASSEL, CARLA];
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...movesTickedJobApplications(listed, asked),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Carla Rizk')).toBeVisible();
+    await user.click(tickOf('Carla Rizk'));
+    await user.click(screen.getByRole('button', { name: 'Move 1 Application back to Reviewing' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Move 1 Application back to Reviewing',
+      }),
+    );
+
+    expect(await screen.findByText(/1 Application is back in Reviewing/)).toBeVisible();
+    expect(asked).toEqual([CARLA.id]);
+  });
+
+  it('drops the ticks when the Reading they were made under changes', async () => {
+    server.use(
+      ...signedInAs(RECRUITER),
+      ...getsJob(JOB),
+      ...listsJobApplications([AMAL, BASSEL, CARLA]),
+    );
+
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
+    expect(await screen.findByText('Amal Haddad')).toBeVisible();
+    await user.click(tickOf('Amal Haddad'));
+    expect(screen.getByRole('status')).toHaveTextContent('1 Application ticked');
+
+    await user.click(pipelineChip('New'));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^End 1 / })).toBeNull());
   });
 });

@@ -324,32 +324,56 @@ it inherits the filters the list had and replaces the Pipeline tab with the tick
 fifty thousand Applications is the same request as a sweep of twelve, and a selection too large to
 send is not a state to reach. Every ending is the rejection a Pipeline move makes, held to the same
 Telling, so a sweep is undone by reading the rejections back and moving them: there is no batch id
-anywhere, and no undo of its own. `End many` is dead on a Job with nothing left to end.
-`features/applications/ending.ts` owns which statuses can end, the running total, and every
-sentence either list says about an ending.
+anywhere, and no undo of its own. `End many` is dead on a Job with nothing left to end, and stands
+beside the Row ticks rather than instead of them: the sweep is the act for rows nobody has loaded.
+`features/applications/ending.ts` owns which statuses can end, which Acts a set of ticks admits, the
+running total, and every sentence either list says about an act.
 _Avoid_: Bulk action, mass reject, select all (a sweep names statuses, never rows); Archive
 (nothing is hidden — the Applications have ended).
 
 **Row ticks**:
-The Applications page's answer to the same need, and deliberately the smaller one: a box on each row
-the reader can see, one row at a time, and no sweep. A sweep is a statement about one hiring effort,
-and across forty Jobs at once it is a statement about nothing — so the Tenant-wide list will not
-make one, and offers no box that ticks a whole page either: the gesture the ticks exist to refuse is
-exactly the one a select-all would hand back.
+A box on each row the reader can see, one row at a time, on both lists: the Tenant-wide Applications
+page and a Job's Applications tab. Neither offers a box that ticks a whole page — the gesture the
+ticks exist to refuse is exactly the one a select-all would hand back. On a Job they stand beside the
+Sweep and answer a different question: the ticks reach the rows on screen and name them, the sweep
+reaches the whole Reading and names no ids at all. The Tenant-wide list has ticks and no sweep,
+because a sweep is a statement about one hiring effort and across forty Jobs at once it is a
+statement about nothing.
 
-Two acts, and the ticks carry either: ending the Applications still being decided, and moving the
-rejected ones back to Reviewing — which is how a sweep is taken back, with no batch id and nothing
-named after it. The **Act** is decided by the first tick, and every row that would mean the other
-one loses its box, so a set of ticks can never mean two things at once; a hired or a withdrawn row
-is never tickable, because nothing moves it. Either act is that many single moves, a few at a time
-rather than all at once, and reports through the one answer a sweep gives — including how many of the
-ticked rows the list had already moved out from under the reader.
+**Act**:
+What a set of ticks goes on to say, and always one Pipeline move made over that set. Six of them:
+the four ladder moves — to Reviewing, Shortlisted, Interview or Offer — the ending, and moving a
+rejected Application back to Reviewing, which is how a sweep is taken back, with no batch id and
+nothing named after it.
+
+Neither `hired` nor `new` is among them. A hire names the day it started and one act over many
+Applications has no way to answer that; New is where an Application arrives rather than somewhere a
+set is sent.
+
+A set of ticks keeps the acts **every** ticked row admits, so the first tick narrows rather than
+decides and a row sharing no act with the set loses its box: a set of ticks can never mean two
+things at once. An act also stops being offered as soon as one ticked row already stands where it
+would go, because a move to where a row already is is not a move — it is a refusal waiting to
+happen. A hired or a withdrawn row is never tickable, because nothing moves it. Every act offered
+is a move the API's own state machine allows, so a set the bar offers is never a set the pipeline
+then refuses.
+
+A ladder move is the one act that reaches nobody, and the Stage is why: Reviewing, Shortlisted,
+Interview and Offer are one Stage to the Candidate, so moving between them is silent. Only the step
+off New crosses a Stage boundary, and that is the whole of what anybody hears — which is why the
+ladder moves share one menu and the two acts that do change what a Candidate is told stand on their
+own buttons.
+
+Every act is that many single moves, a few at a time rather than all at once, and reports through
+the one answer a sweep gives — including how many of the ticked rows the list had already moved out
+from under the reader.
 
 The ticks leave with the Reading they were made under: changing a filter or the order drops them,
-because a tick was a statement about the rows then on screen. What is ticked is read back against
-the rows on screen too, so a row that leaves takes its tick with it rather than being counted from
-memory.
-_Avoid_: Selection, select all, bulk bar, batch (there is no batch, and nothing names one).
+because a tick was a statement about the rows then on screen, and so does a sweep, which moves rows
+the ticks may have named. What is ticked is read back against the rows on screen too, so a row that
+leaves takes its tick with it rather than being counted from memory.
+_Avoid_: Selection, select all, bulk bar, batch (there is no batch, and nothing names one); Bulk
+action (an act is one Pipeline move, held to the same rules as one made by hand).
 
 **Refused move**:
 A Pipeline move the API answers with a 409, rendered where the buttons are rather than as a

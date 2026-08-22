@@ -728,6 +728,64 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     expect(screen.getByText('Farah Doumani')).toBeVisible();
   });
 
+  it('offers the ladder moves the ticked rows admit, beside the ending', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(screen.getByRole('button', { name: /^Move to/ }));
+
+    const menu = within(await screen.findByRole('menu'));
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Reviewing',
+      'Shortlisted',
+      'Interview',
+      'Offer',
+    ]);
+  });
+
+  it('drops the move to Reviewing once a row already in Reviewing is ticked', async () => {
+    server.use(...signedInAs(RECRUITER), ...listsTenantApplications(EVERYONE));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(tickOf('Elias Murad'));
+    await user.click(screen.getByRole('button', { name: /^Move to/ }));
+
+    const menu = within(await screen.findByRole('menu'));
+    expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Shortlisted',
+      'Interview',
+      'Offer',
+    ]);
+  });
+
+  it('shortlists the rows it ticked, one move each, and claims nobody was told', async () => {
+    const asked: string[] = [];
+    const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
+    server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed, asked));
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(tickOf('Farah Doumani'));
+    await user.click(screen.getByRole('button', { name: /^Move to/ }));
+    await user.click(
+      within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Shortlisted' }),
+    );
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Move 2 Applications to Shortlisted',
+      }),
+    );
+
+    expect(await screen.findByText('2 Applications are in Shortlisted.')).toBeVisible();
+    expect(asked).toEqual([DIMA.id, FARAH.id]);
+    await waitFor(() => expect(pipelineChip('Shortlisted')).toHaveAccessibleName('Shortlisted 2'));
+  });
+
   it('takes a sweep back by reading the rejections and moving them to Reviewing', async () => {
     const asked: string[] = [];
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];

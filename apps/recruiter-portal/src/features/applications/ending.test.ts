@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { PIPELINE_STATUSES } from './application';
 import {
+  actConsequence,
+  actDestination,
   actedMessage,
-  actFor,
   actLabel,
+  actsFor,
+  actsOpenTo,
   aFewAtATime,
   endableStatuses,
   endingTotalMessage,
   endsWhatItTicked,
+  LADDER_ACTS,
   movedTogether,
   nothingIsOpen,
+  TICKED_ACTS,
   tickable,
-  tickedAct,
   tickedLabel,
   whatItSwept,
   whereTickedRowsGo,
@@ -87,39 +92,73 @@ describe('a Job with nothing left to end', () => {
 });
 
 describe('what ticking a row can go on to say', () => {
-  it('ends an Application still being decided, and takes a rejected one back', () => {
-    expect(actFor('new')).toBe('end');
-    expect(actFor('offer')).toBe('end');
-    expect(actFor('rejected')).toBe('reopen');
+  it('offers every ladder move but the one the row already stands in, and the ending', () => {
+    expect(actsFor('new')).toEqual(['review', 'shortlist', 'interview', 'offer', 'end']);
+    expect(actsFor('shortlisted')).toEqual(['review', 'interview', 'offer', 'end']);
+    expect(actsFor('offer')).toEqual(['review', 'shortlist', 'interview', 'end']);
   });
 
-  it('offers nothing on an Application nothing moves', () => {
-    expect(actFor('hired')).toBeNull();
-    expect(actFor('withdrawn')).toBeNull();
+  it('takes a rejected Application back, and offers nothing else on it', () => {
+    expect(actsFor('rejected')).toEqual(['reopen']);
+  });
+
+  it('offers nothing at all on an Application nothing moves', () => {
+    expect(actsFor('hired')).toEqual([]);
+    expect(actsFor('withdrawn')).toEqual([]);
+  });
+
+  it('never offers a hire, which names a day one act over many cannot answer', () => {
+    for (const status of PIPELINE_STATUSES) {
+      expect(actsFor(status).map(whereTickedRowsGo)).not.toContain('hired');
+    }
+  });
+
+  it('never offers New, which is where an Application arrives rather than where a set is sent', () => {
+    expect(LADDER_ACTS.map(whereTickedRowsGo)).not.toContain('new');
   });
 
   it('names where each act takes the rows it was ticked for', () => {
     expect(whereTickedRowsGo('end')).toBe('rejected');
     expect(whereTickedRowsGo('reopen')).toBe('reviewing');
+    expect(whereTickedRowsGo('review')).toBe('reviewing');
+    expect(whereTickedRowsGo('shortlist')).toBe('shortlisted');
+    expect(whereTickedRowsGo('interview')).toBe('interview');
+    expect(whereTickedRowsGo('offer')).toBe('offer');
   });
 
-  it('lets the first tick decide the act, and reads an empty set as no act at all', () => {
-    expect(tickedAct([])).toBeNull();
-    expect(tickedAct(['new', 'reviewing'])).toBe('end');
-    expect(tickedAct(['rejected'])).toBe('reopen');
+  it('leaves every act open while nothing is ticked, so the first tick narrows it', () => {
+    expect(actsOpenTo([])).toEqual([...TICKED_ACTS]);
+  });
+
+  it('keeps only the acts every ticked row admits', () => {
+    expect(actsOpenTo(['new'])).toEqual(['review', 'shortlist', 'interview', 'offer', 'end']);
+    expect(actsOpenTo(['new', 'shortlisted'])).toEqual(['review', 'interview', 'offer', 'end']);
+    expect(actsOpenTo(['rejected'])).toEqual(['reopen']);
+  });
+
+  it('drops a ladder move as soon as one ticked row already stands where it would go', () => {
+    expect(actsOpenTo(['new', 'reviewing'])).not.toContain('review');
+    expect(actsOpenTo(['shortlisted', 'interview'])).not.toContain('shortlist');
   });
 
   it('offers a box on every row that admits an act while nothing is ticked', () => {
-    expect(tickable('new', null)).toBe(true);
-    expect(tickable('rejected', null)).toBe(true);
-    expect(tickable('hired', null)).toBe(false);
+    const nothing = actsOpenTo([]);
+    expect(tickable('new', nothing)).toBe(true);
+    expect(tickable('rejected', nothing)).toBe(true);
+    expect(tickable('hired', nothing)).toBe(false);
+    expect(tickable('withdrawn', nothing)).toBe(false);
   });
 
-  it('takes the box off every row that would mean the other act', () => {
-    expect(tickable('new', 'end')).toBe(true);
-    expect(tickable('rejected', 'end')).toBe(false);
-    expect(tickable('rejected', 'reopen')).toBe(true);
-    expect(tickable('new', 'reopen')).toBe(false);
+  it('takes the box off every row that shares no act with what is ticked', () => {
+    expect(tickable('new', actsOpenTo(['new']))).toBe(true);
+    expect(tickable('rejected', actsOpenTo(['new']))).toBe(false);
+    expect(tickable('rejected', actsOpenTo(['rejected']))).toBe(true);
+    expect(tickable('new', actsOpenTo(['rejected']))).toBe(false);
+  });
+
+  it('keeps a row tickable while it still shares one act, though not the same one', () => {
+    expect(tickable('reviewing', actsOpenTo(['new']))).toBe(true);
+    expect(actsOpenTo(['new', 'reviewing'])).toContain('shortlist');
   });
 
   it('says how many rows are ticked, and reads a single one as one', () => {
@@ -130,6 +169,24 @@ describe('what ticking a row can go on to say', () => {
   it('names the move back to Reviewing as the move it is', () => {
     expect(actLabel('reopen', 3)).toBe('Move 3 Applications back to Reviewing');
     expect(actLabel('reopen', 1)).toBe('Move 1 Application back to Reviewing');
+  });
+
+  it('names a ladder move by where it takes them', () => {
+    expect(actLabel('shortlist', 3)).toBe('Move 3 Applications to Shortlisted');
+    expect(actLabel('interview', 1)).toBe('Move 1 Application to Interview');
+    expect(actDestination('offer')).toBe('Offer');
+  });
+
+  it('promises a ladder move reaches nobody, and says which step is the exception', () => {
+    for (const act of LADDER_ACTS) {
+      expect(actConsequence(act)).toContain('read as In review');
+      expect(actConsequence(act)).toContain('off New');
+    }
+  });
+
+  it('says what an ending costs, and never confuses it with a ladder move', () => {
+    expect(actConsequence('end')).toContain('three days');
+    expect(actConsequence('reopen')).toContain('back to Reviewing');
   });
 });
 
@@ -163,6 +220,27 @@ describe('what an act reports back', () => {
     );
     expect(actedMessage('end', done(3), 3)).toBe(
       '3 Applications ended — they hear on August 24, 2026.',
+    );
+  });
+
+  it('says where a ladder move left them, and claims nothing about anybody hearing', () => {
+    expect(actedMessage('shortlist', { moved: 4, toldAt: null })).toBe(
+      '4 Applications are in Shortlisted.',
+    );
+    expect(actedMessage('interview', { moved: 1, toldAt: null })).toBe(
+      '1 Application is in Interview.',
+    );
+  });
+
+  it('says which of the ticked rows a ladder move missed', () => {
+    expect(actedMessage('offer', { moved: 2, toldAt: null }, 3)).toBe(
+      '2 of 3 Applications are in Offer — the other had already moved.',
+    );
+  });
+
+  it('says nothing moved rather than nothing ended, where nothing was being ended', () => {
+    expect(actedMessage('shortlist', { moved: 0, toldAt: null })).toBe(
+      'Nothing moved — every Application the ticks named had already moved.',
     );
   });
 

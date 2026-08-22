@@ -25,14 +25,7 @@ import {
   sortSelection,
   type TenantApplication,
 } from '../application';
-import {
-  actedMessage,
-  actLabel,
-  tickable,
-  tickedAct,
-  tickedLabel,
-  whereTickedRowsGo,
-} from '../ending';
+import { actedMessage, actsOpenTo, type TickedAct, tickable, whereTickedRowsGo } from '../ending';
 import { useMoveTickedApplications } from '../hooks/use-application-actions';
 import { useTenantApplications } from '../hooks/use-tenant-applications';
 import {
@@ -45,6 +38,7 @@ import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
 import { ChecklistFilter } from './checklist-filter';
 import { TickedActDialog } from './ticked-act-dialog';
+import { TickedActs } from './ticked-acts';
 
 export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(jobColumn());
 
@@ -97,20 +91,19 @@ export function ApplicationsPage({
   const ended = anythingEnded(statusCounts);
   const moving = useMoveTickedApplications();
   const [ticked, setTicked] = useState<string[]>([]);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<TickedAct | null>(null);
   const items = applications.data?.items ?? [];
   const tickedRows = items.filter((application) => ticked.includes(application.id));
-  const act = tickedAct(tickedRows.map((application) => application.status));
+  const openActs = actsOpenTo(tickedRows.map((application) => application.status));
 
   function changeReading(next: TenantApplicationFilters) {
     setTicked([]);
     onFiltersChange(next);
   }
 
-  async function moveTicked(chosen: string[]) {
-    if (!act) throw new Error('nothing is ticked');
+  async function moveTicked(act: TickedAct, chosen: string[]) {
     const done = await moving.mutateAsync({ ids: chosen, to: whereTickedRowsGo(act) });
-    setConfirming(false);
+    setConfirming(null);
     setTicked([]);
     toast.success(actedMessage(act, done, chosen.length));
     return done;
@@ -195,23 +188,13 @@ export function ApplicationsPage({
           </div>
         </div>
 
-        {act ? (
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-card px-(--space-card) py-3 shadow-card">
-            <p role="status" className="text-dense text-foreground">
-              {tickedLabel(tickedRows.length)}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="ghost" onClick={() => setTicked([])}>
-                Clear ticks
-              </Button>
-              <Button
-                variant={act === 'end' ? 'destructive' : 'default'}
-                onClick={() => setConfirming(true)}
-              >
-                {actLabel(act, tickedRows.length)}
-              </Button>
-            </div>
-          </div>
+        {tickedRows.length > 0 ? (
+          <TickedActs
+            ticked={tickedRows.length}
+            acts={openActs}
+            onAct={setConfirming}
+            onClear={() => setTicked([])}
+          />
         ) : null}
 
         <DataTable
@@ -226,7 +209,7 @@ export function ApplicationsPage({
           ticks={{
             ticked: tickedRows.map((application) => application.id),
             onChange: setTicked,
-            can: (application) => tickable(application.status, act),
+            can: (application) => tickable(application.status, openActs),
           }}
           sort={{
             by: sort,
@@ -253,12 +236,12 @@ export function ApplicationsPage({
         />
       </div>
 
-      {confirming && act ? (
+      {confirming ? (
         <TickedActDialog
-          act={act}
+          act={confirming}
           ticked={tickedRows.map((application) => application.id)}
-          onConfirm={moveTicked}
-          onClose={() => setConfirming(false)}
+          onConfirm={(chosen) => moveTicked(confirming, chosen)}
+          onClose={() => setConfirming(null)}
         />
       ) : null}
     </>

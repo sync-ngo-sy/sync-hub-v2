@@ -45,39 +45,78 @@ export function nothingIsOpen(counts: StatusCounts): boolean {
   return endableStatuses(counts).every((one) => one.count === 0);
 }
 
-/** What ticking rows can go on to say. Two acts and no others: ending the Applications still being
- * decided, and taking back the ones this Tenant rejected — which is how a sweep is undone. */
-export type TickedAct = 'end' | 'reopen';
+/** What ticking rows can go on to say. Every act is one Pipeline move made over a set: along the
+ * ladder, ending the Applications still being decided, or taking back the ones this Tenant
+ * rejected — which is how a sweep is undone. */
+export type TickedAct = 'review' | 'shortlist' | 'interview' | 'offer' | 'end' | 'reopen';
+
+/** The moves along the ladder, in the order they are offered.
+ *
+ * `new` is not among them, and `hired` cannot be: the first is where an Application arrives rather
+ * than somewhere a set is sent, and the second names the day it started, which one act over many
+ * Applications has no way to answer.
+ */
+export const LADDER_ACTS = [
+  'review',
+  'shortlist',
+  'interview',
+  'offer',
+] as const satisfies readonly TickedAct[];
+
+/** Every act, ladder first, then the ending, then the one act a rejected row admits. */
+export const TICKED_ACTS = [
+  ...LADDER_ACTS,
+  'end',
+  'reopen',
+] as const satisfies readonly TickedAct[];
 
 const WHERE_IT_GOES: Record<TickedAct, PipelineStatus> = {
+  review: 'reviewing',
+  shortlist: 'shortlisted',
+  interview: 'interview',
+  offer: 'offer',
   end: 'rejected',
   reopen: 'reviewing',
 };
 
-/** The act a row's own status admits, if any. A hired or a withdrawn Application admits neither:
- * one is done, and the other was the Candidate's own move. */
-export function actFor(status: PipelineStatus): TickedAct | null {
-  if ((OPEN_STATUSES as readonly PipelineStatus[]).includes(status)) return 'end';
-  return status === 'rejected' ? 'reopen' : null;
-}
-
-/** Which act the ticks are a statement about. The first tick decides it, and every row that would
- * mean the other act loses its box — so a set of ticks can never mean two things at once. */
-export function tickedAct(ticked: PipelineStatus[]): TickedAct | null {
-  for (const status of ticked) {
-    const act = actFor(status);
-    if (act) return act;
+/** The acts a row's own status admits: every ladder move but the one it already stands in, and the
+ * ending, while it is still being decided — and only the way back once it has been rejected. A
+ * hired or a withdrawn Application admits none: one is done, and the other was the Candidate's own
+ * move. Every act here is a move the API's own state machine allows, so an act offered here is
+ * never one the pipeline then refuses.
+ */
+export function actsFor(status: PipelineStatus): TickedAct[] {
+  if ((OPEN_STATUSES as readonly PipelineStatus[]).includes(status)) {
+    return [...LADDER_ACTS.filter((act) => WHERE_IT_GOES[act] !== status), 'end'];
   }
-  return null;
+  return status === 'rejected' ? ['reopen'] : [];
 }
 
-export function tickable(status: PipelineStatus, act: TickedAct | null): boolean {
-  const its = actFor(status);
-  return its !== null && (act === null || act === its);
+/** The acts a set of ticks still leaves open: the ones every ticked row admits, so no act is
+ * offered that some row in the set would refuse.
+ *
+ * Nothing ticked leaves all of them open, which is what lets the first tick narrow rather than
+ * decide. A row sharing no act with the set loses its box, so a set of ticks can never mean two
+ * things at once — and an act stops being offered as soon as one ticked row already stands where
+ * it would go, because a move to where a row already is is not a move.
+ */
+export function actsOpenTo(ticked: PipelineStatus[]): TickedAct[] {
+  return TICKED_ACTS.filter((act) => ticked.every((status) => actsFor(status).includes(act)));
+}
+
+/** Whether a tick is offered on a row: it admits some act, and one the set still leaves open. */
+export function tickable(status: PipelineStatus, open: TickedAct[]): boolean {
+  return actsFor(status).some((act) => open.includes(act));
 }
 
 export function whereTickedRowsGo(act: TickedAct): PipelineStatus {
   return WHERE_IT_GOES[act];
+}
+
+/** The act as a menu names it: where the rows go, and nothing else — how many are ticked has
+ * already been said beside it. */
+export function actDestination(act: TickedAct): string {
+  return pipelineState(WHERE_IT_GOES[act]).label;
 }
 
 const WHAT_ENDING_COSTS =
@@ -89,15 +128,36 @@ const WHAT_REOPENING_COSTS =
   'nothing and their queued email is cancelled; anyone who had already read the rejection is ' +
   'told nothing about this, so message them by hand if they should know.';
 
+/** A ladder move is the one act that costs the Candidate nothing, and the Stage is why: Reviewing,
+ * Shortlisted, Interview and Offer are one Stage to them, so moving between them is silent. Only
+ * the step off New crosses a Stage boundary, and that is the whole of what it says. */
+const WHAT_A_LADDER_MOVE_COSTS =
+  'Nothing is sent about where they stand on your ladder: Reviewing, Shortlisted, Interview and ' +
+  'Offer all read as In review to the Candidate. Moving one off New tells them their Application ' +
+  'is in review, and that is the whole of what anybody hears.';
+
 const CONSEQUENCE: Record<TickedAct, string> = {
+  review: WHAT_A_LADDER_MOVE_COSTS,
+  shortlist: WHAT_A_LADDER_MOVE_COSTS,
+  interview: WHAT_A_LADDER_MOVE_COSTS,
+  offer: WHAT_A_LADDER_MOVE_COSTS,
   end: WHAT_ENDING_COSTS,
   reopen: WHAT_REOPENING_COSTS,
 };
 
-const REFUSED: Record<TickedAct, string> = {
-  end: "Some of these Applications couldn't be ended. The list has been read again, so it says which.",
-  reopen:
-    "Some of these Applications couldn't be moved. The list has been read again, so it says which.",
+const ENDING_REFUSAL =
+  "Some of these Applications couldn't be ended. The list has been read again, so it says which.";
+
+const MOVE_REFUSAL =
+  "Some of these Applications couldn't be moved. The list has been read again, so it says which.";
+
+const REFUSAL: Record<TickedAct, string> = {
+  review: MOVE_REFUSAL,
+  shortlist: MOVE_REFUSAL,
+  interview: MOVE_REFUSAL,
+  offer: MOVE_REFUSAL,
+  end: ENDING_REFUSAL,
+  reopen: MOVE_REFUSAL,
 };
 
 /** What the act costs the people it is about, stated before anybody confirms it. */
@@ -106,7 +166,7 @@ export function actConsequence(act: TickedAct): string {
 }
 
 export function actRefused(act: TickedAct): string {
-  return REFUSED[act];
+  return REFUSAL[act];
 }
 
 /** What one act did: how many Applications really moved, and the Telling they now carry. */
@@ -119,7 +179,16 @@ const APPLICATIONS = (count: number) => (count === 1 ? 'Application' : 'Applicat
 
 export function actLabel(act: TickedAct, total: number): string {
   const counted = total === 0 ? 'Applications' : `${total} ${APPLICATIONS(total)}`;
-  return act === 'end' ? `End ${counted}` : `Move ${counted} back to Reviewing`;
+  if (act === 'end') return `End ${counted}`;
+  if (act === 'reopen') return `Move ${counted} back to Reviewing`;
+  return `Move ${counted} to ${actDestination(act)}`;
+}
+
+/** Where the act left the rows, as a sentence says it afterwards. */
+function landed(act: TickedAct, moved: number): string {
+  if (act === 'end') return 'ended';
+  const are = moved === 1 ? 'is' : 'are';
+  return act === 'reopen' ? `${are} back in Reviewing` : `${are} in ${actDestination(act)}`;
 }
 
 export function tickedLabel(ticked: number): string {
@@ -164,16 +233,17 @@ export function actedMessage(act: TickedAct, done: Moved, asked?: number): strin
   }
   if (asked !== undefined && asked > done.moved) {
     const missed = asked - done.moved;
-    const did = act === 'end' ? 'ended' : 'are back in Reviewing';
     return (
-      `${done.moved} of ${asked} ${APPLICATIONS(asked)} ${did} — ` +
+      `${done.moved} of ${asked} ${APPLICATIONS(asked)} ${landed(act, done.moved)} — ` +
       `the ${missed === 1 ? 'other' : 'others'} had already moved.`
     );
   }
   const many = `${done.moved} ${APPLICATIONS(done.moved)}`;
   if (act === 'reopen') {
-    const are = done.moved === 1 ? 'is' : 'are';
-    return `${many} ${are} back in Reviewing. Anyone who had not been told hears nothing.`;
+    return `${many} ${landed(act, done.moved)}. Anyone who had not been told hears nothing.`;
+  }
+  if (act !== 'end') {
+    return `${many} ${landed(act, done.moved)}.`;
   }
   const day = done.toldAt ? ` — they hear on ${absoluteDate(done.toldAt)}` : '';
   return `${many} ended${day}.`;
