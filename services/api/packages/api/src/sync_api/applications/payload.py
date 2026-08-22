@@ -132,8 +132,9 @@ class Application(BaseModel):
         "decision reads as `in_review`."
     )
     can_withdraw: bool = Field(
-        description="Whether leaving is still possible. False once the Application has an "
-        "outcome, and once it has been withdrawn."
+        description="Whether leaving is still possible. It answers to the `stage` beside it "
+        "and to nothing else, so it is true exactly while that stage reads `received` or "
+        "`in_review` — a decision the Candidate has not been told of included."
     )
     hire: HireClaim | None = Field(
         default=None,
@@ -365,6 +366,13 @@ class HireClaimCount(BaseModel):
     count: int
 
 
+class FilterableJob(BaseModel):
+    """One Job the Placements page's Job filter can name."""
+
+    id: UUID
+    title: str
+
+
 class TenantHireClaimPage(BaseModel):
     """One page of the Tenant's Hire claims of one standing, newest claim first."""
 
@@ -376,7 +384,17 @@ class TenantHireClaimPage(BaseModel):
         default_factory=list,
         description="Every standing a Hire claim can have, each with how many of the Tenant's "
         "claims stand that way. Counted whichever standing `confirmation` narrows the list to, "
-        "so each of them says its own size while another is being read.",
+        "so each of them says its own size while another is being read. `job_id` does narrow "
+        "them, because a tab that named a size the list cannot show would be counting other "
+        "Jobs' claims.",
+    )
+    jobs: list[FilterableJob] = Field(
+        default_factory=list,
+        description="What the Job filter can name, by title: every Job this Tenant has claimed "
+        "a hire on, whatever the standing, and the Job `job_id` names even if nobody was ever "
+        "claimed on it — a Job's own Placements count opens this page on a zero, and a filter "
+        "that could not name what it was showing would read as broken. Never narrowed by the "
+        "Job that was chosen, so choosing one cannot empty the picker it was chosen from.",
     )
 
 
@@ -525,9 +543,10 @@ class ApplicationReview(BaseModel):
         default=None,
         description="The Telling: when this Application's rejection reaches the Candidate, "
         "three days after it was taken. A moment still ahead is a decision they have not "
-        "seen; one behind is a decision they have read. It survives a reopen, so a Telling on "
-        "anything but a `rejected` Application is the record of what the Candidate was once "
-        "told. Null on an Application never rejected.",
+        "seen; one behind is a decision they have read. Only a Telling the Candidate reached "
+        "outlives the rejection that set it, so on anything but a `rejected` Application this "
+        "is the record of what they were once told. Null on an Application never rejected, and "
+        "on one whose Telling was cancelled.",
     )
     applied_at: datetime
     updated_at: datetime
@@ -652,7 +671,7 @@ class MovedApplication(BaseModel):
         default=None,
         description="The Telling this Application now carries. Ahead of now on a rejection "
         "just taken; behind it on one the Candidate has already read. Null on an Application "
-        "never rejected.",
+        "never rejected, and on one whose Telling this move cancelled.",
     )
     changed_at: datetime
 

@@ -24,15 +24,39 @@ function counted(claims: HireClaim[]) {
   }));
 }
 
-export function holdsHireClaims(claims: HireClaim[], asked?: HireConfirmation[]) {
+function jobsToFilterBy(claims: HireClaim[], read: { id: string; title: string } | undefined) {
+  const named = new Map(claims.map((claim) => [claim.job.id, claim.job.title]));
+  if (read !== undefined && !named.has(read.id)) named.set(read.id, read.title);
+  return [...named]
+    .map(([id, title]) => ({ id, title }))
+    .sort((one, other) => one.title.localeCompare(other.title));
+}
+
+export interface HireClaimsAsked {
+  confirmation: HireConfirmation;
+  job?: string;
+}
+
+/** A Job the Tenant has but nobody was claimed on, which the answer names while it is the one
+ * being read — as the API does, so a Job's Placements count of zero opens a filter that can say
+ * which Job it is showing. */
+export interface QuietJob {
+  id: string;
+  title: string;
+}
+
+export function holdsHireClaims(claims: HireClaim[], asked?: HireClaimsAsked[], quiet?: QuietJob) {
   return [
     http.get(HIRE_CLAIMS_PATH, ({ query, response }) => {
       const confirmation = confirmationAsked(query.get('confirmation'));
-      asked?.push(confirmation);
+      const job = query.get('job_id') ?? undefined;
+      asked?.push(job === undefined ? { confirmation } : { confirmation, job });
+      const onTheJob = claims.filter((claim) => job === undefined || claim.job.id === job);
       return response(200).json({
-        items: claims.filter((claim) => claim.confirmation === confirmation),
+        items: onTheJob.filter((claim) => claim.confirmation === confirmation),
         next_cursor: null,
-        counts: counted(claims),
+        counts: counted(onTheJob),
+        jobs: jobsToFilterBy(claims, quiet?.id === job ? quiet : undefined),
       });
     }),
   ];
@@ -47,6 +71,7 @@ export function pagesHireClaims(pages: HireClaim[][]) {
         items: pages[index] ?? [],
         next_cursor: index + 1 < pages.length ? String(index + 1) : null,
         counts: counted(pages.flat()),
+        jobs: jobsToFilterBy(pages.flat(), undefined),
       });
     }),
   ];

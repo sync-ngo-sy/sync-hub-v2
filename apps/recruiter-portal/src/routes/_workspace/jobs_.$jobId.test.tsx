@@ -57,6 +57,17 @@ describe('a recruiter Job detail page', () => {
     expect(await screen.findByText(LINKEDIN_POST.name)).toBeVisible();
   });
 
+  it('carries a Placements count that opens the Placements page narrowed to this Job', async () => {
+    server.use(...signedInAs(RECRUITER), ...getsJob(FIELD_COORDINATOR_VIEW));
+
+    await renderApp(`/jobs/${FIELD_COORDINATOR_VIEW.id}`);
+
+    expect(await screen.findByRole('link', { name: '2 Placements' })).toHaveAttribute(
+      'href',
+      `/placements?job=${FIELD_COORDINATOR_VIEW.id}`,
+    );
+  });
+
   it('says that saving replaces every criterion and sends the whole edited set', async () => {
     const onReplace = vi.fn();
     const job = {

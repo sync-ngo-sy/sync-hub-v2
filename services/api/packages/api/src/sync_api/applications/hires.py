@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 
 from sync_api.applications.payload import (
     ApplicationJob,
+    FilterableJob,
     HireClaim,
     HireClaimCount,
     TenantHireClaim,
@@ -135,15 +136,17 @@ class HireClaimService:
         recruiter: ActingRecruiter,
         *,
         confirmation: HireConfirmation = HireConfirmation.CONFIRMED,
+        job_id: UUID | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> TenantHireClaimPage:
         """One confirmation's worth of claims, newest claim first, with all three counted.
 
         The counts are taken whatever `confirmation` narrows the list to, so the one being read
-        never hides the size of the other two.
+        never hides the size of the other two. A `job_id` narrows both, because a tab counting
+        another Job's claims would name a size its own list cannot show.
         """
-        reading = _claims_of(recruiter.tenant.id, confirmation)
+        reading = _claims_of(recruiter.tenant.id, confirmation, job_id)
         found = (
             await self._db.execute(
                 newest_first(
@@ -166,21 +169,28 @@ class HireClaimService:
         return TenantHireClaimPage(
             items=[_as_tenant_payload(row, confirmation) for row in rows],
             next_cursor=next_cursor,
-            counts=await self._counts(recruiter.tenant.id),
+            counts=await self._counts(recruiter.tenant.id, job_id),
+            jobs=await self._jobs_to_filter_by(recruiter.tenant.id, job_id),
         )
 
-    async def _counts(self, tenant_id: UUID) -> list[HireClaimCount]:
+    async def _counts(self, tenant_id: UUID, job_id: UUID | None) -> list[HireClaimCount]:
         """Counted where each is read from, and for the same reason: the confirmed one through
         the view that *is* the definition of a Placement, its two siblings on the claims."""
         confirmed = await self._db.scalar(
-            select(func.count())
-            .select_from(t_placements)
-            .where(t_placements.c.tenant_id == tenant_id)
+            _counted_on_one_job(
+                select(func.count()).select_from(t_placements),
+                t_placements.c.application_id,
+                job_id,
+            ).where(t_placements.c.tenant_id == tenant_id)
         )
         unanswered_and_denied = dict(
             (
                 await self._db.execute(
-                    select(HireClaimRow.confirmation, func.count())
+                    _counted_on_one_job(
+                        select(HireClaimRow.confirmation, func.count()),
+                        HireClaimRow.application_id,
+                        job_id,
+                    )
                     .where(
                         HireClaimRow.tenant_id == tenant_id,
                         HireClaimRow.confirmation.in_(
@@ -199,6 +209,32 @@ class HireClaimService:
             for answer in HireConfirmation
         ]
 
+    async def _jobs_to_filter_by(self, tenant_id: UUID, job_id: UUID | None) -> list[FilterableJob]:
+        """What the Job filter can name.
+
+        Every Job a hire was claimed on, never narrowed by the Job that was chosen: a picker
+        that dropped every other Job the moment one was picked could not be unpicked. And the
+        Job being read even when nobody was claimed on it, because a Job's own Placements count
+        opens this page on a zero and the filter still has to say which Job it is showing.
+        """
+        found = await self._db.execute(
+            select(Job.id, Job.title)
+            .join(Application, Application.job_id == Job.id)
+            .join(HireClaimRow, HireClaimRow.application_id == Application.id)
+            .where(HireClaimRow.tenant_id == tenant_id)
+            .group_by(Job.id, Job.title)
+        )
+        named = dict(found.tuples().all())
+        if job_id is not None and job_id not in named:
+            read = await self._db.execute(
+                select(Job.id, Job.title).where(Job.tenant_id == tenant_id, Job.id == job_id)
+            )
+            named.update(read.tuples().all())
+        return [
+            FilterableJob(id=one, title=title)
+            for one, title in sorted(named.items(), key=lambda named_job: named_job[1])
+        ]
+
 
 @dataclass(frozen=True, slots=True)
 class _Claims:
@@ -209,7 +245,7 @@ class _Claims:
     application_id: SQLColumnExpression[UUID]
 
 
-def _claims_of(tenant_id: UUID, confirmation: HireConfirmation) -> _Claims:
+def _claims_of(tenant_id: UUID, confirmation: HireConfirmation, job_id: UUID | None) -> _Claims:
     """Where one confirmation reads from.
 
     `confirmed` reads the `placements` view because that view *is* what a Placement is; the
@@ -225,7 +261,7 @@ def _claims_of(tenant_id: UUID, confirmation: HireConfirmation) -> _Claims:
                 start_date=placement.start_date,
                 claimed_at=placement.claimed_at,
                 answered_at=placement.confirmed_at,
-            ).where(placement.tenant_id == tenant_id),
+            ).where(placement.tenant_id == tenant_id, *_narrowed_to_the_job(job_id)),
             claimed_at=placement.claimed_at,
             application_id=placement.application_id,
         )
@@ -235,9 +271,32 @@ def _claims_of(tenant_id: UUID, confirmation: HireConfirmation) -> _Claims:
             start_date=HireClaimRow.start_date,
             claimed_at=HireClaimRow.claimed_at,
             answered_at=HireClaimRow.answered_at,
-        ).where(HireClaimRow.tenant_id == tenant_id, HireClaimRow.confirmation == confirmation),
+        ).where(
+            HireClaimRow.tenant_id == tenant_id,
+            HireClaimRow.confirmation == confirmation,
+            *_narrowed_to_the_job(job_id),
+        ),
         claimed_at=HireClaimRow.claimed_at,
         application_id=HireClaimRow.application_id,
+    )
+
+
+def _narrowed_to_the_job(job_id: UUID | None) -> tuple[SQLColumnExpression[bool], ...]:
+    """What narrows a row to one Job. A row already joins the Job it was claimed on, so this is
+    a condition on that join rather than a second one."""
+    return () if job_id is None else (Job.id == job_id,)
+
+
+def _counted_on_one_job(
+    counting: Select[Any], application_id: SQLColumnExpression[UUID], job_id: UUID | None
+) -> Select[Any]:
+    """The same narrowing for a count, which joins no Job of its own and so has to reach one
+    through the Application. Untouched when no Job was named, so the Tenant-wide count stays
+    the single read it was."""
+    if job_id is None:
+        return counting
+    return counting.join(Application, Application.id == application_id).where(
+        Application.job_id == job_id
     )
 
 

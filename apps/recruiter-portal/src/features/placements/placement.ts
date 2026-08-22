@@ -32,6 +32,27 @@ export function tabInAddress(tab: HireConfirmation | undefined): HireConfirmatio
   return tab === DEFAULT_TAB ? undefined : tab;
 }
 
+export type FilterableJob = components['schemas']['FilterableJob'];
+
+/** What the Job filter reads while it is narrowing nothing. Never a Job id, so no Job can be
+ * mistaken for it. */
+export const EVERY_JOB = 'every';
+
+export function jobSelection(chosen: string | undefined): string {
+  return chosen ?? EVERY_JOB;
+}
+
+export function oneJob(chosen: string): string | undefined {
+  return chosen === EVERY_JOB ? undefined : chosen;
+}
+
+export function jobChoices(jobs: FilterableJob[]): Record<string, string> {
+  return {
+    [EVERY_JOB]: 'Every Job',
+    ...Object.fromEntries(jobs.map((job) => [job.id, job.title])),
+  };
+}
+
 interface ClaimState {
   label: string;
   tone: StatusTone;
@@ -57,15 +78,4 @@ export function claimCountsFrom(
   return Object.fromEntries(
     (counted ?? []).map((one) => [one.confirmation, one.count]),
   ) as ClaimCounts;
-}
-
-const NO_CLAIMS: Record<HireConfirmation, string> = {
-  confirmed:
-    'No Placements yet — a hire your team records becomes one when the Candidate confirms it.',
-  unanswered: 'Nothing is waiting — every hire your team has claimed has an answer.',
-  denied: 'Nobody has denied a hire your team claimed.',
-};
-
-export function noClaimsMessage(tab: HireConfirmation): string {
-  return NO_CLAIMS[tab];
 }

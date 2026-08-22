@@ -69,9 +69,11 @@ _Avoid_: My jobs, submissions, dashboard.
 **Stage**:
 What this portal tells a Candidate about one of their Applications — Received, In review, then the
 outcome. It is the whole vocabulary a Candidate ever sees of a Tenant's pipeline, and a move that
-does not change it is a move they are never told about; whether an Application may still be
-withdrawn is the API's answer, not one read off a Stage. It draws through the same Status mark
-every other state on the platform draws through, so five values need no fifth colour.
+does not change it is a move they are never told about. Whether an Application may still be
+withdrawn is read off the Stage and off nothing else, so the Withdraw button and the move behind
+it answer the same question: a rejection the Candidate has not been told of reads In review, and
+is theirs to leave for as long as it does. It draws through the same Status mark every other state
+on the platform draws through, so five values need no fifth colour.
 _Avoid_: Status, pipeline stage, step.
 
 **Hire claim**:

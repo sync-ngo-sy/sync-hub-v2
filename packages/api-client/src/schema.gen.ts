@@ -1616,7 +1616,8 @@ export interface paths {
          *     announced to nobody.
          *
          *     `counts` comes back whichever standing is being read, so the sizes of the other two are
-         *     never hidden by the one on screen.
+         *     never hidden by the one on screen. `jobs` comes back whichever Job is being read, because it
+         *     is what the Job filter offers and a picker narrowed by its own choice could not be unpicked.
          */
         get: operations["listTenantHireClaims"];
         put?: never;
@@ -1907,7 +1908,7 @@ export interface components {
             stage: components["schemas"]["ApplicationStage"];
             /**
              * Can Withdraw
-             * @description Whether leaving is still possible. False once the Application has an outcome, and once it has been withdrawn.
+             * @description Whether leaving is still possible. It answers to the `stage` beside it and to nothing else, so it is true exactly while that stage reads `received` or `in_review` — a decision the Candidate has not been told of included.
              */
             can_withdraw: boolean;
             /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
@@ -2093,7 +2094,7 @@ export interface components {
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Told At
-             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. It survives a reopen, so a Telling on anything but a `rejected` Application is the record of what the Candidate was once told. Null on an Application never rejected.
+             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. Only a Telling the Candidate reached outlives the rejection that set it, so on anything but a `rejected` Application this is the record of what they were once told. Null on an Application never rejected, and on one whose Telling was cancelled.
              */
             told_at?: string | null;
             /**
@@ -3059,6 +3060,19 @@ export interface components {
             experiences?: components["schemas"]["ProfileExperience"][];
         };
         /**
+         * FilterableJob
+         * @description One Job the Placements page's Job filter can name.
+         */
+        FilterableJob: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /**
          * Health
          * @description The process is up and serving.
          */
@@ -3473,6 +3487,11 @@ export interface components {
             view_count: number;
             /** Description */
             description: string;
+            /**
+             * Placement Count
+             * @description How many of this Job's hires the Candidate confirmed, read through the `placements` view that defines a Placement. Never another Application total: a claim nobody has answered is not counted here, and neither is one they denied.
+             */
+            placement_count: number;
             criteria: components["schemas"]["JobCriteriaView"];
             /**
              * Criteria Locked
@@ -3800,7 +3819,7 @@ export interface components {
             candidate_notified: boolean;
             /**
              * Told At
-             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected.
+             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected, and on one whose Telling this move cancelled.
              */
             told_at?: string | null;
             /**
@@ -5078,9 +5097,14 @@ export interface components {
             next_cursor?: string | null;
             /**
              * Counts
-             * @description Every standing a Hire claim can have, each with how many of the Tenant's claims stand that way. Counted whichever standing `confirmation` narrows the list to, so each of them says its own size while another is being read.
+             * @description Every standing a Hire claim can have, each with how many of the Tenant's claims stand that way. Counted whichever standing `confirmation` narrows the list to, so each of them says its own size while another is being read. `job_id` does narrow them, because a tab that named a size the list cannot show would be counting other Jobs' claims.
              */
             counts?: components["schemas"]["HireClaimCount"][];
+            /**
+             * Jobs
+             * @description What the Job filter can name, by title: every Job this Tenant has claimed a hire on, whatever the standing, and the Job `job_id` names even if nobody was ever claimed on it — a Job's own Placements count opens this page on a zero, and a filter that could not name what it was showing would read as broken. Never narrowed by the Job that was chosen, so choosing one cannot empty the picker it was chosen from.
+             */
+            jobs?: components["schemas"]["FilterableJob"][];
         };
         /**
          * TenantLogo
@@ -11442,6 +11466,8 @@ export interface operations {
             query?: {
                 /** @description Which claims to answer with: the ones the Candidate confirmed, the ones nobody has answered, or the ones they denied. */
                 confirmation?: components["schemas"]["HireConfirmation"];
+                /** @description Only claims made on this Job. Narrows `counts` as it narrows the list, so a tab never names a size its own list cannot show. A Job of another tenant narrows the list to nothing. */
+                job_id?: string | null;
                 /** @description A `next_cursor` from a previous page. Omit for the first page. */
                 cursor?: string | null;
                 /** @description How many to return. */
@@ -11983,7 +12009,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            /** @description The Application has reached an outcome the Candidate has been told of, or they have already left it. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
             409: {
                 headers: {
                     [name: string]: unknown;

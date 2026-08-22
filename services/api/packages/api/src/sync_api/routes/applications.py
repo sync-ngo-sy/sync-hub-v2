@@ -72,8 +72,9 @@ async def submit_application(
         **CANDIDATE_ACCESS_REFUSED,
         404: openapi_problem("No Application of the caller's has that id."),
         409: openapi_problem(
-            "The Application has already been decided or withdrawn. Withdrawal is final: it "
-            "cannot be undone, and the Job cannot be applied to again."
+            "The Application has reached an outcome the Candidate has been told of, or they "
+            "have already left it. Withdrawal is final: it cannot be undone, and the Job "
+            "cannot be applied to again."
         ),
     },
 )
