@@ -131,8 +131,9 @@ class Application(BaseModel):
         "decision reads as `in_review`."
     )
     can_withdraw: bool = Field(
-        description="Whether leaving is still possible. False once the Application has an "
-        "outcome, and once it has been withdrawn."
+        description="Whether leaving is still possible. It answers to the `stage` beside it "
+        "and to nothing else, so it is true exactly while that stage reads `received` or "
+        "`in_review` — a decision the Candidate has not been told of included."
     )
     hire: HireClaim | None = Field(
         default=None,
@@ -524,9 +525,10 @@ class ApplicationReview(BaseModel):
         default=None,
         description="The Telling: when this Application's rejection reaches the Candidate, "
         "three days after it was taken. A moment still ahead is a decision they have not "
-        "seen; one behind is a decision they have read. It survives a reopen, so a Telling on "
-        "anything but a `rejected` Application is the record of what the Candidate was once "
-        "told. Null on an Application never rejected.",
+        "seen; one behind is a decision they have read. Only a Telling the Candidate reached "
+        "outlives the rejection that set it, so on anything but a `rejected` Application this "
+        "is the record of what they were once told. Null on an Application never rejected, and "
+        "on one whose Telling was cancelled.",
     )
     applied_at: datetime
     updated_at: datetime
@@ -606,7 +608,7 @@ class MovedApplication(BaseModel):
         default=None,
         description="The Telling this Application now carries. Ahead of now on a rejection "
         "just taken; behind it on one the Candidate has already read. Null on an Application "
-        "never rejected.",
+        "never rejected, and on one whose Telling this move cancelled.",
     )
     changed_at: datetime
 

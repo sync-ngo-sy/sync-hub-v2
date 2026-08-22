@@ -204,7 +204,7 @@ describe('what the review says about the Telling', () => {
     });
   });
 
-  it('says nothing of a Telling a reopened candidate never reached', () => {
+  it('says nothing of a moment still ahead of a candidate no longer rejected', () => {
     expect(telling('reviewing', AHEAD, NOW)).toBeNull();
   });
 });

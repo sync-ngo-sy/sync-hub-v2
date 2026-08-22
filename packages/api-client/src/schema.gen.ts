@@ -1873,7 +1873,7 @@ export interface components {
             stage: components["schemas"]["ApplicationStage"];
             /**
              * Can Withdraw
-             * @description Whether leaving is still possible. False once the Application has an outcome, and once it has been withdrawn.
+             * @description Whether leaving is still possible. It answers to the `stage` beside it and to nothing else, so it is true exactly while that stage reads `received` or `in_review` — a decision the Candidate has not been told of included.
              */
             can_withdraw: boolean;
             /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
@@ -2059,7 +2059,7 @@ export interface components {
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Told At
-             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. It survives a reopen, so a Telling on anything but a `rejected` Application is the record of what the Candidate was once told. Null on an Application never rejected.
+             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. Only a Telling the Candidate reached outlives the rejection that set it, so on anything but a `rejected` Application this is the record of what they were once told. Null on an Application never rejected, and on one whose Telling was cancelled.
              */
             told_at?: string | null;
             /**
@@ -3742,7 +3742,7 @@ export interface components {
             candidate_notified: boolean;
             /**
              * Told At
-             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected.
+             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected, and on one whose Telling this move cancelled.
              */
             told_at?: string | null;
             /**
@@ -11838,7 +11838,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            /** @description The Application has reached an outcome the Candidate has been told of, or they have already left it. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
             409: {
                 headers: {
                     [name: string]: unknown;
