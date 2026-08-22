@@ -17,20 +17,10 @@ import {
   screeningState,
   sortSelection,
 } from '../application';
-import {
-  actedMessage,
-  actsOpenTo,
-  nothingIsOpen,
-  type TickedAct,
-  tickable,
-  whatItSwept,
-  whereTickedRowsGo,
-} from '../ending';
-import {
-  useMoveTickedApplications,
-  useSweepJobApplications,
-} from '../hooks/use-application-actions';
+import { actedMessage, nothingIsOpen, whatItSwept } from '../ending';
+import { useSweepJobApplications } from '../hooks/use-application-actions';
 import { useJobApplications } from '../hooks/use-job-applications';
+import { useTickedActs } from '../hooks/use-ticked-acts';
 import {
   type ApplicationFilters,
   clearFiltersLabel,
@@ -72,30 +62,18 @@ export function JobApplications({
     sort,
   });
   const sweeping = useSweepJobApplications();
-  const moving = useMoveTickedApplications();
   const [endingMany, setEndingMany] = useState(false);
-  const [ticked, setTicked] = useState<string[]>([]);
-  const [confirming, setConfirming] = useState<TickedAct | null>(null);
   const statusCounts = applications.data?.statusCounts ?? {};
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
   const ended = anythingEnded(statusCounts);
   const everyVerdict = screening.length === SCREENING_VERDICTS.length;
   const items = applications.data?.items ?? [];
-  const tickedRows = items.filter((application) => ticked.includes(application.id));
-  const openActs = actsOpenTo(tickedRows.map((application) => application.status));
+  const ticks = useTickedActs(items);
 
   function changeReading(next: ApplicationFilters) {
-    setTicked([]);
+    ticks.clear();
     onFiltersChange(next);
-  }
-
-  async function moveTicked(act: TickedAct, chosen: string[]) {
-    const done = await moving.mutateAsync({ ids: chosen, to: whereTickedRowsGo(act) });
-    setConfirming(null);
-    setTicked([]);
-    toast.success(actedMessage(act, done, chosen.length));
-    return done;
   }
 
   async function endMany(statuses: PipelineStatus[]) {
@@ -104,7 +82,7 @@ export function JobApplications({
       body: { statuses, qualification_statuses: everyVerdict ? null : screening },
     });
     setEndingMany(false);
-    setTicked([]);
+    ticks.clear();
     toast.success(actedMessage('end', whatItSwept(swept)));
     return swept;
   }
@@ -168,12 +146,12 @@ export function JobApplications({
         </div>
       </div>
 
-      {tickedRows.length > 0 ? (
+      {ticks.count > 0 ? (
         <TickedActs
-          ticked={tickedRows.length}
-          acts={openActs}
-          onAct={setConfirming}
-          onClear={() => setTicked([])}
+          ticked={ticks.count}
+          acts={ticks.acts}
+          onAct={ticks.onAct}
+          onClear={ticks.clear}
         />
       ) : null}
 
@@ -186,11 +164,7 @@ export function JobApplications({
         onRowOpen={onApplicationOpen}
         rowHref={applicationHref}
         isLoading={applications.isPending}
-        ticks={{
-          ticked: tickedRows.map((application) => application.id),
-          onChange: setTicked,
-          can: (application) => tickable(application.status, openActs),
-        }}
+        ticks={{ ticked: ticks.ids, onChange: ticks.onTick, can: ticks.can }}
         sort={{
           by: sort,
           onChange: (by) => changeReading({ ...filters, sort: by as ApplicationSort }),
@@ -224,12 +198,12 @@ export function JobApplications({
         />
       ) : null}
 
-      {confirming ? (
+      {ticks.confirming ? (
         <TickedActDialog
-          act={confirming}
-          ticked={tickedRows.map((application) => application.id)}
-          onConfirm={(chosen) => moveTicked(confirming, chosen)}
-          onClose={() => setConfirming(null)}
+          act={ticks.confirming}
+          ticked={ticks.ids}
+          onConfirm={ticks.onConfirm}
+          onClose={ticks.onClose}
         />
       ) : null}
     </div>

@@ -93,9 +93,15 @@ describe('a Job with nothing left to end', () => {
 
 describe('what ticking a row can go on to say', () => {
   it('offers every ladder move but the one the row already stands in, and the ending', () => {
-    expect(actsFor('new')).toEqual(['review', 'shortlist', 'interview', 'offer', 'end']);
-    expect(actsFor('shortlisted')).toEqual(['review', 'interview', 'offer', 'end']);
-    expect(actsFor('offer')).toEqual(['review', 'shortlist', 'interview', 'end']);
+    expect(actsFor('new')).toEqual([
+      'to-reviewing',
+      'to-shortlisted',
+      'to-interview',
+      'to-offer',
+      'end',
+    ]);
+    expect(actsFor('shortlisted')).toEqual(['to-reviewing', 'to-interview', 'to-offer', 'end']);
+    expect(actsFor('offer')).toEqual(['to-reviewing', 'to-shortlisted', 'to-interview', 'end']);
   });
 
   it('takes a rejected Application back, and offers nothing else on it', () => {
@@ -120,10 +126,10 @@ describe('what ticking a row can go on to say', () => {
   it('names where each act takes the rows it was ticked for', () => {
     expect(whereTickedRowsGo('end')).toBe('rejected');
     expect(whereTickedRowsGo('reopen')).toBe('reviewing');
-    expect(whereTickedRowsGo('review')).toBe('reviewing');
-    expect(whereTickedRowsGo('shortlist')).toBe('shortlisted');
-    expect(whereTickedRowsGo('interview')).toBe('interview');
-    expect(whereTickedRowsGo('offer')).toBe('offer');
+    expect(whereTickedRowsGo('to-reviewing')).toBe('reviewing');
+    expect(whereTickedRowsGo('to-shortlisted')).toBe('shortlisted');
+    expect(whereTickedRowsGo('to-interview')).toBe('interview');
+    expect(whereTickedRowsGo('to-offer')).toBe('offer');
   });
 
   it('leaves every act open while nothing is ticked, so the first tick narrows it', () => {
@@ -131,14 +137,25 @@ describe('what ticking a row can go on to say', () => {
   });
 
   it('keeps only the acts every ticked row admits', () => {
-    expect(actsOpenTo(['new'])).toEqual(['review', 'shortlist', 'interview', 'offer', 'end']);
-    expect(actsOpenTo(['new', 'shortlisted'])).toEqual(['review', 'interview', 'offer', 'end']);
+    expect(actsOpenTo(['new'])).toEqual([
+      'to-reviewing',
+      'to-shortlisted',
+      'to-interview',
+      'to-offer',
+      'end',
+    ]);
+    expect(actsOpenTo(['new', 'shortlisted'])).toEqual([
+      'to-reviewing',
+      'to-interview',
+      'to-offer',
+      'end',
+    ]);
     expect(actsOpenTo(['rejected'])).toEqual(['reopen']);
   });
 
   it('drops a ladder move as soon as one ticked row already stands where it would go', () => {
-    expect(actsOpenTo(['new', 'reviewing'])).not.toContain('review');
-    expect(actsOpenTo(['shortlisted', 'interview'])).not.toContain('shortlist');
+    expect(actsOpenTo(['new', 'reviewing'])).not.toContain('to-reviewing');
+    expect(actsOpenTo(['shortlisted', 'interview'])).not.toContain('to-shortlisted');
   });
 
   it('offers a box on every row that admits an act while nothing is ticked', () => {
@@ -158,7 +175,7 @@ describe('what ticking a row can go on to say', () => {
 
   it('keeps a row tickable while it still shares one act, though not the same one', () => {
     expect(tickable('reviewing', actsOpenTo(['new']))).toBe(true);
-    expect(actsOpenTo(['new', 'reviewing'])).toContain('shortlist');
+    expect(actsOpenTo(['new', 'reviewing'])).toContain('to-shortlisted');
   });
 
   it('says how many rows are ticked, and reads a single one as one', () => {
@@ -172,9 +189,9 @@ describe('what ticking a row can go on to say', () => {
   });
 
   it('names a ladder move by where it takes them', () => {
-    expect(actLabel('shortlist', 3)).toBe('Move 3 Applications to Shortlisted');
-    expect(actLabel('interview', 1)).toBe('Move 1 Application to Interview');
-    expect(actDestination('offer')).toBe('Offer');
+    expect(actLabel('to-shortlisted', 3)).toBe('Move 3 Applications to Shortlisted');
+    expect(actLabel('to-interview', 1)).toBe('Move 1 Application to Interview');
+    expect(actDestination('to-offer')).toBe('Offer');
   });
 
   it('promises a ladder move reaches nobody, and says which step is the exception', () => {
@@ -224,22 +241,22 @@ describe('what an act reports back', () => {
   });
 
   it('says where a ladder move left them, and claims nothing about anybody hearing', () => {
-    expect(actedMessage('shortlist', { moved: 4, toldAt: null })).toBe(
+    expect(actedMessage('to-shortlisted', { moved: 4, toldAt: null })).toBe(
       '4 Applications are in Shortlisted.',
     );
-    expect(actedMessage('interview', { moved: 1, toldAt: null })).toBe(
+    expect(actedMessage('to-interview', { moved: 1, toldAt: null })).toBe(
       '1 Application is in Interview.',
     );
   });
 
   it('says which of the ticked rows a ladder move missed', () => {
-    expect(actedMessage('offer', { moved: 2, toldAt: null }, 3)).toBe(
+    expect(actedMessage('to-offer', { moved: 2, toldAt: null }, 3)).toBe(
       '2 of 3 Applications are in Offer — the other had already moved.',
     );
   });
 
   it('says nothing moved rather than nothing ended, where nothing was being ended', () => {
-    expect(actedMessage('shortlist', { moved: 0, toldAt: null })).toBe(
+    expect(actedMessage('to-shortlisted', { moved: 0, toldAt: null })).toBe(
       'Nothing moved — every Application the ticks named had already moved.',
     );
   });

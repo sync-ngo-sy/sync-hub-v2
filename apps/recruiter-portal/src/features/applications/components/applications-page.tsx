@@ -3,8 +3,6 @@ import { PageHeader } from '@sync/ui/components/page-header';
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
 import { ChoicePicker } from '@/features/jobs/components/choice-select';
 import { jobColumn } from '@/features/jobs/components/job-column';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
@@ -25,9 +23,8 @@ import {
   sortSelection,
   type TenantApplication,
 } from '../application';
-import { actedMessage, actsOpenTo, type TickedAct, tickable, whereTickedRowsGo } from '../ending';
-import { useMoveTickedApplications } from '../hooks/use-application-actions';
 import { useTenantApplications } from '../hooks/use-tenant-applications';
+import { useTickedActs } from '../hooks/use-ticked-acts';
 import {
   clearFiltersLabel,
   narrowedBy,
@@ -89,24 +86,12 @@ export function ApplicationsPage({
   const verdictCounts = applications.data?.verdictCounts ?? {};
   const narrowing = narrowedBy(filters);
   const ended = anythingEnded(statusCounts);
-  const moving = useMoveTickedApplications();
-  const [ticked, setTicked] = useState<string[]>([]);
-  const [confirming, setConfirming] = useState<TickedAct | null>(null);
   const items = applications.data?.items ?? [];
-  const tickedRows = items.filter((application) => ticked.includes(application.id));
-  const openActs = actsOpenTo(tickedRows.map((application) => application.status));
+  const ticks = useTickedActs(items);
 
   function changeReading(next: TenantApplicationFilters) {
-    setTicked([]);
+    ticks.clear();
     onFiltersChange(next);
-  }
-
-  async function moveTicked(act: TickedAct, chosen: string[]) {
-    const done = await moving.mutateAsync({ ids: chosen, to: whereTickedRowsGo(act) });
-    setConfirming(null);
-    setTicked([]);
-    toast.success(actedMessage(act, done, chosen.length));
-    return done;
   }
 
   function whereEmptyLeads() {
@@ -188,12 +173,12 @@ export function ApplicationsPage({
           </div>
         </div>
 
-        {tickedRows.length > 0 ? (
+        {ticks.count > 0 ? (
           <TickedActs
-            ticked={tickedRows.length}
-            acts={openActs}
-            onAct={setConfirming}
-            onClear={() => setTicked([])}
+            ticked={ticks.count}
+            acts={ticks.acts}
+            onAct={ticks.onAct}
+            onClear={ticks.clear}
           />
         ) : null}
 
@@ -206,11 +191,7 @@ export function ApplicationsPage({
           onRowOpen={onApplicationOpen}
           rowHref={applicationHref}
           isLoading={applications.isPending}
-          ticks={{
-            ticked: tickedRows.map((application) => application.id),
-            onChange: setTicked,
-            can: (application) => tickable(application.status, openActs),
-          }}
+          ticks={{ ticked: ticks.ids, onChange: ticks.onTick, can: ticks.can }}
           sort={{
             by: sort,
             onChange: (by) => changeReading({ ...filters, sort: by as ApplicationSort }),
@@ -236,12 +217,12 @@ export function ApplicationsPage({
         />
       </div>
 
-      {confirming ? (
+      {ticks.confirming ? (
         <TickedActDialog
-          act={confirming}
-          ticked={tickedRows.map((application) => application.id)}
-          onConfirm={(chosen) => moveTicked(confirming, chosen)}
-          onClose={() => setConfirming(null)}
+          act={ticks.confirming}
+          ticked={ticks.ids}
+          onConfirm={ticks.onConfirm}
+          onClose={ticks.onClose}
         />
       ) : null}
     </>

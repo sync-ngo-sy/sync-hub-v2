@@ -355,13 +355,13 @@ decides and a row sharing no act with the set loses its box: a set of ticks can 
 things at once. An act also stops being offered as soon as one ticked row already stands where it
 would go, because a move to where a row already is is not a move — it is a refusal waiting to
 happen. A hired or a withdrawn row is never tickable, because nothing moves it. Every act offered
-is a move the API's own state machine allows, so a set the bar offers is never a set the pipeline
-then refuses.
+is a move the API's own state machine allows, so an Act offered is never one the pipeline then
+refuses.
 
 A ladder move is the one act that reaches nobody, and the Stage is why: Reviewing, Shortlisted,
 Interview and Offer are one Stage to the Candidate, so moving between them is silent. Only the step
 off New crosses a Stage boundary, and that is the whole of what anybody hears — which is why the
-ladder moves share one menu and the two acts that do change what a Candidate is told stand on their
+ladder moves share one menu and the two Acts that do change what a Candidate is told stand on their
 own buttons.
 
 Every act is that many single moves, a few at a time rather than all at once, and reports through

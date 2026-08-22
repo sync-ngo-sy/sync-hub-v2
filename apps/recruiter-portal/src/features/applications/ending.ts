@@ -45,36 +45,45 @@ export function nothingIsOpen(counts: StatusCounts): boolean {
   return endableStatuses(counts).every((one) => one.count === 0);
 }
 
-/** What ticking rows can go on to say. Every act is one Pipeline move made over a set: along the
- * ladder, ending the Applications still being decided, or taking back the ones this Tenant
- * rejected — which is how a sweep is undone. */
-export type TickedAct = 'review' | 'shortlist' | 'interview' | 'offer' | 'end' | 'reopen';
-
-/** The moves along the ladder, in the order they are offered.
+/** Where along the ladder a set can be sent, in the order the moves are offered.
  *
  * `new` is not among them, and `hired` cannot be: the first is where an Application arrives rather
  * than somewhere a set is sent, and the second names the day it started, which one act over many
  * Applications has no way to answer.
  */
-export const LADDER_ACTS = [
-  'review',
-  'shortlist',
+const LADDER_DESTINATIONS = [
+  'reviewing',
+  'shortlisted',
   'interview',
   'offer',
-] as const satisfies readonly TickedAct[];
+] as const satisfies readonly PipelineStatus[];
+
+/** What ticking rows can go on to say. Every act is one Pipeline move made over a set: along the
+ * ladder, ending the Applications still being decided, or taking back the ones this Tenant
+ * rejected — which is how a sweep is undone.
+ *
+ * A ladder move is named for where it goes and every name is spelled `to-…`, so no act is ever
+ * the same string as a `PipelineStatus`: a status handed to something wanting an act fails to
+ * compile rather than reading as the wrong move.
+ */
+export type LadderAct = `to-${(typeof LADDER_DESTINATIONS)[number]}`;
+
+export type TickedAct = LadderAct | 'end' | 'reopen';
+
+export const LADDER_ACTS: readonly LadderAct[] = LADDER_DESTINATIONS.map(
+  (status) => `to-${status}` as const,
+);
 
 /** Every act, ladder first, then the ending, then the one act a rejected row admits. */
-export const TICKED_ACTS = [
-  ...LADDER_ACTS,
-  'end',
-  'reopen',
-] as const satisfies readonly TickedAct[];
+export const TICKED_ACTS: readonly TickedAct[] = [...LADDER_ACTS, 'end', 'reopen'];
 
+/** Total over the acts, so an act added to the union fails to compile until it says where it
+ * takes the rows it was ticked for. */
 const WHERE_IT_GOES: Record<TickedAct, PipelineStatus> = {
-  review: 'reviewing',
-  shortlist: 'shortlisted',
-  interview: 'interview',
-  offer: 'offer',
+  'to-reviewing': 'reviewing',
+  'to-shortlisted': 'shortlisted',
+  'to-interview': 'interview',
+  'to-offer': 'offer',
   end: 'rejected',
   reopen: 'reviewing',
 };
@@ -137,10 +146,10 @@ const WHAT_A_LADDER_MOVE_COSTS =
   'is in review, and that is the whole of what anybody hears.';
 
 const CONSEQUENCE: Record<TickedAct, string> = {
-  review: WHAT_A_LADDER_MOVE_COSTS,
-  shortlist: WHAT_A_LADDER_MOVE_COSTS,
-  interview: WHAT_A_LADDER_MOVE_COSTS,
-  offer: WHAT_A_LADDER_MOVE_COSTS,
+  'to-reviewing': WHAT_A_LADDER_MOVE_COSTS,
+  'to-shortlisted': WHAT_A_LADDER_MOVE_COSTS,
+  'to-interview': WHAT_A_LADDER_MOVE_COSTS,
+  'to-offer': WHAT_A_LADDER_MOVE_COSTS,
   end: WHAT_ENDING_COSTS,
   reopen: WHAT_REOPENING_COSTS,
 };
@@ -152,10 +161,10 @@ const MOVE_REFUSAL =
   "Some of these Applications couldn't be moved. The list has been read again, so it says which.";
 
 const REFUSAL: Record<TickedAct, string> = {
-  review: MOVE_REFUSAL,
-  shortlist: MOVE_REFUSAL,
-  interview: MOVE_REFUSAL,
-  offer: MOVE_REFUSAL,
+  'to-reviewing': MOVE_REFUSAL,
+  'to-shortlisted': MOVE_REFUSAL,
+  'to-interview': MOVE_REFUSAL,
+  'to-offer': MOVE_REFUSAL,
   end: ENDING_REFUSAL,
   reopen: MOVE_REFUSAL,
 };
