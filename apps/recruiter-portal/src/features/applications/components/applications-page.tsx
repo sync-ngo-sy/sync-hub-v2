@@ -10,21 +10,23 @@ import { jobColumn } from '@/features/jobs/components/job-column';
 import { WorkspaceHeader } from '@/features/shell/components/workspace-header';
 import { problemMessage } from '@/lib/api-problem';
 import {
+  ALL_TAB,
   type ApplicationSort,
   anythingEnded,
-  holdsOneStatus,
-  PIPELINE_STATUSES,
   type PipelineStatus,
-  pipelineSelection,
+  type PipelineTab,
   pipelineStatuses,
+  pipelineTab,
   RECEIVED_RANGES,
   type ReceivedRange,
   receivedSelection,
   receivedWithin,
   SCREENING_VERDICTS,
   screeningSelection,
+  screeningState,
   sortSelection,
   type TenantApplication,
+  tabStages,
 } from '../application';
 import { receivedInSweep, sweepScope, sweptMessage } from '../ending';
 import { useSweepTenantApplications } from '../hooks/use-application-actions';
@@ -34,11 +36,13 @@ import {
   clearFiltersLabel,
   narrowedBy,
   noApplicationsMessage,
-  screeningNarrowing,
+  readingNamed,
   type TenantApplicationFilters,
 } from '../reading';
 import { applicationColumns } from './application-columns';
-import { ApplicationsFilterRail } from './applications-filter-rail';
+import { ApplicationPipelineFilter } from './application-pipeline-filter';
+import { ApplicationsActsRail } from './applications-acts-rail';
+import { ChecklistFilter } from './checklist-filter';
 import { SweepActs } from './sweep-acts';
 import { TickedActDialog } from './ticked-act-dialog';
 import { TickedActs } from './ticked-acts';
@@ -81,7 +85,7 @@ export function ApplicationsPage({
   onApplicationOpen,
   applicationHref,
 }: ApplicationsPageProps) {
-  const pipeline = pipelineSelection(filters.pipeline);
+  const pipeline = pipelineTab(filters.pipeline);
   const screening = screeningSelection(filters.screening);
   const range = receivedSelection(filters.received);
   const sort = sortSelection(filters.sort);
@@ -99,8 +103,8 @@ export function ApplicationsPage({
   const ticks = useTickedActs(items);
   const sweeping = useSweepTenantApplications();
   const everyVerdict = screening.length === SCREENING_VERDICTS.length;
-  const scope = sweepScope(pipeline, statusCounts);
-  const showsHired = holdsOneStatus(pipeline) && pipeline[0] === 'hired';
+  const scope = sweepScope(tabStages(pipeline), statusCounts);
+  const reading = readingNamed(pipeline, screening, filters.received);
 
   async function sweep(to: PipelineStatus) {
     const swept = await sweeping.mutateAsync({
@@ -143,7 +147,7 @@ export function ApplicationsPage({
       return (
         <Button
           variant="outline"
-          onClick={() => onFiltersChange({ ...filters, pipeline: [...PIPELINE_STATUSES] })}
+          onClick={() => onFiltersChange({ ...filters, pipeline: ALL_TAB })}
         >
           Go to all Applications
         </Button>
@@ -161,19 +165,46 @@ export function ApplicationsPage({
         />
       </WorkspaceHeader>
 
-      <div className={cn(LIST_BESIDE_RAIL, 'pt-(--space-section)')}>
-        <div className="min-w-0 space-y-4">
-          {showsHired ? TO_THE_PLACEMENTS : null}
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 pt-(--space-section)">
+        <div className="flex min-w-0 flex-col gap-3">
+          <ApplicationPipelineFilter
+            pipeline={pipeline}
+            counts={statusCounts}
+            onChange={(chosen: PipelineTab) => changeReading({ ...filters, pipeline: chosen })}
+          />
+          {pipeline === 'hired' ? TO_THE_PLACEMENTS : null}
+        </div>
 
-          {ticks.count > 0 ? (
-            <TickedActs
-              ticked={ticks.count}
-              acts={ticks.acts}
-              onAct={ticks.onAct}
-              onClear={ticks.clear}
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <ChecklistFilter
+            label="Screening"
+            noun="verdicts"
+            options={SCREENING_VERDICTS.map((verdict) => ({
+              value: verdict,
+              label: screeningState(verdict).label,
+            }))}
+            selected={screening}
+            counts={verdictCounts}
+            onChange={(chosen) => changeReading({ ...filters, screening: chosen })}
+          />
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden="true" className="shrink-0 text-meta text-muted-foreground">
+              Received
+            </span>
+            <ChoicePicker
+              label="Received"
+              items={RECEIVED_RANGES}
+              value={range}
+              onValueChange={(chosen: ReceivedRange) =>
+                changeReading({ ...filters, received: receivedWithin(chosen) })
+              }
             />
-          ) : null}
+          </div>
+        </div>
+      </div>
 
+      <div className={cn(LIST_BESIDE_RAIL, 'pt-(--space-section)')}>
+        <div className="min-w-0">
           <DataTable
             label="Applications"
             columns={TENANT_APPLICATION_COLUMNS}
@@ -209,31 +240,17 @@ export function ApplicationsPage({
           />
         </div>
 
-        <ApplicationsFilterRail
-          pipeline={pipeline}
-          onPipelineChange={(chosen) => changeReading({ ...filters, pipeline: chosen })}
-          screening={screening}
-          onScreeningChange={(chosen) => changeReading({ ...filters, screening: chosen })}
-          counts={statusCounts}
-          verdictCounts={verdictCounts}
-          extra={
-            <div className="space-y-2">
-              <p className="font-semibold text-meta uppercase tracking-wide text-muted-foreground">
-                Received
-              </p>
-              <ChoicePicker
-                label="Received"
-                items={RECEIVED_RANGES}
-                value={range}
-                onValueChange={(chosen: ReceivedRange) =>
-                  changeReading({ ...filters, received: receivedWithin(chosen) })
-                }
-                className="w-full"
+        <ApplicationsActsRail
+          sweep={<SweepActs scope={scope} reading={reading} onSweep={sweep} />}
+          ticked={
+            ticks.count > 0 ? (
+              <TickedActs
+                ticked={ticks.count}
+                acts={ticks.acts}
+                onAct={ticks.onAct}
+                onClear={ticks.clear}
               />
-            </div>
-          }
-          acts={
-            <SweepActs scope={scope} narrowing={screeningNarrowing(screening)} onSweep={sweep} />
+            ) : null
           }
         />
       </div>

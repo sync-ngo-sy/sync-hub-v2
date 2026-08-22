@@ -1,3 +1,4 @@
+import { keepPreviousData } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { PipelineStatus, ScreeningVerdict, StatusCounts, VerdictCounts } from '../application';
 import { type ApplicationsAsked, TRIAGE_PATH } from '../reread';
@@ -36,6 +37,7 @@ export function useJobApplications(jobId: string, asked: ApplicationsAsked) {
     {
       initialPageParam: null,
       getNextPageParam: (page) => page.next_cursor,
+      placeholderData: keepPreviousData,
       select: (data) => ({
         items: data.pages.flatMap((page) => page.items),
         statusCounts: statusCountsFrom(data.pages[0]?.status_counts),

@@ -8,6 +8,7 @@ import {
   narrowedBy,
   noApplicationsMessage,
   noJobApplicationsMessage,
+  readingNamed,
   type TenantApplicationFilters,
 } from './reading';
 
@@ -49,12 +50,6 @@ describe('how many filters narrow a list', () => {
 
   it('counts nothing for an address naming a stage no Application can stand in', () => {
     expect(narrowedBy(read({ pipeline: 'on-a-yacht' }))).toBe(0);
-    expect(narrowedBy(read({ pipeline: ['on-a-yacht'] }))).toBe(0);
-  });
-
-  it('counts a selection of some of the stages, which is a filter a tab could never be', () => {
-    expect(narrowedBy(read({ pipeline: ['new', 'hired'] }))).toBe(1);
-    expect(narrowedBy(read({ pipeline: ['shortlisted', 'interview', 'offer'] }))).toBe(1);
   });
 
   it('reads an address that names a choice twice as the one choice it is', () => {
@@ -71,26 +66,33 @@ describe('what a list writes into the address', () => {
     expect(jobApplicationsAddress(read({ pipeline: 'open' })).pipeline).toBeUndefined();
   });
 
-  it('writes every other selection in, so a reload and a pasted link reproduce the list', () => {
-    expect(applicationsAddress(read({ pipeline: 'rejected' })).pipeline).toEqual(['rejected']);
-    expect(jobApplicationsAddress(read({ pipeline: 'hired' })).pipeline).toEqual(['hired']);
-    expect(applicationsAddress(read({ pipeline: ['new', 'offer'] })).pipeline).toEqual([
-      'new',
-      'offer',
-    ]);
+  it('writes every other tab in, so a reload and a pasted link reproduce the list', () => {
+    expect(applicationsAddress(read({ pipeline: 'rejected' })).pipeline).toBe('rejected');
+    expect(jobApplicationsAddress(read({ pipeline: 'hired' })).pipeline).toBe('hired');
   });
 
   it('spells All out rather than leaving it out, because All is not what an untouched list shows', () => {
-    expect(applicationsAddress(read({ pipeline: 'all' })).pipeline).toEqual([
-      'new',
-      'reviewing',
-      'shortlisted',
-      'interview',
-      'offer',
-      'hired',
-      'rejected',
-      'withdrawn',
-    ]);
+    expect(applicationsAddress(read({ pipeline: 'all' })).pipeline).toBe('all');
+  });
+});
+
+describe('the Reading in words, beside the acts that reach all of it', () => {
+  it('names the tab, and says every verdict where the verdicts are untouched', () => {
+    expect(readingNamed('open', [...SCREENING_VERDICTS])).toBe('Open · every verdict');
+    expect(readingNamed('shortlisted', [...SCREENING_VERDICTS])).toBe(
+      'Shortlisted · every verdict',
+    );
+  });
+
+  it('names the verdicts a narrowed Screening filter leaves, so the acts cannot reach further', () => {
+    expect(readingNamed('all', ['qualified', 'pending'])).toBe('All · Qualified, Pending');
+  });
+
+  it('adds the window only where one narrows the list', () => {
+    expect(readingNamed('open', [...SCREENING_VERDICTS], '7d')).toBe(
+      'Open · every verdict · Last 7 days',
+    );
+    expect(readingNamed('open', [...SCREENING_VERDICTS], undefined)).toBe('Open · every verdict');
   });
 });
 

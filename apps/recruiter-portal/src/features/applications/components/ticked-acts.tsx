@@ -15,26 +15,29 @@ interface TickedActsProps {
   onClear: () => void;
 }
 
+/**
+ * The acts that reach the ticked rows and nothing else.
+ *
+ * It stands apart from the sweep above it because the two are easy to mistake for each other: a
+ * tick is a statement about rows somebody read, so this counts them and says so.
+ */
 export function TickedActs({ ticked, acts, onAct, onClear }: TickedActsProps) {
   const ladder = LADDER_ACTS.filter((act) => acts.includes(act));
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-card px-(--space-card) py-3 shadow-card">
+    <div className="space-y-3 rounded-md border-2 border-accent-foreground/30 p-3">
       <p role="status" className="text-dense text-foreground">
         {tickedLabel(ticked)}
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" onClick={onClear}>
-          Clear ticks
-        </Button>
 
+      <div className="flex flex-col gap-2">
         {ladder.length > 0 ? (
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" />}>
-              Move to
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+              Move ticked to
               <ChevronDown aria-hidden="true" className="size-4 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="start" className="w-48">
               {ladder.map((act) => (
                 <DropdownMenuItem key={act} onClick={() => onAct(act)}>
                   {actDestination(act)}
@@ -45,14 +48,20 @@ export function TickedActs({ ticked, acts, onAct, onClear }: TickedActsProps) {
         ) : null}
 
         {acts.includes('reopen') ? (
-          <Button onClick={() => onAct('reopen')}>{actLabel('reopen', ticked)}</Button>
+          <Button size="sm" onClick={() => onAct('reopen')}>
+            {actLabel('reopen', ticked)}
+          </Button>
         ) : null}
 
         {acts.includes('end') ? (
-          <Button variant="destructive" onClick={() => onAct('end')}>
+          <Button variant="destructive" size="sm" onClick={() => onAct('end')}>
             {actLabel('end', ticked)}
           </Button>
         ) : null}
+
+        <Button variant="ghost" size="sm" onClick={onClear}>
+          Clear ticks
+        </Button>
       </div>
     </div>
   );

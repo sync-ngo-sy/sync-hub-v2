@@ -58,7 +58,10 @@ function JobRoute() {
       }
       filters={filters}
       onFiltersChange={(next) =>
-        void navigate({ search: (prev) => ({ ...prev, ...jobApplicationsAddress(next) }) })
+        void navigate({
+          search: (prev) => ({ ...prev, ...jobApplicationsAddress(next) }),
+          resetScroll: false,
+        })
       }
       onApplicationOpen={(application) => void navigate(applicationLocation(application))}
       applicationHref={(application) => router.buildLocation(applicationLocation(application)).href}

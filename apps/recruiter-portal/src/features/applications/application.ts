@@ -72,16 +72,13 @@ export const ENDED_STATUSES = [
   'withdrawn',
 ] as const satisfies readonly PipelineStatus[];
 
-/** The two shorthands the Pipeline filter keeps, and which were never stages: `open` is the five
- * an Application is still being decided in, `all` is every one of the eight. They survive only in
- * addresses written before the filter could hold more than one stage. */
+/** The two tabs that were never stages: `open` is the five an Application is still being decided
+ * in, `all` is every one of the eight. */
 export const OPEN_TAB = 'open';
 
 export const ALL_TAB = 'all';
 
-export type PipelineShorthand = typeof OPEN_TAB | typeof ALL_TAB;
-
-export type PipelineTab = PipelineShorthand | PipelineStatus;
+export type PipelineTab = typeof OPEN_TAB | typeof ALL_TAB | PipelineStatus;
 
 export const PIPELINE_TABS = [
   OPEN_TAB,
@@ -110,17 +107,14 @@ export function pipelineStep(status: PipelineStatus): number | null {
   return place === -1 ? null : place + 1;
 }
 
-/** The stages a list is showing, in Pipeline order however they were chosen — so two Readings
- * naming the same stages are the same Reading, whichever order somebody ticked them in. */
-export function pipelineSelection(chosen: PipelineStatus[] | undefined): PipelineStatus[] {
-  const named: readonly PipelineStatus[] =
-    chosen === undefined || chosen.length === 0 ? OPEN_STATUSES : chosen;
-  return PIPELINE_STATUSES.filter((status) => named.includes(status));
+/** Which tab a list is on. `Open` is where an untouched list starts, so an address that names no
+ * tab is on it. */
+export function pipelineTab(chosen: PipelineTab | undefined): PipelineTab {
+  return chosen ?? OPEN_TAB;
 }
 
-/** What one of the old single-value addresses meant, as a selection. `open` and `all` were
- * shorthands for a set of stages; one status alone was a set of one. */
-export function pipelineFromShorthand(tab: PipelineTab): PipelineStatus[] {
+/** The stages a tab stands for. `Open` and `All` each stand for a set; a stage stands for itself. */
+export function tabStages(tab: PipelineTab): PipelineStatus[] {
   if (tab === OPEN_TAB) return [...OPEN_STATUSES];
   if (tab === ALL_TAB) return [...PIPELINE_STATUSES];
   return [tab];
@@ -128,33 +122,27 @@ export function pipelineFromShorthand(tab: PipelineTab): PipelineStatus[] {
 
 /** Left out of the address when it is what an untouched list shows, so a plain list has a plain
  * address. */
-export function pipelineInAddress(
-  chosen: PipelineStatus[] | undefined,
-): PipelineStatus[] | undefined {
-  const selection = pipelineSelection(chosen);
-  return sameStages(selection, OPEN_STATUSES) ? undefined : selection;
+export function pipelineInAddress(tab: PipelineTab | undefined): PipelineTab | undefined {
+  return pipelineTab(tab) === OPEN_TAB ? undefined : tab;
 }
 
-/** No status at all is what the API reads as every status, so a selection holding all eight asks
- * for none of them by name. */
-export function pipelineStatuses(selection: PipelineStatus[]): PipelineStatus[] | undefined {
-  return sameStages(selection, PIPELINE_STATUSES) ? undefined : selection;
+/** No status at all is what the API reads as every status, which is what `All` asks for. */
+export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined {
+  return tab === ALL_TAB ? undefined : tabStages(tab);
 }
 
-export function holdsOneStatus(selection: PipelineStatus[]): boolean {
-  return selection.length === 1;
+export function holdsOneStatus(tab: PipelineTab): boolean {
+  return tab !== OPEN_TAB && tab !== ALL_TAB;
 }
 
-export function showsEveryStage(selection: PipelineStatus[]): boolean {
-  return sameStages(selection, PIPELINE_STATUSES);
+export function pipelineTabLabel(tab: PipelineTab): string {
+  if (tab === OPEN_TAB) return 'Open';
+  if (tab === ALL_TAB) return 'All';
+  return pipelineState(tab).label;
 }
 
-export function showsOpenStages(selection: PipelineStatus[]): boolean {
-  return sameStages(selection, OPEN_STATUSES);
-}
-
-function sameStages(one: readonly PipelineStatus[], other: readonly PipelineStatus[]): boolean {
-  return one.length === other.length && other.every((status) => one.includes(status));
+export function pipelineTabCount(tab: PipelineTab, counts: StatusCounts): number {
+  return stagesCount(tabStages(tab), counts);
 }
 
 export function anythingEnded(counts: StatusCounts): boolean {

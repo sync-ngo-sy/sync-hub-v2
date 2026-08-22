@@ -1,16 +1,18 @@
 import { z } from 'zod';
 import {
   EVERY_TIME,
-  type PipelineStatus,
+  holdsOneStatus,
+  type PipelineTab,
   pipelineInAddress,
-  pipelineSelection,
+  pipelineTab,
+  pipelineTabLabel,
+  RECEIVED_RANGES,
+  type ReceivedWithin,
   receivedSelection,
   SCREENING_VERDICTS,
   type ScreeningVerdict,
   screeningSelection,
   screeningState,
-  showsEveryStage,
-  showsOpenStages,
   sortInAddress,
 } from './application';
 import {
@@ -38,24 +40,33 @@ export type ApplicationFilters = z.infer<typeof jobApplicationsReading>;
 
 export function narrowedBy(filters: TenantApplicationFilters): number {
   return [
-    pipelineNarrows(pipelineSelection(filters.pipeline)),
+    holdsOneStatus(pipelineTab(filters.pipeline)),
     screeningSelection(filters.screening).length < SCREENING_VERDICTS.length,
     receivedSelection(filters.received) !== EVERY_TIME,
   ].filter(Boolean).length;
 }
 
-/** Neither `Open` nor every stage narrows anything: the first is what an untouched list shows and
- * the second only adds to it, so neither can be what emptied one. */
-function pipelineNarrows(selection: PipelineStatus[]): boolean {
-  return !showsOpenStages(selection) && !showsEveryStage(selection);
+/** The Reading in words, for the acts that reach all of it. The filters sit above the list and the
+ * acts beside it, so the panel has to say which Applications it means rather than point at them. */
+export function readingNamed(
+  tab: PipelineTab,
+  verdicts: ScreeningVerdict[],
+  received?: ReceivedWithin,
+): string {
+  const parts = [pipelineTabLabel(tab), screeningNamed(verdicts)];
+  const window = receivedNamed(received);
+  if (window) parts.push(window);
+  return parts.join(' · ');
 }
 
-/** What a sweep's scope leaves out, where it leaves anything out — stated beside the acts so they
- * never reach a narrower list than they appear to. */
-export function screeningNarrowing(verdicts: ScreeningVerdict[]): string | null {
-  if (verdicts.length === SCREENING_VERDICTS.length) return null;
-  const named = verdicts.map((one) => screeningState(one).label).join(', ');
-  return `Screening is narrowed to ${named}, so that is all these reach.`;
+function screeningNamed(verdicts: ScreeningVerdict[]): string {
+  if (verdicts.length === SCREENING_VERDICTS.length) return 'every verdict';
+  return verdicts.map((one) => screeningState(one).label).join(', ');
+}
+
+function receivedNamed(received: ReceivedWithin | undefined): string | null {
+  const range = receivedSelection(received);
+  return range === EVERY_TIME ? null : RECEIVED_RANGES[range];
 }
 
 const NO_APPLICATIONS_YET =

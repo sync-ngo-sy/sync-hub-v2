@@ -1,11 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import {
-  OPEN_STATUSES,
-  PIPELINE_STATUSES,
-  SCREENING_VERDICTS,
-} from '@/features/applications/application';
+import { OPEN_STATUSES, SCREENING_VERDICTS } from '@/features/applications/application';
 import {
   AMAL,
   AMAL_MATCH,
@@ -41,8 +37,6 @@ const EVERY_VERDICT = [...SCREENING_VERDICTS];
 
 const STILL_OPEN = [...OPEN_STATUSES];
 
-const EVERY_STAGE = [...PIPELINE_STATUSES];
-
 function inUrl(chosen: readonly string[]) {
   return encodeURIComponent(JSON.stringify(chosen));
 }
@@ -57,18 +51,21 @@ function listedInOrder() {
     .map((open) => open.getAttribute('aria-label'));
 }
 
-function facet(label: string) {
-  return screen.getByRole('checkbox', { name: new RegExp(`^${label}(?: |$)`) });
+function screeningTrigger() {
+  return screen.getByRole('button', { name: /^Screening: / });
 }
 
-const checkItem = facet;
-
-function onlyThisStage(label: string) {
-  return screen.getByRole('button', { name: `Show only ${label}` });
+async function openScreening(user: UserEvent) {
+  await user.click(screeningTrigger());
+  await screen.findByRole('menu');
 }
 
-function stagePreset(label: 'Open' | 'All') {
-  return screen.getByRole('button', { name: label });
+function checkItem(label: string) {
+  return screen.getByRole('menuitemcheckbox', { name: new RegExp(`^${label}`) });
+}
+
+function pipelineChip(label: string) {
+  return screen.getByRole('radio', { name: new RegExp(`^${label}(?: |$)`) });
 }
 
 describe("a Job's Applications tab", () => {
@@ -118,9 +115,7 @@ describe("a Job's Applications tab", () => {
     expect(screen.getByText('Bassel Nasser')).toBeVisible();
     expect(screen.queryByText('Carla Rizk')).toBeNull();
     expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
-    for (const stage of ['New', 'Reviewing', 'Shortlisted', 'Interview', 'Offer']) {
-      expect(facet(stage)).toBeChecked();
-    }
+    expect(pipelineChip('Open 2')).toBeChecked();
     expect(router.state.location.search).toEqual({});
   });
 
@@ -134,12 +129,12 @@ describe("a Job's Applications tab", () => {
     await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    expect(stagePreset('Open')).toBeVisible();
-    expect(facet('New 1')).toBeVisible();
-    expect(facet('Shortlisted 1')).toBeVisible();
-    expect(facet('Rejected 1')).toBeVisible();
-    expect(facet('Withdrawn 0')).toBeVisible();
-    expect(stagePreset('All')).toBeVisible();
+    expect(pipelineChip('Open 2')).toBeVisible();
+    expect(pipelineChip('New 1')).toBeVisible();
+    expect(pipelineChip('Shortlisted 1')).toBeVisible();
+    expect(pipelineChip('Rejected 1')).toBeVisible();
+    expect(pipelineChip('Withdrawn 0')).toBeVisible();
+    expect(pipelineChip('All 3')).toBeVisible();
   });
 
   it('opens one Pipeline status and writes it into the address bar', async () => {
@@ -153,9 +148,9 @@ describe("a Job's Applications tab", () => {
     const { router, user } = await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    await user.click(onlyThisStage('Rejected'));
+    await user.click(pipelineChip('Rejected 1'));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: ['rejected'] }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'rejected' }));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual(['rejected']));
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
     expect(screen.queryByText('Amal Haddad')).toBeNull();
@@ -172,9 +167,9 @@ describe("a Job's Applications tab", () => {
     const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=new`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    await user.click(stagePreset('All'));
+    await user.click(pipelineChip('All 3'));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: EVERY_STAGE }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual([]));
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
   });
@@ -190,7 +185,7 @@ describe("a Job's Applications tab", () => {
     const { router, user } = await renderApp(`/jobs/${JOB.id}?pipeline=rejected`);
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
 
-    await user.click(stagePreset('Open'));
+    await user.click(pipelineChip('Open 2'));
 
     await waitFor(() => expect(router.state.location.search).toEqual({}));
     await waitFor(() => expect(asked.at(-1)?.status).toEqual(STILL_OPEN));
@@ -212,7 +207,7 @@ describe("a Job's Applications tab", () => {
     expect(asked.every((one) => one.qualification_status.join() === EVERY_VERDICT.join())).toBe(
       true,
     );
-    expect(screen.getByRole('button', { name: 'All verdicts' })).toBeVisible();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: All verdicts');
   });
 
   it('counts every verdict, narrowed by what the Pipeline filter is hiding', async () => {
@@ -222,13 +217,15 @@ describe("a Job's Applications tab", () => {
       ...listsJobApplications([AMAL, BASSEL, CARLA]),
     );
 
-    await renderApp(`/jobs/${JOB.id}?pipeline=new`);
+    const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=new`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    expect(checkItem('Qualified')).toHaveAccessibleName('Qualified 1');
-    expect(checkItem('Review required')).toHaveAccessibleName('Review required 0');
-    expect(checkItem('Pending')).toHaveAccessibleName('Pending 0');
-    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified 0');
+    await openScreening(user);
+
+    expect(checkItem('Qualified')).toHaveAccessibleName('Qualified, 1');
+    expect(checkItem('Review required')).toHaveAccessibleName('Review required, 0');
+    expect(checkItem('Pending')).toHaveAccessibleName('Pending, 0');
+    expect(checkItem('Disqualified')).toHaveAccessibleName('Disqualified, 0');
     expect(checkItem('Qualified')).toBeChecked();
   });
 
@@ -245,18 +242,21 @@ describe("a Job's Applications tab", () => {
     );
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
+    await openScreening(user);
     await user.click(checkItem('Review required'));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ screening: ['qualified'] }));
     await waitFor(() => expect(asked.at(-1)?.qualification_status).toEqual(['qualified']));
-    expect(checkItem('Qualified 1')).toBeChecked();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: Qualified');
   });
 
   it('will not let the last checked verdict be unchecked', async () => {
     server.use(...signedInAs(RECRUITER), ...getsJob(JOB), ...listsJobApplications([AMAL]));
 
-    await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
+    const { user } = await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
+
+    await openScreening(user);
 
     expect(checkItem('Qualified')).toHaveAttribute('aria-disabled', 'true');
     expect(checkItem('Pending')).not.toHaveAttribute('aria-disabled');
@@ -273,12 +273,13 @@ describe("a Job's Applications tab", () => {
     const { router, user } = await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'All verdicts' }));
+    await openScreening(user);
+    await user.click(screen.getByRole('menuitem', { name: 'All verdicts' }));
 
     await waitFor(() => expect(router.state.location.search).toEqual({ screening: EVERY_VERDICT }));
     await waitFor(() => expect(asked.at(-1)?.qualification_status).toEqual(EVERY_VERDICT));
     expect(await screen.findByText('Bassel Nasser')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'All verdicts' })).toBeVisible();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: All verdicts');
   });
 
   it('sends both filters to the API at once and leaves them in the address bar', async () => {
@@ -294,11 +295,12 @@ describe("a Job's Applications tab", () => {
     );
     expect(await screen.findByText('Bassel Nasser')).toBeVisible();
 
+    await openScreening(user);
     await user.click(checkItem('Qualified'));
 
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
-        pipeline: ['shortlisted'],
+        pipeline: 'shortlisted',
         screening: ['review_required'],
       }),
     );
@@ -326,9 +328,8 @@ describe("a Job's Applications tab", () => {
 
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
     expect(screen.queryByText('Amal Haddad')).toBeNull();
-    expect(facet('Rejected 1')).toBeChecked();
-    expect(facet('Disqualified 1')).toBeChecked();
-    expect(facet('Qualified 0')).not.toBeChecked();
+    expect(pipelineChip('Rejected 1')).toBeChecked();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: Disqualified');
     expect(asked.every((one) => one.status.join() === 'rejected')).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === 'disqualified')).toBe(true);
   });
@@ -346,9 +347,7 @@ describe("a Job's Applications tab", () => {
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
     expect(asked.every((one) => one.status.join() === STILL_OPEN.join())).toBe(true);
     expect(asked.every((one) => one.qualification_status.join() === 'qualified')).toBe(true);
-    for (const stage of ['New', 'Reviewing', 'Shortlisted', 'Interview', 'Offer']) {
-      expect(facet(stage)).toBeChecked();
-    }
+    expect(pipelineChip('Open 1')).toBeChecked();
   });
 
   it('drops a filter the platform cannot honour rather than failing the page', async () => {
@@ -476,7 +475,7 @@ describe("a Job's Applications tab", () => {
 
     await user.click(screen.getByRole('button', { name: 'Go to all Applications' }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: EVERY_STAGE }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ pipeline: 'all' }));
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
   });
 
@@ -534,10 +533,11 @@ describe("a Job's Applications tab", () => {
     expect(
       await screen.findByText('No Application on this Job matches both filters.'),
     ).toBeVisible();
-    expect(stagePreset('All')).toBeVisible();
-    expect(facet('Interview 0')).toBeVisible();
+    expect(pipelineChip('All 0')).toBeVisible();
+    expect(pipelineChip('Interview 0')).toBeVisible();
 
-    expect(checkItem('Pending')).toHaveAccessibleName('Pending 0');
+    await openScreening(user);
+    expect(checkItem('Pending')).toHaveAccessibleName('Pending, 0');
     await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
@@ -578,7 +578,7 @@ describe("a Job's Applications tab", () => {
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
         tab: 'links',
-        pipeline: ['new'],
+        pipeline: 'new',
         screening: ['qualified'],
       }),
     );
@@ -586,8 +586,8 @@ describe("a Job's Applications tab", () => {
     await user.click(screen.getByRole('tab', { name: 'Applications' }));
 
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
-    expect(facet('New 1')).toBeChecked();
-    expect(checkItem('Qualified 1')).toBeChecked();
+    expect(pipelineChip('New 1')).toBeChecked();
+    expect(screeningTrigger()).toHaveAccessibleName('Screening: Qualified');
   });
 });
 
@@ -659,7 +659,7 @@ describe('the Match score on a Job triage list', () => {
 
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
-        pipeline: EVERY_STAGE,
+        pipeline: 'all',
         sort: 'highest_match',
       }),
     );
@@ -685,7 +685,7 @@ describe('the Match score on a Job triage list', () => {
     await user.click(screen.getByRole('button', { name: 'Match' }));
 
     await waitFor(() =>
-      expect(router.state.location.search).toEqual({ pipeline: EVERY_STAGE, sort: 'lowest_match' }),
+      expect(router.state.location.search).toEqual({ pipeline: 'all', sort: 'lowest_match' }),
     );
     await waitFor(() => expect(asked.at(-1)?.sort).toBe('lowest_match'));
     expect(listedInOrder()).toEqual([
@@ -734,7 +734,7 @@ describe("sweeping a Job's Applications from the filters", () => {
     await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    const rail = within(screen.getByRole('complementary', { name: 'Filters' }));
+    const rail = within(screen.getByRole('complementary', { name: 'Bulk actions' }));
     expect(rail.getByText('2')).toBeVisible();
     expect(rail.getByText(/not only the page on screen/)).toBeVisible();
   });
@@ -749,9 +749,9 @@ describe("sweeping a Job's Applications from the filters", () => {
     const { user } = await renderApp(`/jobs/${JOB.id}?pipeline=all`);
     expect(await screen.findByText('Carla Rizk')).toBeVisible();
 
-    await user.click(onlyThisStage('Rejected'));
+    await user.click(pipelineChip('Rejected 1'));
 
-    const rail = within(screen.getByRole('complementary', { name: 'Filters' }));
+    const rail = within(screen.getByRole('complementary', { name: 'Bulk actions' }));
     expect(await rail.findByText(/every one has ended/)).toBeVisible();
     await waitFor(() => expect(movable()).toBeDisabled());
   });
@@ -837,8 +837,8 @@ describe("sweeping a Job's Applications from the filters", () => {
     const { user } = await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    const rail = within(screen.getByRole('complementary', { name: 'Filters' }));
-    expect(rail.getByText(/Screening is narrowed to Qualified/)).toBeVisible();
+    const rail = within(screen.getByRole('complementary', { name: 'Bulk actions' }));
+    expect(rail.getByText('Open · Qualified')).toBeVisible();
 
     await user.click(movable());
     await user.click(within(await confirmDialog()).getByRole('button', { name: /^End / }));
@@ -885,12 +885,8 @@ describe("the ticks on a Job's Applications tab", () => {
   }
 
   async function openMoveTo(user: UserEvent) {
-    await user.click(screen.getByRole('button', { name: /^Move to/ }));
+    await user.click(screen.getByRole('button', { name: /^Move ticked to/ }));
     return within(await screen.findByRole('menu'));
-  }
-
-  function pipelineChip(label: string) {
-    return screen.getByRole('checkbox', { name: new RegExp(`^${label}(?: |$)`) });
   }
 
   it('offers a tick on every row an act reaches, as the Tenant-wide list does', async () => {
@@ -999,7 +995,7 @@ describe("the ticks on a Job's Applications tab", () => {
     expect(await screen.findByText('2 Applications are in Interview.')).toBeVisible();
     expect(asked).toEqual([AMAL.id, BASSEL.id]);
     await waitFor(() => expect(pipelineChip('Interview')).toHaveAccessibleName('Interview 2'));
-    expect(screen.queryByRole('button', { name: /^Move to/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Move ticked to/ })).toBeNull();
   });
 
   it('promises a ladder move reaches nobody before anybody confirms it', async () => {

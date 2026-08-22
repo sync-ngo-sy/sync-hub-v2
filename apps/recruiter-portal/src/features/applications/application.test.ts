@@ -8,14 +8,14 @@ import {
   OPEN_TAB,
   PIPELINE_STATUSES,
   PIPELINE_TABS,
-  pipelineFromShorthand,
   pipelineInAddress,
-  pipelineSelection,
   pipelineStatuses,
-  showsEveryStage,
-  showsOpenStages,
+  pipelineTab,
+  pipelineTabCount,
+  pipelineTabLabel,
   stagesCount,
   sweepableStages,
+  tabStages,
 } from './application';
 
 describe('the Pipeline tabs', () => {
@@ -34,47 +34,43 @@ describe('the Pipeline tabs', () => {
     ]);
   });
 
-  it('opens a list nobody has touched on the stages still being decided', () => {
-    expect(pipelineSelection(undefined)).toEqual([...OPEN_STATUSES]);
-    expect(pipelineSelection([])).toEqual([...OPEN_STATUSES]);
+  it('opens a list nobody has touched on Open', () => {
+    expect(pipelineTab(undefined)).toBe(OPEN_TAB);
+    expect(pipelineTab('withdrawn')).toBe('withdrawn');
   });
 
-  it('reads the stages back in Pipeline order, however they were ticked', () => {
-    expect(pipelineSelection(['offer', 'new', 'reviewing'])).toEqual(['new', 'reviewing', 'offer']);
+  it('stands each tab for the stages it names', () => {
+    expect(tabStages(OPEN_TAB)).toEqual([...OPEN_STATUSES]);
+    expect(tabStages(ALL_TAB)).toEqual([...PIPELINE_STATUSES]);
+    expect(tabStages('withdrawn')).toEqual(['withdrawn']);
   });
 
-  it('asks the API for the stages named, and for none of them when every one is', () => {
-    expect(pipelineStatuses(['rejected'])).toEqual(['rejected']);
-    expect(pipelineStatuses([...OPEN_STATUSES])).toEqual([...OPEN_STATUSES]);
-    expect(pipelineStatuses([...PIPELINE_STATUSES])).toBeUndefined();
+  it('asks the API for the stages a tab names, and for none of them on All', () => {
+    expect(pipelineStatuses('rejected')).toEqual(['rejected']);
+    expect(pipelineStatuses(OPEN_TAB)).toEqual([...OPEN_STATUSES]);
+    expect(pipelineStatuses(ALL_TAB)).toBeUndefined();
   });
 
-  it('leaves the stages an untouched list shows out of the address', () => {
+  it('leaves the tab an untouched list opens on out of the address', () => {
     expect(pipelineInAddress(undefined)).toBeUndefined();
-    expect(pipelineInAddress([...OPEN_STATUSES])).toBeUndefined();
-    expect(pipelineInAddress(['withdrawn'])).toEqual(['withdrawn']);
+    expect(pipelineInAddress(OPEN_TAB)).toBeUndefined();
+    expect(pipelineInAddress('withdrawn')).toBe('withdrawn');
   });
 
-  it('honours the addresses written before a Reading could hold more than one stage', () => {
-    expect(pipelineFromShorthand(OPEN_TAB)).toEqual([...OPEN_STATUSES]);
-    expect(pipelineFromShorthand(ALL_TAB)).toEqual([...PIPELINE_STATUSES]);
-    expect(pipelineFromShorthand('withdrawn')).toEqual(['withdrawn']);
+  it('names the two tabs that were never stages after themselves', () => {
+    expect(pipelineTabLabel(OPEN_TAB)).toBe('Open');
+    expect(pipelineTabLabel(ALL_TAB)).toBe('All');
+    expect(pipelineTabLabel('shortlisted')).toBe('Shortlisted');
   });
 
   it('splits the eight statuses between the ones still open and the ones that ended', () => {
     expect([...OPEN_STATUSES, ...ENDED_STATUSES].sort()).toEqual([...PIPELINE_STATUSES].sort());
   });
 
-  it('knows a selection of one stage from a selection of several', () => {
-    expect(holdsOneStatus(['offer'])).toBe(true);
-    expect(holdsOneStatus([...OPEN_STATUSES])).toBe(false);
-  });
-
-  it('recognises the two selections that were once tabs of their own', () => {
-    expect(showsOpenStages([...OPEN_STATUSES])).toBe(true);
-    expect(showsOpenStages(['new'])).toBe(false);
-    expect(showsEveryStage([...PIPELINE_STATUSES])).toBe(true);
-    expect(showsEveryStage([...OPEN_STATUSES])).toBe(false);
+  it('knows a tab that is one stage from the two that are many', () => {
+    expect(holdsOneStatus('offer')).toBe(true);
+    expect(holdsOneStatus(OPEN_TAB)).toBe(false);
+    expect(holdsOneStatus(ALL_TAB)).toBe(false);
   });
 });
 
@@ -89,6 +85,12 @@ describe('what a selection of stages adds up', () => {
     rejected: 90,
     withdrawn: 5,
   };
+
+  it('counts a tab as the stages it stands for', () => {
+    expect(pipelineTabCount(OPEN_TAB, COUNTS)).toBe(7);
+    expect(pipelineTabCount(ALL_TAB, COUNTS)).toBe(106);
+    expect(pipelineTabCount('rejected', COUNTS)).toBe(90);
+  });
 
   it('counts the stages named, and nothing else', () => {
     expect(stagesCount(OPEN_STATUSES, COUNTS)).toBe(7);

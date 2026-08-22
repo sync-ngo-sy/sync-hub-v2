@@ -32,20 +32,20 @@ import {
 
 interface SweepActsProps {
   scope: SweepScope;
-  /** What the Screening filter leaves out, where it leaves anything out. */
-  narrowing: string | null;
+  /** The Reading in words, because the filters that set it are above the list, not in here. */
+  reading: string;
   onSweep: (to: PipelineStatus) => Promise<SweptApplications>;
 }
 
 /**
- * What the filters beside this add up to, and the acts that reach all of it.
+ * What the filters above the list add up to, and the acts that reach all of it.
  *
- * The acts sit inside the filter panel on purpose: a sweep acts on exactly the Reading the panel
- * describes, so putting the buttons anywhere else would leave the scope to be explained in words.
- * The count above them is the whole Reading rather than the page on screen, and where the Reading
- * reaches Applications that have ended it says how many of them no act can move.
+ * The count is the whole Reading rather than the page on screen, and where the Reading reaches
+ * Applications that have ended it says how many of them no act can move. It names the Reading
+ * too: the buttons sit beside the list and the filters above it, so nothing here can be pointed
+ * at.
  */
-export function SweepActs({ scope, narrowing, onSweep }: SweepActsProps) {
+export function SweepActs({ scope, reading, onSweep }: SweepActsProps) {
   const [confirming, setConfirming] = useState<PipelineStatus | null>(null);
   const destinations = Object.entries(sweepDestinations()) as [PipelineStatus, string][];
   const nothingToDo = scope.movable === 0;
@@ -54,7 +54,7 @@ export function SweepActs({ scope, narrowing, onSweep }: SweepActsProps) {
     <div className="space-y-3 rounded-md border border-accent-foreground/25 bg-accent/30 p-3">
       <p className="font-mono text-page-title tabular-nums leading-none">{scope.movable}</p>
       <p className="text-meta text-muted-foreground">{sweepScopeMessage(scope)}</p>
-      {narrowing ? <p className="text-meta text-muted-foreground">{narrowing}</p> : null}
+      <p className="text-meta font-medium text-foreground">{reading}</p>
 
       <div className="flex flex-col gap-2 pt-1">
         <DropdownMenu>
@@ -87,7 +87,7 @@ export function SweepActs({ scope, narrowing, onSweep }: SweepActsProps) {
         <SweepConfirm
           to={confirming}
           total={scope.movable}
-          narrowing={narrowing}
+          reading={reading}
           onConfirm={() => onSweep(confirming)}
           onClose={() => setConfirming(null)}
         />
@@ -99,7 +99,7 @@ export function SweepActs({ scope, narrowing, onSweep }: SweepActsProps) {
 interface SweepConfirmProps {
   to: PipelineStatus;
   total: number;
-  narrowing: string | null;
+  reading: string;
   onConfirm: () => Promise<SweptApplications>;
   onClose: () => void;
 }
@@ -107,11 +107,11 @@ interface SweepConfirmProps {
 /**
  * One confirm, and nothing to choose in it.
  *
- * The Reading already says which Applications are being acted on, so this asks nothing about them
- * — where the old modal ticked statuses it was duplicating the Pipeline filter, which is exactly
- * what made a sweep's scope ambiguous.
+ * It names the Reading it is about to act on and asks nothing about it — where the old modal
+ * ticked statuses it was duplicating the Pipeline filter, which is exactly what made a sweep's
+ * scope ambiguous.
  */
-function SweepConfirm({ to, total, narrowing, onConfirm, onClose }: SweepConfirmProps) {
+function SweepConfirm({ to, total, reading, onConfirm, onClose }: SweepConfirmProps) {
   const [sweeping, setSweeping] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const label = sweepLabel(to, total);
@@ -141,7 +141,7 @@ function SweepConfirm({ to, total, narrowing, onConfirm, onClose }: SweepConfirm
           <AlertDialogDescription>{sweepConsequence(to)}</AlertDialogDescription>
         </AlertDialogHeader>
 
-        {narrowing ? <p className="text-meta text-muted-foreground">{narrowing}</p> : null}
+        <p className="text-meta text-muted-foreground">{reading}</p>
 
         {refusal ? (
           <Alert variant="destructive">

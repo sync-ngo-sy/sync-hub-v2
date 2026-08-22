@@ -28,7 +28,9 @@ function ApplicationsPage() {
     <WidgetBoundary name="Applications">
       <ApplicationsFeaturePage
         filters={filters}
-        onFiltersChange={(next) => void navigate({ search: applicationsAddress(next) })}
+        onFiltersChange={(next) =>
+          void navigate({ search: applicationsAddress(next), resetScroll: false })
+        }
         onApplicationOpen={(application) => void navigate(applicationLocation(application))}
         applicationHref={(application) =>
           router.buildLocation(applicationLocation(application)).href

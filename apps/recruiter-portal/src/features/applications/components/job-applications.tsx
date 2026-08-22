@@ -4,16 +4,19 @@ import { Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import { problemMessage } from '@/lib/api-problem';
 import {
+  ALL_TAB,
   type ApplicationSort,
   type ApplicationSummary,
   anythingEnded,
-  PIPELINE_STATUSES,
   type PipelineStatus,
-  pipelineSelection,
+  type PipelineTab,
   pipelineStatuses,
+  pipelineTab,
   SCREENING_VERDICTS,
   screeningSelection,
+  screeningState,
   sortSelection,
+  tabStages,
 } from '../application';
 import { sweepScope, sweptMessage } from '../ending';
 import { useSweepJobApplications } from '../hooks/use-application-actions';
@@ -24,10 +27,12 @@ import {
   clearFiltersLabel,
   narrowedBy,
   noJobApplicationsMessage,
-  screeningNarrowing,
+  readingNamed,
 } from '../reading';
 import { applicationColumns } from './application-columns';
-import { ApplicationsFilterRail } from './applications-filter-rail';
+import { ApplicationPipelineFilter } from './application-pipeline-filter';
+import { ApplicationsActsRail } from './applications-acts-rail';
+import { ChecklistFilter } from './checklist-filter';
 import { SweepActs } from './sweep-acts';
 import { TickedActDialog } from './ticked-act-dialog';
 import { TickedActs } from './ticked-acts';
@@ -54,7 +59,7 @@ export function JobApplications({
   applicationHref,
   onShowLinks,
 }: JobApplicationsProps) {
-  const pipeline = pipelineSelection(filters.pipeline);
+  const pipeline = pipelineTab(filters.pipeline);
   const screening = screeningSelection(filters.screening);
   const sort = sortSelection(filters.sort);
   const applications = useJobApplications(jobId, {
@@ -70,7 +75,8 @@ export function JobApplications({
   const everyVerdict = screening.length === SCREENING_VERDICTS.length;
   const items = applications.data?.items ?? [];
   const ticks = useTickedActs(items);
-  const scope = sweepScope(pipeline, statusCounts);
+  const scope = sweepScope(tabStages(pipeline), statusCounts);
+  const reading = readingNamed(pipeline, screening);
 
   function changeReading(next: ApplicationFilters) {
     ticks.clear();
@@ -106,7 +112,7 @@ export function JobApplications({
       return (
         <Button
           variant="outline"
-          onClick={() => onFiltersChange({ ...filters, pipeline: [...PIPELINE_STATUSES] })}
+          onClick={() => onFiltersChange({ ...filters, pipeline: ALL_TAB })}
         >
           Go to all Applications
         </Button>
@@ -120,61 +126,80 @@ export function JobApplications({
   }
 
   return (
-    <div className={LIST_BESIDE_RAIL}>
-      <div className="min-w-0 space-y-4">
-        {ticks.count > 0 ? (
-          <TickedActs
-            ticked={ticks.count}
-            acts={ticks.acts}
-            onAct={ticks.onAct}
-            onClear={ticks.clear}
-          />
-        ) : null}
-
-        <DataTable
-          label="Applications"
-          columns={JOB_APPLICATION_COLUMNS}
-          data={items}
-          getRowId={(application) => application.id}
-          rowLabel={(application) => `${application.candidate_name}'s Application`}
-          onRowOpen={onApplicationOpen}
-          rowHref={applicationHref}
-          isLoading={applications.isPending}
-          ticks={{ ticked: ticks.ids, onChange: ticks.onTick, can: ticks.can }}
-          sort={{
-            by: sort,
-            onChange: (by) => changeReading({ ...filters, sort: by as ApplicationSort }),
-          }}
-          error={
-            applications.isError
-              ? {
-                  message: problemMessage(applications.error, "Couldn't load these Applications."),
-                  onRetry: () => void applications.refetch(),
-                }
-              : undefined
-          }
-          empty={{
-            icon: Inbox,
-            message: noJobApplicationsMessage(filters, ended),
-            action: whereEmptyLeads(),
-          }}
-          loadMore={{
-            hasMore: applications.hasNextPage,
-            isLoading: applications.isFetchingNextPage,
-            onLoadMore: () => void applications.fetchNextPage(),
-          }}
+    <div className="space-y-(--space-section)">
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+        <ApplicationPipelineFilter
+          pipeline={pipeline}
+          counts={statusCounts}
+          onChange={(chosen: PipelineTab) => changeReading({ ...filters, pipeline: chosen })}
+        />
+        <ChecklistFilter
+          label="Screening"
+          noun="verdicts"
+          options={SCREENING_VERDICTS.map((verdict) => ({
+            value: verdict,
+            label: screeningState(verdict).label,
+          }))}
+          selected={screening}
+          counts={verdictCounts}
+          onChange={(chosen) => changeReading({ ...filters, screening: chosen })}
         />
       </div>
 
-      <ApplicationsFilterRail
-        pipeline={pipeline}
-        onPipelineChange={(chosen) => changeReading({ ...filters, pipeline: chosen })}
-        screening={screening}
-        onScreeningChange={(chosen) => changeReading({ ...filters, screening: chosen })}
-        counts={statusCounts}
-        verdictCounts={verdictCounts}
-        acts={<SweepActs scope={scope} narrowing={screeningNarrowing(screening)} onSweep={sweep} />}
-      />
+      <div className={LIST_BESIDE_RAIL}>
+        <div className="min-w-0">
+          <DataTable
+            label="Applications"
+            columns={JOB_APPLICATION_COLUMNS}
+            data={items}
+            getRowId={(application) => application.id}
+            rowLabel={(application) => `${application.candidate_name}'s Application`}
+            onRowOpen={onApplicationOpen}
+            rowHref={applicationHref}
+            isLoading={applications.isPending}
+            ticks={{ ticked: ticks.ids, onChange: ticks.onTick, can: ticks.can }}
+            sort={{
+              by: sort,
+              onChange: (by) => changeReading({ ...filters, sort: by as ApplicationSort }),
+            }}
+            error={
+              applications.isError
+                ? {
+                    message: problemMessage(
+                      applications.error,
+                      "Couldn't load these Applications.",
+                    ),
+                    onRetry: () => void applications.refetch(),
+                  }
+                : undefined
+            }
+            empty={{
+              icon: Inbox,
+              message: noJobApplicationsMessage(filters, ended),
+              action: whereEmptyLeads(),
+            }}
+            loadMore={{
+              hasMore: applications.hasNextPage,
+              isLoading: applications.isFetchingNextPage,
+              onLoadMore: () => void applications.fetchNextPage(),
+            }}
+          />
+        </div>
+
+        <ApplicationsActsRail
+          sweep={<SweepActs scope={scope} reading={reading} onSweep={sweep} />}
+          ticked={
+            ticks.count > 0 ? (
+              <TickedActs
+                ticked={ticks.count}
+                acts={ticks.acts}
+                onAct={ticks.onAct}
+                onClear={ticks.clear}
+              />
+            ) : null
+          }
+        />
+      </div>
 
       {ticks.confirming ? (
         <TickedActDialog

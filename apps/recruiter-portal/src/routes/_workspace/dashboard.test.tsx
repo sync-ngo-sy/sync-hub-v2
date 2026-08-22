@@ -90,9 +90,9 @@ describe('the Dashboard', () => {
     const { router, user } = await renderApp('/dashboard');
     await user.click(await screen.findByRole('link', { name: /Awaiting review/ }));
 
-    expect(await screen.findByRole('checkbox', { name: /^New / })).toBeChecked();
+    expect(await screen.findByRole('radio', { name: /^New / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
-    expect(router.state.location.search).toEqual({ pipeline: ['new'] });
+    expect(router.state.location.search).toEqual({ pipeline: 'new' });
   });
 
   it('sends Applications this week to the week, terminal Applications included', async () => {
@@ -105,20 +105,8 @@ describe('the Dashboard', () => {
       'Last 7 days',
     );
     expect(router.state.location.pathname).toBe('/applications');
-    expect(screen.getByRole('checkbox', { name: /^Rejected / })).toBeChecked();
-    expect(router.state.location.search).toEqual({
-      pipeline: [
-        'new',
-        'reviewing',
-        'shortlisted',
-        'interview',
-        'offer',
-        'hired',
-        'rejected',
-        'withdrawn',
-      ],
-      received: '7d',
-    });
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
+    expect(router.state.location.search).toEqual({ pipeline: 'all', received: '7d' });
   });
 
   it('sends Open jobs to the published Jobs the number counted', async () => {
@@ -140,23 +128,12 @@ describe('the Dashboard', () => {
     const { router, user } = await renderApp('/dashboard');
     await user.click(await screen.findByRole('link', { name: /Qualified by screening/ }));
 
-    expect(await screen.findByRole('checkbox', { name: /^Qualified / })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /^Disqualified / })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /^Rejected / })).toBeChecked();
+    expect(await screen.findByRole('button', { name: /^Screening: / })).toHaveAccessibleName(
+      'Screening: Qualified',
+    );
+    expect(screen.getByRole('radio', { name: /^All / })).toBeChecked();
     expect(router.state.location.pathname).toBe('/applications');
-    expect(router.state.location.search).toEqual({
-      pipeline: [
-        'new',
-        'reviewing',
-        'shortlisted',
-        'interview',
-        'offer',
-        'hired',
-        'rejected',
-        'withdrawn',
-      ],
-      screening: ['qualified'],
-    });
+    expect(router.state.location.search).toEqual({ pipeline: 'all', screening: ['qualified'] });
   });
 
   it('compares this week with the one before it', async () => {
