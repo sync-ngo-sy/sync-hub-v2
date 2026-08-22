@@ -1,5 +1,5 @@
 import { FIELD, MEAL } from '@/features/applications/testing/fixtures';
-import type { HireClaim } from '../placement';
+import type { CandidatePlacement, HireClaim } from '../placement';
 
 export const NOUR_PLACED: HireClaim = {
   application_id: '00000000-0000-4000-8000-000000000411',
@@ -42,3 +42,15 @@ export function claimedHires(howMany: number, confirmation: HireClaim['confirmat
     answered_at: confirmation === 'unanswered' ? null : NOUR_PLACED.answered_at,
   })) satisfies HireClaim[];
 }
+
+export const PLACED_AS_MEAL: CandidatePlacement = {
+  application_id: '00000000-0000-4000-8000-000000000415',
+  job: MEAL,
+  start_date: '2026-09-01',
+};
+
+export const PLACED_IN_THE_FIELD: CandidatePlacement = {
+  application_id: '00000000-0000-4000-8000-000000000414',
+  job: FIELD,
+  start_date: '2026-03-01',
+};

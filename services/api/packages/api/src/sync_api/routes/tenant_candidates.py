@@ -5,8 +5,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
 
+from sync_api.applications import CandidatePlacement
 from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
-from sync_api.dependencies import ActingRecruiterDep, CandidateNotesDep, CandidateTagsDep
+from sync_api.dependencies import (
+    ActingRecruiterDep,
+    CandidateNotesDep,
+    CandidatePlacementsDep,
+    CandidateTagsDep,
+)
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
@@ -154,3 +160,21 @@ async def untag_candidate(
     """Idempotent: a Tag that was never on them is not an error."""
     await tags.take_off(recruiter, candidate_id, tag_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{candidate_id}/placements",
+    operation_id="listCandidatePlacements",
+    summary="The Placements this Tenant has made of one Candidate",
+    responses={**TENANT_ACCESS_REFUSED, **CANDIDATE_OUT_OF_REACH},
+)
+async def list_candidate_placements(
+    candidate_id: UUID, recruiter: ActingRecruiterDep, placements: CandidatePlacementsDep
+) -> list[CandidatePlacement]:
+    """A Placement is a hire this Candidate confirmed, and this list is read from the view that
+    says so — nothing that is not one can appear here, and neither can another Tenant's.
+
+    A list rather than one fact: this Tenant may have placed the same person more than once.
+    Newest start first, and empty for a Candidate it has placed nobody of.
+    """
+    return await placements.of_candidate(recruiter, candidate_id)

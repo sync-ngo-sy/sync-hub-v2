@@ -207,3 +207,20 @@ async def pool_of(recruiter: AsyncClient, **params: Any) -> list[dict[str, Any]]
     assert response.status_code == 200, response.text
     items: list[dict[str, Any]] = response.json()["items"]
     return items
+
+
+def candidate_placements(candidate_id: str | UUID) -> str:
+    return f"{TENANT_CANDIDATES}/{candidate_id}/placements"
+
+
+async def list_candidate_placements(recruiter: AsyncClient, candidate_id: str | UUID) -> Response:
+    return await recruiter.get(candidate_placements(candidate_id))
+
+
+async def placements_of_candidate(
+    recruiter: AsyncClient, candidate_id: str | UUID
+) -> list[dict[str, Any]]:
+    response = await list_candidate_placements(recruiter, candidate_id)
+    assert response.status_code == 200, response.text
+    items: list[dict[str, Any]] = response.json()
+    return items
