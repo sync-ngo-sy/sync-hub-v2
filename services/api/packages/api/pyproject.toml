@@ -13,7 +13,10 @@ dependencies = [
     "asgi-correlation-id>=5.0",
     "fastapi>=0.139.2",
     "httpx>=0.28",
-    # The counting behind the auth rate limit — the primitive `slowapi` is built on.
+    # The counting behind every rate limit — the primitive `slowapi` is built on. The memory
+    # store it ships with needs no extra; the redis client for a fleet's shared store is added
+    # by the deployment image (`limits[async-redis]`), so a single instance carries neither it
+    # nor its Windows-only transitive tail.
     "limits>=5.8",
     # What pydantic's `EmailStr` validates with.
     "email-validator>=2.2",
@@ -33,6 +36,11 @@ dependencies = [
     # wheel, so there is no system libwebp to install alongside it.
     "pillow>=12.0",
 ]
+
+[project.scripts]
+# What the container runs: uvicorn with the trusted-proxy boundary read from settings, which a
+# bare `uvicorn sync_api.main:app` cannot do because that boundary is a per-deployment value.
+sync-api = "sync_api.main:serve"
 
 [build-system]
 requires = ["uv_build>=0.11.24,<0.12.0"]
