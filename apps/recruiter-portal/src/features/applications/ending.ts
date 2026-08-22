@@ -47,7 +47,7 @@ export function sweepScopeMessage(scope: SweepScope): string {
   if (scope.matching === 0) return 'Nothing matches these filters.';
   if (scope.held === 0) return `Applications match these filters. ${WHAT_A_SWEEP_REACHES}`;
   if (scope.movable === 0) {
-    return `matching, and none of them can move: every one has ended.`;
+    return `of ${scope.matching} matching, and none of them can move: every one has ended.`;
   }
   const others = scope.held === 1 ? 'The other has ended' : `The other ${scope.held} have ended`;
   return `of ${scope.matching} matching can move. ${others}, and nothing moves them again.`;
@@ -55,10 +55,8 @@ export function sweepScopeMessage(scope: SweepScope): string {
 
 /** Where a sweep can send the Reading, each as the Pipeline names it. The same four rungs a ticked
  * Act offers, and for the same reasons: never `new`, never `hired`. */
-export function sweepDestinations(): Record<PipelineStatus, string> {
-  return Object.fromEntries(
-    LADDER_DESTINATIONS.map((status) => [status, pipelineState(status).label]),
-  ) as Record<PipelineStatus, string>;
+export function sweepDestinations(): [PipelineStatus, string][] {
+  return LADDER_DESTINATIONS.map((status) => [status, pipelineState(status).label]);
 }
 
 /** Where along the ladder a set can be sent, in the order the moves are offered.
@@ -254,15 +252,15 @@ export function receivedInSweep(received: ReceivedWithin | undefined): ReceivedW
 
 /** A sweep's own answer, in the one shape both paths report through. */
 export function whatItSwept(swept: SweptApplications): Moved {
-  return { moved: swept.ended, toldAt: swept.told_at ?? null };
+  return { moved: swept.moved, toldAt: swept.told_at ?? null };
 }
 
 /**
  * Rows moved one at a time, read back as the one answer a sweep gives.
  *
- * The Tenant-wide list has no sweep — a statement about forty Jobs at once is a statement about
- * nothing — so ticking rows there is that many moves. The Telling reported is the first one that
- * landed, standing for a set taken seconds apart; a row that had already moved carries none.
+ * Ticked rows are named by id, so each is its own request where a sweep is one. The Telling
+ * reported is the first that landed, standing for a set taken seconds apart; a row that had
+ * already moved carries none.
  */
 export function movedTogether(moves: (MovedApplication | null)[]): Moved {
   const done = moves.filter((moved) => moved !== null);

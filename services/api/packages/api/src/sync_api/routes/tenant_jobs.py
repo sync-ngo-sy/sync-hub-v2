@@ -274,7 +274,7 @@ async def sweep_job_applications(
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
 ) -> SweptApplications:
-    """Take one act across a whole hiring effort: every Application in the ticked statuses moves
+    """Take one act across a whole hiring effort: every Application in the statuses named moves
     together, in one transaction.
 
     The request carries the Reading rather than the Applications, so a sweep of fifty thousand is

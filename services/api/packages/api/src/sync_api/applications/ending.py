@@ -76,7 +76,7 @@ class SweepScope:
 
     tenant_id: UUID
     job_id: UUID | None = None
-    received_after: Any = None
+    received_after: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,7 +153,7 @@ async def _move_those_in(
     by: UUID,
     telling: datetime | None,
 ) -> int:
-    """One statement, for one status the ticks named: the moves, their histories, and whichever of
+    """One statement, for one status the Reading named: the moves, their histories, and whichever of
     the bell and the email this particular move owes.
 
     The `UPDATE` is what decides which Applications took part, and everything else reads its

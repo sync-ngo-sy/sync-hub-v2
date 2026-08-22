@@ -41,16 +41,11 @@ import {
 } from '../reading';
 import { applicationColumns } from './application-columns';
 import { ApplicationPipelineFilter } from './application-pipeline-filter';
-import { ApplicationsActsRail } from './applications-acts-rail';
+import { ApplicationsActsRail, LIST_BESIDE_RAIL } from './applications-acts-rail';
 import { ChecklistFilter } from './checklist-filter';
-import { SweepActs } from './sweep-acts';
 import { TickedActDialog } from './ticked-act-dialog';
-import { TickedActs } from './ticked-acts';
 
 export const TENANT_APPLICATION_COLUMNS = applicationColumns<TenantApplication>(jobColumn());
-
-const LIST_BESIDE_RAIL =
-  'flex flex-col-reverse gap-(--space-section) lg:grid lg:grid-cols-[minmax(0,1fr)_19rem]';
 
 const TO_THE_PLACEMENTS = (
   <p className="text-meta text-muted-foreground">
@@ -240,19 +235,7 @@ export function ApplicationsPage({
           />
         </div>
 
-        <ApplicationsActsRail
-          sweep={<SweepActs scope={scope} reading={reading} onSweep={sweep} />}
-          ticked={
-            ticks.count > 0 ? (
-              <TickedActs
-                ticked={ticks.count}
-                acts={ticks.acts}
-                onAct={ticks.onAct}
-                onClear={ticks.clear}
-              />
-            ) : null
-          }
-        />
+        <ApplicationsActsRail scope={scope} reading={reading} onSweep={sweep} ticks={ticks} />
       </div>
 
       {ticks.confirming ? (

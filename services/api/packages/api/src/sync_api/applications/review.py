@@ -315,7 +315,7 @@ class ApplicationReviewService:
             to=sweep.to.value,
             swept=swept.count,
         )
-        return SweptApplications(ended=swept.count, told_at=swept.told_at)
+        return SweptApplications(moved=swept.count, told_at=swept.told_at)
 
     async def sweep_tenant(
         self, recruiter: ActingRecruiter, sweep: TenantApplicationSweep
@@ -345,7 +345,7 @@ class ApplicationReviewService:
             received_within=sweep.received_within.value if sweep.received_within else None,
             swept=swept.count,
         )
-        return SweptApplications(ended=swept.count, told_at=swept.told_at)
+        return SweptApplications(moved=swept.count, told_at=swept.told_at)
 
     async def _candidate(self, candidate_id: UUID) -> ReviewedCandidate:
         found = (

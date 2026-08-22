@@ -612,7 +612,7 @@ class ApplicationStatusChange(BaseModel):
 
 class ApplicationSweep(BaseModel):
     """Which Applications one act moves, and where they go: the Reading the list was showing,
-    with its Pipeline tab replaced by the statuses ticked.
+    as the Pipeline tab and the Screening filter left it.
 
     No ids anywhere, and none possible. A sweep of fifty thousand Applications is the same
     request as a sweep of twelve, so a selection too large to send is not a state to reach.
@@ -620,7 +620,8 @@ class ApplicationSweep(BaseModel):
 
     statuses: list[ApplicationStatus] = Field(
         min_length=1,
-        description="The statuses to move out of, as the ticks name them. Only the five an "
+        description="The statuses to move out of, as the Pipeline tab stands for them. Only the "
+        "five an "
         "Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended "
         "already, and naming one of them is refused rather than ignored.",
         examples=[[ApplicationStatus.NEW, ApplicationStatus.REVIEWING]],
@@ -678,9 +679,10 @@ class TenantApplicationSweep(ApplicationSweep):
 class SweptApplications(BaseModel):
     """What one sweep moved, and — where it ended them — when the people it ended hear."""
 
-    ended: int = Field(
-        description="How many Applications the sweep moved. Zero where the Reading matched "
-        "none of them, which is an answer rather than a refusal."
+    moved: int = Field(
+        description="How many Applications the sweep moved. A move along the ladder counts here "
+        "as an ending does. Zero where the Reading matched none of them, which is an answer "
+        "rather than a refusal."
     )
     told_at: datetime | None = Field(
         default=None,

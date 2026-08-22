@@ -88,7 +88,7 @@ async def test_a_sweep_ends_every_application_in_the_ticked_statuses(
 
     swept = await a_swept_job(recruiter, job["id"], [ApplicationStatus.NEW])
 
-    assert swept["ended"] == 1
+    assert swept["moved"] == 1
     listed = statuses_of(await job_applications_of(recruiter, job["id"], status=UNDECIDED))
     assert listed == {untouched["id"]: "shortlisted"}
     assert (await stored_application(db_session, ticked["id"])).status is ApplicationStatus.REJECTED
@@ -110,7 +110,7 @@ async def test_a_sweep_ends_any_combination_of_the_ticks_in_one_request(
         recruiter, job["id"], [ApplicationStatus.NEW, ApplicationStatus.OFFER]
     )
 
-    assert swept["ended"] == 2
+    assert swept["moved"] == 2
     assert await job_applications_of(recruiter, job["id"], status=UNDECIDED) == []
     ended = await job_applications_of(recruiter, job["id"], status="rejected")
     assert sorted(statuses_of(ended)) == sorted([first["id"], second["id"]])
@@ -130,7 +130,7 @@ async def test_a_sweep_leaves_every_status_it_did_not_tick(
 
     swept = await a_swept_job(recruiter, job["id"], [ApplicationStatus.INTERVIEW])
 
-    assert swept["ended"] == 1
+    assert swept["moved"] == 1
     assert (await stored_application(db_session, new_one["id"])).status is ApplicationStatus.NEW
     assert (await stored_application(db_session, new_one["id"])).told_at is None
 
@@ -275,7 +275,7 @@ async def test_a_sweep_inherits_the_screening_filter_the_list_had(
         recruiter, job["id"], [ApplicationStatus.NEW], qualification_statuses=["qualified"]
     )
 
-    assert swept["ended"] == 1
+    assert swept["moved"] == 1
     assert (
         await stored_application(db_session, disqualified["id"])
     ).status is ApplicationStatus.NEW
@@ -296,7 +296,7 @@ async def test_a_sweep_only_touches_the_job_it_names(
 
     ended = await a_swept_job(recruiter, swept_job["id"], [ApplicationStatus.NEW])
 
-    assert ended["ended"] == 2
+    assert ended["moved"] == 2
     assert (await stored_application(db_session, elsewhere["id"])).status is ApplicationStatus.NEW
     assert swept_application["id"] != elsewhere["id"]
 
@@ -314,7 +314,7 @@ async def test_a_sweep_that_matches_nothing_ends_nothing_and_is_no_error(
 
     swept = await a_swept_job(recruiter, job["id"], [ApplicationStatus.OFFER])
 
-    assert swept["ended"] == 0
+    assert swept["moved"] == 0
     assert swept["told_at"] is None
     assert await my_notifications(other_browser) == []
 
@@ -553,7 +553,7 @@ async def test_a_sweep_moves_no_count_the_platform_keeps(
         await stats_of(recruiter),
         await link_report(recruiter, job["id"]),
     )
-    assert swept["ended"] == 2
+    assert swept["moved"] == 2
     assert after == before
     assert moved_before["new"] == 2 and moved_before["rejected"] == 0
     assert moved_after["new"] == 0 and moved_after["rejected"] == 2
@@ -582,7 +582,7 @@ async def test_a_sweep_along_the_ladder_moves_them_all_and_tells_nobody(
         to=ApplicationStatus.SHORTLISTED,
     )
 
-    assert swept["ended"] == 2
+    assert swept["moved"] == 2
     assert swept["told_at"] is None
     listed = statuses_of(await job_applications_of(recruiter, job["id"], status=UNDECIDED))
     assert listed == {first["id"]: "shortlisted", second["id"]: "shortlisted"}
@@ -696,7 +696,7 @@ async def test_a_tenant_wide_sweep_reaches_every_job_it_is_hiring_for(
         recruiter, [ApplicationStatus.NEW], to=ApplicationStatus.SHORTLISTED
     )
 
-    assert swept["ended"] == 2
+    assert swept["moved"] == 2
     assert (await stored_application(db_session, one["id"])).status is (
         ApplicationStatus.SHORTLISTED
     )
@@ -753,7 +753,7 @@ async def test_a_tenant_wide_sweep_leaves_another_tenants_applications_alone(
 
     swept = await a_swept_tenant(recruiter, [ApplicationStatus.NEW])
 
-    assert swept["ended"] == 1
+    assert swept["moved"] == 1
     assert (await stored_application(db_session, ours["id"])).status is ApplicationStatus.REJECTED
     assert (await stored_application(db_session, untouched["id"])).status is ApplicationStatus.NEW
 
@@ -771,7 +771,7 @@ async def test_a_tenant_wide_sweep_ends_them_on_one_telling_like_a_jobs_own_does
 
     swept = await a_swept_tenant(recruiter, [ApplicationStatus.NEW])
 
-    assert swept["ended"] == 2
+    assert swept["moved"] == 2
     told = datetime.fromisoformat(swept["told_at"])
     assert told - datetime.now(UTC) > TELLING_DELAY - timedelta(minutes=1)
     for each in (first, second):
@@ -785,7 +785,7 @@ async def test_a_tenant_wide_sweep_that_matches_nothing_is_no_error(
 ) -> None:
     swept = await a_swept_tenant(recruiter, [ApplicationStatus.OFFER])
 
-    assert swept == {"ended": 0, "told_at": None}
+    assert swept == {"moved": 0, "told_at": None}
 
 
 async def test_sweeping_the_whole_tenant_is_only_for_recruiters(

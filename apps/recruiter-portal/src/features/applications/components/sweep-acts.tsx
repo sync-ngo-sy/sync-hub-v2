@@ -47,7 +47,7 @@ interface SweepActsProps {
  */
 export function SweepActs({ scope, reading, onSweep }: SweepActsProps) {
   const [confirming, setConfirming] = useState<PipelineStatus | null>(null);
-  const destinations = Object.entries(sweepDestinations()) as [PipelineStatus, string][];
+  const destinations = sweepDestinations();
   const nothingToDo = scope.movable === 0;
 
   return (

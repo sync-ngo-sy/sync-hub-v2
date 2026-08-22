@@ -734,7 +734,7 @@ describe("sweeping a Job's Applications from the filters", () => {
     await renderApp(`/jobs/${JOB.id}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    const rail = within(screen.getByRole('complementary', { name: 'Bulk actions' }));
+    const rail = within(screen.getByRole('complementary', { name: 'Acts' }));
     expect(rail.getByText('2')).toBeVisible();
     expect(rail.getByText(/not only the page on screen/)).toBeVisible();
   });
@@ -751,7 +751,7 @@ describe("sweeping a Job's Applications from the filters", () => {
 
     await user.click(pipelineChip('Rejected 1'));
 
-    const rail = within(screen.getByRole('complementary', { name: 'Bulk actions' }));
+    const rail = within(screen.getByRole('complementary', { name: 'Acts' }));
     expect(await rail.findByText(/every one has ended/)).toBeVisible();
     await waitFor(() => expect(movable()).toBeDisabled());
   });
@@ -837,7 +837,7 @@ describe("sweeping a Job's Applications from the filters", () => {
     const { user } = await renderApp(`/jobs/${JOB.id}?screening=${inUrl(['qualified'])}`);
     expect(await screen.findByText('Amal Haddad')).toBeVisible();
 
-    const rail = within(screen.getByRole('complementary', { name: 'Bulk actions' }));
+    const rail = within(screen.getByRole('complementary', { name: 'Acts' }));
     expect(rail.getByText('Open · Qualified')).toBeVisible();
 
     await user.click(movable());

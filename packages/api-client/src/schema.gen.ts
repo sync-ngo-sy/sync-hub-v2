@@ -1311,7 +1311,7 @@ export interface paths {
         put?: never;
         /**
          * Move every Application on the Job standing in the statuses named
-         * @description Take one act across a whole hiring effort: every Application in the ticked statuses moves
+         * @description Take one act across a whole hiring effort: every Application in the statuses named moves
          *     together, in one transaction.
          *
          *     The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
@@ -2361,7 +2361,7 @@ export interface components {
         /**
          * ApplicationSweep
          * @description Which Applications one act moves, and where they go: the Reading the list was showing,
-         *     with its Pipeline tab replaced by the statuses ticked.
+         *     as the Pipeline tab and the Screening filter left it.
          *
          *     No ids anywhere, and none possible. A sweep of fifty thousand Applications is the same
          *     request as a sweep of twelve, so a selection too large to send is not a state to reach.
@@ -2369,7 +2369,7 @@ export interface components {
         ApplicationSweep: {
             /**
              * Statuses
-             * @description The statuses to move out of, as the ticks name them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
+             * @description The statuses to move out of, as the Pipeline tab stands for them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
              * @example [
              *       "new",
              *       "reviewing"
@@ -4952,10 +4952,10 @@ export interface components {
          */
         SweptApplications: {
             /**
-             * Ended
-             * @description How many Applications the sweep moved. Zero where the Reading matched none of them, which is an answer rather than a refusal.
+             * Moved
+             * @description How many Applications the sweep moved. A move along the ladder counts here as an ending does. Zero where the Reading matched none of them, which is an answer rather than a refusal.
              */
-            ended: number;
+            moved: number;
             /**
              * Told At
              * @description The Telling every Application it ended now carries: three days out, the same moment for all of them, and the moment their Candidates hear. Null where the sweep ended nothing — a move along the ladder tells nobody, and so carries none.
@@ -5096,7 +5096,7 @@ export interface components {
         TenantApplicationSweep: {
             /**
              * Statuses
-             * @description The statuses to move out of, as the ticks name them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
+             * @description The statuses to move out of, as the Pipeline tab stands for them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
              * @example [
              *       "new",
              *       "reviewing"

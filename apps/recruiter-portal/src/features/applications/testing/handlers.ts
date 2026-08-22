@@ -247,16 +247,16 @@ function sweptInto<TItem extends MovableRow & { qualification_status: string }>(
   verdicts: string[] | null,
 ) {
   const ending = sweep.to === 'rejected';
-  let ended = 0;
+  let moved = 0;
   items.forEach((item, at) => {
     const swept =
       sweep.statuses.includes(item.status) &&
       (verdicts === null || verdicts.includes(item.qualification_status));
     if (!swept) return;
     items[at] = { ...item, status: sweep.to, updated_at: THE_TELLING };
-    ended += 1;
+    moved += 1;
   });
-  return { ended, told_at: ending && ended > 0 ? THE_TELLING : null };
+  return { moved, told_at: ending && moved > 0 ? THE_TELLING : null };
 }
 
 export function refusesTheSweep(items: ApplicationSummary[], problem: Problem) {

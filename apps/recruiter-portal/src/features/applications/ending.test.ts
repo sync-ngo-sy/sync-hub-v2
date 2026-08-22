@@ -71,6 +71,12 @@ describe('what a sweep of the Reading on screen would reach', () => {
     );
   });
 
+  it('counts what a Reading of nothing but ended stages holds, beside the nought that can move', () => {
+    expect(sweepScopeMessage(sweepScope(['rejected'], A_FULL_JOB))).toBe(
+      'of 9 matching, and none of them can move: every one has ended.',
+    );
+  });
+
   it('reads one held Application as one, rather than as a plural', () => {
     expect(sweepScopeMessage(sweepScope(['new', 'hired'], A_FULL_JOB))).toContain(
       'The other has ended',
@@ -84,7 +90,7 @@ describe('what a sweep of the Reading on screen would reach', () => {
 
 describe('where a sweep can send a whole Reading', () => {
   it('offers the four rungs above New, and never a hire', () => {
-    expect(Object.keys(sweepDestinations())).toEqual([
+    expect(sweepDestinations().map(([status]) => status)).toEqual([
       'reviewing',
       'shortlisted',
       'interview',
@@ -93,7 +99,7 @@ describe('where a sweep can send a whole Reading', () => {
   });
 
   it('names each one as the Pipeline names it', () => {
-    expect(sweepDestinations().shortlisted).toBe('Shortlisted');
+    expect(sweepDestinations()).toContainEqual(['shortlisted', 'Shortlisted']);
   });
 
   it('says what one confirm decides, and reads a single one as one', () => {
@@ -109,20 +115,20 @@ describe('where a sweep can send a whole Reading', () => {
   });
 
   it('reports an ending through the sentence a ticked ending reports through', () => {
-    expect(sweptMessage({ ended: 4, told_at: THE_TELLING }, 'rejected')).toContain(
+    expect(sweptMessage({ moved: 4, told_at: THE_TELLING }, 'rejected')).toContain(
       '4 Applications ended',
     );
   });
 
   it('reports a ladder sweep by where it left them, claiming nothing about being told', () => {
-    expect(sweptMessage({ ended: 4, told_at: null }, 'shortlisted')).toBe(
+    expect(sweptMessage({ moved: 4, told_at: null }, 'shortlisted')).toBe(
       '4 Applications are in Shortlisted.',
     );
-    expect(sweptMessage({ ended: 1, told_at: null }, 'offer')).toBe('1 Application is in Offer.');
+    expect(sweptMessage({ moved: 1, told_at: null }, 'offer')).toBe('1 Application is in Offer.');
   });
 
   it('says the list had moved on rather than claiming a move it did not make', () => {
-    expect(sweptMessage({ ended: 0, told_at: null }, 'interview')).toBe(
+    expect(sweptMessage({ moved: 0, told_at: null }, 'interview')).toBe(
       'Nothing moved — the list had already moved on.',
     );
   });
@@ -337,11 +343,11 @@ describe('rows moved one at a time', () => {
   });
 
   it('reads a sweep of statuses back through the same shape', () => {
-    expect(whatItSwept({ ended: 4, told_at: THE_TELLING })).toEqual({
+    expect(whatItSwept({ moved: 4, told_at: THE_TELLING })).toEqual({
       moved: 4,
       toldAt: THE_TELLING,
     });
-    expect(whatItSwept({ ended: 0 })).toEqual({ moved: 0, toldAt: null });
+    expect(whatItSwept({ moved: 0 })).toEqual({ moved: 0, toldAt: null });
   });
 });
 
