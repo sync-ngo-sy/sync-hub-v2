@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sync_core.communications import ApplicationRejection, payload_of
 from sync_core.models import (
     ApplicationStatus,
+    Communication,
     CommunicationStatus,
     CommunicationType,
     QualificationStatus,
@@ -41,6 +42,16 @@ from tests.support.stats import decide, stats_of
 from tests.support.tenants import an_admin
 
 UNDECIDED = ["new", "reviewing", "shortlisted", "interview", "offer"]
+
+
+async def rejections_of(session: AsyncSession, application_id: str) -> list[Communication]:
+    """Only the rejection emails. Applying queues a confirmation of its own, so an Application
+    that was never rejected still has a Communication against it."""
+    return [
+        one
+        for one in await communications_of(session, application_id)
+        if one.communication_type is CommunicationType.APPLICATION_REJECTION
+    ]
 
 
 async def a_job_two_people_applied_to(
@@ -576,7 +587,7 @@ async def test_a_sweep_along_the_ladder_moves_them_all_and_tells_nobody(
     listed = statuses_of(await job_applications_of(recruiter, job["id"], status=UNDECIDED))
     assert listed == {first["id"]: "shortlisted", second["id"]: "shortlisted"}
     assert len(await notifications_of(db_session, first["id"])) == before
-    assert await communications_of(db_session, first["id"]) == []
+    assert await rejections_of(db_session, first["id"]) == []
 
 
 async def test_a_sweep_off_new_tells_them_their_application_is_in_review(
@@ -599,7 +610,7 @@ async def test_a_sweep_off_new_tells_them_their_application_is_in_review(
     assert [one.payload["stage"] for one in told] == ["in_review"]
     assert [one.payload["previous_stage"] for one in told] == ["received"]
     assert told[0].visible_at is None
-    assert await communications_of(db_session, applied["id"]) == []
+    assert await rejections_of(db_session, applied["id"]) == []
 
 
 async def test_a_sweep_along_the_ladder_records_the_move_it_really_made(
@@ -720,20 +731,25 @@ async def test_a_tenant_wide_sweep_names_each_job_by_its_own_title(
 
 async def test_a_tenant_wide_sweep_leaves_another_tenants_applications_alone(
     recruiter: AsyncClient,
-    browser: AsyncClient,
     other_browser: AsyncClient,
     third_browser: AsyncClient,
     mailbox: Mailbox,
     db_session: AsyncSession,
 ) -> None:
-    """Every Job the Tenant is hiring for, and not one belonging to anybody else."""
+    """Every Job the Tenant is hiring for, and not one belonging to anybody else.
+
+    Read from the rival's side, because the Recruiter and the browser signing in as the rival are
+    one client: becoming somebody else is a one-way trip, so the sweep under test is theirs and
+    the Application that must survive it is ours.
+    """
     mine = await a_published_job(recruiter)
-    await an_admin(browser, mailbox, "rival")
-    theirs = await a_published_job(browser)
     await a_candidate_who_can_apply(other_browser, mailbox, db_session, "first")
-    ours = await an_accepted_application(other_browser, mine["id"])
+    untouched = await an_accepted_application(other_browser, mine["id"])
+
+    await an_admin(recruiter, mailbox, "rival")
+    theirs = await a_published_job(recruiter)
     await a_candidate_who_can_apply(third_browser, mailbox, db_session, "second")
-    untouched = await an_accepted_application(third_browser, theirs["id"])
+    ours = await an_accepted_application(third_browser, theirs["id"])
 
     swept = await a_swept_tenant(recruiter, [ApplicationStatus.NEW])
 
@@ -759,10 +775,8 @@ async def test_a_tenant_wide_sweep_ends_them_on_one_telling_like_a_jobs_own_does
     told = datetime.fromisoformat(swept["told_at"])
     assert told - datetime.now(UTC) > TELLING_DELAY - timedelta(minutes=1)
     for each in (first, second):
-        queued = await communications_of(db_session, each["id"])
-        assert [one.communication_type for one in queued] == [
-            CommunicationType.APPLICATION_REJECTION
-        ]
+        queued = await rejections_of(db_session, each["id"])
+        assert len(queued) == 1
         assert queued[0].available_at == told
 
 
