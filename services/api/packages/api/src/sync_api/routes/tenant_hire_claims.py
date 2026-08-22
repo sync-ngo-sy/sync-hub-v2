@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Annotated, Final
+from uuid import UUID
 
 from fastapi import APIRouter, Query
 
@@ -37,6 +38,14 @@ async def list_tenant_hire_claims(
             "ones nobody has answered, or the ones they denied."
         ),
     ] = HireConfirmation.CONFIRMED,
+    job_id: Annotated[
+        UUID | None,
+        Query(
+            description="Only claims made on this Job. Narrows `counts` as it narrows the list, "
+            "so a tab never names a size its own list cannot show. A Job of another tenant "
+            "narrows the list to nothing."
+        ),
+    ] = None,
     cursor: Annotated[
         str | None,
         Query(description="A `next_cursor` from a previous page. Omit for the first page."),
@@ -56,6 +65,9 @@ async def list_tenant_hire_claims(
     announced to nobody.
 
     `counts` comes back whichever standing is being read, so the sizes of the other two are
-    never hidden by the one on screen.
+    never hidden by the one on screen. `jobs` comes back whichever Job is being read, because it
+    is what the Job filter offers and a picker narrowed by its own choice could not be unpicked.
     """
-    return await hires.page(recruiter, confirmation=confirmation, cursor=cursor, limit=limit)
+    return await hires.page(
+        recruiter, confirmation=confirmation, job_id=job_id, cursor=cursor, limit=limit
+    )

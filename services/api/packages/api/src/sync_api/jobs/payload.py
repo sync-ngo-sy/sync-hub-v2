@@ -203,6 +203,11 @@ class JobView(JobSummary):
     """A Job as its own Recruiters see it, criteria and all."""
 
     description: str
+    placement_count: int = Field(
+        description="How many of this Job's hires the Candidate confirmed, read through the "
+        "`placements` view that defines a Placement. Never another Application total: a claim "
+        "nobody has answered is not counted here, and neither is one they denied."
+    )
     criteria: JobCriteriaView
     criteria_locked: bool = Field(
         description="True once the Job has an Application: the criteria are frozen from then on, "

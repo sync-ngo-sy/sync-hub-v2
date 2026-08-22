@@ -365,6 +365,13 @@ class HireClaimCount(BaseModel):
     count: int
 
 
+class FilterableJob(BaseModel):
+    """One Job the Placements page's Job filter can name."""
+
+    id: UUID
+    title: str
+
+
 class TenantHireClaimPage(BaseModel):
     """One page of the Tenant's Hire claims of one standing, newest claim first."""
 
@@ -376,7 +383,17 @@ class TenantHireClaimPage(BaseModel):
         default_factory=list,
         description="Every standing a Hire claim can have, each with how many of the Tenant's "
         "claims stand that way. Counted whichever standing `confirmation` narrows the list to, "
-        "so each of them says its own size while another is being read.",
+        "so each of them says its own size while another is being read. `job_id` does narrow "
+        "them, because a tab that named a size the list cannot show would be counting other "
+        "Jobs' claims.",
+    )
+    jobs: list[FilterableJob] = Field(
+        default_factory=list,
+        description="What the Job filter can name, by title: every Job this Tenant has claimed "
+        "a hire on, whatever the standing, and the Job `job_id` names even if nobody was ever "
+        "claimed on it — a Job's own Placements count opens this page on a zero, and a filter "
+        "that could not name what it was showing would read as broken. Never narrowed by the "
+        "Job that was chosen, so choosing one cannot empty the picker it was chosen from.",
     )
 
 

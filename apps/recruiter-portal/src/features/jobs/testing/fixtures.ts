@@ -36,6 +36,7 @@ export const PROGRAMME_OFFICER: JobSummary = {
 export const FIELD_COORDINATOR_VIEW: JobView = {
   ...FIELD_COORDINATOR,
   description: 'Coordinate field teams and partner delivery.',
+  placement_count: 2,
   criteria: {
     minimum_total_experience_years: null,
     skills: [],
@@ -48,6 +49,7 @@ export const FIELD_COORDINATOR_VIEW: JobView = {
 export const PROGRAMME_OFFICER_VIEW: JobView = {
   ...PROGRAMME_OFFICER,
   description: 'Lead programme planning and reporting.',
+  placement_count: 0,
   criteria: {
     minimum_total_experience_years: null,
     skills: [],

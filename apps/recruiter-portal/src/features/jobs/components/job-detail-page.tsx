@@ -4,12 +4,13 @@ import { Alert, AlertDescription, AlertTitle } from '@sync/ui/components/ui/aler
 import { Button, buttonVariants } from '@sync/ui/components/ui/button';
 import { Tabs, TabsContent } from '@sync/ui/components/ui/tabs';
 import { Link } from '@tanstack/react-router';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Handshake } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { ApplicationSummary } from '@/features/applications/application';
 import { JobApplications } from '@/features/applications/components/job-applications';
 import type { ApplicationFilters } from '@/features/applications/reading';
+import { placementsAddress } from '@/features/placements/reading';
 import { FactGrid } from '@/features/shell/components/fact-grid';
 import { LineTabsList } from '@/features/shell/components/line-tabs-list';
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs';
@@ -128,6 +129,20 @@ export function JobDetailPage({
                   <time dateTime={job.expires_at}>{absoluteDateTime(job.expires_at)}</time>
                 ) : (
                   'No closing date'
+                ),
+              },
+              {
+                label: 'Placements',
+                value: (
+                  <Link
+                    to="/placements"
+                    search={placementsAddress({ job: jobId })}
+                    aria-label={`${job.placement_count} Placements`}
+                    className="inline-flex items-center gap-1.5 rounded-sm underline underline-offset-4 outline-none hover:text-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <Handshake aria-hidden="true" className="size-4 text-muted-foreground" />
+                    <span className="font-mono tabular-nums">{job.placement_count}</span>
+                  </Link>
                 ),
               },
             ]}

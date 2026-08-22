@@ -5,8 +5,10 @@ export const HIRE_CLAIMS_PATH = '/v1/tenants/me/hire-claims';
 
 export const HIRE_CLAIMS_PAGE_SIZE = 20;
 
-export function hireClaimsPage(tab: HireConfirmation) {
-  return { params: { query: { confirmation: tab, limit: HIRE_CLAIMS_PAGE_SIZE } } };
+export function hireClaimsPage(tab: HireConfirmation, job: string | undefined) {
+  return {
+    params: { query: { confirmation: tab, job_id: job, limit: HIRE_CLAIMS_PAGE_SIZE } },
+  };
 }
 
 function everyHireClaimsReading() {

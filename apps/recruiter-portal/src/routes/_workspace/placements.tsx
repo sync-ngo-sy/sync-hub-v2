@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { PlacementsPage as PlacementsFeaturePage } from '@/features/placements/components/placements-page';
 import { PlacementsSkeleton } from '@/features/placements/components/placements-skeleton';
-import { claimTab, type HireClaim } from '@/features/placements/placement';
+import type { HireClaim } from '@/features/placements/placement';
 import { placementsAddress } from '@/features/placements/reading';
 import { WidgetBoundary } from '@/features/shell/components/widget-boundary';
 import { originAddress } from '@/features/shell/origin';
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/_workspace/placements')({
 });
 
 function PlacementsPage() {
-  const { tab } = Route.useSearch();
+  const reading = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const applicationLocation = (claim: HireClaim) => ({
@@ -28,8 +28,8 @@ function PlacementsPage() {
   return (
     <WidgetBoundary name="Placements">
       <PlacementsFeaturePage
-        tab={claimTab(tab)}
-        onTabChange={(chosen) => void navigate({ search: placementsAddress({ tab: chosen }) })}
+        reading={reading}
+        onReadingChange={(chosen) => void navigate({ search: placementsAddress(chosen) })}
         onClaimOpen={(claim) => void navigate(applicationLocation(claim))}
         claimHref={(claim) => router.buildLocation(applicationLocation(claim)).href}
       />

@@ -17,7 +17,7 @@ export function JobDetailSkeleton() {
       <WorkspaceHeader withTabs>
         <Skeleton className="h-4 w-48" aria-hidden="true" />
         <PageHeaderSkeleton className="mt-5" action />
-        <FactGridSkeleton facts={5} className="mt-5" />
+        <FactGridSkeleton facts={6} className="mt-5" />
         <TabStripSkeleton tabs={JOB_DETAIL_TABS.length} className="-mb-px mt-5" />
       </WorkspaceHeader>
 
