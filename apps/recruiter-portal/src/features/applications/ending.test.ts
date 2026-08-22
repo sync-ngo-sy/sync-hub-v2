@@ -7,9 +7,7 @@ import {
   actLabel,
   actsFor,
   actsOpenTo,
-  aFewAtATime,
   LADDER_ACTS,
-  movedTogether,
   sweepConsequence,
   sweepDestinations,
   sweepLabel,
@@ -317,73 +315,16 @@ describe('what an act reports back', () => {
   });
 });
 
-describe('rows moved one at a time', () => {
-  const moved = (told_at: string | null) => ({
-    id: 'a1',
-    status: 'rejected' as const,
-    previous_status: 'new' as const,
-    candidate_notified: false,
-    told_at,
-    changed_at: '2026-08-21T10:00:00Z',
-  });
-
-  it('reads back as one answer, carrying the Telling they were given', () => {
-    expect(movedTogether([moved(THE_TELLING), moved(THE_TELLING)])).toEqual({
-      moved: 2,
-      toldAt: THE_TELLING,
-    });
-  });
-
-  it('counts only the rows that really moved', () => {
-    expect(movedTogether([moved(THE_TELLING), null, null])).toEqual({
-      moved: 1,
-      toldAt: THE_TELLING,
-    });
-    expect(movedTogether([null])).toEqual({ moved: 0, toldAt: null });
-  });
-
-  it('reads a sweep of statuses back through the same shape', () => {
+describe('reading back what one act moved', () => {
+  it('carries the count and the Telling the whole set was given', () => {
     expect(whatItSwept({ moved: 4, told_at: THE_TELLING })).toEqual({
       moved: 4,
       toldAt: THE_TELLING,
     });
+  });
+
+  it('reads a move that told nobody as no Telling at all', () => {
     expect(whatItSwept({ moved: 0 })).toEqual({ moved: 0, toldAt: null });
-  });
-});
-
-describe('moving a few rows at a time', () => {
-  it('keeps every answer in the order the rows were given', async () => {
-    const outcomes = await aFewAtATime([1, 2, 3, 4], async (one) => one * 2, 2);
-
-    expect(outcomes.map((one) => (one.status === 'fulfilled' ? one.value : null))).toEqual([
-      2, 4, 6, 8,
-    ]);
-  });
-
-  it('never has more than a few requests open at once', async () => {
-    let open = 0;
-    let busiest = 0;
-
-    await aFewAtATime(
-      Array.from({ length: 20 }, (_, at) => at),
-      async () => {
-        open += 1;
-        busiest = Math.max(busiest, open);
-        await Promise.resolve();
-        open -= 1;
-      },
-      3,
-    );
-
-    expect(busiest).toBe(3);
-  });
-
-  it('keeps a refusal beside what the rest of them did', async () => {
-    const outcomes = await aFewAtATime([1, 2, 3], async (one) => {
-      if (one === 2) throw new Error('refused');
-      return one;
-    });
-
-    expect(outcomes.map((one) => one.status)).toEqual(['fulfilled', 'rejected', 'fulfilled']);
+    expect(whatItSwept({ moved: 3, told_at: null })).toEqual({ moved: 3, toldAt: null });
   });
 });

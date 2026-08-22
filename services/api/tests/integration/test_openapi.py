@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from sync_api.applications import MAX_TICKED_APPLICATIONS
 from sync_api.problems import PROBLEM_JSON_MEDIA_TYPE
 
 
@@ -137,6 +138,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "makeMyCvCurrent",
         "markMyNotificationAsRead",
         "messageApplicant",
+        "moveTickedApplications",
         "readApplicationMatchAssessment",
         "readDirectoryCandidate",
         "refreshSession",
@@ -186,3 +188,14 @@ async def test_a_sweep_asks_for_a_reading_and_never_a_list_of_ids(app: FastAPI) 
         "qualification_statuses",
         "received_within",
     }
+
+
+async def test_only_the_ticked_move_names_ids_and_it_names_nothing_else(app: FastAPI) -> None:
+    """The one act a filter cannot describe, and so the one that carries ids. It carries them and
+    where they go, and inherits none of the Reading's filters: the ids already are the selection.
+    """
+    ticked = app.openapi()["components"]["schemas"]["TickedApplicationMove"]
+
+    assert set(ticked["properties"]) == {"ids", "to"}
+    assert ticked["properties"]["ids"]["maxItems"] == MAX_TICKED_APPLICATIONS
+    assert ticked["properties"]["ids"]["minItems"] == 1

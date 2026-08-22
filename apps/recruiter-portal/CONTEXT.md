@@ -392,9 +392,10 @@ off New crosses a Stage boundary, and that is the whole of what anybody hears �
 ladder moves share one menu and the two Acts that do change what a Candidate is told stand on their
 own buttons.
 
-Every act is that many single moves, a few at a time rather than all at once, and reports through
-the one answer a sweep gives — including how many of the ticked rows the list had already moved out
-from under the reader.
+Every act is one request carrying every tick, answered exactly as a sweep is — including how many
+of the ticked rows the list had already moved out from under the reader. It is one transaction, so
+a refusal moves nothing at all, and every ending it makes shares one Telling. The ids are the only
+selection the API ever carries; a sweep carries the Reading instead.
 
 The ticks leave with the Reading they were made under: changing a filter or the order drops them,
 because a tick was a statement about the rows then on screen, and so does a sweep, which moves rows

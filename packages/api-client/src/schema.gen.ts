@@ -1444,6 +1444,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/applications/ticked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move the Applications a Recruiter ticked, whichever Job each of them came in for
+         * @description One act across the rows the Recruiter ticked, in one transaction.
+         *
+         *     The sweeps carry a Reading; this carries the ids, because no filter describes what a hand
+         *     picked. It costs the same: one statement per status the ticks span, and one Telling shared by
+         *     every rejection it makes.
+         *
+         *     Which statuses it moves out of follows from `to`. `reviewing` doubles as the way back out of
+         *     `rejected`, so it is what reopens a set of endings — silently, taking the queued rejections
+         *     back. An id this Tenant does not own, or one standing where the move cannot start, takes no
+         *     part rather than refusing.
+         */
+        post: operations["moveTickedApplications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/applications/{application_id}": {
         parameters: {
             query?: never;
@@ -4948,17 +4977,18 @@ export interface components {
         };
         /**
          * SweptApplications
-         * @description What one sweep moved, and — where it ended them — when the people it ended hear.
+         * @description What one set-based move did — a filter sweep or a set of ticks alike — and, where it
+         *     ended them, when the people it ended hear.
          */
         SweptApplications: {
             /**
              * Moved
-             * @description How many Applications the sweep moved. A move along the ladder counts here as an ending does. Zero where the Reading matched none of them, which is an answer rather than a refusal.
+             * @description How many Applications moved. A move along the ladder counts here as an ending does. Zero is an answer rather than a refusal.
              */
             moved: number;
             /**
              * Told At
-             * @description The Telling every Application it ended now carries: three days out, the same moment for all of them, and the moment their Candidates hear. Null where the sweep ended nothing — a move along the ladder tells nobody, and so carries none.
+             * @description The Telling every Application it ended now carries: three days out, the same moment for all of them. Null where it ended nothing.
              */
             told_at?: string | null;
         };
@@ -5295,6 +5325,26 @@ export interface components {
              * @description The logo Candidates see, or null until an admin sets one.
              */
             logo_url?: string | null;
+        };
+        /**
+         * TickedApplicationMove
+         * @description The Applications a Recruiter ticked, and where they all go.
+         *
+         *     The one act that names ids: a filter cannot describe what a hand picked. An id this Tenant
+         *     does not own, or one standing where the move cannot start, takes no part rather than
+         *     refusing, so `moved` can come back lower than the number of ids sent.
+         */
+        TickedApplicationMove: {
+            /**
+             * Ids
+             * @description The Applications to move. Each named once.
+             */
+            ids: string[];
+            /**
+             * @description Where they all go: `reviewing`, `shortlisted`, `interview`, `offer` or `rejected`. `reviewing` is also what reopens a set of endings. `hired` and `new` are refused.
+             * @example rejected
+             */
+            to: components["schemas"]["ApplicationStatus"];
         };
         /** TrackedLink */
         TrackedLink: {
@@ -10697,6 +10747,66 @@ export interface operations {
                 };
             };
             /** @description `statuses` names a status that has already ended or names none at all, or `to` is somewhere a set cannot be sent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    moveTickedApplications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TickedApplicationMove"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweptApplications"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `to` is somewhere a set cannot be sent, or `ids` is empty, too long, or names the same Application twice. */
             422: {
                 headers: {
                     [name: string]: unknown;

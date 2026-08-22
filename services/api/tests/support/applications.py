@@ -297,6 +297,31 @@ async def a_swept_tenant(
     return swept
 
 
+async def move_the_ticked(
+    recruiter: AsyncClient,
+    ids: list[str | UUID],
+    *,
+    to: ApplicationStatus | str = ApplicationStatus.REJECTED,
+) -> Response:
+    """One request carrying every tick. Ending them is the default, as the sweeps' is."""
+    return await recruiter.post(
+        f"{TENANT_APPLICATIONS}/ticked",
+        json={"ids": [str(one) for one in ids], "to": str(to)},
+    )
+
+
+async def the_ticked_moved(
+    recruiter: AsyncClient,
+    ids: list[str | UUID],
+    *,
+    to: ApplicationStatus | str = ApplicationStatus.REJECTED,
+) -> dict[str, Any]:
+    response = await move_the_ticked(recruiter, ids, to=to)
+    assert response.status_code == 200, response.text
+    moved: dict[str, Any] = response.json()
+    return moved
+
+
 async def read_application(recruiter: AsyncClient, application_id: str | UUID) -> Response:
     return await recruiter.get(f"{TENANT_APPLICATIONS}/{application_id}")
 

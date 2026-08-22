@@ -488,9 +488,38 @@ moved, which is the only count a sweep takes.
 Only the five undecided statuses may be swept, and the payload refuses any other with a 422: an
 Application that has ended cannot end again. Every ending is held to one Telling, the same
 `told_at` on the rows, the same `visible_at` on the Notifications and the same `available_at` on
-the queued emails. There is no batch id and no new table: undoing a sweep is reading its rejections
-back — `status = 'rejected'` and a `told_at` still ahead — and moving them to `reviewing` one at a
-time, through the single-move path that already cancels what a rejection queued.
+the queued emails. There is no batch id and no new table.
+
+### The ticks, which are the one selection carried as ids
+
+Ticking rows is the one act no Reading describes, so `TickedApplicationMove` carries `ids` and
+where they go — and nothing else, the ids already being the selection. It runs the same statement
+through the same `SweepScope`, which gains `application_ids` and adds one predicate:
+```
+   where tenant_id = :tenant and status = :previous and id = any(:ids)
+```
+The tenant still scopes the reach, so an id belonging to somebody else matches nothing rather than
+refusing, and neither does one standing where the move cannot start. That is what makes `moved`
+come back lower than the number of ids sent — the "12 of 15 moved" the portal reads back — and it
+is the same answer a Recruiter gets moving rows one at a time while somebody else works the list.
+
+Which statuses it moves out of is derived from `to` by `sources_that_can_reach`, read off
+`_RECRUITER_MOVES` rather than asked for, so a set reaches exactly the rows clicking through them
+one at a time would have. `hired` and `withdrawn` name no moves and are never sources.
+
+`reviewing` is the one destination that is also an exit from `rejected`, so it is what reopens a
+set of endings. That move is silent — the four rungs are one Stage, and a Tenant reversing its own
+decision is not news — and it takes the rejection back set-based, in the same statement:
+```
+  update applications set told_at = case when told_at > now() then null else told_at end ...
+dropped as (delete from notifications where application_id in (select id from moved)
+              and visible_at > now()),
+cancelled as (update communications set status = 'cancelled', completed_at = now()
+               where application_id in (select id from moved) and ... available_at > now())
+```
+Each reads the clock in Postgres, exactly as the single-move take-back does, so a Telling that
+passed while the statement ran keeps what the Candidate has already read: a Notification they read
+is not the platform's to drop, and an email that has gone cannot be un-sent.
 
 ## AI match assessments (advisory, one per Application)
 

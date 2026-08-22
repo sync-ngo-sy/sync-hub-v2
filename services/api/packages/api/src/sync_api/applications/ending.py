@@ -6,7 +6,7 @@ from itertools import chain
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import Text, cast, func, insert, literal, null, select, update
+from sqlalchemy import Text, case, cast, delete, func, insert, literal, null, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 
 from sync_api.applications.pipeline import (
@@ -21,6 +21,7 @@ from sync_core.models import (
     ApplicationStatusHistory,
     Communication,
     CommunicationChannel,
+    CommunicationStatus,
     CommunicationType,
     Job,
     Notification,
@@ -65,18 +66,30 @@ if _UNSWEEPABLE:  # pragma: no cover — the module refuses to import instead
     )
 
 
+_REOPENING: Final = (ApplicationStatus.REJECTED, ApplicationStatus.REVIEWING)
+
+if _REOPENING[1] not in moves_open_to(  # pragma: no cover
+    StatusChangeSource.RECRUITER, _REOPENING[0], stage_of(_REOPENING[0])
+):
+    raise RuntimeError(
+        "a recruiter can no longer take a rejected Application back to reviewing one at a time, "
+        "so a set of them must not either"
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class SweepScope:
-    """Which Applications one sweep can reach: one Job the Tenant is hiring for, or every one of
-    them, narrowed by the Received window only the Tenant-wide list carries.
+    """Which Applications one set-based move can reach: one Job the Tenant is hiring for, every
+    one of them narrowed by the Received window, or exactly the ids a Recruiter ticked.
 
-    A sweep of one Job is a statement about one hiring effort. A sweep across all of them is a
-    statement about a Tenant's whole pipeline, which is a different act and says so here.
+    The tenant scopes the reach either way, so an id belonging to somebody else reaches nothing
+    rather than refusing.
     """
 
     tenant_id: UUID
     job_id: UUID | None = None
     received_after: datetime | None = None
+    application_ids: tuple[UUID, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +128,10 @@ async def sweep_them_all(
     Where `to` is a rung of the ladder it is silent, because the four rungs above `new` are one
     Stage to the Candidate. Only a row leaving `new` crosses a Stage boundary, and that one gets
     the Notification saying so and nothing else — no Telling, and no email.
+
+    A row moving out of `rejected` is silent too, and takes the rejection back with it: Tellings
+    still ahead are wiped, unseen Notifications dropped, queued emails cancelled. Each reads the
+    clock in Postgres, so a Telling that passed mid-statement keeps what the Candidate read.
 
     No transaction of its own: the caller's is what keeps a half-swept list from being a state
     anybody can land in.
@@ -174,10 +191,17 @@ async def _move_those_in(
         reaching.append(Application.applied_at > scope.received_after)
     if qualification_statuses is not None:
         reaching.append(Application.qualification_status.in_(qualification_statuses))
+    if scope.application_ids is not None:
+        reaching.append(Application.id.in_(scope.application_ids))
 
+    reopening = (previous, to) == _REOPENING
     moving: dict[str, Any] = {"status": to}
     if telling is not None:
         moving["told_at"] = telling
+    if reopening:
+        moving["told_at"] = case(
+            (Application.told_at > func.now(), null()), else_=Application.told_at
+        )
 
     moved = (
         update(Application)
@@ -219,7 +243,7 @@ async def _move_those_in(
     also = []
 
     stage, previous_stage = stage_of(to), stage_of(previous)
-    if stage is not previous_stage:
+    if stage is not previous_stage and not reopening:
         also.append(
             insert(Notification)
             .from_select(
@@ -299,6 +323,29 @@ async def _move_those_in(
             )
             .returning(Communication.id)
             .cte("queued")
+        )
+
+    if reopening:
+        also.append(
+            delete(Notification)
+            .where(
+                Notification.application_id.in_(select(moved.c.id)),
+                Notification.visible_at > func.now(),
+            )
+            .returning(Notification.id)
+            .cte("dropped")
+        )
+        also.append(
+            update(Communication)
+            .where(
+                Communication.application_id.in_(select(moved.c.id)),
+                Communication.communication_type == CommunicationType.APPLICATION_REJECTION,
+                Communication.status == CommunicationStatus.QUEUED,
+                Communication.available_at > func.now(),
+            )
+            .values(status=CommunicationStatus.CANCELLED, completed_at=func.now())
+            .returning(Communication.id)
+            .cte("cancelled")
         )
 
     swept = await session.scalar(select(func.count()).select_from(moved).add_cte(recorded, *also))

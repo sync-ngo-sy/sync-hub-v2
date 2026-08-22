@@ -52,7 +52,7 @@ export function TickedActDialog({ act, ticked, onConfirm, onClose }: TickedActDi
 
         {refusal ? (
           <Alert variant="destructive">
-            <AlertTitle>Not all moved</AlertTitle>
+            <AlertTitle>Nothing moved</AlertTitle>
             <AlertDescription>{refusal}</AlertDescription>
           </Alert>
         ) : null}

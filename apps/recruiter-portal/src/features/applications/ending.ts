@@ -13,7 +13,6 @@ import {
 export type Sweep = components['schemas']['ApplicationSweep'];
 export type TenantSweep = components['schemas']['TenantApplicationSweep'];
 export type SweptApplications = components['schemas']['SweptApplications'];
-type MovedApplication = components['schemas']['MovedApplication'];
 
 export interface SweepScope {
   matching: number;
@@ -118,10 +117,9 @@ const CONSEQUENCE: Record<TickedAct, string> = {
 };
 
 const ENDING_REFUSAL =
-  "Some of these Applications couldn't be ended. The list has been read again, so it says which.";
+  'Nothing was ended. The whole act was refused, so the list stands as it was.';
 
-const MOVE_REFUSAL =
-  "Some of these Applications couldn't be moved. The list has been read again, so it says which.";
+const MOVE_REFUSAL = 'Nothing moved. The whole act was refused, so the list stands as it was.';
 
 const REFUSAL: Record<TickedAct, string> = {
   'to-reviewing': MOVE_REFUSAL,
@@ -194,11 +192,6 @@ export function whatItSwept(swept: SweptApplications): Moved {
   return { moved: swept.moved, toldAt: swept.told_at ?? null };
 }
 
-export function movedTogether(moves: (MovedApplication | null)[]): Moved {
-  const done = moves.filter((moved) => moved !== null);
-  return { moved: done.length, toldAt: done[0]?.told_at ?? null };
-}
-
 export function actedMessage(act: TickedAct, done: Moved, asked?: number): string {
   if (done.moved === 0) {
     const nothing = act === 'end' ? 'Nothing was ended' : 'Nothing moved';
@@ -220,29 +213,4 @@ export function actedMessage(act: TickedAct, done: Moved, asked?: number): strin
   }
   const day = done.toldAt ? ` — they hear on ${absoluteDate(done.toldAt)}` : '';
   return `${many} ended${day}.`;
-}
-
-export const A_FEW = 6;
-
-export async function aFewAtATime<TItem, TResult>(
-  items: TItem[],
-  each: (item: TItem) => Promise<TResult>,
-  atOnce: number = A_FEW,
-): Promise<PromiseSettledResult<TResult>[]> {
-  const outcomes: PromiseSettledResult<TResult>[] = [];
-  let next = 0;
-
-  async function take(): Promise<void> {
-    while (next < items.length) {
-      const at = next;
-      next += 1;
-      outcomes[at] = await each(items[at] as TItem).then(
-        (value) => ({ status: 'fulfilled', value }) as const,
-        (reason: unknown) => ({ status: 'rejected', reason }) as const,
-      );
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(atOnce, items.length) }, take));
-  return outcomes;
 }

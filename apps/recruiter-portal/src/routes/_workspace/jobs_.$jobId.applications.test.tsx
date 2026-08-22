@@ -871,7 +871,7 @@ describe("sweeping a Job's Applications from the filters", () => {
     );
 
     const dialog = within(await confirmDialog());
-    expect(await dialog.findByText(/Something went wrong|couldn't be ended/)).toBeVisible();
+    expect(await dialog.findByText(/Something went wrong|Nothing was ended/)).toBeVisible();
   });
 });
 
@@ -1015,7 +1015,7 @@ describe("the ticks on a Job's Applications tab", () => {
     expect(dialog.getByText(/read as In review to the Candidate/)).toBeVisible();
   });
 
-  it('ends the ticked rows one at a time, which is the act the sweep cannot narrow to', async () => {
+  it('ends the ticked rows in one request, which is the act the sweep cannot narrow to', async () => {
     const asked: string[] = [];
     const listed = [AMAL, BASSEL, CARLA];
     server.use(

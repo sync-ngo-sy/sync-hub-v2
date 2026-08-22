@@ -7,6 +7,7 @@ import {
   type Moved,
   type TickedAct,
   tickable,
+  whatItSwept,
   whereTickedRowsGo,
 } from '../ending';
 import { useMoveTickedApplications } from './use-application-actions';
@@ -25,7 +26,10 @@ export function useTickedActs<TRow extends TickedRow>(rows: TRow[]) {
 
   async function confirm(chosen: string[]): Promise<Moved> {
     if (!confirming) throw new Error('no act is waiting to be confirmed');
-    const done = await moving.mutateAsync({ ids: chosen, to: whereTickedRowsGo(confirming) });
+    const swept = await moving.mutateAsync({
+      body: { ids: chosen, to: whereTickedRowsGo(confirming) },
+    });
+    const done = whatItSwept(swept);
     setConfirming(null);
     setTicked([]);
     toast.success(actedMessage(confirming, done, chosen.length));

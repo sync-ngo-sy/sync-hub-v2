@@ -662,7 +662,7 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     expect(screen.queryByRole('button', { name: /^End \d/ })).toBeNull();
   });
 
-  it('ends the rows it ticked, one move each, and says when they hear', async () => {
+  it('ends the rows it ticked in one request, and says when they hear', async () => {
     const asked: string[] = [];
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
     server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed, asked));
@@ -682,6 +682,34 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     expect(asked).toEqual([DIMA.id, FARAH.id]);
     await waitFor(() => expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 3'));
     expect(screen.queryByRole('button', { name: /^End \d/ })).toBeNull();
+  });
+
+  it('carries every tick in one request rather than a move each', async () => {
+    const requests: number[] = [];
+    const asked: string[] = [];
+    const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
+    server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed, asked));
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.includes('/applications/ticked')) {
+        requests.push(1);
+      }
+    });
+
+    const { user } = await renderApp('/applications?pipeline=all');
+    expect(await screen.findByText('Dima Sabbagh')).toBeVisible();
+    await user.click(tickOf('Dima Sabbagh'));
+    await user.click(tickOf('Farah Doumani'));
+    await user.click(tickOf('Elias Murad'));
+    await user.click(screen.getByRole('button', { name: 'End 3 Applications' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'End 3 Applications',
+      }),
+    );
+
+    expect(await screen.findByText(/3 Applications ended/)).toBeVisible();
+    expect(requests).toHaveLength(1);
+    expect(asked).toEqual([DIMA.id, FARAH.id, ELIAS.id]);
   });
 
   it('says which of the ticked rows had already moved under the reader', async () => {
@@ -705,7 +733,7 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     ).toBeVisible();
   });
 
-  it('says so and reads the list again when one of the moves fails outright', async () => {
+  it('moves nothing at all and says so when the act is refused', async () => {
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
     server.use(
       ...signedInAs(RECRUITER),
@@ -723,10 +751,11 @@ describe('the ticks on the Tenant-wide Applications page', () => {
       }),
     );
 
-    expect(await screen.findByText('Not all moved')).toBeVisible();
+    expect(await screen.findByText('Nothing moved')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    await waitFor(() => expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 2'));
+    await waitFor(() => expect(pipelineChip('Rejected')).toHaveAccessibleName('Rejected 1'));
+    expect(screen.getByText('Dima Sabbagh')).toBeVisible();
     expect(screen.getByText('Farah Doumani')).toBeVisible();
   });
 
@@ -764,7 +793,7 @@ describe('the ticks on the Tenant-wide Applications page', () => {
     ]);
   });
 
-  it('shortlists the rows it ticked, one move each, and claims nobody was told', async () => {
+  it('shortlists the rows it ticked in one request, and claims nobody was told', async () => {
     const asked: string[] = [];
     const listed = [DIMA, FARAH, ELIAS, GHADA, HANI];
     server.use(...signedInAs(RECRUITER), ...movesTickedApplications(listed, asked));

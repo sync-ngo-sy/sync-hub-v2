@@ -15,6 +15,7 @@ from sync_api.applications import (
     SweptApplications,
     TenantApplicationPage,
     TenantApplicationSweep,
+    TickedApplicationMove,
 )
 from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
 from sync_api.dependencies import (
@@ -155,6 +156,39 @@ async def sweep_tenant_applications(
     sent.
     """
     return await applications.sweep_tenant(recruiter, body)
+
+
+@router.post(
+    "/ticked",
+    operation_id="moveTickedApplications",
+    summary="Move the Applications a Recruiter ticked, whichever Job each of them came in for",
+    tags=["applications"],
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        422: openapi_problem(
+            "`to` is somewhere a set cannot be sent, or `ids` is empty, too long, or names the "
+            "same Application twice.",
+            ValidationProblemDetail,
+        ),
+    },
+)
+async def move_ticked_applications(
+    body: TickedApplicationMove,
+    recruiter: ActingRecruiterDep,
+    applications: ApplicationReviewServiceDep,
+) -> SweptApplications:
+    """One act across the rows the Recruiter ticked, in one transaction.
+
+    The sweeps carry a Reading; this carries the ids, because no filter describes what a hand
+    picked. It costs the same: one statement per status the ticks span, and one Telling shared by
+    every rejection it makes.
+
+    Which statuses it moves out of follows from `to`. `reviewing` doubles as the way back out of
+    `rejected`, so it is what reopens a set of endings — silently, taking the queued rejections
+    back. An id this Tenant does not own, or one standing where the move cannot start, takes no
+    part rather than refusing.
+    """
+    return await applications.move_ticked(recruiter, body)
 
 
 @router.get(

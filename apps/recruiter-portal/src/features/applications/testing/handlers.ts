@@ -26,6 +26,7 @@ import {
   TAGS_PATH,
   TENANT_APPLICATIONS_PATH,
   TENANT_SWEEP_PATH,
+  TICKED_PATH,
   TRIAGE_PATH,
 } from '../reread';
 import type { ApplicationReview } from '../review';
@@ -35,6 +36,7 @@ type StatusChange = components['schemas']['ApplicationStatusChange'];
 type NewNote = components['schemas']['NewNote'];
 type NewTag = components['schemas']['NewTag'];
 type OutgoingMessage = components['schemas']['OutgoingMessage'];
+type TickedMove = components['schemas']['TickedApplicationMove'];
 type QueuedMessage = components['schemas']['QueuedMessage'];
 
 const NO_SUCH_APPLICATION: Problem = {
@@ -190,13 +192,6 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
   ];
 }
 
-const MOVE_REFUSED: Problem = {
-  type: 'urn:sync:problem:application-transition',
-  title: 'Conflict',
-  status: 409,
-  detail: 'This application cannot move there from where it is.',
-};
-
 export interface SweepAskedFor {
   statuses: string[];
   to: string;
@@ -272,34 +267,32 @@ interface MovableRow {
   updated_at: string;
 }
 
-/** Acting on the ticked rows is that many single moves, and a move the pipeline would refuse is
- * refused here too, exactly as the API refuses it: a row admits the moves its own status admits,
- * and nothing else. */
-function movesOneAtATime<TItem extends MovableRow>(
+/** One request carries every tick, exactly as the API takes them: a row standing where the act
+ * cannot start takes no part, and the answer counts what really moved. A refusal refuses the
+ * whole act, so nothing moves at all. */
+function movesTicked<TItem extends MovableRow>(
   items: TItem[],
   asked?: string[],
   refusing?: { id: string; problem: Problem },
 ) {
-  return http.patch(APPLICATION_PATH, async ({ params, request, response }) => {
-    const { status } = (await request.json()) as StatusChange;
-    asked?.push(params.application_id);
-    if (refusing && params.application_id === refusing.id) {
+  return http.post(TICKED_PATH, async ({ request, response }) => {
+    const { ids, to } = (await request.json()) as TickedMove;
+    asked?.push(...ids);
+    if (refusing && ids.includes(refusing.id)) {
       return response(500).json(refusing.problem);
     }
-    const at = items.findIndex((item) => item.id === params.application_id);
-    const item = items[at];
-    if (!item) return response(404).json(NO_SUCH_APPLICATION);
-    if (!actsFor(item.status).map(whereTickedRowsGo).includes(status)) {
-      return response(409).json(MOVE_REFUSED);
-    }
-    items[at] = { ...item, status, updated_at: THE_TELLING };
+    let moved = 0;
+    ids.forEach((id) => {
+      const at = items.findIndex((item) => item.id === id);
+      const item = items[at];
+      if (!item) return;
+      if (!actsFor(item.status).map(whereTickedRowsGo).includes(to)) return;
+      items[at] = { ...item, status: to, updated_at: THE_TELLING };
+      moved += 1;
+    });
     return response(200).json({
-      id: item.id,
-      status,
-      previous_status: item.status,
-      candidate_notified: false,
-      told_at: status === 'rejected' ? THE_TELLING : null,
-      changed_at: '2026-08-03T10:00:00Z',
+      moved,
+      told_at: to === 'rejected' && moved > 0 ? THE_TELLING : null,
     });
   });
 }
@@ -310,7 +303,7 @@ export function movesTickedApplications(
   asked?: string[],
   refusing?: { id: string; problem: Problem },
 ) {
-  return [...listsTenantApplications(items), movesOneAtATime(items, asked, refusing)];
+  return [...listsTenantApplications(items), movesTicked(items, asked, refusing)];
 }
 
 /** A Job's own list, where ticking rows stands beside the sweep. */
@@ -319,7 +312,7 @@ export function movesTickedJobApplications(
   asked?: string[],
   refusing?: { id: string; problem: Problem },
 ) {
-  return [...listsJobApplications(items), movesOneAtATime(items, asked, refusing)];
+  return [...listsJobApplications(items), movesTicked(items, asked, refusing)];
 }
 
 export function failsToListJobApplications(problem: Problem) {
