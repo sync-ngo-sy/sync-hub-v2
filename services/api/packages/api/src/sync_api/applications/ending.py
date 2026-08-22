@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import Text, cast, func, insert, literal, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 
-from sync_api.applications.pipeline import MOVES, UNDECIDED
+from sync_api.applications.pipeline import moves_open_to, still_undecided
 from sync_core.communications import REJECTION_KEY_PREFIX, ApplicationRejection
 from sync_core.models import (
     Application,
@@ -44,13 +44,15 @@ if TYPE_CHECKING:
 _FILLED_IN_PER_ROW: Final = UUID(int=0)
 
 # A set-based ending is the pipeline's own rejection taken over a set, so it may only end what a
-# Recruiter can end one at a time. A `MOVES` that stopped allowing one of those would leave this
+# Recruiter can end one at a time. A pipeline that stopped allowing one of those would leave this
 # writing histories the state machine refuses, so the module refuses to import instead — the same
 # guard `sync_api.applications.pipeline` keeps over the one exit from `rejected`.
 _UNENDABLE = {
     state.value
-    for state in UNDECIDED
-    if ApplicationStatus.REJECTED not in MOVES[StatusChangeSource.RECRUITER][state]
+    for state in ApplicationStatus
+    if still_undecided(state)
+    and ApplicationStatus.REJECTED
+    not in moves_open_to(StatusChangeSource.RECRUITER, state, stage_of(state))
 }
 if _UNENDABLE:  # pragma: no cover — the module refuses to import instead
     raise RuntimeError(f"a recruiter can no longer reject {sorted(_UNENDABLE)} one at a time")

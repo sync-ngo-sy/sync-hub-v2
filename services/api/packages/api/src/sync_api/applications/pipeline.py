@@ -85,6 +85,11 @@ def may_withdraw(stage: ApplicationStage) -> bool:
     return ApplicationStatus.WITHDRAWN in _CANDIDATE_MOVES.get(stage, frozenset())
 
 
+def still_undecided(status: ApplicationStatus) -> bool:
+    """Whether an Application in this status is still being decided rather than already ended."""
+    return status in _UNDECIDED
+
+
 #: The one move the Candidate never hears about. Before the Telling there is nothing to tell:
 #: the Stage never changed. After it, the Stage does read In review again, silently — a Tenant
 #: reversing its own decision is not news to deliver, and telling somebody they are back in

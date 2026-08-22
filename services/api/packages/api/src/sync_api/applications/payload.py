@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from sync_api.applications.pipeline import UNDECIDED
+from sync_api.applications.pipeline import still_undecided
 from sync_api.candidates import (
     ProfileEducation,
     ProfileExperience,
@@ -634,7 +634,7 @@ class ApplicationSweep(BaseModel):
 
     @model_validator(mode="after")
     def _only_what_has_not_ended_can_end(self) -> ApplicationSweep:
-        ended = sorted({one.value for one in self.statuses if one not in UNDECIDED})
+        ended = sorted({one.value for one in self.statuses if not still_undecided(one)})
         if ended:
             raise ValueError(f"{', '.join(ended)} has already ended, so it cannot be ended")
         return self
