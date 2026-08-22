@@ -389,8 +389,9 @@ _Avoid_: Rank, fit, rating, AI verdict.
 **Placement**:
 A hire this Tenant claimed and the Candidate confirmed. Marking an Application hired asks for the
 day it starts; until the Candidate answers, the hire remains unconfirmed and is not a Placement.
-The Placements page is where they are read, and both the list and its count come from the
-database's own definition of one rather than from a second definition the portal keeps.
+The Placements page is where they are read Tenant-wide and the Placements card is where one
+person's are read, and every list and count of them comes from the database's own definition of
+one rather than from a second definition the portal keeps.
 _Avoid_: Hire, filled, closed won.
 
 **Placements page**:
@@ -407,6 +408,22 @@ A denial is readable on its own tab and announced nowhere else: no bell, no emai
 a Tenant learns from is the gap between what it claimed and what it placed, which is why the Hired
 Pipeline tab carries one line pointing here.
 _Avoid_: Hires page, Hired page (that is a Pipeline tab), Onboarding, All tab.
+
+**Placements card**:
+The Placements this Tenant has made of one person, in the sidebar of their Candidate view beside
+the Talent pool, the Tags and the Notes. It names the Job and the day the work started, and it is
+a short list rather than a single fact because one person can be placed more than once. The page it
+sits on shows any Searchable Candidate rather than only the people who applied here, so the card is
+a Tenant-specific reading of a cross-tenant profile — exactly what the three cards beside it
+already are. Both halves of that reading are the database's: `placements` is what a Placement is
+and carries the Tenant that claimed the hire, so `GET /v1/tenants/me/candidates/{id}/placements`
+restates neither. A Candidate this Tenant has not placed gets no card at all rather than a card
+saying so, because a read-only card with nothing in it would sit on almost every profile — and
+nothing stands in for it while the reading is on the wire, because a skeleton there would promise
+a card that usually never arrives. A refusal is the one thing an empty card does say: a card that
+vanished on a failed read would read as never placed.
+_Avoid_: Hire history, placement history, work history (what a Candidate has done elsewhere is
+their profile's).
 
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, opened as an editable draft on
@@ -592,9 +609,9 @@ tab).
 
 **Candidate view**:
 One person as this Tenant knows them: their whole profile with their email, phone and Links, the
-fragment that matched if a search led here, the Tenant's notes and Tags on them, and whether they
-are in the Talent pool. The Links here are the live ones; the Application review shows the ones
-frozen with that Application. The
+fragment that matched if a search led here, the Tenant's notes and Tags on them, whether they are
+in the Talent pool, and any Placement it has made of them. The Links here are the live ones; the
+Application review shows the ones frozen with that Application. The
 profile is read by id from the directory, so how you arrived changes nothing about who you see
 — a pasted link shows the same person a click from the Talent pool does, and the Origin changes
 only the Trail that leads back. Opened from an Application, the Trail names this page the

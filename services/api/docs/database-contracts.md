@@ -738,6 +738,12 @@ row the claim was made by — and the Candidate is asked.
   time. `confirmed` — the list and its count alike — is read from the `placements` view, so the
   Placements page and anything else counting Placements cannot disagree; `unanswered` and `denied`
   are read from `hire_claims`, which is the only place a claim that is not a Placement exists.
+- **One Candidate's Placements** are read at
+  `GET /v1/tenants/me/candidates/{candidate_id}/placements`, for the card on their CRM profile.
+  Both halves of the scoping are the view's: it leaves an unconfirmed claim out, so nothing asks
+  for `confirmed`, and it carries the Tenant that claimed the hire, so nothing adds a second
+  Tenant filter. Reach is the CRM's own `reachable_candidate`, as it is for that profile's notes
+  and Tags.
 
 ## Tenant CRM (notes, tags, talent pool)
 

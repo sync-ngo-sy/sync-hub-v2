@@ -380,6 +380,21 @@ class TenantHireClaimPage(BaseModel):
     )
 
 
+class CandidatePlacement(BaseModel):
+    """One Placement this Tenant made of one Candidate, as their CRM profile reads it.
+
+    A Placement and nothing else: it is read from the `placements` view, so a claim the
+    Candidate has not answered — or denied — has no way of reaching this list.
+    """
+
+    application_id: UUID = Field(
+        description="The Application the hire was claimed on, which is what tells one Placement "
+        "of this person from another."
+    )
+    job: ApplicationJob = Field(description="The Job they were placed in.")
+    start_date: date = Field(description="The day the work started.")
+
+
 class ApplicationSnapshot(BaseModel):
     """The candidate's profile as it was frozen when the Application was sent, and never since."""
 
