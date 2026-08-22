@@ -72,8 +72,6 @@ export const ENDED_STATUSES = [
   'withdrawn',
 ] as const satisfies readonly PipelineStatus[];
 
-/** The two tabs that were never stages: `open` is the five an Application is still being decided
- * in, `all` is every one of the eight. */
 export const OPEN_TAB = 'open';
 
 export const ALL_TAB = 'all';
@@ -93,7 +91,6 @@ export const SCREENING_VERDICTS = [
   'review_required',
 ] as const satisfies readonly ScreeningVerdict[];
 
-/** How many Applications of a list stand in each Pipeline status, as every list carries them. */
 export type StatusCounts = Partial<Record<PipelineStatus, number>>;
 
 export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;
@@ -107,21 +104,16 @@ export function pipelineStep(status: PipelineStatus): number | null {
   return place === -1 ? null : place + 1;
 }
 
-/** Which tab a list is on. `Open` is where an untouched list starts, so an address that names no
- * tab is on it. */
 export function pipelineTab(chosen: PipelineTab | undefined): PipelineTab {
   return chosen ?? OPEN_TAB;
 }
 
-/** The stages a tab stands for. `Open` and `All` each stand for a set; a stage stands for itself. */
 export function tabStages(tab: PipelineTab): PipelineStatus[] {
   if (tab === OPEN_TAB) return [...OPEN_STATUSES];
   if (tab === ALL_TAB) return [...PIPELINE_STATUSES];
   return [tab];
 }
 
-/** Left out of the address when it is what an untouched list shows, so a plain list has a plain
- * address. */
 export function pipelineInAddress(tab: PipelineTab | undefined): PipelineTab | undefined {
   return pipelineTab(tab) === OPEN_TAB ? undefined : tab;
 }
@@ -149,13 +141,10 @@ export function anythingEnded(counts: StatusCounts): boolean {
   return ENDED_STATUSES.some((status) => (counts[status] ?? 0) > 0);
 }
 
-/** How many Applications a set of stages holds, off the counts the list already returned. */
 export function stagesCount(stages: readonly PipelineStatus[], counts: StatusCounts): number {
   return stages.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
 }
 
-/** The stages of a selection a sweep can actually act on. An Application that has ended cannot
- * move again, so a selection reaching into the ended stages reaches further than any act can. */
 export function sweepableStages(selection: PipelineStatus[]): PipelineStatus[] {
   const undecided: readonly PipelineStatus[] = OPEN_STATUSES;
   return selection.filter((status) => undecided.includes(status));

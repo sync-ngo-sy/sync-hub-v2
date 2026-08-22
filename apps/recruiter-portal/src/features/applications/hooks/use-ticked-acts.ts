@@ -16,14 +16,6 @@ interface TickedRow {
   status: PipelineStatus;
 }
 
-/**
- * The ticks a list holds and what they can go on to say — the whole gesture, so both lists offer
- * it identically rather than each wiring its own.
- *
- * What is ticked is read back against the rows passed in, so a row that leaves the list takes its
- * tick with it rather than being counted from memory, and the acts on offer are recomputed from
- * the rows that are really there.
- */
 export function useTickedActs<TRow extends TickedRow>(rows: TRow[]) {
   const moving = useMoveTickedApplications();
   const [ticked, setTicked] = useState<string[]>([]);

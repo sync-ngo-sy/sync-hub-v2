@@ -25,7 +25,6 @@ export function useMoveApplication(applicationId: string) {
   });
 }
 
-/** One sweep of a Job's Applications: the Reading goes over, and no ids at all. */
 export function useSweepJobApplications() {
   const reread = useRereadEndedApplications();
   const rereadStats = useRereadTenantStats();
@@ -35,7 +34,6 @@ export function useSweepJobApplications() {
   });
 }
 
-/** One sweep across every Job the Tenant is hiring for: the Reading goes over, and no ids at all. */
 export function useSweepTenantApplications() {
   const reread = useRereadEndedApplications();
   const rereadStats = useRereadTenantStats();
@@ -50,16 +48,6 @@ export interface TickedMove {
   to: PipelineStatus;
 }
 
-/**
- * The rows a Recruiter ticked, moved one at a time — which is what the Tenant-wide list offers
- * instead of a sweep, both for ending them and for taking a sweep back.
- *
- * A few requests at once rather than all of them: a reader who ticked a whole loaded page would
- * otherwise open a hundred. A row the pipeline refuses is a row that moved between the tick and
- * the click, and that is an answer rather than a failure — it comes back as one fewer move. A move
- * that failed for any other reason is raised, and the lists are read again either way, because
- * some of them did move and a screen still showing them where they were is worse than the failure.
- */
 export function useMoveTickedApplications() {
   const reread = useRereadEndedApplications();
   const rereadStats = useRereadTenantStats();

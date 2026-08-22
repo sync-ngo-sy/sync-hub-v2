@@ -4,7 +4,6 @@ import type { SweepScope, SweptApplications, TickedAct } from '../ending';
 import { SweepActs } from './sweep-acts';
 import { TickedActs } from './ticked-acts';
 
-/** The grid both Applications lists sit in: the table, and the rail beside it. */
 export const LIST_BESIDE_RAIL =
   'flex flex-col-reverse gap-(--space-section) lg:grid lg:grid-cols-[minmax(0,1fr)_19rem]';
 
@@ -20,13 +19,6 @@ interface ApplicationsActsRailProps {
   };
 }
 
-/**
- * Everything that acts on more than one Application, in one panel beside the list.
- *
- * The two scopes look alike and mean different things — a sweep reaches every Application the
- * filters describe, a tick reaches the rows somebody picked — so they are stated one under the
- * other, each naming what it reaches, rather than left to be told apart by where they sit.
- */
 export function ApplicationsActsRail({
   scope,
   reading,

@@ -46,8 +46,6 @@ export function narrowedBy(filters: TenantApplicationFilters): number {
   ].filter(Boolean).length;
 }
 
-/** The Reading in words, for the acts that reach all of it. The filters sit above the list and the
- * acts beside it, so the panel has to say which Applications it means rather than point at them. */
 export function readingNamed(
   tab: PipelineTab,
   verdicts: ScreeningVerdict[],

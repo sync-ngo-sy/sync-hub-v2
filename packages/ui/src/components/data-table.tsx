@@ -77,14 +77,9 @@ export interface DataTableError {
   onRetry: () => void;
 }
 
-/** Ticks over the rows on screen, one row at a time, and only those: a tick is a statement about
- * a row somebody can see, so nothing here reaches a row the reader has not loaded — and there is
- * no box that ticks them all, because a table cannot know what ticking everything would say. */
 export interface DataTableTicks<TRow> {
-  /** The rows ticked, by id. */
   ticked: string[];
   onChange: (ticked: string[]) => void;
-  /** Which rows a tick is offered on. A row this refuses shows no box rather than a dead one. */
   can?: (row: TRow) => boolean;
 }
 

@@ -15,12 +15,6 @@ interface TickedActsProps {
   onClear: () => void;
 }
 
-/**
- * The acts that reach the ticked rows and nothing else.
- *
- * It stands apart from the sweep above it because the two are easy to mistake for each other: a
- * tick is a statement about rows somebody read, so this counts them and says so.
- */
 export function TickedActs({ ticked, acts, onAct, onClear }: TickedActsProps) {
   const ladder = LADDER_ACTS.filter((act) => acts.includes(act));
 

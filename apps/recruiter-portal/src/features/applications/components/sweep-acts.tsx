@@ -32,19 +32,10 @@ import {
 
 interface SweepActsProps {
   scope: SweepScope;
-  /** The Reading in words, because the filters that set it are above the list, not in here. */
   reading: string;
   onSweep: (to: PipelineStatus) => Promise<SweptApplications>;
 }
 
-/**
- * What the filters above the list add up to, and the acts that reach all of it.
- *
- * The count is the whole Reading rather than the page on screen, and where the Reading reaches
- * Applications that have ended it says how many of them no act can move. It names the Reading
- * too: the buttons sit beside the list and the filters above it, so nothing here can be pointed
- * at.
- */
 export function SweepActs({ scope, reading, onSweep }: SweepActsProps) {
   const [confirming, setConfirming] = useState<PipelineStatus | null>(null);
   const destinations = sweepDestinations();
@@ -104,13 +95,6 @@ interface SweepConfirmProps {
   onClose: () => void;
 }
 
-/**
- * One confirm, and nothing to choose in it.
- *
- * It names the Reading it is about to act on and asks nothing about it — where the old modal
- * ticked statuses it was duplicating the Pipeline filter, which is exactly what made a sweep's
- * scope ambiguous.
- */
 function SweepConfirm({ to, total, reading, onConfirm, onClose }: SweepConfirmProps) {
   const [sweeping, setSweeping] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);

@@ -87,9 +87,6 @@ export function useRereadMovedApplication(applicationId: string) {
     ]);
 }
 
-/** What an ending makes untrue: both lists, and every Application review — an ending reaches
- * more rows than the page it was made from can name, so no reading of one is still to be
- * trusted. */
 export function useRereadEndedApplications() {
   const queryClient = useQueryClient();
   return () =>
