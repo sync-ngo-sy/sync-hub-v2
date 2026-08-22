@@ -8,12 +8,14 @@ import {
   actsFor,
   actsOpenTo,
   aFewAtATime,
-  endableStatuses,
-  endingTotalMessage,
-  endsWhatItTicked,
   LADDER_ACTS,
   movedTogether,
-  nothingIsOpen,
+  sweepConsequence,
+  sweepDestinations,
+  sweepLabel,
+  sweepScope,
+  sweepScopeMessage,
+  sweptMessage,
   TICKED_ACTS,
   tickable,
   tickedLabel,
@@ -34,10 +36,55 @@ const A_FULL_JOB = {
 
 const THE_TELLING = '2026-08-24T10:00:00Z';
 
-describe('the statuses a sweep can end', () => {
-  it('offers the five an Application is still being decided in, in Pipeline order', () => {
-    expect(endableStatuses(A_FULL_JOB).map((one) => one.status)).toEqual([
-      'new',
+describe('what a sweep of the Reading on screen would reach', () => {
+  it('counts every stage the Reading is showing, and says how many of them can move', () => {
+    const scope = sweepScope(['new', 'offer'], A_FULL_JOB);
+
+    expect(scope).toEqual({ matching: 5, movable: 5, held: 0, stages: ['new', 'offer'] });
+  });
+
+  it('holds back the stages that have ended, because nothing moves them again', () => {
+    const scope = sweepScope(['new', 'rejected'], A_FULL_JOB);
+
+    expect(scope).toEqual({ matching: 13, movable: 4, held: 9, stages: ['new'] });
+  });
+
+  it('names no stage a sweep could act on where every stage shown has ended', () => {
+    const scope = sweepScope(['rejected', 'withdrawn'], A_FULL_JOB);
+
+    expect(scope).toEqual({ matching: 11, movable: 0, held: 11, stages: [] });
+  });
+
+  it('reads a stage the counts leave out as none of it, rather than as unknown', () => {
+    expect(sweepScope(['interview'], { new: 4 }).matching).toBe(0);
+  });
+
+  it('says what the acts reach without waiting to be asked', () => {
+    expect(sweepScopeMessage(sweepScope(['new'], A_FULL_JOB))).toContain(
+      'not only the page on screen',
+    );
+  });
+
+  it('says how many of a Reading reaching into the ended stages cannot move', () => {
+    expect(sweepScopeMessage(sweepScope(['new', 'rejected'], A_FULL_JOB))).toBe(
+      'of 13 matching can move. The other 9 have ended, and nothing moves them again.',
+    );
+  });
+
+  it('reads one held Application as one, rather than as a plural', () => {
+    expect(sweepScopeMessage(sweepScope(['new', 'hired'], A_FULL_JOB))).toContain(
+      'The other has ended',
+    );
+  });
+
+  it('says nothing matches at all rather than that nothing can move', () => {
+    expect(sweepScopeMessage(sweepScope(['new'], {}))).toBe('Nothing matches these filters.');
+  });
+});
+
+describe('where a sweep can send a whole Reading', () => {
+  it('offers the four rungs above New, and never a hire', () => {
+    expect(Object.keys(sweepDestinations())).toEqual([
       'reviewing',
       'shortlisted',
       'interview',
@@ -45,49 +92,39 @@ describe('the statuses a sweep can end', () => {
     ]);
   });
 
-  it('names each one as the Pipeline names it, with the count the list already returned', () => {
-    expect(endableStatuses(A_FULL_JOB)[0]).toEqual({ status: 'new', label: 'New', count: 4 });
+  it('names each one as the Pipeline names it', () => {
+    expect(sweepDestinations().shortlisted).toBe('Shortlisted');
   });
 
-  it('reads a status the counts leave out as none of them, rather than as unknown', () => {
-    expect(endableStatuses({ new: 2 }).map((one) => one.count)).toEqual([2, 0, 0, 0, 0]);
+  it('says what one confirm decides, and reads a single one as one', () => {
+    expect(sweepLabel('rejected', 12)).toBe('End 12 Applications');
+    expect(sweepLabel('rejected', 1)).toBe('End 1 Application');
+    expect(sweepLabel('rejected', 0)).toBe('End Applications');
+    expect(sweepLabel('shortlisted', 40)).toBe('Move 40 Applications to Shortlisted');
   });
 
-  it('offers no status that has ended, whatever the counts say', () => {
-    const offered = endableStatuses(A_FULL_JOB).map((one) => one.status);
-
-    expect(offered).not.toContain('hired');
-    expect(offered).not.toContain('rejected');
-    expect(offered).not.toContain('withdrawn');
-  });
-});
-
-describe('what one confirm decides', () => {
-  it('adds up the ticks, and only the ticks', () => {
-    expect(endsWhatItTicked(['new', 'offer'], A_FULL_JOB)).toBe(5);
-    expect(endsWhatItTicked([], A_FULL_JOB)).toBe(0);
+  it('promises a ladder sweep reaches nobody, and an ending three days', () => {
+    expect(sweepConsequence('shortlisted')).toContain('read as In review');
+    expect(sweepConsequence('rejected')).toContain('three days');
   });
 
-  it('counts a tick on a status nothing stands in as nothing', () => {
-    expect(endsWhatItTicked(['interview'], { new: 4 })).toBe(0);
+  it('reports an ending through the sentence a ticked ending reports through', () => {
+    expect(sweptMessage({ ended: 4, told_at: THE_TELLING }, 'rejected')).toContain(
+      '4 Applications ended',
+    );
   });
 
-  it('will not count what the ticks cannot reach', () => {
-    expect(endsWhatItTicked(['rejected', 'new'], A_FULL_JOB)).toBe(4);
+  it('reports a ladder sweep by where it left them, claiming nothing about being told', () => {
+    expect(sweptMessage({ ended: 4, told_at: null }, 'shortlisted')).toBe(
+      '4 Applications are in Shortlisted.',
+    );
+    expect(sweptMessage({ ended: 1, told_at: null }, 'offer')).toBe('1 Application is in Offer.');
   });
 
-  it('says how many one confirm decides, and reads a single one as one', () => {
-    expect(actLabel('end', 12)).toBe('End 12 Applications');
-    expect(actLabel('end', 1)).toBe('End 1 Application');
-    expect(actLabel('end', 0)).toBe('End Applications');
-  });
-});
-
-describe('a Job with nothing left to end', () => {
-  it('is one whose five undecided statuses are all empty', () => {
-    expect(nothingIsOpen({ hired: 1, rejected: 9, withdrawn: 2 })).toBe(true);
-    expect(nothingIsOpen({})).toBe(true);
-    expect(nothingIsOpen({ offer: 1, rejected: 9 })).toBe(false);
+  it('says the list had moved on rather than claiming a move it did not make', () => {
+    expect(sweptMessage({ ended: 0, told_at: null }, 'interview')).toBe(
+      'Nothing moved — the list had already moved on.',
+    );
   });
 });
 
@@ -271,17 +308,6 @@ describe('what an act reports back', () => {
     expect(actedMessage('reopen', done(2), 3)).toBe(
       '2 of 3 Applications are back in Reviewing — the other had already moved.',
     );
-  });
-});
-
-describe('the running total the modal states', () => {
-  it('says what one confirm decides, and what the people it decides hear', () => {
-    expect(endingTotalMessage(12)).toBe('12 Applications end. They hear three days from now.');
-    expect(endingTotalMessage(1)).toBe('1 Application ends. They hear three days from now.');
-  });
-
-  it('says nothing is ticked rather than that nothing ends', () => {
-    expect(endingTotalMessage(0)).toBe('Nothing is ticked.');
   });
 });
 

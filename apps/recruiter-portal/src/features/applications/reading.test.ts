@@ -47,9 +47,14 @@ describe('how many filters narrow a list', () => {
     expect(narrowedBy(read({ pipeline: 'new', screening: ['pending'], received: '24h' }))).toBe(3);
   });
 
-  it('counts nothing for an address naming a tab this list has never had', () => {
-    expect(narrowedBy(read({ pipeline: ['new', 'hired'] }))).toBe(0);
+  it('counts nothing for an address naming a stage no Application can stand in', () => {
     expect(narrowedBy(read({ pipeline: 'on-a-yacht' }))).toBe(0);
+    expect(narrowedBy(read({ pipeline: ['on-a-yacht'] }))).toBe(0);
+  });
+
+  it('counts a selection of some of the stages, which is a filter a tab could never be', () => {
+    expect(narrowedBy(read({ pipeline: ['new', 'hired'] }))).toBe(1);
+    expect(narrowedBy(read({ pipeline: ['shortlisted', 'interview', 'offer'] }))).toBe(1);
   });
 
   it('reads an address that names a choice twice as the one choice it is', () => {
@@ -66,10 +71,26 @@ describe('what a list writes into the address', () => {
     expect(jobApplicationsAddress(read({ pipeline: 'open' })).pipeline).toBeUndefined();
   });
 
-  it('writes every other tab in, so a reload and a pasted link reproduce the list', () => {
-    expect(applicationsAddress(read({ pipeline: 'all' })).pipeline).toBe('all');
-    expect(applicationsAddress(read({ pipeline: 'rejected' })).pipeline).toBe('rejected');
-    expect(jobApplicationsAddress(read({ pipeline: 'hired' })).pipeline).toBe('hired');
+  it('writes every other selection in, so a reload and a pasted link reproduce the list', () => {
+    expect(applicationsAddress(read({ pipeline: 'rejected' })).pipeline).toEqual(['rejected']);
+    expect(jobApplicationsAddress(read({ pipeline: 'hired' })).pipeline).toEqual(['hired']);
+    expect(applicationsAddress(read({ pipeline: ['new', 'offer'] })).pipeline).toEqual([
+      'new',
+      'offer',
+    ]);
+  });
+
+  it('spells All out rather than leaving it out, because All is not what an untouched list shows', () => {
+    expect(applicationsAddress(read({ pipeline: 'all' })).pipeline).toEqual([
+      'new',
+      'reviewing',
+      'shortlisted',
+      'interview',
+      'offer',
+      'hired',
+      'rejected',
+      'withdrawn',
+    ]);
   });
 });
 

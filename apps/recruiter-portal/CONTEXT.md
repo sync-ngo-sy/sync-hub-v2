@@ -155,20 +155,41 @@ selected Pipeline tab leaves it, and the other way round. The list is paged by c
 sorted in the browser: the API decides the order.
 _Avoid_: Applicants list, candidate list (a Candidate is a person; a row here is an Application).
 
-**Pipeline tabs**:
-An Applications list's primary navigation through the Pipeline: `Open` first, then each of the
-eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
-leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
-One tab may be viewed at a time, which is what the address names — the tab rather than the statuses
-behind it, so `pipelineStatuses` is the one place that says which statuses a tab asks the API for
-and `Open` costs a reader no more of the address bar than a single status tab does. `Open` is where
-an untouched list starts and is the one choice the address bar leaves unwritten, so a clean link
-opens the working list; `All` is still the whole eight, terminal Applications included, but it is
-now somewhere a reader goes rather than where they land, and it says so in the address. A tab the
-platform does not know is read as `Open`, the way every other filter it cannot honour is dropped.
-Every other tab is written into the address bar, so Dashboard deep-links and shared views land on
-the same tab and list.
-_Avoid_: Status filter, pipeline picker, stage filter.
+**Filter rail**:
+The panel beside both Applications lists holding everything that decides which of them are on
+screen — the Pipeline facets, the Screening verdicts, and on the Tenant-wide list the Received
+window — with the Sweep at its foot. One panel rather than a row of controls above the table,
+because the acts that reach a whole Reading have to sit with the thing that defines it: put them
+anywhere else and the scope has to be explained in words instead of shown.
+
+Pipeline and Screening are the same kind of control here, and that symmetry is the point. They were
+a tab strip and a dropdown, which is why a Sweep could inherit one and replace the other without
+anybody noticing it made no sense.
+_Avoid_: Sidebar (the Workspace has one already), facet panel, filter drawer.
+
+**Pipeline facets**:
+An Applications list's way through the Pipeline: one facet per stage, grouped into the five still
+being decided and the three that have ended, each carrying the API's count as the other filters
+leave it — Tenant-wide on the Applications page, scoped to one Job on a Triage list. A Reading holds
+**any** number of stages, which is the whole difference from the tabs these replaced: a tab strip
+could show one stage or all of them and nothing in between, so a Sweep had to name its own statuses
+in a modal and the two controls disagreed about what the list was. Now the Reading is the statement,
+and every act reads it.
+
+Two gestures on each facet, because a reader wants both. The box adds a stage to what is on screen;
+**Only** replaces the selection with that one stage, which is the click a tab used to be and is kept
+as a single click. `Open` and `All` survive as presets rather than stages, being what they always
+were: shorthands for a set. `Open` is where an untouched list starts and the one choice the address
+leaves unwritten, so a clean link opens the working list; `All` is the whole eight and is spelled out
+in the address, because it is somewhere a reader goes rather than where they land.
+
+The address carries the stages themselves, the way the Screening filter always has. The single-value
+addresses still work — `open` and `all` mean their sets, and one status alone means a set of one — so
+a Dashboard deep-link or a view shared before a Reading could hold more than one stage still opens
+the list it was copied from. A stage the platform does not know is dropped, the way every filter it
+cannot honour is.
+_Avoid_: Pipeline tabs, status filter, pipeline picker, stage filter (a facet is a filter, not a
+place to navigate to).
 
 **Open**:
 The Pipeline tab of Applications still being decided — `new` through `offer`, which is
@@ -315,25 +336,38 @@ setting for the three days and never will be.
 _Avoid_: Grace period, cooling-off, delay, send date.
 
 **Sweep**:
-Ending every Application on one Job that stands in the statuses ticked, in one act. It is a modal
-behind `End many` on a Job's Applications tab: the five statuses an Application is still being
-decided in, the count each has, ticks on any combination, and a running total saying how many one
-confirm decides. The counts are the `status_counts` the list already returned, so choosing against
-real numbers costs no request of its own. The request carries the Reading and never a list of ids —
-it inherits the filters the list had and replaces the Pipeline tab with the ticks — so a sweep of
-fifty thousand Applications is the same request as a sweep of twelve, and a selection too large to
-send is not a state to reach. Every ending is the rejection a Pipeline move makes, held to the same
-Telling, so a sweep is undone by reading the rejections back and moving them: there is no batch id
-anywhere, and no undo of its own. `End many` is dead on a Job with nothing left to end, and stands
-beside the Row ticks rather than instead of them: the sweep is the act for rows nobody has loaded.
-`features/applications/ending.ts` owns which statuses can end, which Acts a set of ticks admits, the
-running total, and every sentence either list says about an act.
-_Avoid_: Bulk action, mass reject, select all (a sweep names statuses, never rows); Archive
+One Pipeline move taken over a whole Reading, in one act: every Application the filters describe
+moves where the act names, or ends. It lives at the foot of the Filter rail, under the count of what
+those filters add up to — and it lives there on purpose. A sweep acts on exactly the Reading the
+panel above it describes, so keeping the buttons inside that panel is what makes the scope legible
+without a sentence explaining it.
+
+Its confirm asks nothing about which Applications it means, because the filters already said. That is
+the whole of what changed: the modal used to tick the five undecided statuses itself, duplicating the
+Pipeline control while inheriting the Screening one, and a reader could not tell which filter a sweep
+honoured. Now there is one answer — the Reading — and the confirm only names where they go and what
+it costs.
+
+The request carries the Reading and never a list of ids, so a sweep of fifty thousand Applications is
+the same request as a sweep of twelve and a selection too large to send is not a state to reach. The
+counts are the `status_counts` the list already returned, which are totals for the whole Reading
+rather than the page loaded. Where a Reading reaches into the stages that have ended, the count says
+how many of them no act can move rather than letting the API refuse them later. Every ending is the
+rejection a Pipeline move makes, held to the same Telling, so a sweep is undone by reading the
+rejections back and moving them: there is no batch id anywhere, and no undo of its own.
+
+Both lists have one. A Job's is a statement about one hiring effort; the Tenant-wide one is a
+statement about a whole pipeline and carries the Received window its list adds. It stands beside the
+Row ticks rather than instead of them: the sweep is the act for rows nobody has loaded.
+`features/applications/ending.ts` owns what a sweep reaches, where it can send them, which Acts a set
+of ticks admits, and every sentence either list says about an act.
+_Avoid_: Bulk action, mass reject, select all (a sweep names a Reading, never rows); Archive
 (nothing is hidden — the Applications have ended).
 
 **Row ticks**:
 A box on each row the reader can see, one row at a time, on both lists: the Tenant-wide Applications
-page and a Job's Applications tab. Neither offers a box that ticks a whole page — the gesture the
+page and a Job's Applications tab. They sit against the table, where the rows they name are, as the
+Sweep sits in the Filter rail where the Reading it names is — each act beside its own scope. Neither offers a box that ticks a whole page — the gesture the
 ticks exist to refuse is exactly the one a select-all would hand back. On a Job they stand beside the
 Sweep and answer a different question: the ticks reach the rows on screen and name them, the sweep
 reaches the whole Reading and names no ids at all. The Tenant-wide list has ticks and no sweep,

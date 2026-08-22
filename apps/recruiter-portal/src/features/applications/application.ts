@@ -72,11 +72,16 @@ export const ENDED_STATUSES = [
   'withdrawn',
 ] as const satisfies readonly PipelineStatus[];
 
+/** The two shorthands the Pipeline filter keeps, and which were never stages: `open` is the five
+ * an Application is still being decided in, `all` is every one of the eight. They survive only in
+ * addresses written before the filter could hold more than one stage. */
 export const OPEN_TAB = 'open';
 
 export const ALL_TAB = 'all';
 
-export type PipelineTab = typeof OPEN_TAB | typeof ALL_TAB | PipelineStatus;
+export type PipelineShorthand = typeof OPEN_TAB | typeof ALL_TAB;
+
+export type PipelineTab = PipelineShorthand | PipelineStatus;
 
 export const PIPELINE_TABS = [
   OPEN_TAB,
@@ -105,37 +110,67 @@ export function pipelineStep(status: PipelineStatus): number | null {
   return place === -1 ? null : place + 1;
 }
 
-export function pipelineTab(chosen: PipelineTab | undefined): PipelineTab {
-  return chosen ?? OPEN_TAB;
+/** The stages a list is showing, in Pipeline order however they were chosen — so two Readings
+ * naming the same stages are the same Reading, whichever order somebody ticked them in. */
+export function pipelineSelection(chosen: PipelineStatus[] | undefined): PipelineStatus[] {
+  const named: readonly PipelineStatus[] =
+    chosen === undefined || chosen.length === 0 ? OPEN_STATUSES : chosen;
+  return PIPELINE_STATUSES.filter((status) => named.includes(status));
 }
 
-export function pipelineInAddress(tab: PipelineTab | undefined): PipelineTab | undefined {
-  return tab === OPEN_TAB ? undefined : tab;
+/** What one of the old single-value addresses meant, as a selection. `open` and `all` were
+ * shorthands for a set of stages; one status alone was a set of one. */
+export function pipelineFromShorthand(tab: PipelineTab): PipelineStatus[] {
+  if (tab === OPEN_TAB) return [...OPEN_STATUSES];
+  if (tab === ALL_TAB) return [...PIPELINE_STATUSES];
+  return [tab];
 }
 
-export function pipelineTabLabel(tab: PipelineTab): string {
-  if (tab === OPEN_TAB) return 'Open';
-  if (tab === ALL_TAB) return 'All';
-  return pipelineState(tab).label;
+/** Left out of the address when it is what an untouched list shows, so a plain list has a plain
+ * address. */
+export function pipelineInAddress(
+  chosen: PipelineStatus[] | undefined,
+): PipelineStatus[] | undefined {
+  const selection = pipelineSelection(chosen);
+  return sameStages(selection, OPEN_STATUSES) ? undefined : selection;
 }
 
-/** No status at all is what the API reads as every status, which is what `All` asks for. */
-export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined {
-  if (tab === ALL_TAB) return undefined;
-  return tab === OPEN_TAB ? [...OPEN_STATUSES] : [tab];
+/** No status at all is what the API reads as every status, so a selection holding all eight asks
+ * for none of them by name. */
+export function pipelineStatuses(selection: PipelineStatus[]): PipelineStatus[] | undefined {
+  return sameStages(selection, PIPELINE_STATUSES) ? undefined : selection;
 }
 
-export function holdsOneStatus(tab: PipelineTab): boolean {
-  return tab !== OPEN_TAB && tab !== ALL_TAB;
+export function holdsOneStatus(selection: PipelineStatus[]): boolean {
+  return selection.length === 1;
+}
+
+export function showsEveryStage(selection: PipelineStatus[]): boolean {
+  return sameStages(selection, PIPELINE_STATUSES);
+}
+
+export function showsOpenStages(selection: PipelineStatus[]): boolean {
+  return sameStages(selection, OPEN_STATUSES);
+}
+
+function sameStages(one: readonly PipelineStatus[], other: readonly PipelineStatus[]): boolean {
+  return one.length === other.length && other.every((status) => one.includes(status));
 }
 
 export function anythingEnded(counts: StatusCounts): boolean {
   return ENDED_STATUSES.some((status) => (counts[status] ?? 0) > 0);
 }
 
-export function pipelineTabCount(tab: PipelineTab, counts: StatusCounts): number {
-  const counted: readonly PipelineStatus[] = pipelineStatuses(tab) ?? PIPELINE_STATUSES;
-  return counted.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+/** How many Applications a set of stages holds, off the counts the list already returned. */
+export function stagesCount(stages: readonly PipelineStatus[], counts: StatusCounts): number {
+  return stages.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+}
+
+/** The stages of a selection a sweep can actually act on. An Application that has ended cannot
+ * move again, so a selection reaching into the ended stages reaches further than any act can. */
+export function sweepableStages(selection: PipelineStatus[]): PipelineStatus[] {
+  const undecided: readonly PipelineStatus[] = OPEN_STATUSES;
+  return selection.filter((status) => undecided.includes(status));
 }
 
 export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {

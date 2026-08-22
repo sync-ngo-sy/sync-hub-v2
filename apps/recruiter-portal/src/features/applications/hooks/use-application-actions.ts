@@ -9,6 +9,7 @@ import {
   ASSESSMENT_PATH,
   MESSAGES_PATH,
   SWEEP_PATH,
+  TENANT_SWEEP_PATH,
   useRereadEndedApplications,
   useRereadMatchAssessment,
   useRereadMovedApplication,
@@ -30,6 +31,16 @@ export function useSweepJobApplications() {
   const rereadStats = useRereadTenantStats();
 
   return api.useMutation('post', SWEEP_PATH, {
+    onSuccess: () => Promise.all([reread(), rereadStats()]),
+  });
+}
+
+/** One sweep across every Job the Tenant is hiring for: the Reading goes over, and no ids at all. */
+export function useSweepTenantApplications() {
+  const reread = useRereadEndedApplications();
+  const rereadStats = useRereadTenantStats();
+
+  return api.useMutation('post', TENANT_SWEEP_PATH, {
     onSuccess: () => Promise.all([reread(), rereadStats()]),
   });
 }

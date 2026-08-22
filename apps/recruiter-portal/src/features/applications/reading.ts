@@ -1,12 +1,16 @@
 import { z } from 'zod';
 import {
   EVERY_TIME,
-  holdsOneStatus,
+  type PipelineStatus,
   pipelineInAddress,
-  pipelineTab,
+  pipelineSelection,
   receivedSelection,
   SCREENING_VERDICTS,
+  type ScreeningVerdict,
   screeningSelection,
+  screeningState,
+  showsEveryStage,
+  showsOpenStages,
   sortInAddress,
 } from './application';
 import {
@@ -34,10 +38,24 @@ export type ApplicationFilters = z.infer<typeof jobApplicationsReading>;
 
 export function narrowedBy(filters: TenantApplicationFilters): number {
   return [
-    holdsOneStatus(pipelineTab(filters.pipeline)),
+    pipelineNarrows(pipelineSelection(filters.pipeline)),
     screeningSelection(filters.screening).length < SCREENING_VERDICTS.length,
     receivedSelection(filters.received) !== EVERY_TIME,
   ].filter(Boolean).length;
+}
+
+/** Neither `Open` nor every stage narrows anything: the first is what an untouched list shows and
+ * the second only adds to it, so neither can be what emptied one. */
+function pipelineNarrows(selection: PipelineStatus[]): boolean {
+  return !showsOpenStages(selection) && !showsEveryStage(selection);
+}
+
+/** What a sweep's scope leaves out, where it leaves anything out — stated beside the acts so they
+ * never reach a narrower list than they appear to. */
+export function screeningNarrowing(verdicts: ScreeningVerdict[]): string | null {
+  if (verdicts.length === SCREENING_VERDICTS.length) return null;
+  const named = verdicts.map((one) => screeningState(one).label).join(', ');
+  return `Screening is narrowed to ${named}, so that is all these reach.`;
 }
 
 const NO_APPLICATIONS_YET =

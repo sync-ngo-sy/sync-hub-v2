@@ -4,7 +4,10 @@ import {
   OPEN_STATUSES,
   type PipelineStatus,
   pipelineState,
+  type ReceivedWithin,
   type StatusCounts,
+  stagesCount,
+  sweepableStages,
 } from './application';
 
 export type Sweep = components['schemas']['ApplicationSweep'];
@@ -12,38 +15,50 @@ export type TenantSweep = components['schemas']['TenantApplicationSweep'];
 export type SweptApplications = components['schemas']['SweptApplications'];
 type MovedApplication = components['schemas']['MovedApplication'];
 
-/** One status a sweep can end, and how many of the list the Recruiter is reading stand in it. */
-export interface EndableStatus {
-  status: PipelineStatus;
-  label: string;
-  count: number;
-}
-
-/** The five statuses an Application is still being decided in, each with its own count.
+/** What a sweep of the Reading on screen would reach.
  *
- * The counts are the `status_counts` the list already returned, so choosing against them costs
- * no request of its own — and they are narrowed by every filter but the Pipeline tab, which is
- * exactly what the ticks replace.
+ * The counts are the `status_counts` the list already returned, so this costs no request of its
+ * own — and they are totals for the whole Reading rather than for the page loaded, which is what
+ * lets a sweep of fifty thousand say so before anybody confirms it.
  */
-export function endableStatuses(counts: StatusCounts): EndableStatus[] {
-  return OPEN_STATUSES.map((status) => ({
-    status,
-    label: pipelineState(status).label,
-    count: counts[status] ?? 0,
-  }));
+export interface SweepScope {
+  /** Every Application the Reading is showing. */
+  matching: number;
+  /** Of those, the ones an act can still move. */
+  movable: number;
+  /** The rest. They have ended, and nothing moves them again. */
+  held: number;
+  /** The stages a sweep would name: the Reading's own, less the ones that have ended. */
+  stages: PipelineStatus[];
 }
 
-/** How many Applications one confirm decides. A tick on anything that has ended reaches nothing,
- * which is what the API says about the same request. */
-export function endsWhatItTicked(ticked: PipelineStatus[], counts: StatusCounts): number {
-  return endableStatuses(counts)
-    .filter((one) => ticked.includes(one.status))
-    .reduce((total, one) => total + one.count, 0);
+export function sweepScope(selection: PipelineStatus[], counts: StatusCounts): SweepScope {
+  const stages = sweepableStages(selection);
+  const matching = stagesCount(selection, counts);
+  const movable = stagesCount(stages, counts);
+  return { matching, movable, held: matching - movable, stages };
 }
 
-/** Whether there is anything left to end at all — every undecided status empty. */
-export function nothingIsOpen(counts: StatusCounts): boolean {
-  return endableStatuses(counts).every((one) => one.count === 0);
+const WHAT_A_SWEEP_REACHES = 'Every act here reaches all of them, not only the page on screen.';
+
+/** What the acts beside the filters will reach, stated whether or not anything is narrowing —
+ * because a number nobody explained is a number nobody should act on. */
+export function sweepScopeMessage(scope: SweepScope): string {
+  if (scope.matching === 0) return 'Nothing matches these filters.';
+  if (scope.held === 0) return `Applications match these filters. ${WHAT_A_SWEEP_REACHES}`;
+  if (scope.movable === 0) {
+    return `matching, and none of them can move: every one has ended.`;
+  }
+  const others = scope.held === 1 ? 'The other has ended' : `The other ${scope.held} have ended`;
+  return `of ${scope.matching} matching can move. ${others}, and nothing moves them again.`;
+}
+
+/** Where a sweep can send the Reading, each as the Pipeline names it. The same four rungs a ticked
+ * Act offers, and for the same reasons: never `new`, never `hired`. */
+export function sweepDestinations(): Record<PipelineStatus, string> {
+  return Object.fromEntries(
+    LADDER_DESTINATIONS.map((status) => [status, pipelineState(status).label]),
+  ) as Record<PipelineStatus, string>;
 }
 
 /** Where along the ladder a set can be sent, in the order the moves are offered.
@@ -205,11 +220,36 @@ export function tickedLabel(ticked: number): string {
   return `${ticked} ${APPLICATIONS(ticked)} ticked`;
 }
 
-/** The running total, as the modal states it before anybody confirms. */
-export function endingTotalMessage(total: number): string {
-  if (total === 0) return 'Nothing is ticked.';
-  const end = total === 1 ? 'ends' : 'end';
-  return `${total} ${APPLICATIONS(total)} ${end}. They hear three days from now.`;
+/** One sweep's confirm, and the button that opens it. */
+export function sweepLabel(to: PipelineStatus, total: number): string {
+  const counted = total === 0 ? 'Applications' : `${total} ${APPLICATIONS(total)}`;
+  if (to === 'rejected') return `End ${counted}`;
+  return `Move ${counted} to ${pipelineState(to).label}`;
+}
+
+/** What the sweep costs the people it is about, stated before anybody confirms it. */
+export function sweepConsequence(to: PipelineStatus): string {
+  return to === 'rejected' ? WHAT_ENDING_COSTS : WHAT_A_LADDER_MOVE_COSTS;
+}
+
+export function sweepRefused(to: PipelineStatus): string {
+  return to === 'rejected' ? ENDING_REFUSAL : MOVE_REFUSAL;
+}
+
+/** What a sweep says it did. An ending reports through the same sentence a ticked ending does,
+ * Telling and all; a move along the ladder reports where they landed and claims nothing about
+ * anybody hearing, because nobody did. */
+export function sweptMessage(swept: SweptApplications, to: PipelineStatus): string {
+  const done = whatItSwept(swept);
+  if (to === 'rejected') return actedMessage('end', done);
+  if (done.moved === 0) return 'Nothing moved — the list had already moved on.';
+  const are = done.moved === 1 ? 'is' : 'are';
+  return `${done.moved} ${APPLICATIONS(done.moved)} ${are} in ${pipelineState(to).label}.`;
+}
+
+/** The Received window a Tenant-wide sweep carries, as the request spells it. */
+export function receivedInSweep(received: ReceivedWithin | undefined): ReceivedWithin | null {
+  return received ?? null;
 }
 
 /** A sweep's own answer, in the one shape both paths report through. */
