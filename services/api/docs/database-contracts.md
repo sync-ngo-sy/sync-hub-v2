@@ -457,6 +457,41 @@ Withdrawal permanence is the schema's rather than the backend's: `UNIQUE(candida
 does not care what state the row is in, so re-applying meets the same 409 carrying the existing
 `application_id` that any duplicate does.
 
+### Ending many at once
+
+A sweep of a Job's Applications (`sync_api.applications.ending`) is the same rejection taken over
+a set. It carries the Reading — the statuses ticked, and the list's verdict filter — and never a
+list of ids, so the request is the same size for twelve Applications as for fifty thousand.
+
+One statement per status ticked, whatever the set holds, and nothing is read into Python:
+```
+with moved as (
+  update applications set status = 'rejected', told_at = :telling
+   where tenant_id = :tenant and job_id = :job and status = :previous
+     and qualification_status = any(:verdicts)          -- only where the list was narrowed
+  returning id, candidate_id),
+recorded as (
+  insert into application_status_history(...) select ... from moved returning id, application_id),
+told as (
+  insert into notifications(...) select ... from moved),
+queued as (
+  insert into communications(...) select ... from recorded join moved ... join profiles ...)
+select count(*) from moved;
+```
+The `UPDATE` is what decides which Applications took part, and every other sub-statement reads its
+`RETURNING` rather than a `SELECT` of its own. That is the whole concurrency story: an Application
+somebody hired between this statement's snapshot and its own row lock stops matching the `UPDATE`
+and is skipped whole, rather than rejected with a history, a Notification and an email standing
+behind it. No `FOR UPDATE` is needed, and no row is counted twice — the answer is the count of what
+moved, which is the only count a sweep takes.
+
+Only the five undecided statuses may be swept, and the payload refuses any other with a 422: an
+Application that has ended cannot end again. Every ending is held to one Telling, the same
+`told_at` on the rows, the same `visible_at` on the Notifications and the same `available_at` on
+the queued emails. There is no batch id and no new table: undoing a sweep is reading its rejections
+back — `status = 'rejected'` and a `told_at` still ahead — and moving them to `reviewing` one at a
+time, through the single-move path that already cancels what a rejection queued.
+
 ## AI match assessments (advisory, one per Application)
 
 Every Application is read as it arrives, and a Recruiter may ask for a better reading at any

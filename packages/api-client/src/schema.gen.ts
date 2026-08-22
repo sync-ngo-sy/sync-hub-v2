@@ -1300,6 +1300,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/jobs/{job_id}/applications/sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move every Application on the Job standing in the statuses named
+         * @description Take one act across a whole hiring effort: every Application in the statuses named moves
+         *     together, in one transaction.
+         *
+         *     The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
+         *     the same request as a sweep of twelve and there is no selection too large to send. `statuses`
+         *     is what the Pipeline tab would have narrowed to, and `qualification_statuses` is the list's
+         *     Screening filter carried over, so the sweep acts on the list the Recruiter was reading. The
+         *     counts to choose against are the `status_counts` the list already returns, which are totals
+         *     for the whole Reading rather than for the page loaded.
+         *
+         *     `to` says where they all go. A rung of the ladder is silent: `reviewing`, `shortlisted`,
+         *     `interview` and `offer` are one Stage to the Candidate, so only a row leaving `new` crosses a
+         *     boundary and gets the Notification saying so, and nothing is emailed. `rejected` is the same
+         *     rejection a single move makes, held to the same Telling: `told_at` is three days out and
+         *     shared by all of them, and until it comes every Candidate's Stage still reads in review,
+         *     their bell is silent and their email waits in the queue. Undoing that is reading the
+         *     rejections back and moving them to `reviewing` one by one — there is no batch to name.
+         *
+         *     `hired`, `rejected` and `withdrawn` are refused as sources because an Application that has
+         *     ended cannot move again. `hired` is refused as a destination because a hire names the day it
+         *     started, which one act over many Applications cannot answer, and so is `new`.
+         */
+        post: operations["sweepJobApplications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/jobs/{job_id}/links": {
         parameters: {
             query?: never;
@@ -1363,6 +1403,41 @@ export interface paths {
         get: operations["listTenantApplications"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/me/applications/sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move every Application the Tenant is reading that stands in the statuses named
+         * @description Take one act across every Job the Tenant is hiring for, in one transaction.
+         *
+         *     The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
+         *     the same request as a sweep of twelve and there is no selection too large to send. `statuses`
+         *     is what the Pipeline tab would have narrowed to, `qualification_statuses` is the Screening
+         *     filter and `received_within` the Received window, both carried over so the sweep acts on the
+         *     list the Recruiter was reading. The counts to choose against are the `status_counts` the list
+         *     already returns, which are totals for the whole Reading rather than for the page loaded.
+         *
+         *     `to` says where they all go. A rung of the ladder is silent: `reviewing`, `shortlisted`,
+         *     `interview` and `offer` are one Stage to the Candidate, so only a row leaving `new` crosses a
+         *     boundary and gets the Notification saying so. `rejected` is the rejection a single move makes,
+         *     held to the same Telling — three days out and shared by the whole set. `hired` is refused,
+         *     because a hire names the day it started and one act over many Applications cannot answer
+         *     that, and so is `new`, which is where an Application arrives rather than somewhere a set is
+         *     sent.
+         */
+        post: operations["sweepTenantApplications"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2282,6 +2357,35 @@ export interface components {
              * @description Every Screening verdict the platform has, each with how many of the Job's Applications it decided that way. Counted before `qualification_status` narrows anything, so a filter that hides some of them still says how much it is hiding. The other filters do narrow it: the counts describe the list the reader is looking at.
              */
             verdict_counts?: components["schemas"]["ApplicationVerdictCount"][];
+        };
+        /**
+         * ApplicationSweep
+         * @description Which Applications one act moves, and where they go: the Reading the list was showing,
+         *     as the Pipeline tab and the Screening filter left it.
+         *
+         *     No ids anywhere, and none possible. A sweep of fifty thousand Applications is the same
+         *     request as a sweep of twelve, so a selection too large to send is not a state to reach.
+         */
+        ApplicationSweep: {
+            /**
+             * Statuses
+             * @description The statuses to move out of, as the Pipeline tab stands for them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
+             * @example [
+             *       "new",
+             *       "reviewing"
+             *     ]
+             */
+            statuses: components["schemas"]["ApplicationStatus"][];
+            /**
+             * @description Where they all go. One of the four rungs an Application is still being decided on above `new` — `reviewing`, `shortlisted`, `interview`, `offer` — or `rejected`, which ends them. `hired` is refused because a hire names the day it started and one act over many Applications cannot answer that; `new` is refused because it is where an Application arrives, not somewhere a set is sent.
+             * @example shortlisted
+             */
+            to: components["schemas"]["ApplicationStatus"];
+            /**
+             * Qualification Statuses
+             * @description The list's Screening filter, inherited, so the sweep acts on the list the Recruiter was reading. Omit it to move whatever the verdict.
+             */
+            qualification_statuses?: components["schemas"]["QualificationStatus"][] | null;
         };
         /**
          * ApplicationVerdictCount
@@ -4843,6 +4947,22 @@ export interface components {
             answer_text?: string | null;
         };
         /**
+         * SweptApplications
+         * @description What one sweep moved, and — where it ended them — when the people it ended hear.
+         */
+        SweptApplications: {
+            /**
+             * Moved
+             * @description How many Applications the sweep moved. A move along the ladder counts here as an ending does. Zero where the Reading matched none of them, which is an answer rather than a refusal.
+             */
+            moved: number;
+            /**
+             * Told At
+             * @description The Telling every Application it ended now carries: three days out, the same moment for all of them, and the moment their Candidates hear. Null where the sweep ended nothing — a move along the ladder tells nobody, and so carries none.
+             */
+            told_at?: string | null;
+        };
+        /**
          * Tag
          * @description One of the Tenant's Tags.
          */
@@ -4967,6 +5087,34 @@ export interface components {
              */
             updated_at: string;
             job: components["schemas"]["ApplicationJob"];
+        };
+        /**
+         * TenantApplicationSweep
+         * @description The same act taken across every Job the Tenant is hiring for, carrying the one filter the
+         *     Tenant-wide list has that a Job's own list does not.
+         */
+        TenantApplicationSweep: {
+            /**
+             * Statuses
+             * @description The statuses to move out of, as the Pipeline tab stands for them. Only the five an Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and naming one of them is refused rather than ignored.
+             * @example [
+             *       "new",
+             *       "reviewing"
+             *     ]
+             */
+            statuses: components["schemas"]["ApplicationStatus"][];
+            /**
+             * @description Where they all go. One of the four rungs an Application is still being decided on above `new` — `reviewing`, `shortlisted`, `interview`, `offer` — or `rejected`, which ends them. `hired` is refused because a hire names the day it started and one act over many Applications cannot answer that; `new` is refused because it is where an Application arrives, not somewhere a set is sent.
+             * @example shortlisted
+             */
+            to: components["schemas"]["ApplicationStatus"];
+            /**
+             * Qualification Statuses
+             * @description The list's Screening filter, inherited, so the sweep acts on the list the Recruiter was reading. Omit it to move whatever the verdict.
+             */
+            qualification_statuses?: components["schemas"]["QualificationStatus"][] | null;
+            /** @description The list's Received window, inherited. Omit it to reach every Application however long ago it arrived. */
+            received_within?: components["schemas"]["ReceivedWithin"] | null;
         };
         /**
          * TenantHireClaim
@@ -10138,6 +10286,77 @@ export interface operations {
             };
         };
     };
+    sweepJobApplications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationSweep"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweptApplications"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description This tenant has no job with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `statuses` names a status that has already ended or names none at all, or `to` is somewhere a set cannot be sent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listTrackedJobLinks: {
         parameters: {
             query?: never;
@@ -10424,6 +10643,66 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    sweepTenantApplications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantApplicationSweep"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SweptApplications"];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description `statuses` names a status that has already ended or names none at all, or `to` is somewhere a set cannot be sent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */

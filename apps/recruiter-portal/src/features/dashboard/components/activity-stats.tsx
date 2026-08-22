@@ -1,6 +1,7 @@
 import { StatBand, StatBandSkeleton } from '@sync/ui/components/stat-band';
 import { Link } from '@tanstack/react-router';
 import { BriefcaseBusiness, CircleCheck, Clock3, Inbox } from 'lucide-react';
+import { ALL_TAB } from '@/features/applications/application';
 import { RetryNotice } from '@/features/shell/components/retry-notice';
 import { problemMessage } from '@/lib/api-problem';
 import {
@@ -15,12 +16,12 @@ import type { PanelRead } from '../hooks/use-dashboard';
 
 const OPEN_JOBS = <Link to="/jobs" search={{ status: 'published' }} />;
 
-const THIS_WEEK = <Link to="/applications" search={{ pipeline: 'all', received: '7d' }} />;
+const THIS_WEEK = <Link to="/applications" search={{ pipeline: ALL_TAB, received: '7d' }} />;
 
 const AWAITING_REVIEW = <Link to="/applications" search={{ pipeline: 'new' }} />;
 
 const QUALIFIED_BY_SCREENING = (
-  <Link to="/applications" search={{ pipeline: 'all', screening: ['qualified'] }} />
+  <Link to="/applications" search={{ pipeline: ALL_TAB, screening: ['qualified'] }} />
 );
 
 function orDash(value: number | undefined): string {

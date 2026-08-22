@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING, Final
 from sqlalchemy import delete, func, select, update
 
 from sync_api.problems import APPLICATION_TRANSITION_PROBLEM_TYPE, Problem
-from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
+from sync_core.communications import (
+    ApplicationRejection,
+    candidate_contact,
+    enqueue_email,
+    rejection_key,
+)
 from sync_core.models import (
     Application,
     ApplicationStatus,
@@ -78,6 +83,20 @@ def moves_open_to(
 def may_withdraw(stage: ApplicationStage) -> bool:
     """Whether an Application reading this Stage is still the Candidate's to leave."""
     return ApplicationStatus.WITHDRAWN in _CANDIDATE_MOVES.get(stage, frozenset())
+
+
+def still_undecided(status: ApplicationStatus) -> bool:
+    """Whether an Application in this status is still being decided rather than already ended."""
+    return status in _UNDECIDED
+
+
+#: Where one act may send a whole set. The rungs above `new` an Application is still being decided
+#: on, and the rejection that ends it. `hired` is not among them, because a hire names the day it
+#: started and one act over many Applications cannot answer that; `new` is not, because it is where
+#: an Application arrives rather than somewhere a set is sent.
+SWEEPABLE_DESTINATIONS: Final[frozenset[ApplicationStatus]] = (
+    _UNDECIDED - {ApplicationStatus.NEW}
+) | {ApplicationStatus.REJECTED}
 
 
 #: The one move the Candidate never hears about. Before the Telling there is nothing to tell:
@@ -238,7 +257,7 @@ async def _queue_the_rejection(
         application_id=application.id,
         initiated_by_recruiter_id=by,
         recipient=email,
-        idempotency_key=f"application-rejection:{decided_by}",
+        idempotency_key=rejection_key(decided_by),
         available_at=telling,
         payload=ApplicationRejection(
             application_id=application.id,

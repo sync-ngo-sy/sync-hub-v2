@@ -69,6 +69,17 @@ class RecruiterMessage(BaseModel):
     body: str
 
 
+#: What makes one queued rejection distinct from the next: the move that decided it. A
+#: rejection undone and decided again is a second decision the Candidate hears about, and a
+#: set-based ending writes one per row it moved, so both spell the same key from the history row.
+REJECTION_KEY_PREFIX: Final = "application-rejection:"
+
+
+def rejection_key(decided_by: UUID) -> str:
+    """The idempotency key of the email one rejection earns."""
+    return f"{REJECTION_KEY_PREFIX}{decided_by}"
+
+
 AnyCommunication = ApplicationConfirmation | ApplicationRejection | RecruiterMessage
 
 CommunicationPayload = Annotated[AnyCommunication, Field(discriminator="type")]

@@ -160,15 +160,32 @@ An Applications list's primary navigation through the Pipeline: `Open` first, th
 eight statuses in Pipeline order, then `All`. Each tab carries the API's count as the other filters
 leave it; the count is Tenant-wide on the Applications page and scoped to one Job on a Triage list.
 One tab may be viewed at a time, which is what the address names — the tab rather than the statuses
-behind it, so `pipelineStatuses` is the one place that says which statuses a tab asks the API for
-and `Open` costs a reader no more of the address bar than a single status tab does. `Open` is where
-an untouched list starts and is the one choice the address bar leaves unwritten, so a clean link
-opens the working list; `All` is still the whole eight, terminal Applications included, but it is
-now somewhere a reader goes rather than where they land, and it says so in the address. A tab the
-platform does not know is read as `Open`, the way every other filter it cannot honour is dropped.
-Every other tab is written into the address bar, so Dashboard deep-links and shared views land on
-the same tab and list.
-_Avoid_: Status filter, pipeline picker, stage filter.
+behind it, so `tabStages` is the one place that says which statuses a tab stands for and `Open`
+costs a reader no more of the address bar than a single status tab does. `Open` is where an
+untouched list starts and is the one choice the address bar leaves unwritten, so a clean link opens
+the working list; `All` is still the whole eight, terminal Applications included, but it is somewhere
+a reader goes rather than where they land, and it says so in the address. A tab the platform does not
+know is read as `Open`, the way every other filter it cannot honour is dropped. Every other tab is
+written into the address bar, so Dashboard deep-links and shared views land on the same tab and list.
+
+They sit above the list, with the Screening dropdown beside them, and not in the panel that holds the
+acts. A strip of tabs states the whole Pipeline filter in one word a reader can take in at a glance,
+which is what a column of eight boxes could not, and it leaves the table its full width — the
+Applications tab on a Job has none to spare.
+_Avoid_: Status filter, pipeline picker, stage filter, pipeline facets.
+
+**Acts rail**:
+The panel beside both Applications lists holding everything that acts on more than one Application:
+the Sweep, and under it the acts for whatever Row ticks are set. One panel rather than acts scattered
+around the table, because the two scopes look alike and mean different things — a sweep reaches every
+Application the filters describe, a tick reaches the rows somebody picked — so they are stated one
+under the other, each naming what it reaches.
+
+The filters that set the Sweep's scope are above the list, not in here, so the panel says its Reading
+in words: the tab, the verdicts, and the window where one narrows. That sentence is what the earlier
+rail bought by holding the filters themselves, and it is the price of putting the tabs back where a
+reader can read them.
+_Avoid_: Filter rail, sidebar (the Workspace has one already), bulk action bar, toolbar.
 
 **Open**:
 The Pipeline tab of Applications still being decided — `new` through `offer`, which is
@@ -313,6 +330,78 @@ read is In review: the Application moves from the Rejected tab to Withdrawn with
 notification, and its history says that a rejected candidate then walked away. There is no Tenant
 setting for the three days and never will be.
 _Avoid_: Grace period, cooling-off, delay, send date.
+
+**Sweep**:
+One Pipeline move taken over a whole Reading, in one act: every Application the filters describe
+moves where the act names, or ends. It lives at the head of the Acts rail, under the count of what
+the filters add up to and the Reading named in words. The filters themselves are above the list, so
+the panel states its scope rather than pointing at it: a reader must be able to tell what a sweep
+reaches without looking away from the button.
+
+Its confirm asks nothing about which Applications it means, because the filters already said. That is
+the whole of what changed: the modal used to tick the five undecided statuses itself, duplicating the
+Pipeline control while inheriting the Screening one, and a reader could not tell which filter a sweep
+honoured. Now there is one answer — the Reading — and the confirm only names where they go and what
+it costs.
+
+The request carries the Reading and never a list of ids, so a sweep of fifty thousand Applications is
+the same request as a sweep of twelve and a selection too large to send is not a state to reach. The
+counts are the `status_counts` the list already returned, which are totals for the whole Reading
+rather than the page loaded. Where a Reading reaches into the stages that have ended, the count says
+how many of them no act can move rather than letting the API refuse them later. Every ending is the
+rejection a Pipeline move makes, held to the same Telling, so a sweep is undone by reading the
+rejections back and moving them: there is no batch id anywhere, and no undo of its own.
+
+Both lists have one. A Job's is a statement about one hiring effort; the Tenant-wide one is a
+statement about a whole pipeline and carries the Received window its list adds. It stands beside the
+Row ticks rather than instead of them: the sweep is the act for rows nobody has loaded.
+`features/applications/ending.ts` owns what a sweep reaches, where it can send them, which Acts a set
+of ticks admits, and every sentence either list says about an act.
+_Avoid_: Bulk action, mass reject, select all (a sweep names a Reading, never rows); Archive
+(nothing is hidden — the Applications have ended).
+
+**Row ticks**:
+A box on each row the reader can see, one row at a time, on both lists: the Tenant-wide Applications
+page and a Job's Applications tab. Neither offers a box that ticks a whole page — the gesture the
+ticks exist to refuse is exactly the one a select-all would hand back. What they go on to say sits in
+the Acts rail under the Sweep, and answers a different question: the ticks reach the rows on screen
+and count them, the sweep reaches the whole Reading and names no ids at all. The count is what tells
+them apart, so the tick panel leads with it and appears only while something is ticked.
+
+**Act**:
+What a set of ticks goes on to say, and always one Pipeline move made over that set. Six of them:
+the four ladder moves — to Reviewing, Shortlisted, Interview or Offer — the ending, and moving a
+rejected Application back to Reviewing, which is how a sweep is taken back, with no batch id and
+nothing named after it.
+
+Neither `hired` nor `new` is among them. A hire names the day it started and one act over many
+Applications has no way to answer that; New is where an Application arrives rather than somewhere a
+set is sent.
+
+A set of ticks keeps the acts **every** ticked row admits, so the first tick narrows rather than
+decides and a row sharing no act with the set loses its box: a set of ticks can never mean two
+things at once. An act also stops being offered as soon as one ticked row already stands where it
+would go, because a move to where a row already is is not a move — it is a refusal waiting to
+happen. A hired or a withdrawn row is never tickable, because nothing moves it. Every act offered
+is a move the API's own state machine allows, so an Act offered is never one the pipeline then
+refuses.
+
+A ladder move is the one act that reaches nobody, and the Stage is why: Reviewing, Shortlisted,
+Interview and Offer are one Stage to the Candidate, so moving between them is silent. Only the step
+off New crosses a Stage boundary, and that is the whole of what anybody hears — which is why the
+ladder moves share one menu and the two Acts that do change what a Candidate is told stand on their
+own buttons.
+
+Every act is that many single moves, a few at a time rather than all at once, and reports through
+the one answer a sweep gives — including how many of the ticked rows the list had already moved out
+from under the reader.
+
+The ticks leave with the Reading they were made under: changing a filter or the order drops them,
+because a tick was a statement about the rows then on screen, and so does a sweep, which moves rows
+the ticks may have named. What is ticked is read back against the rows on screen too, so a row that
+leaves takes its tick with it rather than being counted from memory.
+_Avoid_: Selection, select all, bulk bar, batch (there is no batch, and nothing names one); Bulk
+action (an act is one Pipeline move, held to the same rules as one made by hand).
 
 **Refused move**:
 A Pipeline move the API answers with a 409, rendered where the buttons are rather than as a

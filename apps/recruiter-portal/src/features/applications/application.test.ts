@@ -13,6 +13,9 @@ import {
   pipelineTab,
   pipelineTabCount,
   pipelineTabLabel,
+  stagesCount,
+  sweepableStages,
+  tabStages,
 } from './application';
 
 describe('the Pipeline tabs', () => {
@@ -33,55 +36,45 @@ describe('the Pipeline tabs', () => {
 
   it('opens a list nobody has touched on Open', () => {
     expect(pipelineTab(undefined)).toBe(OPEN_TAB);
-    expect(pipelineTab(ALL_TAB)).toBe(ALL_TAB);
-    expect(pipelineTab('hired')).toBe('hired');
+    expect(pipelineTab('withdrawn')).toBe('withdrawn');
   });
 
-  it('holds new through offer on Open, and nothing that has ended', () => {
-    expect(pipelineStatuses(OPEN_TAB)).toEqual([
-      'new',
-      'reviewing',
-      'shortlisted',
-      'interview',
-      'offer',
-    ]);
+  it('stands each tab for the stages it names', () => {
+    expect(tabStages(OPEN_TAB)).toEqual([...OPEN_STATUSES]);
+    expect(tabStages(ALL_TAB)).toEqual([...PIPELINE_STATUSES]);
+    expect(tabStages('withdrawn')).toEqual(['withdrawn']);
   });
 
-  it('asks for every status on All, which is what naming none means to the API', () => {
+  it('asks the API for the stages a tab names, and for none of them on All', () => {
+    expect(pipelineStatuses('rejected')).toEqual(['rejected']);
+    expect(pipelineStatuses(OPEN_TAB)).toEqual([...OPEN_STATUSES]);
     expect(pipelineStatuses(ALL_TAB)).toBeUndefined();
   });
 
-  it('asks for the one status every other tab is', () => {
-    expect(pipelineStatuses('rejected')).toEqual(['rejected']);
-    expect(pipelineStatuses('new')).toEqual(['new']);
+  it('leaves the tab an untouched list opens on out of the address', () => {
+    expect(pipelineInAddress(undefined)).toBeUndefined();
+    expect(pipelineInAddress(OPEN_TAB)).toBeUndefined();
+    expect(pipelineInAddress('withdrawn')).toBe('withdrawn');
   });
 
-  it('leaves Open out of the address and writes every other tab into it', () => {
-    expect(pipelineInAddress(OPEN_TAB)).toBeUndefined();
-    expect(pipelineInAddress(undefined)).toBeUndefined();
-    expect(pipelineInAddress(ALL_TAB)).toBe(ALL_TAB);
-    expect(pipelineInAddress('withdrawn')).toBe('withdrawn');
+  it('names the two tabs that were never stages after themselves', () => {
+    expect(pipelineTabLabel(OPEN_TAB)).toBe('Open');
+    expect(pipelineTabLabel(ALL_TAB)).toBe('All');
+    expect(pipelineTabLabel('shortlisted')).toBe('Shortlisted');
   });
 
   it('splits the eight statuses between the ones still open and the ones that ended', () => {
     expect([...OPEN_STATUSES, ...ENDED_STATUSES].sort()).toEqual([...PIPELINE_STATUSES].sort());
   });
 
-  it('holds one status on every tab but the two that are not statuses', () => {
+  it('knows a tab that is one stage from the two that are many', () => {
+    expect(holdsOneStatus('offer')).toBe(true);
     expect(holdsOneStatus(OPEN_TAB)).toBe(false);
     expect(holdsOneStatus(ALL_TAB)).toBe(false);
-    expect(holdsOneStatus('offer')).toBe(true);
-  });
-
-  it('names the two tabs that are not statuses, and reads the rest off the status', () => {
-    expect(pipelineTabLabel(OPEN_TAB)).toBe('Open');
-    expect(pipelineTabLabel(ALL_TAB)).toBe('All');
-    expect(pipelineTabLabel('reviewing')).toBe('Reviewing');
-    expect(pipelineTabLabel('withdrawn')).toBe('Withdrawn');
   });
 });
 
-describe("what a Pipeline tab's count adds up", () => {
+describe('what a selection of stages adds up', () => {
   const COUNTS = {
     new: 2,
     reviewing: 1,
@@ -93,21 +86,32 @@ describe("what a Pipeline tab's count adds up", () => {
     withdrawn: 5,
   };
 
-  it('counts new through offer on Open', () => {
+  it('counts a tab as the stages it stands for', () => {
     expect(pipelineTabCount(OPEN_TAB, COUNTS)).toBe(7);
-  });
-
-  it('counts all eight on All, terminal Applications included', () => {
     expect(pipelineTabCount(ALL_TAB, COUNTS)).toBe(106);
-  });
-
-  it('counts the one status every other tab is', () => {
     expect(pipelineTabCount('rejected', COUNTS)).toBe(90);
   });
 
-  it('reads a status the API left uncounted as none', () => {
-    expect(pipelineTabCount('hired', {})).toBe(0);
-    expect(pipelineTabCount(OPEN_TAB, { new: 2 })).toBe(2);
+  it('counts the stages named, and nothing else', () => {
+    expect(stagesCount(OPEN_STATUSES, COUNTS)).toBe(7);
+    expect(stagesCount(PIPELINE_STATUSES, COUNTS)).toBe(106);
+    expect(stagesCount(['rejected'], COUNTS)).toBe(90);
+  });
+
+  it('reads a stage the API left uncounted as none', () => {
+    expect(stagesCount(['hired'], {})).toBe(0);
+    expect(stagesCount(OPEN_STATUSES, { new: 2 })).toBe(2);
+  });
+});
+
+describe('the stages of a selection a sweep can act on', () => {
+  it('keeps the ones still being decided and drops the ones that have ended', () => {
+    expect(sweepableStages([...PIPELINE_STATUSES])).toEqual([...OPEN_STATUSES]);
+    expect(sweepableStages(['new', 'rejected'])).toEqual(['new']);
+  });
+
+  it('reaches nothing at all where every stage named has ended', () => {
+    expect(sweepableStages(['rejected', 'hired', 'withdrawn'])).toEqual([]);
   });
 });
 

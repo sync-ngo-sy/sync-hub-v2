@@ -14,15 +14,18 @@ import {
   type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
+import { actsFor, type Sweep, type TenantSweep, whereTickedRowsGo } from '../ending';
 import {
   APPLICATION_PATH,
   ASSESSMENT_PATH,
   MESSAGES_PATH,
   NOTE_PATH,
   NOTES_PATH,
+  SWEEP_PATH,
   TAG_PATH,
   TAGS_PATH,
   TENANT_APPLICATIONS_PATH,
+  TENANT_SWEEP_PATH,
   TRIAGE_PATH,
 } from '../reread';
 import type { ApplicationReview } from '../review';
@@ -185,6 +188,138 @@ export function pagesJobApplications(pages: ApplicationSummary[][]) {
       });
     }),
   ];
+}
+
+const MOVE_REFUSED: Problem = {
+  type: 'urn:sync:problem:application-transition',
+  title: 'Conflict',
+  status: 409,
+  detail: 'This application cannot move there from where it is.',
+};
+
+export interface SweepAskedFor {
+  statuses: string[];
+  to: string;
+  qualification_statuses: string[] | null;
+  received_within?: string | null;
+}
+
+/** A Job whose Applications a sweep really moves: the ticked statuses go where the sweep says, the
+ * list they came from moves with them, and the answer counts what moved. Only an ending carries a
+ * Telling, exactly as the API answers it. */
+export function sweepsJobApplications(items: ApplicationSummary[], asked?: SweepAskedFor[]) {
+  return [
+    ...listsJobApplications(items),
+    http.post(SWEEP_PATH, async ({ request, response }) => {
+      const sweep = (await request.json()) as Sweep;
+      const verdicts = sweep.qualification_statuses ?? null;
+      asked?.push({
+        statuses: sweep.statuses,
+        to: sweep.to,
+        qualification_statuses: verdicts,
+      });
+      return response(200).json(sweptInto(items, sweep, verdicts));
+    }),
+  ];
+}
+
+/** The Tenant-wide sweep, which reaches every Job at once and carries the Received window too. */
+export function sweepsTenantApplications(items: TenantApplication[], asked?: SweepAskedFor[]) {
+  return [
+    ...listsTenantApplications(items),
+    http.post(TENANT_SWEEP_PATH, async ({ request, response }) => {
+      const sweep = (await request.json()) as TenantSweep;
+      const verdicts = sweep.qualification_statuses ?? null;
+      asked?.push({
+        statuses: sweep.statuses,
+        to: sweep.to,
+        qualification_statuses: verdicts,
+        received_within: sweep.received_within ?? null,
+      });
+      return response(200).json(sweptInto(items, sweep, verdicts));
+    }),
+  ];
+}
+
+function sweptInto<TItem extends MovableRow & { qualification_status: string }>(
+  items: TItem[],
+  sweep: Sweep,
+  verdicts: string[] | null,
+) {
+  const ending = sweep.to === 'rejected';
+  let moved = 0;
+  items.forEach((item, at) => {
+    const swept =
+      sweep.statuses.includes(item.status) &&
+      (verdicts === null || verdicts.includes(item.qualification_status));
+    if (!swept) return;
+    items[at] = { ...item, status: sweep.to, updated_at: THE_TELLING };
+    moved += 1;
+  });
+  return { moved, told_at: ending && moved > 0 ? THE_TELLING : null };
+}
+
+export function refusesTheSweep(items: ApplicationSummary[], problem: Problem) {
+  return [
+    ...listsJobApplications(items),
+    http.post(SWEEP_PATH, ({ response }) => response(500).json(problem)),
+  ];
+}
+
+interface MovableRow {
+  id: string;
+  status: PipelineStatus;
+  updated_at: string;
+}
+
+/** Acting on the ticked rows is that many single moves, and a move the pipeline would refuse is
+ * refused here too, exactly as the API refuses it: a row admits the moves its own status admits,
+ * and nothing else. */
+function movesOneAtATime<TItem extends MovableRow>(
+  items: TItem[],
+  asked?: string[],
+  refusing?: { id: string; problem: Problem },
+) {
+  return http.patch(APPLICATION_PATH, async ({ params, request, response }) => {
+    const { status } = (await request.json()) as StatusChange;
+    asked?.push(params.application_id);
+    if (refusing && params.application_id === refusing.id) {
+      return response(500).json(refusing.problem);
+    }
+    const at = items.findIndex((item) => item.id === params.application_id);
+    const item = items[at];
+    if (!item) return response(404).json(NO_SUCH_APPLICATION);
+    if (!actsFor(item.status).map(whereTickedRowsGo).includes(status)) {
+      return response(409).json(MOVE_REFUSED);
+    }
+    items[at] = { ...item, status, updated_at: THE_TELLING };
+    return response(200).json({
+      id: item.id,
+      status,
+      previous_status: item.status,
+      candidate_notified: false,
+      told_at: status === 'rejected' ? THE_TELLING : null,
+      changed_at: '2026-08-03T10:00:00Z',
+    });
+  });
+}
+
+/** The Tenant-wide list, where ticking rows is the only act there is. */
+export function movesTickedApplications(
+  items: TenantApplication[],
+  asked?: string[],
+  refusing?: { id: string; problem: Problem },
+) {
+  return [...listsTenantApplications(items), movesOneAtATime(items, asked, refusing)];
+}
+
+/** A Job's own list, where ticking rows stands beside the sweep. */
+export function movesTickedJobApplications(
+  items: ApplicationSummary[],
+  asked?: string[],
+  refusing?: { id: string; problem: Problem },
+) {
+  return [...listsJobApplications(items), movesOneAtATime(items, asked, refusing)];
 }
 
 export function failsToListJobApplications(problem: Problem) {

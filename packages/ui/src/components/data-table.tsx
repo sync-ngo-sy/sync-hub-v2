@@ -1,4 +1,5 @@
 import { Button } from '@sync/ui/components/ui/button';
+import { Checkbox } from '@sync/ui/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +77,12 @@ export interface DataTableError {
   onRetry: () => void;
 }
 
+export interface DataTableTicks<TRow> {
+  ticked: string[];
+  onChange: (ticked: string[]) => void;
+  can?: (row: TRow) => boolean;
+}
+
 export interface DataTableProps<TRow> {
   label: string;
   columns: DataTableColumn<TRow>[];
@@ -85,6 +92,7 @@ export interface DataTableProps<TRow> {
   onRowOpen?: (row: TRow) => void;
   rowHref?: (row: TRow) => string;
   rowActions?: (row: TRow) => DataTableRowAction[];
+  ticks?: DataTableTicks<TRow>;
   isLoading?: boolean;
   error?: DataTableError;
   empty: { icon: LucideIcon; message: string; action: ReactNode };
@@ -150,6 +158,7 @@ export function DataTable<TRow>({
   onRowOpen,
   rowHref,
   rowActions,
+  ticks,
   isLoading = false,
   error,
   empty,
@@ -172,8 +181,16 @@ export function DataTable<TRow>({
 
   const rows = table.getRowModel().rows;
   const widths = columnWidths(table);
-  const skeletonCellKeys = placeholderKeys(columns.length + (rowActions ? 1 : 0), 'cell');
+  const extraCells = (rowActions ? 1 : 0) + (ticks ? 1 : 0);
+  const skeletonCellKeys = placeholderKeys(columns.length + extraCells, 'cell');
   const loadingFirstPage = isLoading && rows.length === 0;
+  const isTicked = (row: Row<TRow>) => ticks?.ticked.includes(row.id) ?? false;
+
+  function tick(row: Row<TRow>, on: boolean) {
+    ticks?.onChange(
+      on ? [...ticks.ticked, row.id] : ticks.ticked.filter((ticked) => ticked !== row.id),
+    );
+  }
 
   if (error && rows.length === 0) {
     return (
@@ -223,6 +240,9 @@ export function DataTable<TRow>({
           onRowOpen={onRowOpen}
           rowHref={rowHref}
           rowActions={rowActions}
+          ticks={ticks}
+          isTicked={isTicked}
+          onTick={tick}
           isLoading={loadingFirstPage}
         />
         {footer}
@@ -237,6 +257,13 @@ export function DataTable<TRow>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {ticks ? (
+                  <TableHead
+                    className={cn(CELL_BORDER, 'w-px bg-table-header', flush && 'border-t')}
+                  >
+                    <span className="sr-only">Ticks</span>
+                  </TableHead>
+                ) : null}
                 {headerGroup.headers.map((header, index) => {
                   const sorting = sortingOf(header.column.columnDef.meta?.sort, sort);
                   const width = widths.get(header.column.id);
@@ -296,6 +323,20 @@ export function DataTable<TRow>({
                         : undefined
                     }
                   >
+                    {ticks ? (
+                      <TableCell
+                        className={cn(CELL_BORDER, 'w-px')}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {(ticks.can?.(row.original) ?? true) ? (
+                          <Checkbox
+                            aria-label={`Tick ${rowLabel(row.original)}`}
+                            checked={isTicked(row)}
+                            onCheckedChange={(on) => tick(row, on)}
+                          />
+                        ) : null}
+                      </TableCell>
+                    ) : null}
                     {row.getVisibleCells().map((cell, index) => (
                       <TableCell
                         key={cell.id}
@@ -343,6 +384,9 @@ interface CardListProps<TRow> {
   onRowOpen?: (row: TRow) => void;
   rowHref?: (row: TRow) => string;
   rowActions?: (row: TRow) => DataTableRowAction[];
+  ticks?: DataTableTicks<TRow>;
+  isTicked: (row: Row<TRow>) => boolean;
+  onTick: (row: Row<TRow>, on: boolean) => void;
   isLoading: boolean;
 }
 
@@ -353,6 +397,9 @@ function CardList<TRow>({
   onRowOpen,
   rowHref,
   rowActions,
+  ticks,
+  isTicked,
+  onTick,
   isLoading,
 }: CardListProps<TRow>) {
   if (isLoading) {
@@ -388,7 +435,15 @@ function CardList<TRow>({
             className="rounded-lg border border-border bg-card p-(--space-card) shadow-card"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 font-medium text-dense text-foreground">
+              {ticks && (ticks.can?.(row.original) ?? true) ? (
+                <Checkbox
+                  className="mt-0.5"
+                  aria-label={`Tick ${rowLabel(row.original)}`}
+                  checked={isTicked(row)}
+                  onCheckedChange={(on) => onTick(row, on)}
+                />
+              ) : null}
+              <div className="min-w-0 flex-1 font-medium text-dense text-foreground">
                 {lead && onRowOpen ? (
                   <RowOpener
                     label={rowLabel(row.original)}

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 
 from sync_api.applications.access import own_application
+from sync_api.applications.ending import SweepScope, sweep_them_all
 from sync_api.applications.hires import claim_the_hire, claimed_hire
 from sync_api.applications.ordering import ORDERINGS
 from sync_api.applications.payload import (
@@ -24,6 +25,7 @@ from sync_api.applications.payload import (
     ReviewedJob,
     ScreeningVerdict,
     StatusHistoryEntry,
+    SweptApplications,
     TenantApplicationPage,
     TenantApplicationSummary,
 )
@@ -57,7 +59,11 @@ if TYPE_CHECKING:
     from sqlalchemy import Select
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from sync_api.applications.payload import ApplicationStatusChange
+    from sync_api.applications.payload import (
+        ApplicationStatusChange,
+        ApplicationSweep,
+        TenantApplicationSweep,
+    )
     from sync_api.pagination import Ordering, SortCursor
     from sync_api.tenants import ActingRecruiter
     from sync_core import Settings, Storage
@@ -284,6 +290,62 @@ class ApplicationReviewService:
             told_at=moved.told_at,
             changed_at=moved.changed_at,
         )
+
+    async def sweep(
+        self, recruiter: ActingRecruiter, job_id: UUID, sweep: ApplicationSweep
+    ) -> SweptApplications:
+        """One Job's sweep. The Job is fetched rather than filtered on, so a Job this Tenant does
+        not own is the 404 it really is rather than a sweep that quietly reaches nothing."""
+        async with transaction(self._db):
+            job = await own_job(self._db, recruiter.tenant.id, job_id)
+            swept = await sweep_them_all(
+                self._db,
+                SweepScope(tenant_id=recruiter.tenant.id, job_id=job.id),
+                statuses=sweep.statuses,
+                to=sweep.to,
+                qualification_statuses=sweep.qualification_statuses,
+                by=recruiter.profile.id,
+            )
+
+        logger.info(
+            "applications.swept",
+            job_id=str(job_id),
+            tenant_id=str(recruiter.tenant.id),
+            statuses=sorted(status.value for status in sweep.statuses),
+            to=sweep.to.value,
+            swept=swept.count,
+        )
+        return SweptApplications(moved=swept.count, told_at=swept.told_at)
+
+    async def sweep_tenant(
+        self, recruiter: ActingRecruiter, sweep: TenantApplicationSweep
+    ) -> SweptApplications:
+        """The same act across every Job the Tenant is hiring for, carrying the Received window
+        the Tenant-wide list adds to the Reading."""
+        since = (
+            rolling_since(RECEIVED_WITHIN_DAYS[sweep.received_within])
+            if sweep.received_within is not None
+            else None
+        )
+        async with transaction(self._db):
+            swept = await sweep_them_all(
+                self._db,
+                SweepScope(tenant_id=recruiter.tenant.id, received_after=since),
+                statuses=sweep.statuses,
+                to=sweep.to,
+                qualification_statuses=sweep.qualification_statuses,
+                by=recruiter.profile.id,
+            )
+
+        logger.info(
+            "applications.swept_tenant",
+            tenant_id=str(recruiter.tenant.id),
+            statuses=sorted(status.value for status in sweep.statuses),
+            to=sweep.to.value,
+            received_within=sweep.received_within.value if sweep.received_within else None,
+            swept=swept.count,
+        )
+        return SweptApplications(moved=swept.count, told_at=swept.told_at)
 
     async def _candidate(self, candidate_id: UUID) -> ReviewedCandidate:
         found = (

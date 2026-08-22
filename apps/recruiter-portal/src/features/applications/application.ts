@@ -91,6 +91,10 @@ export const SCREENING_VERDICTS = [
   'review_required',
 ] as const satisfies readonly ScreeningVerdict[];
 
+export type StatusCounts = Partial<Record<PipelineStatus, number>>;
+
+export type VerdictCounts = Partial<Record<ScreeningVerdict, number>>;
+
 export function pipelineState(status: PipelineStatus): PipelineState {
   return PIPELINE_STATE[status];
 }
@@ -104,8 +108,23 @@ export function pipelineTab(chosen: PipelineTab | undefined): PipelineTab {
   return chosen ?? OPEN_TAB;
 }
 
+export function tabStages(tab: PipelineTab): PipelineStatus[] {
+  if (tab === OPEN_TAB) return [...OPEN_STATUSES];
+  if (tab === ALL_TAB) return [...PIPELINE_STATUSES];
+  return [tab];
+}
+
 export function pipelineInAddress(tab: PipelineTab | undefined): PipelineTab | undefined {
-  return tab === OPEN_TAB ? undefined : tab;
+  return pipelineTab(tab) === OPEN_TAB ? undefined : tab;
+}
+
+/** No status at all is what the API reads as every status, which is what `All` asks for. */
+export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined {
+  return tab === ALL_TAB ? undefined : tabStages(tab);
+}
+
+export function holdsOneStatus(tab: PipelineTab): boolean {
+  return tab !== OPEN_TAB && tab !== ALL_TAB;
 }
 
 export function pipelineTabLabel(tab: PipelineTab): string {
@@ -114,26 +133,21 @@ export function pipelineTabLabel(tab: PipelineTab): string {
   return pipelineState(tab).label;
 }
 
-/** No status at all is what the API reads as every status, which is what `All` asks for. */
-export function pipelineStatuses(tab: PipelineTab): PipelineStatus[] | undefined {
-  if (tab === ALL_TAB) return undefined;
-  return tab === OPEN_TAB ? [...OPEN_STATUSES] : [tab];
+export function pipelineTabCount(tab: PipelineTab, counts: StatusCounts): number {
+  return stagesCount(tabStages(tab), counts);
 }
 
-export function holdsOneStatus(tab: PipelineTab): boolean {
-  return tab !== OPEN_TAB && tab !== ALL_TAB;
-}
-
-export function anythingEnded(counts: Partial<Record<PipelineStatus, number>>): boolean {
+export function anythingEnded(counts: StatusCounts): boolean {
   return ENDED_STATUSES.some((status) => (counts[status] ?? 0) > 0);
 }
 
-export function pipelineTabCount(
-  tab: PipelineTab,
-  counts: Partial<Record<PipelineStatus, number>>,
-): number {
-  const counted: readonly PipelineStatus[] = pipelineStatuses(tab) ?? PIPELINE_STATUSES;
-  return counted.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+export function stagesCount(stages: readonly PipelineStatus[], counts: StatusCounts): number {
+  return stages.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+}
+
+export function sweepableStages(selection: PipelineStatus[]): PipelineStatus[] {
+  const undecided: readonly PipelineStatus[] = OPEN_STATUSES;
+  return selection.filter((status) => undecided.includes(status));
 }
 
 export function screeningSelection(chosen: ScreeningVerdict[] | undefined): ScreeningVerdict[] {

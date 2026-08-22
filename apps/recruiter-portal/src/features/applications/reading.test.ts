@@ -8,6 +8,7 @@ import {
   narrowedBy,
   noApplicationsMessage,
   noJobApplicationsMessage,
+  readingNamed,
   type TenantApplicationFilters,
 } from './reading';
 
@@ -47,8 +48,7 @@ describe('how many filters narrow a list', () => {
     expect(narrowedBy(read({ pipeline: 'new', screening: ['pending'], received: '24h' }))).toBe(3);
   });
 
-  it('counts nothing for an address naming a tab this list has never had', () => {
-    expect(narrowedBy(read({ pipeline: ['new', 'hired'] }))).toBe(0);
+  it('counts nothing for an address naming a stage no Application can stand in', () => {
     expect(narrowedBy(read({ pipeline: 'on-a-yacht' }))).toBe(0);
   });
 
@@ -67,9 +67,32 @@ describe('what a list writes into the address', () => {
   });
 
   it('writes every other tab in, so a reload and a pasted link reproduce the list', () => {
-    expect(applicationsAddress(read({ pipeline: 'all' })).pipeline).toBe('all');
     expect(applicationsAddress(read({ pipeline: 'rejected' })).pipeline).toBe('rejected');
     expect(jobApplicationsAddress(read({ pipeline: 'hired' })).pipeline).toBe('hired');
+  });
+
+  it('spells All out rather than leaving it out, because All is not what an untouched list shows', () => {
+    expect(applicationsAddress(read({ pipeline: 'all' })).pipeline).toBe('all');
+  });
+});
+
+describe('the Reading in words, beside the acts that reach all of it', () => {
+  it('names the tab, and says every verdict where the verdicts are untouched', () => {
+    expect(readingNamed('open', [...SCREENING_VERDICTS])).toBe('Open · every verdict');
+    expect(readingNamed('shortlisted', [...SCREENING_VERDICTS])).toBe(
+      'Shortlisted · every verdict',
+    );
+  });
+
+  it('names the verdicts a narrowed Screening filter leaves, so the acts cannot reach further', () => {
+    expect(readingNamed('all', ['qualified', 'pending'])).toBe('All · Qualified, Pending');
+  });
+
+  it('adds the window only where one narrows the list', () => {
+    expect(readingNamed('open', [...SCREENING_VERDICTS], '7d')).toBe(
+      'Open · every verdict · Last 7 days',
+    );
+    expect(readingNamed('open', [...SCREENING_VERDICTS], undefined)).toBe('Open · every verdict');
   });
 });
 

@@ -1,15 +1,15 @@
 import { ChipFilter } from '@sync/ui/components/chip-filter';
 import {
   PIPELINE_TABS,
-  type PipelineStatus,
   type PipelineTab,
   pipelineTabCount,
   pipelineTabLabel,
+  type StatusCounts,
 } from '../application';
 
 interface ApplicationPipelineFilterProps {
   pipeline: PipelineTab;
-  counts: Partial<Record<PipelineStatus, number>>;
+  counts: StatusCounts;
   onChange: (pipeline: PipelineTab) => void;
   className?: string;
 }

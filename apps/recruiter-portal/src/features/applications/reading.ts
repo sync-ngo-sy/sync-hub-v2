@@ -2,11 +2,17 @@ import { z } from 'zod';
 import {
   EVERY_TIME,
   holdsOneStatus,
+  type PipelineTab,
   pipelineInAddress,
   pipelineTab,
+  pipelineTabLabel,
+  RECEIVED_RANGES,
+  type ReceivedWithin,
   receivedSelection,
   SCREENING_VERDICTS,
+  type ScreeningVerdict,
   screeningSelection,
+  screeningState,
   sortInAddress,
 } from './application';
 import {
@@ -38,6 +44,27 @@ export function narrowedBy(filters: TenantApplicationFilters): number {
     screeningSelection(filters.screening).length < SCREENING_VERDICTS.length,
     receivedSelection(filters.received) !== EVERY_TIME,
   ].filter(Boolean).length;
+}
+
+export function readingNamed(
+  tab: PipelineTab,
+  verdicts: ScreeningVerdict[],
+  received?: ReceivedWithin,
+): string {
+  const parts = [pipelineTabLabel(tab), screeningNamed(verdicts)];
+  const window = receivedNamed(received);
+  if (window) parts.push(window);
+  return parts.join(' · ');
+}
+
+function screeningNamed(verdicts: ScreeningVerdict[]): string {
+  if (verdicts.length === SCREENING_VERDICTS.length) return 'every verdict';
+  return verdicts.map((one) => screeningState(one).label).join(', ');
+}
+
+function receivedNamed(received: ReceivedWithin | undefined): string | null {
+  const range = receivedSelection(received);
+  return range === EVERY_TIME ? null : RECEIVED_RANGES[range];
 }
 
 const NO_APPLICATIONS_YET =
