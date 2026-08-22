@@ -1,6 +1,7 @@
 from sync_api.applications.assessment import MatchAssessmentService
 from sync_api.applications.hires import HireClaimService
 from sync_api.applications.payload import (
+    MAX_TICKED_APPLICATIONS,
     RECEIVED_WITHIN_DAYS,
     AnsweredQuestion,
     Application,
@@ -38,12 +39,14 @@ from sync_api.applications.payload import (
     TenantApplicationSweep,
     TenantHireClaim,
     TenantHireClaimPage,
+    TickedApplicationMove,
     WithdrawnApplication,
 )
 from sync_api.applications.review import ApplicationReviewService
 from sync_api.applications.service import ApplicationService
 
 __all__ = [
+    "MAX_TICKED_APPLICATIONS",
     "RECEIVED_WITHIN_DAYS",
     "AnsweredQuestion",
     "Application",
@@ -85,5 +88,6 @@ __all__ = [
     "TenantApplicationSweep",
     "TenantHireClaim",
     "TenantHireClaimPage",
+    "TickedApplicationMove",
     "WithdrawnApplication",
 ]

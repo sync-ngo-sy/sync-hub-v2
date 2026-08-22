@@ -90,6 +90,19 @@ def still_undecided(status: ApplicationStatus) -> bool:
     return status in _UNDECIDED
 
 
+def sources_that_can_reach(to: ApplicationStatus) -> frozenset[ApplicationStatus]:
+    """Every status a Recruiter could move an Application to `to` from, one at a time.
+
+    Read off the same table a single move is refused by, so a set reaches exactly the rows
+    clicking through them one at a time would have.
+    """
+    return frozenset(
+        source
+        for source in ApplicationStatus
+        if to in moves_open_to(StatusChangeSource.RECRUITER, source, stage_of(source))
+    )
+
+
 #: Where one act may send a whole set. The rungs above `new` an Application is still being decided
 #: on, and the rejection that ends it. `hired` is not among them, because a hire names the day it
 #: started and one act over many Applications cannot answer that; `new` is not, because it is where

@@ -676,19 +676,57 @@ class TenantApplicationSweep(ApplicationSweep):
     )
 
 
+MAX_TICKED_APPLICATIONS: Final = 500
+
+
+class TickedApplicationMove(BaseModel):
+    """The Applications a Recruiter ticked, and where they all go.
+
+    The one act that names ids: a filter cannot describe what a hand picked. An id this Tenant
+    does not own, or one standing where the move cannot start, takes no part rather than
+    refusing, so `moved` can come back lower than the number of ids sent.
+    """
+
+    ids: list[UUID] = Field(
+        min_length=1,
+        max_length=MAX_TICKED_APPLICATIONS,
+        description="The Applications to move. Each named once.",
+    )
+    to: ApplicationStatus = Field(
+        description="Where they all go: `reviewing`, `shortlisted`, `interview`, `offer` or "
+        "`rejected`. `reviewing` is also what reopens a set of endings. `hired` and `new` are "
+        "refused.",
+        examples=[ApplicationStatus.REJECTED],
+    )
+
+    @model_validator(mode="after")
+    def _a_move_goes_somewhere_a_set_can_go(self) -> TickedApplicationMove:
+        if self.to not in SWEEPABLE_DESTINATIONS:
+            allowed = ", ".join(sorted(one.value for one in SWEEPABLE_DESTINATIONS))
+            raise ValueError(f"a set of ticks can only move Applications to one of {allowed}")
+        return self
+
+    @model_validator(mode="after")
+    def _one_tick_per_application(self) -> TickedApplicationMove:
+        named = [str(one) for one in self.ids]
+        repeated = sorted({one for one in named if named.count(one) > 1})
+        if repeated:
+            raise ValueError(f"one tick per Application; repeated: {', '.join(repeated)}")
+        return self
+
+
 class SweptApplications(BaseModel):
-    """What one sweep moved, and — where it ended them — when the people it ended hear."""
+    """What one set-based move did — a filter sweep or a set of ticks alike — and, where it
+    ended them, when the people it ended hear."""
 
     moved: int = Field(
-        description="How many Applications the sweep moved. A move along the ladder counts here "
-        "as an ending does. Zero where the Reading matched none of them, which is an answer "
-        "rather than a refusal."
+        description="How many Applications moved. A move along the ladder counts here as an "
+        "ending does. Zero is an answer rather than a refusal."
     )
     told_at: datetime | None = Field(
         default=None,
         description="The Telling every Application it ended now carries: three days out, the "
-        "same moment for all of them, and the moment their Candidates hear. Null where the "
-        "sweep ended nothing — a move along the ladder tells nobody, and so carries none.",
+        "same moment for all of them. Null where it ended nothing.",
     )
 
 

@@ -1,15 +1,13 @@
-import { useMutation } from '@tanstack/react-query';
 import { useRereadTenantStats } from '@/features/dashboard/reread';
 import { useRereadHireClaims } from '@/features/placements/reread';
-import { api, client } from '@/lib/api';
-import type { PipelineStatus } from '../application';
-import { aFewAtATime, type Moved, movedTogether } from '../ending';
+import { api } from '@/lib/api';
 import {
   APPLICATION_PATH,
   ASSESSMENT_PATH,
   MESSAGES_PATH,
   SWEEP_PATH,
   TENANT_SWEEP_PATH,
+  TICKED_PATH,
   useRereadEndedApplications,
   useRereadMatchAssessment,
   useRereadMovedApplication,
@@ -43,34 +41,13 @@ export function useSweepTenantApplications() {
   });
 }
 
-export interface TickedMove {
-  ids: string[];
-  to: PipelineStatus;
-}
-
 export function useMoveTickedApplications() {
   const reread = useRereadEndedApplications();
   const rereadStats = useRereadTenantStats();
 
-  return useMutation({
-    mutationFn: async ({ ids, to }: TickedMove): Promise<Moved> => {
-      const outcomes = await aFewAtATime(ids, (id) => moveOne(id, to));
-      const refused = outcomes.find((one) => one.status === 'rejected');
-      if (refused) throw refused.reason;
-      return movedTogether(outcomes.map((one) => (one.status === 'fulfilled' ? one.value : null)));
-    },
+  return api.useMutation('post', TICKED_PATH, {
     onSettled: () => Promise.all([reread(), rereadStats()]),
   });
-}
-
-async function moveOne(applicationId: string, to: PipelineStatus) {
-  const { data, error, response } = await client.PATCH(APPLICATION_PATH, {
-    params: { path: { application_id: applicationId } },
-    body: { status: to, start_date: null },
-  });
-  if (data) return data;
-  if (response.status === 409) return null;
-  throw error;
 }
 
 export function useAssessMatch(applicationId: string) {

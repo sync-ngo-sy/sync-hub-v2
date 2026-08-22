@@ -29,7 +29,7 @@ from sync_api.applications.payload import (
     TenantApplicationPage,
     TenantApplicationSummary,
 )
-from sync_api.applications.pipeline import move_application
+from sync_api.applications.pipeline import move_application, sources_that_can_reach
 from sync_api.applications.snapshot import answers_of, snapshot_of
 from sync_api.cvs import signed_download
 from sync_api.jobs.access import WITH_LOCATION, own_job
@@ -63,6 +63,7 @@ if TYPE_CHECKING:
         ApplicationStatusChange,
         ApplicationSweep,
         TenantApplicationSweep,
+        TickedApplicationMove,
     )
     from sync_api.pagination import Ordering, SortCursor
     from sync_api.tenants import ActingRecruiter
@@ -344,6 +345,32 @@ class ApplicationReviewService:
             to=sweep.to.value,
             received_within=sweep.received_within.value if sweep.received_within else None,
             swept=swept.count,
+        )
+        return SweptApplications(moved=swept.count, told_at=swept.told_at)
+
+    async def move_ticked(
+        self, recruiter: ActingRecruiter, ticked: TickedApplicationMove
+    ) -> SweptApplications:
+        """The rows a Recruiter ticked, moved together.
+
+        The statuses moved out of follow from where the ticks are going rather than being asked
+        for, so one somebody hired or withdrew meanwhile is left alone rather than refusing.
+        """
+        async with transaction(self._db):
+            swept = await sweep_them_all(
+                self._db,
+                SweepScope(tenant_id=recruiter.tenant.id, application_ids=tuple(ticked.ids)),
+                statuses=sources_that_can_reach(ticked.to),
+                to=ticked.to,
+                by=recruiter.profile.id,
+            )
+
+        logger.info(
+            "applications.moved_ticked",
+            tenant_id=str(recruiter.tenant.id),
+            ticked=len(ticked.ids),
+            to=ticked.to.value,
+            moved=swept.count,
         )
         return SweptApplications(moved=swept.count, told_at=swept.told_at)
 
