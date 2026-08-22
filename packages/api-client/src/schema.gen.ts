@@ -1130,6 +1130,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/me/candidates/{candidate_id}/placements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The Placements this Tenant has made of one Candidate
+         * @description A Placement is a hire this Candidate confirmed, and this list is read from the view that
+         *     says so — nothing that is not one can appear here, and neither can another Tenant's.
+         *
+         *     A list rather than one fact: this Tenant may have placed the same person more than once.
+         *     Newest start first, and empty for a Candidate it has placed nobody of.
+         */
+        get: operations["listCandidatePlacements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/me/talent-pool": {
         parameters: {
             query?: never;
@@ -1850,7 +1874,7 @@ export interface components {
             stage: components["schemas"]["ApplicationStage"];
             /**
              * Can Withdraw
-             * @description Whether leaving is still possible. False once the Application has an outcome, and once it has been withdrawn.
+             * @description Whether leaving is still possible. It answers to the `stage` beside it and to nothing else, so it is true exactly while that stage reads `received` or `in_review` — a decision the Candidate has not been told of included.
              */
             can_withdraw: boolean;
             /** @description The hire this Tenant claims, when it claims one. An `unanswered` claim is the Candidate's to confirm or deny. */
@@ -2036,7 +2060,7 @@ export interface components {
             cv: components["schemas"]["ApplicationCv"];
             /**
              * Told At
-             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. It survives a reopen, so a Telling on anything but a `rejected` Application is the record of what the Candidate was once told. Null on an Application never rejected.
+             * @description The Telling: when this Application's rejection reaches the Candidate, three days after it was taken. A moment still ahead is a decision they have not seen; one behind is a decision they have read. Only a Telling the Candidate reached outlives the rejection that set it, so on anything but a `rejected` Application this is the record of what they were once told. Null on an Application never rejected, and on one whose Telling was cancelled.
              */
             told_at?: string | null;
             /**
@@ -2375,6 +2399,29 @@ export interface components {
              * @description There are more matches and this search will not reach them. Ask a narrower question rather than paging further.
              */
             depth_reached: boolean;
+        };
+        /**
+         * CandidatePlacement
+         * @description One Placement this Tenant made of one Candidate, as their CRM profile reads it.
+         *
+         *     A Placement and nothing else: it is read from the `placements` view, so a claim the
+         *     Candidate has not answered — or denied — has no way of reaching this list.
+         */
+        CandidatePlacement: {
+            /**
+             * Application Id
+             * Format: uuid
+             * @description The Application the hire was claimed on, which is what tells one Placement of this person from another.
+             */
+            application_id: string;
+            /** @description The Job they were placed in. */
+            job: components["schemas"]["ApplicationJob"];
+            /**
+             * Start Date
+             * Format: date
+             * @description The day the work started.
+             */
+            start_date: string;
         };
         /**
          * CandidateProfile
@@ -3714,7 +3761,7 @@ export interface components {
             candidate_notified: boolean;
             /**
              * Told At
-             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected.
+             * @description The Telling this Application now carries. Ahead of now on a rejection just taken; behind it on one the Candidate has already read. Null on an Application never rejected, and on one whose Telling this move cancelled.
              */
             told_at?: string | null;
             /**
@@ -9393,6 +9440,73 @@ export interface operations {
             };
         };
     };
+    listCandidatePlacements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidatePlacement"][];
+                };
+            };
+            /** @description There is no valid session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The caller is not a recruiter, has been deactivated, or their tenant is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No Candidate this tenant can reach has that id — they have neither applied to one of its Jobs nor opted in to Global search. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The request did not match the expected shape. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description Something went wrong on the server. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     listTalentPool: {
         parameters: {
             query?: {
@@ -11750,7 +11864,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
-            /** @description The Application has already been decided or withdrawn. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
+            /** @description The Application has reached an outcome the Candidate has been told of, or they have already left it. Withdrawal is final: it cannot be undone, and the Job cannot be applied to again. */
             409: {
                 headers: {
                     [name: string]: unknown;

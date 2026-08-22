@@ -167,9 +167,10 @@ export interface Telling {
 }
 
 /**
- * What the review says about the Telling, which is not only a warning: a Telling outlives the
- * rejection that set it, so a reopened Application still says the candidate read one. Only
- * where reopening is still ahead of the Recruiter does it carry a title and become a warning.
+ * What the review says about the Telling, which is not only a warning: a Telling the candidate
+ * reached outlives the rejection that set it, so a reopened Application still says they read
+ * one. Only where reopening is still ahead of the Recruiter does it carry a title and become a
+ * warning.
  */
 export function telling(
   status: PipelineStatus,

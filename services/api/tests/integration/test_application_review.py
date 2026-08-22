@@ -26,6 +26,7 @@ from tests.support.applications import (
     a_reviewed_application,
     a_withdrawn_application,
     an_accepted_application,
+    an_applicant_who_can_apply,
     an_applicant_with_a_stored_cv,
     apply_to,
     communications_of,
@@ -839,6 +840,8 @@ async def test_taking_a_rejection_back_before_its_telling_leaves_nothing_behind(
     moved = await a_moved_application(recruiter, application["id"], ApplicationStatus.REVIEWING)
 
     assert moved["candidate_notified"] is False
+    assert moved["told_at"] is None, "the Telling goes with the rejection it belonged to"
+    assert (await stored_application(db_session, application["id"])).told_at is None
     [mine] = await my_applications(other_browser)
     assert mine["stage"] == "in_review"
     _confirmation, rejection = await communications_of(db_session, application["id"])
@@ -876,6 +879,163 @@ async def test_reopening_after_the_telling_keeps_what_the_candidate_already_read
     ], "no second notification, and the one they read is not the platform's to take back"
     _confirmation, rejection = await communications_of(db_session, application["id"])
     assert rejection.status is CommunicationStatus.QUEUED
+
+
+async def test_an_untold_rejection_reads_in_review_and_still_offers_to_be_left(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The pair that came apart, held together: the Stage answers to the Telling, and leaving
+    answers to the Stage. A Candidate holding two Applications that both read In review sees
+    the same offer on both — and cannot read a rejection off the one that is missing it."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    rejected = await an_accepted_application(other_browser, job["id"])
+    other_job = await a_published_job(recruiter, title="Data Engineer")
+    reviewed = await an_accepted_application(other_browser, other_job["id"])
+
+    await a_moved_application(recruiter, rejected["id"], ApplicationStatus.REJECTED)
+    await a_moved_application(recruiter, reviewed["id"], ApplicationStatus.REVIEWING)
+
+    assert {
+        item["id"]: (item["stage"], item["can_withdraw"])
+        for item in await my_applications(other_browser)
+    } == {
+        rejected["id"]: ("in_review", True),
+        reviewed["id"]: ("in_review", True),
+    }
+
+
+async def test_leaving_before_the_telling_takes_the_rejection_back(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """A withdrawal inside the three days is a decision the Candidate took without knowing
+    about the Tenant's, so it takes the Tenant's back with it — exactly as a reopen does.
+    Their own move they hear about at once; every withdrawal is told at once."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    left = await a_withdrawn_application(other_browser, application["id"])
+
+    assert left["stage"] == "withdrawn"
+    assert left["previous_stage"] == "in_review"
+    assert (await stored_application(db_session, application["id"])).told_at is None
+    [mine] = await my_applications(other_browser)
+    assert (mine["stage"], mine["can_withdraw"]) == ("withdrawn", False)
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
+        "withdrawn"
+    ]
+    _confirmation, rejection = await communications_of(db_session, application["id"])
+    assert rejection.status is CommunicationStatus.CANCELLED
+    await the_telling_comes(db_session, application["id"])
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
+        "withdrawn"
+    ], "the rejection nobody read never arrives"
+    assert await my_unread_count(other_browser) == 1
+
+
+async def test_a_cancelled_telling_leaves_no_day_the_review_can_read_as_told(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Either take-back clears the Telling off the row, so the moment it named passes with
+    nothing to hear and nothing to read. A row that kept it would name that moment, three days
+    on, as the day the Candidate was told."""
+    job = await a_published_job(recruiter)
+    await a_candidate_with_a_stored_cv(other_browser, mailbox, db_session)
+    reopened = await an_accepted_application(other_browser, job["id"])
+    other_job = await a_published_job(recruiter, title="Data Engineer")
+    left = await an_accepted_application(other_browser, other_job["id"])
+    await a_moved_application(recruiter, reopened["id"], ApplicationStatus.REJECTED)
+    await a_moved_application(recruiter, left["id"], ApplicationStatus.REJECTED)
+
+    await a_moved_application(recruiter, reopened["id"], ApplicationStatus.REVIEWING)
+    await a_withdrawn_application(other_browser, left["id"])
+
+    for application in (reopened, left):
+        await the_telling_comes(db_session, application["id"])
+        assert (await stored_application(db_session, application["id"])).told_at is None
+        assert (await a_reviewed_application(recruiter, application["id"]))["told_at"] is None
+    assert [item["payload"]["stage"] for item in await my_notifications(other_browser)] == [
+        "withdrawn"
+    ], "the one move the Candidate made themselves, and nothing the Tenant took back"
+
+
+async def test_a_rejection_the_candidate_has_been_told_of_is_not_theirs_to_leave(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The Stage reads Not selected, so there is nothing left to leave and no button to press."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+    await the_telling_comes(db_session, application["id"])
+
+    refused = await withdraw(other_browser, application["id"])
+
+    assert refused.status_code == 409, refused.text
+    [mine] = await my_applications(other_browser)
+    assert (mine["stage"], mine["can_withdraw"]) == ("not_selected", False)
+    assert (await stored_application(db_session, application["id"])).status is (
+        ApplicationStatus.REJECTED
+    )
+
+
+async def test_the_history_keeps_the_rejection_and_names_the_candidate_who_left(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The Tenant's decision is not erased, only ended: a Recruiter reading this afterwards
+    can see that they rejected somebody who then walked away."""
+    job = await a_published_job(recruiter)
+    applicant = await an_applicant_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    await a_withdrawn_application(other_browser, application["id"])
+
+    history = await status_history_of(db_session, application["id"])
+    assert [(entry.previous_status, entry.new_status) for entry in history] == [
+        (None, ApplicationStatus.NEW),
+        (ApplicationStatus.NEW, ApplicationStatus.REJECTED),
+        (ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN),
+    ]
+    assert history[-1].change_source is StatusChangeSource.CANDIDATE
+    assert history[-1].changed_by_profile_id == applicant.id
+
+
+async def test_an_application_left_after_a_rejection_moves_to_the_withdrawn_tab(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Where an Application the Candidate ended belongs. Nothing warns the Recruiter: the
+    history says what happened, and they had already finished with this one."""
+    job = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session)
+    application = await an_accepted_application(other_browser, job["id"])
+    await a_moved_application(recruiter, application["id"], ApplicationStatus.REJECTED)
+
+    await a_withdrawn_application(other_browser, application["id"])
+
+    assert await job_applications_of(recruiter, job["id"], status="rejected") == []
+    [listed] = await job_applications_of(recruiter, job["id"], status="withdrawn")
+    assert listed["id"] == application["id"]
 
 
 async def test_a_held_notification_arrives_dated_the_day_it_reached_them(

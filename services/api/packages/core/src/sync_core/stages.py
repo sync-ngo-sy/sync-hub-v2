@@ -49,9 +49,10 @@ def stage_of(
     pipeline without an answer here fails at import rather than at the Candidate.
 
     It answers to time as well: a rejection reads as In review until its Telling. The Telling
-    is honoured only while the status is `rejected` — `told_at` survives a reopen, so a
-    `reviewing` row carrying one is the record of a Candidate who was told rather than a
-    promise that they are about to be.
+    is honoured only while the status is `rejected` — a Telling the Candidate reached outlives
+    the rejection that set it, and one cancelled before it came is wiped, so a `reviewing` row
+    carrying one is the record of a Candidate who was told rather than a promise that they are
+    about to be.
     """
     if status is ApplicationStatus.REJECTED and not told(told_at, now or datetime.now(UTC)):
         return ApplicationStage.IN_REVIEW

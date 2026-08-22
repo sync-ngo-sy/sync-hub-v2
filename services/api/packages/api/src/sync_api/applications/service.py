@@ -17,7 +17,7 @@ from sync_api.applications.payload import (
     HireClaim,
     WithdrawnApplication,
 )
-from sync_api.applications.pipeline import UNDECIDED, move_application
+from sync_api.applications.pipeline import may_withdraw, move_application
 from sync_api.applications.screening import SCREENING_VERSION, screen
 from sync_api.applications.snapshot import screened, snapshot_rows
 from sync_api.candidates import refuse_incomplete_profile, whole_candidate
@@ -154,7 +154,12 @@ class ApplicationService:
     async def withdraw(
         self, candidate: ActingCandidate, application_id: UUID
     ) -> WithdrawnApplication:
-        """Leave the process, for good: the Job stays taken, so re-applying is not a thing."""
+        """Leave the process, for good: the Job stays taken, so re-applying is not a thing.
+
+        It is offered for as long as the platform says the Application is still In review,
+        which includes a rejection whose Telling has not come — and leaving inside those three
+        days takes the Tenant's decision back with it, unread and unsent.
+        """
         async with transaction(self._db):
             applied = await my_application(self._db, candidate.id, application_id, to_move=True)
             moved = await move_application(
@@ -285,6 +290,7 @@ class ApplicationService:
 def _as_payload(
     application: ApplicationRow, job: Job, tenant: Tenant, hire: HireClaim | None = None
 ) -> Application:
+    stage = stage_of(application.status, told_at=application.told_at)
     return Application(
         id=application.id,
         job=AppliedJob(
@@ -297,10 +303,10 @@ def _as_payload(
             work_mode=job.work_mode,
         ),
         cv_id=application.cv_id,
-        stage=stage_of(application.status, told_at=application.told_at),
-        # The pipeline's own answer rather than a second reading of it: whether leaving is still
-        # possible is exactly whether the state machine would allow the move.
-        can_withdraw=application.status in UNDECIDED,
+        stage=stage,
+        # One reading of the Stage answers both: the Withdraw button cannot offer what the move
+        # refuses, or hide from a Candidate what the move would still allow them.
+        can_withdraw=may_withdraw(stage),
         hire=hire,
         applied_at=application.applied_at,
         updated_at=application.updated_at,

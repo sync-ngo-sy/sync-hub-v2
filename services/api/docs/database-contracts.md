@@ -744,6 +744,12 @@ row the claim was made by — and the Candidate is asked.
 - **A Job's `placement_count`** counts the same view, joined to the Job through `applications`.
   The view has no `job_id` of its own and is not given one: a Placement is a claim the Candidate
   confirmed, and which Job it was on is the Application's to say.
+- **One Candidate's Placements** are read at
+  `GET /v1/tenants/me/candidates/{candidate_id}/placements`, for the card on their CRM profile.
+  Both halves of the scoping are the view's: it leaves an unconfirmed claim out, so nothing asks
+  for `confirmed`, and it carries the Tenant that claimed the hire, so nothing adds a second
+  Tenant filter. Reach is the CRM's own `reachable_candidate`, as it is for that profile's notes
+  and Tags.
 
 ## Tenant CRM (notes, tags, talent pool)
 

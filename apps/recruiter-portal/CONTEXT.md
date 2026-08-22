@@ -305,9 +305,13 @@ Application review as `told_at`. The card says which side of it the Application 
 that is what decides whether reopening is free: before it, the candidate has seen nothing and the
 queued email is cancelled, so the card says so in plain muted text; after it, they have read a
 rejection, so the card raises an `Already told` alert naming the day and saying that reopening
-sends no email and the Recruiter should message them by hand. A Telling outlives the rejection
-that set it, so a reopened Application still says the candidate read one and has not been told
-they are back in review. There is no Tenant setting for the three days and never will be.
+sends no email and the Recruiter should message them by hand. Only a Telling the candidate
+reached outlives the rejection that set it, so a reopened Application says the candidate read one
+and has not been told they are back in review, while one reopened inside the three days says
+nothing at all. The candidate may also leave inside those three days, because what they
+read is In review: the Application moves from the Rejected tab to Withdrawn with no warning and no
+notification, and its history says that a rejected candidate then walked away. There is no Tenant
+setting for the three days and never will be.
 _Avoid_: Grace period, cooling-off, delay, send date.
 
 **Refused move**:
@@ -386,12 +390,13 @@ _Avoid_: Rank, fit, rating, AI verdict.
 **Placement**:
 A hire this Tenant claimed and the Candidate confirmed. Marking an Application hired asks for the
 day it starts; until the Candidate answers, the hire remains unconfirmed and is not a Placement.
-The Placements page is where they are read, and both the list and its count come from the
-database's own definition of one rather than from a second definition the portal keeps. A Job
-header carries its own Placements count, read from that same definition, and the count is a link
-to the Placements page narrowed to that Job — the list a stat opens counts what the stat said.
-It is the one number on a Job page that is not an Application total, which is why it is named
-Placements rather than counted among the Pipeline's.
+The Placements page is where they are read Tenant-wide and the Placements card is where one
+person's are read, and every list and count of them comes from the database's own definition of
+one rather than from a second definition the portal keeps. A Job header carries its own Placements
+count, read from that same definition, and the count is a link to the Placements page narrowed to
+that Job — the list a stat opens counts what the stat said. It is the one number on a Job page
+that is not an Application total, which is why it is named Placements rather than counted among
+the Pipeline's.
 _Avoid_: Hire, filled, closed won.
 
 **Placements page**:
@@ -425,6 +430,22 @@ and offers `Show every Job` rather than the hired Applications.
 The Applications page has no equivalent: its Job axis is a column, so this is new work rather
 than a pattern copied from there.
 _Avoid_: Job picker, job dropdown, job selector.
+
+**Placements card**:
+The Placements this Tenant has made of one person, in the sidebar of their Candidate view beside
+the Talent pool, the Tags and the Notes. It names the Job and the day the work started, and it is
+a short list rather than a single fact because one person can be placed more than once. The page it
+sits on shows any Searchable Candidate rather than only the people who applied here, so the card is
+a Tenant-specific reading of a cross-tenant profile — exactly what the three cards beside it
+already are. Both halves of that reading are the database's: `placements` is what a Placement is
+and carries the Tenant that claimed the hire, so `GET /v1/tenants/me/candidates/{id}/placements`
+restates neither. A Candidate this Tenant has not placed gets no card at all rather than a card
+saying so, because a read-only card with nothing in it would sit on almost every profile — and
+nothing stands in for it while the reading is on the wire, because a skeleton there would promise
+a card that usually never arrives. A refusal is the one thing an empty card does say: a card that
+vanished on a failed read would read as never placed.
+_Avoid_: Hire history, placement history, work history (what a Candidate has done elsewhere is
+their profile's).
 
 **Applicant message**:
 One email a Recruiter sends an applicant from a Message template, opened as an editable draft on
@@ -610,9 +631,9 @@ tab).
 
 **Candidate view**:
 One person as this Tenant knows them: their whole profile with their email, phone and Links, the
-fragment that matched if a search led here, the Tenant's notes and Tags on them, and whether they
-are in the Talent pool. The Links here are the live ones; the Application review shows the ones
-frozen with that Application. The
+fragment that matched if a search led here, the Tenant's notes and Tags on them, whether they are
+in the Talent pool, and any Placement it has made of them. The Links here are the live ones; the
+Application review shows the ones frozen with that Application. The
 profile is read by id from the directory, so how you arrived changes nothing about who you see
 — a pasted link shows the same person a click from the Talent pool does, and the Origin changes
 only the Trail that leads back. Opened from an Application, the Trail names this page the

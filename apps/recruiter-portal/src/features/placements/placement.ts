@@ -4,6 +4,7 @@ import { absoluteDay } from '@/lib/dates';
 
 export type HireClaim = components['schemas']['TenantHireClaim'];
 export type HireConfirmation = components['schemas']['HireConfirmation'];
+export type CandidatePlacement = components['schemas']['CandidatePlacement'];
 
 export const CLAIM_TABS = [
   'confirmed',

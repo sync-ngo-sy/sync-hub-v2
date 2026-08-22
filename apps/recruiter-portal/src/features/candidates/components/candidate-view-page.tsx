@@ -1,5 +1,6 @@
 import { buttonVariants } from '@sync/ui/components/ui/button';
 import { Link } from '@tanstack/react-router';
+import { CandidatePlacementsCard } from '@/features/placements/components/candidate-placements-card';
 import { CandidatePageHeader } from '@/features/profile/components/candidate-page-header';
 import {
   CandidateFactsCard,
@@ -79,6 +80,10 @@ export function CandidateViewPage({ record, evidence, reading, origin }: Candida
           </div>
 
           <div className="space-y-(--space-grid)">
+            <WidgetBoundary name="Placements">
+              <CandidatePlacementsCard candidateId={record.candidate_id} />
+            </WidgetBoundary>
+
             <WidgetBoundary name="Talent pool">
               <TalentPoolCard candidateId={record.candidate_id} candidateName={profile.name} />
             </WidgetBoundary>
