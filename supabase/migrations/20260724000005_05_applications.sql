@@ -19,8 +19,9 @@ create table applications (
   -- one column holds all three channels to the same day -- the Stage projection reads it,
   -- `notifications.visible_at` is set from it, and so is `communications.available_at`. Only a
   -- rejection has one; a hire and a withdrawal are told at once. Three days is one
-  -- platform-wide number, never a Tenant's to set. It is not constrained against `status`,
-  -- and cannot be: it survives a reopen, so a `reviewing` row carrying one is the record of a
+  -- platform-wide number, never a Tenant's to set. A cancelled Telling is cleared back to
+  -- null. It is not constrained against `status`, and cannot be: a Telling the Candidate
+  -- reached outlives its rejection, so a `reviewing` row carrying one is the record of a
   -- Candidate who was told, and the projection honours it only while the status is `rejected`.
   told_at timestamptz,
 

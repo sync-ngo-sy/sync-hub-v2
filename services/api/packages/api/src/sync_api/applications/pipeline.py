@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final
 
-from sqlalchemy import delete, func, update
+from sqlalchemy import delete, func, select, update
 
 from sync_api.problems import APPLICATION_TRANSITION_PROBLEM_TYPE, Problem
 from sync_core.communications import ApplicationRejection, candidate_contact, enqueue_email
 from sync_core.models import (
+    Application,
     ApplicationStatus,
     ApplicationStatusHistory,
     Communication,
@@ -46,38 +47,38 @@ _RECRUITER_DECIDES: Final[frozenset[ApplicationStatus]] = _UNDECIDED | {
     ApplicationStatus.REJECTED,
 }
 
-#: The Stages an Application is still the Candidate's to withdraw from. Leaving answers to the
-#: Stage rather than to the status under it, because the Stage is the whole of what the
-#: Candidate can see: an Application that reads In review offers a Withdraw button, and a
-#: rejection before its Telling reads In review. One reading serves the button and the move
-#: alike, which is the only arrangement in which they cannot disagree.
-_WITHDRAWABLE: Final[frozenset[ApplicationStage]] = frozenset(
-    {ApplicationStage.RECEIVED, ApplicationStage.IN_REVIEW}
-)
+#: Where a Recruiter may take an Application from each state. Anything unspelled is refused,
+#: so `hired` ends it, `rejected` ends it until a human takes it back to `reviewing`, and
+#: `withdrawn` — the Candidate's own move — ends it for everybody.
+_RECRUITER_MOVES: Final[Mapping[ApplicationStatus, frozenset[ApplicationStatus]]] = {
+    **{state: _RECRUITER_DECIDES - {state} for state in _UNDECIDED},
+    ApplicationStatus.REJECTED: frozenset({ApplicationStatus.REVIEWING}),
+}
+
+#: Where a Candidate may take their own Application, keyed by the Stage they read rather than
+#: the status under it, because the Stage is the whole of what they can see: a rejection before
+#: its Telling is theirs to leave, and a move added here names its own Stages.
+_CANDIDATE_MOVES: Final[Mapping[ApplicationStage, frozenset[ApplicationStatus]]] = {
+    ApplicationStage.RECEIVED: frozenset({ApplicationStatus.WITHDRAWN}),
+    ApplicationStage.IN_REVIEW: frozenset({ApplicationStatus.WITHDRAWN}),
+}
+
+
+def moves_open_to(
+    source: StatusChangeSource, status: ApplicationStatus, stage: ApplicationStage
+) -> frozenset[ApplicationStatus]:
+    """A Recruiter moves the pipeline they read; a Candidate moves the Stage they read."""
+    if source is StatusChangeSource.RECRUITER:
+        return _RECRUITER_MOVES.get(status, frozenset())
+    if source is StatusChangeSource.CANDIDATE:
+        return _CANDIDATE_MOVES.get(stage, frozenset())
+    return frozenset()
 
 
 def may_withdraw(stage: ApplicationStage) -> bool:
     """Whether an Application reading this Stage is still the Candidate's to leave."""
-    return stage in _WITHDRAWABLE
+    return ApplicationStatus.WITHDRAWN in _CANDIDATE_MOVES.get(stage, frozenset())
 
-
-#: Where each source may take an Application from each state. Anything unspelled is refused,
-#: so `hired` ends it, `rejected` ends it until a human takes it back to `reviewing` or the
-#: Candidate leaves it, and `withdrawn` — the Candidate's own move — ends it for everybody.
-#: The Candidate's column is what a status could read as rather than what it does read as: a
-#: `rejected` row is theirs to leave only while `may_withdraw` still says so.
-MOVES: Final[
-    Mapping[StatusChangeSource, Mapping[ApplicationStatus, frozenset[ApplicationStatus]]]
-] = {
-    StatusChangeSource.RECRUITER: {
-        **{state: _RECRUITER_DECIDES - {state} for state in _UNDECIDED},
-        ApplicationStatus.REJECTED: frozenset({ApplicationStatus.REVIEWING}),
-    },
-    StatusChangeSource.CANDIDATE: {
-        state: frozenset({ApplicationStatus.WITHDRAWN})
-        for state in _UNDECIDED | {ApplicationStatus.REJECTED}
-    },
-}
 
 #: The one move the Candidate never hears about. Before the Telling there is nothing to tell:
 #: the Stage never changed. After it, the Stage does read In review again, silently — a Tenant
@@ -94,14 +95,24 @@ _EXITS_FROM_REJECTED: Final[frozenset[ApplicationStatus]] = frozenset(
     {ApplicationStatus.REVIEWING, ApplicationStatus.WITHDRAWN}
 )
 
+#: Both readings a `rejected` row has, off the projection rather than named here: In review
+#: while its Telling is ahead, Not selected after it.
+_REJECTED_READS_AS: Final[frozenset[ApplicationStage]] = frozenset(
+    {
+        stage_of(ApplicationStatus.REJECTED),
+        stage_of(ApplicationStatus.REJECTED, told_at=the_telling_after(datetime.now(UTC))),
+    }
+)
+
 # The take-back is complete rather than best-effort only while it covers every exit. An
 # unnamed one would leave a Candidate an unseen Notification and an email nobody meant to
 # send, so the module refuses to import instead — the same guard `sync_core.stages` keeps over
 # its own projection.
 _UNCOVERED_EXITS_FROM_REJECTED = {
     state
-    for by_status in MOVES.values()
-    for state in by_status.get(ApplicationStatus.REJECTED, frozenset())
+    for source in StatusChangeSource
+    for stage in _REJECTED_READS_AS
+    for state in moves_open_to(source, ApplicationStatus.REJECTED, stage)
 } - _EXITS_FROM_REJECTED
 if _UNCOVERED_EXITS_FROM_REJECTED:  # pragma: no cover
     raise RuntimeError(
@@ -142,9 +153,9 @@ async def move_application(
     A rejection is decided here and told three days later: `told_at` drives the Stage the
     Candidate reads, the Notification's `visible_at` and the email's `available_at` alike, so
     a decision taken back inside those three days is one they never saw — and taking it back
-    drops the unseen Notification and cancels the waiting email. Either exit takes it back:
-    the Tenant's own reopen, and the Candidate leaving an Application that still reads In
-    review to them.
+    wipes the Telling, drops the unseen Notification and cancels the waiting email. Either
+    exit takes it back: the Tenant's own reopen, and the Candidate leaving an Application that
+    still reads In review to them.
 
     No transaction of its own: the caller's is what keeps the four from ever disagreeing, and
     what takes them all back with a move that turns out not to have happened.
@@ -194,7 +205,7 @@ async def move_application(
     if telling is not None:
         await _queue_the_rejection(session, applied, by=by, decided_by=history.id, telling=telling)
     if exiting_rejected:
-        await _take_the_rejection_back(session, application.id)
+        await _take_the_rejection_back(session, application)
     return Moved(
         status_history_id=history.id,
         status=to,
@@ -238,31 +249,38 @@ async def _queue_the_rejection(
     )
 
 
-async def _take_the_rejection_back(session: AsyncSession, application_id: UUID) -> None:
+async def _take_the_rejection_back(session: AsyncSession, application: Application) -> None:
     """Undo what a rejection queued, as far as it can still be undone.
 
-    The unseen Notification is dropped and the waiting email cancelled. Each narrows itself to
-    what is still ahead of the Telling, so this is the whole undo inside the three days and
-    nothing at all after them: a Notification the Candidate has read is not the platform's to
+    The Telling is wiped off the row, the unseen Notification dropped and the waiting email
+    cancelled. Each narrows itself to what is still ahead of the Telling, so this is the whole
+    undo inside the three days and nothing at all after them: a Telling the Candidate reached
+    is the record of what they read, a Notification they have read is not the platform's to
     drop, and an email that has gone cannot be un-sent.
 
     A withdrawal runs this having just written the Candidate a Notification of their own. That
     one survives because it carries no `visible_at` — it was told at once — and this drops only
     what is still held to a Telling.
 
-    Both read the clock in Postgres rather than here, because both are racing the readers that
-    do — the bell's own gate and the sender's claim — and a row this call thinks is still ahead
-    of its Telling while they think it has passed is the one row that must not be left behind.
+    All three read the clock in Postgres rather than here, because two of them are racing the
+    readers that do — the bell's own gate and the sender's claim — and a row this call thinks
+    is still ahead of its Telling while they think it has passed is the one row that must not
+    be left behind.
     """
+    still_ahead = await session.scalar(
+        select(Application.told_at > func.now()).where(Application.id == application.id)
+    )
+    if still_ahead:
+        application.told_at = None
     await session.execute(
         delete(Notification).where(
-            Notification.application_id == application_id, Notification.visible_at > func.now()
+            Notification.application_id == application.id, Notification.visible_at > func.now()
         )
     )
     await session.execute(
         update(Communication)
         .where(
-            Communication.application_id == application_id,
+            Communication.application_id == application.id,
             Communication.communication_type == CommunicationType.APPLICATION_REJECTION,
             Communication.status == CommunicationStatus.QUEUED,
             Communication.available_at > func.now(),
@@ -278,12 +296,8 @@ def _refuse_impossible_move(
     *,
     from_stage: ApplicationStage,
 ) -> None:
-    """The status table says what is structurally possible; the Stage says what the Candidate
-    is looking at. The Candidate's one move has to pass both, so that the Withdraw button and
-    this refusal never answer the same Application differently."""
-    if wanted in MOVES.get(source, {}).get(current, frozenset()) and (
-        source is not StatusChangeSource.CANDIDATE or may_withdraw(from_stage)
-    ):
+    """One lookup, in whichever table the mover reads, so no move carries another's rule."""
+    if wanted in moves_open_to(source, current, from_stage):
         return
     raise Problem(
         status=409,
