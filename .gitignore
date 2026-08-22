@@ -53,3 +53,6 @@ reachability-report*.txt
 
 # Graphify knowledge-graph output
 graphify-out/
+
+# TanStack Router's scratch space, where it stages routeTree.gen.ts before renaming it into place.
+.tanstack/
