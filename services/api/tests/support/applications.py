@@ -244,12 +244,15 @@ async def sweep_the_job(
     recruiter: AsyncClient,
     job_id: str | UUID,
     statuses: list[ApplicationStatus | str],
+    *,
+    to: ApplicationStatus | str = ApplicationStatus.REJECTED,
     **reading: Any,
 ) -> Response:
-    """One sweep of the Job's Applications: the ticks, and whatever the list was narrowed by."""
+    """One sweep of the Job's Applications: the ticks, where they go, and whatever the list was
+    narrowed by. Ending them is the default, being the sweep this Job's list opens with."""
     return await recruiter.post(
         f"{TENANT_JOBS}/{job_id}/applications/sweep",
-        json={"statuses": [str(status) for status in statuses], **reading},
+        json={"statuses": [str(status) for status in statuses], "to": str(to), **reading},
     )
 
 
@@ -257,9 +260,38 @@ async def a_swept_job(
     recruiter: AsyncClient,
     job_id: str | UUID,
     statuses: list[ApplicationStatus | str],
+    *,
+    to: ApplicationStatus | str = ApplicationStatus.REJECTED,
     **reading: Any,
 ) -> dict[str, Any]:
-    response = await sweep_the_job(recruiter, job_id, statuses, **reading)
+    response = await sweep_the_job(recruiter, job_id, statuses, to=to, **reading)
+    assert response.status_code == 200, response.text
+    swept: dict[str, Any] = response.json()
+    return swept
+
+
+async def sweep_the_tenant(
+    recruiter: AsyncClient,
+    statuses: list[ApplicationStatus | str],
+    *,
+    to: ApplicationStatus | str = ApplicationStatus.REJECTED,
+    **reading: Any,
+) -> Response:
+    """The same act across every Job the Tenant is hiring for, carrying the Tenant-wide Reading."""
+    return await recruiter.post(
+        f"{TENANT_APPLICATIONS}/sweep",
+        json={"statuses": [str(status) for status in statuses], "to": str(to), **reading},
+    )
+
+
+async def a_swept_tenant(
+    recruiter: AsyncClient,
+    statuses: list[ApplicationStatus | str],
+    *,
+    to: ApplicationStatus | str = ApplicationStatus.REJECTED,
+    **reading: Any,
+) -> dict[str, Any]:
+    response = await sweep_the_tenant(recruiter, statuses, to=to, **reading)
     assert response.status_code == 200, response.text
     swept: dict[str, Any] = response.json()
     return swept

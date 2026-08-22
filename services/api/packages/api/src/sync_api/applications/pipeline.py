@@ -90,6 +90,15 @@ def still_undecided(status: ApplicationStatus) -> bool:
     return status in _UNDECIDED
 
 
+#: Where one act may send a whole set. The rungs above `new` an Application is still being decided
+#: on, and the rejection that ends it. `hired` is not among them, because a hire names the day it
+#: started and one act over many Applications cannot answer that; `new` is not, because it is where
+#: an Application arrives rather than somewhere a set is sent.
+SWEEPABLE_DESTINATIONS: Final[frozenset[ApplicationStatus]] = (
+    _UNDECIDED - {ApplicationStatus.NEW}
+) | {ApplicationStatus.REJECTED}
+
+
 #: The one move the Candidate never hears about. Before the Telling there is nothing to tell:
 #: the Stage never changed. After it, the Stage does read In review again, silently — a Tenant
 #: reversing its own decision is not news to deliver, and telling somebody they are back in

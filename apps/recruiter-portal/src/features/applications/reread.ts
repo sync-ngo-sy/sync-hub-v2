@@ -10,6 +10,7 @@ import type {
 export const TENANT_APPLICATIONS_PATH = '/v1/tenants/me/applications';
 export const TRIAGE_PATH = '/v1/tenants/me/jobs/{job_id}/applications';
 export const SWEEP_PATH = '/v1/tenants/me/jobs/{job_id}/applications/sweep';
+export const TENANT_SWEEP_PATH = '/v1/tenants/me/applications/sweep';
 export const APPLICATION_PATH = '/v1/tenants/me/applications/{application_id}';
 export const ASSESSMENT_PATH = '/v1/tenants/me/applications/{application_id}/assessment';
 export const MESSAGES_PATH = '/v1/tenants/me/applications/{application_id}/messages';

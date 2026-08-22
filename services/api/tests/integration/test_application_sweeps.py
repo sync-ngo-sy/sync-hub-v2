@@ -20,6 +20,7 @@ from tests.support.applications import (
     a_candidate_who_can_apply,
     a_moved_application,
     a_swept_job,
+    a_swept_tenant,
     an_accepted_application,
     an_application_through,
     communications_of,
@@ -30,6 +31,7 @@ from tests.support.applications import (
     status_history_of,
     stored_application,
     sweep_the_job,
+    sweep_the_tenant,
     the_telling_comes,
 )
 from tests.support.jobs import a_published_job, a_tracked_link, link_report, read_job
@@ -544,3 +546,242 @@ async def test_a_sweep_moves_no_count_the_platform_keeps(
     assert after == before
     assert moved_before["new"] == 2 and moved_before["rejected"] == 0
     assert moved_after["new"] == 0 and moved_after["rejected"] == 2
+
+
+async def test_a_sweep_along_the_ladder_moves_them_all_and_tells_nobody(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The four rungs above `new` are one Stage to the Candidate, so moving between them is
+    silent: no Notification, no email, and no Telling to hold either to."""
+    job, first, second = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+    await a_moved_application(recruiter, first["id"], ApplicationStatus.REVIEWING)
+    await a_moved_application(recruiter, second["id"], ApplicationStatus.REVIEWING)
+    before = len(await notifications_of(db_session, first["id"]))
+
+    swept = await a_swept_job(
+        recruiter,
+        job["id"],
+        [ApplicationStatus.REVIEWING],
+        to=ApplicationStatus.SHORTLISTED,
+    )
+
+    assert swept["ended"] == 2
+    assert swept["told_at"] is None
+    listed = statuses_of(await job_applications_of(recruiter, job["id"], status=UNDECIDED))
+    assert listed == {first["id"]: "shortlisted", second["id"]: "shortlisted"}
+    assert len(await notifications_of(db_session, first["id"])) == before
+    assert await communications_of(db_session, first["id"]) == []
+
+
+async def test_a_sweep_off_new_tells_them_their_application_is_in_review(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The one ladder step that crosses a Stage boundary, and the only thing it sends."""
+    job, applied, _ = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+
+    await a_swept_job(
+        recruiter, job["id"], [ApplicationStatus.NEW], to=ApplicationStatus.SHORTLISTED
+    )
+
+    told = await notifications_of(db_session, applied["id"])
+    assert [one.payload["stage"] for one in told] == ["in_review"]
+    assert [one.payload["previous_stage"] for one in told] == ["received"]
+    assert told[0].visible_at is None
+    assert await communications_of(db_session, applied["id"]) == []
+
+
+async def test_a_sweep_along_the_ladder_records_the_move_it_really_made(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    job, applied, _ = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+
+    await a_swept_job(recruiter, job["id"], [ApplicationStatus.NEW], to=ApplicationStatus.INTERVIEW)
+
+    history = await status_history_of(db_session, applied["id"])
+    assert (history[-1].previous_status, history[-1].new_status) == (
+        ApplicationStatus.NEW,
+        ApplicationStatus.INTERVIEW,
+    )
+    assert history[-1].change_source is StatusChangeSource.RECRUITER
+
+
+async def test_a_sweep_will_not_send_a_set_where_a_set_cannot_go(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """A hire names the day it started and `new` is where an Application arrives, so neither is
+    somewhere one act over many Applications can send them."""
+    job, _, _ = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+
+    for refused in (ApplicationStatus.HIRED, ApplicationStatus.NEW, ApplicationStatus.WITHDRAWN):
+        response = await sweep_the_job(
+            recruiter, job["id"], [ApplicationStatus.REVIEWING], to=refused
+        )
+        assert response.status_code == 422, response.text
+
+
+async def test_a_sweep_refuses_to_move_them_where_they_already_are(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The rule the portal's own ticks lean on, refused at the boundary rather than passed to the
+    pipeline as a no-op."""
+    job, _, _ = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+
+    response = await sweep_the_job(
+        recruiter,
+        job["id"],
+        [ApplicationStatus.NEW, ApplicationStatus.SHORTLISTED],
+        to=ApplicationStatus.SHORTLISTED,
+    )
+
+    assert response.status_code == 422, response.text
+
+
+async def test_a_tenant_wide_sweep_reaches_every_job_it_is_hiring_for(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """What a Job's own sweep cannot say: one act across the whole pipeline."""
+    here = await a_published_job(recruiter)
+    there = await a_published_job(recruiter)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session, "first")
+    one = await an_accepted_application(other_browser, here["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "second")
+    other = await an_accepted_application(third_browser, there["id"])
+
+    swept = await a_swept_tenant(
+        recruiter, [ApplicationStatus.NEW], to=ApplicationStatus.SHORTLISTED
+    )
+
+    assert swept["ended"] == 2
+    assert (await stored_application(db_session, one["id"])).status is (
+        ApplicationStatus.SHORTLISTED
+    )
+    assert (await stored_application(db_session, other["id"])).status is (
+        ApplicationStatus.SHORTLISTED
+    )
+
+
+async def test_a_tenant_wide_sweep_names_each_job_by_its_own_title(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """The title is read per row off a join, because a sweep across every Job spans as many
+    titles as it does Jobs."""
+    here = await a_published_job(recruiter, title="Field Coordinator")
+    there = await a_published_job(recruiter, title="Logistics Officer")
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session, "first")
+    one = await an_accepted_application(other_browser, here["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "second")
+    other = await an_accepted_application(third_browser, there["id"])
+
+    await a_swept_tenant(recruiter, [ApplicationStatus.NEW], to=ApplicationStatus.REVIEWING)
+
+    told = await notifications_of(db_session, one["id"])
+    assert told[-1].payload["job_title"] == "Field Coordinator"
+    also = await notifications_of(db_session, other["id"])
+    assert also[-1].payload["job_title"] == "Logistics Officer"
+
+
+async def test_a_tenant_wide_sweep_leaves_another_tenants_applications_alone(
+    recruiter: AsyncClient,
+    browser: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    """Every Job the Tenant is hiring for, and not one belonging to anybody else."""
+    mine = await a_published_job(recruiter)
+    await an_admin(browser, mailbox, "rival")
+    theirs = await a_published_job(browser)
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session, "first")
+    ours = await an_accepted_application(other_browser, mine["id"])
+    await a_candidate_who_can_apply(third_browser, mailbox, db_session, "second")
+    untouched = await an_accepted_application(third_browser, theirs["id"])
+
+    swept = await a_swept_tenant(recruiter, [ApplicationStatus.NEW])
+
+    assert swept["ended"] == 1
+    assert (await stored_application(db_session, ours["id"])).status is ApplicationStatus.REJECTED
+    assert (await stored_application(db_session, untouched["id"])).status is ApplicationStatus.NEW
+
+
+async def test_a_tenant_wide_sweep_ends_them_on_one_telling_like_a_jobs_own_does(
+    recruiter: AsyncClient,
+    other_browser: AsyncClient,
+    third_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    _, first, second = await a_job_two_people_applied_to(
+        recruiter, other_browser, third_browser, mailbox, db_session
+    )
+
+    swept = await a_swept_tenant(recruiter, [ApplicationStatus.NEW])
+
+    assert swept["ended"] == 2
+    told = datetime.fromisoformat(swept["told_at"])
+    assert told - datetime.now(UTC) > TELLING_DELAY - timedelta(minutes=1)
+    for each in (first, second):
+        queued = await communications_of(db_session, each["id"])
+        assert [one.communication_type for one in queued] == [
+            CommunicationType.APPLICATION_REJECTION
+        ]
+        assert queued[0].available_at == told
+
+
+async def test_a_tenant_wide_sweep_that_matches_nothing_is_no_error(
+    recruiter: AsyncClient,
+) -> None:
+    swept = await a_swept_tenant(recruiter, [ApplicationStatus.OFFER])
+
+    assert swept == {"ended": 0, "told_at": None}
+
+
+async def test_sweeping_the_whole_tenant_is_only_for_recruiters(
+    other_browser: AsyncClient,
+    mailbox: Mailbox,
+    db_session: AsyncSession,
+) -> None:
+    await a_candidate_who_can_apply(other_browser, mailbox, db_session, "first")
+
+    refused = await sweep_the_tenant(other_browser, [ApplicationStatus.NEW])
+
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["type"] == "urn:sync:problem:recruiter-only"

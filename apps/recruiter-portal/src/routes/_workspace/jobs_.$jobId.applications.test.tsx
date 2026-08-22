@@ -787,7 +787,7 @@ describe("ending many of a Job's Applications at once", () => {
     await user.click(screen.getByRole('button', { name: 'End 1 Application' }));
 
     expect(await screen.findByText(/1 Application ended/)).toBeVisible();
-    expect(asked).toEqual([{ statuses: ['new'], qualification_statuses: null }]);
+    expect(asked).toEqual([{ statuses: ['new'], to: 'rejected', qualification_statuses: null }]);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -826,7 +826,9 @@ describe("ending many of a Job's Applications at once", () => {
     await user.click(screen.getByRole('button', { name: 'End 1 Application' }));
 
     expect(await screen.findByText(/1 Application ended/)).toBeVisible();
-    expect(asked).toEqual([{ statuses: ['new'], qualification_statuses: ['qualified'] }]);
+    expect(asked).toEqual([
+      { statuses: ['new'], to: 'rejected', qualification_statuses: ['qualified'] },
+    ]);
   });
 
   it('offers nothing to end on a Job whose Applications have all ended', async () => {

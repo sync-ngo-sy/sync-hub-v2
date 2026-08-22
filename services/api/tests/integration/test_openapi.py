@@ -154,6 +154,7 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
         "signUp",
         "submitApplication",
         "sweepJobApplications",
+        "sweepTenantApplications",
         "tagApplication",
         "tagCandidate",
         "untagApplication",
@@ -167,7 +168,21 @@ async def test_operations_have_stable_ids(app: FastAPI) -> None:
 
 async def test_a_sweep_asks_for_a_reading_and_never_a_list_of_ids(app: FastAPI) -> None:
     """The whole point of the endpoint: the payload of a sweep of fifty thousand Applications is
-    the payload of a sweep of twelve, so no selection is too large to send."""
-    sweep = app.openapi()["components"]["schemas"]["ApplicationSweep"]
+    the payload of a sweep of twelve, so no selection is too large to send.
 
-    assert set(sweep["properties"]) == {"statuses", "qualification_statuses"}
+    A sweep names where they go as well as what it moves, and the Tenant-wide one carries the one
+    filter the Tenant-wide list adds. Still no ids anywhere, and none possible.
+    """
+    schemas = app.openapi()["components"]["schemas"]
+
+    assert set(schemas["ApplicationSweep"]["properties"]) == {
+        "statuses",
+        "to",
+        "qualification_statuses",
+    }
+    assert set(schemas["TenantApplicationSweep"]["properties"]) == {
+        "statuses",
+        "to",
+        "qualification_statuses",
+        "received_within",
+    }

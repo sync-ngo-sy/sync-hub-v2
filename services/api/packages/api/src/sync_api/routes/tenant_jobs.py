@@ -256,13 +256,14 @@ async def list_job_applications(
 @router.post(
     "/{job_id}/applications/sweep",
     operation_id="sweepJobApplications",
-    summary="End every Application on the Job standing in the statuses named",
+    summary="Move every Application on the Job standing in the statuses named",
     tags=["applications"],
     responses={
         **TENANT_ACCESS_REFUSED,
         **JOB_NOT_FOUND,
         422: openapi_problem(
-            "`statuses` names a status that has already ended, or names none at all.",
+            "`statuses` names a status that has already ended or names none at all, or `to` is "
+            "somewhere a set cannot be sent.",
             ValidationProblemDetail,
         ),
     },
@@ -273,21 +274,27 @@ async def sweep_job_applications(
     recruiter: ActingRecruiterDep,
     applications: ApplicationReviewServiceDep,
 ) -> SweptApplications:
-    """Clear a finished hiring effort in one act: every Application in the ticked statuses is
-    rejected together, in one transaction.
+    """Take one act across a whole hiring effort: every Application in the ticked statuses moves
+    together, in one transaction.
 
     The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
     the same request as a sweep of twelve and there is no selection too large to send. `statuses`
     is what the Pipeline tab would have narrowed to, and `qualification_statuses` is the list's
     Screening filter carried over, so the sweep acts on the list the Recruiter was reading. The
-    counts to choose against are the `status_counts` the list already returns.
+    counts to choose against are the `status_counts` the list already returns, which are totals
+    for the whole Reading rather than for the page loaded.
 
-    Each ending is the same rejection a single move makes, held to the same Telling: `told_at` is
-    three days out and shared by all of them, and until it comes every Candidate's Stage still
-    reads in review, their bell is silent and their email waits in the queue. Undoing it is
-    reading the rejections back and moving them to `reviewing` one by one — there is no batch to
-    name, and no exemption to make: `hired`, `rejected` and `withdrawn` are refused here because
-    an Application that has ended cannot end again.
+    `to` says where they all go. A rung of the ladder is silent: `reviewing`, `shortlisted`,
+    `interview` and `offer` are one Stage to the Candidate, so only a row leaving `new` crosses a
+    boundary and gets the Notification saying so, and nothing is emailed. `rejected` is the same
+    rejection a single move makes, held to the same Telling: `told_at` is three days out and
+    shared by all of them, and until it comes every Candidate's Stage still reads in review,
+    their bell is silent and their email waits in the queue. Undoing that is reading the
+    rejections back and moving them to `reviewing` one by one — there is no batch to name.
+
+    `hired`, `rejected` and `withdrawn` are refused as sources because an Application that has
+    ended cannot move again. `hired` is refused as a destination because a hire names the day it
+    started, which one act over many Applications cannot answer, and so is `new`.
     """
     return await applications.sweep(recruiter, job_id, body)
 

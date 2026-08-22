@@ -12,7 +12,9 @@ from sync_api.applications import (
     MatchAssessment,
     MovedApplication,
     ReceivedWithin,
+    SweptApplications,
     TenantApplicationPage,
+    TenantApplicationSweep,
 )
 from sync_api.crm import NewNote, Note, NoteChanges, NotePage, Tag
 from sync_api.dependencies import (
@@ -26,6 +28,7 @@ from sync_api.dependencies import (
 from sync_api.errors import openapi_problem
 from sync_api.messaging import OutgoingMessage, QueuedMessage
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from sync_api.problems import ValidationProblemDetail
 from sync_api.rate_limit import enforce_assessment_rate_limit
 from sync_api.routes.tenants import TENANT_ACCESS_REFUSED
 from sync_core.models import ApplicationStatus, QualificationStatus
@@ -113,6 +116,45 @@ async def list_tenant_applications(
         cursor=cursor,
         limit=limit,
     )
+
+
+@router.post(
+    "/sweep",
+    operation_id="sweepTenantApplications",
+    summary="Move every Application the Tenant is reading that stands in the statuses named",
+    tags=["applications"],
+    responses={
+        **TENANT_ACCESS_REFUSED,
+        422: openapi_problem(
+            "`statuses` names a status that has already ended or names none at all, or `to` is "
+            "somewhere a set cannot be sent.",
+            ValidationProblemDetail,
+        ),
+    },
+)
+async def sweep_tenant_applications(
+    body: TenantApplicationSweep,
+    recruiter: ActingRecruiterDep,
+    applications: ApplicationReviewServiceDep,
+) -> SweptApplications:
+    """Take one act across every Job the Tenant is hiring for, in one transaction.
+
+    The request carries the Reading rather than the Applications, so a sweep of fifty thousand is
+    the same request as a sweep of twelve and there is no selection too large to send. `statuses`
+    is what the Pipeline tab would have narrowed to, `qualification_statuses` is the Screening
+    filter and `received_within` the Received window, both carried over so the sweep acts on the
+    list the Recruiter was reading. The counts to choose against are the `status_counts` the list
+    already returns, which are totals for the whole Reading rather than for the page loaded.
+
+    `to` says where they all go. A rung of the ladder is silent: `reviewing`, `shortlisted`,
+    `interview` and `offer` are one Stage to the Candidate, so only a row leaving `new` crosses a
+    boundary and gets the Notification saying so. `rejected` is the rejection a single move makes,
+    held to the same Telling — three days out and shared by the whole set. `hired` is refused,
+    because a hire names the day it started and one act over many Applications cannot answer
+    that, and so is `new`, which is where an Application arrives rather than somewhere a set is
+    sent.
+    """
+    return await applications.sweep_tenant(recruiter, body)
 
 
 @router.get(

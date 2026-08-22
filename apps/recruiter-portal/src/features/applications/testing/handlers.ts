@@ -14,7 +14,7 @@ import {
   type TenantApplication,
 } from '../application';
 import type { MatchAssessment } from '../assessment';
-import { actsFor, type Sweep, whereTickedRowsGo } from '../ending';
+import { actsFor, type Sweep, type TenantSweep, whereTickedRowsGo } from '../ending';
 import {
   APPLICATION_PATH,
   ASSESSMENT_PATH,
@@ -25,6 +25,7 @@ import {
   TAG_PATH,
   TAGS_PATH,
   TENANT_APPLICATIONS_PATH,
+  TENANT_SWEEP_PATH,
   TRIAGE_PATH,
 } from '../reread';
 import type { ApplicationReview } from '../review';
@@ -198,30 +199,64 @@ const MOVE_REFUSED: Problem = {
 
 export interface SweepAskedFor {
   statuses: string[];
+  to: string;
   qualification_statuses: string[] | null;
+  received_within?: string | null;
 }
 
-/** A Job whose Applications a sweep really ends: the ticked statuses move, the list they came
- * from moves with them, and the answer counts what moved. */
+/** A Job whose Applications a sweep really moves: the ticked statuses go where the sweep says, the
+ * list they came from moves with them, and the answer counts what moved. Only an ending carries a
+ * Telling, exactly as the API answers it. */
 export function sweepsJobApplications(items: ApplicationSummary[], asked?: SweepAskedFor[]) {
   return [
     ...listsJobApplications(items),
     http.post(SWEEP_PATH, async ({ request, response }) => {
       const sweep = (await request.json()) as Sweep;
       const verdicts = sweep.qualification_statuses ?? null;
-      asked?.push({ statuses: sweep.statuses, qualification_statuses: verdicts });
-      let ended = 0;
-      items.forEach((item, at) => {
-        const swept =
-          sweep.statuses.includes(item.status) &&
-          (verdicts === null || verdicts.includes(item.qualification_status));
-        if (!swept) return;
-        items[at] = { ...item, status: 'rejected', updated_at: THE_TELLING };
-        ended += 1;
+      asked?.push({
+        statuses: sweep.statuses,
+        to: sweep.to,
+        qualification_statuses: verdicts,
       });
-      return response(200).json({ ended, told_at: ended > 0 ? THE_TELLING : null });
+      return response(200).json(sweptInto(items, sweep, verdicts));
     }),
   ];
+}
+
+/** The Tenant-wide sweep, which reaches every Job at once and carries the Received window too. */
+export function sweepsTenantApplications(items: TenantApplication[], asked?: SweepAskedFor[]) {
+  return [
+    ...listsTenantApplications(items),
+    http.post(TENANT_SWEEP_PATH, async ({ request, response }) => {
+      const sweep = (await request.json()) as TenantSweep;
+      const verdicts = sweep.qualification_statuses ?? null;
+      asked?.push({
+        statuses: sweep.statuses,
+        to: sweep.to,
+        qualification_statuses: verdicts,
+        received_within: sweep.received_within ?? null,
+      });
+      return response(200).json(sweptInto(items, sweep, verdicts));
+    }),
+  ];
+}
+
+function sweptInto<TItem extends MovableRow & { qualification_status: string }>(
+  items: TItem[],
+  sweep: Sweep,
+  verdicts: string[] | null,
+) {
+  const ending = sweep.to === 'rejected';
+  let ended = 0;
+  items.forEach((item, at) => {
+    const swept =
+      sweep.statuses.includes(item.status) &&
+      (verdicts === null || verdicts.includes(item.qualification_status));
+    if (!swept) return;
+    items[at] = { ...item, status: sweep.to, updated_at: THE_TELLING };
+    ended += 1;
+  });
+  return { ended, told_at: ending && ended > 0 ? THE_TELLING : null };
 }
 
 export function refusesTheSweep(items: ApplicationSummary[], problem: Problem) {

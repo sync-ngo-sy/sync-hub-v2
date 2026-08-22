@@ -17,7 +17,7 @@ import {
   screeningState,
   sortSelection,
 } from '../application';
-import { actedMessage, nothingIsOpen, whatItSwept } from '../ending';
+import { actedMessage, nothingIsOpen, whatItSwept, whereTickedRowsGo } from '../ending';
 import { useSweepJobApplications } from '../hooks/use-application-actions';
 import { useJobApplications } from '../hooks/use-job-applications';
 import { useTickedActs } from '../hooks/use-ticked-acts';
@@ -79,7 +79,11 @@ export function JobApplications({
   async function endMany(statuses: PipelineStatus[]) {
     const swept = await sweeping.mutateAsync({
       params: { path: { job_id: jobId } },
-      body: { statuses, qualification_statuses: everyVerdict ? null : screening },
+      body: {
+        statuses,
+        to: whereTickedRowsGo('end'),
+        qualification_statuses: everyVerdict ? null : screening,
+      },
     });
     setEndingMany(false);
     ticks.clear();

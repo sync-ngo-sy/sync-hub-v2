@@ -8,6 +8,7 @@ import {
 } from './application';
 
 export type Sweep = components['schemas']['ApplicationSweep'];
+export type TenantSweep = components['schemas']['TenantApplicationSweep'];
 export type SweptApplications = components['schemas']['SweptApplications'];
 type MovedApplication = components['schemas']['MovedApplication'];
 

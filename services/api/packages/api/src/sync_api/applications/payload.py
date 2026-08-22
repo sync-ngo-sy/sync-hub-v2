@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from sync_api.applications.pipeline import still_undecided
+from sync_api.applications.pipeline import SWEEPABLE_DESTINATIONS, still_undecided
 from sync_api.candidates import (
     ProfileEducation,
     ProfileExperience,
@@ -611,8 +611,8 @@ class ApplicationStatusChange(BaseModel):
 
 
 class ApplicationSweep(BaseModel):
-    """Which of a Job's Applications one act ends: the Reading the list was showing, with its
-    Pipeline tab replaced by the statuses ticked.
+    """Which Applications one act moves, and where they go: the Reading the list was showing,
+    with its Pipeline tab replaced by the statuses ticked.
 
     No ids anywhere, and none possible. A sweep of fifty thousand Applications is the same
     request as a sweep of twelve, so a selection too large to send is not a state to reach.
@@ -620,28 +620,63 @@ class ApplicationSweep(BaseModel):
 
     statuses: list[ApplicationStatus] = Field(
         min_length=1,
-        description="The statuses to end, as the ticks name them. Only the five an Application "
-        "is still being decided in: `hired`, `rejected` and `withdrawn` have ended already, and "
-        "naming one of them is refused rather than ignored.",
+        description="The statuses to move out of, as the ticks name them. Only the five an "
+        "Application is still being decided in: `hired`, `rejected` and `withdrawn` have ended "
+        "already, and naming one of them is refused rather than ignored.",
         examples=[[ApplicationStatus.NEW, ApplicationStatus.REVIEWING]],
+    )
+    to: ApplicationStatus = Field(
+        description="Where they all go. One of the four rungs an Application is still being "
+        "decided on above `new` — `reviewing`, `shortlisted`, `interview`, `offer` — or "
+        "`rejected`, which ends them. `hired` is refused because a hire names the day it "
+        "started and one act over many Applications cannot answer that; `new` is refused "
+        "because it is where an Application arrives, not somewhere a set is sent.",
+        examples=[ApplicationStatus.SHORTLISTED],
     )
     qualification_statuses: list[QualificationStatus] | None = Field(
         default=None,
         min_length=1,
         description="The list's Screening filter, inherited, so the sweep acts on the list the "
-        "Recruiter was reading. Omit it to end whatever the verdict.",
+        "Recruiter was reading. Omit it to move whatever the verdict.",
     )
 
     @model_validator(mode="after")
-    def _only_what_has_not_ended_can_end(self) -> ApplicationSweep:
+    def _only_what_has_not_ended_can_move(self) -> ApplicationSweep:
         ended = sorted({one.value for one in self.statuses if not still_undecided(one)})
         if ended:
-            raise ValueError(f"{', '.join(ended)} has already ended, so it cannot be ended")
+            raise ValueError(f"{', '.join(ended)} has already ended, so it cannot be moved")
+        return self
+
+    @model_validator(mode="after")
+    def _a_sweep_goes_somewhere_a_set_can_go(self) -> ApplicationSweep:
+        if self.to not in SWEEPABLE_DESTINATIONS:
+            allowed = ", ".join(sorted(one.value for one in SWEEPABLE_DESTINATIONS))
+            raise ValueError(f"a sweep can only move Applications to one of {allowed}")
+        return self
+
+    @model_validator(mode="after")
+    def _a_move_to_where_they_already_are_is_no_move(self) -> ApplicationSweep:
+        if self.to in self.statuses:
+            raise ValueError(
+                f"{self.to.value} is both what this sweep moves and where it moves them, "
+                "and an Application cannot move to where it already is"
+            )
         return self
 
 
+class TenantApplicationSweep(ApplicationSweep):
+    """The same act taken across every Job the Tenant is hiring for, carrying the one filter the
+    Tenant-wide list has that a Job's own list does not."""
+
+    received_within: ReceivedWithin | None = Field(
+        default=None,
+        description="The list's Received window, inherited. Omit it to reach every Application "
+        "however long ago it arrived.",
+    )
+
+
 class SweptApplications(BaseModel):
-    """What one sweep ended, and when the people it ended hear about it."""
+    """What one sweep moved, and — where it ended them — when the people it ended hear."""
 
     ended: int = Field(
         description="How many Applications the sweep moved. Zero where the Reading matched "
@@ -650,8 +685,8 @@ class SweptApplications(BaseModel):
     told_at: datetime | None = Field(
         default=None,
         description="The Telling every Application it ended now carries: three days out, the "
-        "same moment for all of them, and the moment their Candidates hear. Null where it "
-        "ended nothing, because nobody is waiting to be told.",
+        "same moment for all of them, and the moment their Candidates hear. Null where the "
+        "sweep ended nothing — a move along the ladder tells nobody, and so carries none.",
     )
 
 
