@@ -15,7 +15,11 @@ from sync_api.rate_limit import (
     build_access_request_rate_limiter,
     build_assessment_rate_limiter,
     build_auth_rate_limiter,
+    build_candidate_record_rate_limiter,
+    build_cv_upload_rate_limiter,
+    build_directory_rate_limiter,
     build_public_rate_limiter,
+    build_search_rate_limiter,
 )
 from sync_api.routes import (
     access_requests,
@@ -103,6 +107,10 @@ def create_app(
         app.state.public_rate_limiter = build_public_rate_limiter(resolved)
         app.state.assessment_rate_limiter = build_assessment_rate_limiter(resolved)
         app.state.access_request_rate_limiter = build_access_request_rate_limiter(resolved)
+        app.state.directory_rate_limiter = build_directory_rate_limiter(resolved)
+        app.state.candidate_record_rate_limiter = build_candidate_record_rate_limiter(resolved)
+        app.state.search_rate_limiter = build_search_rate_limiter(resolved)
+        app.state.cv_upload_rate_limiter = build_cv_upload_rate_limiter(resolved)
         logger.info("api.started", environment=resolved.environment.value)
         try:
             yield

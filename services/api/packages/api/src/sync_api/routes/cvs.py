@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 from uuid import UUID
 
-from fastapi import APIRouter, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 
 from sync_api.candidates import ProfileDraft
 from sync_api.cvs import MAX_ACTIVE_CVS, Cv, CvDownloadLink
 from sync_api.dependencies import ActingCandidateDep, CvServiceDep
 from sync_api.errors import openapi_problem
 from sync_api.problems import CvConflictProblemDetail
+from sync_api.rate_limit import enforce_cv_upload_rate_limit
 from sync_api.routes.candidates import CANDIDATE_ACCESS_REFUSED
 
 ROUTER_PREFIX: Final = "/candidates/me/cvs"
@@ -26,6 +27,7 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["cvs"])
     status_code=201,
     operation_id="uploadMyCv",
     summary="Upload a CV",
+    dependencies=[Depends(enforce_cv_upload_rate_limit)],
     responses={
         **CANDIDATE_ACCESS_REFUSED,
         409: openapi_problem(
@@ -35,6 +37,10 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["cvs"])
         ),
         413: openapi_problem("The file is larger than the platform accepts."),
         415: openapi_problem("The file is not a PDF, DOC or DOCX."),
+        429: openapi_problem(
+            "The caller has uploaded too many CVs, this minute or today. `Retry-After` says how "
+            "long to wait."
+        ),
         502: openapi_problem("The file store could not be reached."),
     },
 )

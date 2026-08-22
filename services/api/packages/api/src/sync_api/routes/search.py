@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Final
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BeforeValidator
 
 from sync_api.candidate_directory.filters import CandidateFiltersDep
@@ -10,6 +10,7 @@ from sync_api.dependencies import ActingRecruiterDep, CandidateSearchServiceDep
 from sync_api.errors import openapi_problem
 from sync_api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from sync_api.problems import ValidationProblemDetail
+from sync_api.rate_limit import enforce_search_rate_limit
 from sync_api.search import CandidateMatches
 from sync_api.text import without_control_characters
 from sync_core.profile import MAX_LINE_LENGTH
@@ -30,12 +31,17 @@ router = APIRouter(prefix=ROUTER_PREFIX, tags=["search"])
     "/candidates",
     operation_id="searchCandidates",
     summary="Find Searchable Candidates across tenants, closest match first",
+    dependencies=[Depends(enforce_search_rate_limit)],
     responses={
         **SEARCH_ACCESS_REFUSED,
         422: openapi_problem(
             "A filter names a Location, a Canonical role, a language or a Canonical skill the "
             "platform does not have. The refusal names the offending one.",
             ValidationProblemDetail,
+        ),
+        429: openapi_problem(
+            "The tenant has searched too often, this minute or today. `Retry-After` says how "
+            "long to wait."
         ),
     },
 )

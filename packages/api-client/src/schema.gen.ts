@@ -743,6 +743,8 @@ export interface paths {
          *
          *     The one place a phone number and an email address are readable, one Candidate at a time. A
          *     Candidate outside this Tenant's reach answers exactly as one that does not exist.
+         *
+         *     Carries the tightest budget on the platform for that reason, and every read is logged.
          */
         get: operations["readDirectoryCandidate"];
         put?: never;
@@ -7357,6 +7359,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
+            /** @description The caller has uploaded too many CVs, this minute or today. `Retry-After` says how long to wait. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Something went wrong on the server. */
             500: {
                 headers: {
@@ -7808,6 +7819,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
                 };
             };
+            /** @description The tenant has paged the directory too hard, this minute or today. `Retry-After` says how long to wait. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Something went wrong on the server. */
             500: {
                 headers: {
@@ -7873,6 +7893,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description The tenant has read too many Candidates' contact details, this minute or today. `Retry-After` says how long to wait. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
@@ -8293,6 +8322,15 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblemDetail"];
+                };
+            };
+            /** @description The tenant has searched too often, this minute or today. `Retry-After` says how long to wait. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Something went wrong on the server. */
